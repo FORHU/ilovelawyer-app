@@ -1,19 +1,23 @@
-import { Button } from "@workspace/ui/components/button"
+import { LandingNavbar } from "@/components/landing/navbar";
+import { HeroSection } from "@/components/landing/hero-section";
+import { FeaturesSection } from "@/components/landing/features-section";
+import { InActionSection } from "@/components/landing/in-action-section";
+import { ProcessSection } from "@/components/landing/process-section";
+import { CTASection } from "@/components/landing/cta-section";
+import { SharedFooter } from "@/components/shared-footer";
 
-export default function Page() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="text-muted-foreground font-mono text-xs">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
+    <div className="flex flex-col min-h-screen w-full" style={{ background: "linear-gradient(90deg, #f7f9fb 0%, #f7f9fb 100%)" }}>
+      <LandingNavbar />
+      <main className="flex-1">
+        <HeroSection />
+        <FeaturesSection />
+        <InActionSection />
+        <ProcessSection />
+        <CTASection />
+      </main>
+      <SharedFooter />
     </div>
-  )
+  );
 }
