@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { SharedFooter } from "@/components/shared-footer";
-import svgLoginPaths from "@/imports/LoginIlovelawyerSourceSerif/svg-ylobrpshkl";
+import svgLoginPaths from "@/imports/LoginSourceSerif/svg-ylobrpshkl";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -89,9 +89,6 @@ export default function LoginPage() {
                 style={{ fontFamily: "'Source Serif 4', serif" }}
               >
                 Sign In
-                <svg className="size-[18px]" fill="none" viewBox="0 0 18 18">
-                  <path d={svgLoginPaths.p3dbaa380} fill="white" />
-                </svg>
               </button>
 
               <div className="h-px bg-[#d8dadc]" />

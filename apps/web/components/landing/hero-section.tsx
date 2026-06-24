@@ -1,12 +1,11 @@
 import Link from "next/link";
-import svgPaths from "@/imports/IlovelawyerLandingPageWithInActionSection/svg-4n6twsb3v9";
+import svgPaths from "@/imports/ActionSection/svg-4n6twsb3v9";
 
 export function HeroSection() {
   return (
     <section className="bg-[#f7f9fb] min-h-[80vh] flex items-center py-24 px-6 md:px-16 overflow-hidden">
       <div className="max-w-[1200px] mx-auto w-full flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
         <div className="flex-1 flex flex-col gap-8">
-          <div className="bg-[rgba(0,89,187,0.1)] h-2.5 w-6 rounded-full border border-[rgba(0,89,187,0.2)]" />
           <h1
             className="text-[#0a192f] text-[clamp(40px,6vw,64px)] tracking-[-1.6px] leading-[1.1]"
             style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
