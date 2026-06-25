@@ -1,123 +1,224 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SharedFooter } from "@/components/shared-footer";
-import svgLoginPaths from "@/imports/LoginSourceSerif/svg-ylobrpshkl";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useGoogleLogin } from "@react-oauth/google";
+import svgLoginPaths from "@/imports/LoginIlovelawyerSourceSerif/svg-ylobrpshkl";
+import { useLoginMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const signupSuccess = searchParams.get("signup") === "success";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loginMutation = useLoginMutation();
+  const googleMutation = useGoogleAuthMutation();
+
+  const isPending = loginMutation.isPending || googleMutation.isPending;
+
+  const tabs = [
+    { label: "SIGN IN", active: true, href: null },
+    { label: "JOIN PLATFORM", active: false, href: "/signup" },
+    { label: "RECOVER", active: false, href: "/forgot-password" },
+  ];
+
+  function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    setError(null);
+    loginMutation.mutate(
+      { email, password, remember },
+      { onError: (err) => setError((err as Error).message) }
+    );
+  }
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: ({ access_token }) => {
+      setError(null);
+      googleMutation.mutate(
+        { idToken: access_token },
+        { onError: (err) => setError((err as Error).message) }
+      );
+    },
+    onError: () => setError("Google sign-in failed. Please try again."),
+  });
 
   return (
-    <div className="flex flex-col min-h-screen w-full" style={{ background: "linear-gradient(135deg, #f7f9fb 0%, #eef3fb 100%)" }}>
-      <div className="flex-1 flex items-center justify-center px-4 py-12 relative">
-        <div className="absolute bg-[#d8e2ff] blur-[50px] top-0 left-[-10%] w-[40%] h-[40%] rounded-full opacity-20 pointer-events-none" />
-        <div className="absolute bg-[#d6e3ff] blur-[50px] bottom-0 right-[-10%] w-[40%] h-[40%] rounded-full opacity-20 pointer-events-none" />
+    <div className="flex h-screen w-full overflow-hidden bg-[#f7fafc]">
+      {/* LEFT — photo + branding */}
+      <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
+        <div className="absolute inset-0 bg-[#1a1f23]" />
+        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 30% 60%, #2d3a47 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)]" />
+        <div className="absolute bottom-16 left-16 z-10">
+          <p className="text-[28px] text-white tracking-[-0.7px] mb-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            ilovelawyer
+          </p>
+          <p className="text-[rgba(224,227,229,0.8)] text-base max-w-[393px] leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+            Premium AI-Driven Legal Operations for the Modern Advocate.
+          </p>
+        </div>
+      </div>
 
-        <div className="w-full max-w-[480px] flex flex-col gap-10 relative z-10">
-          <div className="flex flex-col items-center gap-4">
-            <Link href="/"><Logo size={30} /></Link>
-            <p className="text-[#44474d] text-lg text-center" style={{ fontFamily: "'Source Serif 4', serif" }}>
-              Secure Access to AI Legal Excellence
+      {/* RIGHT — form */}
+      <div className="bg-white flex flex-col items-center justify-center px-8 md:px-[106px] py-12 flex-1 overflow-y-auto">
+        <div className="w-full max-w-[448px] flex flex-col gap-10">
+          {/* Header */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+              Welcome Back
+            </h1>
+            <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+              Access your secure legal workspace.
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl border border-[#d8dadc] shadow-[0px_8px_16px_rgba(10,25,47,0.06)] p-10">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-[#44474d] text-sm tracking-[1.4px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-4">
-                    <svg className="w-full h-full" fill="none" viewBox="0 0 20 16">
-                      <path d={svgLoginPaths.p13e73800} fill="#75777E" />
-                    </svg>
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="attorney@firm.com"
-                    className="w-full bg-[#f2f4f6] border border-[#d8dadc] rounded-2xl pl-10 pr-4 py-3.5 text-base text-[#191c1e] placeholder-[rgba(117,119,126,0.5)] outline-none focus:border-[#0059bb] transition-colors"
-                    style={{ fontFamily: "'Source Serif 4', serif" }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[#44474d] text-sm tracking-[1.4px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                    Password
-                  </label>
-                  <Link href="/forgot-password" className="text-[#0059bb] text-sm hover:underline" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-[21px]">
-                    <svg className="w-full h-full" fill="none" viewBox="0 0 16 21">
-                      <path d={svgLoginPaths.p12930f00} fill="#75777E" />
-                    </svg>
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-[#f2f4f6] border border-[#d8dadc] rounded-2xl pl-10 pr-12 py-3.5 text-base text-[#191c1e] outline-none focus:border-[#0059bb] transition-colors"
-                    style={{ fontFamily: "'Source Serif 4', serif" }}
-                  />
-                  <button
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
-                  >
-                    <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
-                      <path d={svgLoginPaths.p3e801e80} fill="#75777E" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                className="w-full bg-[#0a192f] text-white text-sm py-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer hover:bg-[#142744] transition-colors border-0 mt-2"
-                style={{ fontFamily: "'Source Serif 4', serif" }}
-              >
-                Sign In
-              </button>
-
-              <div className="h-px bg-[#d8dadc]" />
-
-              <button
-                className="w-full bg-white border border-[#d8dadc] rounded-2xl py-3.5 px-1 flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{ fontFamily: "'Source Serif 4', serif" }}
-              >
-                <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                  <path d={svgLoginPaths.p29ad9380} fill="#4285F4" />
-                  <path d={svgLoginPaths.p73c0a80} fill="#34A853" />
-                  <path d={svgLoginPaths.p1f69ba00} fill="#FBBC05" />
-                  <path d={svgLoginPaths.p372b9e00} fill="#EA4335" />
-                </svg>
-                <span className="text-[#191c1e] text-sm">Continue with Google</span>
-              </button>
-
-              <p className="text-[#44474d] text-base text-center" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                Don&apos;t have an account?{" "}
-                <Link href="/signup" className="text-[#0059bb] hover:underline" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Sign up
-                </Link>
+          {/* Signup success banner */}
+          {signupSuccess && (
+            <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-3">
+              <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                Account created — sign in to continue.
               </p>
+            </div>
+          )}
+
+          {/* Tab navigation */}
+          <div className="flex gap-8 border-b border-[rgba(198,198,206,0.3)] pb-px">
+            {tabs.map(({ label, active, href }) => (
+              <button
+                key={label}
+                onClick={() => href && router.push(href)}
+                className={`pb-[14px] text-xs tracking-[1.2px] cursor-pointer bg-transparent border-0 relative ${active ? "text-black" : "text-[rgba(69,70,77,0.6)]"}`}
+                style={{ fontFamily: "Inter, sans-serif", fontWeight: active ? 600 : 400 }}
+              >
+                {label}
+                {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {/* Email */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                EMAIL ADDRESS
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="attorney@cruz-law.ph"
+                required
+                className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                PASSWORD
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors pr-10"
+                  style={{ fontFamily: "Inter, sans-serif" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
+                >
+                  <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
+                    <path d="M11 12C12.25 12 13.3125 11.5625 14.1875 10.6875C15.0625 9.8125 15.5 8.75 15.5 7.5C15.5 6.25 15.0625 5.1875 14.1875 4.3125C13.3125 3.4375 12.25 3 11 3C9.75 3 8.6875 3.4375 7.8125 4.3125C6.9375 5.1875 6.5 6.25 6.5 7.5C6.5 8.75 6.9375 9.8125 7.8125 10.6875C8.6875 11.5625 9.75 12 11 12ZM11 10.2C10.25 10.2 9.6125 9.9375 9.0875 9.4125C8.5625 8.8875 8.3 8.25 8.3 7.5C8.3 6.75 8.5625 6.1125 9.0875 5.5875C9.6125 5.0625 10.25 4.8 11 4.8C11.75 4.8 12.3875 5.0625 12.9125 5.5875C13.4375 6.1125 13.7 6.75 13.7 7.5C13.7 8.25 13.4375 8.8875 12.9125 9.4125C12.3875 9.9375 11.75 10.2 11 10.2ZM11 15C8.56667 15 6.35 14.3208 4.35 12.9625C2.35 11.6042 0.9 9.78333 0 7.5C0.9 5.21667 2.35 3.39583 4.35 2.0375C6.35 0.679167 8.56667 0 11 0C13.4333 0 15.65 0.679167 17.65 2.0375C19.65 3.39583 21.1 5.21667 22 7.5C21.1 9.78333 19.65 11.6042 17.65 12.9625C15.65 14.3208 13.4333 15 11 15ZM11 13C12.8833 13 14.6125 12.5042 16.1875 11.5125C17.7625 10.5208 18.9667 9.18333 19.8 7.5C18.9667 5.81667 17.7625 4.47917 16.1875 3.4875C14.6125 2.49583 12.8833 2 11 2C9.11667 2 7.3875 2.49583 5.8125 3.4875C4.2375 4.47917 3.03333 5.81667 2.2 7.5C3.03333 9.18333 4.2375 10.5208 5.8125 11.5125C7.3875 12.5042 9.11667 13 11 13Z" fill="#6b7280" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Remember */}
+            <div className="flex items-center gap-2">
+              <div
+                className="relative size-4 border-2 border-[#c6c6ce] bg-white cursor-pointer shrink-0"
+                onClick={() => setRemember(!remember)}
+              >
+                {remember && <div className="absolute inset-0.5 bg-black" />}
+              </div>
+              <span className="text-[#45464d] text-[10px] tracking-[0.5px]" style={{ fontFamily: "Inter, sans-serif" }}>
+                REMEMBER SESSION
+              </span>
+            </div>
+
+            {/* Inline error */}
+            {error && (
+              <p className="text-red-600 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                {error}
+              </p>
+            )}
+
+            {/* Sign In button */}
+            <button
+              type="submit"
+              disabled={isPending}
+              className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              {loginMutation.isPending ? "SIGNING IN..." : "SIGN IN"}
+            </button>
+
+            {/* OR divider */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
+              <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>OR</span>
+              <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
+            </div>
+
+            {/* Google */}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => googleLogin()}
+              className="w-full bg-white border border-[#c6c6ce] flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                <path d={svgLoginPaths.p29ad9380} fill="#4285F4" />
+                <path d={svgLoginPaths.p73c0a80} fill="#34A853" />
+                <path d={svgLoginPaths.p1f69ba00} fill="#FBBC05" />
+                <path d={svgLoginPaths.p372b9e00} fill="#EA4335" />
+              </svg>
+              <span className="text-[#181c1e] text-base tracking-[3.2px]" style={{ fontFamily: "Inter, sans-serif" }}>
+                {googleMutation.isPending ? "CONNECTING..." : "CONTINUE WITH GOOGLE"}
+              </span>
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
+            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+              © 2024 ILOVELAWYER
+            </span>
+            <div className="flex gap-4">
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0" style={{ fontFamily: "Inter, sans-serif" }}>
+                SUPPORT
+              </button>
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0" style={{ fontFamily: "Inter, sans-serif" }}>
+                PRIVACY
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <SharedFooter compact />
     </div>
   );
 }

@@ -1,101 +1,135 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { SharedFooter } from "@/components/shared-footer";
-import svgForgotPaths from "@/imports/ForgotPasswordIlovelawyerUpdatedBranding/svg-c3dgwficg5";
+import { useRouter } from "next/navigation";
+import { Mail, ArrowLeft } from "lucide-react";
+import { useForgotPasswordMutation } from "@/lib/auth/mutations";
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const forgotPassword = useForgotPasswordMutation();
+
+  const subNavItems = ["CHAT", "CASES", "LIBRARY", "RESEARCH", "RESOURCES"];
 
   return (
-    <div className="flex flex-col min-h-screen w-full" style={{ background: "linear-gradient(90deg, #f7f9fb 0%, #f7f9fb 100%)" }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="flex flex-col gap-8 w-full max-w-[480px]">
-          <div className="flex justify-start">
-            <Link href="/" className="cursor-pointer">
-              <Logo size={24} />
-            </Link>
-          </div>
+    <div className="flex h-screen w-full overflow-hidden bg-[#f1f4f6]">
+      {/* LEFT — library image */}
+      <div className="relative hidden lg:block overflow-hidden" style={{ width: "40%", minHeight: "1024px" }}>
+        <div className="absolute inset-0 bg-[#131a33]" />
+        <div className="absolute inset-0 opacity-70" style={{ background: "radial-gradient(ellipse at 40% 50%, #1e2d4a 0%, #131a33 65%)" }} />
+        <div className="absolute inset-0 bg-[rgba(19,26,51,0.3)]" />
 
-          <div className="backdrop-blur-[6px] bg-white/80 rounded-3xl border border-[#d8dadc] shadow-[0px_8px_32px_0px_rgba(10,25,47,0.06)] p-10">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col items-center gap-3">
-                <div className="bg-[rgba(10,25,47,0.05)] rounded-full size-14 flex items-center justify-center">
-                  <svg className="size-[26px]" fill="none" viewBox="0 0 26.6667 26.6667">
-                    <path d={svgForgotPaths.p2d47e8c0} fill="#0A192F" />
-                  </svg>
-                </div>
-                <h2
-                  className="text-[#191c1e] text-[32px] text-center leading-10 pt-3"
-                  style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-                >
-                  Reset your password
-                </h2>
-                <p className="text-[#44474d] text-base text-center leading-[26px]" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Enter the email address associated with your account and we&apos;ll send you a link to reset your password.
-                </p>
-              </div>
+        {/* Logo */}
+        <div className="absolute top-16 left-12 z-10">
+          <span className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            ilovelawyer
+          </span>
+        </div>
+        
 
-              {sent ? (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                  <p className="text-green-800 text-base" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                    Recovery email sent! Check your inbox at <strong>{email}</strong>
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#44474d] text-xs tracking-[0.6px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                      Email Address
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@firm.com"
-                        className="w-full bg-white border border-[#d8dadc] border-b-2 rounded-tl rounded-tr py-3.5 px-4 text-base text-[#191c1e] placeholder-[#6b7280] outline-none focus:border-[#0059bb] transition-colors pr-12"
-                        style={{ fontFamily: "'Source Serif 4', serif" }}
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-4">
-                        <svg className="w-full h-full" fill="none" viewBox="0 0 20 16">
-                          <path d={svgForgotPaths.p13e73800} fill="#75777E" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => email && setSent(true)}
-                    className="w-full bg-[#0a192f] text-white text-base py-4 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-[#142744] transition-colors border-0 shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
-                    style={{ fontFamily: "'Source Serif 4', serif" }}
-                  >
-                    Send Recovery Email
-                  </button>
-                </div>
-              )}
-
-              <div className="border-t border-[#d8dadc] pt-6 flex justify-center">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 text-[#0a192f] text-base hover:underline"
-                  style={{ fontFamily: "'Source Serif 4', serif" }}
-                >
-                  <svg className="size-3" fill="none" viewBox="0 0 12 12">
-                    <path d={svgForgotPaths.p2286b600} fill="#0A192F" />
-                  </svg>
-                  Return to Login
-                </Link>
-              </div>
-            </div>
-          </div>
+        {/* Quote */}
+        <div className="absolute bottom-12 left-12 max-w-[384px] z-10">
+          <p
+            className="text-[rgba(255,255,255,0.95)] text-[20px] leading-[32.5px] italic"
+            style={{ fontFamily: "'Libre Caslon Text', serif", fontStyle: "italic" }}
+          >
+            &ldquo;Jurisprudence is the knowledge of things divine and human; the science of the just and the unjust.&rdquo;
+          </p>
         </div>
       </div>
 
-      <SharedFooter compact />
+      {/* RIGHT — form + top nav */}
+      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative shadow-[-20px_0px_20px_rgba(0,0,0,0.03)]">
+        {/* Sub nav top-right */}
+        <div className="absolute top-0 right-0 left-0 lg:left-0 bg-gradient-to-b from-white/80 to-transparent flex gap-8 items-start justify-end px-8 py-6 overflow-auto">
+          {subNavItems.map((l) => (
+            <button
+              key={l}
+              className="text-[#45464d] text-xs tracking-[1.2px] font-semibold cursor-pointer bg-transparent border-0 hover:text-black shrink-0"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {/* Back to login */}
+          {!sent && (
+            <div className="border-t border-[rgba(224,227,229,0.6)] pt-10">
+              <button
+                onClick={() => router.push("/login")}
+                className="flex items-center gap-3 cursor-pointer bg-transparent border-0 hover:opacity-70 transition-opacity"
+              >
+                <ArrowLeft size={13} color="#45464D" />
+                <span className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  Return to Secure Sign In
+                </span>
+              </button>
+            </div>
+          )}
+
+        <div className="w-full max-w-lg flex flex-col gap-12 py-16">
+          {/* Heading */}
+          <div className="flex flex-col gap-6">
+            <h2 className="text-[#181c1e] text-[40px] leading-[48px] tracking-[-1px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+              Account Recovery
+            </h2>
+            <p className="text-[#45464d] text-base leading-6 max-w-[448px]" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
+              Enter your professional email to receive secure recovery instructions. Ensuring the continuity of your legal practice.
+            </p>
+          </div>
+
+          {/* Form / Success */}
+          {!sent ? (
+            <div className="flex flex-col gap-12">
+              <div className="flex flex-col gap-4">
+                <label className="text-[#3c475a] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  PROFESSIONAL RECOVERY EMAIL
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="attorney@firm.com.ph"
+                  className="w-full bg-[rgba(241,244,246,0.3)] border border-[#6b7280] px-4 py-5 text-[18px] text-black placeholder-[#c6c6ce] outline-none focus:border-black transition-colors"
+                  style={{ fontFamily: "'Libre Caslon Text', serif" }}
+                />
+              </div>
+              <button
+                onClick={() => email && forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) })}
+                disabled={forgotPassword.isPending}
+                className="w-full bg-[#131a33] text-white text-xs tracking-[2.4px] uppercase font-semibold py-5 cursor-pointer hover:bg-black transition-colors border-0 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {forgotPassword.isPending ? "SENDING..." : "SEND RESET LINK"}
+              </button>
+            </div>
+          ) : (
+            <div className="border border-[#c6c6ce] p-16 flex flex-col gap-8 items-center shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)]">
+              <div className="border border-[#cca830] rounded-full size-20 flex items-center justify-center">
+                <Mail size={36} color="#CCA830" strokeWidth={1.5} />
+              </div>
+              <div className="flex flex-col gap-4 items-center text-center">
+                <h3 className="text-[#181c1e] text-[28px] leading-[36px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                  Instructions Sent
+                </h3>
+                <p className="text-[#45464d] text-base leading-[26px]" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
+                  A secure recovery link has been dispatched to your inbox. Please check your professional email to continue the restoration process.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/login")}
+                className="border-b-2 border-black text-black text-xs tracking-[1.2px] uppercase font-semibold pb-1.5 cursor-pointer bg-transparent border-t-0 border-l-0 border-r-0 hover:opacity-70"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                BACK TO LOGIN
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

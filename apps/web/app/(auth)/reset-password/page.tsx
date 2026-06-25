@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { SharedFooter } from "@/components/shared-footer";
-import svgResetPaths from "@/imports/ResetPasswordIlovelawyerUpdatedBranding/svg-f5h6gvo5lz";
+import svgResetPaths from "@/imports/ResetPassword/svg-f5h6gvo5lz";
 
 export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
