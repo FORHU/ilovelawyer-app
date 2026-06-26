@@ -122,7 +122,7 @@ export default function ForgotPasswordPage() {
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2024 ILOVELAWYER
+              © 2026 ILOVELAWYER
             </span>
             <div className="flex gap-4">
               <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>

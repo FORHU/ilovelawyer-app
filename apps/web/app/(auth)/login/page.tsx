@@ -87,7 +87,7 @@ export default function LoginPage() {
       {/* RIGHT — form */}
       <div className="bg-white flex flex-col items-center justify-center px-8 md:px-26.5 py-12 flex-1 overflow-y-auto">
         <div className="w-full max-w-md flex flex-col gap-10">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             <h1 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
               Welcome Back
             </h1>

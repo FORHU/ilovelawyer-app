@@ -122,7 +122,7 @@ export default function SignupPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="E.g. Juan dela Cruz"
                 required
-                className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
@@ -137,7 +137,7 @@ export default function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="juan.cruz@lawfirm.ph"
                 required
-                className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
@@ -154,7 +154,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 pr-10 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 pr-10 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
@@ -202,7 +202,7 @@ export default function SignupPage() {
 
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2024 ILOVELAWYER
+              © 2026 ILOVELAWYER
             </span>
             <button
               onClick={() => router.push("/login")}
