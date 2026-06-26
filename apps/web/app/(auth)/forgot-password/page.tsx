@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import { useForgotPasswordMutation } from "@/lib/auth/mutations";
 
 export default function ForgotPasswordPage() {
@@ -11,11 +11,10 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const forgotPassword = useForgotPasswordMutation();
 
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f1f4f6]">
-      {/* LEFT — library image */}
-      <div className="relative hidden lg:block overflow-hidden" style={{ width: "40%", minHeight: "1024px" }}>
+      {/* LEFT — dark panel */}
+      <div className="relative hidden lg:block overflow-hidden" style={{ width: "58%", minHeight: "1024px" }}>
         <div className="absolute inset-0 bg-[#131a33]" />
         <div className="absolute inset-0 opacity-70" style={{ background: "radial-gradient(ellipse at 40% 50%, #1e2d4a 0%, #131a33 65%)" }} />
         <div className="absolute inset-0 bg-[rgba(19,26,51,0.3)]" />
@@ -29,8 +28,6 @@ export default function ForgotPasswordPage() {
           </span>
         </div>
 
-        
-
         {/* Quote */}
         <div className="absolute bottom-12 left-12 max-w-[384px] z-10">
           <p
@@ -43,83 +40,99 @@ export default function ForgotPasswordPage() {
       </div>
 
 
-      {/* RIGHT — form + top nav */}
-      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative shadow-[-20px_0px_20px_rgba(0,0,0,0.03)]">
+      {/* RIGHT — form */}
+      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-[106px] py-12 overflow-y-auto">
+        <div className="w-full max-w-[448px] flex flex-col gap-10">
 
-{/* Back to login */}
-       {!sent && (
-            <div className="border-t border-[rgba(56, 55, 54, 0.6)] pt-15 absolute top-0 left-15 right-0 flex items-center py-6">
-              <button
-                onClick={() => router.push("/login")}
-                className="flex items-center gap-3 cursor-pointer bg-transparent border-0hover:opacity-70 transition-opacity"
-              >
-                <ArrowLeft size={15} color="#45464D" />
-                <span className="text-[#45464d] text-xs tracking-[2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                  Return to Secure Sign In
-                </span>
-              </button>
-            </div>
-          )}  
-        
+          {/* Back button */}
+          {!sent && (
+            <button
+              onClick={() => router.push("/login")}
+              className="flex items-center gap-2 cursor-pointer bg-transparent border-0 hover:opacity-70 transition-opacity w-fit"
+            >
+              <ArrowLeft size={13} color="#45464D" />
+              <span className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                RETURN TO SIGN IN
+              </span>
+            </button>
+          )}
 
-        <div className="w-full max-w-lg flex flex-col gap-12 py-16">
-          {/* Heading */}
-          <div className="flex flex-col gap-6">
-            <h2 className="text-[#181c1e] text-[40px] leading-[48px] tracking-[-1px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-              Account Recovery
-            </h2>
-            <p className="text-[#45464d] text-base leading-6 max-w-[448px]" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
-              Enter your professional email to receive secure recovery instructions. Ensuring the continuity of your legal practice.
+          {/* Header */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+              {sent ? "Instructions Sent" : "Account Recovery"}
+            </h1>
+            <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+              {sent
+                ? "Check your professional email for the recovery link."
+                : "Enter your professional email to receive secure recovery instructions."}
             </p>
           </div>
 
           {/* Form / Success */}
           {!sent ? (
-            <div className="flex flex-col gap-12">
-              <div className="flex flex-col gap-4">
-                <label className="text-[#3c475a] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                  PROFESSIONAL RECOVERY EMAIL
+            <form
+              onSubmit={(e) => { e.preventDefault(); email && forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) }); }}
+              className="flex flex-col gap-6"
+            >
+              <div className="flex flex-col gap-2">
+                <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  PROFESSIONAL EMAIL
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="attorney@firm.com.ph"
-                  className="w-full bg-[rgba(241,244,246,0.3)] rounded-xl border border-[#6b7280] px-4 py-5 text-[18px] text-black placeholder-[#c6c6ce] outline-none focus:border-black transition-colors"
-                  style={{ fontFamily: "'Libre Caslon Text', serif" }}
+                  required
+                  className="w-full rounded-xl border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                  style={{ fontFamily: "Inter, sans-serif" }}
                 />
               </div>
+
               <button
-                onClick={() => email && forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) })}
+                type="submit"
                 disabled={forgotPassword.isPending}
-                className="w-full bg-[#131a33] text-white rounded-xl text-xs tracking-[2.4px] uppercase font-semibold py-5 cursor-pointer hover:bg-black transition-colors border-0 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
                 {forgotPassword.isPending ? "SENDING..." : "SEND RESET LINK"}
               </button>
-            </div>
+            </form>
           ) : (
-            <div className="border border-[#c6c6ce] p-16 flex flex-col gap-8 items-center shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)]">
+            <div className="flex flex-col items-center gap-8 py-4">
               <div className="border border-[#cca830] rounded-full size-20 flex items-center justify-center">
                 <Mail size={36} color="#CCA830" strokeWidth={1.5} />
               </div>
-              <div className="flex flex-col gap-4 items-center text-center">
-                <h3 className="text-[#181c1e] text-[28px] leading-[36px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-                  Instructions Sent
-                </h3>
-                <p className="text-[#45464d] text-base leading-[26px]" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
-                  A secure recovery link has been dispatched to your inbox. Please check your professional email to continue the restoration process.
-                </p>
-              </div>
+              <p className="text-[#45464d] text-base leading-[26px] text-center max-w-[360px]" style={{ fontFamily: "Inter, sans-serif" }}>
+                A secure recovery link has been dispatched to{" "}
+                <span className="font-semibold text-black">{email}</span>.{" "}
+                Please check your professional email.
+              </p>
               <button
                 onClick={() => router.push("/login")}
-                className="border-b-2 border-black text-black text-xs tracking-[1.2px] uppercase font-semibold pb-1.5 cursor-pointer bg-transparent border-t-0 border-l-0 border-r-0 hover:opacity-70"
+                className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
-                BACK TO LOGIN
+                BACK TO SIGN IN
               </button>
             </div>
           )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
+            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+              © 2024 ILOVELAWYER
+            </span>
+            <div className="flex gap-4">
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                SUPPORT
+              </button>
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                PRIVACY
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

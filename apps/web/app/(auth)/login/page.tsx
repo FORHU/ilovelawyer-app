@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
-import svgLoginPaths from "@/imports/LoginIlovelawyerSourceSerif/svg-ylobrpshkl";
+import svgLoginPaths from "@/imports/LoginSourceSerif/svg-ylobrpshkl";
 import { useLoginMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 export default function LoginPage() {
@@ -50,27 +50,45 @@ export default function LoginPage() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f7fafc]">
-      {/* LEFT — photo + branding */}
-      <div className="relative hidden lg:flex flex-col" style={{ width: "50%" }}>
+      {/* LEFT — dark panel */}
+      <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
         <div className="absolute inset-0 bg-[#1a1f23]" />
         <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 30% 60%, #2d3a47 0%, transparent 70%)" }} />
         <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)]" />
-        <div className="absolute bottom-16 left-16 z-10">
-          <p className="text-[30px] text-white tracking-[-0.7px] mb-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+        {/* Logo */}
+        <div className="absolute top-16 left-16 z-10">
+          <p className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
             ilovelawyer
           </p>
-          <p className="text-[rgba(224,227,229,0.8)] text-base max-w-[393px] leading-5" style={{ fontFamily: "Inter, sans-serif" }}>
+        </div>
+
+        {/* Central quote */}
+        <div className="absolute inset-0 flex flex-col items-start justify-center pl-16 pr-12 z-10">
+          <div className="bg-[#cca830] h-0.5 w-12 mb-8" />
+          <blockquote
+            className="text-white text-[24px] leading-9.5 max-w-100 mb-5"
+            style={{ fontFamily: "'Libre Caslon Text', serif", fontStyle: "italic" }}
+          >
+            &ldquo;The law is reason, free from passion.&rdquo;
+          </blockquote>
+          <p className="text-[rgba(224,227,229,0.45)] text-[11px] tracking-[2.5px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
+            — Aristotle
+          </p>
+        </div>
+
+        {/* Bottom tagline */}
+        <div className="absolute bottom-16 left-16 z-10">
+          <p className="text-[rgba(224,227,229,0.6)] text-sm max-w-90 leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
             Premium AI-Driven Legal Operations for the Modern Advocate.
           </p>
         </div>
       </div>
 
       {/* RIGHT — form */}
-      <div className="bg-white flex flex-col items-center justify-center px-8 md:px-[106px] py-12 flex-1 overflow-y-auto">
-        <div className="w-full max-w-[448px] flex flex-col gap-10">
-          {/* Header */}
+      <div className="bg-white flex flex-col items-center justify-center px-8 md:px-26.5 py-12 flex-1 overflow-y-auto">
+        <div className="w-full max-w-md flex flex-col gap-10">
           <div className="flex flex-col gap-2">
-            <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            <h1 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
               Welcome Back
             </h1>
             <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -78,7 +96,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Signup success banner */}
           {signupSuccess && (
             <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-3">
               <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -93,7 +110,7 @@ export default function LoginPage() {
               <button
                 key={label}
                 onClick={() => href && router.push(href)}
-                className={`pb-[14px] text-xs tracking-[1.2px] cursor-pointer bg-transparent border-0 relative ${active ? "text-black" : "text-[rgba(69,70,77,0.6)]"}`}
+                className={`pb-3.5 text-xs tracking-[1.2px] cursor-pointer bg-transparent border-0 relative transition-colors ${active ? "text-black" : "text-[rgba(69,70,77,0.6)] hover:text-[rgba(69,70,77,0.9)]"}`}
                 style={{ fontFamily: "Inter, sans-serif", fontWeight: active ? 600 : 400 }}
               >
                 {label}
@@ -102,10 +119,8 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* Email */}
-            <div className="flex flex-col gap-2 ">
+            <div className="flex flex-col gap-2">
               <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
                 EMAIL ADDRESS
               </label>
@@ -115,12 +130,11 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="attorney@cruz-law.ph"
                 required
-                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors"
+                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
 
-            {/* Password */}
             <div className="flex flex-col gap-2">
               <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
                 PASSWORD
@@ -132,7 +146,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors pr-10"
+                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
@@ -140,17 +154,16 @@ export default function LoginPage() {
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
                 >
-                  <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
+                  <svg className="w-5.5 h-3.75" fill="none" viewBox="0 0 22 15">
                     <path d="M11 12C12.25 12 13.3125 11.5625 14.1875 10.6875C15.0625 9.8125 15.5 8.75 15.5 7.5C15.5 6.25 15.0625 5.1875 14.1875 4.3125C13.3125 3.4375 12.25 3 11 3C9.75 3 8.6875 3.4375 7.8125 4.3125C6.9375 5.1875 6.5 6.25 6.5 7.5C6.5 8.75 6.9375 9.8125 7.8125 10.6875C8.6875 11.5625 9.75 12 11 12ZM11 10.2C10.25 10.2 9.6125 9.9375 9.0875 9.4125C8.5625 8.8875 8.3 8.25 8.3 7.5C8.3 6.75 8.5625 6.1125 9.0875 5.5875C9.6125 5.0625 10.25 4.8 11 4.8C11.75 4.8 12.3875 5.0625 12.9125 5.5875C13.4375 6.1125 13.7 6.75 13.7 7.5C13.7 8.25 13.4375 8.8875 12.9125 9.4125C12.3875 9.9375 11.75 10.2 11 10.2ZM11 15C8.56667 15 6.35 14.3208 4.35 12.9625C2.35 11.6042 0.9 9.78333 0 7.5C0.9 5.21667 2.35 3.39583 4.35 2.0375C6.35 0.679167 8.56667 0 11 0C13.4333 0 15.65 0.679167 17.65 2.0375C19.65 3.39583 21.1 5.21667 22 7.5C21.1 9.78333 19.65 11.6042 17.65 12.9625C15.65 14.3208 13.4333 15 11 15ZM11 13C12.8833 13 14.6125 12.5042 16.1875 11.5125C17.7625 10.5208 18.9667 9.18333 19.8 7.5C18.9667 5.81667 17.7625 4.47917 16.1875 3.4875C14.6125 2.49583 12.8833 2 11 2C9.11667 2 7.3875 2.49583 5.8125 3.4875C4.2375 4.47917 3.03333 5.81667 2.2 7.5C3.03333 9.18333 4.2375 10.5208 5.8125 11.5125C7.3875 12.5042 9.11667 13 11 13Z" fill="#6b7280" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            {/* Remember */}
             <div className="flex items-center gap-2">
               <div
-                className="relative size-4 border-2 border-[#c6c6ce] bg-white cursor-pointer shrink-0"
+                className="relative size-4 border-2 border-[#c6c6ce] bg-white cursor-pointer shrink-0 hover:border-[#cca830] transition-colors"
                 onClick={() => setRemember(!remember)}
               >
                 {remember && <div className="absolute inset-0.5 bg-black" />}
@@ -160,36 +173,32 @@ export default function LoginPage() {
               </span>
             </div>
 
-            {/* Inline error */}
             {error && (
               <p className="text-red-600 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
                 {error}
               </p>
             )}
 
-            {/* Sign In button */}
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               {loginMutation.isPending ? "SIGNING IN..." : "SIGN IN"}
             </button>
 
-            {/* OR divider */}
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
               <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>OR</span>
               <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
             </div>
 
-            {/* Google */}
             <button
               type="button"
               disabled={isPending}
               onClick={() => googleLogin()}
-              className="w-full bg-white border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-[#f7fafc] hover:border-[#aaa] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="size-5" fill="none" viewBox="0 0 20 20">
                 <path d={svgLoginPaths.p29ad9380} fill="#4285F4" />
@@ -203,16 +212,15 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
               © 2026 ILOVELAWYER
             </span>
             <div className="flex gap-4">
-              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0" style={{ fontFamily: "Inter, sans-serif" }}>
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
                 SUPPORT
               </button>
-              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0" style={{ fontFamily: "Inter, sans-serif" }}>
+              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
                 PRIVACY
               </button>
             </div>
