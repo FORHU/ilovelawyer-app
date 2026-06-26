@@ -83,7 +83,7 @@ export default function SignupPage() {
               type="button"
               disabled={isPending}
               onClick={() => googleLogin()}
-              className="w-full bg-[#f7fafc] border border-[#c6c6ce] flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#f7fafc] border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="size-5" fill="none" viewBox="0 0 20 20">
                 <path d={svgSignupPaths.p29ad9380} fill="#4285F4" />
@@ -193,7 +193,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-black text-white text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 shadow-[0px_4px_20px_-2px_rgba(11,19,43,0.05)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 shadow-[0px_4px_20px_-2px_rgba(11,19,43,0.05)] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               {signupMutation.isPending ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}

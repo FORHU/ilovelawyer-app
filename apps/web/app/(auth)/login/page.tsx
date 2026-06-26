@@ -51,15 +51,15 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f7fafc]">
       {/* LEFT — photo + branding */}
-      <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
+      <div className="relative hidden lg:flex flex-col" style={{ width: "50%" }}>
         <div className="absolute inset-0 bg-[#1a1f23]" />
         <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 30% 60%, #2d3a47 0%, transparent 70%)" }} />
         <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)]" />
         <div className="absolute bottom-16 left-16 z-10">
-          <p className="text-[28px] text-white tracking-[-0.7px] mb-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+          <p className="text-[30px] text-white tracking-[-0.7px] mb-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
             ilovelawyer
           </p>
-          <p className="text-[rgba(224,227,229,0.8)] text-base max-w-[393px] leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+          <p className="text-[rgba(224,227,229,0.8)] text-base max-w-[393px] leading-5" style={{ fontFamily: "Inter, sans-serif" }}>
             Premium AI-Driven Legal Operations for the Modern Advocate.
           </p>
         </div>
@@ -105,7 +105,7 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             {/* Email */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 ">
               <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
                 EMAIL ADDRESS
               </label>
@@ -115,7 +115,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="attorney@cruz-law.ph"
                 required
-                className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors"
+                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
@@ -132,7 +132,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors pr-10"
+                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-black transition-colors pr-10"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
@@ -171,7 +171,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               {loginMutation.isPending ? "SIGNING IN..." : "SIGN IN"}
@@ -189,7 +189,7 @@ export default function LoginPage() {
               type="button"
               disabled={isPending}
               onClick={() => googleLogin()}
-              className="w-full bg-white border border-[#c6c6ce] flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="size-5" fill="none" viewBox="0 0 20 20">
                 <path d={svgLoginPaths.p29ad9380} fill="#4285F4" />
@@ -206,7 +206,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2024 ILOVELAWYER
+              © 2026 ILOVELAWYER
             </span>
             <div className="flex gap-4">
               <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0" style={{ fontFamily: "Inter, sans-serif" }}>

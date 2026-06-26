@@ -11,7 +11,6 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const forgotPassword = useForgotPasswordMutation();
 
-  const subNavItems = ["CHAT", "CASES", "LIBRARY", "RESEARCH", "RESOURCES"];
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f1f4f6]">
@@ -21,12 +20,15 @@ export default function ForgotPasswordPage() {
         <div className="absolute inset-0 opacity-70" style={{ background: "radial-gradient(ellipse at 40% 50%, #1e2d4a 0%, #131a33 65%)" }} />
         <div className="absolute inset-0 bg-[rgba(19,26,51,0.3)]" />
 
+  
+
         {/* Logo */}
         <div className="absolute top-16 left-12 z-10">
           <span className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
             ilovelawyer
           </span>
         </div>
+
         
 
         {/* Quote */}
@@ -40,35 +42,25 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
 
+
       {/* RIGHT — form + top nav */}
       <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-16 relative shadow-[-20px_0px_20px_rgba(0,0,0,0.03)]">
-        {/* Sub nav top-right */}
-        <div className="absolute top-0 right-0 left-0 lg:left-0 bg-gradient-to-b from-white/80 to-transparent flex gap-8 items-start justify-end px-8 py-6 overflow-auto">
-          {subNavItems.map((l) => (
-            <button
-              key={l}
-              className="text-[#45464d] text-xs tracking-[1.2px] font-semibold cursor-pointer bg-transparent border-0 hover:text-black shrink-0"
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
 
-        {/* Back to login */}
-          {!sent && (
-            <div className="border-t border-[rgba(224,227,229,0.6)] pt-10">
+{/* Back to login */}
+       {!sent && (
+            <div className="border-t border-[rgba(56, 55, 54, 0.6)] pt-15 absolute top-0 left-15 right-0 flex items-center py-6">
               <button
                 onClick={() => router.push("/login")}
-                className="flex items-center gap-3 cursor-pointer bg-transparent border-0 hover:opacity-70 transition-opacity"
+                className="flex items-center gap-3 cursor-pointer bg-transparent border-0hover:opacity-70 transition-opacity"
               >
-                <ArrowLeft size={13} color="#45464D" />
-                <span className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                <ArrowLeft size={15} color="#45464D" />
+                <span className="text-[#45464d] text-xs tracking-[2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
                   Return to Secure Sign In
                 </span>
               </button>
             </div>
-          )}
+          )}  
+        
 
         <div className="w-full max-w-lg flex flex-col gap-12 py-16">
           {/* Heading */}
@@ -93,14 +85,14 @@ export default function ForgotPasswordPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="attorney@firm.com.ph"
-                  className="w-full bg-[rgba(241,244,246,0.3)] border border-[#6b7280] px-4 py-5 text-[18px] text-black placeholder-[#c6c6ce] outline-none focus:border-black transition-colors"
+                  className="w-full bg-[rgba(241,244,246,0.3)] rounded-xl border border-[#6b7280] px-4 py-5 text-[18px] text-black placeholder-[#c6c6ce] outline-none focus:border-black transition-colors"
                   style={{ fontFamily: "'Libre Caslon Text', serif" }}
                 />
               </div>
               <button
                 onClick={() => email && forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) })}
                 disabled={forgotPassword.isPending}
-                className="w-full bg-[#131a33] text-white text-xs tracking-[2.4px] uppercase font-semibold py-5 cursor-pointer hover:bg-black transition-colors border-0 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#131a33] text-white rounded-xl text-xs tracking-[2.4px] uppercase font-semibold py-5 cursor-pointer hover:bg-black transition-colors border-0 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)] disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
                 {forgotPassword.isPending ? "SENDING..." : "SEND RESET LINK"}
