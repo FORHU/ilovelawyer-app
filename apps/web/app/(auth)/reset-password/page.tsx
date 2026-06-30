@@ -1,19 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import svgResetPaths from "@/imports/ResetPassword/svg-f5h6gvo5lz";
+import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+  const resetPasswordMutation = useResetPasswordMutation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
+  const validateQuery = useValidateResetTokenQuery(success ? "" : token);
 
   const passwordsMatch = newPassword && confirmPassword && newPassword === confirmPassword;
   const valid = newPassword.length >= 8 && /[^a-zA-Z0-9]/.test(newPassword);
+
+  const resetError = resetPasswordMutation.error as (Error & { status?: number }) | null;
+  const checkingToken = !success && !!token && validateQuery.isPending;
+  const linkInvalid =
+    !success &&
+    (!token ||
+      (validateQuery.isSuccess && !validateQuery.data.valid) ||
+      validateQuery.isError ||
+      (resetPasswordMutation.isError && resetError?.status === 400));
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f7fafc]">
@@ -57,16 +71,35 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-[448px] flex flex-col gap-10">
           <div className="flex flex-col gap-2">
             <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-              {success ? "Password Updated" : "Set New Password"}
+              {checkingToken ? "Checking Link…" : linkInvalid ? "Link Expired" : success ? "Password Updated" : "Set New Password"}
             </h1>
             <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
-              {success
+              {checkingToken
+                ? "Please wait while we verify your reset link."
+                : linkInvalid
+                ? "This password reset link is invalid, expired, or has already been used."
+                : success
                 ? "Your account is secured. You can now sign in."
                 : "Must be at least 8 characters and include a special character."}
             </p>
           </div>
 
-          {success ? (
+          {checkingToken ? null : linkInvalid ? (
+            <div className="flex flex-col gap-6">
+              <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
+                <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                  For your security, reset links can only be used once and expire after 1 hour. Request a new one to continue.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/forgot-password")}
+                className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                REQUEST NEW LINK
+              </button>
+            </div>
+          ) : success ? (
             <div className="flex flex-col gap-6">
               <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
                 <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -84,7 +117,14 @@ export default function ResetPasswordPage() {
           ) : (
             <form
               className="flex flex-col gap-6"
-              onSubmit={(e) => { e.preventDefault(); if (valid && passwordsMatch) setSuccess(true); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!valid || !passwordsMatch || !token) return;
+                resetPasswordMutation.mutate(
+                  { token, password: newPassword },
+                  { onSuccess: () => setSuccess(true) },
+                );
+              }}
             >
               <div className="flex flex-col gap-2">
                 <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -141,13 +181,19 @@ export default function ResetPasswordPage() {
                 )}
               </div>
 
+              {resetPasswordMutation.isError && resetError?.status !== 400 && (
+                <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {resetError?.message || "Something went wrong. Please try again."}
+                </p>
+              )}
+
               <button
                 type="submit"
-                disabled={!valid || !passwordsMatch}
+                disabled={!valid || !passwordsMatch || !token || resetPasswordMutation.isPending}
                 className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
-                RESET PASSWORD
+                {resetPasswordMutation.isPending ? "RESETTING…" : "RESET PASSWORD"}
               </button>
             </form>
           )}

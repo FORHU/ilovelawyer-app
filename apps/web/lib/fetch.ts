@@ -2,7 +2,7 @@ import { useAuthStore } from "@/lib/store/auth.store"
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
-type FetchOptions = Omit<RequestInit, "credentials">
+type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
 let refreshPromise: Promise<void> | null = null
 
@@ -50,19 +50,21 @@ function buildHeaders(extra?: HeadersInit): HeadersInit {
 }
 
 export async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
+  const { skipAuthRefresh, ...fetchOptions } = options ?? {}
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     credentials: "include",
-    headers: buildHeaders(options?.headers),
+    headers: buildHeaders(fetchOptions.headers),
   })
 
-  if (res.status === 401) {
+  if (res.status === 401 && !skipAuthRefresh) {
     await attemptRefresh()
 
     const retry = await fetch(`${BASE_URL}${path}`, {
-      ...options,
+      ...fetchOptions,
       credentials: "include",
-      headers: buildHeaders(options?.headers),
+      headers: buildHeaders(fetchOptions.headers),
     })
 
     if (!retry.ok) {

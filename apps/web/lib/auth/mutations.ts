@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
@@ -13,6 +13,11 @@ interface SignupResponse {
   id: string
   username: string
   email: string
+}
+
+interface ResetPasswordResponse {
+  accessToken: string
+  refreshToken: string
 }
 
 function generateUsername(fullName: string): string {
@@ -34,6 +39,7 @@ export function useLoginMutation() {
       apiFetch<AuthTokensResponse>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
+        skipAuthRefresh: true,
       }),
     onSuccess: (data, { remember }) => {
       setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember })
@@ -50,6 +56,7 @@ export function useSignupMutation() {
       apiFetch<SignupResponse>("/api/auth/signup", {
         method: "POST",
         body: JSON.stringify({ username: generateUsername(name), name, email, password }),
+        skipAuthRefresh: true,
       }),
     onSuccess: () => {
       router.push("/login?signup=success")
@@ -66,6 +73,7 @@ export function useGoogleAuthMutation() {
       apiFetch<AuthTokensResponse>("/api/auth/google", {
         method: "POST",
         body: JSON.stringify({ idToken }),
+        skipAuthRefresh: true,
       }),
     onSuccess: (data) => {
       setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember: true })
@@ -80,7 +88,37 @@ export function useForgotPasswordMutation() {
       apiFetch("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
+        skipAuthRefresh: true,
       }),
+  })
+}
+
+export function useValidateResetTokenQuery(token: string) {
+  return useQuery({
+    queryKey: ["reset-password-validate", token],
+    queryFn: () =>
+      apiFetch<{ valid: boolean }>(`/api/auth/reset-password/validate?token=${encodeURIComponent(token)}`, {
+        skipAuthRefresh: true,
+      }),
+    enabled: !!token,
+    retry: false,
+    staleTime: 0,
+  })
+}
+
+export function useResetPasswordMutation() {
+  const updateTokens = useAuthStore((s) => s.updateTokens)
+
+  return useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      apiFetch<ResetPasswordResponse>("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: (data) => {
+      updateTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+    },
   })
 }
 
@@ -96,6 +134,7 @@ export function useLogoutMutation() {
       return apiFetch("/api/auth/logout", {
         method: "POST",
         body: JSON.stringify({ refreshToken }),
+        skipAuthRefresh: true,
       })
     },
     onSettled: () => {
