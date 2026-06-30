@@ -3,13 +3,13 @@ import { ArrowUpRight } from "lucide-react";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-[#f7fafc]">
+    <section id="hero" className="relative min-h-[85vh] flex items-center overflow-hidden bg-[#f7fafc]">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#e8e0d0]/30 via-[#f0ebe0]/20 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#f7fafc] via-[rgba(247,250,252,0.8)] to-[rgba(247,250,252,0)]" />
       </div>
 
-      <div className="relative z-10 max-w-[1440px] mx-auto w-full px-8 md:px-16 py-24 grid grid-cols-12 gap-8">
+      <div className="relative z-10 max-w-360 mx-auto w-full px-8 md:px-16 py-24 grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-start-2 lg:col-span-8 flex flex-col gap-6">
           <p className="text-[#735c00] text-xs tracking-[2.4px] uppercase" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>
             THE FUTURE OF JURISPRUDENCE
@@ -28,20 +28,26 @@ export function HeroSection() {
           <div className="flex flex-wrap gap-6 pt-2">
             <Link
               href="/signup"
-              className="bg-black text-white text-xs tracking-[1.2px] uppercase px-8 py-4 flex items-center gap-3 hover:bg-gray-800 transition-colors"
+              className="bg-black text-white text-xs tracking-[1.2px] uppercase px-8 py-4 flex items-center gap-3 hover:bg-[#1a1a1a] transition-colors duration-200"
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
             >
               Start Free Consultation
               <ArrowUpRight size={14} color="white" />
             </Link>
-            <button
-              className="border border-black text-black text-xs tracking-[1.2px] uppercase px-8 py-4 cursor-pointer hover:bg-black/5 transition-colors bg-transparent"
+            <Link
+              href="#features"
+              className="border border-black text-black text-xs tracking-[1.2px] uppercase px-8 py-4 hover:bg-black/5 transition-colors duration-200 inline-flex items-center"
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
             >
               View Case Studies
-            </button>
+            </Link>
           </div>
         </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
+        <div className="w-px h-12 bg-black animate-pulse" />
       </div>
     </section>
   );

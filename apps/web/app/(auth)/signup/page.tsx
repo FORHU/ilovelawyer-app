@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
-import svgSignupPaths from "@/imports/SignUpIlovelawyerUpdatedBranding/svg-192ugpzk7r";
+import svgSignupPaths from "@/imports/SignUpBranding/svg-192ugpzk7r";
 import { useSignupMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 export default function SignupPage() {
