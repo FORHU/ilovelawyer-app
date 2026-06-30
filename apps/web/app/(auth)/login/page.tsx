@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import svgLoginPaths from "@/imports/LoginSourceSerif/svg-ylobrpshkl";
 import { useLoginMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const signupSuccess = searchParams.get("signup") === "success";
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [pwFocused, setPwFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loginMutation = useLoginMutation();
@@ -130,7 +131,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="attorney@cruz-law.ph"
                 required
-                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
@@ -141,12 +142,14 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <input
-                  type={showPw ? "text" : "password"}
+                  type={showPw || (!pwFocused && !password) ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  onFocus={() => setPwFocused(true)}
+                  onBlur={() => setPwFocused(false)}
+                  placeholder="Enter your password"
                   required
-                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
+                  className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors pr-10"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
@@ -228,5 +231,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }

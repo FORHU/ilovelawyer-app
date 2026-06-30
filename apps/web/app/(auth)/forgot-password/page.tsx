@@ -41,8 +41,8 @@ export default function ForgotPasswordPage() {
 
 
       {/* RIGHT — form */}
-      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-[106px] py-12 overflow-y-auto">
-        <div className="w-full max-w-[448px] flex flex-col gap-10">
+      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-26.5 py-12 overflow-y-auto">
+        <div className="w-full max-w-md flex flex-col gap-10">
 
           {/* Back button */}
           {!sent && (
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
 
           {/* Header */}
           <div className="flex flex-col gap-2">
-            <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            <h1 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
               {sent ? "Instructions Sent" : "Account Recovery"}
             </h1>
             <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
               <div className="border border-[#cca830] rounded-full size-20 flex items-center justify-center">
                 <Mail size={36} color="#CCA830" strokeWidth={1.5} />
               </div>
-              <p className="text-[#45464d] text-base leading-[26px] text-center max-w-[360px]" style={{ fontFamily: "Inter, sans-serif" }}>
+              <p className="text-[#45464d] text-base leading-6.5 text-center max-w-90" style={{ fontFamily: "Inter, sans-serif" }}>
                 A secure recovery link has been dispatched to{" "}
                 <span className="font-semibold text-black">{email}</span>.{" "}
                 Please check your professional email.
