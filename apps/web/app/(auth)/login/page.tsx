@@ -54,8 +54,8 @@ function LoginContent() {
       {/* LEFT — dark panel */}
       <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
         <div className="absolute inset-0 bg-[#1a1f23]" />
-        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 30% 60%, #2d3a47 0%, transparent 70%)" }} />
-        <div className="absolute inset-0 bg-[rgba(0,0,0,0.35)]" />
+        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 30% 60%, #1c61a5 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 bg-[rgba(88, 79, 79, 0.35)]" />
         {/* Logo */}
         <div className="absolute top-16 left-16 z-10">
           <p className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
@@ -74,13 +74,6 @@ function LoginContent() {
           </blockquote>
           <p className="text-[rgba(224,227,229,0.45)] text-[11px] tracking-[2.5px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
             — Aristotle
-          </p>
-        </div>
-
-        {/* Bottom tagline */}
-        <div className="absolute bottom-16 left-16 z-10">
-          <p className="text-[rgba(224,227,229,0.6)] text-sm max-w-90 leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
-            Premium AI-Driven Legal Operations for the Modern Advocate.
           </p>
         </div>
       </div>

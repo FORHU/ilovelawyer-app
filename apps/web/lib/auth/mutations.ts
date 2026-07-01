@@ -43,7 +43,7 @@ export function useLoginMutation() {
       }),
     onSuccess: (data, { remember }) => {
       setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember })
-      router.push("/dashboard")
+      router.push("/homepage")
     },
   })
 }
@@ -77,7 +77,7 @@ export function useGoogleAuthMutation() {
       }),
     onSuccess: (data) => {
       setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember: true })
-      router.push("/dashboard")
+      router.push("/homepage")
     },
   })
 }

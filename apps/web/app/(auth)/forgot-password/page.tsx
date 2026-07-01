@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="attorney@firm.com.ph"
                   required
-                  className="w-full rounded-xl border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors"
+                  className="w-full rounded-xl border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
               </div>
