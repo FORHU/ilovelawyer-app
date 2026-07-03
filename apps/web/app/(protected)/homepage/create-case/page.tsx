@@ -41,11 +41,8 @@ export default function CreateCasePage() {
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e] font-['Inter',sans-serif]">
-      
-      {/* GLOBAL HEADER BAR */}
-      <header className="w-full bg-slate-100/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-        <GlobalHeader activeTab="create-case" />
-      </header>
+
+      <GlobalHeader activeTab="create-case" />
 
       {/* CORE CANVAS WORKSPACE */}
       <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">

@@ -3,7 +3,7 @@ import React from "react";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
-  activeTab: "consultation" | "create-case" | "case-manager" | "library" | "transcription" | "document-analysis" | "terms";
+  activeTab: "consultation" | "create-case" | "library" | "case-portfolio" | "transcription" | "document-analysis" | "terms";
 }
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
@@ -44,7 +44,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         <div className="max-w-[1024px] mx-auto h-[48px] flex items-center justify-center gap-[32px] text-[10px] tracking-[1px]">
           <a href="/homepage" className={getSubTabClass("homepage")}>CONSULTATION</a>
           <a href="/homepage/create-case" className={getSubTabClass("create-case")}>CASE</a>
-          <a href="/homepage/case-portfolio" className={getSubTabClass("case-manager")}>CASE MANAGER</a>
+          <a href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>CASE PORTFOLIO</a>
           <a href="/homepage/library" className={getSubTabClass("library")}>LIBRARY</a>
           <a href="/homepage/transcription" className={getSubTabClass("transcription")}>TRANSCRIPTION</a>
           <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>DOCUMENTS</a>
