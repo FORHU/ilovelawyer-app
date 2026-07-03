@@ -25,6 +25,9 @@ function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
+  // Forces a client-only re-render after mount so resolvedTheme matches the client,
+  // avoiding a hydration mismatch between server and first client render.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => setMounted(true), [])
 
   if (!mounted) return <div className="w-8 h-8" />

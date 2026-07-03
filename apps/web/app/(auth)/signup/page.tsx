@@ -61,7 +61,7 @@ export default function SignupPage() {
         </div>
 
         {/* Center content */}
-        <div className="absolute left-16 top-1/2 '-translate-y-[60%]' z-10">
+        <div className="absolute left-16 top-1/2 translate-y-[-60%] z-10">
           <h2
             className="text-[#f7fafc] text-[64px] leading-20 tracking-[-1.28px] mb-4"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}

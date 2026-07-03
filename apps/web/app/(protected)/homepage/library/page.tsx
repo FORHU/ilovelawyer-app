@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { GlobalHeader } from "@/components/global-header";
+import GlobalHeader from "@/components/global-header";
 import { useAnalyzeKeywordMutation } from "@/lib/legal-rag/mutations";
 
 export default function LegalLibraryPage() {

@@ -12,11 +12,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const getRefreshToken = useAuthStore((s) => s.getRefreshToken)
   const updateTokens = useAuthStore((s) => s.updateTokens)
   const clearAuth = useAuthStore((s) => s.clearAuth)
-  const [hydrating, setHydrating] = useState(true)
+  const [hydrating, setHydrating] = useState(() => !accessToken)
 
   useEffect(() => {
     if (accessToken) {
-      setHydrating(false)
       return
     }
 

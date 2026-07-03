@@ -1,16 +1,11 @@
 "use client";
 import React, { useState } from "react";
-<<<<<<< Updated upstream
-import { GlobalHeader } from "@/components/global-header";
+import GlobalHeader from "@/components/global-header";
 import { useChatSessionQuery, useCreateConversationMutation, sendChatMessage } from "@/lib/chat/mutations";
-
 interface DisplayMessage {
   role: "user" | "assistant";
   content: string;
 }
-=======
-import GlobalHeader from "@/components/global-header";
->>>>>>> Stashed changes
 
 export default function AiConsultationPage() {
   const [inputMessage, setInputMessage] = useState("");
@@ -67,15 +62,13 @@ export default function AiConsultationPage() {
     <div className="min-h-screen w-full flex flex-col bg-slate-50">
       <GlobalHeader activeTab="consultation" />
 
-<<<<<<< Updated upstream
       {/* Chat Workspace */}
       <div className="relative flex-1 flex flex-col justify-between pb-32 px-8 md:px-32">
         {/* Background Layer */}
         <div className="absolute inset-0 bg-linear-to-b from-[#eef2f7] to-[#dbe1ff] pointer-events-none z-0" />
-=======
+        
       {/* Navigation Header */}
       <GlobalHeader activeTab="consultation" />
->>>>>>> Stashed changes
 
         {/* Left Sidebar Panel */}
         <aside className="absolute left-0 top-0 w-16 bg-white/80 backdrop-blur-md border-r border-y border-white/40 rounded-r-[8px] shadow-lg flex flex-col items-center py-4 z-40">

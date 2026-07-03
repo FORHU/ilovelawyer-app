@@ -2,60 +2,11 @@
 import React, { useState } from "react";
 import GlobalHeader from "@/components/global-header";
 
-// Robust SVG paths fallback helper to avoid crashes if imports are missing
-const defaultSvgPaths = {
-  p52a9da0: "M0 0h15v15H0z",
-  p2d459a0: "M0 0h15v12H0z",
-  p27f6b80: "M0 0h15v15H0z",
-  p23f74b00: "M0 0h17v14H0z",
-  p1829b000: "M0 0h12v15H0z",
-  p2d0e3e80: "M0 0h14v15H0z",
-};
-// 1. Define the interface
-interface NavLinkProps {
-  text: string;
-  isActive: boolean;
-  iconPath?: string; // The '?' means it's optional
-}
-
-// --- Reusable Component Blocks ---
-
-<GlobalHeader activeTab="transcription" />
-
-interface FooterLinkSectionProps {
-  title: string;
-  links: string[];
-}
-
-function FooterLinkSection({ title, links }: FooterLinkSectionProps) {
-  return (
-    <div className="flex flex-col gap-[16px] items-start shrink-0 min-w-[120px]">
-      <span className="font-['Inter',sans-serif] font-semibold text-[12px] text-black tracking-[1.2px]">
-        {title}
-      </span>
-      {links.map((link, idx) => (
-        <a key={idx} href={`#${link.toLowerCase().replace(/\s+/g, '-')}`} className="text-[#45464d] text-[14px] hover:text-black transition-colors">
-          {link}
-        </a>
-      ))}
-    </div>
-  );
-}
-
 // --- Main Assembly Module ---
 
 export default function IlovelawyerTranscriptionDashboard() {
   const [isRecording, setIsRecording] = useState(false);
-  const [transcripts, setTranscripts] = useState([]); // Array to feed real incoming processing items
-
-  const navigationItems = [
-  { text: "AI Chat", path: defaultSvgPaths.p52a9da0, active: false },
-  { text: "Case Management", path: defaultSvgPaths.p2d459a0, active: false },
-  { text: "Legal Library", path: defaultSvgPaths.p27f6b80, active: false },
-  { text: "Transcription", path: defaultSvgPaths.p23f74b00, active: true },
-  { text: "Document Analysis", path: defaultSvgPaths.p1829b000, active: false },
-  { text: "Statutory Terms", path: defaultSvgPaths.p2d0e3e80, active: false }
-];
+  const [transcripts] = useState<never[]>([]); // Array to feed real incoming processing items
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.currentTarget.files;

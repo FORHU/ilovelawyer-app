@@ -45,30 +45,13 @@ export default function CreateCasePage() {
       {/* GLOBAL HEADER BAR */}
       <header className="w-full bg-slate-100/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
         <GlobalHeader activeTab="create-case" />
-
-        {/* JURIS NAV SUBBAR */}
-        <div className="bg-[#131a33] text-white">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex items-center justify-center lg:justify-start gap-8 overflow-x-auto whitespace-nowrap text-[10px] tracking-widest font-medium py-3">
-            <a href="/homepage" className="text-gray-400 hover:text-white uppercase">CONSULTATION</a>
-            <a href="/case" className="text-white border-b border-white pb-0.5 uppercase">CASE</a>
-            <a href="/library" className="text-gray-400 hover:text-white uppercase">LIBRARY</a>
-            <a href="/transcription" className="text-gray-400 hover:text-white uppercase">TRANSCRIPTION</a>
-            <a href="/documents" className="text-gray-400 hover:text-white uppercase">DOCUMENTS</a>
-            <a href="/terms" className="text-gray-400 hover:text-white uppercase">TERMS</a>
-          </div>
-        </div>
       </header>
 
       {/* CORE CANVAS WORKSPACE */}
       <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">
-        
-        {/* PREMIUM VISUAL HERO BANNER */}
-        <section className="relative h-[380px] md:h-[400px] bg-slate-700 overflow-hidden flex items-end">
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/30 z-10" />
-          <div className="max-w-[1024px] w-full mx-auto px-6 md:px-16 pb-48 relative z-20">
 
         {/* HERO BANNER */}
-        <section className="relative h-95 md:h-120 bg-slate-900 overflow-hidden flex items-end">
+        <section className="relative h-95 md:h-80 bg-slate-900 overflow-hidden flex items-end">
           <div className="absolute inset-0 bg-linear-to-t from-slate-50 via-transparent to-black/30 z-10" />
           <div className="max-w-360 w-full mx-auto px-6 md:px-16 pb-16 relative z-20">
             <h1 className="font-['Libre_Caslon_Text'] text-5xl md:text-7xl text-white font-normal drop-shadow-md">

@@ -72,7 +72,12 @@ export default function ForgotPasswordPage() {
           {/* Form / Success */}
           {!sent ? (
             <form
-              onSubmit={(e) => { e.preventDefault(); email && forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) }); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (email) {
+                  forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) });
+                }
+              }}
               className="flex flex-col gap-6"
             >
               <div className="flex flex-col gap-2">
