@@ -49,7 +49,14 @@ function buildHeaders(extra?: HeadersInit): HeadersInit {
   }
 }
 
-export async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
+async function throwIfNotOk(res: Response): Promise<void> {
+  if (res.ok) return
+  const error = await res.json().catch(() => ({ message: res.statusText }))
+  throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status })
+}
+
+/** Like apiFetch, but returns the raw Response instead of parsing JSON — for streamed bodies. */
+export async function apiFetchRaw(path: string, options?: FetchOptions): Promise<Response> {
   const { skipAuthRefresh, ...fetchOptions } = options ?? {}
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -67,18 +74,15 @@ export async function apiFetch<T>(path: string, options?: FetchOptions): Promise
       headers: buildHeaders(fetchOptions.headers),
     })
 
-    if (!retry.ok) {
-      const error = await retry.json().catch(() => ({ message: retry.statusText }))
-      throw Object.assign(new Error(error.message ?? "Request failed"), { status: retry.status })
-    }
-
-    return retry.json() as Promise<T>
+    await throwIfNotOk(retry)
+    return retry
   }
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }))
-    throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status })
-  }
+  await throwIfNotOk(res)
+  return res
+}
 
+export async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
+  const res = await apiFetchRaw(path, options)
   return res.json() as Promise<T>
 }

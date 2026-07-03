@@ -18,3 +18,17 @@ export const authKeys = {
   all: ["auth"] as const,
   session: () => [...authKeys.all, "session"] as const,
 }
+
+export const chatKeys = {
+  all: ["chat"] as const,
+  session: () => [...chatKeys.all, "session"] as const,
+  messages: (conversationId: string) => [...chatKeys.all, "messages", conversationId] as const,
+}
+
+export const legalRagKeys = {
+  all: ["legal-rag"] as const,
+  lists: () => [...legalRagKeys.all, "list"] as const,
+  list: (filters?: Record<string, unknown>) => [...legalRagKeys.lists(), filters] as const,
+  details: () => [...legalRagKeys.all, "detail"] as const,
+  detail: (id: string | number) => [...legalRagKeys.details(), String(id)] as const,
+}

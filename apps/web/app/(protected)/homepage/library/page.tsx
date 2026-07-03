@@ -1,108 +1,115 @@
 "use client";
 import React, { useState } from "react";
-import imgImage from "./495ff33a327fc891f656944b69cc3d57a2b4eefa.png";
-import imgConstitutionalAndCivilCodes from "./34cb65b02263d702d8fdb46db8e648e7429ac8d7.png";
+import { GlobalHeader } from "@/components/global-header";
+import { useAnalyzeKeywordMutation } from "@/lib/legal-rag/mutations";
 
 export default function LegalLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const analyzeKeyword = useAnalyzeKeywordMutation();
+
+  const runAnalysis = (keyword: string) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    setSearchQuery(trimmed);
+    analyzeKeyword.mutate({ keyword: trimmed });
+  };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    console.log("Querying AI Legal Model with snippet:", searchQuery);
-    alert(`Searching legal matrix for: "${searchQuery}"`);
+    runAnalysis(searchQuery);
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-gradient-to-b from-slate-50 to-blue-50/50 text-[#181c1e] font-['Inter',sans-serif]">
-      
-      {/* GLOBAL APPLICATION HEADER BAR */}
-      <header className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-16 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-12">
-            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black tracking-tight">
-              ilovelawyer
-            </span>
-            <nav className="hidden lg:flex items-center gap-8 text-xs font-semibold tracking-wider text-gray-500">
-              <a href="#platform" className="hover:text-black">PLATFORM</a>
-              <a href="#solutions" className="hover:text-black">SOLUTIONS</a>
-              <a href="#pricing" className="hover:text-black">PRICING</a>
-            </nav>
-          </div>
-          <div className="flex gap-6 text-gray-400">
-            <button className="hover:text-black">🔍</button>
-            <button className="hover:text-black">👤</button>
-          </div>
-        </div>
+    <div className="min-h-screen w-full relative flex flex-col bg-linear-to-b from-slate-50 to-blue-50/50 text-[#181c1e] font-['Inter',sans-serif]">
 
-        {/* JURIS NAV SUBBAR */}
-        <div className="bg-[#0b132b] text-white backdrop-blur-[6px] border-b border-white/10">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex items-center justify-center lg:justify-start gap-8 overflow-x-auto whitespace-nowrap text-[10px] tracking-widest font-medium py-4">
-            <a href="#chat" className="opacity-70 hover:opacity-100 uppercase">AI CHAT</a>
-            <a href="#case" className="opacity-70 hover:opacity-100 uppercase">CASE MANAGEMENT</a>
-            <a href="#library" className="text-white border-b border-white pb-0.5 uppercase">LEGAL LIBRARY</a>
-            <a href="#transcription" className="opacity-70 hover:opacity-100 uppercase">TRANSCRIPTION</a>
-            <a href="#analysis" className="opacity-70 hover:opacity-100 uppercase">DOCUMENT ANALYSIS</a>
-            <a href="#terms" className="opacity-70 hover:opacity-100 uppercase">STATUTORY TERMS</a>
-          </div>
-        </div>
-      </header>
+      <GlobalHeader activeTab="library" />
 
       {/* CORE WORKSPACE FRAMEWORK CONTAINER */}
       <main className="w-full flex flex-col flex-1">
-        
-        {/* HERO SEARCH SECTION WITH SPLIT EMBEDDED GRAPHIC */}
-        <section className="relative bg-white border-b border-gray-200 overflow-hidden min-h-[500px] flex items-center">
-          {/* Visual Side Anchor Graphic */}
-          <div className="absolute inset-y-0 right-0 w-full lg:w-[55%] hidden lg:block pointer-events-none z-0">
-            <img 
-              alt="Legal archive background visualization" 
-              className="w-full h-full object-cover opacity-90 mix-blend-multiply"
-              src={imgImage.src} 
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/40 to-transparent z-10" />
-          </div>
 
-          <div className="max-w-[1440px] w-full mx-auto px-6 md:px-16 py-16 relative z-20 flex">
+        {/* HERO SEARCH SECTION */}
+        <section className="relative bg-white border-b border-gray-200 overflow-hidden min-h-125 flex items-center">
+          <div className="max-w-360 w-full mx-auto px-6 md:px-16 py-16 relative z-20 flex">
             <div className="max-w-xl w-full border-l-2 border-black pl-8 flex flex-col gap-6">
               <h1 className="font-['Libre_Caslon_Text'] text-5xl md:text-6xl text-black font-normal leading-[1.1] tracking-tight">
                 The Digital Archive of <span className="font-['Liberation_Serif'] italic block mt-1">Philippine Law.</span>
               </h1>
 
-              {/* Functional Search Bar Wrapper Form */}
               <form onSubmit={handleSearch} className="w-full bg-white border border-black flex items-center p-1 shadow-xl">
                 <span className="px-3 text-xl text-gray-400">📖</span>
-                <input 
+                <input
                   type="text"
                   className="flex-1 bg-transparent py-3 px-2 outline-none text-base text-gray-800 placeholder-gray-400"
                   placeholder="Codals, SCRA, or G.R. No..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <button 
+                <button
                   type="submit"
-                  className="bg-black text-white text-xs font-semibold tracking-wider px-6 py-4 hover:bg-slate-800 transition-colors"
+                  disabled={analyzeKeyword.isPending}
+                  className="bg-black text-white text-xs font-semibold tracking-wider px-6 py-4 hover:bg-slate-800 transition-colors disabled:opacity-50"
                 >
-                  QUERY AI
+                  {analyzeKeyword.isPending ? "SEARCHING…" : "QUERY AI"}
                 </button>
               </form>
 
-              {/* Quick Navigation Helpers */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-gray-400 tracking-wider font-semibold">
                 <span>QUICK ACCESS:</span>
-                <a href="#rpc" className="text-gray-600 border-b border-gray-300 hover:text-black">REVISED PENAL CODE</a>
-                <a href="#const" className="text-gray-600 border-b border-gray-300 hover:text-black">1987 CONSTITUTION</a>
-                <a href="#rule130" className="text-gray-600 border-b border-gray-300 hover:text-black">RULE 130</a>
+                <button type="button" onClick={() => runAnalysis("Revised Penal Code")} className="bg-transparent border-0 border-b border-gray-300 p-0 cursor-pointer text-gray-600 hover:text-black">REVISED PENAL CODE</button>
+                <button type="button" onClick={() => runAnalysis("1987 Constitution")} className="bg-transparent border-0 border-b border-gray-300 p-0 cursor-pointer text-gray-600 hover:text-black">1987 CONSTITUTION</button>
+                <button type="button" onClick={() => runAnalysis("Rule 130")} className="bg-transparent border-0 border-b border-gray-300 p-0 cursor-pointer text-gray-600 hover:text-black">RULE 130</button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CLASSIFICATION SUMMARY CARDS SUB-GRID */}
+        {/* AI ANALYSIS RESULT */}
+        {(analyzeKeyword.isPending || analyzeKeyword.isError || analyzeKeyword.data) && (
+          <section className="bg-white border-b border-gray-200 py-12">
+            <div className="max-w-360 mx-auto px-6 md:px-16">
+              <div className="max-w-3xl">
+                {analyzeKeyword.isPending && (
+                  <p className="text-gray-500 text-sm italic">Analyzing &quot;{searchQuery}&quot;…</p>
+                )}
+
+                {analyzeKeyword.isError && (
+                  <p className="text-red-600 text-sm">Couldn&apos;t analyze that query. Please try again.</p>
+                )}
+
+                {analyzeKeyword.data && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <h2 className="font-['Libre_Caslon_Text'] text-2xl text-black">{analyzeKeyword.data.title}</h2>
+                      <span className="shrink-0 text-[10px] font-semibold tracking-wider uppercase text-gray-400">
+                        {analyzeKeyword.data.cached ? "Cached" : "Freshly generated"}
+                      </span>
+                    </div>
+
+                    {analyzeKeyword.data.url && (
+                      <a
+                        href={analyzeKeyword.data.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-900 hover:underline"
+                      >
+                        View source →
+                      </a>
+                    )}
+
+                    <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+                      {analyzeKeyword.data.formatted_markdown}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* CLASSIFICATION SUMMARY CARDS */}
         <section className="bg-slate-100 border-b border-gray-200 py-16">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* CARD 1: CODALS */}
+          <div className="max-w-360 mx-auto px-6 md:px-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+
             <div className="bg-white border border-gray-200 p-8 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center">
                 <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Codals</h3>
@@ -116,7 +123,6 @@ export default function LegalLibraryPage() {
               </div>
             </div>
 
-            {/* CARD 2: JURISPRUDENCE */}
             <div className="bg-white border border-gray-200 p-8 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center">
                 <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Jurisprudence</h3>
@@ -130,7 +136,6 @@ export default function LegalLibraryPage() {
               </div>
             </div>
 
-            {/* CARD 3: TREATISES */}
             <div className="bg-white border border-gray-200 p-8 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center">
                 <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Treatises</h3>
@@ -147,19 +152,13 @@ export default function LegalLibraryPage() {
           </div>
         </section>
 
-        {/* ROW EDITORIAL BENTO CONTAINER */}
+        {/* EDITORIAL BENTO CONTAINER */}
         <section className="bg-white py-24">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-16">
-            
-            {/* LATERALLY SPLIT CARD A: STATUTES FEATURE */}
+          <div className="max-w-360 mx-auto px-6 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-16">
+
             <div className="flex flex-col gap-6">
-              <div className="h-64 relative bg-slate-100 overflow-hidden group">
-                <img 
-                  alt="Constitutional and Civil Codes background graphic" 
-                  className="w-full h-full object-cover mix-blend-overlay grayscale transition-transform duration-300 group-hover:scale-105" 
-                  src={imgConstitutionalAndCivilCodes.src} 
-                />
-                <div className="absolute inset-0 bg-slate-900/10" />
+              <div className="h-64 relative bg-slate-100 overflow-hidden group flex items-center justify-center">
+                <span className="text-6xl opacity-20">⚖️</span>
               </div>
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-semibold tracking-widest text-amber-700 uppercase">STATUTES</span>
@@ -181,15 +180,8 @@ export default function LegalLibraryPage() {
               </div>
             </div>
 
-            {/* LATERALLY SPLIT CARD B: JURISPRUDENCE BLOCK DEEP-DIVE */}
             <div className="flex flex-col gap-8">
-              {/* Dark Rich Visual Action Anchor Panel */}
               <div className="bg-[#131a33] text-white p-8 flex flex-col justify-between h-64 relative overflow-hidden">
-                <img 
-                  alt="Dossier matrix context watermarked asset overlay" 
-                  className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" 
-                  src={imgImage.src} 
-                />
                 <div className="relative z-10 flex flex-col gap-2">
                   <span className="text-xs font-semibold tracking-widest text-[#ffe088] uppercase">JURISPRUDENCE</span>
                   <h3 className="font-['Libre_Caslon_Text'] text-xl italic font-normal text-white">Supreme Court Reports</h3>
@@ -208,7 +200,6 @@ export default function LegalLibraryPage() {
                 </div>
               </div>
 
-              {/* Feed Listing of Recent Decisions */}
               <div className="flex flex-col gap-4">
                 <h4 className="text-xs font-semibold tracking-wider text-gray-400 uppercase border-b pb-2">
                   RECENT DECISIONS
@@ -234,9 +225,8 @@ export default function LegalLibraryPage() {
         </section>
       </main>
 
-      {/* SYSTEMATIC LEGAL FOOTER BLOCK */}
       <footer className="w-full bg-white border-t border-gray-200 py-16 relative z-10">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
+        <div className="max-w-360 mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
           <div className="flex flex-col gap-4 max-w-sm">
             <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">
               ilovelawyer
@@ -250,19 +240,19 @@ export default function LegalLibraryPage() {
           </div>
 
           <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
-            <div className="flex flex-col gap-3 min-w-[100px]">
+            <div className="flex flex-col gap-3 min-w-25">
               <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
               <a href="#const" className="hover:text-black font-normal">Constitution</a>
               <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
               <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
             </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
+            <div className="flex flex-col gap-3 min-w-25">
               <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
               <a href="#privacy" className="hover:text-black font-normal">Privacy Policy</a>
               <a href="#terms" className="hover:text-black font-normal">Terms of Use</a>
               <a href="#ethics" className="hover:text-black font-normal">Ethics Policy</a>
             </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
+            <div className="flex flex-col gap-3 min-w-25">
               <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
               <a href="#support" className="hover:text-black font-normal">Support Center</a>
               <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>

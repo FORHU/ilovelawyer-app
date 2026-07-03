@@ -61,9 +61,9 @@ export default function SignupPage() {
         </div>
 
         {/* Center content */}
-        <div className="absolute left-16 top-1/2 -translate-y-[60%] z-10">
+        <div className="absolute left-16 top-1/2 '-translate-y-[60%]' z-10">
           <h2
-            className="text-[#f7fafc] text-[64px] leading-[80px] tracking-[-1.28px] mb-4"
+            className="text-[#f7fafc] text-[64px] leading-20 tracking-[-1.28px] mb-4"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
           >
             The Archive of<br />Excellence.
@@ -76,13 +76,13 @@ export default function SignupPage() {
       </div>
 
       {/* RIGHT — form */}
-      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-[106px] py-12 overflow-y-auto">
-        <div className="w-full max-w-[448px] flex flex-col gap-10">
+      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-26.5 py-12 overflow-y-auto">
+        <div className="w-full max-w-wd flex flex-col gap-10">
           <div>
             <p className="text-[#cca830] text-xs tracking-[2.4px] uppercase font-semibold mb-2" style={{ fontFamily: "Inter, sans-serif" }}>
               PLATFORM ENTRANCE
             </p>
-            <h2 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            <h2 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
               Join the Future of Law
             </h2>
           </div>
@@ -92,7 +92,7 @@ export default function SignupPage() {
             type="button"
             disabled={isPending}
             onClick={() => googleLogin()}
-            className="w-full bg-[#f7fafc] border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-[17px] cursor-pointer hover:bg-white hover:border-[#aaa] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#f7fafc] border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-white hover:border-[#aaa] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="size-5" fill="none" viewBox="0 0 20 20">
               <path d={svgSignupPaths.p29ad9380} fill="#4285F4" />
@@ -162,7 +162,7 @@ export default function SignupPage() {
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
                 >
-                  <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
+                  <svg className="w-5.5 h-3.75" fill="none" viewBox="0 0 22 15">
                     <path d={svgSignupPaths.p3e801e80} fill="#6b7280" />
                   </svg>
                 </button>
@@ -176,7 +176,7 @@ export default function SignupPage() {
               >
                 {agreed && <div className="absolute inset-0.5 bg-black rounded-sm" />}
               </div>
-              <p className="text-[#45464d] text-base leading-[26px]" style={{ fontFamily: "Inter, sans-serif" }}>
+              <p className="text-[#45464d] text-base leading-6.5" style={{ fontFamily: "Inter, sans-serif" }}>
                 I agree to the{" "}
                 <span className="font-semibold text-black cursor-pointer hover:text-[#735c00] transition-colors">Terms of Service</span>
                 {" "}and{" "}
