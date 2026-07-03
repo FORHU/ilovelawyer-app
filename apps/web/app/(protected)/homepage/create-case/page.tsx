@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef } from "react";
-import { GlobalHeader } from "@/components/global-header";
+import GlobalHeader from "@/components/global-header";
 
 export default function CreateCasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,11 +41,31 @@ export default function CreateCasePage() {
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e] font-['Inter',sans-serif]">
+      
+      {/* GLOBAL HEADER BAR */}
+      <header className="w-full bg-slate-100/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <GlobalHeader activeTab="create-case" />
 
-      <GlobalHeader activeTab="case" />
+        {/* JURIS NAV SUBBAR */}
+        <div className="bg-[#131a33] text-white">
+          <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex items-center justify-center lg:justify-start gap-8 overflow-x-auto whitespace-nowrap text-[10px] tracking-widest font-medium py-3">
+            <a href="/homepage" className="text-gray-400 hover:text-white uppercase">CONSULTATION</a>
+            <a href="/case" className="text-white border-b border-white pb-0.5 uppercase">CASE</a>
+            <a href="/library" className="text-gray-400 hover:text-white uppercase">LIBRARY</a>
+            <a href="/transcription" className="text-gray-400 hover:text-white uppercase">TRANSCRIPTION</a>
+            <a href="/documents" className="text-gray-400 hover:text-white uppercase">DOCUMENTS</a>
+            <a href="/terms" className="text-gray-400 hover:text-white uppercase">TERMS</a>
+          </div>
+        </div>
+      </header>
 
       {/* CORE CANVAS WORKSPACE */}
       <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">
+        
+        {/* PREMIUM VISUAL HERO BANNER */}
+        <section className="relative h-[380px] md:h-[400px] bg-slate-700 overflow-hidden flex items-end">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/30 z-10" />
+          <div className="max-w-[1024px] w-full mx-auto px-6 md:px-16 pb-48 relative z-20">
 
         {/* HERO BANNER */}
         <section className="relative h-95 md:h-120 bg-slate-900 overflow-hidden flex items-end">
@@ -72,7 +92,7 @@ export default function CreateCasePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                  <label className="text-[15px] font-bold tracking-wider text-gray-500 uppercase">
                     CASE TITLE / CAPTION
                   </label>
                   <input
@@ -85,7 +105,7 @@ export default function CreateCasePage() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                  <label className="text-[15px] font-bold tracking-wider text-gray-500 uppercase">
                     TYPE OF ACTION
                   </label>
                   <div className="relative border-b border-gray-300 py-2">
@@ -104,12 +124,12 @@ export default function CreateCasePage() {
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-3">
-                  <label className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                  <label className="text-[15px] font-bold tracking-wider text-gray-500 uppercase">
                     COURT / JURISDICTIONAL BRANCH
                   </label>
                   <input
                     type="text"
-                    className="w-full bg-transparent border-b border-gray-400 py-2 outline-none text-base focus:border-black transition-all"
+                    className="w-full bg-transparent border-b border-gray-400 py-2 outline-none font-['Libre_Caslon_Text'] text-xl focus:border-black transition-all"
                     placeholder="e.g. RTC Branch 12, Makati City"
                     value={formData.jurisdiction}
                     onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
@@ -129,12 +149,12 @@ export default function CreateCasePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                  <label className="text-[15px] font-bold tracking-wider text-gray-500 uppercase">
                     FULL NAME / CORPORATE ENTITY
                   </label>
                   <input
                     type="text"
-                    className="w-full bg-transparent border-b border-gray-400 py-2 outline-none text-base focus:border-black transition-all"
+                    className="w-full bg-transparent border-b border-gray-400 py-2 outline-none font-['Libre_Caslon_Text'] text-xl focus:border-black transition-all"
                     placeholder="Enter explicit legal identity name"
                     value={formData.partyName}
                     onChange={(e) => handleInputChange("partyName", e.target.value)}
@@ -142,7 +162,7 @@ export default function CreateCasePage() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+                  <label className="text-[15px] font-bold tracking-wider text-gray-500 uppercase">
                     DESIGNATION
                   </label>
                   <div className="relative border-b border-gray-300 py-2">
@@ -194,7 +214,7 @@ export default function CreateCasePage() {
                 <button
                   type="button"
                   onClick={triggerFileSelect}
-                  className="bg-black text-white text-xs font-semibold tracking-wider px-6 py-3 rounded-none hover:bg-slate-800 transition-all uppercase"
+                  className="bg-black text-white text-xs font-semibold tracking-wider px-6 py-3 rounded-xl hover:bg-slate-800 transition-all uppercase"
                 >
                   SELECT DOCUMENTS
                 </button>
@@ -213,7 +233,7 @@ export default function CreateCasePage() {
             <div className="border-t border-gray-200 pt-8 mt-4 flex justify-start">
               <button
                 type="submit"
-                className="bg-black text-white font-medium tracking-widest text-base px-10 py-4 hover:bg-slate-800 transition-colors uppercase"
+                className="bg-black text-white rounded-xl font-medium tracking-widest text-base px-10 py-4 hover:bg-slate-800 transition-colors uppercase"
               >
                 INITIATE FILING
               </button>
@@ -229,16 +249,33 @@ export default function CreateCasePage() {
             <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">
               ilovelawyer
             </span>
-            <p className="text-[11px] font-semibold tracking-widest text-gray-500 uppercase leading-relaxed">
-              © 2024 ILOVELAWYER PHILIPPINES.<br />
-              PROFESSIONAL LEGAL ARTIFICIAL INTELLIGENCE &amp; EDITORIAL SYSTEMS.
+            <p className="text-sm text-gray-500 leading-relaxed font-normal">
+              Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
+            </p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
+              © 2024 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-x-16 gap-y-3 text-[12px] font-semibold tracking-wider text-gray-500">
-            <a href="#privacy" className="hover:text-black uppercase">PRIVACY ARCHIVE</a>
-            <a href="#governance" className="hover:text-black uppercase">GOVERNANCE TERMS</a>
-            <a href="#compliance" className="hover:text-black uppercase">BAR COMPLIANCE</a>
-            <a href="#concierge" className="hover:text-black uppercase">CONCIERGE</a>
+
+          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
+              <a href="#const" className="hover:text-black font-normal">Constitution</a>
+              <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
+              <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
+            </div>
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
+              <a href="#privacy" className="hover:text-black font-normal">Privacy Policy</a>
+              <a href="#terms" className="hover:text-black font-normal">Terms of Use</a>
+              <a href="#ethics" className="hover:text-black font-normal">Ethics Policy</a>
+            </div>
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
+              <a href="#support" className="hover:text-black font-normal">Support Center</a>
+              <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>
+              <a href="#contact" className="hover:text-black font-normal">Contact Us</a>
+            </div>
           </div>
         </div>
       </footer>

@@ -1,7 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { GlobalHeader } from "@/components/global-header";
+import Link from "next/link";
+import GlobalHeader from "@/components/global-header";
 
+const setActiveTab = (tab: string) => {
+  // This function can be used to set the active tab state if needed
+  console.log(`Active tab set to: ${tab}`);
+}
 const initialCases = [
   {
     id: 1,
@@ -78,10 +83,79 @@ export default function CaseManagerDashboard() {
     <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e]">
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" aria-hidden="true" />
 
-      <GlobalHeader activeTab="case" />
+      {/* Global Navigation Header Stack */}
+      <header className="w-full bg-white border-b border-gray-200 relative z-20">
+        {/* Top Tier */}
+        <GlobalHeader activeTab="create-case" />
 
-      <main className="max-w-360 w-full mx-auto px-6 md:px-16 py-12 relative z-10 flex flex-col gap-12">
+        {/* Second Blur Tier Menu (Juris Navy) */}
+        <div className="bg-[#0b132b] text-white backdrop-blur-[2px]">
+         <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex items-center gap-8 overflow-x-auto whitespace-nowrap text-[12px] font-semibold tracking-[1.2px]">
+  
+  <Link 
+    href="/homepage" // Maps to (protected)/homepage/page.tsx
+    onClick={() => setActiveTab('homepage')}
+    className={`py-4 tracking-[1.2px] transition-all ${
+      activeTab === 'homepage' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    CONSULTATION
+  </Link>
 
+  <Link 
+    href="/homepage/case-portfolio" // Maps to (protected)/homepage/case-portfolio folder
+    onClick={() => setActiveTab('case')}
+    className={`py-4 tracking-[1.2px] transition-all ${
+      activeTab === 'case' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    CASE
+  </Link>
+
+  <button 
+    onClick={() => setActiveTab('library')}
+    className={`py-4 tracking-[1.2px] font-semibold text-[12px] transition-all ${
+      activeTab === 'library' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    LIBRARY
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('transcription')}
+    className={`py-4 tracking-[1.2px] font-semibold text-[12px] transition-all ${
+      activeTab === 'transcription' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    TRANSCRIPTION
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('analysis')}
+    className={`py-4 tracking-[1.2px] font-semibold text-[12px] transition-all ${
+      activeTab === 'analysis' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    DOCUMENT ANALYSIS
+  </button>
+
+  <button 
+    onClick={() => setActiveTab('terms')}
+    className={`py-4 tracking-[1.2px] font-semibold text-[12px] transition-all ${
+      activeTab === 'terms' ? 'border-b-2 border-white font-bold' : 'opacity-70 hover:opacity-100'
+    }`}
+  >
+    STATUTORY TERMS
+  </button>
+
+</div>
+        </div>
+      </header>
+
+      {/* Main Framework Dashboard Body */}
+      <main className="max-w-[1440px] w-full mx-auto px-6 md:px-16 py-12 relative z-10 flex flex-col gap-12">
+        
+        {/* Page Titles */}
         <section>
           <h1 className="font-['Libre_Caslon_Text'] text-40px text-black font-normal leading-tight mb-1">
             Case Portfolio

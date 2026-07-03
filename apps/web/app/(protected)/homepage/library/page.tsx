@@ -115,11 +115,12 @@ export default function LegalLibraryPage() {
                 <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Codals</h3>
                 <span className="text-gray-400">⚖️</span>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed">Statutory laws and legislative enactments.</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Access the exact, unannotated statutory texts of Philippine laws as enacted by the legislature.</p>
               <div className="mt-4 flex flex-col gap-2 text-xs text-blue-900 font-medium">
                 <a href="#civil-code" className="hover:underline">→ Civil Code</a>
                 <a href="#revised-penal-code" className="hover:underline">→ Revised Penal Code</a>
                 <a href="#labor-code" className="hover:underline">→ Labor Code</a>
+                <a href="#family-code" className="hover:underline">→ Family Code</a>
               </div>
             </div>
 
@@ -128,24 +129,25 @@ export default function LegalLibraryPage() {
                 <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Jurisprudence</h3>
                 <span className="text-gray-400">🏛️</span>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed">Supreme Court decisions and doctrines.</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Explore binding legal doctrines and case law established by the Supreme Court of the Philippines.</p>
               <div className="mt-4 flex flex-col gap-2 text-xs text-blue-900 font-medium">
-                <a href="#scra" className="hover:underline">→ Supreme Court Reports</a>
-                <a href="#gr-search" className="hover:underline">→ G.R. Search</a>
-                <a href="#en-banc" className="hover:underline">→ En Banc Decisions</a>
+                <a href="#scra" className="hover:underline">→ Supreme Court En Banc Decisions</a>
+                <a href="#gr-search" className="hover:underline">→ Supreme Court Division Decisions</a>
+                <a href="#en-banc" className="hover:underline">→ Persuasive Lower Court Rulings</a>
               </div>
             </div>
+            
 
             <div className="bg-white border border-gray-200 p-8 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex justify-between items-center">
-                <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Treatises</h3>
+                <h3 className="font-['Libre_Caslon_Text'] text-lg text-black font-normal">Issuance</h3>
                 <span className="text-gray-400">📚</span>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed">Scholarly legal commentary and analysis.</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Browse administrative regulations, circulars, and executive orders that implement and enforce broader statutory laws.</p>
               <div className="mt-4 flex flex-col gap-2 text-xs text-blue-900 font-medium">
-                <a href="#commentaries" className="hover:underline">→ Legal Commentaries</a>
-                <a href="#journals" className="hover:underline">→ Law Journals</a>
-                <a href="#bar-review" className="hover:underline">→ Bar Reviewers</a>
+                <a href="#commentaries" className="hover:underline">→ Presidential Issuances</a>
+                <a href="#journals" className="hover:underline">→ Administrative Agency Issuances </a>
+                <a href="#bar-review" className="hover:underline">→ Judicial Issuances</a>
               </div>
             </div>
 
@@ -235,7 +237,7 @@ export default function LegalLibraryPage() {
               Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
             </p>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
-              © 2024 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
+              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
             </p>
           </div>
 
