@@ -38,7 +38,16 @@ _Avoid_: "handle", "user ID"
 The display name a user provides at signup. Stored as `name` on the backend User model. Distinct from Username.
 _Avoid_: "name" (ambiguous — always say Full Name in UI copy and "name" only when referring to the API field)
 
+**Conversation**
+A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`/homepage?c=<conversationId>`) so it survives a refresh. Listed in the sidebar, most-recently-created first.
+_Avoid_: "chat", "session" (ambiguous with the backend's Session concept)
+
+**Conversation Title**
+The label shown for a Conversation in the sidebar. Intended to be an AI-generated topical summary (e.g., "Wrongful Termination — Retaliatory Dismissal"), set once by the backend after the first exchange — not something the user types in. Until that backend generation work ships, the frontend falls back to a naive truncation of the user's first message.
+_Avoid_: "conversation name" (this app calls it Title, matching the `title` field)
+
 ## Pending (backend not yet implemented)
 
 - `POST /api/auth/forgot-password` — no backend endpoint exists; the `/forgot-password` page is a UI placeholder.
 - `POST /api/auth/reset-password` — no backend endpoint exists; the `/reset-password` page is a UI placeholder.
+- Conversation Title auto-generation — no LLM-summarization logic exists in `ilovelawyer-api` yet; spec has been handed off, `title` is `null` until it ships.

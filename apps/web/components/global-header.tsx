@@ -13,7 +13,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
     
     if (activeTab === tabName) {
       // Active Look: Full opacity, bold text, white bottom border
-      return `${baseClasses} border-b-2 border-white pb-[6px] font-bold opacity-100`;
+      return `${baseClasses} text-white border-b-2 border-white pb-[6px] font-bold opacity-100`;
     }
     
     // Inactive Look: Dimmed opacity, brightens to white on hover
@@ -21,34 +21,25 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   };
 
   return (
-    <header className="absolute top-0 left-0 w-full bg-white border-b border-[#c6c6ce] z-50">
-      {/* Top Main Navigation Row */}
-      <div className="max-w-[1024px] mx-auto h-[64px] flex items-center justify-between px-[32px]">
-        <div className="font-['Libre_Caslon_Text'] text-[#0b132b] text-[24px] tracking-[-0.6px]">
+    <header className="absolute top-0 left-0 w-full bg-[#0b132b] border-b border-white/10 z-50">
+      <div className="w-full h-14 flex items-center gap-8 px-72">
+        <a href="/" className="font-['Libre_Caslon_Text'] text-white text-[20px] tracking-[-0.6px] shrink-0">
           ilovelawyer
-        </div>
-        <nav className="flex gap-[32px] text-[10px] font-bold tracking-[1px] text-[#0b132b]">
-          {/* Kept static as requested; can also be made dynamic if needed later */}
-          <a href="#platform" className="border-b-2 border-[#0b132b] pb-[6px]">PLATFORM</a>
-          <a href="#solutions" className="text-gray-500 uppercase">SOLUTIONS</a>
-          <a href="#pricing" className="text-gray-500 uppercase">PRICING</a>
-        </nav>
-        <div className="flex gap-[24px]">
-          <button className="opacity-60 hover:opacity-100 transition-opacity">🔍</button>
-          <button className="opacity-60 hover:opacity-100 transition-opacity">👤</button>
-        </div>
-      </div>
-      
-      {/* Dark Sub-Tier Workspace Bar */}
-      <div className="bg-[#0b132b] backdrop-blur-[6px] text-white border-b border-white/10">
-        <div className="max-w-[1024px] mx-auto h-[48px] flex items-center justify-center gap-[32px] text-[10px] tracking-[1px]">
-          <a href="/homepage" className={getSubTabClass("homepage")}>CONSULTATION</a>
+        </a>
+
+        <nav className="flex-1 flex items-center justify-center gap-7 text-[10px] tracking-[1px]">
+          <a href="/homepage" className={getSubTabClass("consultation")}>CONSULTATION</a>
           <a href="/homepage/create-case" className={getSubTabClass("create-case")}>CASE</a>
           <a href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>CASE PORTFOLIO</a>
           <a href="/homepage/library" className={getSubTabClass("library")}>LIBRARY</a>
           <a href="/homepage/transcription" className={getSubTabClass("transcription")}>TRANSCRIPTION</a>
           <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>DOCUMENTS</a>
           <a href="/homepage/terms" className={getSubTabClass("terms")}>TERMS</a>
+        </nav>
+
+        <div className="flex items-center gap-5 shrink-0">
+          <button className="text-white/70 hover:text-white transition-opacity" aria-label="Search">🔍</button>
+          <button className="text-white/70 hover:text-white transition-opacity" aria-label="Account">👤</button>
         </div>
       </div>
     </header>

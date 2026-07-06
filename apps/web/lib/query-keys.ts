@@ -22,6 +22,7 @@ export const authKeys = {
 export const chatKeys = {
   all: ["chat"] as const,
   session: () => [...chatKeys.all, "session"] as const,
+  conversations: () => [...chatKeys.all, "conversations"] as const,
   messages: (conversationId: string) => [...chatKeys.all, "messages", conversationId] as const,
 }
 

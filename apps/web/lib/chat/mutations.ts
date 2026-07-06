@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 
@@ -32,12 +32,24 @@ export function useChatSessionQuery() {
 }
 
 export function useCreateConversationMutation() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ title }: { title?: string } = {}) =>
       apiFetch<Conversation>("/api/chat/conversations", {
         method: "POST",
         body: JSON.stringify({ title }),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+    },
+  })
+}
+
+/** Lists the current user's conversations, most recently created first. */
+export function useConversationsQuery() {
+  return useQuery({
+    queryKey: chatKeys.conversations(),
+    queryFn: () => apiFetch<Conversation[]>("/api/chat/conversations"),
   })
 }
 
