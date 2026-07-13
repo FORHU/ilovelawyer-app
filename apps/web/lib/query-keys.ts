@@ -26,6 +26,18 @@ export const chatKeys = {
   messages: (conversationId: string) => [...chatKeys.all, "messages", conversationId] as const,
 }
 
+export const appointmentKeys = {
+  all: ["appointments"] as const,
+  lists: () => [...appointmentKeys.all, "list"] as const,
+  list: (range: { from: string; to: string }) => [...appointmentKeys.lists(), range] as const,
+}
+
+export const noteKeys = {
+  all: ["notes"] as const,
+  lists: () => [...noteKeys.all, "list"] as const,
+  list: (range: { from: string; to: string }) => [...noteKeys.lists(), range] as const,
+}
+
 export const legalRagKeys = {
   all: ["legal-rag"] as const,
   lists: () => [...legalRagKeys.all, "list"] as const,

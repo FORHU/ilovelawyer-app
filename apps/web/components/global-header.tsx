@@ -1,11 +1,11 @@
 // apps/web/components/global-header.tsx
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, User } from "lucide-react";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
-  activeTab: "consultation" | "create-case" | "library" | "case-portfolio" | "transcription" | "document-analysis" | "terms";
+  activeTab: "consultation" | "create-case" | "library" | "case-portfolio" | "transcription" | "document-analysis" | "calendar";
 }
 
 const CASE_MENU_ITEMS = [
@@ -97,12 +97,15 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           <a href="/homepage/library" className={getSubTabClass("library")}>LIBRARY</a>
           <a href="/homepage/transcription" className={getSubTabClass("transcription")}>TRANSCRIPTION</a>
           <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>DOCUMENTS</a>
-          <a href="/homepage/terms" className={getSubTabClass("terms")}>TERMS</a>
+          <a href="/homepage/calendar" className={getSubTabClass("calendar")}>CALENDAR</a>
         </nav>
 
-        <div className="flex items-center gap-5 shrink-0">
-          <button className="text-white/70 hover:text-white transition-opacity" aria-label="Search">🔍</button>
-          <button className="text-white/70 hover:text-white transition-opacity" aria-label="Account">👤</button>
+        {/* Icons are now inside the main flex row, styled white for visibility */}
+        <div className="flex gap-[24px] text-white">
+          <button className="opacity-60 hover:opacity-100 transition-opacity">
+            <User className="w-5 h-5" />
+
+          </button>
         </div>
       </div>
     </header>

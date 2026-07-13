@@ -60,9 +60,21 @@ A person or entity involved in a Case, captured as a Full Name and a Designation
 **Designation**
 A Party's role within a Case: Petitioner/Plaintiff, Respondent/Defendant, or Intervenor/Third-Party.
 
+## Calendar
+
+**Appointment**
+A scheduled item with a specific date and start/end time, shown as a block on the Calendar. Created and edited from the Planner panel on the Calendar page.
+_Avoid_: "event", "meeting" (Appointment is the canonical term; the reference mock's "Events" label refers to this same concept)
+
+**Note**
+A piece of free-form text a user attaches to a specific calendar day — distinct from an Appointment in that it has no start/end time, but like an Appointment it is anchored to one date and appears on that day's cell.
+_Avoid_: "reminder", "memo"
+
 ## Pending (backend not yet implemented)
 
 - `POST /api/auth/forgot-password` — no backend endpoint exists; the `/forgot-password` page is a UI placeholder.
 - `POST /api/auth/reset-password` — no backend endpoint exists; the `/reset-password` page is a UI placeholder.
 - Conversation Title auto-generation — no LLM-summarization logic exists in `ilovelawyer-api` yet; spec has been handed off, `title` is `null` until it ships.
 - `POST /api/cases` and `POST /api/cases/documents/presign` — no backend endpoints exist; the Create Case page is fully wired to them, so submitting a filing or uploading a document currently fails with a real network error surfaced in the page's existing error UI.
+- `GET/POST /api/appointments` and `GET/POST /api/notes` — no backend endpoints exist; the Calendar page's planner is fully wired to them (see `docs/adr/0001-calendar-wired-to-unbuilt-api.md`), so creating an Appointment or Note currently fails with a real network error surfaced inline in the planner.
+</content>

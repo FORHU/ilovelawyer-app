@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import GlobalHeader from "@/components/global-header";
 import CustomSelect from "@/components/ui/custom-select";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw } from "lucide-react";
@@ -38,6 +38,7 @@ interface UploadedFile {
   key?: string;
   error?: string;
 }
+
 
 export default function CreateCasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);

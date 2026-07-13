@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import GlobalHeader from "@/components/global-header";
+import {Search, Plus } from "lucide-react";
 
 const initialCases = [
   {
@@ -107,7 +108,9 @@ export default function CaseManagerDashboard() {
 
         <section className="flex flex-col md:flex-row items-center gap-6 justify-between w-full border-b border-gray-200 pb-6">
           <div className="relative w-full md:max-w-xl flex items-center">
-            <span className="absolute left-4 text-gray-400">🔍</span>
+            <span className="absolute left-4 text-gray-400">
+              <Search className="w-5 h-5" />
+            </span>
             <input
               type="text"
               className="w-full bg-white border border-gray-300 rounded-md py-3 pl-12 pr-4 outline-none font-['Inter'] text-[15px] shadow-sm focus:border-gray-400 transition-all"
@@ -188,8 +191,9 @@ export default function CaseManagerDashboard() {
             className="group min-h-75 border-2 border-dashed border-gray-300 bg-transparent hover:bg-white hover:border-gray-400 rounded-md flex flex-col items-center justify-center p-8 transition-all cursor-pointer"
           >
             <span className="text-3xl text-gray-300 group-hover:text-gray-500 transition-colors mb-3">
-              ➕
-            </span>
+              {/* Replaced ➕ with the Lucide Plus component */}
+               <Plus className="w-8 h-8 stroke-[2.5]" />
+              </span>
             <span className="text-[12px] font-semibold tracking-[1.2px] text-gray-400 group-hover:text-gray-700 transition-colors uppercase">
               INITIATE NEW FILING
             </span>

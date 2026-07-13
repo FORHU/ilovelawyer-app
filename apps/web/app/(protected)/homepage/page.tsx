@@ -1,7 +1,10 @@
 "use client";
+
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+// 1. Added Paperclip and Mic to your lucide-react imports
+import { Paperclip, Mic } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
 import AssistantMessage from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
@@ -12,6 +15,7 @@ import {
   sendChatMessage,
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
+
 interface DisplayMessage {
   role: "user" | "assistant";
   content: string;
@@ -21,6 +25,8 @@ const MAX_TEXTAREA_HEIGHT = 200;
 
 export default function AiConsultationPage() {
   const router = useRouter();
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();
   const urlConversationId = searchParams.get("c");
   const queryClient = useQueryClient();
@@ -111,10 +117,36 @@ export default function AiConsultationPage() {
     router.push(`/homepage?c=${id}`);
   };
 
+  //trigger hidden file input without router redirect
+
+   const handleClipClick = (  ) => {
+    fileInputRef.current?.click();
+  };
+
+  //handles state preservation when user picks a file
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files?.[0];
+    if (files) {
+      setFile(files);
+    }
+  };
+
+    const handleRemoveFile = () => {
+      setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+  };
+
+  const handleMicClick = (  ) => {
+    router.push("/homepage/transcribe");
+  };
+
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const text = inputMessage.trim();
     if (!text || !session || isSending) return;
+  
 
     // Identifies this send so it can tell, once it's back from an await, whether the
     // user has since navigated away (handleNewChat/handleSelectConversation bump the
@@ -192,9 +224,22 @@ export default function AiConsultationPage() {
 
         {/* Toolbar row below the text, matching Gemini's layout */}
         <div className="flex items-center justify-between px-1">
-          <div className="flex gap-1">
-            <button type="button" className="w-8 h-8 flex items-center justify-center text-base rounded-full hover:bg-slate-200/50 shrink-0">📎</button>
-            <button type="button" className="w-8 h-8 flex items-center justify-center text-base rounded-full hover:bg-slate-200/50 shrink-0">🎙️</button>
+          {/* 2. Replaced the emoji text nodes with <Paperclip /> and <Mic /> components */}
+          <div className="flex gap-1 text-gray-500">
+            <button 
+              type="button" 
+              onClick={handleClipClick}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+            <button 
+              type="button" 
+              onClick={handleMicClick}
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors" 
+            >
+              <Mic className="w-4 h-4" />
+            </button>
           </div>
 
           <button
