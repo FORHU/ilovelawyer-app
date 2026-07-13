@@ -62,29 +62,37 @@ export default function ConversationSidebar({
       </button>
 
       {expanded && (
-        <nav className="flex-1 min-h-0 overflow-y-auto mt-2 px-2 flex flex-col gap-0.5 scrollbar-none [-ms-overflow-style:none]">
-          {conversations?.map((c) => {
-            const isActive = c.id === activeConversationId;
-            const label = c.title?.trim() || "Untitled conversation";
-            return (
-              <button
-                key={c.id}
-                onClick={() => {
-                  onSelectConversation(c.id);
-                  setExpanded(false);
-                }}
-                title={label}
-                className={`text-left truncate rounded-lg px-3 py-2 text-[13px] font-['Inter'] transition-colors ${
-                  isActive
-                    ? "bg-slate-100 text-[#0b132b] font-semibold"
-                    : "text-[#3060c9] hover:bg-slate-50"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="relative flex-1 min-h-0 mt-2">
+          <nav className="h-full overflow-y-auto px-2 pb-4 flex flex-col gap-1 scrollbar-none [-ms-overflow-style:none]">
+            {conversations?.map((c) => {
+              const isActive = c.id === activeConversationId;
+              const label = c.title?.trim() || "Untitled conversation";
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    onSelectConversation(c.id);
+                    setExpanded(false);
+                  }}
+                  title={label}
+                  // Gemini-style pill: the conversation you're currently in gets its own
+                  // rounded, bordered chip; a transparent border of the same width is kept
+                  // on inactive rows so hovering doesn't shift layout by 1px.
+                  className={`text-left truncate px-4 py-2.5 text-[13px] font-['Inter'] font-medium rounded-full border transition-colors shrink-0 ${
+                    isActive
+                      ? "bg-slate-100 border-slate-300 text-[#0b132b] font-semibold"
+                      : "border-transparent text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+          {/* Fades the last row into the sidebar background instead of a hard cut, and
+              signals there's more to scroll to when the list overflows this panel. */}
+          <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-white/95 to-transparent" />
+        </div>
       )}
 
       <button

@@ -32,6 +32,16 @@ export default function AiConsultationPage() {
   const [inputMessage, setInputMessage] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
+  // True from the moment New Chat / Select Conversation fires until `conversationId`
+  // (derived from searchParams) reflects the router.push — that update lands one render
+  // tick late, and without this guard the hydrate effect below would fire against the
+  // *previous* conversation's still-cached history in that gap, undoing the messages
+  // we just cleared (surfacing as "click New Chat twice before it takes").
+  const [isNavigatingConversation, setIsNavigatingConversation] = useState(false);
+  // Bumped on every send and on every explicit navigation away from the conversation a
+  // send belongs to, so a stale in-flight stream can recognize it's been abandoned and
+  // stop writing chunks/isSending into whatever conversation is now on screen.
+  const sendTokenRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,18 +49,39 @@ export default function AiConsultationPage() {
   const createConversation = useCreateConversationMutation();
   const { data: history } = useMessagesQuery(conversationId ?? undefined);
 
+  // conversationId can change two ways: handleNewChat/handleSelectConversation (which clear
+  // `messages` synchronously up front, then router.push resolves a tick later), or browser
+  // back/forward (a popstate that changes the URL directly, bypassing those handlers entirely).
+  // This block is the single place that reacts to the *actual* conversationId change, so it
+  // covers both — adjusting state during render (React's documented pattern for this) rather
+  // than in an effect, so it resolves in the same render conversationId changes in. For the
+  // handler-triggered path `messages`/`isSending` are already cleared, so this is a no-op;
+  // for back/forward it's what prevents the previous conversation's transcript from staying
+  // on screen under the new URL.
+  const [prevConversationId, setPrevConversationId] = useState(conversationId);
+  if (conversationId !== prevConversationId) {
+    setPrevConversationId(conversationId);
+    setIsNavigatingConversation(false);
+    setMessages([]);
+    setIsSending(false);
+    sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
+  }
+
   // Hydrate from the conversation's saved history once, the first time we land on it.
   // Navigation handlers clear `messages` synchronously before switching conversations,
   // so this never fires again for the same conversation (and never clobbers an
-  // in-flight streaming reply, since `messages` is non-empty by then).
+  // in-flight streaming reply, since `messages` is non-empty by then). Skipped entirely
+  // while `isNavigatingConversation`, otherwise it would fire against the *previous*
+  // conversation's still-cached history before `conversationId` catches up to the nav.
   useEffect(() => {
+    if (isNavigatingConversation) return;
     if (!conversationId || !history || messages.length > 0) return;
     setMessages(
       history
         .filter((m) => m.role !== "system")
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     );
-  }, [conversationId, history, messages.length]);
+  }, [conversationId, history, messages.length, isNavigatingConversation]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -64,13 +95,19 @@ export default function AiConsultationPage() {
   }, [messages]);
 
   const handleNewChat = () => {
+    sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
+    setIsNavigatingConversation(true);
     setMessages([]);
+    setIsSending(false);
     router.push("/homepage");
   };
 
   const handleSelectConversation = (id: string) => {
     if (id === conversationId) return;
+    sendTokenRef.current++;
+    setIsNavigatingConversation(true);
     setMessages([]);
+    setIsSending(false);
     router.push(`/homepage?c=${id}`);
   };
 
@@ -78,6 +115,12 @@ export default function AiConsultationPage() {
     e.preventDefault();
     const text = inputMessage.trim();
     if (!text || !session || isSending) return;
+
+    // Identifies this send so it can tell, once it's back from an await, whether the
+    // user has since navigated away (handleNewChat/handleSelectConversation bump the
+    // counter) — an abandoned send must not write its chunks/errors/isSending into
+    // whatever conversation is now on screen.
+    const myToken = ++sendTokenRef.current;
 
     setInputMessage("");
     setMessages((prev) => [...prev, { role: "user", content: text }]);
@@ -98,6 +141,7 @@ export default function AiConsultationPage() {
         sessionId: session.session_id,
         message: text,
         onChunk: (chunk) => {
+          if (sendTokenRef.current !== myToken) return;
           setMessages((prev) => {
             const lastIndex = prev.length - 1;
             const last = prev[lastIndex];
@@ -113,9 +157,11 @@ export default function AiConsultationPage() {
       queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
     } catch (error) {
       console.error("Failed to send message:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+      if (sendTokenRef.current === myToken) {
+        setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+      }
     } finally {
-      setIsSending(false);
+      if (sendTokenRef.current === myToken) setIsSending(false);
     }
   };
 

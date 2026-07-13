@@ -39,15 +39,30 @@ The display name a user provides at signup. Stored as `name` on the backend User
 _Avoid_: "name" (ambiguous — always say Full Name in UI copy and "name" only when referring to the API field)
 
 **Conversation**
-A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`/homepage?c=<conversationId>`) so it survives a refresh. Listed in the sidebar, most-recently-created first.
+A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`/homepage?c=<conversationId>`) so it survives a refresh. Listed in the sidebar, most-recently-created first. The `/homepage` page's UI copy (nav tab, headline) calls this "Consultation" — same concept, just the user-facing label; the code and this glossary use Conversation.
 _Avoid_: "chat", "session" (ambiguous with the backend's Session concept)
 
 **Conversation Title**
 The label shown for a Conversation in the sidebar. Intended to be an AI-generated topical summary (e.g., "Wrongful Termination — Retaliatory Dismissal"), set once by the backend after the first exchange — not something the user types in. Until that backend generation work ships, the frontend falls back to a naive truncation of the user's first message.
 _Avoid_: "conversation name" (this app calls it Title, matching the `title` field)
 
+**Case**
+A litigation filing record a user creates via the Create Case form: a Case Title, Type of Action, Jurisdiction, one or more Parties, and uploaded evidentiary Documents. Created through `POST /api/cases`.
+_Avoid_: "matter", "filing" (use Case for the record itself; "filing" is fine as a verb for the act of submitting one)
+
+**Case Portfolio**
+The list/browse view of all Cases a user has created — a "recent cases" tab, not a distinct record type of its own. Every Case a user creates appears here; there is no separate step to add one.
+_Avoid_: "portfolio" alone (always pair with "Case" to avoid confusion with a document/evidence portfolio)
+
+**Party**
+A person or entity involved in a Case, captured as a Full Name and a Designation. A Case has one or more Parties.
+
+**Designation**
+A Party's role within a Case: Petitioner/Plaintiff, Respondent/Defendant, or Intervenor/Third-Party.
+
 ## Pending (backend not yet implemented)
 
 - `POST /api/auth/forgot-password` — no backend endpoint exists; the `/forgot-password` page is a UI placeholder.
 - `POST /api/auth/reset-password` — no backend endpoint exists; the `/reset-password` page is a UI placeholder.
 - Conversation Title auto-generation — no LLM-summarization logic exists in `ilovelawyer-api` yet; spec has been handed off, `title` is `null` until it ships.
+- `POST /api/cases` and `POST /api/cases/documents/presign` — no backend endpoints exist; the Create Case page is fully wired to them, so submitting a filing or uploading a document currently fails with a real network error surfaced in the page's existing error UI.
