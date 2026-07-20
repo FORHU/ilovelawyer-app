@@ -67,7 +67,9 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
     // fixed position is now stale — close rather than let the menu drift from its trigger.
     // Scrolling *within* the menu's own option list is excluded via the containment check.
     const handleScroll = (e: Event) => {
-      if (rootRef.current && rootRef.current.contains(e.target as Node)) return;
+      // Shared with the window "resize" listener below, whose event target is `window`
+      // itself — not a Node — so the containment check only applies when it actually is one.
+      if (e.target instanceof Node && rootRef.current?.contains(e.target)) return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handlePointerDown);
@@ -91,7 +93,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
         type="button"
         id={id}
         onClick={handleTriggerClick}
-        className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-gray-400 transition-colors"
+        className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 focus-visible:border-[#131a33]"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -120,7 +122,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
                     onChange(opt.value);
                     setOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors ${
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-slate-100 ${
                     isSelected ? "bg-slate-100 text-black font-medium" : "text-[#181c1e] hover:bg-slate-50"
                   }`}
                 >

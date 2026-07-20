@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import GlobalHeader from "@/components/global-header";
 import CustomSelect from "@/components/ui/custom-select";
-import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw } from "lucide-react";
+import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users } from "lucide-react";
 import {
   useCreateCaseMutation,
   useCreateDocumentUploadUrlMutation,
@@ -214,68 +214,77 @@ export default function CreateCasePage() {
       <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">
 
         {/* HERO BACKDROP */}
-        <section className="relative h-48 bg-slate-900 overflow-hidden" />
-
-        {/* INTAKE FORM CONTAINER */}
-        <section className="max-w-4xl w-full mx-auto px-6 md:px-12 -mt-16 relative pt-8 z-30 pb-8">
-
-          <div className="bg-white border border-gray-200 rounded-sm shadow-xl p-8 md:p-12 flex flex-col gap-12 font-['Inter']">
-            <h1 className="font-['Libre_Caslon_Text'] text-2xl text-black font-normal tracking-[-1.2px] -mb-6">
+        <section className="relative overflow-hidden bg-gradient-to-br from-[#1c2547] to-[#0b132b] py-14 md:py-16">
+          <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#c9c9c9]/10 blur-3xl" aria-hidden="true" />
+          <div className="relative max-w-4xl w-full mx-auto px-6 md:px-12 flex flex-col gap-2">
+            <h1 className="font-['Libre_Caslon_Text'] text-3xl md:text-4xl text-white font-normal tracking-[-0.6px]">
               Create Case
             </h1>
+            <p className="text-white/70 text-sm max-w-md">
+              File a new matter, name the parties involved, and attach supporting documents in one submission.
+            </p>
+          </div>
+        </section>
 
-            {submittedTitle && (
-              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-sm px-4 py-3 -mb-6" role="status">
-                <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <p className="text-sm">
-                  Filing initialized for <span className="font-semibold">&ldquo;{submittedTitle}&rdquo;</span>.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSubmittedTitle(null)}
-                  className="ml-auto text-emerald-700 hover:text-emerald-900 cursor-pointer"
-                  aria-label="Dismiss confirmation"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+        {/* INTAKE FORM CONTENT */}
+        <section className="max-w-4xl w-full mx-auto px-6 md:px-12 py-10 md:py-12 flex flex-col gap-8 font-['Inter']">
+          {submittedTitle && (
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3" role="status">
+              <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <p className="text-sm">
+                Filing initialized for <span className="font-semibold">&ldquo;{submittedTitle}&rdquo;</span>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSubmittedTitle(null)}
+                className="ml-auto rounded-full p-1 -m-1 text-emerald-700 hover:text-emerald-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
+                aria-label="Dismiss confirmation"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {submitError && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3" role="alert">
+              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <p className="text-sm">{submitError}</p>
+              <button
+                type="button"
+                onClick={() => setSubmitError(null)}
+                className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* SECTION I: IDENTITY */}
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+                <Scale className="h-4 w-4" aria-hidden="true" />
               </div>
-            )}
-
-            {submitError && (
-              <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-sm px-4 py-3 -mb-6" role="alert">
-                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <p className="text-sm">{submitError}</p>
-                <button
-                  type="button"
-                  onClick={() => setSubmitError(null)}
-                  className="ml-auto text-red-700 hover:text-red-900 cursor-pointer"
-                  aria-label="Dismiss error"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              <div>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">I. Case Identity</h2>
+                <p className="text-xs text-gray-500 mt-0.5">The caption and venue for this matter.</p>
               </div>
-            )}
+            </div>
 
-            {/* SECTION I: IDENTITY */}
-            <fieldset className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-
-                <legend className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">
-                  I. Case Identity
-                </legend>
-                <div className="bg-black h-px w-16" />
-              </div>
-
+            <fieldset className="px-6 md:px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-3">
                   <label htmlFor="caseTitle" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    CASE TITLE / CAPTION <span className="text-gray-400 normal-case font-normal">(required)</span>
+                    CASE TITLE / CAPTION <span className="text-gray-500 normal-case font-normal">(required)</span>
                   </label>
                   <input
                     id="caseTitle"
                     type="text"
-                    className={`w-full bg-transparent border-b py-2 outline-none text-sm transition-colors ${
-                      caseTitleError ? "border-red-500" : "border-gray-400 focus:border-black"
+                    className={`w-full rounded-xl border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors focus:ring-2 ${
+                      caseTitleError
+                        ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
+                        : "border-gray-300 hover:border-gray-400 focus:border-black focus:ring-black/5"
                     }`}
                     placeholder="e.g. Cruz vs. Santos"
                     value={formData.caseTitle}
@@ -311,7 +320,7 @@ export default function CreateCasePage() {
                   <input
                     id="jurisdiction"
                     type="text"
-                    className="w-full bg-transparent border-b border-gray-400 py-2 outline-none text-sm focus:border-black transition-all"
+                    className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
                     placeholder="e.g. RTC Branch 12, Makati City"
                     value={formData.jurisdiction}
                     onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
@@ -319,31 +328,38 @@ export default function CreateCasePage() {
                 </div>
               </div>
             </fieldset>
+          </section>
 
-            {/* SECTION II: PARTY DETAILS */}
-            <fieldset className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <legend className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">
-                  II. Party Details
-                </legend>
-                <div className="bg-black h-px w-16" />
+          {/* SECTION II: PARTY DETAILS */}
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+                <Users className="h-4 w-4" aria-hidden="true" />
               </div>
+              <div>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">II. Party Details</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Everyone named in the case caption, on either side.</p>
+              </div>
+            </div>
 
+            <fieldset className="px-6 md:px-8 py-6 flex flex-col gap-6">
               <div className="relative">
                 {/* Bounded + scrollable instead of growing the page forever: 1-3 parties
-                    fit with no scrollbar at all, more than that scrolls within this box. */}
-                <div className="flex flex-col gap-4 max-h-105 overflow-y-auto pr-1 -mr-1">
+                    fit with no scrollbar at all, more than that scrolls within this box.
+                    Below md the bound is dropped entirely — a scroll box nested inside an
+                    already-scrolling page is a mobile friction point (see ADR 0007). */}
+                <div className="flex flex-col gap-4 md:max-h-105 md:overflow-y-auto pr-1 -mr-1">
                   {formData.parties.map((party, index) => (
-                    <div key={party.id} className="border border-gray-200 rounded-sm p-5 flex flex-col gap-5">
+                    <div key={party.id} className="border border-l-4 border-gray-200 border-l-[#131a33]/15 rounded-xl p-5 flex flex-col gap-5 transition-colors hover:border-l-[#131a33]/30">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold tracking-wider text-gray-500 uppercase">
                           Party {index + 1}
                         </span>
                         {formData.parties.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeParty(party.id)}
-                            className="text-gray-400 hover:text-red-600 cursor-pointer"
+                            className="cursor-pointer rounded-full p-2 -m-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                             aria-label={`Remove party ${index + 1}`}
                           >
                             <X className="w-4 h-4" />
@@ -359,7 +375,7 @@ export default function CreateCasePage() {
                           <input
                             id={`party-name-${party.id}`}
                             type="text"
-                            className="w-full bg-transparent border-b border-gray-400 py-2 outline-none text-sm focus:border-black transition-all"
+                            className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
                             placeholder="Enter explicit legal identity name"
                             value={party.name}
                             onChange={(e) => updateParty(party.id, "name", e.target.value)}
@@ -383,29 +399,34 @@ export default function CreateCasePage() {
                 </div>
 
                 {formData.parties.length > 3 && (
-                  <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-white to-transparent" />
+                  <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-white to-transparent" />
                 )}
               </div>
 
               <button
                 type="button"
                 onClick={addParty}
-                className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-600 hover:text-black hover:border-gray-400 border border-dashed border-gray-300 rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer"
+                className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-600 hover:text-[#131a33] hover:border-[#131a33]/30 hover:bg-slate-50 border border-dashed border-gray-300 rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 Add Party
               </button>
             </fieldset>
+          </section>
 
-            {/* SECTION III: EVIDENTIARY SUBMISSIONS */}
-            <fieldset className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <legend className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">
-                  III. Evidentiary Submissions
-                </legend>
-                <div className="bg-black h-px w-16" />
+          {/* SECTION III: EVIDENTIARY SUBMISSIONS */}
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+                <UploadCloud className="h-4 w-4" aria-hidden="true" />
               </div>
+              <div>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">III. Evidentiary Submissions</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Attach any documents to be indexed with this filing.</p>
+              </div>
+            </div>
 
+            <fieldset className="px-6 md:px-8 py-6">
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -414,8 +435,8 @@ export default function CreateCasePage() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && triggerFileSelect()}
-                className={`border border-dashed rounded-sm p-8 flex flex-col items-center justify-center text-center gap-4 relative cursor-pointer transition-colors ${
-                  isDragActive ? "border-black bg-slate-100" : "border-gray-300 bg-slate-50 hover:border-gray-400"
+                className={`border border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-4 relative cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
+                  isDragActive ? "border-[#131a33] bg-slate-100" : "border-gray-300 bg-slate-50 hover:border-gray-400"
                 }`}
               >
                 <input
@@ -427,7 +448,9 @@ export default function CreateCasePage() {
                   onChange={handleFileChange}
                 />
 
-                <UploadCloud className="w-9 h-9 text-gray-300" strokeWidth={1.5} aria-hidden="true" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
+                  <UploadCloud className="w-6 h-6 text-gray-400" strokeWidth={1.5} aria-hidden="true" />
+                </div>
 
                 <div>
                   <h4 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] mb-1">
@@ -444,7 +467,7 @@ export default function CreateCasePage() {
                     e.stopPropagation();
                     triggerFileSelect();
                   }}
-                  className="bg-black text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-slate-800 transition-all uppercase cursor-pointer"
+                  className="bg-[#131a33] text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
                 >
                   SELECT DOCUMENTS
                 </button>
@@ -452,7 +475,7 @@ export default function CreateCasePage() {
                 {formData.uploadedFiles.length > 0 && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-md mt-4 text-left bg-white border border-gray-200 p-4 text-xs text-gray-700 flex flex-col gap-2 max-h-40 overflow-y-auto"
+                    className="w-full max-w-md mt-4 text-left bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-700 flex flex-col gap-2 max-h-40 overflow-y-auto"
                   >
                     <p className="font-bold border-b pb-1 mb-1 text-gray-500">ATTACHED DOSSIERS ({formData.uploadedFiles.length}):</p>
                     {formData.uploadedFiles.map((f) => (
@@ -461,7 +484,7 @@ export default function CreateCasePage() {
                           <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
                           <span className="truncate flex-1">{f.file.name} ({(f.file.size / 1024).toFixed(1)} KB)</span>
                           {f.status === "uploading" && (
-                            <span className="text-gray-400 shrink-0">{f.progress}%</span>
+                            <span className="text-gray-500 shrink-0">{f.progress}%</span>
                           )}
                           {f.status === "uploaded" && (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
@@ -470,7 +493,7 @@ export default function CreateCasePage() {
                             <button
                               type="button"
                               onClick={() => retryUpload(f.id)}
-                              className="flex items-center gap-1 text-red-600 hover:text-red-800 cursor-pointer shrink-0"
+                              className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
                               aria-label={`Retry uploading ${f.file.name}`}
                             >
                               <RotateCw className="w-3.5 h-3.5" />
@@ -479,7 +502,7 @@ export default function CreateCasePage() {
                           <button
                             type="button"
                             onClick={() => removeFile(f.id)}
-                            className="text-gray-400 hover:text-red-600 cursor-pointer shrink-0"
+                            className="rounded p-0.5 text-gray-400 hover:text-red-600 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                             aria-label={`Remove ${f.file.name}`}
                           >
                             <X className="w-3.5 h-3.5" />
@@ -488,7 +511,7 @@ export default function CreateCasePage() {
                         {f.status === "uploading" && (
                           <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-black transition-all"
+                              className="h-full bg-[#131a33] transition-all"
                               style={{ width: `${f.progress}%` }}
                             />
                           </div>
@@ -502,17 +525,17 @@ export default function CreateCasePage() {
                 )}
               </div>
             </fieldset>
+          </section>
 
-            <div className="border-t border-gray-200 pt-8 mt-4 flex justify-start">
-              <button
-                type="submit"
-                disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
-                className="bg-black text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-slate-800 transition-colors uppercase cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "SUBMITTING…" : "INITIATE FILING"}
-              </button>
-            </div>
-
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
+              className="bg-[#131a33] text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "SUBMITTING…" : "INITIATE FILING"}
+            </button>
+            <p className="text-xs text-gray-500">You can edit these details anytime after filing.</p>
           </div>
         </section>
       </form>
@@ -526,8 +549,8 @@ export default function CreateCasePage() {
             <p className="text-sm text-gray-500 leading-relaxed font-normal">
               Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
             </p>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
-              © 2024 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
+              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
             </p>
           </div>
 
@@ -540,9 +563,9 @@ export default function CreateCasePage() {
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
               <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
-              <a href="#privacy" className="hover:text-black font-normal">Privacy Policy</a>
-              <a href="#terms" className="hover:text-black font-normal">Terms of Use</a>
-              <a href="#ethics" className="hover:text-black font-normal">Ethics Policy</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
               <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>

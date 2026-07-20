@@ -93,6 +93,70 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
 }
 
 /* ==========================================
+   AGENDA VIEW (mobile replacement for the 7-column grid below md)
+   ========================================== */
+type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string; description: string | null };
+type AgendaNote = { id: string; date: string; body: string };
+type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
+
+function AgendaView({
+  agendaDays,
+  selectedDate,
+  onSelectDay,
+}: {
+  agendaDays: AgendaDay[];
+  selectedDate: Date | undefined;
+  onSelectDay: (date: Date) => void;
+}) {
+  if (agendaDays.length === 0) {
+    return <p className="px-4 py-10 text-center text-sm text-white/40">Nothing scheduled this month yet.</p>;
+  }
+
+  return (
+    <div className="flex flex-col divide-y divide-white/10">
+      {agendaDays.map((day) => {
+        const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
+        return (
+          <button
+            key={toDateKey(day.date)}
+            type="button"
+            onClick={() => onSelectDay(day.date)}
+            className={cn(
+              "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-white/5",
+              isSelected && "bg-primary/10"
+            )}
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-white/50">
+              {format(day.date, "EEEE, MMM d")}
+            </span>
+            <div className="flex flex-col gap-1.5">
+              {day.appointments.map((appt) => (
+                <span
+                  key={appt.id}
+                  className="flex items-center gap-2 rounded-md bg-blue-500/10 px-2.5 py-1.5 text-xs text-blue-200"
+                >
+                  <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                  {formatTime12h(appt.startTime)} · {appt.title}
+                </span>
+              ))}
+              {day.notes.map((note) => (
+                <span
+                  key={note.id}
+                  className="flex items-center gap-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-200"
+                >
+                  <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
+                  {note.body}
+                </span>
+              ))}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ==========================================
    DISMISSIBLE INLINE ERROR BANNER
    ========================================== */
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -351,6 +415,23 @@ export default function CalendarPage() {
     return result;
   }, [appointments, notes]);
 
+  const agendaDays = React.useMemo(() => {
+    const grouped = new Map<string, AgendaDay>();
+    for (const appt of appointments) {
+      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
+      entry.appointments.push(appt);
+      grouped.set(appt.date, entry);
+    }
+    for (const note of notes) {
+      const entry = grouped.get(note.date) ?? { date: parse(note.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
+      entry.notes.push(note);
+      grouped.set(note.date, entry);
+    }
+    return Array.from(grouped.values())
+      .map((day) => ({ ...day, appointments: [...day.appointments].sort((a, b) => a.startTime.localeCompare(b.startTime)) }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [appointments, notes]);
+
   const selectedDateKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedAppointments = React.useMemo(
     () =>
@@ -365,7 +446,12 @@ export default function CalendarPage() {
     <div className="flex min-h-screen flex-col bg-slate-50">
       <GlobalHeader activeTab="calendar" />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 p-6 pt-16">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
+        <div className="mb-8 flex flex-col gap-2">
+          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">Calendar</h1>
+          <p className="max-w-xl text-base text-gray-500">Track hearings, deadlines, and case notes in one place.</p>
+        </div>
+
         <div className="flex flex-col items-start gap-6 lg:flex-row">
           <PlannerPanel
             selectedDate={selectedDate}
@@ -425,26 +511,33 @@ export default function CalendarPage() {
                 </div>
               )}
             </CardHeader>
-            <CardContent>
-              <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && handleSelectDay(date)}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  showOutsideDays
-                  fixedWeeks
-                  components={{ DayButton: CalendarDayCell }}
-                  classNames={{
-                    nav: "hidden",
-                    month_caption: "hidden",
-                    day: "flex-1 basis-0 p-0.5 align-top",
-                    month_grid: "w-full border-collapse",
-                  }}
-                  className="w-full p-0"
-                />
-              </CalendarItemsContext.Provider>
+            <CardContent className="p-0 md:px-6 md:pb-6">
+              {/* Below md the 7-column grid has no reasonable shrink path to phone width,
+                  so it's replaced entirely by a scrollable Agenda View (see ADR 0004). */}
+              <div className="hidden md:block">
+                <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && handleSelectDay(date)}
+                    month={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    showOutsideDays
+                    fixedWeeks
+                    components={{ DayButton: CalendarDayCell }}
+                    classNames={{
+                      nav: "hidden",
+                      month_caption: "hidden",
+                      day: "flex-1 basis-0 p-0.5 align-top",
+                      month_grid: "w-full border-collapse",
+                    }}
+                    className="w-full p-0"
+                  />
+                </CalendarItemsContext.Provider>
+              </div>
+              <div className="md:hidden">
+                <AgendaView agendaDays={agendaDays} selectedDate={selectedDate} onSelectDay={handleSelectDay} />
+              </div>
             </CardContent>
           </Card>
         </div>

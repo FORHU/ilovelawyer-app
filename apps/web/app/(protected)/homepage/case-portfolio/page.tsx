@@ -1,67 +1,39 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import GlobalHeader from "@/components/global-header";
-import {Search, Plus } from "lucide-react";
+import CustomSelect from "@/components/ui/custom-select";
+import { Search, Plus, Briefcase } from "lucide-react";
 
-const initialCases = [
-  {
-    id: 1,
-    title: "Cruz vs. Santos",
-    docket: "G.R. No. 245123 • RTC Branch 12",
-    category: "CIVIL CASE",
-    metaLabel: "NEXT HEARING",
-    metaValue: "Oct 24, 2024",
-    statusText: "Updated 2h ago",
-    badge: "URGENT",
-  },
-  {
-    id: 2,
-    title: "Estate of Lim",
-    docket: "SP No. 998-M • Makati City",
-    category: "FAMILY LAW",
-    metaLabel: "STATUS",
-    metaValue: "Discovery Phase",
-    statusText: "Updated 1d ago",
-    badge: null,
-  },
-  {
-    id: 3,
-    title: "Corpuz vs. Global Tech",
-    docket: "NLRC NCR-01-00234-24",
-    category: "LABOR RELATIONS",
-    metaLabel: "ASSIGNED",
-    metaValue: "Atty. Manuel",
-    statusText: "Drafting Petition",
-    badge: null,
-    isSpineStyle: true,
-  },
-  {
-    id: 4,
-    title: "People vs. Aragon",
-    docket: "Crim. Case 4501-A • QC RTC",
-    category: "CRIMINAL LAW",
-    metaLabel: "COURT DATE",
-    metaValue: "Nov 12, 2024",
-    statusText: "Updated 5h ago",
-    badge: null,
-  },
-  {
-    id: 5,
-    title: "Vanguard Real Estate",
-    docket: "Title Clearance & Audit",
-    category: "COMMERCIAL",
-    metaLabel: "ACTIVE DOCS",
-    metaValue: "42 Transcripts",
-    statusText: "AI Processing...",
-    badge: null,
-  }
-];
+type CaseRecord = {
+  id: number;
+  title: string;
+  docket: string;
+  category: string;
+  metaLabel: string;
+  metaValue: string;
+  statusText: string;
+  badge: string | null;
+};
+
+const initialCases: CaseRecord[] = [];
+
+// Soft, muted category colors — quick visual scanning without turning the grid into a rainbow.
+const CATEGORY_STYLES: Record<string, string> = {
+  "CIVIL CASE": "bg-blue-50 text-blue-700",
+  "FAMILY LAW": "bg-purple-50 text-purple-700",
+  "LABOR RELATIONS": "bg-emerald-50 text-emerald-700",
+  "CRIMINAL LAW": "bg-red-50 text-red-700",
+  "COMMERCIAL": "bg-amber-50 text-amber-700",
+};
 
 export default function CaseManagerDashboard() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
 
   const categories = ["All", ...new Set(initialCases.map(c => c.category))];
+  const filterOptions = categories.map((cat) => ({ value: cat, label: `Status: ${cat}` }));
 
   const filteredCases = initialCases.filter((item) => {
     const matchesSearch =
@@ -72,90 +44,76 @@ export default function CaseManagerDashboard() {
   });
 
   const handleNewFiling = () => {
-    alert("Initiating a new case filing workflow...");
+    router.push("/homepage/create-case");
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e]">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" aria-hidden="true" />
+    <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e] font-['Inter',sans-serif]">
+      <GlobalHeader activeTab="case-portfolio" />
 
-      {/* Global Navigation Header Stack */}
-      <header className="w-full bg-white border-b border-gray-200 relative z-20">
-        {/* Top Tier */}
-        <GlobalHeader activeTab="case-portfolio" />
-
-        {/* Second Blur Tier Menu (Juris Navy) */}
-        <div className="bg-[#0b132b] text-white backdrop-blur-[2px]">
-         <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex items-center gap-8 overflow-x-auto whitespace-nowrap text-[12px] font-semibold tracking-[1.2px]">
-
-
-</div>
-        </div>
-      </header>
-
-      {/* Main Framework Dashboard Body */}
-      <main className="max-w-[1440px] w-full mx-auto px-6 md:px-16 py-12 relative z-10 flex flex-col gap-12">
-        
-        {/* Page Titles */}
-        <section>
-          <h1 className="font-['Libre_Caslon_Text'] text-40px text-black font-normal leading-tight mb-1">
+      {/* HERO BACKDROP */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#1c2547] to-[#0b132b] py-14 md:py-16">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#ffe088]/10 blur-3xl" aria-hidden="true" />
+        <div className="relative max-w-[1440px] w-full mx-auto px-6 md:px-16 flex flex-col gap-2">
+          <h1 className="font-['Libre_Caslon_Text'] text-3xl md:text-4xl text-white font-normal tracking-[-0.6px]">
             Case Portfolio
           </h1>
-          <p className="text-gray-500 text-[16px]">
+          <p className="text-white/70 text-sm max-w-md">
             Managing {initialCases.length} active legal proceedings.
           </p>
-        </section>
+        </div>
+      </section>
 
-        <section className="flex flex-col md:flex-row items-center gap-6 justify-between w-full border-b border-gray-200 pb-6">
+      {/* Main Framework Dashboard Body */}
+      <main className="max-w-[1440px] w-full mx-auto px-6 md:px-16 py-12 relative z-10 flex flex-col gap-10">
+
+        <section className="flex flex-col md:flex-row items-center gap-4 md:gap-6 justify-between w-full">
           <div className="relative w-full md:max-w-xl flex items-center">
             <span className="absolute left-4 text-gray-400">
               <Search className="w-5 h-5" />
             </span>
             <input
               type="text"
-              className="w-full bg-white border border-gray-300 rounded-md py-3 pl-12 pr-4 outline-none font-['Inter'] text-[15px] shadow-sm focus:border-gray-400 transition-all"
+              className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 outline-none font-['Inter'] text-[15px] shadow-sm hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5 transition-colors"
               placeholder="Search by case name, docket number, or client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-            <label className="text-[12px] font-semibold tracking-[1.2px] text-gray-400 whitespace-nowrap uppercase">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <label htmlFor="filterCategory" className="text-[12px] font-semibold tracking-[1.2px] text-gray-500 whitespace-nowrap uppercase">
               FILTER BY
             </label>
-            <div className="relative bg-white border border-gray-300 rounded-md px-3 py-3 shadow-sm min-w-40">
-              <select
-                className="w-full bg-transparent appearance-none outline-none text-[12px] font-semibold tracking-[1.2px] text-gray-800 cursor-pointer"
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>Status: {cat}</option>
-                ))}
-              </select>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</span>
-            </div>
+            <CustomSelect
+              id="filterCategory"
+              value={filterCategory}
+              onChange={setFilterCategory}
+              options={filterOptions}
+              className="min-w-52 shadow-sm"
+            />
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
           {filteredCases.map((c) => (
             <article
               key={c.id}
-              className={`min-h-75 border border-gray-200 p-8 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative ${
-                c.isSpineStyle ? "bg-[#f1f4f6]" : "bg-white"
-              }`}
+              className="min-h-75 bg-white rounded-2xl border border-gray-200 p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
             >
               <div className="w-full">
                 <div className="flex items-center justify-between mb-6">
-                  <span className="bg-[#e5e9eb] text-[#45464d] text-[11px] font-medium tracking-[1.2px] uppercase px-2 py-1 rounded-sm">
+                  <span className={`text-[11px] font-semibold tracking-[1.2px] uppercase px-2.5 py-1 rounded-full ${CATEGORY_STYLES[c.category] ?? "bg-slate-100 text-slate-600"}`}>
                     {c.category}
                   </span>
-                  <button className="text-gray-300 hover:text-black">•••</button>
+                  {c.badge && (
+                    <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-1 rounded-full tracking-wide">
+                      {c.badge}
+                    </span>
+                  )}
                 </div>
 
-                <h3 className="font-['Libre_Caslon_Text'] text-[26px] text-black font-normal leading-tight mb-2">
+                <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-black font-normal leading-tight mb-2">
                   {c.title}
                 </h3>
                 <p className="text-gray-500 text-[14px] font-['Inter']">
@@ -163,43 +121,84 @@ export default function CaseManagerDashboard() {
                 </p>
               </div>
 
-              <div className="border-t border-gray-100 pt-6 mt-8 flex items-end justify-between">
+              <div className="border-t border-gray-100 pt-5 mt-8 flex items-end justify-between">
                 <div>
-                  <span className="block text-gray-400 text-[10px] uppercase font-semibold tracking-wider mb-1">
+                  <span className="block text-gray-500 text-[10px] uppercase font-semibold tracking-wider mb-1">
                     {c.metaLabel}
                   </span>
                   <span className="text-[#181c1e] text-[14px] font-semibold">
                     {c.metaValue}
                   </span>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  {c.badge && (
-                    <span className="bg-[#ffe088] text-[#574500] text-[10px] font-bold px-2 py-1 rounded-sm tracking-wide">
-                      {c.badge}
-                    </span>
-                  )}
-                  <span className="text-gray-400 text-[12px] italic">
-                    {c.statusText}
-                  </span>
-                </div>
+                <span className="text-gray-500 text-[12px] italic">
+                  {c.statusText}
+                </span>
               </div>
             </article>
           ))}
 
           <button
+            type="button"
             onClick={handleNewFiling}
-            className="group min-h-75 border-2 border-dashed border-gray-300 bg-transparent hover:bg-white hover:border-gray-400 rounded-md flex flex-col items-center justify-center p-8 transition-all cursor-pointer"
+            className="group min-h-75 border-2 border-dashed border-gray-300 bg-transparent hover:bg-white hover:border-[#131a33]/30 rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
           >
-            <span className="text-3xl text-gray-300 group-hover:text-gray-500 transition-colors mb-3">
-              {/* Replaced ➕ with the Lucide Plus component */}
-               <Plus className="w-8 h-8 stroke-[2.5]" />
-              </span>
-            <span className="text-[12px] font-semibold tracking-[1.2px] text-gray-400 group-hover:text-gray-700 transition-colors uppercase">
-              INITIATE NEW FILING
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-gray-400 group-hover:bg-[#131a33]/5 group-hover:text-[#131a33] transition-colors mb-3">
+              <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+            </div>
+            <span className="text-[12px] font-semibold tracking-[1.2px] text-gray-500 group-hover:text-[#131a33] transition-colors uppercase">
+              Initiate New Filing
             </span>
           </button>
         </section>
+
+        {initialCases.length > 0 && filteredCases.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-center py-16 -mt-4">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 text-gray-300 shadow-sm">
+              <Briefcase className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <h4 className="font-['Libre_Caslon_Text'] text-[22px] text-[#181c1e] mb-2">No matching cases</h4>
+            <p className="text-gray-500 text-[15px] max-w-[320px]">
+              Try a different search term, or clear the category filter above.
+            </p>
+          </div>
+        )}
       </main>
+
+      {/* SYSTEMATIC LEGAL FOOTER BLOCK */}
+      <footer className="w-full bg-white border-t border-gray-200 py-16 relative z-10">
+        <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
+          <div className="flex flex-col gap-4 max-w-sm">
+            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">ilovelawyer</span>
+            <p className="text-sm text-gray-500 leading-relaxed font-normal">
+              Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
+            </p>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
+              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
+            </p>
+          </div>
+
+          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
+              <a href="#const" className="hover:text-black font-normal">Constitution</a>
+              <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
+              <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
+            </div>
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
+              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
+            </div>
+            <div className="flex flex-col gap-3 min-w-[100px]">
+              <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
+              <a href="#support" className="hover:text-black font-normal">Support Center</a>
+              <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>
+              <a href="#contact" className="hover:text-black font-normal">Contact Us</a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

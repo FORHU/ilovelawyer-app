@@ -1,11 +1,22 @@
 // apps/web/components/global-header.tsx
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDown, User } from "lucide-react";
+import { ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
+import { useLogoutMutation } from "@/lib/auth/mutations";
+import { useAuthStore } from "@/lib/store/auth.store";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
-  activeTab: "consultation" | "create-case" | "library" | "case-portfolio" | "transcription" | "document-analysis" | "calendar";
+  activeTab:
+    | "consultation"
+    | "create-case"
+    | "library"
+    | "case-portfolio"
+    | "transcription"
+    | "document-analysis"
+    | "calendar"
+    | "term"
+    | "profile";
 }
 
 const CASE_MENU_ITEMS = [
@@ -13,26 +24,65 @@ const CASE_MENU_ITEMS = [
   { tab: "case-portfolio", label: "Case Portfolio", href: "/homepage/case-portfolio" },
 ] as const;
 
+const USER_MENU_ITEMS = [
+  { label: "Profile", href: "/homepage/profile", icon: UserCircle },
+  { label: "Terms & Conditions", href: "/homepage/term", icon: FileText },
+] as const;
+
+// Flat list for the mobile drawer — the desktop CASE dropdown's two items are
+// inlined here directly since a nested toggle inside an already-open drawer
+// is an extra tap for no benefit at phone width.
+const MOBILE_NAV_ITEMS = [
+  { tab: "consultation", label: "Consultation", href: "/homepage" },
+  { tab: "create-case", label: "Create Case", href: "/homepage/create-case" },
+  { tab: "case-portfolio", label: "Case Portfolio", href: "/homepage/case-portfolio" },
+  { tab: "library", label: "Library", href: "/homepage/library" },
+  { tab: "transcription", label: "Transcription", href: "/homepage/transcription" },
+  { tab: "document-analysis", label: "Documents", href: "/homepage/document-analysis" },
+  { tab: "calendar", label: "Calendar", href: "/homepage/calendar" },
+] as const;
+
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const caseMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
 
-  // Close the dropdown on outside click, since it isn't a native <select>.
+  const user = useAuthStore((s) => s.user);
+  const logout = useLogoutMutation();
+
+  // Close the dropdowns on outside click, since they aren't native <select>s.
   useEffect(() => {
-    if (!isCaseMenuOpen) return;
+    if (!isCaseMenuOpen && !isUserMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (caseMenuRef.current && !caseMenuRef.current.contains(e.target as Node)) {
         setIsCaseMenuOpen(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isCaseMenuOpen]);
+  }, [isCaseMenuOpen, isUserMenuOpen]);
+
+  // Close the mobile drawer if the viewport grows past the lg breakpoint
+  // (e.g. rotating a tablet, or resizing a browser window past 1024px).
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setIsMobileMenuOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isMobileMenuOpen]);
 
   // Helper to dynamically toggle active states for the sub-tier workspace links
   const getSubTabClass = (tabName: string) => {
-    const baseClasses = "text-[10px] tracking-[1px] uppercase transition-all duration-200";
+    const baseClasses =
+      "text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
 
     if (activeTab === tabName) {
       // Active Look: Full opacity, bold text, white bottom border
@@ -43,21 +93,33 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
     return `${baseClasses} opacity-60 text-white hover:opacity-100`;
   };
 
+  const getMobileTabClass = (tabName: string) => {
+    const baseClasses =
+      "text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-inset";
+    if (activeTab === tabName) {
+      return `${baseClasses} text-white border-white font-bold`;
+    }
+    return `${baseClasses} text-white/60 border-transparent hover:text-white`;
+  };
+
   return (
     <header className="absolute top-0 left-0 w-full bg-[#0b132b] border-b border-white/10 z-50">
-      <div className="w-full h-14 flex items-center gap-8 px-72">
-        <a href="/" className="font-['Libre_Caslon_Text'] text-white text-[20px] tracking-[-0.6px] shrink-0">
+      <div className="w-full max-w-[1440px] mx-auto h-14 flex items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8">
+        <a
+          href="/"
+          className="font-['Libre_Caslon_Text'] text-white text-[20px] tracking-[-0.6px] shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
           ilovelawyer
         </a>
 
-        <nav className="flex-1 flex items-center justify-center gap-7 text-[10px] tracking-[1px]">
+        <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
           <a href="/homepage" className={getSubTabClass("consultation")}>CONSULTATION</a>
 
           <div className="relative" ref={caseMenuRef}>
             <button
               type="button"
               onClick={() => setIsCaseMenuOpen((prev) => !prev)}
-              className={`flex items-center gap-1 cursor-pointer ${
+              className={`flex items-center gap-1 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
                 isCaseTabActive
                   ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white border-b-2 border-white pb-[6px] font-bold opacity-100"
                   : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
@@ -75,7 +137,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             {isCaseMenuOpen && (
               <div
                 role="menu"
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-white border border-white rounded-sm shadow-xl py-1"
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-white border border-white rounded-xl shadow-xl py-1 overflow-hidden"
               >
                 {CASE_MENU_ITEMS.map((item) => (
                   <a
@@ -83,7 +145,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     href={item.href}
                     role="menuitem"
                     onClick={() => setIsCaseMenuOpen(false)}
-                    className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors ${
+                    className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#131a33]/30 ${
                       activeTab === item.tab ? "text-black font-bold bg-black/5" : "text-black/60 hover:text-black hover:bg-black/5"
                     }`}
                   >
@@ -101,13 +163,125 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
-        <div className="flex gap-[24px] text-white">
-          <button className="opacity-60 hover:opacity-100 transition-opacity">
-            <User className="w-5 h-5" />
+        <div className="hidden lg:flex gap-[24px] text-white">
+          <div className="relative" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              className={`cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "opacity-100" : ""}`}
+              aria-haspopup="menu"
+              aria-expanded={isUserMenuOpen}
+              aria-label="Account menu"
+            >
+              <User className="w-5 h-5" />
+            </button>
 
-          </button>
+            {isUserMenuOpen && (
+              <div
+                role="menu"
+                className="absolute top-full right-0 mt-3 w-52 bg-white border border-white rounded-xl shadow-xl py-1 overflow-hidden"
+              >
+                {user && (
+                  <div className="px-4 py-2.5 border-b border-black/10">
+                    <p className="truncate text-xs font-bold text-black">{user.username}</p>
+                    <p className="truncate text-[10px] text-black/50">{user.email}</p>
+                  </div>
+                )}
+
+                {USER_MENU_ITEMS.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    role="menuitem"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-black/60 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#131a33]/30"
+                  >
+                    <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                    {item.label}
+                  </a>
+                ))}
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={logout.isPending}
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout.mutate();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 border-t border-black/10 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                  {logout.isPending ? "Logging out…" : "Log Out"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Mobile hamburger — replaces the inline nav + account icon below lg */}
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isMobileMenuOpen}
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
       </div>
+
+      {/* Mobile drawer — full-width panel replacing the desktop nav + account menu below lg */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/10 bg-[#0b132b] px-4 py-4">
+          <nav className="flex flex-col gap-0.5">
+            {MOBILE_NAV_ITEMS.map((item) => (
+              <a
+                key={item.tab}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={getMobileTabClass(item.tab)}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="mt-4 flex flex-col gap-0.5 border-t border-white/10 pt-4">
+            {user && (
+              <div className="px-3 pb-3">
+                <p className="truncate text-xs font-bold text-white">{user.username}</p>
+                <p className="truncate text-[10px] text-white/50">{user.email}</p>
+              </div>
+            )}
+
+            {USER_MENU_ITEMS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-white/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
+              >
+                <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                {item.label}
+              </a>
+            ))}
+
+            <button
+              type="button"
+              disabled={logout.isPending}
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                logout.mutate();
+              }}
+              className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-400 transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+              {logout.isPending ? "Logging out…" : "Log Out"}
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -19,6 +19,11 @@ export const authKeys = {
   session: () => [...authKeys.all, "session"] as const,
 }
 
+export const userKeys = {
+  all: ["user"] as const,
+  me: () => [...userKeys.all, "me"] as const,
+}
+
 export const chatKeys = {
   all: ["chat"] as const,
   session: () => [...chatKeys.all, "session"] as const,

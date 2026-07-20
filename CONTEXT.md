@@ -70,6 +70,10 @@ _Avoid_: "event", "meeting" (Appointment is the canonical term; the reference mo
 A piece of free-form text a user attaches to a specific calendar day — distinct from an Appointment in that it has no start/end time, but like an Appointment it is anchored to one date and appears on that day's cell.
 _Avoid_: "reminder", "memo"
 
+**Agenda View**
+The Calendar page's mobile (below `md`) presentation: a vertical scrollable list of the current month's days, each showing its Appointments and Notes inline, replacing the 7-column day-grid used at `md` and above. Read/navigation only — creating or editing still happens via the Planner panel. See `docs/adr/0004-calendar-mobile-agenda-view.md`.
+_Avoid_: "mobile calendar", "list view" (Agenda View is the canonical name for this specific mode)
+
 ## Pending (backend not yet implemented)
 
 - `POST /api/auth/forgot-password` — no backend endpoint exists; the `/forgot-password` page is a UI placeholder.

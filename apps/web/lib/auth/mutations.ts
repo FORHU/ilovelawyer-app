@@ -13,6 +13,7 @@ interface SignupResponse {
   id: string
   username: string
   email: string
+  name: string | null
 }
 
 interface ResetPasswordResponse {
@@ -20,13 +21,19 @@ interface ResetPasswordResponse {
   refreshToken: string
 }
 
+// Mirrors the numeric-suffix convention the backend already uses for Google
+// signups (auth.repository.ts's createGoogleUser), instead of a random base36
+// string, so a generated username reads as "name.1234" rather than "name.zuo".
 function generateUsername(fullName: string): string {
-  const base = fullName
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ".")
-    .replace(/[^a-z0-9.]/g, "")
-  const suffix = Math.random().toString(36).slice(2, 5)
+  const base =
+    fullName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s.]/g, "")
+      .replace(/\s+/g, ".")
+      .replace(/\.+/g, ".")
+      .replace(/^\.|\.$/g, "") || "user"
+  const suffix = Math.floor(1000 + Math.random() * 9000)
   return `${base}.${suffix}`
 }
 

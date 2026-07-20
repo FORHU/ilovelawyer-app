@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 // 1. Added Paperclip and Mic to your lucide-react imports
-import { Paperclip, Mic } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
 import AssistantMessage from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
@@ -15,6 +15,7 @@ import {
   sendChatMessage,
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
+import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -27,6 +28,13 @@ export default function AiConsultationPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queueDocument = useMediaQueueStore((s) => s.queueDocument);
+  const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
   const searchParams = useSearchParams();
   const urlConversationId = searchParams.get("c");
   const queryClient = useQueryClient();
@@ -100,6 +108,15 @@ export default function AiConsultationPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Release the microphone if the user navigates away mid-recording.
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
     setIsNavigatingConversation(true);
@@ -123,11 +140,12 @@ export default function AiConsultationPage() {
     fileInputRef.current?.click();
   };
 
-  //handles state preservation when user picks a file
+  //handles state preservation when user picks a file, and queues it for the Documents page
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files?.[0];
-    if (files) {
-      setFile(files);
+    const selected = e.currentTarget.files?.[0];
+    if (selected) {
+      setFile(selected);
+      queueDocument(selected);
     }
   };
 
@@ -138,8 +156,39 @@ export default function AiConsultationPage() {
       }
   };
 
-  const handleMicClick = (  ) => {
-    router.push("/homepage/transcribe");
+  // Toggles in-place mic recording; the finished clip is queued for the Transcription page.
+  const handleMicClick = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recordingStartRef.current = Date.now();
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const durationSeconds = (Date.now() - recordingStartRef.current) / 1000;
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        queueTranscript(blob, durationSeconds);
+        stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Microphone access failed:", error);
+      alert("Microphone access is required to record. Please allow microphone permissions and try again.");
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -155,6 +204,7 @@ export default function AiConsultationPage() {
     const myToken = ++sendTokenRef.current;
 
     setInputMessage("");
+    handleRemoveFile();
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsSending(true);
 
@@ -210,6 +260,29 @@ export default function AiConsultationPage() {
         onSubmit={handleSendMessage}
         className="w-full backdrop-blur-md bg-white/80 p-3 rounded-3xl border border-white/40 shadow-xl flex flex-col gap-2"
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {file && (
+          <div className="flex items-center gap-2 px-2">
+            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-slate-100 text-[#181c1e] text-[13px] font-['Inter'] pl-3 pr-1.5 py-1">
+              <span className="truncate max-w-[220px]">{file.name}</span>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-300/60 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
+                aria-label="Remove attached file"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          </div>
+        )}
+
         {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input */}
         <textarea
           ref={textareaRef}
@@ -226,28 +299,36 @@ export default function AiConsultationPage() {
         <div className="flex items-center justify-between px-1">
           {/* 2. Replaced the emoji text nodes with <Paperclip /> and <Mic /> components */}
           <div className="flex gap-1 text-gray-500">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleClipClick}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors"
+              aria-label="Attach file"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
             >
               <Paperclip className="w-4 h-4" />
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={handleMicClick}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors" 
+              aria-pressed={isRecording}
+              aria-label={isRecording ? "Stop recording" : "Start recording"}
+              className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30 ${
+                isRecording
+                  ? "bg-red-100 text-red-600 animate-pulse hover:bg-red-200"
+                  : "hover:bg-slate-200/50 hover:text-gray-700"
+              }`}
             >
-              <Mic className="w-4 h-4" />
+              {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
             </button>
           </div>
 
           <button
             type="submit"
             disabled={isSending || !session}
-            className="bg-[#0b132b] text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors disabled:opacity-50 shrink-0"
+            aria-label="Send message"
+            className="bg-[#0b132b] text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
           >
-            ➔
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </form>
@@ -259,7 +340,7 @@ export default function AiConsultationPage() {
       <GlobalHeader activeTab="consultation" />
 
       {/* Chat Workspace */}
-      <div className="relative flex-1 flex flex-col min-h-0 px-8 md:px-32">
+      <div className="relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 md:px-32">
 
         {/* Left Sidebar Panel */}
         <ConversationSidebar
@@ -273,11 +354,11 @@ export default function AiConsultationPage() {
           {!conversationId && messages.length === 0 ? (
             /* No conversation yet — heading and input are centered together, like Gemini's landing state */
             <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24">
-              <div className="text-center max-w-2xl mx-auto">
-                <h1 className="font-['Libre_Caslon_Text'] font-normal text-[#0b132b] text-[48px] tracking-[-1.2px] mb-4">
+              <div className="text-center max-w-2xl mx-auto px-2">
+                <h1 className="font-['Libre_Caslon_Text'] font-normal text-[#0b132b] text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
                   Expert Legal Consultation
                 </h1>
-                <p className="font-['Inter'] text-[#181c1e] text-[16px] leading-6">
+                <p className="font-['Inter'] text-[#181c1e] text-[15px] md:text-[16px] leading-6">
                   Secure, AI-powered legal analysis and case drafting for the modern practitioner.
                 </p>
               </div>

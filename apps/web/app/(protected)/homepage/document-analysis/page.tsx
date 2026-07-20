@@ -1,17 +1,29 @@
 "use client";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import GlobalHeader from "@/components/global-header";
+import { useMediaQueueStore } from "@/lib/store/media-queue.store";
+import { FolderUp, FileText, Trash2 } from "lucide-react";
 
-// --- Mock Initial Database Datasets ---
-const initialAnalysisRecords = [
-  { id: 1, name: "GR_No_210234_Final_Ruling.pdf", meta: "ANALYZED 2 HOURS AGO • RISK ASSESSMENT" },
-  { id: 2, name: "Affidavit_of_Loss_Santamaria.docx", meta: "ANALYZED YESTERDAY • ENTITY EXTRACTION" },
-  { id: 3, name: "NLRC_Case_Folder_09-B.pdf", meta: "ANALYZED 3 DAYS AGO • SUMMARIZATION" }
-];
+type AnalysisRecord = { id: string; name: string; meta: string };
 
 export default function IlovelawyerDocumentAnalysisDashboard() {
-  const [records, setRecords] = useState(initialAnalysisRecords);
+  const [records, setRecords] = useState<AnalysisRecord[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queuedDocuments = useMediaQueueStore((s) => s.documents);
+  const queueDocument = useMediaQueueStore((s) => s.queueDocument);
+  const removeQueuedDocument = useMediaQueueStore((s) => s.removeDocument);
+
+  // Files attached from the consultation chat's paperclip button show up here first.
+  const allRecords = [
+    ...queuedDocuments.map((doc) => ({ id: doc.id, name: doc.name, meta: doc.meta })),
+    ...records,
+  ];
+
+  const queueFiles = (files: FileList | null) => {
+    if (!files) return;
+    Array.from(files).forEach((file) => queueDocument(file));
+  };
 
   // Drag handlers
   const handleDrag = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -28,102 +40,112 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      alert(`Successfully dropped: ${e.dataTransfer.files[0].name}`);
-    }
+    queueFiles(e.dataTransfer.files);
   };
 
-  const deleteRecord = (id: number) => {
-    setRecords(records.filter(record => record.id !== id));
+  const deleteRecord = (id: string) => {
+    if (queuedDocuments.some((doc) => doc.id === id)) {
+      removeQueuedDocument(id);
+    } else {
+      setRecords(records.filter(record => record.id !== id));
+    }
   };
 
   return (
     <div className="relative w-full min-h-screen bg-[#f7fafc] font-['Inter',sans-serif] flex flex-col justify-between">
-      
+
       {/* Top Banner Branding Row */}
       <GlobalHeader activeTab="document-analysis" />
 
       {/* Main Grid Base Canvas Layout */}
-      <main className="max-w-[1000px] mx-auto px-[48px] py-[85px] flex flex-col gap-[40px]">
-        
+      <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-[48px] py-12 md:py-[85px] flex flex-col gap-8 md:gap-[40px]">
+
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2 border-b border-gray-200 pb-6">
-          <div className="text-xs font-semibold tracking-widest text-gray-500 uppercase">SERVICE / MODULE</div>
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[50px] text-[#131a33]">Document Analysis</h1>
-          <p className="text-[#45464d] text-[18px] max-w-[672px] leading-[28.8px]">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[32px] sm:text-[40px] md:text-[50px] text-[#131a33]">Document Analysis</h1>
+          <p className="text-[#45464d] text-[15px] md:text-[18px] max-w-[672px] leading-relaxed">
             Utilize advanced neural processing to extract intelligence from complex legal filings. Upload any Philippine jurisprudence or statutory document for instant insight.
           </p>
         </div>
 
 
         {/* Drag and Drop Zone Container */}
-        <div 
+        <div
           onDragEnter={handleDrag}
           onDragOver={handleDrag}
           onDragLeave={handleDrag}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-[12px] p-[50px] transition-colors text-center backdrop-blur-[6px] ${
-            dragActive ? "border-amber-500 bg-amber-50/20" : "border-[#76767e] bg-white/85"
+          className={`border-2 border-dashed rounded-2xl p-6 sm:p-[50px] transition-colors text-center ${
+            dragActive ? "border-amber-500 bg-amber-50/40" : "border-gray-300 bg-white hover:border-gray-400"
           }`}
         >
           <div className="flex flex-col items-center justify-center gap-4">
-            <div className="w-16 h-16 bg-[#131a33] rounded-full flex items-center justify-center text-white text-2xl">
-              📂
+            <div className="w-16 h-16 bg-[#131a33] rounded-full flex items-center justify-center text-[#ffe088]">
+              <FolderUp className="w-7 h-7" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-['Libre_Caslon_Text',serif] text-[28px] text-[#181c1e] mb-1">Drag and drop your legal files here</h3>
+              <h3 className="font-['Libre_Caslon_Text',serif] text-[22px] sm:text-[28px] text-[#181c1e] mb-1">Drag and drop your legal files here</h3>
               <p className="text-[#45464d] text-[12px] tracking-[1.2px] uppercase font-semibold">
                 SUPPORTS PDF, DOCX (MAX 50MB)
               </p>
             </div>
-            <label className="bg-black text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded cursor-pointer hover:bg-neutral-800 transition-colors mt-2">
+            <label
+              tabIndex={0}
+              role="button"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              className="bg-[#131a33] text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-[#1c2547] transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
+            >
               Select File
-              <input type="file" className="hidden" onChange={(e) => e.target.files && e.target.files[0] && alert(`Selected: ${e.target.files[0].name}`)} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx"
+                className="hidden"
+                onChange={(e) => {
+                  queueFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
             </label>
           </div>
         </div>
 
-        {/* Bento Service Cards Subgrid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-[32px]">
-          {[
-            { title: "Summarization", desc: "Distill lengthy transcripts and court orders into executive summaries focusing on dispositive portions." },
-            { title: "Entity Extraction", desc: "Automatically identify persons, properties, dates, and citation references within the document structure." },
-            { title: "Risk Assessment", desc: "Pinpoint potential liabilities, missed deadlines, or conflicting clauses based on current Philippine law." }
-          ].map((mod, index) => (
-            <div key={index} className="bg-white/85 backdrop-blur-[6px] border border-[#c6c6ce] p-[33px] flex flex-col justify-between h-full">
-              <div className="flex flex-col gap-4">
-                <span className="text-xl">🛠️</span>
-                <h3 className="font-['Libre_Caslon_Text',serif] text-[28px] text-[#181c1e]">{mod.title}</h3>
-                <p className="text-[#45464d] text-[16px] leading-[25.6px]">{mod.desc}</p>
-              </div>
-              <button className="mt-8 self-start text-[12px] font-semibold tracking-[1.5px] border-b-2 border-black pb-2 hover:text-gray-700 hover:border-amber-700 transition-colors">
-                LEARN MORE
-              </button>
-            </div>
-          ))}
-        </section>
-
         {/* Dynamic History Analysis Log Queue */}
-        <section className="bg-white/85 border border-[#c6c6ce] rounded shadow-sm overflow-hidden">
-          <div className="bg-[#f1f4f6]/50 px-[32px] py-[24px] flex justify-between items-center border-b border-[#c6c6ce]">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[28px] text-[#181c1e]">Recent Analysis</h2>
-            <button className="text-[12px] font-semibold tracking-[1.2px] hover:underline">View All ➔</button>
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-[#f8fafc] px-4 sm:px-[32px] py-4 sm:py-[24px] border-b border-gray-200">
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[24px] text-[#181c1e]">Recent Analysis</h2>
           </div>
-          
+
           <div className="flex flex-col">
-            {records.map((record) => (
-              <div key={record.id} className="flex justify-between items-center px-[32px] py-[16px] border-b border-[#c6c6ce] last:border-0 hover:bg-slate-50/80 transition-colors">
-                <div className="flex gap-4 items-center">
-                  <span className="text-2xl text-gray-500">📄</span>
-                  <div>
-                    <p className="font-medium text-[#181c1e] text-[16px]">{record.name}</p>
+            {allRecords.length === 0 && (
+              <div className="px-4 sm:px-[32px] py-4 sm:py-[24px] text-[#45464d] text-[14px]">No documents analyzed yet.</div>
+            )}
+            {allRecords.map((record) => (
+              <div key={record.id} className="flex justify-between items-center gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-gray-200 last:border-0 hover:bg-slate-50 transition-colors">
+                <div className="flex gap-4 items-center min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+                    <FileText className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#181c1e] text-[16px] truncate">{record.name}</p>
                     <p className="text-[#45464d] text-[10px] tracking-wider uppercase font-semibold mt-0.5">{record.meta}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button title="View Report" className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded transition-colors">👁️</button>
-                  <button title="Delete" onClick={() => deleteRecord(record.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors">🗑️</button>
-                </div>
+                <button
+                  type="button"
+                  title="Delete"
+                  aria-label={`Delete ${record.name}`}
+                  onClick={() => deleteRecord(record.id)}
+                  className="shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>
@@ -140,8 +162,8 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
             <p className="text-sm text-gray-500 leading-relaxed font-normal">
               Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
             </p>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mt-1">
-              © 2024 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
+              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
             </p>
           </div>
 
@@ -154,9 +176,9 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
               <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
-              <a href="#privacy" className="hover:text-black font-normal">Privacy Policy</a>
-              <a href="#terms" className="hover:text-black font-normal">Terms of Use</a>
-              <a href="#ethics" className="hover:text-black font-normal">Ethics Policy</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
+              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
               <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
