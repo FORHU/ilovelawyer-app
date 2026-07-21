@@ -2,8 +2,10 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
@@ -20,29 +22,30 @@ interface GlobalHeaderProps {
 }
 
 const CASE_MENU_ITEMS = [
-  { tab: "create-case", label: "Create Case", href: "/homepage/create-case" },
-  { tab: "case-portfolio", label: "Case Portfolio", href: "/homepage/case-portfolio" },
+  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case" },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio" },
 ] as const;
 
 const USER_MENU_ITEMS = [
-  { label: "Profile", href: "/homepage/profile", icon: UserCircle },
-  { label: "Terms & Conditions", href: "/homepage/term", icon: FileText },
+  { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle },
+  { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText },
 ] as const;
 
 // Flat list for the mobile drawer — the desktop CASE dropdown's two items are
 // inlined here directly since a nested toggle inside an already-open drawer
 // is an extra tap for no benefit at phone width.
 const MOBILE_NAV_ITEMS = [
-  { tab: "consultation", label: "Consultation", href: "/homepage" },
-  { tab: "create-case", label: "Create Case", href: "/homepage/create-case" },
-  { tab: "case-portfolio", label: "Case Portfolio", href: "/homepage/case-portfolio" },
-  { tab: "library", label: "Library", href: "/homepage/library" },
-  { tab: "transcription", label: "Transcription", href: "/homepage/transcription" },
-  { tab: "document-analysis", label: "Documents", href: "/homepage/document-analysis" },
-  { tab: "calendar", label: "Calendar", href: "/homepage/calendar" },
+  { tab: "consultation", labelKey: "nav.consultation", href: "/homepage" },
+  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case" },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio" },
+  { tab: "library", labelKey: "nav.library", href: "/homepage/library" },
+  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription" },
+  { tab: "document-analysis", labelKey: "nav.documents", href: "/homepage/document-analysis" },
+  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar" },
 ] as const;
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
+  const { t } = useTranslation("common");
   const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -109,11 +112,11 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           href="/"
           className="font-['Libre_Caslon_Text'] text-white text-[20px] tracking-[-0.6px] shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
-          ilovelawyer
+          {t("appName")}
         </a>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
-          <a href="/homepage" className={getSubTabClass("consultation")}>CONSULTATION</a>
+          <a href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</a>
 
           <div className="relative" ref={caseMenuRef}>
             <button
@@ -127,7 +130,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               aria-haspopup="menu"
               aria-expanded={isCaseMenuOpen}
             >
-              CASE
+              {t("nav.case").toUpperCase()}
               <ChevronDown
                 className={`w-3 h-3 transition-transform duration-200 ${isCaseMenuOpen ? "rotate-180" : ""}`}
                 aria-hidden="true"
@@ -149,21 +152,23 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                       activeTab === item.tab ? "text-black font-bold bg-black/5" : "text-black/60 hover:text-black hover:bg-black/5"
                     }`}
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </a>
                 ))}
               </div>
             )}
           </div>
 
-          <a href="/homepage/library" className={getSubTabClass("library")}>LIBRARY</a>
-          <a href="/homepage/transcription" className={getSubTabClass("transcription")}>TRANSCRIPTION</a>
-          <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>DOCUMENTS</a>
-          <a href="/homepage/calendar" className={getSubTabClass("calendar")}>CALENDAR</a>
+          <a href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</a>
+          <a href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</a>
+          <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</a>
+          <a href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</a>
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
-        <div className="hidden lg:flex gap-[24px] text-white">
+        <div className="hidden lg:flex items-center gap-[24px] text-white">
+          <LanguageSwitcher />
+
           <div className="relative" ref={userMenuRef}>
             <button
               type="button"
@@ -171,7 +176,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               className={`cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "opacity-100" : ""}`}
               aria-haspopup="menu"
               aria-expanded={isUserMenuOpen}
-              aria-label="Account menu"
+              aria-label={t("userMenu.accountMenu")}
             >
               <User className="w-5 h-5" />
             </button>
@@ -197,7 +202,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-black/60 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#131a33]/30"
                   >
                     <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                    {item.label}
+                    {t(item.labelKey)}
                   </a>
                 ))}
 
@@ -212,7 +217,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                   className="flex w-full cursor-pointer items-center gap-2 border-t border-black/10 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-                  {logout.isPending ? "Logging out…" : "Log Out"}
+                  {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
                 </button>
               </div>
             )}
@@ -224,7 +229,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           type="button"
           onClick={() => setIsMobileMenuOpen((prev) => !prev)}
           className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
           aria-expanded={isMobileMenuOpen}
         >
           {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -242,12 +247,16 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={getMobileTabClass(item.tab)}
               >
-                {item.label}
+                {t(item.labelKey)}
               </a>
             ))}
           </nav>
 
           <div className="mt-4 flex flex-col gap-0.5 border-t border-white/10 pt-4">
+            <div className="px-3 pb-3">
+              <LanguageSwitcher />
+            </div>
+
             {user && (
               <div className="px-3 pb-3">
                 <p className="truncate text-xs font-bold text-white">{user.username}</p>
@@ -263,7 +272,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-white/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
               >
                 <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                {item.label}
+                {t(item.labelKey)}
               </a>
             ))}
 
@@ -277,7 +286,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-400 transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-              {logout.isPending ? "Logging out…" : "Log Out"}
+              {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
             </button>
           </div>
         </div>

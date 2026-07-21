@@ -1,0 +1,56 @@
+{
+  "title": "Create Case",
+  "subtitle": "File a new matter, name the parties involved, and attach supporting documents in one submission.",
+  "dismissConfirmation": "Dismiss confirmation",
+  "dismissError": "Dismiss error",
+  "filingInitialized": "Filing initialized for “{{title}}”.",
+  "submitFailed": "Failed to submit case filing.",
+  "sectionIdentity": {
+    "heading": "I. Case Identity",
+    "subheading": "The caption and venue for this matter.",
+    "caseTitleLabel": "Case Title / Caption",
+    "required": "(required)",
+    "caseTitlePlaceholder": "e.g. Cruz vs. Santos",
+    "caseTitleError": "Please specify a case title before initiating submission.",
+    "actionTypeLabel": "Type of Action",
+    "selectAction": "Select action",
+    "jurisdictionLabel": "Court / Jurisdictional Branch",
+    "jurisdictionPlaceholder": "e.g. RTC Branch 12, Makati City"
+  },
+  "sectionParties": {
+    "heading": "II. Party Details",
+    "subheading": "Everyone named in the case caption, on either side.",
+    "partyLabel": "Party {{number}}",
+    "removeParty": "Remove party {{number}}",
+    "removePartyConfirm": "Remove \"{{name}}\" from Party Details? This can't be undone.",
+    "fullNameLabel": "Full Name / Corporate Entity",
+    "fullNamePlaceholder": "Enter explicit legal identity name",
+    "designationLabel": "Designation",
+    "addParty": "Add Party"
+  },
+  "sectionEvidence": {
+    "heading": "III. Evidentiary Submissions",
+    "subheading": "Attach any documents to be indexed with this filing.",
+    "depositCaseFiles": "Deposit Case Files",
+    "dropHint": "Drag & drop, or browse. PDF or DOCX standard for automated indexing",
+    "selectDocuments": "Select Documents",
+    "attachedDossiers": "Attached Dossiers ({{count}}):",
+    "retryUpload": "Retry uploading {{fileName}}",
+    "removeFile": "Remove {{fileName}}",
+    "uploadFailed": "Upload failed."
+  },
+  "submitting": "Submitting…",
+  "initiateFiling": "Initiate Filing",
+  "editAnytimeNote": "You can edit these details anytime after filing.",
+  "actionTypes": {
+    "civilLitigation": "Civil Litigations",
+    "criminalProceeding": "Criminal Proceeding",
+    "laborDispute": "Labor Dispute",
+    "commercialArbitration": "Commercial Arbitration"
+  },
+  "designations": {
+    "petitionerPlaintiff": "Petitioner / Plaintiff",
+    "respondentDefendant": "Respondent / Defendant",
+    "intervenorThirdParty": "Intervenor / Third-Party"
+  }
+}

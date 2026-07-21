@@ -1,12 +1,15 @@
 "use client";
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
+import { SiteFooter } from "@/components/site-footer";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { FolderUp, FileText, Trash2 } from "lucide-react";
 
 type AnalysisRecord = { id: string; name: string; meta: string };
 
 export default function IlovelawyerDocumentAnalysisDashboard() {
+  const { t } = useTranslation("document-analysis");
   const [records, setRecords] = useState<AnalysisRecord[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,9 +65,9 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
 
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2 border-b border-gray-200 pb-6">
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[32px] sm:text-[40px] md:text-[50px] text-[#131a33]">Document Analysis</h1>
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[32px] sm:text-[40px] md:text-[50px] text-[#131a33]">{t("title")}</h1>
           <p className="text-[#45464d] text-[15px] md:text-[18px] max-w-[672px] leading-relaxed">
-            Utilize advanced neural processing to extract intelligence from complex legal filings. Upload any Philippine jurisprudence or statutory document for instant insight.
+            {t("subtitle")}
           </p>
         </div>
 
@@ -84,9 +87,9 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
               <FolderUp className="w-7 h-7" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-['Libre_Caslon_Text',serif] text-[22px] sm:text-[28px] text-[#181c1e] mb-1">Drag and drop your legal files here</h3>
+              <h3 className="font-['Libre_Caslon_Text',serif] text-[22px] sm:text-[28px] text-[#181c1e] mb-1">{t("dropzone.heading")}</h3>
               <p className="text-[#45464d] text-[12px] tracking-[1.2px] uppercase font-semibold">
-                SUPPORTS PDF, DOCX (MAX 50MB)
+                {t("dropzone.supports")}
               </p>
             </div>
             <label
@@ -100,7 +103,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
               }}
               className="bg-[#131a33] text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-[#1c2547] transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
             >
-              Select File
+              {t("dropzone.selectFile")}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -119,12 +122,12 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
         {/* Dynamic History Analysis Log Queue */}
         <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="bg-[#f8fafc] px-4 sm:px-[32px] py-4 sm:py-[24px] border-b border-gray-200">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[24px] text-[#181c1e]">Recent Analysis</h2>
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[24px] text-[#181c1e]">{t("recentAnalysis")}</h2>
           </div>
 
           <div className="flex flex-col">
             {allRecords.length === 0 && (
-              <div className="px-4 sm:px-[32px] py-4 sm:py-[24px] text-[#45464d] text-[14px]">No documents analyzed yet.</div>
+              <div className="px-4 sm:px-[32px] py-4 sm:py-[24px] text-[#45464d] text-[14px]">{t("noDocuments")}</div>
             )}
             {allRecords.map((record) => (
               <div key={record.id} className="flex justify-between items-center gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-gray-200 last:border-0 hover:bg-slate-50 transition-colors">
@@ -139,8 +142,8 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                 </div>
                 <button
                   type="button"
-                  title="Delete"
-                  aria-label={`Delete ${record.name}`}
+                  title={t("delete")}
+                  aria-label={t("deleteRecord", { name: record.name })}
                   onClick={() => deleteRecord(record.id)}
                   className="shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                 >
@@ -152,43 +155,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
         </section>
       </main>
 
-      {/* SYSTEMATIC LEGAL FOOTER BLOCK */}
-      <footer className="w-full bg-white border-t border-gray-200 py-16 relative z-10">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
-          <div className="flex flex-col gap-4 max-w-sm">
-            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">
-              ilovelawyer
-            </span>
-            <p className="text-sm text-gray-500 leading-relaxed font-normal">
-              Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
-            </p>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
-              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
-            </p>
-          </div>
-
-          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
-              <a href="#const" className="hover:text-black font-normal">Constitution</a>
-              <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
-              <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
-              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
-              <a href="#support" className="hover:text-black font-normal">Support Center</a>
-              <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>
-              <a href="#contact" className="hover:text-black font-normal">Contact Us</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

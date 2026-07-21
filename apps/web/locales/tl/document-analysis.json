@@ -1,0 +1,13 @@
+{
+  "title": "Pagsusuri ng Dokumento",
+  "subtitle": "Gamitin ang advanced na neural processing upang kumuha ng insight mula sa mga kumplikadong legal na paghahain. Mag-upload ng anumang Philippine jurisprudence o statutory document para sa instant na pagsusuri.",
+  "dropzone": {
+    "heading": "I-drag at i-drop ang iyong mga legal na file dito",
+    "supports": "Sinusuportahan ang PDF, DOCX (max 50MB)",
+    "selectFile": "Pumili ng File"
+  },
+  "recentAnalysis": "Kamakailang Pagsusuri",
+  "noDocuments": "Wala pang na-analyze na dokumento.",
+  "delete": "Burahin",
+  "deleteRecord": "Burahin ang {{name}}"
+}

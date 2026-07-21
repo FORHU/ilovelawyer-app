@@ -1,0 +1,30 @@
+{
+  "title": "Calendar",
+  "subtitle": "Track hearings, deadlines, and case notes in one place.",
+  "nothingScheduledMonth": "Nothing scheduled this month yet.",
+  "nothingScheduledDay": "Nothing scheduled for this day yet.",
+  "selectDay": "Select a day",
+  "overflowMore": "+{{count}} more",
+  "dismissError": "Dismiss error",
+  "addTo": "Add to {{date}}",
+  "appointment": "Appointment",
+  "note": "Note",
+  "titlePlaceholder": "Title",
+  "descriptionPlaceholder": "Description (optional)",
+  "notePlaceholder": "Note",
+  "saving": "Saving…",
+  "addAppointment": "Add Appointment",
+  "addNote": "Add Note",
+  "errors": {
+    "titleRequired": "Title is required.",
+    "timeRequired": "Start and end time are required.",
+    "endAfterStart": "End time must be after start time.",
+    "appointmentSaveFailed": "Failed to save appointment.",
+    "noteRequired": "Note text is required.",
+    "noteSaveFailed": "Failed to save note.",
+    "loadFailed": "Couldn't load this month's schedule."
+  },
+  "previousMonth": "Previous month",
+  "nextMonth": "Next month",
+  "retry": "Retry"
+}

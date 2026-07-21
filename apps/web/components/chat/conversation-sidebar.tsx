@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Plus, History, Image as ImageIcon, PanelLeft, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useConversationsQuery } from "@/lib/chat/mutations";
 
 interface ConversationSidebarProps {
@@ -14,6 +15,7 @@ export default function ConversationSidebar({
   onSelectConversation,
   onNewChat,
 }: ConversationSidebarProps) {
+  const { t } = useTranslation("homepage");
   const [expanded, setExpanded] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { data: conversations } = useConversationsQuery();
@@ -50,24 +52,24 @@ export default function ConversationSidebar({
           setExpanded(false);
           setIsMobileOpen(false);
         }}
-        title="New chat"
+        title={t("sidebar.newChat")}
         className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
         <Plus className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">New chat</span>}
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.newChat")}</span>}
       </button>
 
       <button
         onClick={() => !isMobile && setExpanded((v) => !v)}
-        title="Recent conversations"
+        title={t("sidebar.recentConversationsTitle")}
         className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
         <History className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">Recent</span>}
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.recent")}</span>}
       </button>
 
       {(expanded || isMobile) && (
@@ -75,7 +77,7 @@ export default function ConversationSidebar({
           <nav className="h-full overflow-y-auto px-2 pb-4 flex flex-col gap-1 scrollbar-none [-ms-overflow-style:none]">
             {conversations?.map((c) => {
               const isActive = c.id === activeConversationId;
-              const label = c.title?.trim() || "Untitled conversation";
+              const label = c.title?.trim() || t("sidebar.untitledConversation");
               return (
                 <button
                   key={c.id}
@@ -107,13 +109,13 @@ export default function ConversationSidebar({
 
       <button
         type="button"
-        title="Gallery"
+        title={t("sidebar.gallery")}
         className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 mt-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
         <ImageIcon className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">Gallery</span>}
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.gallery")}</span>}
       </button>
     </>
   );
@@ -125,8 +127,8 @@ export default function ConversationSidebar({
       <button
         type="button"
         onClick={() => setIsMobileOpen(true)}
-        title="Open conversations"
-        aria-label="Open conversations"
+        title={t("sidebar.openConversations")}
+        aria-label={t("sidebar.openConversations")}
         className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-md border border-white/40 shadow-lg text-neutral-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40"
       >
         <PanelLeft className="h-5 w-5" aria-hidden="true" />
@@ -148,11 +150,11 @@ export default function ConversationSidebar({
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
           <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-white py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
-              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-neutral-700">Conversations</span>
+              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-neutral-700">{t("sidebar.conversations")}</span>
               <button
                 type="button"
                 onClick={() => setIsMobileOpen(false)}
-                aria-label="Close conversations"
+                aria-label={t("sidebar.closeConversations")}
                 className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
               >
                 <X className="h-4 w-4" aria-hidden="true" />

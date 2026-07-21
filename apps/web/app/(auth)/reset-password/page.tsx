@@ -2,10 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import svgResetPaths from "@/imports/ResetPassword/svg-f5h6gvo5lz";
 import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
 
 function ResetPasswordContent() {
+  const { t } = useTranslation("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -51,17 +53,17 @@ function ResetPasswordContent() {
             className="text-[#f7fafc] text-[56px] leading-[68px] tracking-[-1px] mb-4"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
           >
-            Secure Your<br />Access.
+            {t("resetPassword.sideHeading")}
           </h2>
           <p className="text-[rgba(224,227,229,0.7)] text-base leading-[26px] max-w-[380px]" style={{ fontFamily: "Inter, sans-serif" }}>
-            Your credentials are the gateway to your legal practice. Set a strong password to protect your work.
+            {t("resetPassword.sideDescription")}
           </p>
         </div>
 
         {/* Bottom quote */}
         <div className="absolute bottom-16 left-16 max-w-[400px] z-10">
           <p className="text-[rgba(255,255,255,0.5)] text-sm leading-[22px] italic" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
-            &ldquo;Fiat justitia ruat caelum — let justice be done though the heavens fall.&rdquo;
+            &ldquo;{t("resetPassword.quote")}&rdquo;
           </p>
         </div>
       </div>
@@ -71,16 +73,22 @@ function ResetPasswordContent() {
         <div className="w-full max-w-[448px] flex flex-col gap-10">
           <div className="flex flex-col gap-2">
             <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-              {checkingToken ? "Checking Link…" : linkInvalid ? "Link Expired" : success ? "Password Updated" : "Set New Password"}
+              {checkingToken
+                ? t("resetPassword.headingChecking")
+                : linkInvalid
+                ? t("resetPassword.headingInvalid")
+                : success
+                ? t("resetPassword.headingSuccess")
+                : t("resetPassword.headingDefault")}
             </h1>
             <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
               {checkingToken
-                ? "Please wait while we verify your reset link."
+                ? t("resetPassword.subheadingChecking")
                 : linkInvalid
-                ? "This password reset link is invalid, expired, or has already been used."
+                ? t("resetPassword.subheadingInvalid")
                 : success
-                ? "Your account is secured. You can now sign in."
-                : "Must be at least 8 characters and include a special character."}
+                ? t("resetPassword.subheadingSuccess")
+                : t("resetPassword.subheadingDefault")}
             </p>
           </div>
 
@@ -88,30 +96,30 @@ function ResetPasswordContent() {
             <div className="flex flex-col gap-6">
               <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
                 <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                  For your security, reset links can only be used once and expire after 1 hour. Request a new one to continue.
+                  {t("resetPassword.invalidNotice")}
                 </p>
               </div>
               <button
                 onClick={() => router.push("/forgot-password")}
-                className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
-                REQUEST NEW LINK
+                {t("resetPassword.requestNewLink")}
               </button>
             </div>
           ) : success ? (
             <div className="flex flex-col gap-6">
               <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
                 <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                  Your password has been successfully reset.
+                  {t("resetPassword.successNotice")}
                 </p>
               </div>
               <button
                 onClick={() => router.push("/login")}
-                className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
-                SIGN IN
+                {t("resetPassword.signIn")}
               </button>
             </div>
           ) : (
@@ -127,15 +135,15 @@ function ResetPasswordContent() {
               }}
             >
               <div className="flex flex-col gap-2">
-                <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                  NEW PASSWORD
+                <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.newPasswordLabel")}
                 </label>
                 <div className="relative">
                   <input
                     type={showNew ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Min. 8 characters + special character"
+                    placeholder={t("resetPassword.newPasswordPlaceholder")}
                     required
                     className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
                     style={{ fontFamily: "Inter, sans-serif" }}
@@ -153,15 +161,15 @@ function ResetPasswordContent() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                  CONFIRM PASSWORD
+                <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.confirmPasswordLabel")}
                 </label>
                 <div className="relative">
                   <input
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
+                    placeholder={t("resetPassword.confirmPasswordPlaceholder")}
                     required
                     className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
                     style={{ fontFamily: "Inter, sans-serif" }}
@@ -177,37 +185,37 @@ function ResetPasswordContent() {
                   </button>
                 </div>
                 {confirmPassword && !passwordsMatch && (
-                  <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>Passwords do not match.</p>
+                  <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>{t("resetPassword.passwordsMismatch")}</p>
                 )}
               </div>
 
               {resetPasswordMutation.isError && resetError?.status !== 400 && (
                 <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>
-                  {resetError?.message || "Something went wrong. Please try again."}
+                  {resetError?.message || t("resetPassword.genericError")}
                 </p>
               )}
 
               <button
                 type="submit"
                 disabled={!valid || !passwordsMatch || !token || resetPasswordMutation.isPending}
-                className="w-full bg-black text-white text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ fontFamily: "Inter, sans-serif" }}
               >
-                {resetPasswordMutation.isPending ? "RESETTING…" : "RESET PASSWORD"}
+                {resetPasswordMutation.isPending ? t("resetPassword.resetting") : t("resetPassword.resetPassword")}
               </button>
             </form>
           )}
 
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2024 ILOVELAWYER
+              {t("footer.copyright", { year: new Date().getFullYear() })}
             </span>
             <button
               onClick={() => router.push("/login")}
-              className="text-[#45464d] text-xs tracking-[1.2px] font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
+              className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              SIGN IN →
+              {t("footer.signIn")}
             </button>
           </div>
         </div>

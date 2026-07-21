@@ -40,10 +40,11 @@ async function attemptRefresh(): Promise<void> {
   return refreshPromise
 }
 
-function buildHeaders(extra?: HeadersInit): HeadersInit {
+function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
   const { accessToken } = useAuthStore.getState()
   return {
-    "Content-Type": "application/json",
+    // Omitted for FormData bodies — the browser must set its own multipart boundary.
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...(extra as Record<string, string>),
   }
@@ -58,11 +59,12 @@ async function throwIfNotOk(res: Response): Promise<void> {
 /** Like apiFetch, but returns the raw Response instead of parsing JSON — for streamed bodies. */
 export async function apiFetchRaw(path: string, options?: FetchOptions): Promise<Response> {
   const { skipAuthRefresh, ...fetchOptions } = options ?? {}
+  const isFormData = fetchOptions.body instanceof FormData
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...fetchOptions,
     credentials: "include",
-    headers: buildHeaders(fetchOptions.headers),
+    headers: buildHeaders(fetchOptions.headers, isFormData),
   })
 
   if (res.status === 401 && !skipAuthRefresh) {
@@ -71,7 +73,7 @@ export async function apiFetchRaw(path: string, options?: FetchOptions): Promise
     const retry = await fetch(`${BASE_URL}${path}`, {
       ...fetchOptions,
       credentials: "include",
-      headers: buildHeaders(fetchOptions.headers),
+      headers: buildHeaders(fetchOptions.headers, isFormData),
     })
 
     await throwIfNotOk(retry)

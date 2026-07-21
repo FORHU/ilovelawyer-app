@@ -1,0 +1,59 @@
+{
+  "appName": "ilovelawyer",
+  "nav": {
+    "consultation": "Consultation",
+    "case": "Case",
+    "createCase": "Create Case",
+    "casePortfolio": "Case Portfolio",
+    "library": "Library",
+    "transcription": "Transcription",
+    "documents": "Documents",
+    "calendar": "Calendar"
+  },
+  "userMenu": {
+    "accountMenu": "Account menu",
+    "profile": "Profile",
+    "terms": "Terms & Conditions",
+    "logout": "Log Out",
+    "loggingOut": "Logging out…"
+  },
+  "mobileMenu": {
+    "open": "Open menu",
+    "close": "Close menu"
+  },
+  "languageSwitcher": {
+    "label": "Change display language"
+  },
+  "footer": {
+    "links": {
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "legalDisclaimer": "Legal Disclaimer",
+      "cookiePolicy": "Cookie Policy",
+      "support": "Support"
+    },
+    "copyright": "© {{year}} ilovelawyer AI Legal Systems. All rights reserved."
+  },
+  "siteFooter": {
+    "tagline": "Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.",
+    "copyright": "© {{year}} ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.",
+    "research": {
+      "heading": "Research",
+      "constitution": "Constitution",
+      "civilCode": "Civil Code",
+      "scraArchive": "SCRA Archive"
+    },
+    "legal": {
+      "heading": "Legal",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfUse": "Terms of Use",
+      "ethicsPolicy": "Ethics Policy"
+    },
+    "connect": {
+      "heading": "Connect",
+      "supportCenter": "Support Center",
+      "mediaInquiries": "Media Inquiries",
+      "contactUs": "Contact Us"
+    }
+  }
+}

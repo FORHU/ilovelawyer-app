@@ -7,12 +7,20 @@ export interface QueuedDocument {
   file: File
 }
 
+// Lifecycle of a queued recording/upload once the user hits "Transcribe":
+// local (never submitted) -> uploading -> starting -> in_progress (AWS Transcribe job running) -> completed | failed
+export type TranscriptionStatus = "local" | "uploading" | "starting" | "in_progress" | "completed" | "failed"
+
 export interface QueuedTranscript {
   id: string
   name: string
   meta: string
   blob: Blob
   durationSeconds: number
+  status: TranscriptionStatus
+  backendId?: string
+  transcript?: string
+  errorMessage?: string
 }
 
 interface MediaQueueState {
@@ -22,6 +30,7 @@ interface MediaQueueState {
   removeDocument: (id: string) => void
   queueTranscript: (blob: Blob, durationSeconds: number) => void
   removeTranscript: (id: string) => void
+  updateTranscript: (id: string, patch: Partial<QueuedTranscript>) => void
 }
 
 // The Documents / Transcription pages are reached via plain <a> links in
@@ -104,6 +113,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
       meta: `QUEUED FROM CONSULTATION • ${Math.max(1, Math.round(durationSeconds))}s`,
       blob,
       durationSeconds,
+      status: "local",
     }
     set((state) => ({ transcripts: [transcript, ...state.transcripts] }))
     dbPut(TRANSCRIPTS_STORE, transcript).catch((err) => console.error("Failed to persist queued transcript:", err))
@@ -113,12 +123,28 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
     set((state) => ({ transcripts: state.transcripts.filter((t) => t.id !== id) }))
     dbDelete(TRANSCRIPTS_STORE, id).catch((err) => console.error("Failed to remove queued transcript:", err))
   },
+
+  updateTranscript: (id, patch) => {
+    let updated: QueuedTranscript | undefined
+    set((state) => ({
+      transcripts: state.transcripts.map((t) => {
+        if (t.id !== id) return t
+        updated = { ...t, ...patch }
+        return updated
+      }),
+    }))
+    if (updated) {
+      dbPut(TRANSCRIPTS_STORE, updated).catch((err) => console.error("Failed to persist transcript update:", err))
+    }
+  },
 }))
 
 if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
   Promise.all([dbGetAll<QueuedDocument>(DOCUMENTS_STORE), dbGetAll<QueuedTranscript>(TRANSCRIPTS_STORE)])
     .then(([documents, transcripts]) => {
-      useMediaQueueStore.setState({ documents, transcripts })
+      // Older records predate the status field; treat them as never-submitted.
+      const normalized = transcripts.map((t) => (t.status ? t : { ...t, status: "local" as const }))
+      useMediaQueueStore.setState({ documents, transcripts: normalized })
     })
     .catch((err) => console.error("Failed to hydrate media queue from IndexedDB:", err))
 }

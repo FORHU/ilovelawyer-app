@@ -9,6 +9,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isSameDay, isSameMonth, parse, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { AlertCircle, ChevronLeft, ChevronRight, Clock, RotateCw, StickyNote, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   useAppointmentsQuery,
   useCreateAppointmentMutation,
@@ -39,6 +40,7 @@ const CalendarItemsContext = React.createContext<{
 } | null>(null);
 
 function CalendarDayCell({ className, day, modifiers, ...props }: React.ComponentProps<typeof DayButton>) {
+  const { t } = useTranslation("calendar");
   const ctx = React.useContext(CalendarItemsContext);
   const itemsByDate = ctx?.itemsByDate;
   const selectedDate = ctx?.selectedDate;
@@ -85,7 +87,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
           </span>
         ))}
         {dayItems && dayItems.overflowCount > 0 && (
-          <span className="text-[10px] text-muted-foreground">+{dayItems.overflowCount} more</span>
+          <span className="text-[10px] text-muted-foreground">{t("overflowMore", { count: dayItems.overflowCount })}</span>
         )}
       </div>
     </button>
@@ -108,8 +110,9 @@ function AgendaView({
   selectedDate: Date | undefined;
   onSelectDay: (date: Date) => void;
 }) {
+  const { t } = useTranslation("calendar");
   if (agendaDays.length === 0) {
-    return <p className="px-4 py-10 text-center text-sm text-white/40">Nothing scheduled this month yet.</p>;
+    return <p className="px-4 py-10 text-center text-sm text-white/40">{t("nothingScheduledMonth")}</p>;
   }
 
   return (
@@ -160,11 +163,12 @@ function AgendaView({
    DISMISSIBLE INLINE ERROR BANNER
    ========================================== */
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  const { t } = useTranslation("calendar");
   return (
     <div className="flex items-center gap-3 rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800" role="alert">
       <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
       <p className="text-xs">{message}</p>
-      <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900" aria-label="Dismiss error">
+      <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900" aria-label={t("dismissError")}>
         <X className="size-3.5" />
       </button>
     </div>
@@ -196,6 +200,7 @@ function PlannerPanel({
   const [description, setDescription] = React.useState("");
   const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
+  const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
   const createNote = useCreateNoteMutation();
@@ -208,9 +213,9 @@ function PlannerPanel({
     const date = toDateKey(selectedDate);
 
     if (itemType === "appointment") {
-      if (!title.trim()) return setFormError("Title is required.");
-      if (!startTime || !endTime) return setFormError("Start and end time are required.");
-      if (endTime <= startTime) return setFormError("End time must be after start time.");
+      if (!title.trim()) return setFormError(t("errors.titleRequired"));
+      if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
+      if (endTime <= startTime) return setFormError(t("errors.endAfterStart"));
       try {
         await createAppointment.mutateAsync({
           title: title.trim(),
@@ -224,15 +229,15 @@ function PlannerPanel({
         setEndTime("");
         setDescription("");
       } catch (err) {
-        setFormError(err instanceof Error ? err.message : "Failed to save appointment.");
+        setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
       }
     } else {
-      if (!noteBody.trim()) return setFormError("Note text is required.");
+      if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
       try {
         await createNote.mutateAsync({ date, body: noteBody.trim() });
         setNoteBody("");
       } catch (err) {
-        setFormError(err instanceof Error ? err.message : "Failed to save note.");
+        setFormError(err instanceof Error ? err.message : t("errors.noteSaveFailed"));
       }
     }
   }
@@ -252,7 +257,7 @@ function PlannerPanel({
 
         <div className="border-t border-slate-100 pt-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
+            {t("addTo", { date: selectedDate ? format(selectedDate, "MMM d, yyyy") : "…" })}
           </p>
 
           <div className="mb-3 flex gap-2">
@@ -263,7 +268,7 @@ function PlannerPanel({
               className="flex-1"
               onClick={() => setItemType("appointment")}
             >
-              Appointment
+              {t("appointment")}
             </Button>
             <Button
               type="button"
@@ -272,7 +277,7 @@ function PlannerPanel({
               className="flex-1"
               onClick={() => setItemType("note")}
             >
-              Note
+              {t("note")}
             </Button>
           </div>
 
@@ -283,7 +288,7 @@ function PlannerPanel({
               <>
                 <input
                   type="text"
-                  placeholder="Title"
+                  placeholder={t("titlePlaceholder")}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
@@ -303,7 +308,7 @@ function PlannerPanel({
                   />
                 </div>
                 <textarea
-                  placeholder="Description (optional)"
+                  placeholder={t("descriptionPlaceholder")}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
@@ -312,7 +317,7 @@ function PlannerPanel({
               </>
             ) : (
               <textarea
-                placeholder="Note"
+                placeholder={t("notePlaceholder")}
                 value={noteBody}
                 onChange={(e) => setNoteBody(e.target.value)}
                 rows={3}
@@ -321,7 +326,7 @@ function PlannerPanel({
             )}
 
             <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-              {isSubmitting ? "Saving…" : itemType === "appointment" ? "Add Appointment" : "Add Note"}
+              {isSubmitting ? t("saving") : itemType === "appointment" ? t("addAppointment") : t("addNote")}
             </Button>
           </form>
         </div>
@@ -329,10 +334,10 @@ function PlannerPanel({
 
       <CardFooter className="flex flex-col items-stretch gap-2 border-t">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
+          {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("selectDay")}
         </p>
         {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
-          <p className="text-xs text-slate-400">Nothing scheduled for this day yet.</p>
+          <p className="text-xs text-slate-400">{t("nothingScheduledDay")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {selectedAppointments.map((appt) => (
@@ -364,6 +369,7 @@ function PlannerPanel({
    MAIN CALENDAR PAGE
    ========================================== */
 export default function CalendarPage() {
+  const { t } = useTranslation("calendar");
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
 
@@ -448,8 +454,8 @@ export default function CalendarPage() {
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
         <div className="mb-8 flex flex-col gap-2">
-          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">Calendar</h1>
-          <p className="max-w-xl text-base text-gray-500">Track hearings, deadlines, and case notes in one place.</p>
+          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">{t("title")}</h1>
+          <p className="max-w-xl text-base text-gray-500">{t("subtitle")}</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -472,7 +478,7 @@ export default function CalendarPage() {
                     size="icon"
                     className="size-11 text-white/70 hover:bg-white/10 hover:text-white"
                     onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
-                    aria-label="Previous month"
+                    aria-label={t("previousMonth")}
                   >
                     <ChevronLeft className="size-4" />
                   </Button>
@@ -482,7 +488,7 @@ export default function CalendarPage() {
                     size="icon"
                     className="size-11 text-white/70 hover:bg-white/10 hover:text-white"
                     onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-                    aria-label="Next month"
+                    aria-label={t("nextMonth")}
                   >
                     <ChevronRight className="size-4" />
                   </Button>
@@ -496,7 +502,7 @@ export default function CalendarPage() {
                   className="flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/10 py-1 pl-3 pr-1 text-xs text-red-300"
                 >
                   <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
-                  <span>Couldn&apos;t load this month&apos;s schedule.</span>
+                  <span>{t("errors.loadFailed")}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -506,7 +512,7 @@ export default function CalendarPage() {
                     className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-200 transition-colors hover:bg-red-500/20 hover:text-white"
                   >
                     <RotateCw className="size-3" aria-hidden="true" />
-                    Retry
+                    {t("retry")}
                   </button>
                 </div>
               )}

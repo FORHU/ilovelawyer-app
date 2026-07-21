@@ -1,0 +1,11 @@
+{
+  "title": "Case Portfolio",
+  "managingActiveProceedings": "Pinamamahalaan ang {{count}} aktibong legal na paglilitis.",
+  "searchPlaceholder": "Maghanap ayon sa pangalan ng kaso, docket number, o kliyente...",
+  "filterBy": "I-filter ayon sa",
+  "statusOption": "Status: {{category}}",
+  "all": "Lahat",
+  "initiateNewFiling": "Simulan ang Bagong Filing",
+  "noMatchingCases": "Walang tugmang kaso",
+  "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas."
+}

@@ -1,0 +1,27 @@
+{
+  "emptyState": {
+    "heading": "Dalubhasang Konsultasyon Legal",
+    "subheading": "Secure, AI-powered na legal analysis at case drafting para sa modernong practitioner."
+  },
+  "input": {
+    "placeholder": "I-draft ang iyong legal na katanungan o mga detalye ng kaso dito...",
+    "attachFile": "Maglakip ng file",
+    "removeAttachedFile": "Alisin ang nakalakip na file",
+    "removeFile": "Alisin ang {{fileName}}",
+    "startRecording": "Simulan ang pagre-record",
+    "stopRecording": "Ihinto ang pagre-record",
+    "sendMessage": "Ipadala ang mensahe"
+  },
+  "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
+  "sendError": "May nagkamali. Pakisubukang muli.",
+  "sidebar": {
+    "newChat": "Bagong chat",
+    "recent": "Kamakailan",
+    "recentConversationsTitle": "Mga kamakailang usapan",
+    "gallery": "Gallery",
+    "untitledConversation": "Walang pamagat na usapan",
+    "conversations": "Mga Usapan",
+    "openConversations": "Buksan ang mga usapan",
+    "closeConversations": "Isara ang mga usapan"
+  }
+}

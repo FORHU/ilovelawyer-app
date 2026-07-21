@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 // 1. Added Paperclip and Mic to your lucide-react imports
 import { Paperclip, Mic, Square, X, ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import AssistantMessage from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
@@ -25,6 +26,7 @@ interface DisplayMessage {
 const MAX_TEXTAREA_HEIGHT = 200;
 
 export default function AiConsultationPage() {
+  const { t } = useTranslation("homepage");
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +58,12 @@ export default function AiConsultationPage() {
   // send belongs to, so a stale in-flight stream can recognize it's been abandoned and
   // stop writing chunks/isSending into whatever conversation is now on screen.
   const sendTokenRef = useRef(0);
+  // Set right before router.push in handleSendMessage, when a send creates a brand-new
+  // conversation. The URL update that follows changes `conversationId` the same way a
+  // sidebar click or back/forward would — this lets the render-phase block below tell
+  // "the send I'm already streaming just claimed this id" apart from an actual navigation
+  // away, so it doesn't wipe the messages/token that send is still writing to.
+  const pendingSendConversationIdRef = useRef<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -63,22 +71,26 @@ export default function AiConsultationPage() {
   const createConversation = useCreateConversationMutation();
   const { data: history } = useMessagesQuery(conversationId ?? undefined);
 
-  // conversationId can change two ways: handleNewChat/handleSelectConversation (which clear
-  // `messages` synchronously up front, then router.push resolves a tick later), or browser
-  // back/forward (a popstate that changes the URL directly, bypassing those handlers entirely).
+  // conversationId can change three ways: handleNewChat/handleSelectConversation (which clear
+  // `messages` synchronously up front, then router.push resolves a tick later), browser
+  // back/forward (a popstate that changes the URL directly, bypassing those handlers entirely),
+  // or a send that just created a brand-new conversation claiming this id (pendingSendConversationIdRef).
   // This block is the single place that reacts to the *actual* conversationId change, so it
-  // covers both — adjusting state during render (React's documented pattern for this) rather
-  // than in an effect, so it resolves in the same render conversationId changes in. For the
-  // handler-triggered path `messages`/`isSending` are already cleared, so this is a no-op;
-  // for back/forward it's what prevents the previous conversation's transcript from staying
-  // on screen under the new URL.
+  // covers all three — adjusting state during render (React's documented pattern for this) rather
+  // than in an effect, so it resolves in the same render conversationId changes in. Only the first
+  // two mean "we left this conversation, abandon whatever it was doing"; the third means the
+  // in-flight send we're already streaming just made the URL catch up to it, so it must not be
+  // treated as an abandonment (that would wipe the very messages/token that send is writing to).
   const [prevConversationId, setPrevConversationId] = useState(conversationId);
   if (conversationId !== prevConversationId) {
     setPrevConversationId(conversationId);
     setIsNavigatingConversation(false);
-    setMessages([]);
-    setIsSending(false);
-    sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
+    if (conversationId !== pendingSendConversationIdRef.current) {
+      setMessages([]);
+      setIsSending(false);
+      sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
+    }
+    pendingSendConversationIdRef.current = null;
   }
 
   // Hydrate from the conversation's saved history once, the first time we land on it.
@@ -187,7 +199,7 @@ export default function AiConsultationPage() {
       setIsRecording(true);
     } catch (error) {
       console.error("Microphone access failed:", error);
-      alert("Microphone access is required to record. Please allow microphone permissions and try again.");
+      alert(t("microphoneError"));
     }
   };
 
@@ -213,6 +225,7 @@ export default function AiConsultationPage() {
       if (!activeConversationId) {
         const conversation = await createConversation.mutateAsync({});
         activeConversationId = conversation.id;
+        pendingSendConversationIdRef.current = conversation.id;
         router.push(`/homepage?c=${conversation.id}`);
       }
 
@@ -240,7 +253,7 @@ export default function AiConsultationPage() {
     } catch (error) {
       console.error("Failed to send message:", error);
       if (sendTokenRef.current === myToken) {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: t("sendError") }]);
       }
     } finally {
       if (sendTokenRef.current === myToken) setIsSending(false);
@@ -275,7 +288,7 @@ export default function AiConsultationPage() {
                 type="button"
                 onClick={handleRemoveFile}
                 className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-300/60 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
-                aria-label="Remove attached file"
+                aria-label={t("input.removeAttachedFile")}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -288,21 +301,42 @@ export default function AiConsultationPage() {
           ref={textareaRef}
           rows={1}
           className="w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] text-[15px] text-[#181c1e] placeholder-gray-400 px-2 py-1 leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none]"
-          placeholder="Draft your legal inquiry or case particulars here..."
+          placeholder={t("input.placeholder")}
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isSending}
         />
 
+        {file && (
+          <div className="flex items-center gap-2 px-2 text-xs text-gray-600">
+            <Paperclip className="w-3 h-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{file.name}</span>
+            <button
+              type="button"
+              onClick={handleRemoveFile}
+              className="text-gray-400 hover:text-red-600 shrink-0"
+              aria-label={t("input.removeFile", { fileName: file.name })}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         {/* Toolbar row below the text, matching Gemini's layout */}
         <div className="flex items-center justify-between px-1">
           {/* 2. Replaced the emoji text nodes with <Paperclip /> and <Mic /> components */}
           <div className="flex gap-1 text-gray-500">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileChange}
+            />
             <button
               type="button"
               onClick={handleClipClick}
-              aria-label="Attach file"
+              aria-label={t("input.attachFile")}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
             >
               <Paperclip className="w-4 h-4" />
@@ -311,7 +345,7 @@ export default function AiConsultationPage() {
               type="button"
               onClick={handleMicClick}
               aria-pressed={isRecording}
-              aria-label={isRecording ? "Stop recording" : "Start recording"}
+              aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
               className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30 ${
                 isRecording
                   ? "bg-red-100 text-red-600 animate-pulse hover:bg-red-200"
@@ -325,7 +359,7 @@ export default function AiConsultationPage() {
           <button
             type="submit"
             disabled={isSending || !session}
-            aria-label="Send message"
+            aria-label={t("input.sendMessage")}
             className="bg-[#0b132b] text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
           >
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -356,10 +390,10 @@ export default function AiConsultationPage() {
             <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24">
               <div className="text-center max-w-2xl mx-auto px-2">
                 <h1 className="font-['Libre_Caslon_Text'] font-normal text-[#0b132b] text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
-                  Expert Legal Consultation
+                  {t("emptyState.heading")}
                 </h1>
                 <p className="font-['Inter'] text-[#181c1e] text-[15px] md:text-[16px] leading-6">
-                  Secure, AI-powered legal analysis and case drafting for the modern practitioner.
+                  {t("emptyState.subheading")}
                 </p>
               </div>
               {chatInputBar}

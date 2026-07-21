@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useTranslation } from "react-i18next";
 import svgSignupPaths from "@/imports/SignUpBranding/svg-192ugpzk7r";
 import { useSignupMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 export default function SignupPage() {
+  const { t } = useTranslation("auth");
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -24,7 +26,7 @@ export default function SignupPage() {
   function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     if (!agreed) {
-      setError("You must agree to the Terms of Service and Privacy Policy.");
+      setError(t("signup.agreementRequired"));
       return;
     }
     setError(null);
@@ -42,7 +44,7 @@ export default function SignupPage() {
         { onError: (err) => setError((err as Error).message) }
       );
     },
-    onError: () => setError("Google sign-in failed. Please try again."),
+    onError: () => setError(t("signup.googleError")),
   });
 
   return (
@@ -66,11 +68,11 @@ export default function SignupPage() {
             className="text-[#f7fafc] text-[64px] leading-20 tracking-[-1.28px] mb-4"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
           >
-            The Archive of<br />Excellence.
+            {t("signup.sideHeading")}
           </h2>
           <div className="bg-[#cca830] h-1 w-24 mb-6" />
           <p className="text-[#e0e3e5] text-lg leading-[28.8px] opacity-80 max-w-[384px]" style={{ fontFamily: "Inter, sans-serif" }}>
-            Empowering the Philippine legal landscape through razor-sharp AI analysis and global research agility.
+            {t("signup.sideDescription")}
           </p>
         </div>
       </div>
@@ -80,10 +82,10 @@ export default function SignupPage() {
         <div className="w-full max-w-wd flex flex-col gap-10">
           <div>
             <p className="text-[#cca830] text-xs tracking-[2.4px] uppercase font-semibold mb-2" style={{ fontFamily: "Inter, sans-serif" }}>
-              PLATFORM ENTRANCE
+              {t("signup.eyebrow")}
             </p>
             <h2 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-              Join the Future of Law
+              {t("signup.heading")}
             </h2>
           </div>
 
@@ -101,26 +103,26 @@ export default function SignupPage() {
               <path d={svgSignupPaths.p3d0b3f00} fill="#EA4335" />
             </svg>
             <span className="text-[#181c1e] text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              {googleMutation.isPending ? "Connecting..." : "Continue with Google"}
+              {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}
             </span>
           </button>
 
           <div className="flex items-center gap-4">
             <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
-            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>OR</span>
+            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>{t("signup.or")}</span>
             <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                FULL NAME
+              <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("signup.fullNameLabel")}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="E.g. Juan dela Cruz"
+                placeholder={t("signup.fullNamePlaceholder")}
                 required
                 className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
@@ -128,14 +130,14 @@ export default function SignupPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                PROFESSIONAL EMAIL
+              <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("signup.emailLabel")}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="juan.cruz@lawfirm.ph"
+                placeholder={t("signup.emailPlaceholder")}
                 required
                 className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
@@ -143,8 +145,8 @@ export default function SignupPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                PASSWORD
+              <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("signup.passwordLabel")}
               </label>
               <div className="relative">
                 <input
@@ -177,10 +179,10 @@ export default function SignupPage() {
                 {agreed && <div className="absolute inset-0.5 bg-black rounded-sm" />}
               </div>
               <p className="text-[#45464d] text-base leading-6.5" style={{ fontFamily: "Inter, sans-serif" }}>
-                I agree to the{" "}
-                <span className="font-semibold text-black cursor-pointer hover:text-[#735c00] transition-colors">Terms of Service</span>
-                {" "}and{" "}
-                <span className="font-semibold text-black cursor-pointer hover:text-[#735c00] transition-colors">Privacy Policy</span>.
+                {t("signup.agreementPrefix")}{" "}
+                <span className="font-semibold text-black cursor-pointer hover:text-[#735c00] transition-colors">{t("signup.termsOfService")}</span>
+                {" "}{t("signup.and")}{" "}
+                <span className="font-semibold text-black cursor-pointer hover:text-[#735c00] transition-colors">{t("signup.privacyPolicy")}</span>.
               </p>
             </div>
 
@@ -196,20 +198,20 @@ export default function SignupPage() {
               className="w-full bg-black text-white rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:bg-gray-800 transition-colors border-0 shadow-[0px_4px_20px_-2px_rgba(11,19,43,0.05)] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              {signupMutation.isPending ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+              {signupMutation.isPending ? t("signup.creatingAccount") : t("signup.createAccount")}
             </button>
           </form>
 
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2026 ILOVELAWYER
+              {t("footer.copyright", { year: new Date().getFullYear() })}
             </span>
             <button
               onClick={() => router.push("/login")}
-              className="text-[#45464d] text-xs tracking-[1.2px] font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
+              className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              SIGN IN →
+              {t("footer.signIn")}
             </button>
           </div>
         </div>

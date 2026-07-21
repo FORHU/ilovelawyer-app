@@ -3,10 +3,12 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
+import { useTranslation } from "react-i18next";
 import svgLoginPaths from "@/imports/LoginSourceSerif/svg-ylobrpshkl";
 import { useLoginMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 function LoginContent() {
+  const { t } = useTranslation("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const signupSuccess = searchParams.get("signup") === "success";
@@ -24,10 +26,10 @@ function LoginContent() {
   const isPending = loginMutation.isPending || googleMutation.isPending;
 
   const tabs = [
-    { label: "SIGN IN", active: true, href: null },
-    { label: "JOIN PLATFORM", active: false, href: "/signup" },
-    { label: "RECOVER", active: false, href: "/forgot-password" },
-  ];
+    { labelKey: "login.tabs.signIn", active: true, href: null },
+    { labelKey: "login.tabs.joinPlatform", active: false, href: "/signup" },
+    { labelKey: "login.tabs.recover", active: false, href: "/forgot-password" },
+  ] as const;
 
   function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
@@ -46,7 +48,7 @@ function LoginContent() {
         { onError: (err) => setError((err as Error).message) }
       );
     },
-    onError: () => setError("Google sign-in failed. Please try again."),
+    onError: () => setError(t("login.googleError")),
   });
 
   return (
@@ -70,10 +72,10 @@ function LoginContent() {
             className="text-white text-[24px] leading-9.5 max-w-100 mb-5"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontStyle: "italic" }}
           >
-            &ldquo;The law is reason, free from passion.&rdquo;
+            &ldquo;{t("login.quote")}&rdquo;
           </blockquote>
           <p className="text-[rgba(224,227,229,0.45)] text-[11px] tracking-[2.5px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
-            — Aristotle
+            {t("login.quoteAuthor")}
           </p>
         </div>
       </div>
@@ -83,31 +85,31 @@ function LoginContent() {
         <div className="w-full max-w-md flex flex-col gap-10">
           <div className="flex flex-col gap-1">
             <h1 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-              Welcome Back
+              {t("login.heading")}
             </h1>
             <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
-              Access your secure legal workspace.
+              {t("login.subheading")}
             </p>
           </div>
 
           {signupSuccess && (
             <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-3">
               <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                Account created — sign in to continue.
+                {t("login.signupSuccess")}
               </p>
             </div>
           )}
 
           {/* Tab navigation */}
           <div className="flex gap-8 border-b border-[rgba(198,198,206,0.3)] pb-px">
-            {tabs.map(({ label, active, href }) => (
+            {tabs.map(({ labelKey, active, href }) => (
               <button
-                key={label}
+                key={labelKey}
                 onClick={() => href && router.push(href)}
-                className={`pb-3.5 text-xs tracking-[1.2px] cursor-pointer bg-transparent border-0 relative transition-colors ${active ? "text-black" : "text-[rgba(69,70,77,0.6)] hover:text-[rgba(69,70,77,0.9)]"}`}
+                className={`pb-3.5 text-xs tracking-[1.2px] uppercase cursor-pointer bg-transparent border-0 relative transition-colors ${active ? "text-black" : "text-[rgba(69,70,77,0.6)] hover:text-[rgba(69,70,77,0.9)]"}`}
                 style={{ fontFamily: "Inter, sans-serif", fontWeight: active ? 600 : 400 }}
               >
-                {label}
+                {t(labelKey)}
                 {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />}
               </button>
             ))}
@@ -115,14 +117,14 @@ function LoginContent() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                EMAIL ADDRESS
+              <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("login.emailLabel")}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="attorney@cruz-law.ph"
+                placeholder={t("login.emailPlaceholder")}
                 required
                 className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
@@ -130,8 +132,8 @@ function LoginContent() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-[#45464d] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                PASSWORD
+              <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("login.passwordLabel")}
               </label>
               <div className="relative">
                 <input
@@ -140,7 +142,7 @@ function LoginContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setPwFocused(true)}
                   onBlur={() => setPwFocused(false)}
-                  placeholder="Enter your password"
+                  placeholder={t("login.passwordPlaceholder")}
                   required
                   className="w-full border border-[#c6c6ce] rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors pr-10"
                   style={{ fontFamily: "Inter, sans-serif" }}
@@ -164,8 +166,8 @@ function LoginContent() {
               >
                 {remember && <div className="absolute inset-0.5 bg-black" />}
               </div>
-              <span className="text-[#45464d] text-[10px] tracking-[0.5px]" style={{ fontFamily: "Inter, sans-serif" }}>
-                REMEMBER SESSION
+              <span className="text-[#45464d] text-[10px] tracking-[0.5px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("login.rememberSession")}
               </span>
             </div>
 
@@ -178,15 +180,15 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              {loginMutation.isPending ? "SIGNING IN..." : "SIGN IN"}
+              {loginMutation.isPending ? t("login.signingIn") : t("login.signIn")}
             </button>
 
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
-              <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>OR</span>
+              <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>{t("login.or")}</span>
               <div className="flex-1 h-px border-t border-[rgba(198,198,206,0.3)]" />
             </div>
 
@@ -202,22 +204,22 @@ function LoginContent() {
                 <path d={svgLoginPaths.p1f69ba00} fill="#FBBC05" />
                 <path d={svgLoginPaths.p372b9e00} fill="#EA4335" />
               </svg>
-              <span className="text-[#181c1e] text-base tracking-[3.2px]" style={{ fontFamily: "Inter, sans-serif" }}>
-                {googleMutation.isPending ? "CONNECTING..." : "CONTINUE WITH GOOGLE"}
+              <span className="text-[#181c1e] text-base tracking-[3.2px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
+                {googleMutation.isPending ? t("login.connecting") : t("login.continueWithGoogle")}
               </span>
             </button>
           </form>
 
           <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              © 2026 ILOVELAWYER
+              {t("footer.copyright", { year: new Date().getFullYear() })}
             </span>
             <div className="flex gap-4">
-              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
-                SUPPORT
+              <button className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("footer.support")}
               </button>
-              <button className="text-[#45464d] text-xs tracking-[1.2px] font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
-                PRIVACY
+              <button className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("footer.privacy")}
               </button>
             </div>
           </div>

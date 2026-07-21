@@ -1,0 +1,11 @@
+{
+  "title": "Case Portfolio",
+  "managingActiveProceedings": "Managing {{count}} active legal proceedings.",
+  "searchPlaceholder": "Search by case name, docket number, or client...",
+  "filterBy": "Filter by",
+  "statusOption": "Status: {{category}}",
+  "all": "All",
+  "initiateNewFiling": "Initiate New Filing",
+  "noMatchingCases": "No matching cases",
+  "noMatchingCasesHint": "Try a different search term, or clear the category filter above."
+}

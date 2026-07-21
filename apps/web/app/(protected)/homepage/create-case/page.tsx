@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
+import { SiteFooter } from "@/components/site-footer";
 import CustomSelect from "@/components/ui/custom-select";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users } from "lucide-react";
 import {
@@ -10,17 +12,17 @@ import {
 } from "@/lib/cases/mutations";
 
 const ACTION_TYPE_OPTIONS = [
-  { value: "Civil Litigation", label: "Civil Litigations" },
-  { value: "Criminal Proceeding", label: "Criminal Proceeding" },
-  { value: "Labor Dispute", label: "Labor Dispute" },
-  { value: "Commercial Arbitration", label: "Commercial Arbitration" },
-];
+  { value: "Civil Litigation", labelKey: "actionTypes.civilLitigation" },
+  { value: "Criminal Proceeding", labelKey: "actionTypes.criminalProceeding" },
+  { value: "Labor Dispute", labelKey: "actionTypes.laborDispute" },
+  { value: "Commercial Arbitration", labelKey: "actionTypes.commercialArbitration" },
+] as const;
 
 const DESIGNATION_OPTIONS = [
-  { value: "Petitioner / Plaintiff", label: "Petitioner / Plaintiff" },
-  { value: "Respondent / Defendant", label: "Respondent / Defendant" },
-  { value: "Intervenor / Third-Party", label: "Intervenor / Third-Party" },
-];
+  { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
+  { value: "Respondent / Defendant", labelKey: "designations.respondentDefendant" },
+  { value: "Intervenor / Third-Party", labelKey: "designations.intervenorThirdParty" },
+] as const;
 
 interface Party {
   id: string;
@@ -41,6 +43,7 @@ interface UploadedFile {
 
 
 export default function CreateCasePage() {
+  const { t } = useTranslation("create-case");
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Seeded party keeps a stable id (safe for the initial server/client render);
   // parties added afterward only ever happen client-side, via addParty below.
@@ -88,7 +91,7 @@ export default function CreateCasePage() {
       const target = prev.parties.find((p) => p.id === id);
       // Only prompt when there's actually something typed to lose — an untouched
       // blank row can be removed without friction.
-      if (target?.name.trim() && !window.confirm(`Remove "${target.name}" from Party Details? This can't be undone.`)) {
+      if (target?.name.trim() && !window.confirm(t("sectionParties.removePartyConfirm", { name: target.name }))) {
         return prev;
       }
       return { ...prev, parties: prev.parties.filter((p) => p.id !== id) };
@@ -116,7 +119,7 @@ export default function CreateCasePage() {
     } catch (err) {
       updateUploadedFile(entry.id, {
         status: "error",
-        error: err instanceof Error ? err.message : "Upload failed",
+        error: err instanceof Error ? err.message : t("sectionEvidence.uploadFailed"),
       });
     }
   };
@@ -201,7 +204,7 @@ export default function CreateCasePage() {
       });
       setSubmittedTitle(formData.caseTitle);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit case filing.");
+      setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
   };
 
@@ -218,10 +221,10 @@ export default function CreateCasePage() {
           <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#c9c9c9]/10 blur-3xl" aria-hidden="true" />
           <div className="relative max-w-4xl w-full mx-auto px-6 md:px-12 flex flex-col gap-2">
             <h1 className="font-['Libre_Caslon_Text'] text-3xl md:text-4xl text-white font-normal tracking-[-0.6px]">
-              Create Case
+              {t("title")}
             </h1>
             <p className="text-white/70 text-sm max-w-md">
-              File a new matter, name the parties involved, and attach supporting documents in one submission.
+              {t("subtitle")}
             </p>
           </div>
         </section>
@@ -232,13 +235,13 @@ export default function CreateCasePage() {
             <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3" role="status">
               <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
               <p className="text-sm">
-                Filing initialized for <span className="font-semibold">&ldquo;{submittedTitle}&rdquo;</span>.
+                {t("filingInitialized", { title: submittedTitle })}
               </p>
               <button
                 type="button"
                 onClick={() => setSubmittedTitle(null)}
                 className="ml-auto rounded-full p-1 -m-1 text-emerald-700 hover:text-emerald-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
-                aria-label="Dismiss confirmation"
+                aria-label={t("dismissConfirmation")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -253,7 +256,7 @@ export default function CreateCasePage() {
                 type="button"
                 onClick={() => setSubmitError(null)}
                 className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
-                aria-label="Dismiss error"
+                aria-label={t("dismissError")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -267,8 +270,8 @@ export default function CreateCasePage() {
                 <Scale className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">I. Case Identity</h2>
-                <p className="text-xs text-gray-500 mt-0.5">The caption and venue for this matter.</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionIdentity.heading")}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{t("sectionIdentity.subheading")}</p>
               </div>
             </div>
 
@@ -276,7 +279,7 @@ export default function CreateCasePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-3">
                   <label htmlFor="caseTitle" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    CASE TITLE / CAPTION <span className="text-gray-500 normal-case font-normal">(required)</span>
+                    {t("sectionIdentity.caseTitleLabel")} <span className="text-gray-500 normal-case font-normal">{t("sectionIdentity.required")}</span>
                   </label>
                   <input
                     id="caseTitle"
@@ -286,7 +289,7 @@ export default function CreateCasePage() {
                         ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                         : "border-gray-300 hover:border-gray-400 focus:border-black focus:ring-black/5"
                     }`}
-                    placeholder="e.g. Cruz vs. Santos"
+                    placeholder={t("sectionIdentity.caseTitlePlaceholder")}
                     value={formData.caseTitle}
                     onChange={(e) => handleInputChange("caseTitle", e.target.value)}
                     aria-invalid={caseTitleError}
@@ -295,33 +298,33 @@ export default function CreateCasePage() {
                   {caseTitleError && (
                     <p id="caseTitle-error" className="flex items-center gap-1.5 text-xs text-red-600">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      Please specify a case title before initiating submission.
+                      {t("sectionIdentity.caseTitleError")}
                     </p>
                   )}
                 </div>
 
                 <div className="flex flex-col gap-3">
                   <label htmlFor="actionType" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    TYPE OF ACTION
+                    {t("sectionIdentity.actionTypeLabel")}
                   </label>
                   <CustomSelect
                     id="actionType"
                     value={formData.actionType}
                     onChange={(v) => handleInputChange("actionType", v)}
-                    options={ACTION_TYPE_OPTIONS}
-                    placeholder="Select action"
+                    options={ACTION_TYPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                    placeholder={t("sectionIdentity.selectAction")}
                   />
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-3">
                   <label htmlFor="jurisdiction" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    COURT / JURISDICTIONAL BRANCH
+                    {t("sectionIdentity.jurisdictionLabel")}
                   </label>
                   <input
                     id="jurisdiction"
                     type="text"
                     className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
-                    placeholder="e.g. RTC Branch 12, Makati City"
+                    placeholder={t("sectionIdentity.jurisdictionPlaceholder")}
                     value={formData.jurisdiction}
                     onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
                   />
@@ -337,8 +340,8 @@ export default function CreateCasePage() {
                 <Users className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">II. Party Details</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Everyone named in the case caption, on either side.</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionParties.heading")}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{t("sectionParties.subheading")}</p>
               </div>
             </div>
 
@@ -353,14 +356,14 @@ export default function CreateCasePage() {
                     <div key={party.id} className="border border-l-4 border-gray-200 border-l-[#131a33]/15 rounded-xl p-5 flex flex-col gap-5 transition-colors hover:border-l-[#131a33]/30">
                       <div className="flex items-center justify-between">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold tracking-wider text-gray-500 uppercase">
-                          Party {index + 1}
+                          {t("sectionParties.partyLabel", { number: index + 1 })}
                         </span>
                         {formData.parties.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeParty(party.id)}
                             className="cursor-pointer rounded-full p-2 -m-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                            aria-label={`Remove party ${index + 1}`}
+                            aria-label={t("sectionParties.removeParty", { number: index + 1 })}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -370,13 +373,13 @@ export default function CreateCasePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="flex flex-col gap-3">
                           <label htmlFor={`party-name-${party.id}`} className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                            FULL NAME / CORPORATE ENTITY
+                            {t("sectionParties.fullNameLabel")}
                           </label>
                           <input
                             id={`party-name-${party.id}`}
                             type="text"
                             className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
-                            placeholder="Enter explicit legal identity name"
+                            placeholder={t("sectionParties.fullNamePlaceholder")}
                             value={party.name}
                             onChange={(e) => updateParty(party.id, "name", e.target.value)}
                           />
@@ -384,13 +387,13 @@ export default function CreateCasePage() {
 
                         <div className="flex flex-col gap-3">
                           <label htmlFor={`party-designation-${party.id}`} className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                            DESIGNATION
+                            {t("sectionParties.designationLabel")}
                           </label>
                           <CustomSelect
                             id={`party-designation-${party.id}`}
                             value={party.designation}
                             onChange={(v) => updateParty(party.id, "designation", v)}
-                            options={DESIGNATION_OPTIONS}
+                            options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
                           />
                         </div>
                       </div>
@@ -409,7 +412,7 @@ export default function CreateCasePage() {
                 className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-600 hover:text-[#131a33] hover:border-[#131a33]/30 hover:bg-slate-50 border border-dashed border-gray-300 rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                Add Party
+                {t("sectionParties.addParty")}
               </button>
             </fieldset>
           </section>
@@ -421,8 +424,8 @@ export default function CreateCasePage() {
                 <UploadCloud className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">III. Evidentiary Submissions</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Attach any documents to be indexed with this filing.</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionEvidence.heading")}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{t("sectionEvidence.subheading")}</p>
               </div>
             </div>
 
@@ -454,10 +457,10 @@ export default function CreateCasePage() {
 
                 <div>
                   <h4 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] mb-1">
-                    Deposit Case Files
+                    {t("sectionEvidence.depositCaseFiles")}
                   </h4>
                   <p className="text-gray-500 text-sm italic font-light">
-                    Drag & drop, or browse. PDF or DOCX standard for automated indexing
+                    {t("sectionEvidence.dropHint")}
                   </p>
                 </div>
 
@@ -469,7 +472,7 @@ export default function CreateCasePage() {
                   }}
                   className="bg-[#131a33] text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
                 >
-                  SELECT DOCUMENTS
+                  {t("sectionEvidence.selectDocuments")}
                 </button>
 
                 {formData.uploadedFiles.length > 0 && (
@@ -477,7 +480,7 @@ export default function CreateCasePage() {
                     onClick={(e) => e.stopPropagation()}
                     className="w-full max-w-md mt-4 text-left bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-700 flex flex-col gap-2 max-h-40 overflow-y-auto"
                   >
-                    <p className="font-bold border-b pb-1 mb-1 text-gray-500">ATTACHED DOSSIERS ({formData.uploadedFiles.length}):</p>
+                    <p className="font-bold border-b pb-1 mb-1 text-gray-500">{t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}</p>
                     {formData.uploadedFiles.map((f) => (
                       <div key={f.id} className="flex flex-col gap-1 py-0.5">
                         <div className="flex items-center gap-2">
@@ -494,7 +497,7 @@ export default function CreateCasePage() {
                               type="button"
                               onClick={() => retryUpload(f.id)}
                               className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
-                              aria-label={`Retry uploading ${f.file.name}`}
+                              aria-label={t("sectionEvidence.retryUpload", { fileName: f.file.name })}
                             >
                               <RotateCw className="w-3.5 h-3.5" />
                             </button>
@@ -503,7 +506,7 @@ export default function CreateCasePage() {
                             type="button"
                             onClick={() => removeFile(f.id)}
                             className="rounded p-0.5 text-gray-400 hover:text-red-600 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                            aria-label={`Remove ${f.file.name}`}
+                            aria-label={t("sectionEvidence.removeFile", { fileName: f.file.name })}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -517,7 +520,7 @@ export default function CreateCasePage() {
                           </div>
                         )}
                         {f.status === "error" && (
-                          <p className="text-red-600">{f.error ?? "Upload failed."}</p>
+                          <p className="text-red-600">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
                         )}
                       </div>
                     ))}
@@ -533,50 +536,14 @@ export default function CreateCasePage() {
               disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
               className="bg-[#131a33] text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "SUBMITTING…" : "INITIATE FILING"}
+              {isSubmitting ? t("submitting") : t("initiateFiling")}
             </button>
-            <p className="text-xs text-gray-500">You can edit these details anytime after filing.</p>
+            <p className="text-xs text-gray-500">{t("editAnytimeNote")}</p>
           </div>
         </section>
       </form>
 
-      <footer className="w-full bg-[#f7fafc] border-t border-gray-200 py-16 relative z-10">
-        <div className="max-w-360 mx-auto px-6 md:px-16 flex flex-col md:flex-row items-start justify-between gap-8">
-          <div className="flex flex-col gap-4 max-w-sm">
-            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">
-              ilovelawyer
-            </span>
-            <p className="text-sm text-gray-500 leading-relaxed font-normal">
-              Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
-            </p>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
-              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
-            </p>
-          </div>
-
-          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
-              <a href="#const" className="hover:text-black font-normal">Constitution</a>
-              <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
-              <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
-              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
-              <a href="#support" className="hover:text-black font-normal">Support Center</a>
-              <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>
-              <a href="#contact" className="hover:text-black font-normal">Contact Us</a>
-            </div>
-          </div>
-        </div>
-      </footer>
-
+      <SiteFooter />
     </div>
   );
 }

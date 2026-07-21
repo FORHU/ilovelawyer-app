@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const navLinks = [
-  { label: "Platform", href: "#features" },
-  { label: "Solutions", href: "#features" },
-  { label: "Legal Library", href: "/signup" },
-  { label: "Pricing", href: "/signup" },
-];
+  { key: "platform", href: "#features" },
+  { key: "solutions", href: "#features" },
+  { key: "legalLibrary", href: "/signup" },
+  { key: "pricing", href: "/signup" },
+] as const;
 
 export function LandingNavbar() {
+  const { t } = useTranslation("landing");
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -23,40 +26,41 @@ export function LandingNavbar() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-8">
-          {navLinks.map(({ label, href }) => (
+          {navLinks.map(({ key, href }) => (
             <Link
-              key={label}
+              key={key}
               href={href}
               className="relative text-base text-[#45464d] hover:text-black transition-colors duration-200 group"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              {label}
+              {t(`navbar.links.${key}`)}
               <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 bg-black transition-all duration-200 group-hover:w-full" />
             </Link>
           ))}
         </nav>
 
         <div className="hidden lg:flex items-center gap-6">
+          <LanguageSwitcher />
           <Link
             href="/login"
             className="text-[#45464d] text-base hover:text-black transition-colors duration-200"
             style={{ fontFamily: "Inter, sans-serif" }}
           >
-            Sign In
+            {t("navbar.signIn")}
           </Link>
           <Link
             href="/signup"
             className="bg-black text-white text-xs tracking-[1.2px] uppercase px-6 py-2.5 hover:bg-[#1a1a1a] transition-colors duration-200"
             style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
           >
-            Request Demo
+            {t("navbar.requestDemo")}
           </Link>
         </div>
 
         <button
           className="lg:hidden p-2 cursor-pointer bg-transparent border-0"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-label={mobileOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}
         >
           {mobileOpen ? (
             <svg className="w-5 h-5" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.5}>
@@ -74,17 +78,20 @@ export function LandingNavbar() {
 
       {mobileOpen && (
         <div className="lg:hidden bg-[#f7fafc] border-t border-[rgba(198,198,206,0.3)] px-8 py-6 flex flex-col gap-4">
-          {navLinks.map(({ label, href }) => (
+          {navLinks.map(({ key, href }) => (
             <Link
-              key={label}
+              key={key}
               href={href}
               onClick={() => setMobileOpen(false)}
               className="text-base text-[#45464d] hover:text-black transition-colors duration-200"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
-              {label}
+              {t(`navbar.links.${key}`)}
             </Link>
           ))}
+          <div className="pt-1">
+            <LanguageSwitcher />
+          </div>
           <div className="flex gap-3 mt-2">
             <Link
               href="/login"
@@ -92,7 +99,7 @@ export function LandingNavbar() {
               className="flex-1 border border-black text-black text-xs px-4 py-3 text-center hover:bg-black/5 transition-colors duration-200"
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
             >
-              Sign In
+              {t("navbar.signIn")}
             </Link>
             <Link
               href="/signup"
@@ -100,7 +107,7 @@ export function LandingNavbar() {
               className="flex-1 bg-black text-white text-xs px-4 py-3 text-center hover:bg-[#1a1a1a] transition-colors duration-200"
               style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
             >
-              Get Started
+              {t("navbar.getStarted")}
             </Link>
           </div>
         </div>

@@ -1,0 +1,59 @@
+{
+  "appName": "ilovelawyer",
+  "nav": {
+    "consultation": "상담",
+    "case": "사건",
+    "createCase": "사건 생성",
+    "casePortfolio": "사건 포트폴리오",
+    "library": "라이브러리",
+    "transcription": "녹취록",
+    "documents": "문서",
+    "calendar": "캘린더"
+  },
+  "userMenu": {
+    "accountMenu": "계정 메뉴",
+    "profile": "프로필",
+    "terms": "이용약관",
+    "logout": "로그아웃",
+    "loggingOut": "로그아웃 중…"
+  },
+  "mobileMenu": {
+    "open": "메뉴 열기",
+    "close": "메뉴 닫기"
+  },
+  "languageSwitcher": {
+    "label": "표시 언어 변경"
+  },
+  "footer": {
+    "links": {
+      "privacyPolicy": "개인정보 처리방침",
+      "termsOfService": "서비스 약관",
+      "legalDisclaimer": "법적 고지",
+      "cookiePolicy": "쿠키 정책",
+      "support": "지원"
+    },
+    "copyright": "© {{year}} ilovelawyer AI Legal Systems. 모든 권리 보유."
+  },
+  "siteFooter": {
+    "tagline": "필리핀 법조계에 가장 진보된 디지털 리서치 도구를 제공하는 데 전념하고 있습니다.",
+    "copyright": "© {{year}} ILOVELAWYER PHILIPPINES. 모든 권리 보유.",
+    "research": {
+      "heading": "리서치",
+      "constitution": "헌법",
+      "civilCode": "민법",
+      "scraArchive": "SCRA 아카이브"
+    },
+    "legal": {
+      "heading": "법률",
+      "privacyPolicy": "개인정보 처리방침",
+      "termsOfUse": "이용약관",
+      "ethicsPolicy": "윤리 정책"
+    },
+    "connect": {
+      "heading": "연결",
+      "supportCenter": "지원 센터",
+      "mediaInquiries": "언론 문의",
+      "contactUs": "문의하기"
+    }
+  }
+}

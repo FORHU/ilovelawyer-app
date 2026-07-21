@@ -1,26 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
-const quotes = [
-  {
-    text: "The agility ilovelawyer brings to our research process is unprecedented. It isn't just about speed; it's about the depth of insight we can now provide our clients in a fraction of the time.",
-    author: "Senior Partner",
-    firm: "Cruz & Associates Law Offices",
-  },
-  {
-    text: "ilovelawyer transformed how we approach statutory research. The precision of the AI's understanding of Philippine law is unmatched.",
-    author: "Managing Attorney",
-    firm: "Reyes Legal Group",
-  },
-  {
-    text: "Our litigation team cut case preparation time by 60%. The platform's grasp of jurisprudence is extraordinary.",
-    author: "Chief Litigation Officer",
-    firm: "Bautista & Partners",
-  },
-];
+interface Quote {
+  text: string;
+  author: string;
+  firm: string;
+}
 
 export function QuoteSection() {
+  const { t } = useTranslation("landing");
+  const quotes = t("quotes.items", { returnObjects: true }) as Quote[];
   const [displayed, setDisplayed] = useState(0);
   const [fading, setFading] = useState(false);
 
@@ -77,7 +68,7 @@ export function QuoteSection() {
             <button
               key={i}
               onClick={() => changeQuote(i)}
-              aria-label={`Quote ${i + 1}`}
+              aria-label={t("quotes.quoteLabel", { number: i + 1 })}
               className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
             >
               <div

@@ -1,0 +1,27 @@
+{
+  "emptyState": {
+    "heading": "Expert Legal Consultation",
+    "subheading": "Secure, AI-powered legal analysis and case drafting for the modern practitioner."
+  },
+  "input": {
+    "placeholder": "Draft your legal inquiry or case particulars here...",
+    "attachFile": "Attach file",
+    "removeAttachedFile": "Remove attached file",
+    "removeFile": "Remove {{fileName}}",
+    "startRecording": "Start recording",
+    "stopRecording": "Stop recording",
+    "sendMessage": "Send message"
+  },
+  "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
+  "sendError": "Something went wrong. Please try again.",
+  "sidebar": {
+    "newChat": "New chat",
+    "recent": "Recent",
+    "recentConversationsTitle": "Recent conversations",
+    "gallery": "Gallery",
+    "untitledConversation": "Untitled conversation",
+    "conversations": "Conversations",
+    "openConversations": "Open conversations",
+    "closeConversations": "Close conversations"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "title": "실무자 프로필",
+  "subtitle": "ilovelawyer 워크스페이스에 연결된 계정 정보와 자격 증명을 관리하세요.",
+  "loadingAccount": "계정 불러오는 중…",
+  "verifiedMember": "인증된 회원",
+  "memberSince": "가입일: {{date}}",
+  "accountInformation": {
+    "heading": "계정 정보",
+    "subheading": "워크스페이스 전반에 표시되는 신원 정보입니다."
+  },
+  "fullName": {
+    "label": "성명",
+    "saved": "저장됨",
+    "editAriaLabel": "성명 수정",
+    "placeholder": "예: Juan Dela Cruz",
+    "notProvided": "입력되지 않음",
+    "save": "저장",
+    "saving": "저장 중…",
+    "cancel": "취소",
+    "emptyError": "성명은 비워둘 수 없습니다.",
+    "genericError": "저장에 실패했습니다. 다시 시도해 주세요."
+  },
+  "username": {
+    "label": "사용자 이름",
+    "saved": "저장됨",
+    "editAriaLabel": "사용자 이름 변경",
+    "save": "저장",
+    "saving": "저장 중…",
+    "cancel": "취소",
+    "tooShortError": "사용자 이름은 최소 3자 이상이어야 합니다.",
+    "invalidCharsError": "문자, 숫자, 마침표, 밑줄, 하이픈만 사용할 수 있습니다.",
+    "genericError": "저장에 실패했습니다. 다시 시도해 주세요."
+  },
+  "emailAddress": "이메일 주소",
+  "security": {
+    "heading": "보안",
+    "subheading": "이 계정의 세션 및 로그인 활동입니다.",
+    "lastSignedIn": "마지막 로그인",
+    "signOutTitle": "이 기기에서 로그아웃",
+    "signOutDescription": "현재 세션을 종료하고 로그인 화면으로 돌아갑니다.",
+    "logout": "로그아웃",
+    "loggingOut": "로그아웃 중…"
+  }
+}

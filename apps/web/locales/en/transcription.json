@@ -1,0 +1,50 @@
+{
+  "hero": {
+    "titlePrefix": "Transcription",
+    "titleEmphasis": "Redefined.",
+    "subtitle": "Capture hearings, depositions, and client interviews with speaker-aware transcription built for the demands of legal practice."
+  },
+  "recorder": {
+    "startNewRecording": "Start New Recording",
+    "stopRecorder": "Stop Recorder",
+    "launchRecorder": "Launch Recorder"
+  },
+  "uploader": {
+    "title": "Upload Audio File",
+    "hint": "Drag and drop, or browse. MP3, WAV, or AAC up to 2GB.",
+    "uploading": "Uploading…",
+    "selectFiles": "Select Files"
+  },
+  "queue": {
+    "activityQueue": "Activity Queue",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "live": "Live",
+    "noActiveTranscripts": "No Active Transcripts",
+    "noActiveTranscriptsHint": "Recordings from the consultation chat and files you upload here will appear for review.",
+    "removeFromQueue": "Remove from queue",
+    "viewFullLibrary": "View Full Library",
+    "transcribe": "Transcribe",
+    "retry": "Retry",
+    "viewTranscript": "View Transcript",
+    "copyTranscript": "Copy",
+    "copied": "Copied",
+    "emptyTranscript": "No speech detected in this recording.",
+    "status": {
+      "local": "Not Sent",
+      "uploading": "Uploading",
+      "starting": "Starting",
+      "in_progress": "Processing",
+      "completed": "Done",
+      "failed": "Failed"
+    }
+  },
+  "library": {
+    "untitled": "Untitled Transcription",
+    "loading": "Loading transcriptions…",
+    "loadError": "Couldn't load your transcriptions. Please try again."
+  },
+  "delete": "Delete",
+  "deleteRecord": "Delete {{name}}",
+  "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again."
+}

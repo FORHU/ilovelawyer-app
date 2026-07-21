@@ -1,0 +1,13 @@
+{
+  "title": "Document Analysis",
+  "subtitle": "Utilize advanced neural processing to extract intelligence from complex legal filings. Upload any Philippine jurisprudence or statutory document for instant insight.",
+  "dropzone": {
+    "heading": "Drag and drop your legal files here",
+    "supports": "Supports PDF, DOCX (max 50MB)",
+    "selectFile": "Select File"
+  },
+  "recentAnalysis": "Recent Analysis",
+  "noDocuments": "No documents analyzed yet.",
+  "delete": "Delete",
+  "deleteRecord": "Delete {{name}}"
+}

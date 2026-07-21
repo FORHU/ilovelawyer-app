@@ -43,6 +43,13 @@ export const noteKeys = {
   list: (range: { from: string; to: string }) => [...noteKeys.lists(), range] as const,
 }
 
+export const transcriptionKeys = {
+  all: ["transcriptions"] as const,
+  lists: () => [...transcriptionKeys.all, "list"] as const,
+  details: () => [...transcriptionKeys.all, "detail"] as const,
+  detail: (id: string) => [...transcriptionKeys.details(), id] as const,
+}
+
 export const legalRagKeys = {
   all: ["legal-rag"] as const,
   lists: () => [...legalRagKeys.all, "list"] as const,
