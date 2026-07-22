@@ -93,15 +93,15 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
         type="button"
         id={id}
         onClick={handleTriggerClick}
-        className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 focus-visible:border-[#131a33]"
+        className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={selected ? "text-[#181c1e]" : "text-gray-400"}>
+        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
       </button>
@@ -110,7 +110,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
         <ul
           role="listbox"
           style={menuPosition}
-          className="fixed z-50 max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg py-1 text-sm"
+          className="fixed z-50 max-h-56 overflow-y-auto rounded-xl border border-border bg-card shadow-lg py-1 text-sm"
         >
           {options.map((opt) => {
             const isSelected = opt.value === value;
@@ -122,8 +122,8 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
                     onChange(opt.value);
                     setOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-slate-100 ${
-                    isSelected ? "bg-slate-100 text-black font-medium" : "text-[#181c1e] hover:bg-slate-50"
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
+                    isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50"
                   }`}
                 >
                   {opt.label}

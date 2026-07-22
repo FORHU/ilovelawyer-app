@@ -11,27 +11,27 @@ const components: Components = {
   h4: ({ children }) => <p className="text-[16px] font-bold mt-3 mb-1 first:mt-0">{children}</p>,
   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
   strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-  em: ({ children }) => <em className="italic font-medium text-[#0b132b]">{children}</em>,
+  em: ({ children }) => <em className="italic font-medium text-primary">{children}</em>,
   ul: ({ children }) => <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-1">{children}</ul>,
   ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 last:mb-0 space-y-1">{children}</ol>,
   li: ({ children }) => <li className="pl-1">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-neutral-300 pl-3 my-2 text-neutral-600">{children}</blockquote>
+    <blockquote className="border-l-2 border-border pl-3 my-2 text-muted-foreground">{children}</blockquote>
   ),
   a: ({ children, href }) => (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-2 font-medium text-[#0b132b]"
+      className="underline underline-offset-2 font-medium text-primary"
     >
       {children}
     </a>
   ),
   code: ({ children }) => (
-    <code className="bg-neutral-100 rounded px-1 py-0.5 text-[14px] font-mono">{children}</code>
+    <code className="bg-muted rounded px-1 py-0.5 text-[14px] font-mono">{children}</code>
   ),
-  hr: () => <hr className="my-3 border-neutral-200" />,
+  hr: () => <hr className="my-3 border-border" />,
 };
 
 // The backend appends a `[RELATED_QUERIES][...][/RELATED_QUERIES]` suffix intended
@@ -43,7 +43,7 @@ function stripRelatedQueries(content: string): string {
 
 export default function AssistantMessage({ content }: { content: string }) {
   return (
-    <div className="text-[15px] leading-6 font-['Inter'] text-[#181c1e]">
+    <div className="text-[15px] leading-6 font-['Inter'] text-foreground">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {stripRelatedQueries(content)}
       </ReactMarkdown>

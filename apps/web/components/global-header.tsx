@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-provider";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
@@ -18,7 +19,16 @@ interface GlobalHeaderProps {
     | "document-analysis"
     | "calendar"
     | "term"
-    | "profile";
+    | "profile"
+    // Footer-only destinations — reachable from GlobalFooter, not part of the primary nav
+    | "constitution"
+    | "civil-code"
+    | "scra-archive"
+    | "privacy-policy"
+    | "ethics-policy"
+    | "support-center"
+    | "media-inquiries"
+    | "contact-us";
 }
 
 const CASE_MENU_ITEMS = [
@@ -106,7 +116,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   };
 
   return (
-    <header className="absolute top-0 left-0 w-full bg-[#0b132b] border-b border-white/10 z-50">
+    <header className="absolute top-0 left-0 w-full bg-brand-navy-950 border-b border-white/10 z-50">
       <div className="w-full max-w-[1440px] mx-auto h-14 flex items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8">
         <a
           href="/"
@@ -140,7 +150,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             {isCaseMenuOpen && (
               <div
                 role="menu"
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-white border border-white rounded-xl shadow-xl py-1 overflow-hidden"
+                className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-card border border-border rounded-xl shadow-xl py-1 overflow-hidden"
               >
                 {CASE_MENU_ITEMS.map((item) => (
                   <a
@@ -148,8 +158,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     href={item.href}
                     role="menuitem"
                     onClick={() => setIsCaseMenuOpen(false)}
-                    className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#131a33]/30 ${
-                      activeTab === item.tab ? "text-black font-bold bg-black/5" : "text-black/60 hover:text-black hover:bg-black/5"
+                    className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 ${
+                      activeTab === item.tab ? "text-foreground font-bold bg-foreground/5" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                     }`}
                   >
                     {t(item.labelKey)}
@@ -166,8 +176,10 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
-        <div className="hidden lg:flex items-center gap-[24px] text-white">
+        <div className="hidden lg:flex items-center items-center gap-[24px] text-white">
           <LanguageSwitcher />
+
+          <ThemeToggle />
 
           <div className="relative" ref={userMenuRef}>
             <button
@@ -184,12 +196,12 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             {isUserMenuOpen && (
               <div
                 role="menu"
-                className="absolute top-full right-0 mt-3 w-52 bg-white border border-white rounded-xl shadow-xl py-1 overflow-hidden"
+                className="absolute top-full right-0 mt-3 w-52 bg-card border border-border rounded-xl shadow-xl py-1 overflow-hidden"
               >
                 {user && (
-                  <div className="px-4 py-2.5 border-b border-black/10">
-                    <p className="truncate text-xs font-bold text-black">{user.username}</p>
-                    <p className="truncate text-[10px] text-black/50">{user.email}</p>
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <p className="truncate text-xs font-bold text-foreground">{user.username}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
                   </div>
                 )}
 
@@ -199,7 +211,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     href={item.href}
                     role="menuitem"
                     onClick={() => setIsUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-black/60 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#131a33]/30"
+                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
                   >
                     <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
                     {t(item.labelKey)}
@@ -214,7 +226,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     setIsUserMenuOpen(false);
                     logout.mutate();
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 border-t border-black/10 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
                   {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
@@ -238,7 +250,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
 
       {/* Mobile drawer — full-width panel replacing the desktop nav + account menu below lg */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/10 bg-[#0b132b] px-4 py-4">
+        <div className="lg:hidden max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/10 bg-brand-navy-950 px-4 py-4">
           <nav className="flex flex-col gap-0.5">
             {MOBILE_NAV_ITEMS.map((item) => (
               <a
@@ -258,9 +270,12 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             </div>
 
             {user && (
-              <div className="px-3 pb-3">
-                <p className="truncate text-xs font-bold text-white">{user.username}</p>
-                <p className="truncate text-[10px] text-white/50">{user.email}</p>
+              <div className="flex items-center justify-between gap-2 px-3 pb-3">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-white">{user.username}</p>
+                  <p className="truncate text-[10px] text-white/50">{user.email}</p>
+                </div>
+                <ThemeToggle />
               </div>
             )}
 

@@ -1,10 +1,11 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw, FileText, Headphones } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import GlobalHeader from "@/components/global-header";
 import { SiteFooter } from "@/components/site-footer";
+import GlobalFooter from "@/components/global-footer";
 import { useMediaQueueStore, type QueuedTranscript } from "@/lib/store/media-queue.store";
 import {
   useUploadAudioMutation,
@@ -12,6 +13,33 @@ import {
   useStartTranscriptionJobMutation,
 } from "@/lib/transcription/mutations";
 import { useTranscriptionPolling } from "@/lib/transcription/use-transcription-polling";
+
+// Minimal shape of the non-standard Web Speech API — not part of lib.dom.d.ts.
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+interface SpeechRecognitionLike extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  const ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition) as (new () => SpeechRecognitionLike) | undefined;
+  return ctor ?? null;
+}
 
 function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -61,6 +89,7 @@ function TranscriptRow({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"read" | "listen">(transcript.text ? "read" : "listen");
 
   useEffect(() => {
     const url = URL.createObjectURL(transcript.blob);
@@ -78,10 +107,10 @@ function TranscriptRow({
   };
 
   return (
-    <div className="group flex flex-col gap-3 rounded-lg border border-[#e0e3e5] p-4 transition-colors hover:border-[#c6c6ce] hover:bg-[#f7fafc]">
+    <div className="group flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:border-foreground/30 hover:bg-muted">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
             <FileAudio className="h-4 w-4" aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -103,13 +132,53 @@ function TranscriptRow({
           title={t("queue.removeFromQueue")}
           aria-label={t("queue.removeFromQueue")}
           onClick={() => onRemove(transcript.id)}
-          className="shrink-0 cursor-pointer rounded-full p-1.5 text-gray-400 opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 group-hover:opacity-100"
+          className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 group-hover:opacity-100"
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      {audioUrl && <audio controls src={audioUrl} className="h-8 w-full" />}
+
+      {/* Read / Listen toggle */}
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 self-start">
+        <button
+          type="button"
+          onClick={() => setActiveTab("read")}
+          aria-pressed={activeTab === "read"}
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+            activeTab === "read" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          Read
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("listen")}
+          aria-pressed={activeTab === "listen"}
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+            activeTab === "listen" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
+          Listen
+        </button>
+      </div>
+
+      {activeTab === "read" ? (
+        transcript.text ? (
+          <div className="max-h-40 overflow-y-auto rounded-md bg-muted border border-border p-3">
+            <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-wrap">{transcript.text}</p>
+          </div>
+        ) : (
+          <p className="rounded-md bg-muted border border-dashed border-border p-3 text-[12px] text-muted-foreground leading-relaxed">
+            No text transcript available for this file. Live recordings are transcribed automatically as you speak —
+            uploaded audio only supports playback for now.
+          </p>
+        )
+      ) : (
+        audioUrl && <audio controls src={audioUrl} className="h-8 w-full" />
+      )}
 
       {transcript.status === "failed" && transcript.errorMessage && (
         <p className="text-[11px] text-red-600">{transcript.errorMessage}</p>
@@ -200,17 +269,23 @@ export default function IlovelawyerTranscriptionDashboard() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [liveCaption, setLiveCaption] = useState("");
+
+  const speechSupported = useMemo(() => getSpeechRecognitionCtor() !== null, []);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalTranscriptRef = useRef("");
 
   useEffect(() => {
     return () => {
       if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
       if (timerRef.current) clearInterval(timerRef.current);
+      recognitionRef.current?.stop();
     };
   }, []);
 
@@ -221,6 +296,8 @@ export default function IlovelawyerTranscriptionDashboard() {
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       recordingStartRef.current = Date.now();
+      finalTranscriptRef.current = "";
+      setLiveCaption("");
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
@@ -229,13 +306,45 @@ export default function IlovelawyerTranscriptionDashboard() {
       recorder.onstop = () => {
         const durationSeconds = (Date.now() - recordingStartRef.current) / 1000;
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        queueTranscript(blob, durationSeconds);
+        recognitionRef.current?.stop();
+        recognitionRef.current = null;
+        queueTranscript(blob, durationSeconds, finalTranscriptRef.current.trim() || undefined);
         stream.getTracks().forEach((track) => track.stop());
         mediaRecorderRef.current = null;
         setIsRecording(false);
         setElapsedSeconds(0);
+        setLiveCaption("");
         if (timerRef.current) clearInterval(timerRef.current);
       };
+
+      const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+      if (SpeechRecognitionCtor) {
+        const recognition = new SpeechRecognitionCtor();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = typeof navigator !== "undefined" ? navigator.language : "en-US";
+        recognition.onresult = (event) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            if (!result) continue;
+            const chunk = result[0]?.transcript ?? "";
+            if (result.isFinal) {
+              finalTranscriptRef.current += `${chunk} `;
+            } else {
+              interim += chunk;
+            }
+          }
+          setLiveCaption(`${finalTranscriptRef.current}${interim}`.trim());
+        };
+        recognition.onerror = (err) => console.error("Live transcription error:", err);
+        recognitionRef.current = recognition;
+        try {
+          recognition.start();
+        } catch (err) {
+          console.error("Failed to start live transcription:", err);
+        }
+      }
 
       recorder.start();
       setIsRecording(true);
@@ -283,16 +392,16 @@ export default function IlovelawyerTranscriptionDashboard() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#f7fafc] text-black font-['Inter',sans-serif]">
+    <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="transcription" />
 
       <main className="max-w-[1440px] mx-auto px-6 md:px-16 py-14 md:py-16 grid grid-cols-12 gap-8">
         {/* Banner Section Info */}
         <div className="col-span-12 flex flex-col gap-3 mb-2">
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-[#181c1e]">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
             {t("hero.titlePrefix")} <span className="italic">{t("hero.titleEmphasis")}</span>
           </h1>
-          <p className="text-[#45464d] text-[14px] md:text-[15px] max-w-[560px] leading-relaxed">
+          <p className="text-muted-foreground text-[14px] md:text-[15px] max-w-[560px] leading-relaxed">
             {t("hero.subtitle")}
           </p>
         </div>
@@ -300,24 +409,43 @@ export default function IlovelawyerTranscriptionDashboard() {
         {/* Primary Functional Panel Columns */}
         <div className="col-span-12 lg:col-span-7 flex flex-col gap-8">
           {/* Card: Launch live recorder controller */}
-          <div className="bg-[#131a33] rounded-xl text-white p-8 md:p-10 relative overflow-hidden flex flex-col justify-between min-h-75">
+          <div className="bg-brand-navy-900 rounded-xl text-white p-8 md:p-10 relative overflow-hidden flex flex-col justify-between min-h-75">
             <div className="flex flex-col gap-3">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-                  isRecording ? "bg-red-500/20 text-red-400" : "bg-[#ffe088]/15 text-[#ffe088]"
+                  isRecording ? "bg-red-500/20 text-red-400" : "bg-brand-gold/15 text-brand-gold"
                 }`}
               >
                 <Mic className="h-5 w-5" aria-hidden="true" />
               </div>
               <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] md:text-[26px]">{t("recorder.startNewRecording")}</h2>
+              {!isRecording && !speechSupported && (
+                <p className="text-[12px] text-white/50 max-w-sm">
+                  Live text transcription isn&apos;t supported in this browser — recordings will still be saved for playback.
+                </p>
+              )}
             </div>
+
+            {isRecording && (
+              <div className="mt-4 rounded-lg bg-white/5 border border-white/10 p-4 min-h-[4.5rem]">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" />
+                  {speechSupported ? "Live caption" : "Live caption unavailable"}
+                </span>
+                <p className="text-[14px] leading-relaxed text-white/90">
+                  {speechSupported
+                    ? liveCaption || "Listening…"
+                    : "This browser can't generate text while recording — audio playback will still be saved."}
+                </p>
+              </div>
+            )}
 
             <div className="mt-8 flex items-center gap-4">
               <button
                 type="button"
                 onClick={handleRecorderClick}
                 aria-pressed={isRecording}
-                className={`inline-flex cursor-pointer items-center gap-2 self-start rounded-lg px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#131a33] ${
+                className={`inline-flex cursor-pointer items-center gap-2 self-start rounded-lg px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-900 ${
                   isRecording
                     ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
                     : "bg-transparent border-white text-white hover:bg-white/10"
@@ -342,17 +470,17 @@ export default function IlovelawyerTranscriptionDashboard() {
             onDragOver={(e) => e.preventDefault()}
             onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
             onDrop={handleDrop}
-            className={`bg-white/85 backdrop-blur-[6px] border shadow-sm rounded-xl p-6 md:p-8 flex justify-between items-center gap-4 flex-wrap transition-colors ${
-              dragActive ? "border-amber-500 bg-amber-50/40" : "border-[#e2e8f0]"
+            className={`bg-card/85 backdrop-blur-[6px] border shadow-sm rounded-xl p-6 md:p-8 flex justify-between items-center gap-4 flex-wrap transition-colors ${
+              dragActive ? "border-amber-500 bg-amber-50/40 dark:bg-amber-500/15" : "border-border"
             }`}
           >
             <div className="flex gap-4 items-start">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#545F72]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-muted-foreground">
                 <Upload className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="font-['Libre_Caslon_Text',serif] text-[18px] md:text-[20px] text-[#181c1e]">{t("uploader.title")}</h3>
-                <p className="text-[#45464d] text-[13px] md:text-[14px]">{t("uploader.hint")}</p>
+                <h3 className="font-['Libre_Caslon_Text',serif] text-[18px] md:text-[20px] text-foreground">{t("uploader.title")}</h3>
+                <p className="text-muted-foreground text-[13px] md:text-[14px]">{t("uploader.hint")}</p>
               </div>
             </div>
             <label
@@ -364,7 +492,7 @@ export default function IlovelawyerTranscriptionDashboard() {
                   fileInputRef.current?.click();
                 }
               }}
-              className="cursor-pointer rounded-lg bg-black px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-white transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer rounded-lg bg-primary px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isUploading ? t("uploader.uploading") : t("uploader.selectFiles")}
               <input
@@ -381,22 +509,22 @@ export default function IlovelawyerTranscriptionDashboard() {
         </div>
 
         {/* Sidebar Status Realtime Queue Display */}
-        <div className="col-span-12 lg:col-span-5 bg-white/85 backdrop-blur-[6px] border border-[#c6c6ce] rounded-xl p-8 md:p-9 flex flex-col justify-between min-h-[500px]">
+        <div className="col-span-12 lg:col-span-5 bg-card/85 backdrop-blur-[6px] border border-border rounded-xl p-8 md:p-9 flex flex-col justify-between min-h-[500px]">
           <div className="flex flex-col min-h-0">
-            <div className="flex justify-between items-center border-b border-[#c6c6ce] pb-4 mb-6">
-              <span className="text-[12px] font-semibold tracking-[1.2px] text-black uppercase">{t("queue.activityQueue")}</span>
-              <span className="bg-[#e0e3e5] text-[#45464d] text-[10px] font-bold px-2 py-1 tracking-wider rounded uppercase">
+            <div className="flex justify-between items-center border-b border-border pb-4 mb-6">
+              <span className="text-[12px] font-semibold tracking-[1.2px] text-foreground uppercase">{t("queue.activityQueue")}</span>
+              <span className="bg-muted text-muted-foreground text-[10px] font-bold px-2 py-1 tracking-wider rounded uppercase">
                 {transcripts.length > 0 ? t("queue.items", { count: transcripts.length }) : t("queue.live")}
               </span>
             </div>
 
             {transcripts.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-16">
-                <div className="w-16 h-16 bg-[#f1f4f6] rounded-full flex items-center justify-center mb-4 text-[#8a93a8]">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4 text-muted-foreground">
                   <FileAudio className="h-6 w-6" aria-hidden="true" />
                 </div>
-                <h4 className="font-['Libre_Caslon_Text',serif] text-[18px] text-[#181c1e] mb-2">{t("queue.noActiveTranscripts")}</h4>
-                <p className="text-[#45464d] text-[13px] max-w-[280px]">
+                <h4 className="font-['Libre_Caslon_Text',serif] text-[18px] text-foreground mb-2">{t("queue.noActiveTranscripts")}</h4>
+                <p className="text-muted-foreground text-[13px] max-w-[280px]">
                   {t("queue.noActiveTranscriptsHint")}
                 </p>
               </div>
@@ -411,7 +539,7 @@ export default function IlovelawyerTranscriptionDashboard() {
 
           <Link
             href="/homepage/transcription/library"
-            className="border-t border-[#c6c6ce] pt-6 mt-6 flex justify-between items-center font-semibold uppercase text-[12px] text-[#181c1e] tracking-[1.2px] hover:text-amber-700 transition-colors"
+            className="border-t border-border pt-6 mt-6 flex justify-between items-center font-semibold uppercase text-[12px] text-foreground tracking-[1.2px] hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
           >
             <span>{t("queue.viewFullLibrary")}</span>
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

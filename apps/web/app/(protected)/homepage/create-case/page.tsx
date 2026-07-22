@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { SiteFooter } from "@/components/site-footer";
+import GlobalFooter from "@/components/global-footer";
 import CustomSelect from "@/components/ui/custom-select";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users } from "lucide-react";
 import {
@@ -209,7 +210,7 @@ export default function CreateCasePage() {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-slate-50 text-[#181c1e] font-['Inter',sans-serif]">
+    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
 
       <GlobalHeader activeTab="create-case" />
 
@@ -217,7 +218,7 @@ export default function CreateCasePage() {
       <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">
 
         {/* HERO BACKDROP */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-[#1c2547] to-[#0b132b] py-14 md:py-16">
+        <section className="relative overflow-hidden bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 py-14 md:py-16">
           <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#c9c9c9]/10 blur-3xl" aria-hidden="true" />
           <div className="relative max-w-4xl w-full mx-auto px-6 md:px-12 flex flex-col gap-2">
             <h1 className="font-['Libre_Caslon_Text'] text-3xl md:text-4xl text-white font-normal tracking-[-0.6px]">
@@ -232,7 +233,7 @@ export default function CreateCasePage() {
         {/* INTAKE FORM CONTENT */}
         <section className="max-w-4xl w-full mx-auto px-6 md:px-12 py-10 md:py-12 flex flex-col gap-8 font-['Inter']">
           {submittedTitle && (
-            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl px-4 py-3" role="status">
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300 rounded-xl px-4 py-3" role="status">
               <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
               <p className="text-sm">
                 {t("filingInitialized", { title: submittedTitle })}
@@ -240,7 +241,7 @@ export default function CreateCasePage() {
               <button
                 type="button"
                 onClick={() => setSubmittedTitle(null)}
-                className="ml-auto rounded-full p-1 -m-1 text-emerald-700 hover:text-emerald-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
+                className="ml-auto rounded-full p-1 -m-1 text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
                 aria-label={t("dismissConfirmation")}
               >
                 <X className="w-4 h-4" />
@@ -249,13 +250,13 @@ export default function CreateCasePage() {
           )}
 
           {submitError && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3" role="alert">
+            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               <p className="text-sm">{submitError}</p>
               <button
                 type="button"
                 onClick={() => setSubmitError(null)}
-                className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
                 aria-label={t("dismissError")}
               >
                 <X className="w-4 h-4" />
@@ -264,22 +265,22 @@ export default function CreateCasePage() {
           )}
 
           {/* SECTION I: IDENTITY */}
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
                 <Scale className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionIdentity.heading")}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{t("sectionIdentity.subheading")}</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionIdentity.heading")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionIdentity.subheading")}</p>
               </div>
             </div>
 
             <fieldset className="px-6 md:px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col gap-3">
-                  <label htmlFor="caseTitle" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    {t("sectionIdentity.caseTitleLabel")} <span className="text-gray-500 normal-case font-normal">{t("sectionIdentity.required")}</span>
+                  <label htmlFor="caseTitle" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                    {t("sectionIdentity.caseTitleLabel")} <span className="text-muted-foreground normal-case font-normal">{t("sectionIdentity.required")}</span>
                   </label>
                   <input
                     id="caseTitle"
@@ -287,7 +288,7 @@ export default function CreateCasePage() {
                     className={`w-full rounded-xl border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors focus:ring-2 ${
                       caseTitleError
                         ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
-                        : "border-gray-300 hover:border-gray-400 focus:border-black focus:ring-black/5"
+                        : "border-border hover:border-foreground/30 focus:border-foreground focus:ring-foreground/5"
                     }`}
                     placeholder={t("sectionIdentity.caseTitlePlaceholder")}
                     value={formData.caseTitle}
@@ -304,7 +305,7 @@ export default function CreateCasePage() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <label htmlFor="actionType" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
+                  <label htmlFor="actionType" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                     {t("sectionIdentity.actionTypeLabel")}
                   </label>
                   <CustomSelect
@@ -317,13 +318,13 @@ export default function CreateCasePage() {
                 </div>
 
                 <div className="md:col-span-2 flex flex-col gap-3">
-                  <label htmlFor="jurisdiction" className="text-xs font-bold tracking-wider text-gray-500 uppercase">
+                  <label htmlFor="jurisdiction" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                     {t("sectionIdentity.jurisdictionLabel")}
                   </label>
                   <input
                     id="jurisdiction"
                     type="text"
-                    className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
+                    className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
                     placeholder={t("sectionIdentity.jurisdictionPlaceholder")}
                     value={formData.jurisdiction}
                     onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
@@ -334,14 +335,14 @@ export default function CreateCasePage() {
           </section>
 
           {/* SECTION II: PARTY DETAILS */}
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
                 <Users className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionParties.heading")}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{t("sectionParties.subheading")}</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionParties.heading")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionParties.subheading")}</p>
               </div>
             </div>
 
@@ -353,16 +354,16 @@ export default function CreateCasePage() {
                     already-scrolling page is a mobile friction point (see ADR 0007). */}
                 <div className="flex flex-col gap-4 md:max-h-105 md:overflow-y-auto pr-1 -mr-1">
                   {formData.parties.map((party, index) => (
-                    <div key={party.id} className="border border-l-4 border-gray-200 border-l-[#131a33]/15 rounded-xl p-5 flex flex-col gap-5 transition-colors hover:border-l-[#131a33]/30">
+                    <div key={party.id} className="border border-l-4 border-border border-l-primary/15 rounded-xl p-5 flex flex-col gap-5 transition-colors hover:border-l-primary/30">
                       <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold tracking-wider text-gray-500 uppercase">
+                        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
                           {t("sectionParties.partyLabel", { number: index + 1 })}
                         </span>
                         {formData.parties.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeParty(party.id)}
-                            className="cursor-pointer rounded-full p-2 -m-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                            className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                             aria-label={t("sectionParties.removeParty", { number: index + 1 })}
                           >
                             <X className="w-4 h-4" />
@@ -372,13 +373,13 @@ export default function CreateCasePage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="flex flex-col gap-3">
-                          <label htmlFor={`party-name-${party.id}`} className="text-xs font-bold tracking-wider text-gray-500 uppercase">
+                          <label htmlFor={`party-name-${party.id}`} className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                             {t("sectionParties.fullNameLabel")}
                           </label>
                           <input
                             id={`party-name-${party.id}`}
                             type="text"
-                            className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5"
+                            className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
                             placeholder={t("sectionParties.fullNamePlaceholder")}
                             value={party.name}
                             onChange={(e) => updateParty(party.id, "name", e.target.value)}
@@ -386,7 +387,7 @@ export default function CreateCasePage() {
                         </div>
 
                         <div className="flex flex-col gap-3">
-                          <label htmlFor={`party-designation-${party.id}`} className="text-xs font-bold tracking-wider text-gray-500 uppercase">
+                          <label htmlFor={`party-designation-${party.id}`} className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
                             {t("sectionParties.designationLabel")}
                           </label>
                           <CustomSelect
@@ -402,14 +403,14 @@ export default function CreateCasePage() {
                 </div>
 
                 {formData.parties.length > 3 && (
-                  <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-white to-transparent" />
+                  <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card to-transparent" />
                 )}
               </div>
 
               <button
                 type="button"
                 onClick={addParty}
-                className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-gray-600 hover:text-[#131a33] hover:border-[#131a33]/30 hover:bg-slate-50 border border-dashed border-gray-300 rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
+                className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                 {t("sectionParties.addParty")}
@@ -418,14 +419,14 @@ export default function CreateCasePage() {
           </section>
 
           {/* SECTION III: EVIDENTIARY SUBMISSIONS */}
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-gray-200 bg-slate-50/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
                 <UploadCloud className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] font-normal">{t("sectionEvidence.heading")}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{t("sectionEvidence.subheading")}</p>
+                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionEvidence.heading")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionEvidence.subheading")}</p>
               </div>
             </div>
 
@@ -438,8 +439,8 @@ export default function CreateCasePage() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && triggerFileSelect()}
-                className={`border border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-4 relative cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
-                  isDragActive ? "border-[#131a33] bg-slate-100" : "border-gray-300 bg-slate-50 hover:border-gray-400"
+                className={`border border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-4 relative cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                  isDragActive ? "border-primary bg-muted" : "border-border bg-muted/40 hover:border-foreground/30"
                 }`}
               >
                 <input
@@ -451,15 +452,15 @@ export default function CreateCasePage() {
                   onChange={handleFileChange}
                 />
 
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
-                  <UploadCloud className="w-6 h-6 text-gray-400" strokeWidth={1.5} aria-hidden="true" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-sm">
+                  <UploadCloud className="w-6 h-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
                 </div>
 
                 <div>
-                  <h4 className="font-['Libre_Caslon_Text'] text-lg text-[#181c1e] mb-1">
+                  <h4 className="font-['Libre_Caslon_Text'] text-lg text-foreground mb-1">
                     {t("sectionEvidence.depositCaseFiles")}
                   </h4>
-                  <p className="text-gray-500 text-sm italic font-light">
+                  <p className="text-muted-foreground text-sm italic font-light">
                     {t("sectionEvidence.dropHint")}
                   </p>
                 </div>
@@ -470,7 +471,7 @@ export default function CreateCasePage() {
                     e.stopPropagation();
                     triggerFileSelect();
                   }}
-                  className="bg-[#131a33] text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
+                  className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
                 >
                   {t("sectionEvidence.selectDocuments")}
                 </button>
@@ -478,25 +479,25 @@ export default function CreateCasePage() {
                 {formData.uploadedFiles.length > 0 && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-md mt-4 text-left bg-white border border-gray-200 rounded-xl p-4 text-xs text-gray-700 flex flex-col gap-2 max-h-40 overflow-y-auto"
+                    className="w-full max-w-md mt-4 text-left bg-card border border-border rounded-xl p-4 text-xs text-foreground flex flex-col gap-2 max-h-40 overflow-y-auto"
                   >
-                    <p className="font-bold border-b pb-1 mb-1 text-gray-500">{t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}</p>
+                    <p className="font-bold border-b pb-1 mb-1 text-muted-foreground">{t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}</p>
                     {formData.uploadedFiles.map((f) => (
                       <div key={f.id} className="flex flex-col gap-1 py-0.5">
                         <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+                          <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                           <span className="truncate flex-1">{f.file.name} ({(f.file.size / 1024).toFixed(1)} KB)</span>
                           {f.status === "uploading" && (
-                            <span className="text-gray-500 shrink-0">{f.progress}%</span>
+                            <span className="text-muted-foreground shrink-0">{f.progress}%</span>
                           )}
                           {f.status === "uploaded" && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                           )}
                           {f.status === "error" && (
                             <button
                               type="button"
                               onClick={() => retryUpload(f.id)}
-                              className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                              className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
                               aria-label={t("sectionEvidence.retryUpload", { fileName: f.file.name })}
                             >
                               <RotateCw className="w-3.5 h-3.5" />
@@ -505,22 +506,22 @@ export default function CreateCasePage() {
                           <button
                             type="button"
                             onClick={() => removeFile(f.id)}
-                            className="rounded p-0.5 text-gray-400 hover:text-red-600 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                            className="rounded p-0.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                             aria-label={t("sectionEvidence.removeFile", { fileName: f.file.name })}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                         {f.status === "uploading" && (
-                          <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-[#131a33] transition-all"
+                              className="h-full bg-brand-navy-900 transition-all"
                               style={{ width: `${f.progress}%` }}
                             />
                           </div>
                         )}
                         {f.status === "error" && (
-                          <p className="text-red-600">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
+                          <p className="text-red-600 dark:text-red-400">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
                         )}
                       </div>
                     ))}
@@ -534,11 +535,11 @@ export default function CreateCasePage() {
             <button
               type="submit"
               disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
-              className="bg-[#131a33] text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-[#1c2547] transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-brand-navy-900 text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSubmitting ? t("submitting") : t("initiateFiling")}
             </button>
-            <p className="text-xs text-gray-500">{t("editAnytimeNote")}</p>
+            <p className="text-xs text-muted-foreground">{t("editAnytimeNote")}</p>
           </div>
         </section>
       </form>
