@@ -3,6 +3,7 @@ import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { SiteFooter } from "@/components/site-footer";
+import GlobalFooter from "@/components/global-footer";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { FolderUp, FileText, Trash2 } from "lucide-react";
 
@@ -55,7 +56,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#f7fafc] font-['Inter',sans-serif] flex flex-col justify-between">
+    <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif] flex flex-col justify-between">
 
       {/* Top Banner Branding Row */}
       <GlobalHeader activeTab="document-analysis" />
@@ -64,9 +65,9 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
       <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-[48px] py-12 md:py-[85px] flex flex-col gap-8 md:gap-[40px]">
 
         {/* Module Title Context */}
-        <div className="w-full flex flex-col gap-2 border-b border-gray-200 pb-6">
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[32px] sm:text-[40px] md:text-[50px] text-[#131a33]">{t("title")}</h1>
-          <p className="text-[#45464d] text-[15px] md:text-[18px] max-w-[672px] leading-relaxed">
+        <div className="w-full flex flex-col gap-2 border-b border-border pb-6">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[32px] sm:text-[40px] md:text-[50px] text-primary">{t("title")}</h1>
+          <p className="text-muted-foreground text-[15px] md:text-[18px] max-w-[672px] leading-relaxed">
             {t("subtitle")}
           </p>
         </div>
@@ -79,16 +80,16 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-2xl p-6 sm:p-[50px] transition-colors text-center ${
-            dragActive ? "border-amber-500 bg-amber-50/40" : "border-gray-300 bg-white hover:border-gray-400"
+            dragActive ? "border-amber-500 bg-amber-50/40 dark:border-amber-400 dark:bg-amber-500/10" : "border-border bg-card hover:border-foreground/30"
           }`}
         >
           <div className="flex flex-col items-center justify-center gap-4">
-            <div className="w-16 h-16 bg-[#131a33] rounded-full flex items-center justify-center text-[#ffe088]">
+            <div className="w-16 h-16 bg-brand-navy-900 rounded-full flex items-center justify-center text-brand-gold">
               <FolderUp className="w-7 h-7" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-['Libre_Caslon_Text',serif] text-[22px] sm:text-[28px] text-[#181c1e] mb-1">{t("dropzone.heading")}</h3>
-              <p className="text-[#45464d] text-[12px] tracking-[1.2px] uppercase font-semibold">
+              <h3 className="font-['Libre_Caslon_Text',serif] text-[22px] sm:text-[28px] text-foreground mb-1">{t("dropzone.heading")}</h3>
+              <p className="text-muted-foreground text-[12px] tracking-[1.2px] uppercase font-semibold">
                 {t("dropzone.supports")}
               </p>
             </div>
@@ -101,7 +102,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                   fileInputRef.current?.click();
                 }
               }}
-              className="bg-[#131a33] text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-[#1c2547] transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40 focus-visible:ring-offset-2"
+              className="bg-brand-navy-900 text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-brand-navy-800 transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
             >
               {t("dropzone.selectFile")}
               <input
@@ -120,24 +121,24 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
         </div>
 
         {/* Dynamic History Analysis Log Queue */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-[#f8fafc] px-4 sm:px-[32px] py-4 sm:py-[24px] border-b border-gray-200">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[24px] text-[#181c1e]">{t("recentAnalysis")}</h2>
+        <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="bg-muted px-4 sm:px-[32px] py-4 sm:py-[24px] border-b border-border">
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[24px] text-foreground">{t("recentAnalysis")}</h2>
           </div>
 
           <div className="flex flex-col">
             {allRecords.length === 0 && (
-              <div className="px-4 sm:px-[32px] py-4 sm:py-[24px] text-[#45464d] text-[14px]">{t("noDocuments")}</div>
+              <div className="px-4 sm:px-[32px] py-4 sm:py-[24px] text-muted-foreground text-[14px]">{t("noDocuments")}</div>
             )}
             {allRecords.map((record) => (
-              <div key={record.id} className="flex justify-between items-center gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-gray-200 last:border-0 hover:bg-slate-50 transition-colors">
+              <div key={record.id} className="flex justify-between items-center gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-border last:border-0 hover:bg-muted transition-colors">
                 <div className="flex gap-4 items-center min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#131a33]/5 text-[#131a33]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
                     <FileText className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-[#181c1e] text-[16px] truncate">{record.name}</p>
-                    <p className="text-[#45464d] text-[10px] tracking-wider uppercase font-semibold mt-0.5">{record.meta}</p>
+                    <p className="font-medium text-foreground text-[16px] truncate">{record.name}</p>
+                    <p className="text-muted-foreground text-[10px] tracking-wider uppercase font-semibold mt-0.5">{record.meta}</p>
                   </div>
                 </div>
                 <button
@@ -145,7 +146,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                   title={t("delete")}
                   aria-label={t("deleteRecord", { name: record.name })}
                   onClick={() => deleteRecord(record.id)}
-                  className="shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                  className="shrink-0 p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

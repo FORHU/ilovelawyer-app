@@ -53,23 +53,23 @@ export default function ConversationSidebar({
           setIsMobileOpen(false);
         }}
         title={t("sidebar.newChat")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
+        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
-        <Plus className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.newChat")}</span>}
+        <Plus className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.newChat")}</span>}
       </button>
 
       <button
         onClick={() => !isMobile && setExpanded((v) => !v)}
         title={t("sidebar.recentConversationsTitle")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
+        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
-        <History className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.recent")}</span>}
+        <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.recent")}</span>}
       </button>
 
       {(expanded || isMobile) && (
@@ -90,10 +90,10 @@ export default function ConversationSidebar({
                   // Gemini-style pill: the conversation you're currently in gets its own
                   // rounded, bordered chip; a transparent border of the same width is kept
                   // on inactive rows so hovering doesn't shift layout by 1px.
-                  className={`text-left truncate px-4 py-2.5 text-[13px] font-['Inter'] font-medium rounded-full border transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
+                  className={`text-left truncate px-4 py-2.5 text-[13px] font-['Inter'] font-medium rounded-full border transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                     isActive
-                      ? "bg-slate-100 border-slate-300 text-[#0b132b] font-semibold"
-                      : "border-transparent text-slate-900 hover:bg-slate-100"
+                      ? "bg-muted border-border text-primary font-semibold"
+                      : "border-transparent text-foreground hover:bg-muted"
                   }`}
                 >
                   {label}
@@ -103,19 +103,19 @@ export default function ConversationSidebar({
           </nav>
           {/* Fades the last row into the sidebar background instead of a hard cut, and
               signals there's more to scroll to when the list overflows this panel. */}
-          <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-white/95 to-transparent" />
+          <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card/95 to-transparent" />
         </div>
       )}
 
       <button
         type="button"
         title={t("sidebar.gallery")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-slate-100 shrink-0 mx-2 px-3 mt-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30 ${
+        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
           expanded || isMobile ? "" : "justify-center px-0"
         }`}
       >
-        <ImageIcon className="h-5 w-5 shrink-0 text-neutral-700" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-neutral-700">{t("sidebar.gallery")}</span>}
+        <ImageIcon className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.gallery")}</span>}
       </button>
     </>
   );
@@ -129,7 +129,7 @@ export default function ConversationSidebar({
         onClick={() => setIsMobileOpen(true)}
         title={t("sidebar.openConversations")}
         aria-label={t("sidebar.openConversations")}
-        className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-md border border-white/40 shadow-lg text-neutral-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/40"
+        className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <PanelLeft className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -137,7 +137,7 @@ export default function ConversationSidebar({
       {/* Desktop/tablet rail — collapsed-to-expanded width toggle, unchanged from before */}
       <aside
         ref={asideRef}
-        className={`hidden md:flex absolute left-0 top-16 bottom-0 bg-white/90 backdrop-blur-md border-r border-y border-white/40 rounded-r-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden md:flex absolute left-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-r border-y border-border rounded-r-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
           expanded ? "w-72" : "w-16"
         }`}
       >
@@ -148,14 +148,14 @@ export default function ConversationSidebar({
       {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
-          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-white py-4 shadow-xl">
+          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
-              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-neutral-700">{t("sidebar.conversations")}</span>
+              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.conversations")}</span>
               <button
                 type="button"
                 onClick={() => setIsMobileOpen(false)}
                 aria-label={t("sidebar.closeConversations")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#131a33]/30"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

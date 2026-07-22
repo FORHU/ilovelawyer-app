@@ -271,7 +271,7 @@ export default function AiConsultationPage() {
     <div className="w-full max-w-3xl mx-auto shrink-0">
       <form
         onSubmit={handleSendMessage}
-        className="w-full backdrop-blur-md bg-white/80 p-3 rounded-3xl border border-white/40 shadow-xl flex flex-col gap-2"
+        className="w-full backdrop-blur-md bg-card/80 p-3 rounded-3xl border border-border shadow-xl flex flex-col gap-2"
       >
         <input
           ref={fileInputRef}
@@ -282,13 +282,13 @@ export default function AiConsultationPage() {
 
         {file && (
           <div className="flex items-center gap-2 px-2">
-            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-slate-100 text-[#181c1e] text-[13px] font-['Inter'] pl-3 pr-1.5 py-1">
+            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1">
               <span className="truncate max-w-[220px]">{file.name}</span>
               <button
                 type="button"
                 onClick={handleRemoveFile}
-                className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-300/60 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
-                aria-label={t("input.removeAttachedFile")}
+                className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label="Remove attached file"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -300,7 +300,7 @@ export default function AiConsultationPage() {
         <textarea
           ref={textareaRef}
           rows={1}
-          className="w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] text-[15px] text-[#181c1e] placeholder-gray-400 px-2 py-1 leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none]"
+          className="w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] text-[15px] text-foreground placeholder-muted-foreground px-2 py-1 leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none]"
           placeholder={t("input.placeholder")}
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
@@ -326,7 +326,7 @@ export default function AiConsultationPage() {
         {/* Toolbar row below the text, matching Gemini's layout */}
         <div className="flex items-center justify-between px-1">
           {/* 2. Replaced the emoji text nodes with <Paperclip /> and <Mic /> components */}
-          <div className="flex gap-1 text-gray-500">
+          <div className="flex gap-1 text-muted-foreground">
             <input
               ref={fileInputRef}
               type="file"
@@ -337,7 +337,7 @@ export default function AiConsultationPage() {
               type="button"
               onClick={handleClipClick}
               aria-label={t("input.attachFile")}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200/50 hover:text-gray-700 shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -346,10 +346,10 @@ export default function AiConsultationPage() {
               onClick={handleMicClick}
               aria-pressed={isRecording}
               aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
-              className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/30 ${
+              className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                 isRecording
-                  ? "bg-red-100 text-red-600 animate-pulse hover:bg-red-200"
-                  : "hover:bg-slate-200/50 hover:text-gray-700"
+                  ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
+                  : "hover:bg-muted hover:text-foreground"
               }`}
             >
               {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
@@ -360,7 +360,7 @@ export default function AiConsultationPage() {
             type="submit"
             disabled={isSending || !session}
             aria-label={t("input.sendMessage")}
-            className="bg-[#0b132b] text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b132b]/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
+            className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
           >
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -370,7 +370,7 @@ export default function AiConsultationPage() {
   );
 
   return (
-    <div className="h-screen w-full flex flex-col bg-white overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
       <GlobalHeader activeTab="consultation" />
 
       {/* Chat Workspace */}
@@ -389,10 +389,10 @@ export default function AiConsultationPage() {
             /* No conversation yet — heading and input are centered together, like Gemini's landing state */
             <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24">
               <div className="text-center max-w-2xl mx-auto px-2">
-                <h1 className="font-['Libre_Caslon_Text'] font-normal text-[#0b132b] text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
+                <h1 className="font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
                   {t("emptyState.heading")}
                 </h1>
-                <p className="font-['Inter'] text-[#181c1e] text-[15px] md:text-[16px] leading-6">
+                <p className="font-['Inter'] text-foreground text-[15px] md:text-[16px] leading-6">
                   {t("emptyState.subheading")}
                 </p>
               </div>
@@ -407,7 +407,7 @@ export default function AiConsultationPage() {
                     m.role === "user" ? (
                       <div
                         key={i}
-                        className="max-w-[80%] self-end rounded-2xl border border-gray-300 bg-neutral-100 px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-neutral-900"
+                        className="max-w-[80%] self-end rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground"
                       >
                         {m.content}
                       </div>

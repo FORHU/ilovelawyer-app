@@ -21,6 +21,8 @@ export interface QueuedTranscript {
   backendId?: string
   transcript?: string
   errorMessage?: string
+  /** Live-captured speech-to-text transcript, when the browser supports it. Undefined for uploaded files. */
+  text?: string
 }
 
 interface MediaQueueState {
@@ -28,7 +30,7 @@ interface MediaQueueState {
   transcripts: QueuedTranscript[]
   queueDocument: (file: File) => void
   removeDocument: (id: string) => void
-  queueTranscript: (blob: Blob, durationSeconds: number) => void
+  queueTranscript: (blob: Blob, durationSeconds: number, text?: string) => void
   removeTranscript: (id: string) => void
   updateTranscript: (id: string, patch: Partial<QueuedTranscript>) => void
 }
@@ -106,7 +108,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
     dbDelete(DOCUMENTS_STORE, id).catch((err) => console.error("Failed to remove queued document:", err))
   },
 
-  queueTranscript: (blob, durationSeconds) => {
+  queueTranscript: (blob, durationSeconds, text) => {
     const transcript: QueuedTranscript = {
       id: crypto.randomUUID(),
       name: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
@@ -114,6 +116,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
       blob,
       durationSeconds,
       status: "local",
+      text,
     }
     set((state) => ({ transcripts: [transcript, ...state.transcripts] }))
     dbPut(TRANSCRIPTS_STORE, transcript).catch((err) => console.error("Failed to persist queued transcript:", err))

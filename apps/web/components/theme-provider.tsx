@@ -34,11 +34,12 @@ function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="p-2 rounded-lg text-[#44474d] hover:bg-[#f0f2f4] dark:text-[#c9cdd4] dark:hover:bg-[#1e2a3b] transition-colors cursor-pointer"
-      aria-label="Toggle theme"
+      className="cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+      aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
-      {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      {resolvedTheme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
     </button>
   )
 }

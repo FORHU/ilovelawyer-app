@@ -55,8 +55,8 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
       onClick={() => onSelectDay(day.date)}
       disabled={props.disabled}
       className={cn(
-        "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top transition-colors hover:bg-white/5 disabled:pointer-events-none disabled:opacity-40",
-        modifiers.outside ? "border-white/5 text-muted-foreground" : "border-white/10",
+        "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
+        modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
         isSelected && "border-primary bg-primary/10",
         className
       )}
@@ -75,7 +75,9 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
             key={item.id}
             className={cn(
               "flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight",
-              item.kind === "appointment" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+              item.kind === "appointment"
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
             )}
           >
             {item.kind === "appointment" ? (
@@ -112,11 +114,11 @@ function AgendaView({
 }) {
   const { t } = useTranslation("calendar");
   if (agendaDays.length === 0) {
-    return <p className="px-4 py-10 text-center text-sm text-white/40">{t("nothingScheduledMonth")}</p>;
+    return <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing scheduled this month yet.</p>;
   }
 
   return (
-    <div className="flex flex-col divide-y divide-white/10">
+    <div className="flex flex-col divide-y divide-border">
       {agendaDays.map((day) => {
         const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
         return (
@@ -125,18 +127,18 @@ function AgendaView({
             type="button"
             onClick={() => onSelectDay(day.date)}
             className={cn(
-              "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-white/5",
+              "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent",
               isSelected && "bg-primary/10"
             )}
           >
-            <span className="text-xs font-bold uppercase tracking-wider text-white/50">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               {format(day.date, "EEEE, MMM d")}
             </span>
             <div className="flex flex-col gap-1.5">
               {day.appointments.map((appt) => (
                 <span
                   key={appt.id}
-                  className="flex items-center gap-2 rounded-md bg-blue-500/10 px-2.5 py-1.5 text-xs text-blue-200"
+                  className="flex items-center gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
                 >
                   <Clock className="size-3.5 shrink-0" aria-hidden="true" />
                   {formatTime12h(appt.startTime)} · {appt.title}
@@ -145,7 +147,7 @@ function AgendaView({
               {day.notes.map((note) => (
                 <span
                   key={note.id}
-                  className="flex items-center gap-2 rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-200"
+                  className="flex items-center gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
                 >
                   <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
                   {note.body}
@@ -165,10 +167,10 @@ function AgendaView({
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   const { t } = useTranslation("calendar");
   return (
-    <div className="flex items-center gap-3 rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800" role="alert">
+    <div className="flex items-center gap-3 rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300" role="alert">
       <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
       <p className="text-xs">{message}</p>
-      <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900" aria-label={t("dismissError")}>
+      <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100" aria-label="Dismiss error">
         <X className="size-3.5" />
       </button>
     </div>
@@ -243,7 +245,7 @@ function PlannerPanel({
   }
 
   return (
-    <Card className="w-full shrink-0 bg-[#0b132b]/90 backdrop-blur-sm lg:w-[340px]" size="sm">
+    <Card className="w-full shrink-0 backdrop-blur-sm lg:w-[340px]" size="sm">
       <CardContent className="flex flex-col gap-4">
         <Calendar
           mode="single"
@@ -252,12 +254,15 @@ function PlannerPanel({
           month={currentMonth}
           onMonthChange={onMonthChange}
           fixedWeeks
+          classNames={{
+            today: "rounded-(--cell-radius) bg-accent text-accent-foreground data-[selected=true]:rounded-none",
+          }}
           className="mx-auto p-0 [--cell-size:--spacing(8)]"
         />
 
         <div className="border-t border-slate-100 pt-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-            {t("addTo", { date: selectedDate ? format(selectedDate, "MMM d, yyyy") : "…" })}
+            Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
           </p>
 
           <div className="mb-3 flex gap-2">
@@ -291,20 +296,20 @@ function PlannerPanel({
                   placeholder={t("titlePlaceholder")}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
+                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                 />
                 <div className="flex gap-2">
                   <input
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                   <input
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                 </div>
                 <textarea
@@ -312,7 +317,7 @@ function PlannerPanel({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
-                  className="w-full resize-none rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
+                  className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                 />
               </>
             ) : (
@@ -321,7 +326,7 @@ function PlannerPanel({
                 value={noteBody}
                 onChange={(e) => setNoteBody(e.target.value)}
                 rows={3}
-                className="w-full resize-none rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-black"
+                className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
             )}
 
@@ -334,26 +339,26 @@ function PlannerPanel({
 
       <CardFooter className="flex flex-col items-stretch gap-2 border-t">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("selectDay")}
+          {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
         </p>
         {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
-          <p className="text-xs text-slate-400">{t("nothingScheduledDay")}</p>
+          <p className="text-xs text-slate-400">Nothing scheduled for this day yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {selectedAppointments.map((appt) => (
-              <li key={appt.id} className="flex items-start gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900">
+              <li key={appt.id} className="flex items-start gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900 dark:bg-blue-500/15 dark:text-blue-300">
                 <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                 <div>
                   <p className="font-medium">{appt.title}</p>
-                  <p className="text-blue-700">
+                  <p className="text-blue-700 dark:text-blue-300">
                     {formatTime12h(appt.startTime)} – {formatTime12h(appt.endTime)}
                   </p>
-                  {appt.description && <p className="mt-0.5 text-blue-700">{appt.description}</p>}
+                  {appt.description && <p className="mt-0.5 text-blue-700 dark:text-blue-300">{appt.description}</p>}
                 </div>
               </li>
             ))}
             {selectedNotes.map((note) => (
-              <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+              <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
                 <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                 <p>{note.body}</p>
               </li>
@@ -449,13 +454,13 @@ export default function CalendarPage() {
   const selectedNotes = React.useMemo(() => notes.filter((n) => n.date === selectedDateKey), [notes, selectedDateKey]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-background">
       <GlobalHeader activeTab="calendar" />
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
         <div className="mb-8 flex flex-col gap-2">
-          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">{t("title")}</h1>
-          <p className="max-w-xl text-base text-gray-500">{t("subtitle")}</p>
+          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">Calendar</h1>
+          <p className="max-w-xl text-base text-gray-500">Track hearings, deadlines, and case notes in one place.</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -468,15 +473,15 @@ export default function CalendarPage() {
             selectedNotes={selectedNotes}
           />
 
-          <Card className="w-full flex-1 bg-[#0b132b]/90 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b">
+          <Card className="w-full flex-1 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-0.5">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-11 text-white/70 hover:bg-white/10 hover:text-white"
+                    className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
                     onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
                     aria-label={t("previousMonth")}
                   >
@@ -486,7 +491,7 @@ export default function CalendarPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-11 text-white/70 hover:bg-white/10 hover:text-white"
+                    className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
                     onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
                     aria-label={t("nextMonth")}
                   >
@@ -499,7 +504,7 @@ export default function CalendarPage() {
               {(appointmentsQuery.isError || notesQuery.isError) && (
                 <div
                   role="alert"
-                  className="flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/10 py-1 pl-3 pr-1 text-xs text-red-300"
+                  className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 py-1 pl-3 pr-1 text-xs text-red-700 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300"
                 >
                   <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>{t("errors.loadFailed")}</span>
@@ -509,7 +514,7 @@ export default function CalendarPage() {
                       appointmentsQuery.refetch();
                       notesQuery.refetch();
                     }}
-                    className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-200 transition-colors hover:bg-red-500/20 hover:text-white"
+                    className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 dark:text-red-200 dark:hover:bg-red-500/20 dark:hover:text-white"
                   >
                     <RotateCw className="size-3" aria-hidden="true" />
                     {t("retry")}
@@ -536,6 +541,7 @@ export default function CalendarPage() {
                       month_caption: "hidden",
                       day: "flex-1 basis-0 p-0.5 align-top",
                       month_grid: "w-full border-collapse",
+                      today: "",
                     }}
                     className="w-full p-0"
                   />
