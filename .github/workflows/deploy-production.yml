@@ -114,6 +114,6 @@ jobs:
             docker stop ilovelawyer-app 2>/dev/null || true
             docker rm   ilovelawyer-app 2>/dev/null || true
             docker run -d --name ilovelawyer-app --restart unless-stopped \
-              -p 3000:3000 \
+              -p 3002:3000 \
               "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
             docker image prune -f
