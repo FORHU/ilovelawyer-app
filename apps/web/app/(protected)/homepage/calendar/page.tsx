@@ -99,7 +99,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
 /* ==========================================
    AGENDA VIEW (mobile replacement for the 7-column grid below md)
    ========================================== */
-type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string; description: string | null };
+type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null };
 type AgendaNote = { id: string; date: string; body: string };
 type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
 
@@ -192,7 +192,7 @@ function PlannerPanel({
   currentMonth: Date;
   onSelectDay: (date: Date) => void;
   onMonthChange: (month: Date) => void;
-  selectedAppointments: { id: string; title: string; startTime: string; endTime: string; description: string | null }[];
+  selectedAppointments: { id: string; title: string; startTime: string; endTime: string | null; description: string | null }[];
   selectedNotes: { id: string; body: string }[];
 }) {
   const [itemType, setItemType] = React.useState<"appointment" | "note">("appointment");
@@ -351,7 +351,9 @@ function PlannerPanel({
                 <div>
                   <p className="font-medium">{appt.title}</p>
                   <p className="text-blue-700 dark:text-blue-300">
-                    {formatTime12h(appt.startTime)} – {formatTime12h(appt.endTime)}
+                    {appt.endTime
+                      ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
+                      : formatTime12h(appt.startTime)}
                   </p>
                   {appt.description && <p className="mt-0.5 text-blue-700 dark:text-blue-300">{appt.description}</p>}
                 </div>

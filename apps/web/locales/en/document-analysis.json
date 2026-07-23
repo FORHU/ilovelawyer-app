@@ -9,5 +9,14 @@
   "recentAnalysis": "Recent Analysis",
   "noDocuments": "No documents analyzed yet.",
   "delete": "Delete",
-  "deleteRecord": "Delete {{name}}"
+  "deleteRecord": "Delete {{name}}",
+  "attachToCase": "Attach to case",
+  "noCaseOption": "No case (general)",
+  "send": "Send",
+  "sending": "Sending…",
+  "retry": "Retry",
+  "sendFailed": "Upload failed.",
+  "sentToCase": "Sent — attached to “{{caseName}}”",
+  "sentNoCase": "Sent — not attached to a case",
+  "analysisComingSoon": "AI analysis isn't available yet — coming soon."
 }

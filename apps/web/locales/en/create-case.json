@@ -15,7 +15,8 @@
     "actionTypeLabel": "Type of Action",
     "selectAction": "Select action",
     "jurisdictionLabel": "Court / Jurisdictional Branch",
-    "jurisdictionPlaceholder": "e.g. RTC Branch 12, Makati City"
+    "jurisdictionPlaceholder": "e.g. RTC Branch 12, Makati City",
+    "persistenceNotice": "Type of Action and Jurisdiction aren't saved by the backend yet — support is in progress."
   },
   "sectionParties": {
     "heading": "II. Party Details",

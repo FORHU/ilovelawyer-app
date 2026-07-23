@@ -1,80 +1,90 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 import { caseKeys } from "@/lib/query-keys"
 
-/**
- * Contract stub: ilovelawyer-api does not yet expose these routes.
- * Shape matches the presigned-URL, direct-to-S3 upload flow — backend
- * issues a short-lived PUT URL, the browser uploads bytes straight to S3,
- * then the case is created referencing the resulting object keys.
- */
-export interface PresignedUpload {
-  uploadUrl: string
-  key: string
+/** The real shape `/api/my-cases` accepts/returns today. Type of Action, Jurisdiction, and
+ * structured Parties are not yet supported by the backend — see CONTEXT.md pending section. */
+export interface CaseRecord {
+  id: string
+  userId: string
+  caseName: string
+  partyInvolved: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-export function useCreateDocumentUploadUrlMutation() {
-  return useMutation({
-    mutationFn: ({ fileName, fileType, fileSize }: { fileName: string; fileType: string; fileSize: number }) =>
-      apiFetch<PresignedUpload>("/api/cases/documents/presign", {
-        method: "POST",
-        body: JSON.stringify({ fileName, fileType, fileSize }),
-      }),
+/** Lists the current user's cases, paginated (backend default: page 1, limit 20). */
+export function useCasesQuery(page = 1, limit = 20) {
+  return useQuery({
+    queryKey: caseKeys.list({ page, limit }),
+    queryFn: () => apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?page=${page}&limit=${limit}`),
   })
 }
 
-/** Uploads bytes directly to S3 via a presigned URL — must bypass apiFetch (no auth header, not our API host). */
-export function uploadFileToS3(uploadUrl: string, file: File, onProgress?: (percent: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open("PUT", uploadUrl)
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100))
-    }
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve()
-      else reject(new Error(`S3 upload failed with status ${xhr.status}`))
-    }
-    xhr.onerror = () => reject(new Error("Network error during S3 upload"))
-    xhr.send(file)
+export function useCaseQuery(id: string) {
+  return useQuery({
+    queryKey: caseKeys.detail(id),
+    queryFn: () => apiFetch<CaseRecord>(`/api/my-cases/${id}`),
+    enabled: !!id,
   })
-}
-
-export interface CaseDocumentInput {
-  key: string
-  fileName: string
-}
-
-export interface CasePartyInput {
-  name: string
-  designation: string
 }
 
 export interface CreateCasePayload {
-  caseTitle: string
-  actionType: string
-  jurisdiction: string
-  parties: CasePartyInput[]
-  documents: CaseDocumentInput[]
-}
-
-export interface Case {
-  id: string
-  caseTitle: string
-  createdAt: string
+  caseName: string
+  partyInvolved?: string
+  notes?: string
 }
 
 export function useCreateCaseMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: CreateCasePayload) =>
-      apiFetch<Case>("/api/cases", {
+      apiFetch<CaseRecord>("/api/my-cases", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
     },
+  })
+}
+
+export interface UserDocument {
+  id: string
+  userId: string
+  caseId: string | null
+  name: string
+  fileUrl: string | null
+  s3Key: string | null
+  aiSummary: string | null
+  createdAt: string
+}
+
+/** Uploads a file to the real document store (S3 + DB row via multipart POST /api/documents).
+ * Pass `caseId` when the case already exists (e.g. Document Analysis); omit it when the file is
+ * uploaded before the case does (e.g. Create Case), then link it after via useLinkCaseDocumentMutation. */
+export function useUploadCaseDocumentMutation() {
+  return useMutation({
+    mutationFn: ({ file, caseId }: { file: File; caseId?: string }) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      if (caseId) formData.append("caseId", caseId)
+      return apiFetch<UserDocument>("/api/documents", {
+        method: "POST",
+        body: formData,
+      })
+    },
+  })
+}
+
+/** Links a previously-uploaded document to a case, once the case has been created and its id is known. */
+export function useLinkCaseDocumentMutation() {
+  return useMutation({
+    mutationFn: ({ documentId, caseId }: { documentId: string; caseId: string }) =>
+      apiFetch<void>(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ caseId }),
+      }),
   })
 }

@@ -5,11 +5,11 @@ import GlobalHeader from "@/components/global-header";
 import { SiteFooter } from "@/components/site-footer";
 import GlobalFooter from "@/components/global-footer";
 import CustomSelect from "@/components/ui/custom-select";
-import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users } from "lucide-react";
+import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users, Loader2 } from "lucide-react";
 import {
   useCreateCaseMutation,
-  useCreateDocumentUploadUrlMutation,
-  uploadFileToS3,
+  useUploadCaseDocumentMutation,
+  useLinkCaseDocumentMutation,
 } from "@/lib/cases/mutations";
 
 const ACTION_TYPE_OPTIONS = [
@@ -37,8 +37,7 @@ interface UploadedFile {
   id: string;
   file: File;
   status: UploadStatus;
-  progress: number;
-  key?: string;
+  documentId?: string;
   error?: string;
 }
 
@@ -61,7 +60,8 @@ export default function CreateCasePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const nextPartyIdRef = useRef(2);
 
-  const { mutateAsync: getUploadUrl } = useCreateDocumentUploadUrlMutation();
+  const { mutateAsync: uploadDocument } = useUploadCaseDocumentMutation();
+  const { mutateAsync: linkDocument } = useLinkCaseDocumentMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
 
   const handleInputChange = (field: string, value: string) => {
@@ -106,17 +106,13 @@ export default function CreateCasePage() {
     }));
   };
 
-  // Uploads straight to S3 via a presigned URL fetched from the backend —
-  // the file never passes through our own API server.
+  // Uploads straight to our own API (POST /api/documents, multipart) — the document isn't
+  // linked to a case yet, since the case doesn't exist until the form is submitted. The link
+  // happens in handleSubmitFiling once the case's id is known.
   const uploadOne = async (entry: UploadedFile) => {
     try {
-      const { uploadUrl, key } = await getUploadUrl({
-        fileName: entry.file.name,
-        fileType: entry.file.type,
-        fileSize: entry.file.size,
-      });
-      await uploadFileToS3(uploadUrl, entry.file, (progress) => updateUploadedFile(entry.id, { progress }));
-      updateUploadedFile(entry.id, { status: "uploaded", progress: 100, key });
+      const doc = await uploadDocument({ file: entry.file });
+      updateUploadedFile(entry.id, { status: "uploaded", documentId: doc.id });
     } catch (err) {
       updateUploadedFile(entry.id, {
         status: "error",
@@ -132,7 +128,6 @@ export default function CreateCasePage() {
       id: crypto.randomUUID(),
       file,
       status: "uploading",
-      progress: 0,
     }));
     setFormData((prev) => ({
       ...prev,
@@ -156,8 +151,8 @@ export default function CreateCasePage() {
   const retryUpload = (id: string) => {
     const entry = formData.uploadedFiles.find((f) => f.id === id);
     if (!entry) return;
-    updateUploadedFile(id, { status: "uploading", progress: 0, error: undefined });
-    void uploadOne({ ...entry, status: "uploading", progress: 0, error: undefined });
+    updateUploadedFile(id, { status: "uploading", error: undefined });
+    void uploadOne({ ...entry, status: "uploading", error: undefined });
   };
 
   const triggerFileSelect = () => {
@@ -194,16 +189,31 @@ export default function CreateCasePage() {
     if (hasFilesUploading || hasFailedUploads) return;
 
     try {
-      await createCase({
-        caseTitle: formData.caseTitle,
-        actionType: formData.actionType,
-        jurisdiction: formData.jurisdiction,
-        parties: formData.parties.map(({ name, designation }) => ({ name, designation })),
-        documents: formData.uploadedFiles
-          .filter((f): f is UploadedFile & { key: string } => f.status === "uploaded" && !!f.key)
-          .map((f) => ({ key: f.key, fileName: f.file.name })),
+      // Type of Action and Jurisdiction have no home on the backend yet (see CONTEXT.md
+      // pending section) — they're captured in the form but not sent. Parties collapse into
+      // the single `partyInvolved` string the backend does support.
+      const partyInvolved = formData.parties
+        .filter((p) => p.name.trim())
+        .map((p) => `${p.name.trim()} (${p.designation})`)
+        .join("; ");
+
+      const newCase = await createCase({
+        caseName: formData.caseTitle.trim(),
+        partyInvolved: partyInvolved || undefined,
       });
+
+      const documentIds = formData.uploadedFiles
+        .filter((f): f is UploadedFile & { documentId: string } => f.status === "uploaded" && !!f.documentId);
+      await Promise.all(documentIds.map((f) => linkDocument({ documentId: f.documentId, caseId: newCase.id })));
+
       setSubmittedTitle(formData.caseTitle);
+      setFormData({
+        caseTitle: "",
+        actionType: "",
+        jurisdiction: "",
+        parties: [{ id: "party-1", name: "", designation: "Petitioner / Plaintiff" }],
+        uploadedFiles: [],
+      });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
@@ -330,6 +340,11 @@ export default function CreateCasePage() {
                     onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
                   />
                 </div>
+
+                <p className="md:col-span-2 flex items-center gap-1.5 text-xs text-muted-foreground italic">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  {t("sectionIdentity.persistenceNotice")}
+                </p>
               </div>
             </fieldset>
           </section>
@@ -488,7 +503,7 @@ export default function CreateCasePage() {
                           <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                           <span className="truncate flex-1">{f.file.name} ({(f.file.size / 1024).toFixed(1)} KB)</span>
                           {f.status === "uploading" && (
-                            <span className="text-muted-foreground shrink-0">{f.progress}%</span>
+                            <Loader2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin" aria-hidden="true" />
                           )}
                           {f.status === "uploaded" && (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
@@ -512,14 +527,6 @@ export default function CreateCasePage() {
                             <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        {f.status === "uploading" && (
-                          <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-brand-navy-900 transition-all"
-                              style={{ width: `${f.progress}%` }}
-                            />
-                          </div>
-                        )}
                         {f.status === "error" && (
                           <p className="text-red-600 dark:text-red-400">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
                         )}
