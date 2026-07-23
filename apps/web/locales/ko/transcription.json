@@ -1,0 +1,49 @@
+{
+  "hero": {
+    "titlePrefix": "녹취록",
+    "titleEmphasis": "재정의되다.",
+    "subtitle": "법률 실무의 요구에 맞춰 화자를 구분하는 녹취 기능으로 심리, 증언, 의뢰인 인터뷰를 기록하세요."
+  },
+  "recorder": {
+    "startNewRecording": "새 녹음 시작",
+    "stopRecorder": "녹음기 중지",
+    "launchRecorder": "녹음기 실행"
+  },
+  "uploader": {
+    "title": "오디오 파일 업로드",
+    "hint": "드래그 앤 드롭 또는 찾아보기. MP3, WAV, AAC 파일, 최대 2GB.",
+    "uploading": "업로드 중…",
+    "selectFiles": "파일 선택"
+  },
+  "queue": {
+    "activityQueue": "작업 대기열",
+    "items_other": "{{count}}개 항목",
+    "live": "실시간",
+    "noActiveTranscripts": "진행 중인 녹취록 없음",
+    "noActiveTranscriptsHint": "상담 채팅의 녹음 및 여기에 업로드한 파일이 검토를 위해 표시됩니다.",
+    "removeFromQueue": "대기열에서 제거",
+    "viewFullLibrary": "전체 라이브러리 보기",
+    "transcribe": "녹취 시작",
+    "retry": "다시 시도",
+    "viewTranscript": "녹취록 보기",
+    "copyTranscript": "복사",
+    "copied": "복사됨",
+    "emptyTranscript": "이 녹음에서 음성이 감지되지 않았습니다.",
+    "status": {
+      "local": "전송 안 됨",
+      "uploading": "업로드 중",
+      "starting": "시작 중",
+      "in_progress": "처리 중",
+      "completed": "완료",
+      "failed": "실패"
+    }
+  },
+  "library": {
+    "untitled": "제목 없는 녹취록",
+    "loading": "녹취록 불러오는 중…",
+    "loadError": "녹취록을 불러오지 못했습니다. 다시 시도해 주세요."
+  },
+  "delete": "삭제",
+  "deleteRecord": "{{name}} 삭제",
+  "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요."
+}

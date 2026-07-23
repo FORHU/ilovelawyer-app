@@ -1,101 +1,145 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { SharedFooter } from "@/components/shared-footer";
-import svgForgotPaths from "@/imports/ForgotPasswordIlovelawyerUpdatedBranding/svg-c3dgwficg5";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Mail } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useForgotPasswordMutation } from "@/lib/auth/mutations";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation("auth");
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const forgotPassword = useForgotPasswordMutation();
 
   return (
-    <div className="flex flex-col min-h-screen w-full" style={{ background: "linear-gradient(90deg, #f7f9fb 0%, #f7f9fb 100%)" }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="flex flex-col gap-8 w-full max-w-[480px]">
-          <div className="flex justify-start">
-            <Link href="/" className="cursor-pointer">
-              <Logo size={24} />
-            </Link>
+    <div className="flex h-screen w-full overflow-hidden bg-[#f1f4f6]">
+      {/* LEFT — dark panel */}
+      <div className="relative hidden lg:block overflow-hidden" style={{ width: "58%", minHeight: "1024px" }}>
+        <div className="absolute inset-0 bg-[#131a33]" />
+        <div className="absolute inset-0 opacity-70" style={{ background: "radial-gradient(ellipse at 40% 50%, #1e2d4a 0%, #131a33 65%)" }} />
+        <div className="absolute inset-0 bg-[rgba(19,26,51,0.3)]" />
+
+
+
+        {/* Logo */}
+        <div className="absolute top-16 left-12 z-10">
+          <span className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            ilovelawyer
+          </span>
+        </div>
+
+        {/* Quote */}
+        <div className="absolute bottom-12 left-12 max-w-[384px] z-10">
+          <p
+            className="text-[rgba(255,255,255,0.95)] text-[20px] leading-[32.5px] italic"
+            style={{ fontFamily: "'Libre Caslon Text', serif", fontStyle: "italic" }}
+          >
+            &ldquo;{t("forgotPassword.quote")}&rdquo;
+          </p>
+        </div>
+      </div>
+
+
+      {/* RIGHT — form */}
+      <div className="bg-white flex-1 flex flex-col items-center justify-center px-8 md:px-26.5 py-12 overflow-y-auto">
+        <div className="w-full max-w-md flex flex-col gap-10">
+
+          {/* Back button */}
+          {!sent && (
+            <button
+              onClick={() => router.push("/login")}
+              className="flex items-center gap-2 cursor-pointer bg-transparent border-0 hover:opacity-70 transition-opacity w-fit"
+            >
+              <ArrowLeft size={13} color="#45464D" />
+              <span className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("forgotPassword.returnToSignIn")}
+              </span>
+            </button>
+          )}
+
+          {/* Header */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-[40px] text-black leading-12" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+              {sent ? t("forgotPassword.headingSent") : t("forgotPassword.headingDefault")}
+            </h1>
+            <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+              {sent ? t("forgotPassword.subheadingSent") : t("forgotPassword.subheadingDefault")}
+            </p>
           </div>
 
-          <div className="backdrop-blur-[6px] bg-white/80 rounded-3xl border border-[#d8dadc] shadow-[0px_8px_32px_0px_rgba(10,25,47,0.06)] p-10">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col items-center gap-3">
-                <div className="bg-[rgba(10,25,47,0.05)] rounded-full size-14 flex items-center justify-center">
-                  <svg className="size-[26px]" fill="none" viewBox="0 0 26.6667 26.6667">
-                    <path d={svgForgotPaths.p2d47e8c0} fill="#0A192F" />
-                  </svg>
-                </div>
-                <h2
-                  className="text-[#191c1e] text-[32px] text-center leading-10 pt-3"
-                  style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-                >
-                  Reset your password
-                </h2>
-                <p className="text-[#44474d] text-base text-center leading-[26px]" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Enter the email address associated with your account and we&apos;ll send you a link to reset your password.
-                </p>
+          {/* Form / Success */}
+          {!sent ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (email) {
+                  forgotPassword.mutate({ email }, { onSuccess: () => setSent(true) });
+                }
+              }}
+              className="flex flex-col gap-6"
+            >
+              <div className="flex flex-col gap-2">
+                <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("forgotPassword.emailLabel")}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("forgotPassword.emailPlaceholder")}
+                  required
+                  className="w-full rounded-xl border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] focus:placeholder-transparent transition-colors"
+                  style={{ fontFamily: "Inter, sans-serif" }}
+                />
               </div>
 
-              {sent ? (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                  <p className="text-green-800 text-base" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                    Recovery email sent! Check your inbox at <strong>{email}</strong>
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#44474d] text-xs tracking-[0.6px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                      Email Address
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@firm.com"
-                        className="w-full bg-white border border-[#d8dadc] border-b-2 rounded-tl rounded-tr py-3.5 px-4 text-base text-[#191c1e] placeholder-[#6b7280] outline-none focus:border-[#0059bb] transition-colors pr-12"
-                        style={{ fontFamily: "'Source Serif 4', serif" }}
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-4">
-                        <svg className="w-full h-full" fill="none" viewBox="0 0 20 16">
-                          <path d={svgForgotPaths.p13e73800} fill="#75777E" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => email && setSent(true)}
-                    className="w-full bg-[#0a192f] text-white text-base py-4 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-[#142744] transition-colors border-0 shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
-                    style={{ fontFamily: "'Source Serif 4', serif" }}
-                  >
-                    Send Recovery Email
-                  </button>
-                </div>
-              )}
-
-              <div className="border-t border-[#d8dadc] pt-6 flex justify-center">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 text-[#0a192f] text-base hover:underline"
-                  style={{ fontFamily: "'Source Serif 4', serif" }}
-                >
-                  <svg className="size-3" fill="none" viewBox="0 0 12 12">
-                    <path d={svgForgotPaths.p2286b600} fill="#0A192F" />
-                  </svg>
-                  Return to Login
-                </Link>
+              <button
+                type="submit"
+                disabled={forgotPassword.isPending}
+                className="w-full bg-black text-white rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {forgotPassword.isPending ? t("forgotPassword.sending") : t("forgotPassword.sendResetLink")}
+              </button>
+            </form>
+          ) : (
+            <div className="flex flex-col items-center gap-8 py-4">
+              <div className="border border-[#cca830] rounded-full size-20 flex items-center justify-center">
+                <Mail size={36} color="#CCA830" strokeWidth={1.5} />
               </div>
+              <p className="text-[#45464d] text-base leading-6.5 text-center max-w-90" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("forgotPassword.sentDescriptionPrefix")}{" "}
+                <span className="font-semibold text-black">{email}</span>
+                {t("forgotPassword.sentDescriptionSuffix")}
+              </p>
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {t("forgotPassword.backToSignIn")}
+              </button>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
+            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+              {t("footer.copyright", { year: new Date().getFullYear() })}
+            </span>
+            <div className="flex gap-4">
+              <button className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("footer.support")}
+              </button>
+              <button className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold underline decoration-[#c6c6ce] cursor-pointer bg-transparent border-0 hover:text-black transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("footer.privacy")}
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      <SharedFooter compact />
     </div>
   );
 }

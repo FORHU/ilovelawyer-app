@@ -1,0 +1,59 @@
+{
+  "appName": "ilovelawyer",
+  "nav": {
+    "consultation": "Konsultasyon",
+    "case": "Kaso",
+    "createCase": "Gumawa ng Kaso",
+    "casePortfolio": "Case Portfolio",
+    "library": "Aklatan",
+    "transcription": "Transkripsyon",
+    "documents": "Mga Dokumento",
+    "calendar": "Kalendaryo"
+  },
+  "userMenu": {
+    "accountMenu": "Menu ng account",
+    "profile": "Profile",
+    "terms": "Mga Tuntunin at Kondisyon",
+    "logout": "Mag-log Out",
+    "loggingOut": "Nagla-log out…"
+  },
+  "mobileMenu": {
+    "open": "Buksan ang menu",
+    "close": "Isara ang menu"
+  },
+  "languageSwitcher": {
+    "label": "Baguhin ang display language"
+  },
+  "footer": {
+    "links": {
+      "privacyPolicy": "Patakaran sa Privacy",
+      "termsOfService": "Mga Tuntunin ng Serbisyo",
+      "legalDisclaimer": "Legal na Paunawa",
+      "cookiePolicy": "Patakaran sa Cookie",
+      "support": "Suporta"
+    },
+    "copyright": "© {{year}} ilovelawyer AI Legal Systems. Nakalaan ang lahat ng karapatan."
+  },
+  "siteFooter": {
+    "tagline": "Nakalaan sa pagbibigay sa legal na komunidad ng pinaka-advanced na digital research tools sa Pilipinas.",
+    "copyright": "© {{year}} ILOVELAWYER PHILIPPINES. NAKALAAN ANG LAHAT NG KARAPATAN.",
+    "research": {
+      "heading": "Pananaliksik",
+      "constitution": "Konstitusyon",
+      "civilCode": "Civil Code",
+      "scraArchive": "SCRA Archive"
+    },
+    "legal": {
+      "heading": "Legal",
+      "privacyPolicy": "Patakaran sa Privacy",
+      "termsOfUse": "Mga Tuntunin sa Paggamit",
+      "ethicsPolicy": "Patakaran sa Etika"
+    },
+    "connect": {
+      "heading": "Kumonekta",
+      "supportCenter": "Support Center",
+      "mediaInquiries": "Mga Katanungan mula sa Media",
+      "contactUs": "Makipag-ugnayan"
+    }
+  }
+}

@@ -1,70 +1,118 @@
-import svgPaths from "@/imports/IlovelawyerLandingPageWithInActionSection/svg-4n6twsb3v9";
+"use client";
+
+import Link from "next/link";
+import { Bot, Briefcase, FileSearch, Mic } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function FeaturesSection() {
+  const { t } = useTranslation("landing");
   return (
-    <section className="bg-[#f2f4f6] py-24 px-6 md:px-16">
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-16 items-center">
-        <div className="flex flex-col gap-4 items-center max-w-3xl text-center">
-          <h2
-            className="text-[#0a192f] text-[clamp(28px,4vw,42px)] leading-[1.5]"
-            style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-          >
-            Precision Engineering for Legal Teams
-          </h2>
-          <p className="text-[#44474d] text-lg" style={{ fontFamily: "'Source Serif 4', serif" }}>
-            Our system isn&apos;t just a chatbot. It&apos;s a vertically integrated legal operating system designed for the highest level of rigor.
-          </p>
+    <section id="features" className="relative py-20 px-8 md:px-16 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[#f1f4f6]/80" />
+        <div className="absolute inset-0 backdrop-blur-[2px] bg-[rgba(241,244,246,0.8)]" />
+      </div>
+
+      <div className="relative z-10 max-w-360 mx-auto">
+        <div className="grid grid-cols-12 gap-8 mb-8">
+          <div className="col-start-2 col-span-10 flex items-end justify-between pb-16">
+            <div>
+              <h2 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                {t("features.heading")}
+              </h2>
+              <p className="text-[#45464d] text-base mt-4 leading-[1.6]" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("features.subheading")}
+              </p>
+            </div>
+            <Link
+              href="/signup"
+              className="flex flex-col items-start shrink-0 pb-1.5 border-b-2 border-black hover:opacity-70 transition-opacity duration-200"
+            >
+              <span className="text-black text-xs tracking-[1.2px] uppercase" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>{t("features.explorePlatform")}</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-          <div className="bg-white rounded-xl border border-[#d8dadc] p-8 lg:col-span-2">
-            <div className="flex flex-col lg:flex-row gap-8 items-start">
-              <div className="flex-1 flex flex-col gap-4">
-                <svg className="size-8" fill="none" viewBox="0 0 33.3333 33.3333">
-                  <path d={svgPaths.p2ccb6580} fill="#0059BB" />
-                </svg>
-                <h3
-                  className="text-[#191c1e] text-2xl pt-1"
-                  style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-                >
-                  Institutional Legal Context
-                </h3>
-                <p className="text-[#44474d] text-base leading-[1.625]" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Access a massive repository of cross-jurisdictional precedents and statutes instantly. Our AI understands the nuance between different territories and specialized fields of law.
-                </p>
-                <div className="flex flex-col gap-2 pt-4">
-                  {["Multi-jurisdictional Analysis", "Statute Synchronization"].map((item) => (
-                    <div key={item} className="flex items-center gap-2">
-                      <svg className="size-[15px] shrink-0" fill="none" viewBox="0 0 15 15">
-                        <path d={svgPaths.p1041200} fill="#0059BB" />
-                      </svg>
-                      <span className="text-[#191c1e] text-sm" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                        {item}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1 min-h-[192px] rounded-lg overflow-hidden bg-[#e8edf5] flex items-center justify-center">
-                <span className="text-[#76849f] text-sm" style={{ fontFamily: "'Source Serif 4', serif" }}>Columns image</span>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* AI Research Chat */}
+          <Link
+            href="/signup"
+            className="lg:col-start-2 lg:col-span-5 h-[400px] backdrop-blur-[6px] bg-[rgba(247,250,252,0.4)] border border-[rgba(198,198,206,0.3)] flex flex-col justify-between p-10 hover:border-[rgba(198,198,206,0.7)] hover:shadow-lg transition-all duration-200 cursor-pointer group"
+          >
+            <div className="flex flex-col gap-4">
+              <Bot size={30} color="black" className="group-hover:scale-110 transition-transform duration-200" />
+              <h3 className="text-[28px] text-black leading-[36px] pt-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                {t("features.aiChat.title")}
+              </h3>
+              <p className="text-[#45464d] text-base leading-[1.6]" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("features.aiChat.description")}
+              </p>
             </div>
+            <span className="text-[#45464d] text-xs tracking-[1.2px] uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>
+              {t("features.getStartedArrow")}
+            </span>
+          </Link>
+
+          {/* Case Manager */}
+          <div className="lg:col-span-5 h-[400px] bg-[#2d3133] relative overflow-hidden flex flex-col justify-between p-10 hover:shadow-xl transition-shadow duration-200">
+            <div className="absolute bottom-[-133px] right-[-133px] size-[362px] flex items-center justify-center pointer-events-none">
+              <div className="rotate-45 size-64 border border-[rgba(255,224,136,0.1)]" />
+            </div>
+            <div className="flex flex-col gap-4 relative z-10">
+              <Briefcase size={28} color="#FFE088" />
+              <h3 className="text-[28px] text-white leading-[36px] pt-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                {t("features.caseManager.title")}
+              </h3>
+              <p className="text-[rgba(224,227,229,0.7)] text-base leading-[1.6]" style={{ fontFamily: "Inter, sans-serif" }}>
+                {t("features.caseManager.description")}
+              </p>
+            </div>
+            <Link
+              href="/signup"
+              className="relative z-10 self-start border-b border-[#ffe088] pb-1 hover:opacity-80 transition-opacity duration-200"
+            >
+              <span className="text-[#ffe088] text-xs tracking-[1.2px] uppercase" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>{t("features.getStarted")}</span>
+            </Link>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#d8dadc] p-8">
-            <svg className="w-[33px] h-[27px]" fill="none" viewBox="0 0 33.3361 26.6667">
-              <path d={svgPaths.p2cbc7d80} fill="#0059BB" />
-            </svg>
-            <h3
-              className="text-[#191c1e] text-xl pt-5 pb-3"
-              style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-            >
-              Rapid Synthesis
-            </h3>
-            <p className="text-[#44474d] text-base leading-[1.625]" style={{ fontFamily: "'Source Serif 4', serif" }}>
-              Turn 100-page discovery documents into actionable executive summaries in less than 30 seconds.
-            </p>
-          </div>
+          {/* Document Analysis */}
+          <Link
+            href="/signup"
+            className="lg:col-start-2 lg:col-span-10 h-[320px] bg-white border border-[rgba(198,198,206,0.3)] flex items-center hover:shadow-lg hover:border-[rgba(198,198,206,0.6)] transition-all duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center gap-8 p-10 w-full h-full">
+              <div className="flex-1 flex flex-col gap-4">
+                <FileSearch size={27} color="black" className="group-hover:scale-110 transition-transform duration-200" />
+                <h3 className="text-[28px] text-black leading-[36px] pt-2" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                  {t("features.documentAnalysis.title")}
+                </h3>
+                <p className="text-[#45464d] text-base leading-[1.6]" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("features.documentAnalysis.description")}
+                </p>
+              </div>
+              <div className="flex-1 h-full relative overflow-hidden hidden lg:block bg-[#f1f4f6]/50" />
+            </div>
+          </Link>
+
+          {/* Voice Transcription */}
+          <Link
+            href="/signup"
+            className="lg:col-start-2 lg:col-span-10 h-[280px] bg-[#ebeef0] flex items-center hover:bg-[#e4e8ea] transition-colors duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center justify-between p-10 w-full">
+              <div className="flex flex-col gap-2 max-w-[576px]">
+                <h3 className="text-[28px] text-black leading-[36px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+                  {t("features.voiceTranscription.title")}
+                </h3>
+                <p className="text-[#45464d] text-base leading-[1.6]" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("features.voiceTranscription.description")}
+                </p>
+              </div>
+              <div className="border border-black rounded-full size-16 flex items-center justify-center shrink-0 group-hover:bg-black group-hover:border-black transition-colors duration-200">
+                <Mic size={20} color="#181C1E" className="group-hover:text-white transition-colors duration-200" />
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </section>

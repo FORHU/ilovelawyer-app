@@ -1,0 +1,27 @@
+{
+  "emptyState": {
+    "heading": "전문 법률 상담",
+    "subheading": "현대 법률 실무자를 위한 안전한 AI 기반 법률 분석 및 사건 초안 작성."
+  },
+  "input": {
+    "placeholder": "법률 문의 사항이나 사건 세부 내용을 작성하세요...",
+    "attachFile": "파일 첨부",
+    "removeAttachedFile": "첨부 파일 제거",
+    "removeFile": "{{fileName}} 제거",
+    "startRecording": "녹음 시작",
+    "stopRecording": "녹음 중지",
+    "sendMessage": "메시지 보내기"
+  },
+  "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
+  "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
+  "sidebar": {
+    "newChat": "새 채팅",
+    "recent": "최근",
+    "recentConversationsTitle": "최근 대화",
+    "gallery": "갤러리",
+    "untitledConversation": "제목 없는 대화",
+    "conversations": "대화 목록",
+    "openConversations": "대화 목록 열기",
+    "closeConversations": "대화 목록 닫기"
+  }
+}

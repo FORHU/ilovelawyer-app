@@ -1,0 +1,30 @@
+{
+  "title": "Kalendaryo",
+  "subtitle": "Subaybayan ang mga hearing, deadline, at case notes sa isang lugar.",
+  "nothingScheduledMonth": "Wala pang naka-iskedyul ngayong buwan.",
+  "nothingScheduledDay": "Wala pang naka-iskedyul sa araw na ito.",
+  "selectDay": "Pumili ng araw",
+  "overflowMore": "+{{count}} pa",
+  "dismissError": "Alisin ang error",
+  "addTo": "Idagdag sa {{date}}",
+  "appointment": "Appointment",
+  "note": "Tala",
+  "titlePlaceholder": "Pamagat",
+  "descriptionPlaceholder": "Paglalarawan (opsyonal)",
+  "notePlaceholder": "Tala",
+  "saving": "Sine-save…",
+  "addAppointment": "Magdagdag ng Appointment",
+  "addNote": "Magdagdag ng Tala",
+  "errors": {
+    "titleRequired": "Kinakailangan ang pamagat.",
+    "timeRequired": "Kinakailangan ang oras ng simula at pagtatapos.",
+    "endAfterStart": "Ang oras ng pagtatapos ay dapat pagkatapos ng oras ng simula.",
+    "appointmentSaveFailed": "Hindi na-save ang appointment.",
+    "noteRequired": "Kinakailangan ang teksto ng tala.",
+    "noteSaveFailed": "Hindi na-save ang tala.",
+    "loadFailed": "Hindi ma-load ang iskedyul ng buwang ito."
+  },
+  "previousMonth": "Nakaraang buwan",
+  "nextMonth": "Susunod na buwan",
+  "retry": "Subukan ulit"
+}

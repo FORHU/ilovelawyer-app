@@ -1,0 +1,50 @@
+{
+  "hero": {
+    "titlePrefix": "Transcription",
+    "titleEmphasis": "Muling Binalangkas.",
+    "subtitle": "Itala ang mga hearing, deposisyon, at panayam sa kliyente gamit ang speaker-aware na transkripsyon na ginawa para sa mga pangangailangan ng legal practice."
+  },
+  "recorder": {
+    "startNewRecording": "Simulan ang Bagong Recording",
+    "stopRecorder": "Ihinto ang Recorder",
+    "launchRecorder": "Ilunsad ang Recorder"
+  },
+  "uploader": {
+    "title": "Mag-upload ng Audio File",
+    "hint": "I-drag at i-drop, o mag-browse. MP3, WAV, o AAC hanggang 2GB.",
+    "uploading": "Ina-upload…",
+    "selectFiles": "Pumili ng mga File"
+  },
+  "queue": {
+    "activityQueue": "Activity Queue",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} na item",
+    "live": "Live",
+    "noActiveTranscripts": "Walang Aktibong Transcript",
+    "noActiveTranscriptsHint": "Ang mga recording mula sa consultation chat at mga file na iyong ina-upload dito ay lalabas para sa pagsusuri.",
+    "removeFromQueue": "Alisin sa queue",
+    "viewFullLibrary": "Tingnan ang Buong Library",
+    "transcribe": "I-transcribe",
+    "retry": "Subukan Ulit",
+    "viewTranscript": "Tingnan ang Transcript",
+    "copyTranscript": "Kopyahin",
+    "copied": "Nakopya",
+    "emptyTranscript": "Walang natukoy na pananalita sa recording na ito.",
+    "status": {
+      "local": "Hindi Naipadala",
+      "uploading": "Ina-upload",
+      "starting": "Sinisimulan",
+      "in_progress": "Pinoproseso",
+      "completed": "Tapos na",
+      "failed": "Nabigo"
+    }
+  },
+  "library": {
+    "untitled": "Walang Pamagat na Transcription",
+    "loading": "Nilo-load ang mga transcription…",
+    "loadError": "Hindi na-load ang iyong mga transcription. Pakisubukang muli."
+  },
+  "delete": "Burahin",
+  "deleteRecord": "Burahin ang {{name}}",
+  "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli."
+}

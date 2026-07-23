@@ -1,0 +1,56 @@
+{
+  "title": "Gumawa ng Kaso",
+  "subtitle": "Mag-file ng bagong usapin, pangalanan ang mga partido, at maglakip ng mga sumusuportang dokumento sa isang pagsusumite.",
+  "dismissConfirmation": "Alisin ang kumpirmasyon",
+  "dismissError": "Alisin ang error",
+  "filingInitialized": "Nasimulan ang filing para sa “{{title}}”.",
+  "submitFailed": "Hindi naisumite ang case filing.",
+  "sectionIdentity": {
+    "heading": "I. Pagkakakilanlan ng Kaso",
+    "subheading": "Ang caption at venue para sa usaping ito.",
+    "caseTitleLabel": "Pamagat ng Kaso / Caption",
+    "required": "(kinakailangan)",
+    "caseTitlePlaceholder": "hal. Cruz vs. Santos",
+    "caseTitleError": "Pakitukoy ang pamagat ng kaso bago simulan ang pagsusumite.",
+    "actionTypeLabel": "Uri ng Aksyon",
+    "selectAction": "Pumili ng aksyon",
+    "jurisdictionLabel": "Hukuman / Sangay ng Hurisdiksyon",
+    "jurisdictionPlaceholder": "hal. RTC Branch 12, Makati City"
+  },
+  "sectionParties": {
+    "heading": "II. Detalye ng mga Partido",
+    "subheading": "Lahat ng nakapangalan sa case caption, sa magkabilang panig.",
+    "partyLabel": "Partido {{number}}",
+    "removeParty": "Alisin ang partido {{number}}",
+    "removePartyConfirm": "Alisin ang \"{{name}}\" sa Detalye ng mga Partido? Hindi na ito maibabalik.",
+    "fullNameLabel": "Buong Pangalan / Corporate Entity",
+    "fullNamePlaceholder": "Ilagay ang eksaktong legal na pangalan",
+    "designationLabel": "Katayuan",
+    "addParty": "Magdagdag ng Partido"
+  },
+  "sectionEvidence": {
+    "heading": "III. Mga Ebidensyang Isusumite",
+    "subheading": "Maglakip ng anumang dokumento na iindeks kasama ng filing na ito.",
+    "depositCaseFiles": "Idiposito ang mga Case File",
+    "dropHint": "I-drag at i-drop, o mag-browse. PDF o DOCX ang standard para sa automated indexing",
+    "selectDocuments": "Pumili ng mga Dokumento",
+    "attachedDossiers": "Mga Nakalakip na Dossier ({{count}}):",
+    "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
+    "removeFile": "Alisin ang {{fileName}}",
+    "uploadFailed": "Nabigo ang pag-upload."
+  },
+  "submitting": "Isinusumite…",
+  "initiateFiling": "Simulan ang Filing",
+  "editAnytimeNote": "Maaari mong i-edit ang mga detalyeng ito anumang oras pagkatapos mag-file.",
+  "actionTypes": {
+    "civilLitigation": "Civil Litigation",
+    "criminalProceeding": "Kasong Kriminal",
+    "laborDispute": "Alitan sa Paggawa",
+    "commercialArbitration": "Commercial Arbitration"
+  },
+  "designations": {
+    "petitionerPlaintiff": "Petitioner / Nagsasakdal",
+    "respondentDefendant": "Respondent / Ipinagsasakdal",
+    "intervenorThirdParty": "Intervenor / Third-Party"
+  }
+}

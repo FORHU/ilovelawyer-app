@@ -1,0 +1,30 @@
+{
+  "title": "캘린더",
+  "subtitle": "심리, 마감일, 사건 메모를 한곳에서 관리하세요.",
+  "nothingScheduledMonth": "이번 달에는 예정된 일정이 없습니다.",
+  "nothingScheduledDay": "이 날짜에는 예정된 일정이 없습니다.",
+  "selectDay": "날짜 선택",
+  "overflowMore": "+{{count}}개 더보기",
+  "dismissError": "오류 닫기",
+  "addTo": "{{date}}에 추가",
+  "appointment": "약속",
+  "note": "메모",
+  "titlePlaceholder": "제목",
+  "descriptionPlaceholder": "설명 (선택 사항)",
+  "notePlaceholder": "메모",
+  "saving": "저장 중…",
+  "addAppointment": "약속 추가",
+  "addNote": "메모 추가",
+  "errors": {
+    "titleRequired": "제목은 필수입니다.",
+    "timeRequired": "시작 및 종료 시간이 필요합니다.",
+    "endAfterStart": "종료 시간은 시작 시간보다 이후여야 합니다.",
+    "appointmentSaveFailed": "약속 저장에 실패했습니다.",
+    "noteRequired": "메모 내용은 필수입니다.",
+    "noteSaveFailed": "메모 저장에 실패했습니다.",
+    "loadFailed": "이번 달 일정을 불러오지 못했습니다."
+  },
+  "previousMonth": "이전 달",
+  "nextMonth": "다음 달",
+  "retry": "다시 시도"
+}

@@ -1,0 +1,77 @@
+{
+  "hero": {
+    "titlePrefix": "Ang Digital Archive ng",
+    "titleEmphasis": "Batas ng Pilipinas.",
+    "searchAriaLabel": "Hanapin sa legal library",
+    "searchPlaceholder": "Codals, SCRA, o G.R. No...",
+    "searching": "Naghahanap…",
+    "queryAi": "Magtanong sa AI",
+    "quickAccess": "Mabilisang access:",
+    "revisedPenalCode": "Revised Penal Code",
+    "constitution1987": "1987 Konstitusyon",
+    "rule130": "Rule 130"
+  },
+  "analysis": {
+    "analyzing": "Sinusuri ang “{{query}}”…",
+    "error": "Hindi ma-analyze ang katanungang iyon. Pakisubukang muli.",
+    "viewSource": "Tingnan ang source →"
+  },
+  "documents": {
+    "pageTitle": "Mga Case Law Document",
+    "searchAriaLabel": "Hanapin ang mga case law document",
+    "searchPlaceholder": "Maghanap ayon sa titulo o case number...",
+    "searchButton": "Hanapin",
+    "loading": "Naglo-load ng mga dokumento…",
+    "loadError": "Hindi ma-load ang mga dokumento. Pakisubukang muli.",
+    "empty": "Walang nahanap na dokumento.",
+    "untitled": "Walang pamagat na dokumento",
+    "prev": "Nakaraan",
+    "next": "Susunod",
+    "pageIndicator": "Pahina {{page}} ng {{totalPages}}",
+    "detail": {
+      "backLink": "Lahat ng Dokumento",
+      "loading": "Naglo-load ng dokumento…",
+      "loadError": "Hindi ma-load ang dokumentong ito. Pakisubukang muli.",
+      "notFound": "Hindi natagpuan ang dokumento.",
+      "viewSource": "Tingnan ang source →"
+    }
+  },
+  "categories": {
+    "codals": {
+      "title": "Codals",
+      "description": "I-access ang eksakto at walang anotasyong statutory text ng mga batas ng Pilipinas ayon sa pagpapatupad ng lehislatura.",
+      "civilCode": "Civil Code",
+      "revisedPenalCode": "Revised Penal Code",
+      "laborCode": "Labor Code",
+      "familyCode": "Family Code"
+    },
+    "jurisprudence": {
+      "title": "Jurisprudence",
+      "description": "Galugarin ang mga nagbubuklod na legal doctrine at case law na itinatag ng Korte Suprema ng Pilipinas.",
+      "enBancDecisions": "Mga Desisyon ng Korte Suprema En Banc",
+      "divisionDecisions": "Mga Desisyon ng Dibisyon ng Korte Suprema",
+      "lowerCourtRulings": "Mga Persuasive na Desisyon ng Mas Mababang Hukuman"
+    },
+    "issuance": {
+      "title": "Issuance",
+      "description": "Mag-browse ng mga administrative regulation, circular, at executive order na nagpapatupad ng mas malawak na statutory law.",
+      "presidentialIssuances": "Mga Presidential Issuance",
+      "administrativeAgencyIssuances": "Mga Isyu ng Administrative Agency",
+      "judicialIssuances": "Mga Judicial Issuance"
+    }
+  },
+  "bento": {
+    "statutesLabel": "Mga Batas",
+    "statutesTitle": "Constitutional at Civil Codes",
+    "statutesDescription": "I-access ang kumpleto at anotadong koleksyon ng mga batas ng Pilipinas. Pinapanatili ng aming digital library ang live update para sa bawat susog sa lehislasyon.",
+    "civilCodeOfPhilippines": "Civil Code ng Pilipinas",
+    "revisedPenalCode": "Revised Penal Code",
+    "laborCodeOfPhilippines": "Labor Code ng Pilipinas",
+    "jurisprudenceLabel": "Jurisprudence",
+    "supremeCourtReports": "Supreme Court Reports",
+    "supremeCourtReportsDescription": "Maghanap sa mahigit 100,000 full-text na desisyon. Gamitin ang AI upang kumuha ng mga pangunahing legal doctrine at agad na i-cross-reference ang mga sipi.",
+    "doctrineExtraction": "Pagkuha ng Doctrine",
+    "exploreSupremeCourtReports": "Galugarin ang Supreme Court Reports",
+    "recentDecisions": "Mga Kamakailang Desisyon"
+  }
+}

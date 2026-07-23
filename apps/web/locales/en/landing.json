@@ -1,0 +1,82 @@
+{
+  "navbar": {
+    "links": {
+      "platform": "Platform",
+      "solutions": "Solutions",
+      "legalLibrary": "Legal Library",
+      "pricing": "Pricing"
+    },
+    "signIn": "Sign In",
+    "requestDemo": "Request Demo",
+    "getStarted": "Get Started",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "hero": {
+    "eyebrow": "The Future of Jurisprudence",
+    "titleLine1": "Democratizing Access to",
+    "titleEmphasis": "Philippine Legal",
+    "titleLine3": "Information",
+    "description": "Leveraging specialized artificial intelligence to navigate the intricacies of Philippine jurisprudence. From litigation support to document synthesis, we provide legal professionals and the public with unparalleled analytical precision.",
+    "ctaPrimary": "Start Free Consultation",
+    "ctaSecondary": "View Case Studies"
+  },
+  "features": {
+    "heading": "Operational Intelligence",
+    "subheading": "Our specialized legal technology stack automates manual processes with high-fidelity AI processing.",
+    "explorePlatform": "Explore Platform",
+    "getStarted": "Get Started",
+    "getStartedArrow": "Get Started →",
+    "aiChat": {
+      "title": "AI Research Chat",
+      "description": "Real-time statutory interpretation and jurisprudence research via a natural language interface trained on current Supreme Court rulings."
+    },
+    "caseManager": {
+      "title": "Case Manager",
+      "description": "A centralized ecosystem for docketing, calendar management, and strategic planning for complex litigation workflows."
+    },
+    "documentAnalysis": {
+      "title": "Document Analysis",
+      "description": "Automated contract review and risk assessment. Detect inconsistencies across multi-volume discovery sets in seconds."
+    },
+    "voiceTranscription": {
+      "title": "Voice Transcription",
+      "description": "Enterprise-grade transcription for courtroom proceedings and depositions with high semantic accuracy for legal terminology."
+    }
+  },
+  "quotes": {
+    "items": [
+      {
+        "text": "The agility ilovelawyer brings to our research process is unprecedented. It isn't just about speed; it's about the depth of insight we can now provide our clients in a fraction of the time.",
+        "author": "Senior Partner",
+        "firm": "Cruz & Associates Law Offices"
+      },
+      {
+        "text": "ilovelawyer transformed how we approach statutory research. The precision of the AI's understanding of Philippine law is unmatched.",
+        "author": "Managing Attorney",
+        "firm": "Reyes Legal Group"
+      },
+      {
+        "text": "Our litigation team cut case preparation time by 60%. The platform's grasp of jurisprudence is extraordinary.",
+        "author": "Chief Litigation Officer",
+        "firm": "Bautista & Partners"
+      }
+    ],
+    "quoteLabel": "Quote {{number}}"
+  },
+  "footer": {
+    "tagline": "Premium AI Legal Operations for the Philippine market. We integrate centuries of legal tradition with modern technological innovation.",
+    "company": {
+      "heading": "Company",
+      "aboutUs": "About Us",
+      "contactSupport": "Contact & Support",
+      "compliance": "RA 10173 Compliance"
+    },
+    "legal": {
+      "heading": "Legal",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "securityDataSovereignty": "Security & Data Sovereignty"
+    }
+  }
+}

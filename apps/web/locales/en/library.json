@@ -1,0 +1,77 @@
+{
+  "hero": {
+    "titlePrefix": "The Digital Archive of",
+    "titleEmphasis": "Philippine Law.",
+    "searchAriaLabel": "Search the legal library",
+    "searchPlaceholder": "Codals, SCRA, or G.R. No...",
+    "searching": "Searching…",
+    "queryAi": "Query AI",
+    "quickAccess": "Quick access:",
+    "revisedPenalCode": "Revised Penal Code",
+    "constitution1987": "1987 Constitution",
+    "rule130": "Rule 130"
+  },
+  "analysis": {
+    "analyzing": "Analyzing “{{query}}”…",
+    "error": "Couldn't analyze that query. Please try again.",
+    "viewSource": "View source →"
+  },
+  "documents": {
+    "pageTitle": "Case Law Documents",
+    "searchAriaLabel": "Search case law documents",
+    "searchPlaceholder": "Search by title or case number...",
+    "searchButton": "Search",
+    "loading": "Loading documents…",
+    "loadError": "Couldn't load documents. Please try again.",
+    "empty": "No documents found.",
+    "untitled": "Untitled document",
+    "prev": "Previous",
+    "next": "Next",
+    "pageIndicator": "Page {{page}} of {{totalPages}}",
+    "detail": {
+      "backLink": "All Documents",
+      "loading": "Loading document…",
+      "loadError": "Couldn't load this document. Please try again.",
+      "notFound": "Document not found.",
+      "viewSource": "View source →"
+    }
+  },
+  "categories": {
+    "codals": {
+      "title": "Codals",
+      "description": "Access the exact, unannotated statutory texts of Philippine laws as enacted by the legislature.",
+      "civilCode": "Civil Code",
+      "revisedPenalCode": "Revised Penal Code",
+      "laborCode": "Labor Code",
+      "familyCode": "Family Code"
+    },
+    "jurisprudence": {
+      "title": "Jurisprudence",
+      "description": "Explore binding legal doctrines and case law established by the Supreme Court of the Philippines.",
+      "enBancDecisions": "Supreme Court En Banc Decisions",
+      "divisionDecisions": "Supreme Court Division Decisions",
+      "lowerCourtRulings": "Persuasive Lower Court Rulings"
+    },
+    "issuance": {
+      "title": "Issuance",
+      "description": "Browse administrative regulations, circulars, and executive orders that implement and enforce broader statutory laws.",
+      "presidentialIssuances": "Presidential Issuances",
+      "administrativeAgencyIssuances": "Administrative Agency Issuances",
+      "judicialIssuances": "Judicial Issuances"
+    }
+  },
+  "bento": {
+    "statutesLabel": "Statutes",
+    "statutesTitle": "Constitutional & Civil Codes",
+    "statutesDescription": "Access the complete, annotated collection of Philippine laws. Our digital library maintains live updates for every legislative amendment.",
+    "civilCodeOfPhilippines": "Civil Code of the Philippines",
+    "revisedPenalCode": "Revised Penal Code",
+    "laborCodeOfPhilippines": "Labor Code of the Philippines",
+    "jurisprudenceLabel": "Jurisprudence",
+    "supremeCourtReports": "Supreme Court Reports",
+    "supremeCourtReportsDescription": "Search over 100,000 full-text decisions. Use AI to extract key legal doctrines and cross-reference citations instantly.",
+    "doctrineExtraction": "Doctrine Extraction",
+    "exploreSupremeCourtReports": "Explore Supreme Court Reports",
+    "recentDecisions": "Recent Decisions"
+  }
+}
