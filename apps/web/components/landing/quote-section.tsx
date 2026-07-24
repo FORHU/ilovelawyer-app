@@ -38,26 +38,26 @@ export function QuoteSection() {
   const quote = quotes[displayed] ?? quotes[0]!;
 
   return (
-    <section id="testimonials" className="py-24 px-8 md:px-16 bg-[#f7fafc]">
+    <section id="testimonials" className="py-24 px-8 md:px-16 bg-[#f7fafc] dark:bg-background">
       <div className="max-w-180 mx-auto flex flex-col gap-10 items-center">
-        <div className="bg-[#cca830] h-0.5 w-12" />
+        <div className="bg-[#cca830] dark:bg-brand-gold h-0.5 w-12" />
 
         <div
           className="flex flex-col items-center gap-6 transition-opacity duration-200"
           style={{ opacity: fading ? 0 : 1 }}
         >
           <p
-            className="text-black text-[22px] text-center leading-[1.7] italic"
+            className="text-black dark:text-foreground text-[22px] text-center leading-[1.7] italic"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
           >
             &ldquo;{quote.text}&rdquo;
           </p>
 
           <div className="flex flex-col items-center gap-1">
-            <p className="text-black text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+            <p className="text-black dark:text-foreground text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
               {quote.author}
             </p>
-            <p className="text-[#45464d] text-xs tracking-[1px]" style={{ fontFamily: "Inter, sans-serif" }}>
+            <p className="text-[#45464d] dark:text-muted-foreground text-xs tracking-[1px]" style={{ fontFamily: "Inter, sans-serif" }}>
               {quote.firm}
             </p>
           </div>
@@ -73,7 +73,7 @@ export function QuoteSection() {
             >
               <div
                 className={`rounded-full transition-all duration-300 ${
-                  i === displayed ? "size-2.5 bg-black" : "size-2 bg-[#c6c6ce] hover:bg-[#888]"
+                  i === displayed ? "size-2.5 bg-black dark:bg-foreground" : "size-2 bg-[#c6c6ce] hover:bg-[#888] dark:bg-muted-foreground/40 dark:hover:bg-muted-foreground/70"
                 }`}
               />
             </button>

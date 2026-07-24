@@ -14,10 +14,12 @@
   "analysis": {
     "analyzing": "Sinusuri ang “{{query}}”…",
     "error": "Hindi ma-analyze ang katanungang iyon. Pakisubukang muli.",
-    "viewSource": "Tingnan ang source →"
+    "viewSource": "Tingnan ang source →",
+    "minimize": "I-minimize"
   },
   "documents": {
     "pageTitle": "Mga Case Law Document",
+    "backToLibrary": "Bumalik sa Library",
     "searchAriaLabel": "Hanapin ang mga case law document",
     "searchPlaceholder": "Maghanap ayon sa titulo o case number...",
     "searchButton": "Hanapin",
@@ -41,6 +43,7 @@
       "title": "Codals",
       "description": "I-access ang eksakto at walang anotasyong statutory text ng mga batas ng Pilipinas ayon sa pagpapatupad ng lehislatura.",
       "civilCode": "Civil Code",
+      "constitution1987": "1987 Konstitusyon",
       "revisedPenalCode": "Revised Penal Code",
       "laborCode": "Labor Code",
       "familyCode": "Family Code"
@@ -50,7 +53,8 @@
       "description": "Galugarin ang mga nagbubuklod na legal doctrine at case law na itinatag ng Korte Suprema ng Pilipinas.",
       "enBancDecisions": "Mga Desisyon ng Korte Suprema En Banc",
       "divisionDecisions": "Mga Desisyon ng Dibisyon ng Korte Suprema",
-      "lowerCourtRulings": "Mga Persuasive na Desisyon ng Mas Mababang Hukuman"
+      "lowerCourtRulings": "Mga Persuasive na Desisyon ng Mas Mababang Hukuman",
+      "indexedDecisions": "Mag-browse ng mga Naka-indeks na Desisyon"
     },
     "issuance": {
       "title": "Issuance",
@@ -72,6 +76,6 @@
     "supremeCourtReportsDescription": "Maghanap sa mahigit 100,000 full-text na desisyon. Gamitin ang AI upang kumuha ng mga pangunahing legal doctrine at agad na i-cross-reference ang mga sipi.",
     "doctrineExtraction": "Pagkuha ng Doctrine",
     "exploreSupremeCourtReports": "Galugarin ang Supreme Court Reports",
-    "recentDecisions": "Mga Kamakailang Desisyon"
+    "recentDecisions": "Mga Makasaysayang Desisyon"
   }
 }

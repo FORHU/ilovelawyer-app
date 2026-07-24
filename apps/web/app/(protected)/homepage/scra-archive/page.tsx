@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Landmark, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Landmark, Sparkles } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import GlobalFooter from "@/components/global-footer";
 
 interface Decision {
   grNumber: string;
@@ -13,10 +12,10 @@ interface Decision {
 }
 
 const DECISIONS: Decision[] = [
-  { grNumber: "G.R. No. 251000", caption: "People vs. Dela Cruz", year: "2023", doctrine: "Chain of custody in dangerous drugs cases" },
-  { grNumber: "G.R. No. 248123", caption: "Ayala Land vs. CIR", year: "2022", doctrine: "Tax situs of intangible corporate assets" },
-  { grNumber: "G.R. No. 260555", caption: "Santos vs. Court of Appeals", year: "2024", doctrine: "Requisites of a valid donation propter nuptias" },
-  { grNumber: "G.R. No. 233456", caption: "Reyes vs. People", year: "2021", doctrine: "Qualifying circumstances in murder informations" },
+  { grNumber: "G.R. No. 221029", caption: "Republic vs. Manalo", year: "2018", doctrine: "Recognition of a foreign divorce decree under Article 26 of the Family Code" },
+  { grNumber: "G.R. No. 204819", caption: "Imbong vs. Ochoa", year: "2014", doctrine: "Constitutionality of the Responsible Parenthood and Reproductive Health Law" },
+  { grNumber: "G.R. No. 101083", caption: "Oposa vs. Factoran", year: "1993", doctrine: "Intergenerational responsibility and the right to a balanced and healthful ecology" },
+  { grNumber: "G.R. No. 208566", caption: "Belgica vs. Ochoa", year: "2013", doctrine: "Unconstitutionality of the pork barrel system under the separation of powers" },
 ];
 
 export default function ScraArchivePage() {
@@ -25,6 +24,14 @@ export default function ScraArchivePage() {
       <GlobalHeader activeTab="scra-archive" />
 
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
+        <Link
+          href="/homepage/library"
+          className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Back to Library
+        </Link>
+
         <div className="w-full flex flex-col gap-2">
           <span className="text-[11px] font-semibold tracking-[1.5px] text-amber-700 dark:text-amber-400 uppercase">Research · Jurisprudence</span>
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground leading-tight">
@@ -53,8 +60,8 @@ export default function ScraArchivePage() {
 
         <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="px-6 md:px-8 py-5 border-b border-border">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">Recent Decisions</h2>
-            <p className="text-[13px] text-muted-foreground mt-0.5">A sample of what&apos;s freshly indexed in the archive.</p>
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">Landmark Decisions</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Foundational rulings that shaped Philippine jurisprudence.</p>
           </div>
 
           <div className="flex flex-col divide-y divide-border">
@@ -100,8 +107,6 @@ export default function ScraArchivePage() {
           </Link>
         </section>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }
