@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import GlobalFooter from "@/components/global-footer";
 
 interface Section {
   number: string;
@@ -125,18 +125,18 @@ export default function TermsPage() {
 
           <div className="flex flex-col gap-2 text-xs text-white/60 sm:items-end">
             <div className="flex flex-wrap gap-x-4 gap-y-1 sm:justify-end">
-              <a href="/homepage/term" className="font-semibold text-white">
+              <Link href="/homepage/term" className="font-semibold text-white">
                 {t("footerLinks.termsOfService")}
-              </a>
-              <a href="/homepage/term" className="transition-colors hover:text-white">
+              </Link>
+              <Link href="/homepage/term" className="transition-colors hover:text-white">
                 {t("footerLinks.privacyPolicy")}
-              </a>
-              <a href="/homepage/term" className="transition-colors hover:text-white">
+              </Link>
+              <Link href="/homepage/term" className="transition-colors hover:text-white">
                 {t("footerLinks.regulatoryCompliance")}
-              </a>
-              <a href="/homepage/term" className="transition-colors hover:text-white">
+              </Link>
+              <Link href="/homepage/term" className="transition-colors hover:text-white">
                 {t("footerLinks.contactUs")}
-              </a>
+              </Link>
             </div>
             <p className="text-white/40">{t("copyright", { year: new Date().getFullYear() })}</p>
           </div>

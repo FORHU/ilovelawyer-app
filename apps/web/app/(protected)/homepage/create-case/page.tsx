@@ -1,9 +1,8 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
-import GlobalFooter from "@/components/global-footer";
 import CustomSelect from "@/components/ui/custom-select";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users, Loader2 } from "lucide-react";
 import {
@@ -44,6 +43,7 @@ interface UploadedFile {
 
 export default function CreateCasePage() {
   const { t } = useTranslation("create-case");
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Seeded party keeps a stable id (safe for the initial server/client render);
   // parties added afterward only ever happen client-side, via addParty below.
@@ -56,7 +56,6 @@ export default function CreateCasePage() {
   });
   const [caseTitleError, setCaseTitleError] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
-  const [submittedTitle, setSubmittedTitle] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const nextPartyIdRef = useRef(2);
 
@@ -180,7 +179,6 @@ export default function CreateCasePage() {
 
   const handleSubmitFiling = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmittedTitle(null);
     setSubmitError(null);
     if (!formData.caseTitle.trim()) {
       setCaseTitleError(true);
@@ -206,14 +204,7 @@ export default function CreateCasePage() {
         .filter((f): f is UploadedFile & { documentId: string } => f.status === "uploaded" && !!f.documentId);
       await Promise.all(documentIds.map((f) => linkDocument({ documentId: f.documentId, caseId: newCase.id })));
 
-      setSubmittedTitle(formData.caseTitle);
-      setFormData({
-        caseTitle: "",
-        actionType: "",
-        jurisdiction: "",
-        parties: [{ id: "party-1", name: "", designation: "Petitioner / Plaintiff" }],
-        uploadedFiles: [],
-      });
+      router.push("/homepage/case-portfolio");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
@@ -242,23 +233,6 @@ export default function CreateCasePage() {
 
         {/* INTAKE FORM CONTENT */}
         <section className="max-w-4xl w-full mx-auto px-6 md:px-12 py-10 md:py-12 flex flex-col gap-8 font-['Inter']">
-          {submittedTitle && (
-            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300 rounded-xl px-4 py-3" role="status">
-              <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <p className="text-sm">
-                {t("filingInitialized", { title: submittedTitle })}
-              </p>
-              <button
-                type="button"
-                onClick={() => setSubmittedTitle(null)}
-                className="ml-auto rounded-full p-1 -m-1 text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
-                aria-label={t("dismissConfirmation")}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
           {submitError && (
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -550,8 +524,6 @@ export default function CreateCasePage() {
           </div>
         </section>
       </form>
-
-      <SiteFooter />
     </div>
   );
 }
