@@ -1,6 +1,7 @@
 // apps/web/components/global-header.tsx
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
@@ -20,15 +21,17 @@ interface GlobalHeaderProps {
     | "calendar"
     | "term"
     | "profile"
-    // Footer-only destinations — reachable from GlobalFooter, not part of the primary nav
+    // Secondary destinations — not part of the primary nav
     | "constitution"
     | "civil-code"
     | "scra-archive"
-    | "privacy-policy"
-    | "ethics-policy"
-    | "support-center"
-    | "media-inquiries"
-    | "contact-us";
+    | "revised-penal-code"
+    | "labor-code"
+    | "family-code"
+    | "persuasive-rulings"
+    | "presidential-issuances"
+    | "administrative-issuances"
+    | "judicial-issuances";
 }
 
 const CASE_MENU_ITEMS = [
@@ -118,15 +121,15 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   return (
     <header className="absolute top-0 left-0 w-full bg-brand-navy-950 border-b border-white/10 z-50">
       <div className="w-full max-w-[1440px] mx-auto h-14 flex items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8">
-        <a
+        <Link
           href="/"
           className="font-['Libre_Caslon_Text'] text-white text-[20px] tracking-[-0.6px] shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
           {t("appName")}
-        </a>
+        </Link>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
-          <a href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</a>
+          <Link href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</Link>
 
           <div className="relative" ref={caseMenuRef}>
             <button
@@ -153,7 +156,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-card border border-border rounded-xl shadow-xl py-1 overflow-hidden"
               >
                 {CASE_MENU_ITEMS.map((item) => (
-                  <a
+                  <Link
                     key={item.tab}
                     href={item.href}
                     role="menuitem"
@@ -163,16 +166,16 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     }`}
                   >
                     {t(item.labelKey)}
-                  </a>
+                  </Link>
                 ))}
               </div>
             )}
           </div>
 
-          <a href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</a>
-          <a href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</a>
-          <a href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</a>
-          <a href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</a>
+          <Link href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</Link>
+          <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</Link>
+          <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</Link>
+          <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</Link>
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
@@ -206,7 +209,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 )}
 
                 {USER_MENU_ITEMS.map((item) => (
-                  <a
+                  <Link
                     key={item.href}
                     href={item.href}
                     role="menuitem"
@@ -215,7 +218,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                   >
                     <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
                     {t(item.labelKey)}
-                  </a>
+                  </Link>
                 ))}
 
                 <button
@@ -253,14 +256,14 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         <div className="lg:hidden max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/10 bg-brand-navy-950 px-4 py-4">
           <nav className="flex flex-col gap-0.5">
             {MOBILE_NAV_ITEMS.map((item) => (
-              <a
+              <Link
                 key={item.tab}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={getMobileTabClass(item.tab)}
               >
                 {t(item.labelKey)}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -280,7 +283,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             )}
 
             {USER_MENU_ITEMS.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -288,7 +291,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               >
                 <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
                 {t(item.labelKey)}
-              </a>
+              </Link>
             ))}
 
             <button

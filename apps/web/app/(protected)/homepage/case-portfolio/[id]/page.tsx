@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Briefcase, Loader2, AlertCircle } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
 import { useCaseQuery } from "@/lib/cases/mutations";
 
 export default function CaseDetailPage() {
@@ -19,7 +18,7 @@ export default function CaseDetailPage() {
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="case-portfolio" />
 
-      <main className="max-w-4xl w-full mx-auto px-6 md:px-12 py-12 flex flex-col gap-8 flex-1">
+      <main className="max-w-4xl w-full mx-auto px-6 md:px-12 pt-20 pb-12 flex flex-col gap-8 flex-1">
         <Link
           href="/homepage/case-portfolio"
           className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
@@ -94,7 +93,6 @@ export default function CaseDetailPage() {
         )}
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

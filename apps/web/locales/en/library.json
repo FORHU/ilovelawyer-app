@@ -14,10 +14,12 @@
   "analysis": {
     "analyzing": "Analyzing “{{query}}”…",
     "error": "Couldn't analyze that query. Please try again.",
-    "viewSource": "View source →"
+    "viewSource": "View source →",
+    "minimize": "Minimize"
   },
   "documents": {
     "pageTitle": "Case Law Documents",
+    "backToLibrary": "Back to Library",
     "searchAriaLabel": "Search case law documents",
     "searchPlaceholder": "Search by title or case number...",
     "searchButton": "Search",
@@ -41,6 +43,7 @@
       "title": "Codals",
       "description": "Access the exact, unannotated statutory texts of Philippine laws as enacted by the legislature.",
       "civilCode": "Civil Code",
+      "constitution1987": "1987 Constitution",
       "revisedPenalCode": "Revised Penal Code",
       "laborCode": "Labor Code",
       "familyCode": "Family Code"
@@ -50,7 +53,8 @@
       "description": "Explore binding legal doctrines and case law established by the Supreme Court of the Philippines.",
       "enBancDecisions": "Supreme Court En Banc Decisions",
       "divisionDecisions": "Supreme Court Division Decisions",
-      "lowerCourtRulings": "Persuasive Lower Court Rulings"
+      "lowerCourtRulings": "Persuasive Lower Court Rulings",
+      "indexedDecisions": "Browse Indexed Decisions"
     },
     "issuance": {
       "title": "Issuance",
@@ -72,6 +76,6 @@
     "supremeCourtReportsDescription": "Search over 100,000 full-text decisions. Use AI to extract key legal doctrines and cross-reference citations instantly.",
     "doctrineExtraction": "Doctrine Extraction",
     "exploreSupremeCourtReports": "Explore Supreme Court Reports",
-    "recentDecisions": "Recent Decisions"
+    "recentDecisions": "Landmark Decisions"
   }
 }

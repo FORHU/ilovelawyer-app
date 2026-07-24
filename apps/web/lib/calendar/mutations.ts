@@ -11,6 +11,8 @@ export interface Appointment {
   /** The backend Event model has no end-time/duration field yet — always null until it ships (see CONTEXT.md pending). */
   endTime: string | null
   description: string | null
+  /** Address the appointment confirmation email is also sent to, if one was given. */
+  notifyEmail: string | null
 }
 
 export interface CreateAppointmentPayload {
@@ -20,6 +22,8 @@ export interface CreateAppointmentPayload {
   /** Collected in the UI but not sent to the backend — no field exists to store it yet. */
   endTime?: string
   description?: string
+  /** Optional recipient (e.g. a client) who should also get the confirmation email, in addition to the account owner. */
+  notifyEmail?: string
 }
 
 export interface Note {
@@ -38,6 +42,7 @@ interface BackendEvent {
   title: string
   dateTime: string
   notes: string | null
+  clientEmail: string | null
 }
 
 function toAppointment(event: BackendEvent): Appointment {
@@ -49,6 +54,7 @@ function toAppointment(event: BackendEvent): Appointment {
     startTime: format(dt, "HH:mm"),
     endTime: null,
     description: event.notes,
+    notifyEmail: event.clientEmail,
   }
 }
 
@@ -75,6 +81,7 @@ export function useCreateAppointmentMutation() {
           title: payload.title,
           dateTime: new Date(`${payload.date}T${payload.startTime}`).toISOString(),
           notes: payload.description,
+          clientEmail: payload.notifyEmail,
         }),
       })
       return toAppointment(event)

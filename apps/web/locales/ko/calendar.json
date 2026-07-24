@@ -10,6 +10,7 @@
   "appointment": "약속",
   "note": "메모",
   "titlePlaceholder": "제목",
+  "notifyEmailPlaceholder": "알림 받을 이메일 (선택 사항)",
   "descriptionPlaceholder": "설명 (선택 사항)",
   "notePlaceholder": "메모",
   "saving": "저장 중…",

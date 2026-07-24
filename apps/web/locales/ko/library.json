@@ -14,10 +14,12 @@
   "analysis": {
     "analyzing": "“{{query}}” 분석 중…",
     "error": "해당 질의를 분석할 수 없습니다. 다시 시도해 주세요.",
-    "viewSource": "출처 보기 →"
+    "viewSource": "출처 보기 →",
+    "minimize": "최소화"
   },
   "documents": {
     "pageTitle": "판례 문서",
+    "backToLibrary": "라이브러리로 돌아가기",
     "searchAriaLabel": "판례 문서 검색",
     "searchPlaceholder": "제목 또는 사건 번호로 검색...",
     "searchButton": "검색",
@@ -41,6 +43,7 @@
       "title": "법전",
       "description": "입법부가 제정한 필리핀 법률의 정확하고 무주석 법령 원문에 접근하세요.",
       "civilCode": "민법",
+      "constitution1987": "1987년 헌법",
       "revisedPenalCode": "개정 형법",
       "laborCode": "노동법",
       "familyCode": "가족법"
@@ -50,7 +53,8 @@
       "description": "필리핀 대법원이 확립한 구속력 있는 법 원칙과 판례를 살펴보세요.",
       "enBancDecisions": "대법원 전원합의체 판결",
       "divisionDecisions": "대법원 소부 판결",
-      "lowerCourtRulings": "하급 법원 참고 판결"
+      "lowerCourtRulings": "하급 법원 참고 판결",
+      "indexedDecisions": "색인된 판결 찾아보기"
     },
     "issuance": {
       "title": "행정 명령",
@@ -72,6 +76,6 @@
     "supremeCourtReportsDescription": "10만 건 이상의 전문 판결을 검색하세요. AI를 사용해 핵심 법 원칙을 추출하고 인용을 즉시 상호 참조하세요.",
     "doctrineExtraction": "법리 추출",
     "exploreSupremeCourtReports": "대법원 판례집 살펴보기",
-    "recentDecisions": "최근 판결"
+    "recentDecisions": "주요 판결"
   }
 }
