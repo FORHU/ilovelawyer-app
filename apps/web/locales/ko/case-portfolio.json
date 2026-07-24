@@ -1,0 +1,11 @@
+{
+  "title": "사건 포트폴리오",
+  "managingActiveProceedings": "진행 중인 법적 절차 {{count}}건을 관리하고 있습니다.",
+  "searchPlaceholder": "사건명, 사건번호 또는 의뢰인으로 검색...",
+  "filterBy": "필터 기준",
+  "statusOption": "상태: {{category}}",
+  "all": "전체",
+  "initiateNewFiling": "새 소송 접수 시작",
+  "noMatchingCases": "일치하는 사건 없음",
+  "noMatchingCasesHint": "다른 검색어를 사용하거나 위의 카테고리 필터를 지워보세요."
+}

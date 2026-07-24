@@ -1,0 +1,82 @@
+{
+  "navbar": {
+    "links": {
+      "platform": "Platform",
+      "solutions": "Mga Solusyon",
+      "legalLibrary": "Legal Library",
+      "pricing": "Pagpepresyo"
+    },
+    "signIn": "Mag-sign In",
+    "requestDemo": "Humiling ng Demo",
+    "getStarted": "Magsimula",
+    "openMenu": "Buksan ang menu",
+    "closeMenu": "Isara ang menu"
+  },
+  "hero": {
+    "eyebrow": "Ang Kinabukasan ng Jurisprudence",
+    "titleLine1": "Nagpapalaganap ng Access sa",
+    "titleEmphasis": "Legal na Impormasyon",
+    "titleLine3": "ng Pilipinas",
+    "description": "Gumagamit ng espesyalisadong artificial intelligence upang tahakin ang mga kumplikasyon ng Philippine jurisprudence. Mula sa litigation support hanggang document synthesis, nagbibigay kami sa mga legal professional at sa publiko ng walang katulad na analytical precision.",
+    "ctaPrimary": "Simulan ang Libreng Konsultasyon",
+    "ctaSecondary": "Tingnan ang Mga Case Study"
+  },
+  "features": {
+    "heading": "Operational Intelligence",
+    "subheading": "Ang aming espesyalisadong legal technology stack ay nag-a-automate ng mga manual na proseso gamit ang high-fidelity AI processing.",
+    "explorePlatform": "Galugarin ang Platform",
+    "getStarted": "Magsimula",
+    "getStartedArrow": "Magsimula →",
+    "aiChat": {
+      "title": "AI Research Chat",
+      "description": "Real-time na interpretasyon ng batas at pananaliksik sa jurisprudence sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng Korte Suprema."
+    },
+    "caseManager": {
+      "title": "Case Manager",
+      "description": "Isang sentralisadong ecosystem para sa docketing, pamamahala ng kalendaryo, at strategic planning para sa kumplikadong litigation workflow."
+    },
+    "documentAnalysis": {
+      "title": "Pagsusuri ng Dokumento",
+      "description": "Automated na contract review at risk assessment. Matukoy ang mga hindi pagkakatugma sa multi-volume discovery sets sa loob ng segundo."
+    },
+    "voiceTranscription": {
+      "title": "Voice Transcription",
+      "description": "Enterprise-grade na transkripsyon para sa mga paglilitis sa hukuman at deposisyon na may mataas na semantic accuracy para sa legal terminology."
+    }
+  },
+  "quotes": {
+    "items": [
+      {
+        "text": "Ang agility na dala ng ilovelawyer sa aming research process ay walang katulad. Hindi lamang ito tungkol sa bilis; ito ay tungkol sa lalim ng insight na maibibigay na namin sa aming mga kliyente sa mas maikling panahon.",
+        "author": "Senior Partner",
+        "firm": "Cruz & Associates Law Offices"
+      },
+      {
+        "text": "Binago ng ilovelawyer ang aming paraan ng paglapit sa statutory research. Ang precision ng pag-unawa ng AI sa batas ng Pilipinas ay walang katapat.",
+        "author": "Managing Attorney",
+        "firm": "Reyes Legal Group"
+      },
+      {
+        "text": "Naibawas ng aming litigation team ang 60% ng oras sa paghahanda ng kaso. Ang pag-unawa ng platform sa jurisprudence ay talagang kahanga-hanga.",
+        "author": "Chief Litigation Officer",
+        "firm": "Bautista & Partners"
+      }
+    ],
+    "quoteLabel": "Quote {{number}}"
+  },
+  "footer": {
+    "tagline": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng Pilipinas. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
+    "company": {
+      "heading": "Kompanya",
+      "aboutUs": "Tungkol sa Amin",
+      "contactSupport": "Makipag-ugnayan at Suporta",
+      "compliance": "RA 10173 Compliance"
+    },
+    "legal": {
+      "heading": "Legal",
+      "privacyPolicy": "Patakaran sa Privacy",
+      "termsOfService": "Mga Tuntunin sa Paggamit",
+      "securityDataSovereignty": "Seguridad at Data Sovereignty"
+    }
+  }
+}

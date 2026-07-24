@@ -1,0 +1,82 @@
+{
+  "navbar": {
+    "links": {
+      "platform": "플랫폼",
+      "solutions": "솔루션",
+      "legalLibrary": "법률 라이브러리",
+      "pricing": "요금제"
+    },
+    "signIn": "로그인",
+    "requestDemo": "데모 요청",
+    "getStarted": "시작하기",
+    "openMenu": "메뉴 열기",
+    "closeMenu": "메뉴 닫기"
+  },
+  "hero": {
+    "eyebrow": "법학의 미래",
+    "titleLine1": "필리핀 법률 정보에 대한",
+    "titleEmphasis": "접근성 확대",
+    "titleLine3": "",
+    "description": "전문화된 인공지능을 활용하여 필리핀 판례의 복잡성을 탐색합니다. 소송 지원부터 문서 종합까지, 법률 전문가와 일반 대중에게 탁월한 분석 정밀도를 제공합니다.",
+    "ctaPrimary": "무료 상담 시작하기",
+    "ctaSecondary": "사례 연구 보기"
+  },
+  "features": {
+    "heading": "운영 인텔리전스",
+    "subheading": "당사의 전문 법률 기술 스택은 고정밀 AI 처리로 수작업 프로세스를 자동화합니다.",
+    "explorePlatform": "플랫폼 살펴보기",
+    "getStarted": "시작하기",
+    "getStartedArrow": "시작하기 →",
+    "aiChat": {
+      "title": "AI 리서치 채팅",
+      "description": "현재 대법원 판례로 훈련된 자연어 인터페이스를 통한 실시간 법령 해석 및 판례 조사."
+    },
+    "caseManager": {
+      "title": "사건 관리자",
+      "description": "복잡한 소송 워크플로우를 위한 사건 등록, 일정 관리, 전략 기획을 위한 중앙 집중형 생태계."
+    },
+    "documentAnalysis": {
+      "title": "문서 분석",
+      "description": "자동화된 계약서 검토 및 위험 평가. 다권으로 구성된 증거개시 자료 간 불일치를 몇 초 만에 발견합니다."
+    },
+    "voiceTranscription": {
+      "title": "음성 녹취록",
+      "description": "법률 용어에 대한 높은 의미 정확도로 법정 절차 및 증언 녹취를 위한 엔터프라이즈급 녹취 서비스."
+    }
+  },
+  "quotes": {
+    "items": [
+      {
+        "text": "ilovelawyer가 리서치 프로세스에 가져다주는 민첩성은 전례가 없습니다. 단순히 속도의 문제가 아니라, 이제 고객에게 제공할 수 있는 통찰의 깊이가 달라졌습니다.",
+        "author": "선임 파트너",
+        "firm": "Cruz & Associates Law Offices"
+      },
+      {
+        "text": "ilovelawyer는 우리가 법령 리서치에 접근하는 방식을 완전히 바꾸어 놓았습니다. 필리핀 법률에 대한 AI의 이해 정밀도는 타의 추종을 불허합니다.",
+        "author": "관리 변호사",
+        "firm": "Reyes Legal Group"
+      },
+      {
+        "text": "우리 소송팀은 사건 준비 시간을 60% 단축했습니다. 이 플랫폼의 판례 이해력은 놀라울 정도입니다.",
+        "author": "소송 총괄 책임자",
+        "firm": "Bautista & Partners"
+      }
+    ],
+    "quoteLabel": "인용 {{number}}"
+  },
+  "footer": {
+    "tagline": "필리핀 시장을 위한 프리미엄 AI 법률 운영. 오랜 법률 전통과 현대 기술 혁신을 통합합니다.",
+    "company": {
+      "heading": "회사",
+      "aboutUs": "회사 소개",
+      "contactSupport": "문의 및 지원",
+      "compliance": "RA 10173 준수"
+    },
+    "legal": {
+      "heading": "법률",
+      "privacyPolicy": "개인정보 처리방침",
+      "termsOfService": "서비스 약관",
+      "securityDataSovereignty": "보안 및 데이터 주권"
+    }
+  }
+}

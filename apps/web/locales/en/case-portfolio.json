@@ -1,0 +1,27 @@
+{
+  "title": "Case Portfolio",
+  "managingActiveProceedings": "Managing {{count}} active legal proceedings.",
+  "searchPlaceholder": "Search by case name or party...",
+  "filterBy": "Filter by",
+  "statusOption": "Status: {{category}}",
+  "all": "All",
+  "initiateNewFiling": "Initiate New Filing",
+  "noMatchingCases": "No matching cases",
+  "noMatchingCasesHint": "Try a different search term.",
+  "noPartyListed": "No party listed",
+  "lastUpdated": "Last updated",
+  "loading": "Loading your cases…",
+  "loadError": "Couldn't load your cases.",
+  "retry": "Retry",
+  "detail": {
+    "backToPortfolio": "Back to Case Portfolio",
+    "party": "Party Involved",
+    "notes": "Notes",
+    "created": "Created",
+    "updated": "Last updated",
+    "noNotes": "No notes added.",
+    "loading": "Loading case…",
+    "loadError": "Couldn't load this case.",
+    "notFound": "Case not found."
+  }
+}

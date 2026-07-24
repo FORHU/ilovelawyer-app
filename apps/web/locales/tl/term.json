@@ -1,0 +1,67 @@
+{
+  "legalGovernanceModule": "Legal Governance Module",
+  "title": "Mga Tuntunin at Kondisyon",
+  "effectiveDate": "Petsa ng Pagkakabisa: Oktubre 24, 2024. Hurisdiksyon: Republika ng Pilipinas.",
+  "downloadPdf": "I-download ang PDF",
+  "termsAccepted": "Tinanggap ang mga Tuntunin",
+  "acceptTerms": "Tanggapin ang mga Tuntunin",
+  "verifiedJurisExcellence": "Verified Juris Excellence",
+  "footerTagline": "Itinataas ang praktis ng batas sa pamamagitan ng editoryal na presisyon at matalinong payo.",
+  "footerLinks": {
+    "termsOfService": "Mga Tuntunin ng Serbisyo",
+    "privacyPolicy": "Patakaran sa Privacy",
+    "regulatoryCompliance": "Regulatory Compliance",
+    "contactUs": "Makipag-ugnayan"
+  },
+  "copyright": "© {{year}} ilovelawyer. Nakalaan ang lahat ng karapatan. Juris Editorial Excellence.",
+  "sections": [
+    {
+      "number": "Seksyon 01",
+      "title": "Pagtanggap sa mga Tuntunin",
+      "paragraphs": [
+        "Sa pag-access o paggamit sa ilovelawyer platform (\"ang Platform\"), kinikilala mo na iyong nabasa, naunawaan, at sumasang-ayon kang sumailalim sa mga Tuntunin at Kondisyong ito. Ang kasunduang ito ay bumubuo ng legal na nagbubuklod na kontrata sa pagitan mo at ng ilovelawyer Juris Editorial Excellence.",
+        "Kung hindi ka sumasang-ayon sa mga tuntuning ito, dapat mong itigil kaagad ang lahat ng paggamit sa Platform at sa mga kaugnay na serbisyo ng AI counsel nito. Nakalaan sa amin ang karapatang baguhin ang mga tuntuning ito anumang oras, at ang patuloy na paggamit ay bumubuo ng pagtanggap sa mga pagbabagong iyon."
+      ]
+    },
+    {
+      "number": "Seksyon 02",
+      "title": "Mga Account ng Gumagamit",
+      "paragraphs": [
+        "Upang ma-access ang ilang premium na feature, kabilang ang AI-driven na case management at transkripsyon, kailangan mong magrehistro ng account. Kinakatawan at ginagarantiya mo na ang lahat ng impormasyong ibinigay sa pagpaparehistro ay tumpak, kasalukuyan, at kumpleto."
+      ],
+      "bullets": [
+        "Ang pagiging kumpidensyal ng mga login credential ay nasa account holder lamang.",
+        "Dapat iulat ang unauthorized access sa loob ng 24 oras mula sa pagkatuklas.",
+        "Ang bawat account ay personal at hindi maililipat nang walang tahasang nakasulat na pahintulot."
+      ]
+    },
+    {
+      "number": "Seksyon 03",
+      "title": "Intellectual Property",
+      "paragraphs": [
+        "Ang Platform, kabilang ngunit hindi limitado sa mga AI algorithm nito, proprietary na legal database, disenyo ng interface, at \"ilovelawyer\" branding, ay eksklusibong pag-aari ng aming organisasyon na protektado ng mga batas sa copyright ng Pilipinas at internasyonal."
+      ],
+      "quote": "Pinananatili ng mga gumagamit ang pagmamay-ari sa orihinal na mga dokumentong na-upload sa platform. Gayunpaman, ang mga AI-generated na insight, buod, at comparative analysis na hango mula sa mga dokumentong iyon ay nananatiling intellectual property ng ilovelawyer."
+    },
+    {
+      "number": "Seksyon 04",
+      "title": "Mga Ipinagbabawal na Gamit",
+      "paragraphs": [
+        "Sumasang-ayon kang hindi gagamitin ang Platform para sa anumang labag sa batas na layunin o sa paraang lumalabag sa mga etikal na pamantayan ng Philippine Bar. Kasama sa mga ipinagbabawal na aksyon ang:"
+      ],
+      "prohibited": [
+        "Reverse engineering, pag-decompile, o pagtatangkang kunin ang source code ng aming mga AI module.",
+        "Paggamit ng AI upang lumikha ng mapanlinlang na dokumento o mapanlinlang na legal na estratehiya.",
+        "Automated na pag-scrape sa Legal Library para sa panlabas na komersyal na gamit."
+      ]
+    },
+    {
+      "number": "Seksyon 05",
+      "title": "Pagwawakas",
+      "paragraphs": [
+        "Nakalaan sa amin ang karapatang suspindihin o wakasan ang iyong access sa Platform nang walang paunang abiso para sa anumang paglabag sa mga Tuntuning ito. Hindi napapawalang-bisa ng pagwawakas ang iyong pananagutan para sa mga natitirang bayarin o obligasyong naipon sa panahon ng serbisyo.",
+        "Sa pagwawakas, agad na titigil ang lahat ng lisensyang ipinagkaloob dito, at dapat mong sirain ang anumang kumpidensyal na materyal ng Platform na nasa iyong pag-aari."
+      ]
+    }
+  ]
+}

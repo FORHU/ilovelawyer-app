@@ -1,0 +1,44 @@
+{
+  "title": "Profile ng Practitioner",
+  "subtitle": "Pamahalaan ang mga detalye ng account at kredensyal na naka-link sa iyong ilovelawyer workspace.",
+  "loadingAccount": "Nilo-load ang account…",
+  "verifiedMember": "Verified Member",
+  "memberSince": "Miyembro simula {{date}}",
+  "accountInformation": {
+    "heading": "Impormasyon ng Account",
+    "subheading": "Ang mga detalye ng pagkakakilanlan na makikita sa iyong workspace."
+  },
+  "fullName": {
+    "label": "Buong Pangalan",
+    "saved": "Na-save",
+    "editAriaLabel": "I-edit ang buong pangalan",
+    "placeholder": "hal. Juan Dela Cruz",
+    "notProvided": "Hindi ibinigay",
+    "save": "I-save",
+    "saving": "Sine-save…",
+    "cancel": "Kanselahin",
+    "emptyError": "Hindi maaaring walang laman ang buong pangalan.",
+    "genericError": "Hindi na-save. Pakisubukang muli."
+  },
+  "username": {
+    "label": "Username",
+    "saved": "Na-save",
+    "editAriaLabel": "Baguhin ang username",
+    "save": "I-save",
+    "saving": "Sine-save…",
+    "cancel": "Kanselahin",
+    "tooShortError": "Ang username ay dapat hindi bababa sa 3 karakter.",
+    "invalidCharsError": "Mga letra, numero, tuldok, underscore, at gitling lamang ang pinapayagan.",
+    "genericError": "Hindi na-save. Pakisubukang muli."
+  },
+  "emailAddress": "Email Address",
+  "security": {
+    "heading": "Seguridad",
+    "subheading": "Aktibidad ng session at pag-sign in para sa account na ito.",
+    "lastSignedIn": "Huling Nag-sign In",
+    "signOutTitle": "Mag-sign out sa device na ito",
+    "signOutDescription": "Tinatapos ang iyong kasalukuyang session at ibinabalik ka sa login screen.",
+    "logout": "Mag-log Out",
+    "loggingOut": "Nagla-log out…"
+  }
+}

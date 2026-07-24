@@ -1,0 +1,44 @@
+{
+  "title": "Practitioner Profile",
+  "subtitle": "Manage the account details and credentials tied to your ilovelawyer workspace.",
+  "loadingAccount": "Loading account…",
+  "verifiedMember": "Verified Member",
+  "memberSince": "Member since {{date}}",
+  "accountInformation": {
+    "heading": "Account Information",
+    "subheading": "The identity details visible across your workspace."
+  },
+  "fullName": {
+    "label": "Full Name",
+    "saved": "Saved",
+    "editAriaLabel": "Edit full name",
+    "placeholder": "e.g. Juan Dela Cruz",
+    "notProvided": "Not provided",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "emptyError": "Full name can't be empty.",
+    "genericError": "Failed to save. Please try again."
+  },
+  "username": {
+    "label": "Username",
+    "saved": "Saved",
+    "editAriaLabel": "Change username",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "tooShortError": "Username must be at least 3 characters.",
+    "invalidCharsError": "Only letters, numbers, dots, underscores, and hyphens are allowed.",
+    "genericError": "Failed to save. Please try again."
+  },
+  "emailAddress": "Email Address",
+  "security": {
+    "heading": "Security",
+    "subheading": "Session and sign-in activity for this account.",
+    "lastSignedIn": "Last Signed In",
+    "signOutTitle": "Sign out of this device",
+    "signOutDescription": "Ends your current session and returns you to the login screen.",
+    "logout": "Log Out",
+    "loggingOut": "Logging out…"
+  }
+}

@@ -1,159 +1,233 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { SharedFooter } from "@/components/shared-footer";
-import svgResetPaths from "@/imports/ResetPasswordIlovelawyerUpdatedBranding/svg-f5h6gvo5lz";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import svgResetPaths from "@/imports/ResetPassword/svg-f5h6gvo5lz";
+import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
+  const { t } = useTranslation("auth");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+  const resetPasswordMutation = useResetPasswordMutation();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
+  const validateQuery = useValidateResetTokenQuery(success ? "" : token);
 
   const passwordsMatch = newPassword && confirmPassword && newPassword === confirmPassword;
   const valid = newPassword.length >= 8 && /[^a-zA-Z0-9]/.test(newPassword);
 
+  const resetError = resetPasswordMutation.error as (Error & { status?: number }) | null;
+  const checkingToken = !success && !!token && validateQuery.isPending;
+  const linkInvalid =
+    !success &&
+    (!token ||
+      (validateQuery.isSuccess && !validateQuery.data.valid) ||
+      validateQuery.isError ||
+      (resetPasswordMutation.isError && resetError?.status === 400));
+
   return (
-    <div className="flex flex-col min-h-screen w-full" style={{ background: "linear-gradient(90deg, #f7f9fb 0%, #f7f9fb 100%)" }}>
-      <nav className="bg-white border-b border-[#d8dadc] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] sticky top-0 z-50">
-        <div className="max-w-[1200px] mx-auto px-6 md:px-16 flex items-center justify-between py-4">
-          <Link href="/"><Logo size={20} /></Link>
-          <div className="hidden md:flex items-center gap-8">
-            {["Consultations", "Knowledge Base", "My Cases", "Pricing"].map((link) => (
-              <span key={link} className="text-[#44474d] text-sm" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                {link}
-              </span>
-            ))}
-          </div>
-          <Link
-            href="/signup"
-            className="bg-[#0a192f] text-white text-sm px-6 py-2 rounded-lg hover:bg-[#142744] transition-colors"
-            style={{ fontFamily: "'Source Serif 4', serif" }}
-          >
-            Get Started
-          </Link>
+    <div className="flex h-screen w-full overflow-hidden bg-[#f7fafc]">
+      {/* LEFT — dark panel */}
+      <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
+        <div className="absolute inset-0 bg-[#131a33]" />
+        <div className="absolute inset-0 opacity-70" style={{ background: "radial-gradient(ellipse at 40% 50%, #1e2d4a 0%, #131a33 65%)" }} />
+        <div className="absolute inset-0 bg-[rgba(19,26,51,0.3)]" />
+
+        {/* Logo */}
+        <div className="absolute top-16 left-16 z-10">
+          <p className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+            ilovelawyer
+          </p>
         </div>
-      </nav>
 
-      <div className="flex-1 flex items-center justify-center px-5 py-16 relative">
-        <div className="absolute bg-[rgba(0,89,187,0.05)] blur-[60px] left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 rounded-full size-[800px] pointer-events-none" />
+        {/* Center content */}
+        <div className="absolute inset-0 flex flex-col items-start justify-center pl-16 pr-12 z-10">
+          <div className="bg-[#cca830] h-0.5 w-12 mb-8" />
+          <h2
+            className="text-[#f7fafc] text-[56px] leading-[68px] tracking-[-1px] mb-4"
+            style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
+          >
+            {t("resetPassword.sideHeading")}
+          </h2>
+          <p className="text-[rgba(224,227,229,0.7)] text-base leading-[26px] max-w-[380px]" style={{ fontFamily: "Inter, sans-serif" }}>
+            {t("resetPassword.sideDescription")}
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-8 w-full max-w-[448px] relative z-10">
-          <div className="backdrop-blur-[6px] bg-white/80 rounded-3xl border border-[#d8dadc] shadow-[0px_8px_32px_0px_rgba(10,25,47,0.06)] p-10">
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col items-center gap-3">
-                <div className="bg-[rgba(0,89,187,0.1)] rounded-full size-14 flex items-center justify-center">
-                  <svg className="size-[26px]" fill="none" viewBox="0 0 26.6667 26.6667">
-                    <path d={svgResetPaths.p2d47e8c0} fill="#0059BB" />
-                  </svg>
-                </div>
-                <h2
-                  className="text-[#191c1e] text-[32px] text-center leading-10 pt-3"
-                  style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 400 }}
-                >
-                  Set new password
-                </h2>
-                <p className="text-[#44474d] text-base text-center leading-[26px]" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                  Your new password must be at least 8 characters and include a special character.
-                </p>
-              </div>
-
-              {success ? (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                  <p className="text-green-800 text-base" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                    Password updated!{" "}
-                    <Link href="/login" className="underline text-green-700">Sign in</Link>
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#44474d] text-xs tracking-[0.6px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-[21px]">
-                        <svg className="w-full h-full" fill="none" viewBox="0 0 16 21">
-                          <path d={svgResetPaths.p12930f00} fill="#75777E" />
-                        </svg>
-                      </div>
-                      <input
-                        type={showNew ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Min. 8 characters + special char"
-                        className="w-full bg-white border border-[#d8dadc] rounded-lg pl-11 pr-12 py-3.5 text-base text-[#191c1e] placeholder-[#d8dadc] outline-none focus:border-[#0059bb] transition-colors"
-                        style={{ fontFamily: "'Source Serif 4', serif" }}
-                      />
-                      <button
-                        onClick={() => setShowNew(!showNew)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
-                      >
-                        <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
-                          <path d={svgResetPaths.p3e801e80} fill="#D8DADC" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#44474d] text-xs tracking-[0.6px] uppercase" style={{ fontFamily: "'Source Serif 4', serif" }}>
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-[21px]">
-                        <svg className="w-full h-full" fill="none" viewBox="0 0 16 21">
-                          <path d={svgResetPaths.p12930f00} fill="#75777E" />
-                        </svg>
-                      </div>
-                      <input
-                        type={showConfirm ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repeat new password"
-                        className="w-full bg-white border border-[#d8dadc] rounded-lg pl-11 pr-12 py-3.5 text-base text-[#191c1e] placeholder-[#d8dadc] outline-none focus:border-[#0059bb] transition-colors"
-                        style={{ fontFamily: "'Source Serif 4', serif" }}
-                      />
-                      <button
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
-                      >
-                        <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
-                          <path d={svgResetPaths.p3e801e80} fill="#D8DADC" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => valid && passwordsMatch && setSuccess(true)}
-                    disabled={!valid || !passwordsMatch}
-                    className="w-full bg-[#0a192f] text-white text-base py-4 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-[#142744] transition-colors border-0 shadow-[0px_1px_1px_rgba(0,0,0,0.05)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ fontFamily: "'Source Serif 4', serif" }}
-                  >
-                    Reset Password
-                  </button>
-                </div>
-              )}
-
-              <div className="border-t border-[#d8dadc] pt-6 flex justify-center">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 text-[#0a192f] text-base hover:underline"
-                  style={{ fontFamily: "'Source Serif 4', serif" }}
-                >
-                  Return to Login
-                </Link>
-              </div>
-            </div>
-          </div>
+        {/* Bottom quote */}
+        <div className="absolute bottom-16 left-16 max-w-[400px] z-10">
+          <p className="text-[rgba(255,255,255,0.5)] text-sm leading-[22px] italic" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
+            &ldquo;{t("resetPassword.quote")}&rdquo;
+          </p>
         </div>
       </div>
 
-      <SharedFooter compact />
+      {/* RIGHT — form */}
+      <div className="bg-white flex flex-col items-center justify-center px-8 md:px-[106px] py-12 flex-1 overflow-y-auto">
+        <div className="w-full max-w-[448px] flex flex-col gap-10">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-[40px] text-black leading-[48px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
+              {checkingToken
+                ? t("resetPassword.headingChecking")
+                : linkInvalid
+                ? t("resetPassword.headingInvalid")
+                : success
+                ? t("resetPassword.headingSuccess")
+                : t("resetPassword.headingDefault")}
+            </h1>
+            <p className="text-[#45464d] text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+              {checkingToken
+                ? t("resetPassword.subheadingChecking")
+                : linkInvalid
+                ? t("resetPassword.subheadingInvalid")
+                : success
+                ? t("resetPassword.subheadingSuccess")
+                : t("resetPassword.subheadingDefault")}
+            </p>
+          </div>
+
+          {checkingToken ? null : linkInvalid ? (
+            <div className="flex flex-col gap-6">
+              <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
+                <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.invalidNotice")}
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/forgot-password")}
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {t("resetPassword.requestNewLink")}
+              </button>
+            </div>
+          ) : success ? (
+            <div className="flex flex-col gap-6">
+              <div className="border border-[#cca830] bg-[#fdf8ec] px-4 py-4">
+                <p className="text-[#735c00] text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.successNotice")}
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {t("resetPassword.signIn")}
+              </button>
+            </div>
+          ) : (
+            <form
+              className="flex flex-col gap-6"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!valid || !passwordsMatch || !token) return;
+                resetPasswordMutation.mutate(
+                  { token, password: newPassword },
+                  { onSuccess: () => setSuccess(true) },
+                );
+              }}
+            >
+              <div className="flex flex-col gap-2">
+                <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.newPasswordLabel")}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNew ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t("resetPassword.newPasswordPlaceholder")}
+                    required
+                    className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
+                  >
+                    <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
+                      <path d={svgResetPaths.p3e801e80} fill="#6b7280" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("resetPassword.confirmPasswordLabel")}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t("resetPassword.confirmPasswordPlaceholder")}
+                    required
+                    className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
+                  >
+                    <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
+                      <path d={svgResetPaths.p3e801e80} fill="#6b7280" />
+                    </svg>
+                  </button>
+                </div>
+                {confirmPassword && !passwordsMatch && (
+                  <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>{t("resetPassword.passwordsMismatch")}</p>
+                )}
+              </div>
+
+              {resetPasswordMutation.isError && resetError?.status !== 400 && (
+                <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {resetError?.message || t("resetPassword.genericError")}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={!valid || !passwordsMatch || !token || resetPasswordMutation.isPending}
+                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {resetPasswordMutation.isPending ? t("resetPassword.resetting") : t("resetPassword.resetPassword")}
+              </button>
+            </form>
+          )}
+
+          <div className="flex items-center justify-between border-t border-[rgba(198,198,206,0.3)] pt-8">
+            <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+              {t("footer.copyright", { year: new Date().getFullYear() })}
+            </span>
+            <button
+              onClick={() => router.push("/login")}
+              className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              {t("footer.signIn")}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

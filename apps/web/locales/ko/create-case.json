@@ -1,0 +1,56 @@
+{
+  "title": "사건 생성",
+  "subtitle": "새로운 사건을 접수하고, 관련 당사자를 지정하고, 한 번의 제출로 증빙 문서를 첨부하세요.",
+  "dismissConfirmation": "확인 닫기",
+  "dismissError": "오류 닫기",
+  "filingInitialized": "“{{title}}”에 대한 접수가 시작되었습니다.",
+  "submitFailed": "사건 접수 제출에 실패했습니다.",
+  "sectionIdentity": {
+    "heading": "I. 사건 개요",
+    "subheading": "이 사건의 표제와 관할.",
+    "caseTitleLabel": "사건명 / 표제",
+    "required": "(필수)",
+    "caseTitlePlaceholder": "예: Cruz vs. Santos",
+    "caseTitleError": "제출을 시작하기 전에 사건명을 입력해 주세요.",
+    "actionTypeLabel": "소송 유형",
+    "selectAction": "소송 유형 선택",
+    "jurisdictionLabel": "법원 / 관할 지부",
+    "jurisdictionPlaceholder": "예: RTC Branch 12, Makati City"
+  },
+  "sectionParties": {
+    "heading": "II. 당사자 정보",
+    "subheading": "사건 표제에 명시된 양측의 모든 당사자.",
+    "partyLabel": "당사자 {{number}}",
+    "removeParty": "당사자 {{number}} 삭제",
+    "removePartyConfirm": "당사자 정보에서 \"{{name}}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "fullNameLabel": "성명 / 법인명",
+    "fullNamePlaceholder": "정확한 법적 명칭을 입력하세요",
+    "designationLabel": "당사자 지위",
+    "addParty": "당사자 추가"
+  },
+  "sectionEvidence": {
+    "heading": "III. 증거 자료 제출",
+    "subheading": "이 접수 건과 함께 색인할 문서를 첨부하세요.",
+    "depositCaseFiles": "사건 파일 제출",
+    "dropHint": "드래그 앤 드롭 또는 찾아보기. 자동 색인을 위해 PDF 또는 DOCX 표준을 권장합니다",
+    "selectDocuments": "문서 선택",
+    "attachedDossiers": "첨부된 자료 ({{count}}개):",
+    "retryUpload": "{{fileName}} 업로드 재시도",
+    "removeFile": "{{fileName}} 삭제",
+    "uploadFailed": "업로드에 실패했습니다."
+  },
+  "submitting": "제출 중…",
+  "initiateFiling": "접수 시작",
+  "editAnytimeNote": "접수 후에도 언제든지 세부 정보를 수정할 수 있습니다.",
+  "actionTypes": {
+    "civilLitigation": "민사 소송",
+    "criminalProceeding": "형사 소송",
+    "laborDispute": "노동 분쟁",
+    "commercialArbitration": "상사 중재"
+  },
+  "designations": {
+    "petitionerPlaintiff": "청구인 / 원고",
+    "respondentDefendant": "피청구인 / 피고",
+    "intervenorThirdParty": "참가인 / 제3자"
+  }
+}
