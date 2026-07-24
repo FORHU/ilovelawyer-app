@@ -40,9 +40,9 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy the necessary files from the builder stage to the runner stage. This includes the public directory, which contains static assets, and the standalone output of the Next.js application, which includes the server.js file and other necessary files for running the application in a production environment. The .next/static directory is also copied to ensure that any static assets generated during the build process are available in the production environment.
-COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./.next/static
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # Set the ownership of the application files to the non-root user and group. This ensures that the application files are owned by the nextjs user and nodejs group, preventing unauthorized access or modifications by other users in the container.
 USER nextjs
