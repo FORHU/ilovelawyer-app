@@ -11,6 +11,7 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@workspace/ui"],
+  allowedDevOrigins: ["192.168.1.29"],
   async rewrites() {
     return [
       {
