@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import { AtSign, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
-import GlobalFooter from "@/components/global-footer";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useCurrentUserQuery, useUpdateCurrentUserMutation } from "@/lib/user/mutations";
@@ -151,8 +149,8 @@ export default function ProfilePage() {
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2">
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-[#131a33]">{t("title")}</h1>
-          <p className="text-[#45464d] text-[16px] md:text-[18px] max-w-[672px] leading-relaxed">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">{t("title")}</h1>
+          <p className="text-muted-foreground text-[16px] md:text-[18px] max-w-[672px] leading-relaxed">
             {t("subtitle")}
           </p>
         </div>
@@ -406,7 +404,6 @@ export default function ProfilePage() {
         </section>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

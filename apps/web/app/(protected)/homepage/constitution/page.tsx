@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, Scale } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Scale } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import GlobalFooter from "@/components/global-footer";
 
 interface Article {
   number: string;
@@ -50,6 +49,14 @@ export default function ConstitutionPage() {
       <GlobalHeader activeTab="constitution" />
 
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
+        <Link
+          href="/homepage/library"
+          className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Back to Library
+        </Link>
+
         <div className="w-full flex flex-col gap-2">
           <span className="text-[11px] font-semibold tracking-[1.5px] text-amber-700 dark:text-amber-400 uppercase">Research · Codals</span>
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground leading-tight">
@@ -110,8 +117,6 @@ export default function ConstitutionPage() {
           </Link>
         </section>
       </main>
-
-      <GlobalFooter />
     </div>
   );
 }

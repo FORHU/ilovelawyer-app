@@ -10,6 +10,7 @@
   "appointment": "Appointment",
   "note": "Note",
   "titlePlaceholder": "Title",
+  "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",
   "notePlaceholder": "Note",
   "saving": "Saving…",

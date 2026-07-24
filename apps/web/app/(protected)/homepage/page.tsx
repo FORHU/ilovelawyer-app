@@ -309,13 +309,13 @@ export default function AiConsultationPage() {
         />
 
         {file && (
-          <div className="flex items-center gap-2 px-2 text-xs text-gray-600">
+          <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
             <Paperclip className="w-3 h-3 shrink-0" aria-hidden="true" />
             <span className="truncate">{file.name}</span>
             <button
               type="button"
               onClick={handleRemoveFile}
-              className="text-gray-400 hover:text-red-600 shrink-0"
+              className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 shrink-0"
               aria-label={t("input.removeFile", { fileName: file.name })}
             >
               <X className="w-3 h-3" />
