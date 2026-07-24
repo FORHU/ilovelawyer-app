@@ -6,7 +6,6 @@ import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 interface AuthTokensResponse {
   user: AuthUser
   accessToken: string
-  refreshToken: string
 }
 
 interface SignupResponse {
@@ -18,7 +17,6 @@ interface SignupResponse {
 
 interface ResetPasswordResponse {
   accessToken: string
-  refreshToken: string
 }
 
 // Mirrors the numeric-suffix convention the backend already uses for Google
@@ -42,14 +40,14 @@ export function useLoginMutation() {
   const setAuth = useAuthStore((s) => s.setAuth)
 
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string; remember: boolean }) =>
+    mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
       apiFetch<AuthTokensResponse>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember }),
         skipAuthRefresh: true,
       }),
-    onSuccess: (data, { remember }) => {
-      setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember })
+    onSuccess: (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
       router.push("/homepage")
     },
   })
@@ -83,7 +81,7 @@ export function useGoogleAuthMutation() {
         skipAuthRefresh: true,
       }),
     onSuccess: (data) => {
-      setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user, remember: true })
+      setAuth({ accessToken: data.accessToken, user: data.user })
       router.push("/homepage")
     },
   })
@@ -114,7 +112,7 @@ export function useValidateResetTokenQuery(token: string) {
 }
 
 export function useResetPasswordMutation() {
-  const updateTokens = useAuthStore((s) => s.updateTokens)
+  const setAccessToken = useAuthStore((s) => s.setAccessToken)
 
   return useMutation({
     mutationFn: ({ token, password }: { token: string; password: string }) =>
@@ -124,26 +122,21 @@ export function useResetPasswordMutation() {
         skipAuthRefresh: true,
       }),
     onSuccess: (data) => {
-      updateTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+      setAccessToken(data.accessToken)
     },
   })
 }
 
 export function useLogoutMutation() {
   const router = useRouter()
-  const getRefreshToken = useAuthStore((s) => s.getRefreshToken)
   const clearAuth = useAuthStore((s) => s.clearAuth)
 
   return useMutation({
-    mutationFn: () => {
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) return Promise.resolve(null)
-      return apiFetch("/api/auth/logout", {
+    mutationFn: () =>
+      apiFetch("/api/auth/logout", {
         method: "POST",
-        body: JSON.stringify({ refreshToken }),
         skipAuthRefresh: true,
-      })
-    },
+      }),
     onSettled: () => {
       clearAuth()
       router.push("/login")
