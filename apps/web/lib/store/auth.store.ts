@@ -9,40 +9,18 @@ export interface AuthUser {
 interface AuthState {
   accessToken: string | null
   user: AuthUser | null
-  setAuth: (params: { accessToken: string; refreshToken: string; user: AuthUser; remember: boolean }) => void
-  updateTokens: (params: { accessToken: string; refreshToken: string }) => void
+  setAuth: (params: { accessToken: string; user: AuthUser }) => void
+  setAccessToken: (accessToken: string) => void
   clearAuth: () => void
-  getRefreshToken: () => string | null
 }
 
 export const useAuthStore = create<AuthState>()((set) => ({
   accessToken: null,
   user: null,
 
-  setAuth: ({ accessToken, refreshToken, user, remember }) => {
-    set({ accessToken, user })
-    if (remember) {
-      localStorage.setItem("refreshToken", refreshToken)
-    } else {
-      sessionStorage.setItem("refreshToken", refreshToken)
-    }
-  },
+  setAuth: ({ accessToken, user }) => set({ accessToken, user }),
 
-  updateTokens: ({ accessToken, refreshToken }) => {
-    set({ accessToken })
-    if (localStorage.getItem("refreshToken")) {
-      localStorage.setItem("refreshToken", refreshToken)
-    } else {
-      sessionStorage.setItem("refreshToken", refreshToken)
-    }
-  },
+  setAccessToken: (accessToken) => set({ accessToken }),
 
-  clearAuth: () => {
-    set({ accessToken: null, user: null })
-    localStorage.removeItem("refreshToken")
-    sessionStorage.removeItem("refreshToken")
-  },
-
-  getRefreshToken: () =>
-    localStorage.getItem("refreshToken") ?? sessionStorage.getItem("refreshToken"),
+  clearAuth: () => set({ accessToken: null, user: null }),
 }))
