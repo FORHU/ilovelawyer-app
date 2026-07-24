@@ -1,8 +1,24 @@
 import type { NextConfig } from "next"
 
+// Server-to-server proxy target (read at build/runtime in Node, not sent to the
+// browser as-is). The browser only ever calls its own origin at /api/*; Next
+// forwards those requests here. This keeps frontend and API same-origin from
+// the browser's point of view, which is required for the httpOnly, SameSite=Lax
+// refreshToken cookie to work when the frontend and backend run on different
+// machines/hosts (e.g. frontend on localhost, backend reached via a LAN IP).
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@workspace/ui"],
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${API_URL}/api/:path*`,
+      },
+    ]
+  },
 }
 
 export default nextConfig

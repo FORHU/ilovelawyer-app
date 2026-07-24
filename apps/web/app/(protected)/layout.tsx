@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+// Relative — proxied server-side to the real API by next.config.ts's rewrites(),
+// so this stays same-origin with the browser even when the API is on another host.
+const BASE_URL = ""
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()

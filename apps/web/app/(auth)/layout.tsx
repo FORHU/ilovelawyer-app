@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuthStore } from "@/lib/store/auth.store"
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+// Relative — proxied server-side to the real API by next.config.ts's rewrites(),
+// so this stays same-origin with the browser even when the API is on another host.
+const BASE_URL = ""
 
 // Pages a user shouldn't see once already signed in elsewhere (this tab, or
 // logged in from another tab sharing the same refreshToken cookie).

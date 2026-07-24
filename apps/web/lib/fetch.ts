@@ -1,6 +1,9 @@
 import { useAuthStore } from "@/lib/store/auth.store"
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+// Relative — requests go to this app's own origin at /api/*, and next.config.ts's
+// rewrites() proxies them server-side to the real API. Keeps the browser and the
+// refreshToken cookie same-origin even when the API runs on a different host.
+const BASE_URL = ""
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
