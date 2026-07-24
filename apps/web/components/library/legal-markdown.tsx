@@ -32,12 +32,34 @@ const components: Components = {
   hr: () => <hr className="my-4 border-gray-200" />,
 };
 
+// The API's markdown content often repeats the document's own title as its first
+// heading line (e.g. "# G.R. No. 128165"), which callers also render separately
+// above this component — producing a visible duplicate. Strip that leading
+// heading when it matches the given title so it's shown exactly once.
+function stripLeadingDuplicateHeading(markdown: string, title?: string): string {
+  if (!title) return markdown;
+  const lines = markdown.split("\n");
+
+  let i = 0;
+  while (i < lines.length && (lines[i] ?? "").trim() === "") i++;
+  const headingLine = lines[i];
+  if (headingLine === undefined) return markdown;
+
+  const match = headingLine.match(/^#{1,6}\s+(.*)$/);
+  if (!match || (match[1] ?? "").trim().toLowerCase() !== title.trim().toLowerCase()) return markdown;
+
+  let j = i + 1;
+  while (j < lines.length && (lines[j] ?? "").trim() === "") j++;
+  return lines.slice(j).join("\n");
+}
+
 /** Renders legal document markdown (Generated Articles, Case Law Documents) with the Library page's editorial styling. */
-export default function LegalMarkdown({ content }: { content: string }) {
+export default function LegalMarkdown({ content, title }: { content: string; title?: string }) {
+  const body = stripLeadingDuplicateHeading(content, title);
   return (
     <div className="text-sm text-gray-800 leading-relaxed">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
+        {body}
       </ReactMarkdown>
     </div>
   );

@@ -200,6 +200,7 @@ function PlannerPanel({
   const [startTime, setStartTime] = React.useState("");
   const [endTime, setEndTime] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [notifyEmail, setNotifyEmail] = React.useState("");
   const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
@@ -225,11 +226,13 @@ function PlannerPanel({
           startTime,
           endTime,
           description: description.trim() || undefined,
+          notifyEmail: notifyEmail.trim() || undefined,
         });
         setTitle("");
         setStartTime("");
         setEndTime("");
         setDescription("");
+        setNotifyEmail("");
       } catch (err) {
         setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
       }
@@ -260,8 +263,8 @@ function PlannerPanel({
           className="mx-auto p-0 [--cell-size:--spacing(8)]"
         />
 
-        <div className="border-t border-slate-100 pt-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+        <div className="border-t border-border pt-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
           </p>
 
@@ -312,6 +315,13 @@ function PlannerPanel({
                     className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                 </div>
+                <input
+                  type="email"
+                  placeholder={t("Email")}
+                  value={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.value)}
+                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
                 <textarea
                   placeholder={t("descriptionPlaceholder")}
                   value={description}
@@ -338,11 +348,11 @@ function PlannerPanel({
       </CardContent>
 
       <CardFooter className="flex flex-col items-stretch gap-2 border-t">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
         </p>
         {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
-          <p className="text-xs text-slate-400">Nothing scheduled for this day yet.</p>
+          <p className="text-xs text-muted-foreground">Nothing scheduled for this day yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {selectedAppointments.map((appt) => (
@@ -461,8 +471,8 @@ export default function CalendarPage() {
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
         <div className="mb-8 flex flex-col gap-2">
-          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-[#131a33]">Calendar</h1>
-          <p className="max-w-xl text-base text-gray-500">Track hearings, deadlines, and case notes in one place.</p>
+          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
+          <p className="max-w-xl text-base text-muted-foreground">Track hearings, deadlines, and case notes in one place.</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">

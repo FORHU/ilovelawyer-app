@@ -2,8 +2,6 @@
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
-import GlobalFooter from "@/components/global-footer";
 import CustomSelect from "@/components/ui/custom-select";
 import { useMediaQueueStore, type QueuedDocument } from "@/lib/store/media-queue.store";
 import { useCasesQuery, useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
@@ -222,7 +220,6 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
         </section>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

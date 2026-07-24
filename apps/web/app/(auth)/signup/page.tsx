@@ -95,6 +95,12 @@ export default function SignupPage() {
             onClick={() => googleLogin()}
             className="w-full bg-[#f7fafc] border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-white hover:border-[#aaa] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            <svg className="size-5" fill="none" viewBox="0 0 20 20">
+              <path d={svgSignupPaths.p29ad9380} fill="#4285F4" />
+              <path d={svgSignupPaths.p73c0a80} fill="#34A853" />
+              <path d={svgSignupPaths.p15c0f980} fill="#FBBC05" />
+              <path d={svgSignupPaths.p3d0b3f00} fill="#EA4335" />
+            </svg>
             <span className="text-[#181c1e] text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
               {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}
             </span>

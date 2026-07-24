@@ -4,8 +4,6 @@ import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, Che
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
-import GlobalFooter from "@/components/global-footer";
 import { useMediaQueueStore, type QueuedTranscript } from "@/lib/store/media-queue.store";
 import {
   useUploadAudioMutation,
@@ -65,7 +63,7 @@ function readAudioDuration(blob: Blob): Promise<number> {
 }
 
 const STATUS_STYLES: Record<QueuedTranscript["status"], string> = {
-  local: "bg-[#e0e3e5] text-[#45464d]",
+  local: "bg-muted text-muted-foreground",
   uploading: "bg-amber-100 text-amber-700",
   starting: "bg-amber-100 text-amber-700",
   in_progress: "bg-amber-100 text-amber-700",
@@ -114,9 +112,9 @@ function TranscriptRow({
             <FileAudio className="h-4 w-4" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-medium text-[#181c1e]">{transcript.name}</p>
+            <p className="truncate text-[14px] font-medium text-foreground">{transcript.name}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#45464d]">{transcript.meta}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{transcript.meta}</p>
               <span
                 className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${STATUS_STYLES[transcript.status]}`}
               >
@@ -189,7 +187,7 @@ function TranscriptRow({
           <button
             type="button"
             onClick={() => onTranscribe(transcript)}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#131a33] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-[#1c2547]"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
           >
             {transcript.status === "failed" ? (
               <>
@@ -206,7 +204,7 @@ function TranscriptRow({
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
-            className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#131a33] hover:text-amber-700"
+            className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:text-amber-700 dark:hover:text-amber-400"
           >
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
             {t("queue.viewTranscript")}
@@ -215,18 +213,18 @@ function TranscriptRow({
       </div>
 
       {expanded && transcript.status === "completed" && (
-        <div className="rounded-md border border-[#e0e3e5] bg-[#f7fafc] p-3">
+        <div className="rounded-md border border-border bg-muted p-3">
           <div className="mb-2 flex justify-end">
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#45464d] hover:text-[#131a33]"
+              className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
             >
               {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
               {copied ? t("queue.copied") : t("queue.copyTranscript")}
             </button>
           </div>
-          <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-[#181c1e]">
+          <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-foreground">
             {transcript.transcript || t("queue.emptyTranscript")}
           </pre>
         </div>
@@ -547,7 +545,6 @@ export default function IlovelawyerTranscriptionDashboard() {
         </div>
       </main>
 
-      <SiteFooter />
     </div>
   );
 }

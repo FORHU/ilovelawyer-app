@@ -4,8 +4,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import { SiteFooter } from "@/components/site-footer";
-import GlobalFooter from "@/components/global-footer";
 import { Search, Plus, Briefcase, Loader2, AlertCircle } from "lucide-react";
 import { useCasesQuery } from "@/lib/cases/mutations";
 
@@ -56,7 +54,7 @@ export default function CaseManagerDashboard() {
             </span>
             <input
               type="text"
-              className="w-full bg-white border border-gray-300 rounded-xl py-3 pl-12 pr-4 outline-none font-['Inter'] text-[15px] shadow-sm hover:border-gray-400 focus:border-black focus:ring-2 focus:ring-black/5 transition-colors"
+              className="w-full bg-card border border-border rounded-xl py-3 pl-12 pr-4 outline-none font-['Inter'] text-[15px] shadow-sm hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -123,7 +121,7 @@ export default function CaseManagerDashboard() {
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors mb-3">
                 <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
               </div>
-              <span className="text-[12px] font-semibold tracking-[1.2px] text-gray-500 group-hover:text-[#131a33] transition-colors uppercase">
+              <span className="text-[12px] font-semibold tracking-[1.2px] text-muted-foreground group-hover:text-foreground transition-colors uppercase">
                 {t("initiateNewFiling")}
               </span>
             </button>
@@ -135,8 +133,8 @@ export default function CaseManagerDashboard() {
             <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 text-muted-foreground shadow-sm">
               <Briefcase className="h-6 w-6" aria-hidden="true" />
             </div>
-            <h4 className="font-['Libre_Caslon_Text'] text-[22px] text-[#181c1e] mb-2">{t("noMatchingCases")}</h4>
-            <p className="text-gray-500 text-[15px] max-w-[320px]">
+            <h4 className="font-['Libre_Caslon_Text'] text-[22px] text-foreground mb-2">{t("noMatchingCases")}</h4>
+            <p className="text-muted-foreground text-[15px] max-w-[320px]">
               {t("noMatchingCasesHint")}
             </p>
           </div>
@@ -144,36 +142,36 @@ export default function CaseManagerDashboard() {
       </main>
 
       {/* SYSTEMATIC LEGAL FOOTER BLOCK */}
-      <footer className="w-full bg-white border-t border-gray-200 py-16 relative z-10">
+      <footer className="w-full bg-card border-t border-border py-16 relative z-10">
         <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
           <div className="flex flex-col gap-4 max-w-sm">
-            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-black">ilovelawyer</span>
-            <p className="text-sm text-gray-500 leading-relaxed font-normal">
+            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">ilovelawyer</span>
+            <p className="text-sm text-muted-foreground leading-relaxed font-normal">
               Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
             </p>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mt-1">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">
               © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
             </p>
           </div>
 
-          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-gray-500">
+          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-muted-foreground">
             <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">RESEARCH</span>
-              <a href="#const" className="hover:text-black font-normal">Constitution</a>
-              <a href="#civil" className="hover:text-black font-normal">Civil Code</a>
-              <a href="#scra" className="hover:text-black font-normal">SCRA Archive</a>
+              <span className="text-foreground tracking-wider uppercase text-[11px]">RESEARCH</span>
+              <a href="#const" className="hover:text-foreground font-normal">Constitution</a>
+              <a href="#civil" className="hover:text-foreground font-normal">Civil Code</a>
+              <a href="#scra" className="hover:text-foreground font-normal">SCRA Archive</a>
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">LEGAL</span>
-              <a href="/homepage/term" className="hover:text-black font-normal">Privacy Policy</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Terms of Use</a>
-              <a href="/homepage/term" className="hover:text-black font-normal">Ethics Policy</a>
+              <span className="text-foreground tracking-wider uppercase text-[11px]">LEGAL</span>
+              <Link href="/homepage/term" className="hover:text-foreground font-normal">Privacy Policy</Link>
+              <Link href="/homepage/term" className="hover:text-foreground font-normal">Terms of Use</Link>
+              <Link href="/homepage/term" className="hover:text-foreground font-normal">Ethics Policy</Link>
             </div>
             <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-black tracking-wider uppercase text-[11px]">CONNECT</span>
-              <a href="#support" className="hover:text-black font-normal">Support Center</a>
-              <a href="#media" className="hover:text-black font-normal">Media Inquiries</a>
-              <a href="#contact" className="hover:text-black font-normal">Contact Us</a>
+              <span className="text-foreground tracking-wider uppercase text-[11px]">CONNECT</span>
+              <a href="#support" className="hover:text-foreground font-normal">Support Center</a>
+              <a href="#media" className="hover:text-foreground font-normal">Media Inquiries</a>
+              <a href="#contact" className="hover:text-foreground font-normal">Contact Us</a>
             </div>
           </div>
         </div>

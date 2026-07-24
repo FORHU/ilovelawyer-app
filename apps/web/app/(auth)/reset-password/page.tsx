@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import svgResetPaths from "@/imports/ResetPassword/svg-f5h6gvo5lz";
 import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
 
 function ResetPasswordContent() {
@@ -153,9 +152,7 @@ function ResetPasswordContent() {
                     onClick={() => setShowNew(!showNew)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
                   >
-                    <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
-                      <path d={svgResetPaths.p3e801e80} fill="#6b7280" />
-                    </svg>
+                    
                   </button>
                 </div>
               </div>
@@ -179,9 +176,7 @@ function ResetPasswordContent() {
                     onClick={() => setShowConfirm(!showConfirm)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
                   >
-                    <svg className="w-[22px] h-[15px]" fill="none" viewBox="0 0 22 15">
-                      <path d={svgResetPaths.p3e801e80} fill="#6b7280" />
-                    </svg>
+                    
                   </button>
                 </div>
                 {confirmPassword && !passwordsMatch && (
