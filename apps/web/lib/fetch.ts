@@ -1,6 +1,9 @@
 import { useAuthStore } from "@/lib/store/auth.store"
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+// Relative — requests go to this app's own origin at /api/*, and next.config.ts's
+// rewrites() proxies them server-side to the real API. Keeps the browser and the
+// refreshToken cookie same-origin even when the API runs on a different host.
+const BASE_URL = ""
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
@@ -10,19 +13,11 @@ async function attemptRefresh(): Promise<void> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
-    const { getRefreshToken, updateTokens, clearAuth } = useAuthStore.getState()
-    const refreshToken = getRefreshToken()
-
-    if (!refreshToken) {
-      clearAuth()
-      if (typeof window !== "undefined") window.location.href = "/login"
-      throw new Error("No refresh token available")
-    }
+    const { setAccessToken, clearAuth } = useAuthStore.getState()
 
     const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      credentials: "include",
     })
 
     if (!res.ok) {
@@ -32,7 +27,7 @@ async function attemptRefresh(): Promise<void> {
     }
 
     const data = await res.json()
-    updateTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+    setAccessToken(data.accessToken)
   })().finally(() => {
     refreshPromise = null
   })

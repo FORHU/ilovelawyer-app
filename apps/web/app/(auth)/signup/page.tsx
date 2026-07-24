@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
-import svgSignupPaths from "@/imports/SignUpBranding/svg-192ugpzk7r";
 import { useSignupMutation, useGoogleAuthMutation } from "@/lib/auth/mutations";
 
 export default function SignupPage() {
@@ -96,12 +95,7 @@ export default function SignupPage() {
             onClick={() => googleLogin()}
             className="w-full bg-[#f7fafc] border border-[#c6c6ce] rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-white hover:border-[#aaa] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg className="size-5" fill="none" viewBox="0 0 20 20">
-              <path d={svgSignupPaths.p29ad9380} fill="#4285F4" />
-              <path d={svgSignupPaths.p73c0a80} fill="#34A853" />
-              <path d={svgSignupPaths.p15c0f980} fill="#FBBC05" />
-              <path d={svgSignupPaths.p3d0b3f00} fill="#EA4335" />
-            </svg>
+            
             <span className="text-[#181c1e] text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
               {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}
             </span>
@@ -164,9 +158,6 @@ export default function SignupPage() {
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
                 >
-                  <svg className="w-5.5 h-3.75" fill="none" viewBox="0 0 22 15">
-                    <path d={svgSignupPaths.p3e801e80} fill="#6b7280" />
-                  </svg>
                 </button>
               </div>
             </div>

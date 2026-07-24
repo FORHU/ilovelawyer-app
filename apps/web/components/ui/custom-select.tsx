@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { ChevronDown, Check } from "lucide-react";
 
 export interface CustomSelectOption {
@@ -109,7 +110,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
       {open && menuPosition && (
         <ul
           role="listbox"
-          style={menuPosition}
+          style={menuPosition as CSSProperties}
           className="fixed z-50 max-h-56 overflow-y-auto rounded-xl border border-border bg-card shadow-lg py-1 text-sm"
         >
           {options.map((opt) => {
