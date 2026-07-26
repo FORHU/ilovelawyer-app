@@ -1,24 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Landmark, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Landmark, Loader2, Sparkles } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-
-interface Decision {
-  grNumber: string;
-  caption: string;
-  year: string;
-  doctrine: string;
-}
-
-const DECISIONS: Decision[] = [
-  { grNumber: "G.R. No. 221029", caption: "Republic vs. Manalo", year: "2018", doctrine: "Recognition of a foreign divorce decree under Article 26 of the Family Code" },
-  { grNumber: "G.R. No. 204819", caption: "Imbong vs. Ochoa", year: "2014", doctrine: "Constitutionality of the Responsible Parenthood and Reproductive Health Law" },
-  { grNumber: "G.R. No. 101083", caption: "Oposa vs. Factoran", year: "1993", doctrine: "Intergenerational responsibility and the right to a balanced and healthful ecology" },
-  { grNumber: "G.R. No. 208566", caption: "Belgica vs. Ochoa", year: "2013", doctrine: "Unconstitutionality of the pork barrel system under the separation of powers" },
-];
+import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
 
 export default function ScraArchivePage() {
+  const { data, isLoading, isError } = useLegalDocumentsQuery({ limit: 4 });
+  const totalLabel = isLoading || !data ? "—" : `${data.total.toLocaleString()}+`;
+
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="scra-archive" />
@@ -45,7 +35,7 @@ export default function ScraArchivePage() {
 
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-            <p className="font-['Libre_Caslon_Text',serif] text-3xl text-foreground">100k+</p>
+            <p className="font-['Libre_Caslon_Text',serif] text-3xl text-foreground">{totalLabel}</p>
             <p className="text-[13px] text-muted-foreground mt-1">Full-text decisions indexed</p>
           </div>
           <div className="bg-card rounded-xl border border-border shadow-sm p-6">
@@ -60,29 +50,57 @@ export default function ScraArchivePage() {
 
         <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="px-6 md:px-8 py-5 border-b border-border">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">Landmark Decisions</h2>
-            <p className="text-[13px] text-muted-foreground mt-0.5">Foundational rulings that shaped Philippine jurisprudence.</p>
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">Recently Indexed Decisions</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">The newest full-text rulings added to the archive.</p>
           </div>
 
-          <div className="flex flex-col divide-y divide-border">
-            {DECISIONS.map((decision) => (
-              <div key={decision.grNumber} className="px-6 md:px-8 py-5 flex gap-4 items-start">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                  <Landmark className="h-4 w-4" aria-hidden="true" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="text-[16px] font-medium text-foreground">{decision.caption}</p>
-                    <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">{decision.grNumber} · {decision.year}</span>
+          {isLoading && (
+            <div className="flex items-center gap-2 py-16 justify-center text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Loading decisions…
+            </div>
+          )}
+
+          {isError && (
+            <div className="py-16 text-center text-sm text-red-600 dark:text-red-400">
+              Couldn&apos;t load the archive right now.
+            </div>
+          )}
+
+          {!isLoading && !isError && (data?.data.length ?? 0) === 0 && (
+            <div className="py-16 text-center text-sm text-muted-foreground">No decisions indexed yet.</div>
+          )}
+
+          {!isLoading && !isError && (data?.data.length ?? 0) > 0 && (
+            <div className="flex flex-col divide-y divide-border">
+              {data!.data.map((decision) => (
+                <Link
+                  key={decision.id}
+                  href={`/homepage/library/documents/${decision.id}`}
+                  className="px-6 md:px-8 py-5 flex gap-4 items-start hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                    <Landmark className="h-4 w-4" aria-hidden="true" />
                   </div>
-                  <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed flex items-center gap-1.5">
-                    <Sparkles className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
-                    {decision.doctrine}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-[16px] font-medium text-foreground">{decision.title || "Untitled decision"}</p>
+                      <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                        {decision.case_no || decision.category}
+                        {decision.year ? ` · ${decision.year}` : ""}
+                      </span>
+                    </div>
+                    {decision.concise_summary && (
+                      <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3 shrink-0 text-amber-600" aria-hidden="true" />
+                        {decision.concise_summary}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 p-8 md:p-10 text-white shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
@@ -99,7 +117,7 @@ export default function ScraArchivePage() {
             </div>
           </div>
           <Link
-            href="/homepage/library?q=Supreme%20Court%20decisions"
+            href="/homepage/library/documents"
             className="relative inline-flex shrink-0 cursor-pointer items-center gap-2 self-start sm:self-center rounded-lg bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-brand-navy-950 transition-colors hover:bg-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950"
           >
             Open in Library
