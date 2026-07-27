@@ -54,8 +54,6 @@ export function useLoginMutation() {
 }
 
 export function useSignupMutation() {
-  const router = useRouter()
-
   return useMutation({
     mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
       apiFetch<SignupResponse>("/api/auth/signup", {
@@ -63,9 +61,6 @@ export function useSignupMutation() {
         body: JSON.stringify({ username: generateUsername(name), name, email, password }),
         skipAuthRefresh: true,
       }),
-    onSuccess: () => {
-      router.push("/login?signup=success")
-    },
   })
 }
 

@@ -14,6 +14,7 @@
   },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
+  "thinking": "Nag-iisip ang ilovelawyer",
   "sidebar": {
     "newChat": "Bagong chat",
     "recent": "Kamakailan",

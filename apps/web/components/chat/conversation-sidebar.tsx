@@ -107,16 +107,6 @@ export default function ConversationSidebar({
         </div>
       )}
 
-      <button
-        type="button"
-        title={t("sidebar.gallery")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-          expanded || isMobile ? "" : "justify-center px-0"
-        }`}
-      >
-        <ImageIcon className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.gallery")}</span>}
-      </button>
     </>
   );
 
