@@ -8,14 +8,9 @@ import { Calendar } from "@workspace/ui/components/calendar";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isSameDay, isSameMonth, parse, startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { AlertCircle, ChevronLeft, ChevronRight, Clock, RotateCw, StickyNote, X } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  useAppointmentsQuery,
-  useCreateAppointmentMutation,
-  useCreateNoteMutation,
-  useNotesQuery,
-} from "@/lib/calendar/mutations";
+import { useAppointmentsQuery, useCreateAppointmentMutation } from "@/lib/calendar/mutations";
 
 const MAX_VISIBLE_PER_DAY = 2;
 
@@ -28,9 +23,9 @@ function formatTime12h(time: string): string {
 }
 
 /* ==========================================
-   MONTH GRID DAY CELL (appointments + notes)
+   MONTH GRID DAY CELL (appointments)
    ========================================== */
-type DayItem = { id: string; kind: "appointment" | "note"; label: string; sortKey: string };
+type DayItem = { id: string; label: string; sortKey: string };
 type DayItems = { visible: DayItem[]; overflowCount: number };
 
 const CalendarItemsContext = React.createContext<{
@@ -73,18 +68,9 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
         {dayItems?.visible.map((item) => (
           <span
             key={item.id}
-            className={cn(
-              "flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight",
-              item.kind === "appointment"
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
-                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
-            )}
+            className="flex items-center gap-1 truncate rounded bg-blue-100 px-1 py-0.5 text-[10px] leading-tight text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
           >
-            {item.kind === "appointment" ? (
-              <Clock className="size-2.5 shrink-0" aria-hidden="true" />
-            ) : (
-              <StickyNote className="size-2.5 shrink-0" aria-hidden="true" />
-            )}
+            <Clock className="size-2.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{item.label}</span>
           </span>
         ))}
@@ -100,8 +86,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
    AGENDA VIEW (mobile replacement for the 7-column grid below md)
    ========================================== */
 type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null };
-type AgendaNote = { id: string; date: string; body: string };
-type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
+type AgendaDay = { date: Date; appointments: AgendaAppointment[] };
 
 function AgendaView({
   agendaDays,
@@ -144,15 +129,6 @@ function AgendaView({
                   {formatTime12h(appt.startTime)} · {appt.title}
                 </span>
               ))}
-              {day.notes.map((note) => (
-                <span
-                  key={note.id}
-                  className="flex items-center gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
-                >
-                  <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
-                  {note.body}
-                </span>
-              ))}
             </div>
           </button>
         );
@@ -186,28 +162,23 @@ function PlannerPanel({
   onSelectDay,
   onMonthChange,
   selectedAppointments,
-  selectedNotes,
 }: {
   selectedDate: Date | undefined;
   currentMonth: Date;
   onSelectDay: (date: Date) => void;
   onMonthChange: (month: Date) => void;
   selectedAppointments: { id: string; title: string; startTime: string; endTime: string | null; description: string | null }[];
-  selectedNotes: { id: string; body: string }[];
 }) {
-  const [itemType, setItemType] = React.useState<"appointment" | "note">("appointment");
   const [title, setTitle] = React.useState("");
   const [startTime, setStartTime] = React.useState("");
   const [endTime, setEndTime] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [notifyEmail, setNotifyEmail] = React.useState("");
-  const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
-  const createNote = useCreateNoteMutation();
-  const isSubmitting = createAppointment.isPending || createNote.isPending;
+  const isSubmitting = createAppointment.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -215,35 +186,25 @@ function PlannerPanel({
     if (!selectedDate) return;
     const date = toDateKey(selectedDate);
 
-    if (itemType === "appointment") {
-      if (!title.trim()) return setFormError(t("errors.titleRequired"));
-      if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
-      if (endTime <= startTime) return setFormError(t("errors.endAfterStart"));
-      try {
-        await createAppointment.mutateAsync({
-          title: title.trim(),
-          date,
-          startTime,
-          endTime,
-          description: description.trim() || undefined,
-          notifyEmail: notifyEmail.trim() || undefined,
-        });
-        setTitle("");
-        setStartTime("");
-        setEndTime("");
-        setDescription("");
-        setNotifyEmail("");
-      } catch (err) {
-        setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
-      }
-    } else {
-      if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
-      try {
-        await createNote.mutateAsync({ date, body: noteBody.trim() });
-        setNoteBody("");
-      } catch (err) {
-        setFormError(err instanceof Error ? err.message : t("errors.noteSaveFailed"));
-      }
+    if (!title.trim()) return setFormError(t("errors.titleRequired"));
+    if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
+    if (endTime <= startTime) return setFormError(t("errors.endAfterStart"));
+    try {
+      await createAppointment.mutateAsync({
+        title: title.trim(),
+        date,
+        startTime,
+        endTime,
+        description: description.trim() || undefined,
+        notifyEmail: notifyEmail.trim() || undefined,
+      });
+      setTitle("");
+      setStartTime("");
+      setEndTime("");
+      setDescription("");
+      setNotifyEmail("");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
     }
   }
 
@@ -268,80 +229,47 @@ function PlannerPanel({
             Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
           </p>
 
-          <div className="mb-3 flex gap-2">
-            <Button
-              type="button"
-              variant={itemType === "appointment" ? "default" : "outline"}
-              size="sm"
-              className="flex-1"
-              onClick={() => setItemType("appointment")}
-            >
-              {t("appointment")}
-            </Button>
-            <Button
-              type="button"
-              variant={itemType === "note" ? "default" : "outline"}
-              size="sm"
-              className="flex-1"
-              onClick={() => setItemType("note")}
-            >
-              {t("note")}
-            </Button>
-          </div>
-
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
-            {itemType === "appointment" ? (
-              <>
-                <input
-                  type="text"
-                  placeholder={t("titlePlaceholder")}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
-                </div>
-                <input
-                  type="email"
-                  placeholder={t("Email")}
-                  value={notifyEmail}
-                  onChange={(e) => setNotifyEmail(e.target.value)}
-                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
-                <textarea
-                  placeholder={t("descriptionPlaceholder")}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
-              </>
-            ) : (
-              <textarea
-                placeholder={t("notePlaceholder")}
-                value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
-                rows={3}
-                className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            <input
+              type="text"
+              placeholder={t("titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
-            )}
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+            </div>
+            <input
+              type="email"
+              placeholder={t("Email")}
+              value={notifyEmail}
+              onChange={(e) => setNotifyEmail(e.target.value)}
+              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+            <textarea
+              placeholder={t("descriptionPlaceholder")}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
 
             <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-              {isSubmitting ? t("saving") : itemType === "appointment" ? t("addAppointment") : t("addNote")}
+              {isSubmitting ? t("saving") : t("addAppointment")}
             </Button>
           </form>
         </div>
@@ -351,7 +279,7 @@ function PlannerPanel({
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
         </p>
-        {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
+        {selectedAppointments.length === 0 ? (
           <p className="text-xs text-muted-foreground">Nothing scheduled for this day yet.</p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -367,12 +295,6 @@ function PlannerPanel({
                   </p>
                   {appt.description && <p className="mt-0.5 text-blue-700 dark:text-blue-300">{appt.description}</p>}
                 </div>
-              </li>
-            ))}
-            {selectedNotes.map((note) => (
-              <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
-                <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <p>{note.body}</p>
               </li>
             ))}
           </ul>
@@ -394,9 +316,7 @@ export default function CalendarPage() {
   const to = toDateKey(endOfMonth(currentMonth));
 
   const appointmentsQuery = useAppointmentsQuery(from, to);
-  const notesQuery = useNotesQuery(from, to);
   const appointments = appointmentsQuery.data ?? [];
-  const notes = notesQuery.data ?? [];
 
   const handleSelectDay = React.useCallback(
     (date: Date) => {
@@ -415,16 +335,10 @@ export default function CalendarPage() {
       const list = grouped.get(appt.date) ?? [];
       list.push({
         id: appt.id,
-        kind: "appointment",
         label: `${formatTime12h(appt.startTime)} ${appt.title}`,
-        sortKey: `0${appt.startTime}`,
+        sortKey: appt.startTime,
       });
       grouped.set(appt.date, list);
-    }
-    for (const note of notes) {
-      const list = grouped.get(note.date) ?? [];
-      list.push({ id: note.id, kind: "note", label: note.body, sortKey: `1${note.id}` });
-      grouped.set(note.date, list);
     }
 
     const result = new Map<string, DayItems>();
@@ -436,24 +350,19 @@ export default function CalendarPage() {
       });
     }
     return result;
-  }, [appointments, notes]);
+  }, [appointments]);
 
   const agendaDays = React.useMemo(() => {
     const grouped = new Map<string, AgendaDay>();
     for (const appt of appointments) {
-      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
+      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [] };
       entry.appointments.push(appt);
       grouped.set(appt.date, entry);
-    }
-    for (const note of notes) {
-      const entry = grouped.get(note.date) ?? { date: parse(note.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
-      entry.notes.push(note);
-      grouped.set(note.date, entry);
     }
     return Array.from(grouped.values())
       .map((day) => ({ ...day, appointments: [...day.appointments].sort((a, b) => a.startTime.localeCompare(b.startTime)) }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [appointments, notes]);
+  }, [appointments]);
 
   const selectedDateKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedAppointments = React.useMemo(
@@ -463,7 +372,6 @@ export default function CalendarPage() {
         .sort((a, b) => a.startTime.localeCompare(b.startTime)),
     [appointments, selectedDateKey]
   );
-  const selectedNotes = React.useMemo(() => notes.filter((n) => n.date === selectedDateKey), [notes, selectedDateKey]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -472,7 +380,7 @@ export default function CalendarPage() {
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
         <div className="mb-8 flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
-          <p className="max-w-xl text-base text-muted-foreground">Track hearings, deadlines, and case notes in one place.</p>
+          <p className="max-w-xl text-base text-muted-foreground">Track hearings and deadlines in one place.</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -482,7 +390,6 @@ export default function CalendarPage() {
             onSelectDay={handleSelectDay}
             onMonthChange={setCurrentMonth}
             selectedAppointments={selectedAppointments}
-            selectedNotes={selectedNotes}
           />
 
           <Card className="w-full flex-1 backdrop-blur-sm">
@@ -513,7 +420,7 @@ export default function CalendarPage() {
                 <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
               </div>
 
-              {(appointmentsQuery.isError || notesQuery.isError) && (
+              {appointmentsQuery.isError && (
                 <div
                   role="alert"
                   className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 py-1 pl-3 pr-1 text-xs text-red-700 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300"
@@ -522,10 +429,7 @@ export default function CalendarPage() {
                   <span>{t("errors.loadFailed")}</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      appointmentsQuery.refetch();
-                      notesQuery.refetch();
-                    }}
+                    onClick={() => appointmentsQuery.refetch()}
                     className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 dark:text-red-200 dark:hover:bg-red-500/20 dark:hover:text-white"
                   >
                     <RotateCw className="size-3" aria-hidden="true" />

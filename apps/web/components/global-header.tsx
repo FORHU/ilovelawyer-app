@@ -101,8 +101,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
       "text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
 
     if (activeTab === tabName) {
-      // Active Look: Full opacity, bold text, white bottom border
-      return `${baseClasses} text-white border-b-2 border-white pb-[6px] font-bold opacity-100`;
+      // Active Look: Full opacity, bold text
+      return `${baseClasses} text-white font-bold opacity-100`;
     }
 
     // Inactive Look: Dimmed opacity, brightens to white on hover
@@ -137,7 +137,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               onClick={() => setIsCaseMenuOpen((prev) => !prev)}
               className={`flex items-center gap-1 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
                 isCaseTabActive
-                  ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white border-b-2 border-white pb-[6px] font-bold opacity-100"
+                  ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
                   : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
               }`}
               aria-haspopup="menu"

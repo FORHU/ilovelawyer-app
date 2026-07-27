@@ -50,3 +50,22 @@ export default function AssistantMessage({ content }: { content: string }) {
     </div>
   );
 }
+
+// Shown in place of the assistant bubble from the moment a send fires until the
+// first streamed chunk lands — mirrors the brand wordmark so the wait state still
+// reads as "ilovelawyer", not a generic spinner.
+export function ThinkingIndicator({ label }: { label: string }) {
+  return (
+    <div role="status" aria-live="polite" className="flex items-center gap-2 text-[15px] font-['Inter']">
+      <span className="font-['Source_Serif_4'] text-muted-foreground">
+        ilove<span className="text-[#d4af37] font-semibold">lawyer</span>
+      </span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-0.5" aria-hidden="true">
+        <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
+        <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
+        <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none" />
+      </span>
+    </div>
+  );
+}
