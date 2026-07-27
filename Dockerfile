@@ -28,6 +28,7 @@ COPY . .
 
 # Install the dependencies using pnpm. The --frozen-lockfile flag ensures that the lockfile is not modified during installation, providing a consistent and reproducible environment.
 RUN pnpm install --frozen-lockfile
+
 # Build the application
 RUN pnpm run build
 
@@ -46,7 +47,7 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # Set the ownership of the application files to the non-root user and group. This ensures that the application files are owned by the nextjs user and nodejs group, preventing unauthorized access or modifications by other users in the container.
 USER nextjs
-EXPOSE 3000
+EXPOSE 3002
 ENV PORT=3002
 ENV HOSTNAME="0.0.0.0"
 
