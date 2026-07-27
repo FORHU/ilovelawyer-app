@@ -79,7 +79,7 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
-          cat > ${{ github.workspace }}/apps/web/.env.production.local << EOF
+          cat > ${{ github.workspace }}/apps/web/.env.staging << EOF
           NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           EOF
@@ -93,6 +93,15 @@ jobs:
             .
           docker push "$ECR:${{ env.IMAGE_TAG }}"
           docker push "$ECR:latest"
+
+      - name: Copy env file to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "apps/web/.env.staging"
+          target: "/home/ec2-user/ilovelawyer-app/.env.staging"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -115,5 +124,6 @@ jobs:
             docker rm   ilovelawyer-app 2>/dev/null || true
             docker run -d --name ilovelawyer-app --restart unless-stopped \
               -p 3002:3000 \
+              --env-file /home/ec2-user/ilovelawyer-app/.env.staging \
               "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
             docker image prune -f
