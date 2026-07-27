@@ -47,7 +47,7 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 # Set the ownership of the application files to the non-root user and group. This ensures that the application files are owned by the nextjs user and nodejs group, preventing unauthorized access or modifications by other users in the container.
 USER nextjs
 EXPOSE 3000
-ENV PORT=3000
+ENV PORT=3002
 ENV HOSTNAME="0.0.0.0"
 
 # Start the application using the appropriate command. In this case, we are using the node command to run the server.js file, which is the entry point of the Next.js application. This command will start the application and make it accessible on the specified port.
