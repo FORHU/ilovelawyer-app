@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Mic, Square, X, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import AssistantMessage from "@/components/chat/assistant-message";
+import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
 import {
   useChatSessionQuery,
@@ -403,20 +403,32 @@ export default function AiConsultationPage() {
               {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
               <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
                 <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 px-2 py-4">
-                  {messages.map((m, i) =>
-                    m.role === "user" ? (
-                      <div
-                        key={i}
-                        className="max-w-[80%] self-end rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground"
-                      >
-                        {m.content}
-                      </div>
-                    ) : (
+                  {messages.map((m, i) => {
+                    if (m.role === "user") {
+                      return (
+                        <div
+                          key={i}
+                          className="max-w-[80%] self-end rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground"
+                        >
+                          {m.content}
+                        </div>
+                      );
+                    }
+
+                    // The last assistant message is a placeholder pushed synchronously at send
+                    // time, before any chunk streams in — that's the window "thinking" covers.
+                    const isStreamingThis = isSending && i === messages.length - 1;
+
+                    return (
                       <div key={i} className="w-full rounded-2xl px-4 py-3">
-                        <AssistantMessage content={m.content || "…"} />
+                        {isStreamingThis && !m.content ? (
+                          <ThinkingIndicator label={t("thinking")} />
+                        ) : (
+                          <AssistantMessage content={m.content || "…"} />
+                        )}
                       </div>
-                    ),
-                  )}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               </div>
