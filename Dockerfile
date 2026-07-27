@@ -29,10 +29,6 @@ COPY . .
 # Install the dependencies using pnpm. The --frozen-lockfile flag ensures that the lockfile is not modified during installation, providing a consistent and reproducible environment.
 RUN pnpm install --frozen-lockfile
 
-# next build only auto-loads .env.production.local (not arbitrary names like
-# .env.staging), so mirror it under the name Next.js actually picks up.
-RUN [ -f apps/web/.env.staging ] && cp apps/web/.env.staging apps/web/.env.production.local || true
-
 # Build the application
 RUN pnpm run build
 
