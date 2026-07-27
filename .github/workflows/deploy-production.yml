@@ -94,6 +94,15 @@ jobs:
           docker push "$ECR:${{ env.IMAGE_TAG }}"
           docker push "$ECR:latest"
 
+      - name: Clean up stale env path on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            [ -d /home/ec2-user/ilovelawyer-app/.env.staging ] && rm -rf /home/ec2-user/ilovelawyer-app/.env.staging || true
+
       - name: Copy env file to EC2
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -101,7 +110,8 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "apps/web/.env.staging"
-          target: "/home/ec2-user/ilovelawyer-app/.env.staging"
+          target: "/home/ec2-user/ilovelawyer-app"
+          strip_components: 2
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
