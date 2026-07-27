@@ -1,4 +1,13 @@
+import fs from "node:fs"
+import path from "node:path"
 import type { NextConfig } from "next"
+
+// next build doesn't auto-load .env.staging (only recognizes standard names), so
+// load it explicitly — it's the one file CI writes NEXT_PUBLIC_* into from secrets.
+const stagingEnvPath = path.join(import.meta.dirname, ".env.staging")
+if (fs.existsSync(stagingEnvPath)) {
+  process.loadEnvFile(stagingEnvPath)
+}
 
 // Server-to-server proxy target (read at build/runtime in Node, not sent to the
 // browser as-is). The browser only ever calls its own origin at /api/*; Next
