@@ -64,6 +64,35 @@ export function useSignupMutation() {
   })
 }
 
+export function useSendOtpMutation() {
+  return useMutation({
+    mutationFn: ({ email }: { email: string }) =>
+      apiFetch("/api/auth/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+        skipAuthRefresh: true,
+      }),
+  })
+}
+
+export function useVerifyOtpMutation() {
+  const router = useRouter()
+  const setAuth = useAuthStore((s) => s.setAuth)
+
+  return useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      apiFetch<AuthTokensResponse>("/api/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      router.push("/homepage")
+    },
+  })
+}
+
 export function useGoogleAuthMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -85,7 +114,9 @@ export function useGoogleAuthMutation() {
 export function useForgotPasswordMutation() {
   return useMutation({
     mutationFn: ({ email }: { email: string }) =>
-      apiFetch("/api/auth/forgot-password", {
+      // resetLink is only ever populated in dev (see auth.service.ts) — a convenience so the
+      // reset link can be surfaced locally without checking the Ethereal test inbox.
+      apiFetch<{ message: string; resetLink?: string }>("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
         skipAuthRefresh: true,

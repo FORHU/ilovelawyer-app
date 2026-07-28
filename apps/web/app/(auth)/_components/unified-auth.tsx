@@ -7,11 +7,14 @@ import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
+
 import {
   useForgotPasswordMutation,
   useGoogleAuthMutation,
   useLoginMutation,
+  useSendOtpMutation,
   useSignupMutation,
+  useVerifyOtpMutation,
 } from "@/lib/auth/mutations";
 
 type Tab = "signin" | "signup" | "recover";
@@ -66,6 +69,9 @@ function UnifiedAuthContent() {
   const signupMutation = useSignupMutation();
   const googleMutation = useGoogleAuthMutation();
   const forgotPasswordMutation = useForgotPasswordMutation();
+  const sendOtpMutation = useSendOtpMutation();
+  const verifyOtpMutation = useVerifyOtpMutation();
+
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -115,8 +121,14 @@ function UnifiedAuthContent() {
       {
         onSuccess: () => {
           setOtpDigits(Array(OTP_LENGTH).fill(""));
-          setResendCooldown(RESEND_COOLDOWN_SECONDS);
           setOtpStep(true);
+          sendOtpMutation.mutate(
+            { email: signupEmail },
+            {
+              onSuccess: () => setResendCooldown(RESEND_COOLDOWN_SECONDS),
+              onError: (err) => setError((err as Error).message),
+            }
+          );
         },
         onError: (err) => setError((err as Error).message),
       }
@@ -143,25 +155,32 @@ function UnifiedAuthContent() {
 
   function handleVerifyOtp() {
     setError(null);
-    // TODO(backend): no OTP verify/send endpoint exists yet in ilovelawyer-api.
-    // The code entered above is accepted client-side as a placeholder; once the
-    // API grows POST /api/auth/send-otp + POST /api/auth/verify-otp, gate this
-    // on a real verify call before logging the user in.
-    loginMutation.mutate(
-      { email: signupEmail, password: signupPassword, remember: false },
+    verifyOtpMutation.mutate(
+      { email: signupEmail, code: otpDigits.join("") },
       { onError: (err) => setError((err as Error).message) }
     );
   }
 
   function handleResendOtp() {
     if (resendCooldown > 0) return;
-    // TODO(backend): call POST /api/auth/send-otp once it exists.
-    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    setError(null);
+    sendOtpMutation.mutate(
+      { email: signupEmail },
+      {
+        onSuccess: () => setResendCooldown(RESEND_COOLDOWN_SECONDS),
+        onError: (err) => setError((err as Error).message),
+      }
+    );
   }
 
   const otpComplete = otpDigits.every((d) => d !== "");
-  const isPending = loginMutation.isPending || signupMutation.isPending || googleMutation.isPending;
-
+  const isPending =
+    loginMutation.isPending ||
+    signupMutation.isPending ||
+    googleMutation.isPending ||
+    sendOtpMutation.isPending ||
+    verifyOtpMutation.isPending;
+  
   const tabs: { key: Tab; labelKey: string }[] = [
     { key: "signin", labelKey: "login.tabs.signIn" },
     { key: "signup", labelKey: "login.tabs.joinPlatform" },
@@ -259,14 +278,15 @@ function UnifiedAuthContent() {
                   className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
-                  {loginMutation.isPending ? t("otp.verifying") : t("otp.verify")}
+                  {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
+                  {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
                 </button>
 
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    disabled={resendCooldown > 0}
+                    disabled={resendCooldown > 0 || sendOtpMutation.isPending}
                     className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ fontFamily: "Inter, sans-serif" }}
                   >
@@ -605,7 +625,13 @@ function UnifiedAuthContent() {
                         forgotPasswordMutation.mutate(
                           { email: recoverEmail },
                           {
-                            onSuccess: () => setRecoverSent(true),
+                            onSuccess: (data) => {
+                              // resetLink is dev-only (see useForgotPasswordMutation) — no Ethereal inbox needed locally.
+                              if (data.resetLink) {
+                                console.log("[dev] password reset link:", data.resetLink);
+                              }
+                              setRecoverSent(true);
+                            },
                             onError: (err) => setError((err as Error).message),
                           }
                         );
