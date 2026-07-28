@@ -114,7 +114,9 @@ export function useGoogleAuthMutation() {
 export function useForgotPasswordMutation() {
   return useMutation({
     mutationFn: ({ email }: { email: string }) =>
-      apiFetch("/api/auth/forgot-password", {
+      // resetLink is only ever populated in dev (see auth.service.ts) — a convenience so the
+      // reset link can be surfaced locally without checking the Ethereal test inbox.
+      apiFetch<{ message: string; resetLink?: string }>("/api/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
         skipAuthRefresh: true,

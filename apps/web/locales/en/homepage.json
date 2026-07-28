@@ -14,7 +14,7 @@
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
-  "thinking": "ilovelawyer is thinking",
+  "thinking": "is thinking",
   "sidebar": {
     "newChat": "New chat",
     "recent": "Recent",

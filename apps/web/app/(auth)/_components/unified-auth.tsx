@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
+
 import {
   useForgotPasswordMutation,
   useGoogleAuthMutation,
@@ -70,6 +71,7 @@ function UnifiedAuthContent() {
   const forgotPasswordMutation = useForgotPasswordMutation();
   const sendOtpMutation = useSendOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
+
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -178,7 +180,7 @@ function UnifiedAuthContent() {
     googleMutation.isPending ||
     sendOtpMutation.isPending ||
     verifyOtpMutation.isPending;
-
+  
   const tabs: { key: Tab; labelKey: string }[] = [
     { key: "signin", labelKey: "login.tabs.signIn" },
     { key: "signup", labelKey: "login.tabs.joinPlatform" },
@@ -276,6 +278,7 @@ function UnifiedAuthContent() {
                   className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
+                  {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
                   {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
                 </button>
 
@@ -622,7 +625,13 @@ function UnifiedAuthContent() {
                         forgotPasswordMutation.mutate(
                           { email: recoverEmail },
                           {
-                            onSuccess: () => setRecoverSent(true),
+                            onSuccess: (data) => {
+                              // resetLink is dev-only (see useForgotPasswordMutation) — no Ethereal inbox needed locally.
+                              if (data.resetLink) {
+                                console.log("[dev] password reset link:", data.resetLink);
+                              }
+                              setRecoverSent(true);
+                            },
                             onError: (err) => setError((err as Error).message),
                           }
                         );

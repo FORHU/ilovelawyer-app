@@ -7,5 +7,23 @@
   "all": "Lahat",
   "initiateNewFiling": "Simulan ang Bagong Filing",
   "noMatchingCases": "Walang tugmang kaso",
-  "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas."
+  "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas.",
+  "editCase": "I-edit ang {{caseName}}",
+  "deleteCase": "Burahin ang {{caseName}}",
+  "deleteConfirm": "Burahin ang \"{{caseName}}\"? Hindi na ito maibabalik.",
+  "editModal": {
+    "heading": "I-edit ang Kaso",
+    "close": "Isara",
+    "caseNameLabel": "Pamagat ng Kaso",
+    "caseNameError": "Kinakailangan ang pamagat ng kaso.",
+    "cancel": "Kanselahin",
+    "saveChanges": "I-save ang mga Pagbabago",
+    "saving": "Sine-save…",
+    "editCase": "I-edit",
+    "deleteCase": "Burahin"
+  },
+  "detail": {
+    "party": "Kasangkot na Partido",
+    "notes": "Mga Tala"
+  }
 }

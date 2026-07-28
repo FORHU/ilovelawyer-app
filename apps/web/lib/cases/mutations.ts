@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiFetch } from "@/lib/fetch"
+import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys } from "@/lib/query-keys"
 
 /** The real shape `/api/my-cases` accepts/returns today. Type of Action, Jurisdiction, and
@@ -46,6 +46,41 @@ export function useCreateCaseMutation() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+    },
+  })
+}
+
+export interface UpdateCasePayload {
+  caseName?: string
+  partyInvolved?: string
+  notes?: string
+}
+
+export function useUpdateCaseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateCasePayload }) =>
+      apiFetch<CaseRecord>(`/api/my-cases/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: caseKeys.detail(updated.id) })
+    },
+  })
+}
+
+export function useDeleteCaseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // The API returns 204 No Content — parsing it as JSON (as apiFetch would) throws.
+      await apiFetchRaw(`/api/my-cases/${id}`, { method: "DELETE" })
+    },
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      queryClient.removeQueries({ queryKey: caseKeys.detail(id) })
     },
   })
 }
