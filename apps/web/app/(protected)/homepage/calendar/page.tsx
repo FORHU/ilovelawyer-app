@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import GlobalHeader from "@/components/global-header";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -11,6 +12,7 @@ import { addMonths, format, isSameDay, isSameMonth, parse, startOfMonth, subMont
 import { AlertCircle, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAppointmentsQuery, useCreateAppointmentMutation } from "@/lib/calendar/mutations";
+import { useCasesQuery } from "@/lib/cases/mutations";
 
 const MAX_VISIBLE_PER_DAY = 2;
 
@@ -162,23 +164,28 @@ function PlannerPanel({
   onSelectDay,
   onMonthChange,
   selectedAppointments,
+  initialCaseId,
 }: {
   selectedDate: Date | undefined;
   currentMonth: Date;
   onSelectDay: (date: Date) => void;
   onMonthChange: (month: Date) => void;
   selectedAppointments: { id: string; title: string; startTime: string; endTime: string | null; description: string | null }[];
+  initialCaseId: string | null;
 }) {
   const [title, setTitle] = React.useState("");
   const [startTime, setStartTime] = React.useState("");
   const [endTime, setEndTime] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [notifyEmail, setNotifyEmail] = React.useState("");
+  const [caseId, setCaseId] = React.useState(initialCaseId ?? "");
   const [formError, setFormError] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
   const isSubmitting = createAppointment.isPending;
+  const casesQuery = useCasesQuery(1, 100);
+  const cases = casesQuery.data?.data ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -197,6 +204,7 @@ function PlannerPanel({
         endTime,
         description: description.trim() || undefined,
         notifyEmail: notifyEmail.trim() || undefined,
+        caseId: caseId || undefined,
       });
       setTitle("");
       setStartTime("");
@@ -260,6 +268,18 @@ function PlannerPanel({
               onChange={(e) => setNotifyEmail(e.target.value)}
               className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
+            <select
+              value={caseId}
+              onChange={(e) => setCaseId(e.target.value)}
+              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+            >
+              <option value="">{t("noCase")}</option>
+              {cases.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.caseName}
+                </option>
+              ))}
+            </select>
             <textarea
               placeholder={t("descriptionPlaceholder")}
               value={description}
@@ -309,6 +329,8 @@ function PlannerPanel({
    ========================================== */
 export default function CalendarPage() {
   const { t } = useTranslation("calendar");
+  const searchParams = useSearchParams();
+  const initialCaseId = searchParams.get("caseId");
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
 
@@ -390,6 +412,7 @@ export default function CalendarPage() {
             onSelectDay={handleSelectDay}
             onMonthChange={setCurrentMonth}
             selectedAppointments={selectedAppointments}
+            initialCaseId={initialCaseId}
           />
 
           <Card className="w-full flex-1 backdrop-blur-sm">

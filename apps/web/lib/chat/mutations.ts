@@ -9,6 +9,7 @@ export interface ChatSession {
 export interface Conversation {
   id: string
   userId: string
+  caseId: string | null
   title: string | null
   createdAt: string
 }
@@ -34,10 +35,25 @@ export function useChatSessionQuery() {
 export function useCreateConversationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ title }: { title?: string } = {}) =>
+    mutationFn: ({ title, caseId }: { title?: string; caseId?: string } = {}) =>
       apiFetch<Conversation>("/api/chat/conversations", {
         method: "POST",
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, caseId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+    },
+  })
+}
+
+/** Links (or unlinks, with caseId: null) an existing conversation to a case — surfaces the case hub inline. */
+export function useLinkConversationCaseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ conversationId, caseId }: { conversationId: string; caseId: string | null }) =>
+      apiFetch<Conversation>(`/api/chat/conversations/${conversationId}/case`, {
+        method: "PATCH",
+        body: JSON.stringify({ caseId }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })

@@ -14,6 +14,7 @@ interface EditCaseModalProps {
 export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onClose }: EditCaseModalProps) {
   const { t } = useTranslation("case-portfolio");
   const [caseName, setCaseName] = useState(caseRecord.caseName);
+  const [caseNumber, setCaseNumber] = useState(caseRecord.caseNumber ?? "");
   const [partyInvolved, setPartyInvolved] = useState(caseRecord.partyInvolved ?? "");
   const [notes, setNotes] = useState(caseRecord.notes ?? "");
   const [nameError, setNameError] = useState(false);
@@ -34,6 +35,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
     }
     onSubmit({
       caseName: caseName.trim(),
+      caseNumber: caseNumber.trim(),
       partyInvolved,
       notes,
     });
@@ -93,6 +95,19 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                 {t("editModal.caseNameError")}
               </p>
             )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="edit-case-number" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              {t("detail.caseNumber")}
+            </label>
+            <input
+              id="edit-case-number"
+              type="text"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+              value={caseNumber}
+              onChange={(e) => setCaseNumber(e.target.value)}
+            />
           </div>
 
           <div className="flex flex-col gap-2">

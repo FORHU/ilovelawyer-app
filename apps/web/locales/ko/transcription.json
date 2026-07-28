@@ -4,6 +4,8 @@
     "titleEmphasis": "재정의되다.",
     "subtitle": "법률 실무의 요구에 맞춰 화자를 구분하는 녹취 기능으로 심리, 증언, 의뢰인 인터뷰를 기록하세요."
   },
+  "linkToCase": "사건에 연결",
+  "noCase": "연결된 사건 없음",
   "recorder": {
     "startNewRecording": "새 녹음 시작",
     "stopRecorder": "녹음기 중지",

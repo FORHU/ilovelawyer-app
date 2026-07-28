@@ -186,41 +186,6 @@ export default function CaseManagerDashboard() {
         )}
       </main>
 
-      {/* SYSTEMATIC LEGAL FOOTER BLOCK */}
-      <footer className="w-full bg-card border-t border-border py-16 relative z-10">
-        <div className="max-w-[1440px] mx-auto px-6 md:px-16 flex flex-col lg:flex-row items-start justify-between gap-12">
-          <div className="flex flex-col gap-4 max-w-sm">
-            <span className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">ilovelawyer</span>
-            <p className="text-sm text-muted-foreground leading-relaxed font-normal">
-              Dedicated to providing the legal community with the most advanced digital research tools in the Philippines.
-            </p>
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">
-              © 2026 ILOVELAWYER PHILIPPINES. ALL RIGHTS RESERVED.
-            </p>
-          </div>
-
-          <div className="flex gap-x-16 gap-y-8 flex-wrap text-xs font-semibold text-muted-foreground">
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-foreground tracking-wider uppercase text-[11px]">RESEARCH</span>
-              <a href="#const" className="hover:text-foreground font-normal">Constitution</a>
-              <a href="#civil" className="hover:text-foreground font-normal">Civil Code</a>
-              <a href="#scra" className="hover:text-foreground font-normal">SCRA Archive</a>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-foreground tracking-wider uppercase text-[11px]">LEGAL</span>
-              <Link href="/homepage/term" className="hover:text-foreground font-normal">Privacy Policy</Link>
-              <Link href="/homepage/term" className="hover:text-foreground font-normal">Terms of Use</Link>
-              <Link href="/homepage/term" className="hover:text-foreground font-normal">Ethics Policy</Link>
-            </div>
-            <div className="flex flex-col gap-3 min-w-[100px]">
-              <span className="text-foreground tracking-wider uppercase text-[11px]">CONNECT</span>
-              <a href="#support" className="hover:text-foreground font-normal">Support Center</a>
-              <a href="#media" className="hover:text-foreground font-normal">Media Inquiries</a>
-              <a href="#contact" className="hover:text-foreground font-normal">Contact Us</a>
-            </div>
-          </div>
-        </div>
-      </footer>
 
       {editingCase && (
         <EditCaseModal

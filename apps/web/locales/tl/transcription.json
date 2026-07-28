@@ -4,6 +4,8 @@
     "titleEmphasis": "Muling Binalangkas.",
     "subtitle": "Itala ang mga hearing, deposisyon, at panayam sa kliyente gamit ang speaker-aware na transkripsyon na ginawa para sa mga pangangailangan ng legal practice."
   },
+  "linkToCase": "I-link sa kaso",
+  "noCase": "Walang naka-link na kaso",
   "recorder": {
     "startNewRecording": "Simulan ang Bagong Recording",
     "stopRecorder": "Ihinto ang Recorder",

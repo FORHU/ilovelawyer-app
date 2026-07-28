@@ -13,6 +13,7 @@
   "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",
   "notePlaceholder": "Note",
+  "noCase": "No linked case",
   "saving": "Saving…",
   "addAppointment": "Add Appointment",
   "addNote": "Add Note",
