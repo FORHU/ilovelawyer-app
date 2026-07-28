@@ -40,5 +40,29 @@
     "signOutDescription": "Ends your current session and returns you to the login screen.",
     "logout": "Log Out",
     "loggingOut": "Logging out…"
+  },
+  "dangerZone": {
+    "heading": "Danger Zone",
+    "subheading": "Irreversible and destructive actions for this account.",
+    "cancel": "Cancel",
+    "closeModal": "Close",
+    "disableAccount": {
+      "title": "Disable account",
+      "description": "Temporarily deactivates your account. You'll be signed out and won't be able to log back in until it's reactivated.",
+      "button": "Disable Account",
+      "disabling": "Disabling…",
+      "confirmTitle": "Disable your account?",
+      "confirmDescription": "Your account will be deactivated and you'll be signed out immediately. You won't be able to log back in until an administrator reactivates it.",
+      "confirmButton": "Disable Account"
+    },
+    "deleteAccount": {
+      "title": "Delete account",
+      "description": "Permanently deletes your account and all associated data. This action cannot be undone.",
+      "button": "Delete Account",
+      "deleting": "Deleting…",
+      "confirmTitle": "Delete your account?",
+      "confirmDescription": "This will permanently delete your account and all associated data. This action cannot be undone.",
+      "confirmButton": "Delete Account"
+    }
   }
 }

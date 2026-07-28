@@ -1,9 +1,17 @@
 import { useAuthStore } from "@/lib/store/auth.store"
 
-// Relative — requests go to this app's own origin at /api/*, and next.config.ts's
-// rewrites() proxies them server-side to the real API. Keeps the browser and the
-// refreshToken cookie same-origin even when the API runs on a different host.
-const BASE_URL = ""
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
+
+// These two read the refreshToken httpOnly cookie, so they're proxied
+// same-origin via next.config.ts's rewrites() (see that file for why).
+// Every other endpoint — including the streaming chat endpoint — calls the
+// API directly, since routing a streamed response through the Next proxy
+// buffers the whole thing before relaying it to the browser.
+const COOKIE_PROXIED_PATHS = new Set(["/api/auth/refresh", "/api/auth/logout"])
+
+function resolveUrl(path: string): string {
+  return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`
+}
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
@@ -15,7 +23,7 @@ async function attemptRefresh(): Promise<void> {
   refreshPromise = (async () => {
     const { setAccessToken, clearAuth } = useAuthStore.getState()
 
-    const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const res = await fetch(resolveUrl("/api/auth/refresh"), {
       method: "POST",
       credentials: "include",
     })
@@ -55,8 +63,9 @@ async function throwIfNotOk(res: Response): Promise<void> {
 export async function apiFetchRaw(path: string, options?: FetchOptions): Promise<Response> {
   const { skipAuthRefresh, ...fetchOptions } = options ?? {}
   const isFormData = fetchOptions.body instanceof FormData
+  const url = resolveUrl(path)
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(url, {
     ...fetchOptions,
     credentials: "include",
     headers: buildHeaders(fetchOptions.headers, isFormData),
@@ -65,7 +74,7 @@ export async function apiFetchRaw(path: string, options?: FetchOptions): Promise
   if (res.status === 401 && !skipAuthRefresh) {
     await attemptRefresh()
 
-    const retry = await fetch(`${BASE_URL}${path}`, {
+    const retry = await fetch(url, {
       ...fetchOptions,
       credentials: "include",
       headers: buildHeaders(fetchOptions.headers, isFormData),

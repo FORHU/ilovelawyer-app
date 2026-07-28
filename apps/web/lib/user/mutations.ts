@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiFetch } from "@/lib/fetch"
+import { useRouter } from "next/navigation"
+import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { userKeys } from "@/lib/query-keys"
 import { useAuthStore } from "@/lib/store/auth.store"
 
@@ -34,6 +35,34 @@ export function useUpdateCurrentUserMutation() {
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(userKeys.me(), updated)
+    },
+  })
+}
+
+export function useDeactivateAccountMutation() {
+  const router = useRouter()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  return useMutation({
+    mutationFn: () => apiFetch("/api/users/me/deactivate", { method: "PATCH" }),
+    onSuccess: () => {
+      clearAuth()
+      router.push("/login")
+    },
+  })
+}
+
+export function useDeleteAccountMutation() {
+  const router = useRouter()
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  return useMutation({
+    mutationFn: async () => {
+      await apiFetchRaw("/api/users/me", { method: "DELETE" })
+    },
+    onSuccess: () => {
+      clearAuth()
+      router.push("/login")
     },
   })
 }

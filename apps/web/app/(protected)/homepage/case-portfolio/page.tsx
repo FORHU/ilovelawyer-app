@@ -4,16 +4,35 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
-import { Search, Plus, Briefcase, Loader2, AlertCircle } from "lucide-react";
-import { useCasesQuery } from "@/lib/cases/mutations";
+import EditCaseModal from "@/components/cases/edit-case-modal";
+import DeleteCaseModal from "@/components/cases/delete-case-modal";
+import { Search, Plus, Briefcase, Loader2, AlertCircle, Pencil, Trash2 } from "lucide-react";
+import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
+  const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
 
   const { data, isLoading, isError, refetch } = useCasesQuery();
   const cases = data?.data ?? [];
+
+  const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
+  const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
+
+  const handleSaveEdit = async (payload: UpdateCasePayload) => {
+    if (!editingCase) return;
+    await updateCase({ id: editingCase.id, payload });
+    setEditingCase(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCase) return;
+    await deleteCase(deletingCase.id);
+    setDeletingCase(null);
+  };
 
   const filteredCases = cases.filter((item) => {
     const query = searchQuery.toLowerCase();
@@ -86,21 +105,47 @@ export default function CaseManagerDashboard() {
         {!isLoading && !isError && (
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
             {filteredCases.map((c) => (
-              <Link
+              <div
                 key={c.id}
-                href={`/homepage/case-portfolio/${c.id}`}
-                className="min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="relative group/card min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="w-full">
-                  <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2">
+                <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setEditingCase(c);
+                    }}
+                    className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label={t("editCase", { caseName: c.caseName })}
+                  >
+                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingCase(c);
+                    }}
+                    className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-red-600 hover:border-red-300 dark:hover:text-red-400 dark:hover:border-red-500/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                    aria-label={t("deleteCase", { caseName: c.caseName })}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <Link href={`/homepage/case-portfolio/${c.id}`} className="w-full">
+                  <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
                     {c.caseName}
                   </h3>
                   <p className="text-muted-foreground text-[14px] font-['Inter']">
                     {c.partyInvolved || t("noPartyListed")}
                   </p>
-                </div>
+                </Link>
 
-                <div className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                <Link href={`/homepage/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
                   <div>
                     <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
                       {t("lastUpdated")}
@@ -109,8 +154,8 @@ export default function CaseManagerDashboard() {
                       {new Date(c.updatedAt).toLocaleDateString()}
                     </span>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
 
             <button
@@ -176,6 +221,26 @@ export default function CaseManagerDashboard() {
           </div>
         </div>
       </footer>
+
+      {editingCase && (
+        <EditCaseModal
+          key={editingCase.id}
+          caseRecord={editingCase}
+          isSubmitting={isUpdating}
+          onSubmit={handleSaveEdit}
+          onClose={() => setEditingCase(null)}
+        />
+      )}
+
+      {deletingCase && (
+        <DeleteCaseModal
+          key={deletingCase.id}
+          caseRecord={deletingCase}
+          isDeleting={isDeleting}
+          onConfirm={() => void handleConfirmDelete()}
+          onClose={() => setDeletingCase(null)}
+        />
+      )}
     </div>
   );
 }

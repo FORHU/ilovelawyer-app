@@ -40,5 +40,29 @@
     "signOutDescription": "Tinatapos ang iyong kasalukuyang session at ibinabalik ka sa login screen.",
     "logout": "Mag-log Out",
     "loggingOut": "Nagla-log out…"
+  },
+  "dangerZone": {
+    "heading": "Danger Zone",
+    "subheading": "Mga hindi na maibabalik at mapaminsalang aksyon para sa account na ito.",
+    "cancel": "Kanselahin",
+    "closeModal": "Isara",
+    "disableAccount": {
+      "title": "I-disable ang account",
+      "description": "Pansamantalang idi-deactivate ang iyong account. Ma-sign out ka at hindi ka makakapag-log in muli hanggang ma-reactivate ito.",
+      "button": "I-disable ang Account",
+      "disabling": "Dini-disable…",
+      "confirmTitle": "I-disable ang iyong account?",
+      "confirmDescription": "Ide-deactivate ang iyong account at ma-sign out ka kaagad. Hindi ka makakapag-log in muli hanggang ma-reactivate ito ng administrator.",
+      "confirmButton": "I-disable ang Account"
+    },
+    "deleteAccount": {
+      "title": "Burahin ang account",
+      "description": "Permanenteng bubura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
+      "button": "Burahin ang Account",
+      "deleting": "Binubura…",
+      "confirmTitle": "Burahin ang iyong account?",
+      "confirmDescription": "Permanenteng bubura nito ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
+      "confirmButton": "Burahin ang Account"
+    }
   }
 }

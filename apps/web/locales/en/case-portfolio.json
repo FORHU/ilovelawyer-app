@@ -13,6 +13,20 @@
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",
   "retry": "Retry",
+  "editCase": "Edit {{caseName}}",
+  "deleteCase": "Delete {{caseName}}",
+  "deleteConfirm": "Delete \"{{caseName}}\"? This cannot be undone.",
+  "editModal": {
+    "heading": "Edit Case",
+    "close": "Close",
+    "caseNameLabel": "Case Title",
+    "caseNameError": "Case title is required.",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "saving": "Saving…",
+    "editCase": "Edit",
+    "deleteCase": "Delete"
+  },
   "detail": {
     "backToPortfolio": "Back to Case Portfolio",
     "party": "Party Involved",

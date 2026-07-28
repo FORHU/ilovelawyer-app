@@ -1,12 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { AtSign, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, User } from "lucide-react";
+import { AtSign, Ban, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
+import DeactivateAccountModal from "@/components/account/deactivate-account-modal";
+import DeleteAccountModal from "@/components/account/delete-account-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
-import { useCurrentUserQuery, useUpdateCurrentUserMutation } from "@/lib/user/mutations";
+import {
+  useCurrentUserQuery,
+  useDeactivateAccountMutation,
+  useDeleteAccountMutation,
+  useUpdateCurrentUserMutation,
+} from "@/lib/user/mutations";
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -54,6 +61,11 @@ export default function ProfilePage() {
   const logout = useLogoutMutation();
   const updateName = useUpdateCurrentUserMutation();
   const updateUsername = useUpdateCurrentUserMutation();
+  const deactivateAccount = useDeactivateAccountMutation();
+  const deleteAccount = useDeleteAccountMutation();
+
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -402,8 +414,72 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {/* Danger Zone */}
+        <section className="bg-card rounded-xl border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">
+          <div className="px-6 md:px-8 py-5 border-b border-red-200 dark:border-red-500/30">
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("Disable/Delete Account")}</h2>
+          </div>
+
+          <div className="flex flex-col divide-y divide-border">
+            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex gap-4 items-center">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                  <Ban className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-[16px]">{t("Disable Account")}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDeactivateModalOpen(true)}
+                className="cursor-pointer flex items-center gap-2 bg-amber-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-amber-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus-visible:ring-offset-2"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                {t("Disable")}
+              </button>
+            </div>
+
+            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex gap-4 items-center">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-[16px]">{t("Delete Account")}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {t("Delete")}
+              </button>
+            </div>
+          </div>
+        </section>
       </main>
 
+      {isDeactivateModalOpen && (
+        <DeactivateAccountModal
+          isPending={deactivateAccount.isPending}
+          error={deactivateAccount.error ? (deactivateAccount.error as Error).message : null}
+          onConfirm={() => deactivateAccount.mutate()}
+          onClose={() => setIsDeactivateModalOpen(false)}
+        />
+      )}
+
+      {isDeleteModalOpen && (
+        <DeleteAccountModal
+          isPending={deleteAccount.isPending}
+          error={deleteAccount.error ? (deleteAccount.error as Error).message : null}
+          onConfirm={() => deleteAccount.mutate()}
+          onClose={() => setIsDeleteModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
