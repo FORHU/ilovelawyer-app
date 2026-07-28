@@ -64,6 +64,35 @@ export function useSignupMutation() {
   })
 }
 
+export function useSendOtpMutation() {
+  return useMutation({
+    mutationFn: ({ email }: { email: string }) =>
+      apiFetch("/api/auth/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+        skipAuthRefresh: true,
+      }),
+  })
+}
+
+export function useVerifyOtpMutation() {
+  const router = useRouter()
+  const setAuth = useAuthStore((s) => s.setAuth)
+
+  return useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      apiFetch<AuthTokensResponse>("/api/auth/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      router.push("/homepage")
+    },
+  })
+}
+
 export function useGoogleAuthMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
