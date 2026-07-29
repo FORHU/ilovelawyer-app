@@ -7,6 +7,7 @@ import {
   useRenameConversationMutation,
   useDeleteConversationMutation,
 } from "@/lib/chat/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface ConversationSidebarProps {
   activeConversationId: string | null;
@@ -89,31 +90,41 @@ export default function ConversationSidebar({
 
   const panelBody = (isMobile: boolean) => (
     <>
-      <button
-        onClick={() => {
-          onNewChat();
-          onExpandedChange(false);
-          setIsMobileOpen(false);
-        }}
-        title={t("sidebar.newChat")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-          expanded || isMobile ? "" : "justify-center px-0"
-        }`}
-      >
-        <Plus className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.newChat")}</span>}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => {
+              onNewChat();
+              onExpandedChange(false);
+              setIsMobileOpen(false);
+            }}
+            aria-label={t("sidebar.newChat")}
+            className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+              expanded || isMobile ? "" : "justify-center px-0"
+            }`}
+          >
+            <Plus className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+            {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.newChat")}</span>}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("sidebar.newChat")}</TooltipContent>
+      </Tooltip>
 
-      <button
-        onClick={() => !isMobile && onExpandedChange(!expanded)}
-        title={t("sidebar.recentConversationsTitle")}
-        className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-          expanded || isMobile ? "" : "justify-center px-0"
-        }`}
-      >
-        <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
-        {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.recent")}</span>}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => !isMobile && onExpandedChange(!expanded)}
+            aria-label={t("sidebar.recentConversationsTitle")}
+            className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+              expanded || isMobile ? "" : "justify-center px-0"
+            }`}
+          >
+            <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+            {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.recent")}</span>}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("sidebar.recentConversationsTitle")}</TooltipContent>
+      </Tooltip>
 
       {(expanded || isMobile) && (
         <div className="relative flex-1 min-h-0 mt-2">
@@ -140,20 +151,24 @@ export default function ConversationSidebar({
                       onBlur={commitEdit}
                       className="min-w-0 flex-1 truncate bg-transparent px-2 py-1.5 text-[13px] font-['Inter'] font-medium text-foreground outline-none"
                     />
-                    <button
-                      type="button"
-                      // onMouseDown (not onClick) fires before the input's onBlur, so this commits
-                      // the edit itself instead of racing the blur-triggered commit above.
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        commitEdit();
-                      }}
-                      title={t("sidebar.saveTitle")}
-                      aria-label={t("sidebar.saveTitle")}
-                      className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    >
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          // onMouseDown (not onClick) fires before the input's onBlur, so this commits
+                          // the edit itself instead of racing the blur-triggered commit above.
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            commitEdit();
+                          }}
+                          aria-label={t("sidebar.saveTitle")}
+                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        >
+                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("sidebar.saveTitle")}</TooltipContent>
+                    </Tooltip>
                   </div>
                 );
               }
@@ -165,22 +180,26 @@ export default function ConversationSidebar({
                     isActive ? "bg-muted border-border" : "border-transparent hover:bg-muted"
                   }`}
                 >
-                  <button
-                    onClick={() => {
-                      onSelectConversation(c.id);
-                      onExpandedChange(false);
-                      setIsMobileOpen(false);
-                    }}
-                    title={label}
-                    // Gemini-style pill: the conversation you're currently in gets its own
-                    // rounded, bordered chip; a transparent border of the same width is kept
-                    // on inactive rows so hovering doesn't shift layout by 1px.
-                    className={`min-w-0 flex-1 text-left truncate pl-4 pr-1 py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
-                      isActive ? "text-primary font-semibold" : "text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => {
+                          onSelectConversation(c.id);
+                          onExpandedChange(false);
+                          setIsMobileOpen(false);
+                        }}
+                        // Gemini-style pill: the conversation you're currently in gets its own
+                        // rounded, bordered chip; a transparent border of the same width is kept
+                        // on inactive rows so hovering doesn't shift layout by 1px.
+                        className={`min-w-0 flex-1 text-left truncate pl-4 pr-1 py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
+                          isActive ? "text-primary font-semibold" : "text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Open this conversation: {label}</TooltipContent>
+                  </Tooltip>
 
                   {/* Revealed on hover/focus so the row stays clean the rest of the time;
                       always shown on mobile, where there's no hover state to reveal them. */}
@@ -189,29 +208,37 @@ export default function ConversationSidebar({
                       isMobile ? "" : "opacity-0 group-hover/row:opacity-100 focus-within:opacity-100"
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => startEditing(c.id, c.title?.trim() || "")}
-                      title={t("sidebar.renameConversation")}
-                      aria-label={t("sidebar.renameConversationNamed", { name: label })}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(c.id)}
-                      disabled={deleteConversation.isPending && deleteConversation.variables === c.id}
-                      title={t("sidebar.deleteConversation")}
-                      aria-label={t("sidebar.deleteConversationNamed", { name: label })}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
-                    >
-                      {deleteConversation.isPending && deleteConversation.variables === c.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      )}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => startEditing(c.id, c.title?.trim() || "")}
+                          aria-label={t("sidebar.renameConversationNamed", { name: label })}
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("sidebar.renameConversation")}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(c.id)}
+                          disabled={deleteConversation.isPending && deleteConversation.variables === c.id}
+                          aria-label={t("sidebar.deleteConversationNamed", { name: label })}
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+                        >
+                          {deleteConversation.isPending && deleteConversation.variables === c.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("sidebar.deleteConversation")}</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               );
@@ -230,15 +257,19 @@ export default function ConversationSidebar({
     <>
       {/* Menu button that opens the mobile drawer — the collapsed w-16 rail below is
           sized for desktop and has no comfortable place to sit on a ~375px screen. */}
-      <button
-        type="button"
-        onClick={() => setIsMobileOpen(true)}
-        title={t("sidebar.openConversations")}
-        aria-label={t("sidebar.openConversations")}
-        className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      >
-        <PanelLeft className="h-5 w-5" aria-hidden="true" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen(true)}
+            aria-label={t("sidebar.openConversations")}
+            className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <PanelLeft className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("sidebar.openConversations")}</TooltipContent>
+      </Tooltip>
 
       {/* Desktop/tablet rail — collapsed-to-expanded width toggle, unchanged from before */}
       <aside
@@ -250,21 +281,25 @@ export default function ConversationSidebar({
         {/* One toggle, always in its own row above "New chat" — not floated over it — so
             open and close share a single, consistent, discoverable control instead of
             relying on re-clicking the Recent icon to close. */}
-        <button
-          type="button"
-          onClick={() => onExpandedChange(!expanded)}
-          title={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}
-          aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}
-          className={`h-10 flex items-center shrink-0 rounded-full hover:bg-muted mx-2 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-            expanded ? "justify-end px-3" : "justify-center px-0"
-          }`}
-        >
-          {expanded ? (
-            <PanelLeftClose className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          ) : (
-            <PanelLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => onExpandedChange(!expanded)}
+              aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}
+              className={`h-10 flex items-center shrink-0 rounded-full hover:bg-muted mx-2 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                expanded ? "justify-end px-3" : "justify-center px-0"
+              }`}
+            >
+              {expanded ? (
+                <PanelLeftClose className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <PanelLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}</TooltipContent>
+        </Tooltip>
         {panelBody(false)}
       </aside>
 
@@ -275,14 +310,19 @@ export default function ConversationSidebar({
           <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
               <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.conversations")}</span>
-              <button
-                type="button"
-                onClick={() => setIsMobileOpen(false)}
-                aria-label={t("sidebar.closeConversations")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileOpen(false)}
+                    aria-label={t("sidebar.closeConversations")}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("sidebar.closeConversations")}</TooltipContent>
+              </Tooltip>
             </div>
             {panelBody(true)}
           </div>

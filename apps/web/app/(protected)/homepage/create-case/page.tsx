@@ -10,6 +10,7 @@ import {
   useUploadCaseDocumentMutation,
   useLinkCaseDocumentMutation,
 } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const ACTION_TYPE_OPTIONS = [
   { value: "Civil Litigation", labelKey: "actionTypes.civilLitigation" },
@@ -237,14 +238,19 @@ export default function CreateCasePage() {
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
               <p className="text-sm">{submitError}</p>
-              <button
-                type="button"
-                onClick={() => setSubmitError(null)}
-                className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
-                aria-label={t("dismissError")}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitError(null)}
+                    className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                    aria-label={t("dismissError")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("dismissError")}</TooltipContent>
+              </Tooltip>
             </div>
           )}
 
@@ -298,6 +304,7 @@ export default function CreateCasePage() {
                     onChange={(v) => handleInputChange("actionType", v)}
                     options={ACTION_TYPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
                     placeholder={t("sectionIdentity.selectAction")}
+                    triggerTooltip="Choose the type of legal action"
                   />
                 </div>
 
@@ -349,14 +356,19 @@ export default function CreateCasePage() {
                           {t("sectionParties.partyLabel", { number: index + 1 })}
                         </span>
                         {formData.parties.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeParty(party.id)}
-                            className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                            aria-label={t("sectionParties.removeParty", { number: index + 1 })}
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => removeParty(party.id)}
+                                className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                                aria-label={t("sectionParties.removeParty", { number: index + 1 })}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("sectionParties.removeParty", { number: index + 1 })}</TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
 
@@ -384,6 +396,7 @@ export default function CreateCasePage() {
                             value={party.designation}
                             onChange={(v) => updateParty(party.id, "designation", v)}
                             options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                            triggerTooltip="Choose the party's designation"
                           />
                         </div>
                       </div>
@@ -396,14 +409,19 @@ export default function CreateCasePage() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={addParty}
-                className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                {t("sectionParties.addParty")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={addParty}
+                    className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    {t("sectionParties.addParty")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Add another party to this case</TooltipContent>
+              </Tooltip>
             </fieldset>
           </section>
 
@@ -454,16 +472,21 @@ export default function CreateCasePage() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerFileSelect();
-                  }}
-                  className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
-                >
-                  {t("sectionEvidence.selectDocuments")}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerFileSelect();
+                      }}
+                      className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
+                    >
+                      {t("sectionEvidence.selectDocuments")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Choose PDF or DOCX files to upload as evidence</TooltipContent>
+                </Tooltip>
 
                 {formData.uploadedFiles.length > 0 && (
                   <div
@@ -483,23 +506,33 @@ export default function CreateCasePage() {
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                           )}
                           {f.status === "error" && (
-                            <button
-                              type="button"
-                              onClick={() => retryUpload(f.id)}
-                              className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
-                              aria-label={t("sectionEvidence.retryUpload", { fileName: f.file.name })}
-                            >
-                              <RotateCw className="w-3.5 h-3.5" />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => retryUpload(f.id)}
+                                  className="flex items-center gap-1 rounded p-0.5 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                                  aria-label={t("sectionEvidence.retryUpload", { fileName: f.file.name })}
+                                >
+                                  <RotateCw className="w-3.5 h-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t("sectionEvidence.retryUpload", { fileName: f.file.name })}</TooltipContent>
+                            </Tooltip>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => removeFile(f.id)}
-                            className="rounded p-0.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                            aria-label={t("sectionEvidence.removeFile", { fileName: f.file.name })}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(f.id)}
+                                className="rounded p-0.5 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                                aria-label={t("sectionEvidence.removeFile", { fileName: f.file.name })}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("sectionEvidence.removeFile", { fileName: f.file.name })}</TooltipContent>
+                          </Tooltip>
                         </div>
                         {f.status === "error" && (
                           <p className="text-red-600 dark:text-red-400">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
@@ -513,13 +546,18 @@ export default function CreateCasePage() {
           </section>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
-              className="bg-brand-navy-900 text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? t("submitting") : t("initiateFiling")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="submit"
+                  disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
+                  className="bg-brand-navy-900 text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? t("submitting") : t("initiateFiling")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Create the case with the details entered above</TooltipContent>
+            </Tooltip>
             <p className="text-xs text-muted-foreground">{t("editAnytimeNote")}</p>
           </div>
         </section>

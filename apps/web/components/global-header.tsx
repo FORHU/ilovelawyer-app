@@ -8,6 +8,7 @@ import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface GlobalHeaderProps {
   // Enforces passing one of your exact six workspace pages
@@ -35,26 +36,26 @@ interface GlobalHeaderProps {
 }
 
 const CASE_MENU_ITEMS = [
-  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case" },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio" },
+  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case", tooltip: "Start a new case filing" },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
 ] as const;
 
 const USER_MENU_ITEMS = [
-  { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle },
-  { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText },
+  { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
+  { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText, tooltip: "Read the terms and conditions" },
 ] as const;
 
 // Flat list for the mobile drawer — the desktop CASE dropdown's two items are
 // inlined here directly since a nested toggle inside an already-open drawer
 // is an extra tap for no benefit at phone width.
 const MOBILE_NAV_ITEMS = [
-  { tab: "consultation", labelKey: "nav.consultation", href: "/homepage" },
-  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case" },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio" },
-  { tab: "library", labelKey: "nav.library", href: "/homepage/library" },
-  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription" },
-  { tab: "document-analysis", labelKey: "nav.documents", href: "/homepage/document-analysis" },
-  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar" },
+  { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat" },
+  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case", tooltip: "Start a new case filing" },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
+  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library" },
+  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio" },
+  { tab: "document-analysis", labelKey: "nav.documents", href: "/homepage/document-analysis", tooltip: "Upload and analyze legal documents" },
+  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments" },
 ] as const;
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
@@ -129,26 +130,36 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         </Link>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
-          <Link href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>AI-powered legal consultation chat</TooltipContent>
+          </Tooltip>
 
           <div className="relative" ref={caseMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsCaseMenuOpen((prev) => !prev)}
-              className={`flex items-center gap-1 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                isCaseTabActive
-                  ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
-                  : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
-              }`}
-              aria-haspopup="menu"
-              aria-expanded={isCaseMenuOpen}
-            >
-              {t("nav.case").toUpperCase()}
-              <ChevronDown
-                className={`w-3 h-3 transition-transform duration-200 ${isCaseMenuOpen ? "rotate-180" : ""}`}
-                aria-hidden="true"
-              />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsCaseMenuOpen((prev) => !prev)}
+                  className={`flex items-center gap-1 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                    isCaseTabActive
+                      ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
+                      : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
+                  }`}
+                  aria-haspopup="menu"
+                  aria-expanded={isCaseMenuOpen}
+                >
+                  {t("nav.case").toUpperCase()}
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${isCaseMenuOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Create or manage your cases</TooltipContent>
+            </Tooltip>
 
             {isCaseMenuOpen && (
               <div
@@ -156,26 +167,50 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-card border border-border rounded-xl shadow-xl py-1 overflow-hidden"
               >
                 {CASE_MENU_ITEMS.map((item) => (
-                  <Link
-                    key={item.tab}
-                    href={item.href}
-                    role="menuitem"
-                    onClick={() => setIsCaseMenuOpen(false)}
-                    className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 ${
-                      activeTab === item.tab ? "text-foreground font-bold bg-foreground/5" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                    }`}
-                  >
-                    {t(item.labelKey)}
-                  </Link>
+                  <Tooltip key={item.tab}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        role="menuitem"
+                        onClick={() => setIsCaseMenuOpen(false)}
+                        className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 ${
+                          activeTab === item.tab ? "text-foreground font-bold bg-foreground/5" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                        }`}
+                      >
+                        {t(item.labelKey)}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.tooltip}</TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             )}
           </div>
 
-          <Link href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</Link>
-          <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</Link>
-          <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</Link>
-          <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>Browse the legal research library</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>Record and transcribe audio</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>Upload and analyze legal documents</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>View and schedule appointments</TooltipContent>
+          </Tooltip>
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
@@ -185,16 +220,21 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           <ThemeToggle />
 
           <div className="relative" ref={userMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsUserMenuOpen((prev) => !prev)}
-              className={`cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "opacity-100" : ""}`}
-              aria-haspopup="menu"
-              aria-expanded={isUserMenuOpen}
-              aria-label={t("userMenu.accountMenu")}
-            >
-              <User className="w-5 h-5" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                  className={`cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "opacity-100" : ""}`}
+                  aria-haspopup="menu"
+                  aria-expanded={isUserMenuOpen}
+                  aria-label={t("userMenu.accountMenu")}
+                >
+                  <User className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("userMenu.accountMenu")}</TooltipContent>
+            </Tooltip>
 
             {isUserMenuOpen && (
               <div
@@ -209,46 +249,60 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 )}
 
                 {USER_MENU_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    role="menuitem"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-                  >
-                    <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                    {t(item.labelKey)}
-                  </Link>
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        role="menuitem"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                      >
+                        <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                        {t(item.labelKey)}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">{item.tooltip}</TooltipContent>
+                  </Tooltip>
                 ))}
 
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={logout.isPending}
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    logout.mutate();
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-                  {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={logout.isPending}
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        logout.mutate();
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                      {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">Sign out of your account</TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
         </div>
 
         {/* Mobile hamburger — replaces the inline nav + account icon below lg */}
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-          className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
-          aria-expanded={isMobileMenuOpen}
-        >
-          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Mobile drawer — full-width panel replacing the desktop nav + account menu below lg */}
@@ -256,14 +310,18 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         <div className="lg:hidden max-h-[calc(100vh-3.5rem)] overflow-y-auto border-t border-white/10 bg-brand-navy-950 px-4 py-4">
           <nav className="flex flex-col gap-0.5">
             {MOBILE_NAV_ITEMS.map((item) => (
-              <Link
-                key={item.tab}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={getMobileTabClass(item.tab)}
-              >
-                {t(item.labelKey)}
-              </Link>
+              <Tooltip key={item.tab}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={getMobileTabClass(item.tab)}
+                  >
+                    {t(item.labelKey)}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.tooltip}</TooltipContent>
+              </Tooltip>
             ))}
           </nav>
 
@@ -283,29 +341,38 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             )}
 
             {USER_MENU_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-white/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
-              >
-                <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                {t(item.labelKey)}
-              </Link>
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-white/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
+                  >
+                    <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                    {t(item.labelKey)}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.tooltip}</TooltipContent>
+              </Tooltip>
             ))}
 
-            <button
-              type="button"
-              disabled={logout.isPending}
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                logout.mutate();
-              }}
-              className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-400 transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-              {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={logout.isPending}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    logout.mutate();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-400 transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+                  {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Sign out of your account</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       )}

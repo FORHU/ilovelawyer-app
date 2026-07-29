@@ -7,7 +7,6 @@ import { caseKeys } from "@/lib/query-keys"
 export interface CaseRecord {
   id: string
   userId: string
-  caseNumber: string | null
   caseName: string
   partyInvolved: string | null
   notes: string | null
@@ -33,8 +32,6 @@ export function useCaseQuery(id: string) {
 
 export interface CreateCasePayload {
   caseName: string
-  /** Left blank, the backend auto-generates one (e.g. "2026-0001"). */
-  caseNumber?: string
   partyInvolved?: string
   notes?: string
 }
@@ -55,7 +52,6 @@ export function useCreateCaseMutation() {
 
 export interface UpdateCasePayload {
   caseName?: string
-  caseNumber?: string
   partyInvolved?: string
   notes?: string
 }

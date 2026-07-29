@@ -17,6 +17,7 @@ import {
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -355,14 +356,19 @@ export default function ConsultationChat({
           <div className="flex items-center gap-2 px-2">
             <span className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1">
               <span className="truncate max-w-[220px]">{file.name}</span>
-              <button
-                type="button"
-                onClick={handleRemoveFile}
-                className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="Remove attached file"
-              >
-                <X className="w-3 h-3" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label="Remove attached file"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Remove attached file</TooltipContent>
+              </Tooltip>
             </span>
           </div>
         )}
@@ -383,14 +389,19 @@ export default function ConsultationChat({
           <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
             <Paperclip className="w-3 h-3 shrink-0" aria-hidden="true" />
             <span className="truncate">{file.name}</span>
-            <button
-              type="button"
-              onClick={handleRemoveFile}
-              className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 shrink-0"
-              aria-label={t("input.removeFile", { fileName: file.name })}
-            >
-              <X className="w-3 h-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 shrink-0"
+                  aria-label={t("input.removeFile", { fileName: file.name })}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("input.removeFile", { fileName: file.name })}</TooltipContent>
+            </Tooltip>
           </div>
         )}
 
@@ -403,37 +414,52 @@ export default function ConsultationChat({
               className="hidden"
               onChange={handleFileChange}
             />
-            <button
-              type="button"
-              onClick={handleClipClick}
-              aria-label={t("input.attachFile")}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleMicClick}
-              aria-pressed={isRecording}
-              aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
-              className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                isRecording
-                  ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
-                  : "hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleClipClick}
+                  aria-label={t("input.attachFile")}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("input.attachFile")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  aria-pressed={isRecording}
+                  aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                    isRecording
+                      ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
+                      : "hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
+            </Tooltip>
           </div>
 
-          <button
-            type="submit"
-            disabled={isSending || !session}
-            aria-label={t("input.sendMessage")}
-            className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
-          >
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="submit"
+                disabled={isSending || !session}
+                aria-label={t("input.sendMessage")}
+                className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
+              >
+                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+          </Tooltip>
         </div>
       </form>
     </div>
@@ -463,7 +489,7 @@ export default function ConsultationChat({
           identity), not part of the centered conversation. Sits outside <main> so it isn't
           bound by that centering; ConversationSidebar is absolutely positioned so its own
           top-16 offset is unaffected by this sibling. */}
-      {headerSlot && <div className="relative z-10 shrink-0 pt-16 pb-4">{headerSlot}</div>}
+      {headerSlot && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       {/* Main Chat Interface */}
       <main className={`relative z-10 max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 ${headerSlot ? "" : "pt-16"}`}>

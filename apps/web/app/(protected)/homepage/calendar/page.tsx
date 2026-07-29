@@ -6,6 +6,7 @@ import GlobalHeader from "@/components/global-header";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isSameDay, isSameMonth, parse, startOfMonth, subMonths, endOfMonth } from "date-fns";
@@ -47,40 +48,45 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
   const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelectDay(day.date)}
-      disabled={props.disabled}
-      className={cn(
-        "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
-        modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
-        isSelected && "border-primary bg-primary/10",
-        className
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-5 items-center justify-center rounded-full text-xs font-medium",
-          modifiers.today && "bg-primary font-bold text-primary-foreground"
-        )}
-      >
-        {day.date.getDate()}
-      </span>
-      <div className="flex w-full flex-col gap-0.5 overflow-hidden">
-        {dayItems?.visible.map((item) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onSelectDay(day.date)}
+          disabled={props.disabled}
+          className={cn(
+            "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
+            modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
+            isSelected && "border-primary bg-primary/10",
+            className
+          )}
+        >
           <span
-            key={item.id}
-            className="flex items-center gap-1 truncate rounded bg-blue-100 px-1 py-0.5 text-[10px] leading-tight text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+            className={cn(
+              "flex size-5 items-center justify-center rounded-full text-xs font-medium",
+              modifiers.today && "bg-primary font-bold text-primary-foreground"
+            )}
           >
-            <Clock className="size-2.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{item.label}</span>
+            {day.date.getDate()}
           </span>
-        ))}
-        {dayItems && dayItems.overflowCount > 0 && (
-          <span className="text-[10px] text-muted-foreground">{t("overflowMore", { count: dayItems.overflowCount })}</span>
-        )}
-      </div>
-    </button>
+          <div className="flex w-full flex-col gap-0.5 overflow-hidden">
+            {dayItems?.visible.map((item) => (
+              <span
+                key={item.id}
+                className="flex items-center gap-1 truncate rounded bg-blue-100 px-1 py-0.5 text-[10px] leading-tight text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+              >
+                <Clock className="size-2.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{item.label}</span>
+              </span>
+            ))}
+            {dayItems && dayItems.overflowCount > 0 && (
+              <span className="text-[10px] text-muted-foreground">{t("overflowMore", { count: dayItems.overflowCount })}</span>
+            )}
+          </div>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>View or add appointments on {format(day.date, "MMM d")}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -109,30 +115,34 @@ function AgendaView({
       {agendaDays.map((day) => {
         const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
         return (
-          <button
-            key={toDateKey(day.date)}
-            type="button"
-            onClick={() => onSelectDay(day.date)}
-            className={cn(
-              "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent",
-              isSelected && "bg-primary/10"
-            )}
-          >
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {format(day.date, "EEEE, MMM d")}
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {day.appointments.map((appt) => (
-                <span
-                  key={appt.id}
-                  className="flex items-center gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
-                >
-                  <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                  {formatTime12h(appt.startTime)} · {appt.title}
+          <Tooltip key={toDateKey(day.date)}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onSelectDay(day.date)}
+                className={cn(
+                  "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent",
+                  isSelected && "bg-primary/10"
+                )}
+              >
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  {format(day.date, "EEEE, MMM d")}
                 </span>
-              ))}
-            </div>
-          </button>
+                <div className="flex flex-col gap-1.5">
+                  {day.appointments.map((appt) => (
+                    <span
+                      key={appt.id}
+                      className="flex items-center gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
+                    >
+                      <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                      {formatTime12h(appt.startTime)} · {appt.title}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>View appointments on {format(day.date, "MMM d")}</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>
@@ -148,9 +158,14 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
     <div className="flex items-center gap-3 rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-red-800 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300" role="alert">
       <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
       <p className="text-xs">{message}</p>
-      <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100" aria-label="Dismiss error">
-        <X className="size-3.5" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" onClick={onDismiss} className="ml-auto cursor-pointer text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100" aria-label="Dismiss error">
+            <X className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Dismiss error</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -288,9 +303,14 @@ function PlannerPanel({
               className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
 
-            <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-              {isSubmitting ? t("saving") : t("addAppointment")}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
+                  {isSubmitting ? t("saving") : t("addAppointment")}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Save this appointment to the selected day</TooltipContent>
+            </Tooltip>
           </form>
         </div>
       </CardContent>
@@ -419,26 +439,36 @@ export default function CalendarPage() {
             <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-0.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
-                    onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
-                    aria-label={t("previousMonth")}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
-                    onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-                    aria-label={t("nextMonth")}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
+                        aria-label={t("previousMonth")}
+                      >
+                        <ChevronLeft className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("previousMonth")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
+                        aria-label={t("nextMonth")}
+                      >
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("nextMonth")}</TooltipContent>
+                  </Tooltip>
                 </div>
                 <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
               </div>
@@ -450,14 +480,19 @@ export default function CalendarPage() {
                 >
                   <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>{t("errors.loadFailed")}</span>
-                  <button
-                    type="button"
-                    onClick={() => appointmentsQuery.refetch()}
-                    className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 dark:text-red-200 dark:hover:bg-red-500/20 dark:hover:text-white"
-                  >
-                    <RotateCw className="size-3" aria-hidden="true" />
-                    {t("retry")}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => appointmentsQuery.refetch()}
+                        className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 dark:text-red-200 dark:hover:bg-red-500/20 dark:hover:text-white"
+                      >
+                        <RotateCw className="size-3" aria-hidden="true" />
+                        {t("retry")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Retry loading this month&rsquo;s appointments</TooltipContent>
+                  </Tooltip>
                 </div>
               )}
             </CardHeader>

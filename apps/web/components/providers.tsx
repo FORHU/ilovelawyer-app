@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { I18nProvider } from "@/components/i18n-provider"
 import { GoogleOAuthProvider } from "@react-oauth/google"
 import { PageTransition } from "@/components/page-transition"
+import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 function makeQueryClient() {
   return new QueryClient({
@@ -38,7 +39,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <I18nProvider>
-            <PageTransition>{children}</PageTransition>
+            <TooltipProvider>
+              <PageTransition>{children}</PageTransition>
+            </TooltipProvider>
           </I18nProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />

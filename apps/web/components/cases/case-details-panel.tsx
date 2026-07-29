@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, AlertCircle, Network, Clock } from "lucide-react";
 import { useCaseQuery } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface CaseDetailsPanelProps {
   caseId: string;
@@ -47,26 +48,35 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
 
   return (
     <div ref={containerRef} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="flex max-w-60 items-center gap-2 rounded-full py-1.5 pl-1 pr-2.5 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-      >
-        <span className="shrink-0 rounded-full bg-primary/5 px-2 py-1 text-[10px] font-bold tracking-wider text-primary uppercase">
-          {t("detail.caseLabel")}
-        </span>
-        <span className="truncate font-['Libre_Caslon_Text'] text-sm text-foreground font-normal">
-          {caseRecord.caseName}
-        </span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="flex max-w-60 items-center gap-2 rounded-full py-1.5 pl-1 pr-2.5 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            <span className="shrink-0 rounded-full bg-primary/5 px-2 py-1 text-[10px] font-bold tracking-wider text-primary uppercase">
+              {t("detail.caseLabel")}
+            </span>
+            <span className="truncate font-['Libre_Caslon_Text'] text-sm text-foreground font-normal">
+              {caseRecord.caseName}
+            </span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Show case details: party, dates, and notes</TooltipContent>
+      </Tooltip>
 
       {expanded && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4">
+        // Fixed + viewport-anchored below sm: the trigger sits hard against the right edge
+        // of a full-width header row, so a popover positioned relative to it (the old
+        // `absolute right-0 w-80`) always overhung far past the screen's left edge on phones.
+        // From sm: up there's enough room for the compact, trigger-anchored version.
+        <div className="fixed inset-x-4 top-24 z-20 rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
           <div className="flex flex-col gap-1 -mx-1">
             <CaseToolRow icon={Network} label={t("MindMap")} />
             <CaseToolRow icon={Clock} label={t("Timeline")} />

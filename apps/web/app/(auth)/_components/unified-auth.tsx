@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 import {
   useForgotPasswordMutation,
@@ -181,10 +182,10 @@ function UnifiedAuthContent() {
     sendOtpMutation.isPending ||
     verifyOtpMutation.isPending;
   
-  const tabs: { key: Tab; labelKey: string }[] = [
-    { key: "signin", labelKey: "login.tabs.signIn" },
-    { key: "signup", labelKey: "login.tabs.joinPlatform" },
-    { key: "recover", labelKey: "login.tabs.recover" },
+  const tabs: { key: Tab; labelKey: string; tooltip: string }[] = [
+    { key: "signin", labelKey: "login.tabs.signIn", tooltip: "Switch to the sign-in form" },
+    { key: "signup", labelKey: "login.tabs.joinPlatform", tooltip: "Switch to the account creation form" },
+    { key: "recover", labelKey: "login.tabs.recover", tooltip: "Switch to the password recovery form" },
   ];
 
   return (
@@ -226,6 +227,20 @@ function UnifiedAuthContent() {
 
       {/* RIGHT — form */}
       <div className="relative bg-background flex flex-col items-center justify-start px-8 md:px-26.5 py-10 flex-1 overflow-y-auto">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              aria-label={t("login.backToHome", { defaultValue: "Back to home" })}
+              className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-0 z-20"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("login.backToHome", { defaultValue: "Back to home" })}</TooltipContent>
+        </Tooltip>
+
         <div className="absolute top-6 right-6 md:top-8 md:right-10 flex items-center gap-4 text-foreground z-20">
           <LanguageSwitcher />
           <ThemeToggle />
@@ -271,38 +286,52 @@ function UnifiedAuthContent() {
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  disabled={!otpComplete || isPending}
-                  onClick={handleVerifyOtp}
-                  className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ fontFamily: "Inter, sans-serif" }}
-                >
-                  {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
-                  {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={!otpComplete || isPending}
+                      onClick={handleVerifyOtp}
+                      className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {verifyOtpMutation.isPending ? t("otp.verifying") : t("otp.verify")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Confirm the 6-digit code sent to your email</TooltipContent>
+                </Tooltip>
 
                 <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={resendCooldown > 0 || sendOtpMutation.isPending}
-                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
-                    {resendCooldown > 0 ? t("otp.resendIn", { seconds: resendCooldown }) : t("otp.resend")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpStep(false);
-                      selectTab("signup");
-                    }}
-                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
-                    {t("otp.changeEmail")}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={resendCooldown > 0 || sendOtpMutation.isPending}
+                        className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {resendCooldown > 0 ? t("otp.resendIn", { seconds: resendCooldown }) : t("otp.resend")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Send a new verification code</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpStep(false);
+                          selectTab("signup");
+                        }}
+                        className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {t("otp.changeEmail")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Go back and correct your email address</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </>
@@ -330,20 +359,24 @@ function UnifiedAuthContent() {
 
               {/* Tab navigation */}
               <div className="flex gap-8 border-b border-border pb-px">
-                {tabs.map(({ key, labelKey }) => {
+                {tabs.map(({ key, labelKey, tooltip }) => {
                   const active = tab === key;
                   return (
-                    <button
-                      key={key}
-                      onClick={() => selectTab(key)}
-                      className={`pb-3.5 text-xs tracking-[1.2px] uppercase cursor-pointer bg-transparent border-0 relative transition-colors ${
-                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      style={{ fontFamily: "Inter, sans-serif", fontWeight: active ? 600 : 400 }}
-                    >
-                      {t(labelKey)}
-                      {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
-                    </button>
+                    <Tooltip key={key}>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => selectTab(key)}
+                          className={`pb-3.5 text-xs tracking-[1.2px] uppercase cursor-pointer bg-transparent border-0 relative transition-colors ${
+                            active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          style={{ fontFamily: "Inter, sans-serif", fontWeight: active ? 600 : 400 }}
+                        >
+                          {t(labelKey)}
+                          {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tooltip}</TooltipContent>
+                    </Tooltip>
                   );
                 })}
               </div>
@@ -385,31 +418,38 @@ function UnifiedAuthContent() {
                         className={`${inputClass} pr-10`}
                         style={{ fontFamily: "Inter, sans-serif" }}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowSigninPw(!showSigninPw)}
-                        aria-label={showSigninPw ? "Hide password" : "Show password"}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {showSigninPw ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setShowSigninPw(!showSigninPw)}
+                            aria-label={showSigninPw ? "Hide password" : "Show password"}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showSigninPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{showSigninPw ? "Hide password" : "Show password"}</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="relative size-4 border-2 border-border bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors"
-                      onClick={() => setRemember(!remember)}
-                    >
-                      {remember && <div className="absolute inset-0.5 bg-foreground" />}
-                    </div>
-                    <span
-                      className="text-muted-foreground text-[10px] tracking-[0.5px] uppercase"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {t("login.rememberSession")}
-                    </span>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setRemember(!remember)}>
+                        <div className="relative size-4 border-2 border-border bg-background shrink-0 hover:border-brand-gold transition-colors">
+                          {remember && <div className="absolute inset-0.5 bg-foreground" />}
+                        </div>
+                        <span
+                          className="text-muted-foreground text-[10px] tracking-[0.5px] uppercase"
+                          style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                          {t("login.rememberSession")}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Stay signed in on this device</TooltipContent>
+                  </Tooltip>
 
                   {error && (
                     <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -417,14 +457,19 @@ function UnifiedAuthContent() {
                     </p>
                   )}
 
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
-                    {loginMutation.isPending ? t("login.signingIn") : t("login.signIn")}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {loginMutation.isPending ? t("login.signingIn") : t("login.signIn")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Log in with your email and password</TooltipContent>
+                  </Tooltip>
 
                   <div className="flex items-center gap-4">
                     <div className="flex-1 h-px border-t border-border" />
@@ -437,34 +482,44 @@ function UnifiedAuthContent() {
                     <div className="flex-1 h-px border-t border-border" />
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => googleLogin()}
-                    className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      className="text-foreground text-base tracking-[3.2px] uppercase"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {googleMutation.isPending ? t("login.connecting") : t("login.continueWithGoogle")}
-                    </span>
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => googleLogin()}
+                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span
+                          className="text-foreground text-base tracking-[3.2px] uppercase"
+                          style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                          {googleMutation.isPending ? t("login.connecting") : t("login.continueWithGoogle")}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Skip the password and log in with your Google account</TooltipContent>
+                  </Tooltip>
                 </form>
               )}
 
               {tab === "signup" && (
                 <div className="flex flex-col gap-5">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => googleLogin()}
-                    className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-foreground text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-                      {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}
-                    </span>
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => googleLogin()}
+                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="text-foreground text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
+                          {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Create your account instantly using Google</TooltipContent>
+                  </Tooltip>
 
                   <div className="flex items-center gap-4">
                     <div className="flex-1 h-px border-t border-border" />
@@ -532,14 +587,19 @@ function UnifiedAuthContent() {
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowSignupPw(!showSignupPw)}
-                          aria-label={showSignupPw ? "Hide password" : "Show password"}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showSignupPw ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setShowSignupPw(!showSignupPw)}
+                              aria-label={showSignupPw ? "Hide password" : "Show password"}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showSignupPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{showSignupPw ? "Hide password" : "Show password"}</TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
 
@@ -561,14 +621,19 @@ function UnifiedAuthContent() {
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmSignupPw(!showConfirmSignupPw)}
-                          aria-label={showConfirmSignupPw ? "Hide password" : "Show password"}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showConfirmSignupPw ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmSignupPw(!showConfirmSignupPw)}
+                              aria-label={showConfirmSignupPw ? "Hide password" : "Show password"}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showConfirmSignupPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{showConfirmSignupPw ? "Hide password" : "Show password"}</TooltipContent>
+                        </Tooltip>
                       </div>
                       {confirmSignupPassword && signupPassword !== confirmSignupPassword && (
                         <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -578,12 +643,17 @@ function UnifiedAuthContent() {
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div
-                        className="relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors"
-                        onClick={() => setAgreed(!agreed)}
-                      >
-                        {agreed && <div className="absolute inset-0.5 bg-foreground rounded-sm" />}
-                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors"
+                            onClick={() => setAgreed(!agreed)}
+                          >
+                            {agreed && <div className="absolute inset-0.5 bg-foreground rounded-sm" />}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>Agree to the Terms of Service and Privacy Policy</TooltipContent>
+                      </Tooltip>
                       <p className="text-muted-foreground text-base leading-6.5" style={{ fontFamily: "Inter, sans-serif" }}>
                         {t("signup.agreementPrefix")}{" "}
                         <span className="font-semibold text-foreground cursor-pointer hover:text-brand-gold transition-colors">
@@ -603,14 +673,19 @@ function UnifiedAuthContent() {
                       </p>
                     )}
 
-                    <button
-                      type="submit"
-                      disabled={isPending || (confirmSignupPassword !== "" && signupPassword !== confirmSignupPassword)}
-                      className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {signupMutation.isPending ? t("signup.creatingAccount") : t("signup.createAccount")}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="submit"
+                          disabled={isPending || (confirmSignupPassword !== "" && signupPassword !== confirmSignupPassword)}
+                          className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                          {signupMutation.isPending ? t("signup.creatingAccount") : t("signup.createAccount")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Register your account with the details above</TooltipContent>
+                    </Tooltip>
                   </form>
                 </div>
               )}
@@ -663,14 +738,19 @@ function UnifiedAuthContent() {
                       </p>
                     )}
 
-                    <button
-                      type="submit"
-                      disabled={forgotPasswordMutation.isPending}
-                      className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {forgotPasswordMutation.isPending ? t("forgotPassword.sending") : t("forgotPassword.sendResetLink")}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="submit"
+                          disabled={forgotPasswordMutation.isPending}
+                          className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                          {forgotPasswordMutation.isPending ? t("forgotPassword.sending") : t("forgotPassword.sendResetLink")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Email a password-reset link to this address</TooltipContent>
+                    </Tooltip>
                   </form>
                 ) : (
                   <div className="flex flex-col items-center gap-8 py-4">
@@ -685,13 +765,18 @@ function UnifiedAuthContent() {
                       <span className="font-semibold text-foreground">{recoverEmail}</span>
                       {t("forgotPassword.sentDescriptionSuffix")}
                     </p>
-                    <button
-                      onClick={() => selectTab("signin")}
-                      className="w-full bg-primary text-primary-foreground text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {t("forgotPassword.backToSignIn")}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => selectTab("signin")}
+                          className="w-full bg-primary text-primary-foreground text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:opacity-90 transition-opacity border-0"
+                          style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                          {t("forgotPassword.backToSignIn")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Return to the login screen</TooltipContent>
+                    </Tooltip>
                   </div>
                 ))}
             </>
@@ -705,18 +790,28 @@ function UnifiedAuthContent() {
               {t("footer.copyright", { year: new Date().getFullYear() })}
             </span>
             <div className="flex gap-4">
-              <button
-                className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold underline decoration-border cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                {t("footer.support")}
-              </button>
-              <button
-                className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold underline decoration-border cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                {t("footer.privacy")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold underline decoration-border cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("footer.support")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Contact ilovelawyer support</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold underline decoration-border cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("footer.privacy")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>View the privacy policy</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

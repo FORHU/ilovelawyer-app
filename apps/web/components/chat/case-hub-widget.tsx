@@ -9,6 +9,7 @@ import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { useCreateAppointmentMutation } from "@/lib/calendar/mutations";
 import { useUploadAudioMutation, useCreateTranscriptionMutation, useStartTranscriptionJobMutation } from "@/lib/transcription/mutations";
 import { transcriptionKeys } from "@/lib/query-keys";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export function CaseHubWidget({
   caseId,
@@ -56,18 +57,18 @@ export function CaseHubWidget({
     <section className="rounded-2xl border border-border bg-card overflow-hidden">
       {caseRecord && (
         <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-border">
-          <Link
-            href={`/homepage/case-portfolio/${caseId}`}
-            className="flex items-center gap-2 font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-wide text-foreground min-w-0 hover:text-primary transition-colors"
-          >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold shadow-[0_0_0_3px_rgba(246,196,69,0.15)]" aria-hidden="true" />
-            <span className="truncate">{caseRecord.caseName}</span>
-          </Link>
-          {caseRecord.caseNumber && (
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {t("caseHub.caseNumberPrefix")} {caseRecord.caseNumber}
-            </span>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href={`/homepage/case-portfolio/${caseId}`}
+                className="flex items-center gap-2 font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-wide text-foreground min-w-0 hover:text-primary transition-colors"
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold shadow-[0_0_0_3px_rgba(246,196,69,0.15)]" aria-hidden="true" />
+                <span className="truncate">{caseRecord.caseName}</span>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Open {caseRecord.caseName}&rsquo;s full record</TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -84,13 +85,18 @@ export function CaseHubWidget({
       <div className="border-t border-border px-4 py-3 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("caseHub.quickActionsLabel")}>
           <AddDocumentButton caseId={caseId ?? undefined} />
-          <Link
-            href="/homepage/create-case"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[12px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-          >
-            <FolderPlus className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-            {t("caseHub.createCase")}
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/create-case"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[12px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+              >
+                <FolderPlus className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                {t("caseHub.createCase")}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Start a new case intake form</TooltipContent>
+          </Tooltip>
           <ScheduleButton caseId={caseId ?? undefined} />
           <TranscriptionButton caseId={caseId ?? undefined} />
         </div>
@@ -104,14 +110,19 @@ export function CaseHubWidget({
               aria-label={t("caseHub.followUpPlaceholder")}
               className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
             />
-            <button
-              type="submit"
-              aria-label={t("caseHub.send")}
-              disabled={!followUp.trim()}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-            >
-              <SendHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="submit"
+                  aria-label={t("caseHub.send")}
+                  disabled={!followUp.trim()}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                >
+                  <SendHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("caseHub.send")}</TooltipContent>
+            </Tooltip>
           </form>
         )}
       </div>
@@ -127,15 +138,20 @@ function AddDocumentButton({ caseId }: { caseId?: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => fileInputRef.current?.click()}
-        className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold bg-brand-gold px-3 py-1.5 text-[12px] font-semibold text-[#221a05] cursor-pointer transition-colors hover:brightness-105 disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-      >
-        {isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
-        {isPending ? t("caseHub.uploading") : t("caseHub.addDocument")}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold bg-brand-gold px-3 py-1.5 text-[12px] font-semibold text-[#221a05] cursor-pointer transition-colors hover:brightness-105 disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+          >
+            {isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
+            {isPending ? t("caseHub.uploading") : t("caseHub.addDocument")}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Upload a document directly to this case</TooltipContent>
+      </Tooltip>
       <input
         ref={fileInputRef}
         type="file"
@@ -190,28 +206,38 @@ function ScheduleButton({ caseId }: { caseId?: string }) {
 
   return (
     <div className="relative" ref={popoverRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen((o) => !o)}
-        aria-expanded={isOpen}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[12px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-      >
-        <CalendarClock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-        {t("caseHub.updateSchedule")}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setIsOpen((o) => !o)}
+            aria-expanded={isOpen}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[12px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+          >
+            <CalendarClock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            {t("caseHub.updateSchedule")}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Open the quick-scheduler for this case</TooltipContent>
+      </Tooltip>
 
       {isOpen && (
         <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[12px] font-semibold text-foreground">{t("caseHub.quickSchedule")}</span>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              aria-label={t("caseHub.closeScheduler")}
-              className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label={t("caseHub.closeScheduler")}
+                  className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("caseHub.closeScheduler")}</TooltipContent>
+            </Tooltip>
           </div>
           <form onSubmit={submit} className="flex flex-col gap-2">
             <label className="flex flex-col gap-1">
@@ -247,14 +273,19 @@ function ScheduleButton({ caseId }: { caseId?: string }) {
                 />
               </label>
             </div>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-[12px] font-semibold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-60 disabled:cursor-wait"
-            >
-              {isPending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
-              {isPending ? t("caseHub.scheduling") : t("caseHub.scheduleSubmit")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-[12px] font-semibold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-60 disabled:cursor-wait"
+                >
+                  {isPending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+                  {isPending ? t("caseHub.scheduling") : t("caseHub.scheduleSubmit")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Save this appointment for the case</TooltipContent>
+            </Tooltip>
           </form>
         </div>
       )}
@@ -345,26 +376,33 @@ function TranscriptionButton({ caseId }: { caseId?: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isSaving}
-      aria-pressed={isRecording}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
-        isRecording
-          ? "border-red-400/40 bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse"
-          : "border-border bg-muted/60 text-foreground hover:border-brand-gold/40"
-      }`}
-    >
-      {isSaving ? (
-        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />
-      ) : isRecording ? (
-        <Square className="h-3 w-3 fill-current" aria-hidden="true" />
-      ) : (
-        <Mic className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-      )}
-      {isSaving ? t("caseHub.savingTranscription") : isRecording ? t("caseHub.stopRecording") : t("caseHub.addTranscription")}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={isSaving}
+          aria-pressed={isRecording}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
+            isRecording
+              ? "border-red-400/40 bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse"
+              : "border-border bg-muted/60 text-foreground hover:border-brand-gold/40"
+          }`}
+        >
+          {isSaving ? (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : isRecording ? (
+            <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+          ) : (
+            <Mic className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+          )}
+          {isSaving ? t("caseHub.savingTranscription") : isRecording ? t("caseHub.stopRecording") : t("caseHub.addTranscription")}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {isRecording ? "Stop recording and save the transcription" : "Record and save audio for this case"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

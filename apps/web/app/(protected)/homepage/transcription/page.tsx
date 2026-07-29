@@ -13,7 +13,8 @@ import {
   useStartTranscriptionJobMutation,
 } from "@/lib/transcription/mutations";
 import { useTranscriptionPolling } from "@/lib/transcription/use-transcription-polling";
-import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
+import { useCasesQuery } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 // Minimal shape of the non-standard Web Speech API — not part of lib.dom.d.ts.
 interface SpeechRecognitionResultLike {
@@ -139,42 +140,56 @@ function TranscriptRow({
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          title={t("queue.removeFromQueue")}
-          aria-label={t("queue.removeFromQueue")}
-          onClick={() => onRemove(transcript.id)}
-          className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 group-hover:opacity-100"
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("queue.removeFromQueue")}
+              onClick={() => onRemove(transcript.id)}
+              className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 group-hover:opacity-100"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("queue.removeFromQueue")}</TooltipContent>
+        </Tooltip>
       </div>
 
 
       {/* Read / Listen toggle */}
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1 self-start">
-        <button
-          type="button"
-          onClick={() => setActiveTab("read")}
-          aria-pressed={activeTab === "read"}
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-            activeTab === "read" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-          Read
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("listen")}
-          aria-pressed={activeTab === "listen"}
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-            activeTab === "listen" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
-          Listen
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setActiveTab("read")}
+              aria-pressed={activeTab === "read"}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === "read" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+              Read
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Show the text transcript</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setActiveTab("listen")}
+              aria-pressed={activeTab === "listen"}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === "listen" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
+              Listen
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Play back the original audio</TooltipContent>
+        </Tooltip>
       </div>
 
       {activeTab === "read" ? (
@@ -208,31 +223,43 @@ function TranscriptRow({
 
       <div className="flex items-center gap-2">
         {(transcript.status === "local" || transcript.status === "failed") && (
-          <button
-            type="button"
-            onClick={() => onTranscribe(transcript)}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {transcript.status === "failed" ? (
-              <>
-                <RotateCcw className="h-3 w-3" aria-hidden="true" />
-                {t("queue.retry")}
-              </>
-            ) : (
-              t("queue.transcribe")
-            )}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onTranscribe(transcript)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {transcript.status === "failed" ? (
+                  <>
+                    <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                    {t("queue.retry")}
+                  </>
+                ) : (
+                  t("queue.transcribe")
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {transcript.status === "failed" ? "Retry the failed transcription" : "Send this recording for AI transcription"}
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {transcript.status === "completed" && (
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:text-amber-700 dark:hover:text-amber-400"
-          >
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
-            {t("queue.viewTranscript")}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => !prev)}
+                className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:text-amber-700 dark:hover:text-amber-400"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                {t("queue.viewTranscript")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Expand the completed transcript text</TooltipContent>
+          </Tooltip>
         )}
       </div>
 
@@ -245,14 +272,19 @@ function TranscriptRow({
       {expanded && transcript.status === "completed" && (
         <div className="rounded-md border border-border bg-muted p-3">
           <div className="mb-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            >
-              {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
-              {copied ? t("queue.copied") : t("queue.copyTranscript")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+                  {copied ? t("queue.copied") : t("queue.copyTranscript")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Copy the transcript text to your clipboard</TooltipContent>
+            </Tooltip>
           </div>
           <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-foreground">
             {transcript.transcript || t("queue.emptyTranscript")}
@@ -442,6 +474,26 @@ export default function IlovelawyerTranscriptionDashboard() {
           <p className="text-muted-foreground text-[14px] md:text-[15px] max-w-[560px] leading-relaxed">
             {t("hero.subtitle")}
           </p>
+          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            {t("linkToCase")}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <select
+                  value={caseId}
+                  onChange={(e) => setCaseId(e.target.value)}
+                  className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary"
+                >
+                  <option value="">{t("noCase")}</option>
+                  {cases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.caseName}
+                    </option>
+                  ))}
+                </select>
+              </TooltipTrigger>
+              <TooltipContent>Tag new recordings and uploads to this case</TooltipContent>
+            </Tooltip>
+          </label>
         </div>
 
         {/* Primary Functional Panel Columns */}
@@ -479,19 +531,26 @@ export default function IlovelawyerTranscriptionDashboard() {
             )}
 
             <div className="mt-8 flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleRecorderClick}
-                aria-pressed={isRecording}
-                className={`inline-flex cursor-pointer items-center gap-2 self-start rounded-lg px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-900 ${
-                  isRecording
-                    ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
-                    : "bg-transparent border-white text-white hover:bg-white/10"
-                }`}
-              >
-                {isRecording ? <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> : <Mic className="h-3.5 w-3.5" aria-hidden="true" />}
-                {isRecording ? t("recorder.stopRecorder") : t("recorder.launchRecorder")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleRecorderClick}
+                    aria-pressed={isRecording}
+                    className={`inline-flex cursor-pointer items-center gap-2 self-start rounded-lg px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-900 ${
+                      isRecording
+                        ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
+                        : "bg-transparent border-white text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {isRecording ? <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> : <Mic className="h-3.5 w-3.5" aria-hidden="true" />}
+                    {isRecording ? t("recorder.stopRecorder") : t("recorder.launchRecorder")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isRecording ? "Stop recording and save the clip" : "Start recording audio from your microphone"}
+                </TooltipContent>
+              </Tooltip>
 
               {isRecording && (
                 <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-red-400">
@@ -521,28 +580,33 @@ export default function IlovelawyerTranscriptionDashboard() {
                 <p className="text-muted-foreground text-[13px] md:text-[14px]">{t("uploader.hint")}</p>
               </div>
             </div>
-            <label
-              tabIndex={isUploading ? undefined : 0}
-              role="button"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  fileInputRef.current?.click();
-                }
-              }}
-              className="cursor-pointer rounded-lg bg-primary px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isUploading ? t("uploader.uploading") : t("uploader.selectFiles")}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                multiple
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-              />
-            </label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label
+                  tabIndex={isUploading ? undefined : 0}
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  className="cursor-pointer rounded-lg bg-primary px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isUploading ? t("uploader.uploading") : t("uploader.selectFiles")}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </TooltipTrigger>
+              <TooltipContent>Choose audio files to upload for transcription</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -583,13 +647,18 @@ export default function IlovelawyerTranscriptionDashboard() {
             )}
           </div>
 
-          <Link
-            href="/homepage/transcription/library"
-            className="border-t border-border pt-6 mt-6 flex justify-between items-center font-semibold uppercase text-[12px] text-foreground tracking-[1.2px] hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
-          >
-            <span>{t("queue.viewFullLibrary")}</span>
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/transcription/library"
+                className="border-t border-border pt-6 mt-6 flex justify-between items-center font-semibold uppercase text-[12px] text-foreground tracking-[1.2px] hover:text-amber-700 dark:hover:text-amber-400 transition-colors"
+              >
+                <span>{t("queue.viewFullLibrary")}</span>
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>See every saved transcription, not just this session&rsquo;s queue</TooltipContent>
+          </Tooltip>
         </div>
       </main>
 

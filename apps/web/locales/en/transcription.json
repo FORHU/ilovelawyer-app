@@ -45,6 +45,7 @@
     }
   },
   "library": {
+    "backToTranscription": "Back to Transcription",
     "untitled": "Untitled Transcription",
     "loading": "Loading transcriptions…",
     "loadError": "Couldn't load your transcriptions. Please try again.",

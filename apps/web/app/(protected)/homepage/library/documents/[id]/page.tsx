@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import LegalMarkdown from "@/components/library/legal-markdown";
 import { useLegalDocumentQuery } from "@/lib/legal-rag/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function LegalDocumentDetailPage() {
   const { t } = useTranslation("library");
@@ -21,13 +22,18 @@ export default function LegalDocumentDetailPage() {
       <main className="w-full flex flex-col flex-1 pt-14">
         <section className="bg-card border-b border-border">
           <div className="max-w-[900px] mx-auto px-6 md:px-10 py-8 flex flex-col gap-3">
-            <Link
-              href="/homepage/library/documents"
-              className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("documents.detail.backLink")}
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/homepage/library/documents"
+                  className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("documents.detail.backLink")}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Return to the indexed documents list</TooltipContent>
+            </Tooltip>
 
             {data && (
               <>

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import LegalMarkdown from "@/components/library/legal-markdown";
 import { useAnalyzeKeywordMutation } from "@/lib/legal-rag/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function LegalLibraryPage() {
   return (
@@ -64,30 +65,52 @@ function LegalLibraryPageContent() {
                 {t("hero.titlePrefix")} <span className="font-['Libre_Caslon_Text',serif] italic block mt-1">{t("hero.titleEmphasis")}</span>
               </h1>
 
-              <form onSubmit={handleSearch} className="w-full bg-card border border-foreground rounded-lg flex items-center p-1.5 shadow-xl focus-within:ring-2 focus-within:ring-foreground/10 transition-shadow">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-3" aria-hidden="true" />
-                <input
-                  type="text"
-                  aria-label={t("hero.searchAriaLabel")}
-                  className="flex-1 bg-transparent py-3 px-3 outline-none text-base text-foreground placeholder-muted-foreground"
-                  placeholder={t("hero.searchPlaceholder")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  disabled={analyzeKeyword.isPending}
-                  className="bg-primary text-primary-foreground text-xs font-semibold tracking-wider px-6 py-3.5 rounded-md hover:bg-primary/90 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {analyzeKeyword.isPending ? t("hero.searching") : t("hero.queryAi")}
-                </button>
+              <form onSubmit={handleSearch} className="w-full bg-card border border-foreground rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 p-1.5 shadow-xl focus-within:ring-2 focus-within:ring-foreground/10 transition-shadow">
+                <div className="flex items-center flex-1 min-w-0">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-3" aria-hidden="true" />
+                  <input
+                    type="text"
+                    aria-label={t("hero.searchAriaLabel")}
+                    className="flex-1 min-w-0 bg-transparent py-3 px-3 outline-none text-base text-foreground placeholder-muted-foreground"
+                    placeholder={t("hero.searchPlaceholder")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={analyzeKeyword.isPending}
+                      className="w-full sm:w-auto shrink-0 bg-primary text-primary-foreground text-xs font-semibold tracking-wider px-6 py-3.5 rounded-md hover:bg-primary/90 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {analyzeKeyword.isPending ? t("hero.searching") : t("hero.queryAi")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ask the AI to research this term across the library</TooltipContent>
+                </Tooltip>
               </form>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-muted-foreground tracking-wider font-semibold uppercase">
                 <span>{t("hero.quickAccess")}</span>
-                <button type="button" onClick={() => runAnalysis("Revised Penal Code")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.revisedPenalCode")}</button>
-                <button type="button" onClick={() => runAnalysis("1987 Constitution")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.constitution1987")}</button>
-                <button type="button" onClick={() => runAnalysis("Rule 130")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.rule130")}</button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={() => runAnalysis("Revised Penal Code")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.revisedPenalCode")}</button>
+                  </TooltipTrigger>
+                  <TooltipContent>Look up the Revised Penal Code</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={() => runAnalysis("1987 Constitution")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.constitution1987")}</button>
+                  </TooltipTrigger>
+                  <TooltipContent>Look up the 1987 Constitution</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={() => runAnalysis("Rule 130")} className="bg-transparent border-0 border-b border-border p-0 cursor-pointer text-muted-foreground hover:text-foreground hover:border-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs uppercase">{t("hero.rule130")}</button>
+                  </TooltipTrigger>
+                  <TooltipContent>Look up Rule 130 of the Rules of Court</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -98,14 +121,19 @@ function LegalLibraryPageContent() {
           <section className="bg-card border-b border-border py-8">
             <div className="max-w-[1440px] mx-auto px-6 md:px-16">
               <div className="max-w-3xl flex flex-col gap-4">
-                <button
-                  type="button"
-                  onClick={() => analyzeKeyword.reset()}
-                  className="self-end inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs"
-                >
-                  <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
-                  {t("analysis.minimize")}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => analyzeKeyword.reset()}
+                      className="self-end inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" />
+                      {t("analysis.minimize")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Collapse this AI analysis</TooltipContent>
+                </Tooltip>
 
                 {analyzeKeyword.isPending && (
                   <p className="text-muted-foreground text-sm italic">{t("analysis.analyzing", { query: searchQuery })}</p>
@@ -189,9 +217,9 @@ function LegalLibraryPageContent() {
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">{t("categories.issuance.description")}</p>
               <div className="mt-1 flex flex-col gap-2 text-xs text-blue-900 dark:text-blue-400 font-medium">
-                <Link href="/homepage/presidential-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.presidentialIssuances")}</Link>
-                <Link href="/homepage/administrative-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.administrativeAgencyIssuances")}</Link>
-                <Link href="/homepage/judicial-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.judicialIssuances")}</Link>
+                <Tooltip><TooltipTrigger asChild><Link href="/homepage/presidential-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.presidentialIssuances")}</Link></TooltipTrigger><TooltipContent>Browse presidential issuances</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Link href="/homepage/administrative-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.administrativeAgencyIssuances")}</Link></TooltipTrigger><TooltipContent>Browse administrative agency issuances</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild><Link href="/homepage/judicial-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.judicialIssuances")}</Link></TooltipTrigger><TooltipContent>Browse judicial issuances</TooltipContent></Tooltip>
               </div>
             </div>
 

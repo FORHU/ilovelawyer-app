@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpen, Scale } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Book {
   number: string;
@@ -39,13 +40,18 @@ export default function CivilCodePage() {
       <GlobalHeader activeTab="civil-code" />
 
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
-        <Link
-          href="/homepage/library"
-          className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Back to Library
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/homepage/library"
+              className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              Back to Library
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Return to the Library home</TooltipContent>
+        </Tooltip>
 
         <div className="w-full flex flex-col gap-2">
           <span className="text-[11px] font-semibold tracking-[1.5px] text-amber-700 dark:text-amber-400 uppercase">Research · Codals</span>
@@ -93,13 +99,18 @@ export default function CivilCodePage() {
               </p>
             </div>
           </div>
-          <Link
-            href="/homepage/library?q=Civil%20Code%20of%20the%20Philippines"
-            className="relative inline-flex shrink-0 cursor-pointer items-center gap-2 self-start sm:self-center rounded-lg bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-brand-navy-950 transition-colors hover:bg-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950"
-          >
-            Open in Library
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/library?q=Civil%20Code%20of%20the%20Philippines"
+                className="relative inline-flex shrink-0 cursor-pointer items-center gap-2 self-start sm:self-center rounded-lg bg-white px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-brand-navy-950 transition-colors hover:bg-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950"
+              >
+                Open in Library
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Search the Civil Code with AI</TooltipContent>
+          </Tooltip>
         </section>
       </main>
     </div>
