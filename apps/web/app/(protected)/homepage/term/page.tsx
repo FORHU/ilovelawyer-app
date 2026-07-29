@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Section {
   number: string;
@@ -94,21 +95,31 @@ export default function TermsPage() {
             </div>
 
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="cursor-pointer rounded-md border border-primary/20 px-5 py-2.5 text-xs font-medium uppercase tracking-[1px] text-primary transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                {t("downloadPdf")}
-              </button>
-              <button
-                type="button"
-                disabled={accepted}
-                onClick={() => setAccepted(true)}
-                className="cursor-pointer rounded-md bg-brand-navy-950 px-5 py-2.5 text-xs font-medium uppercase tracking-[1px] text-white transition-colors hover:bg-brand-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {accepted ? t("termsAccepted") : t("acceptTerms")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="cursor-pointer rounded-md border border-primary/20 px-5 py-2.5 text-xs font-medium uppercase tracking-[1px] text-primary transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    {t("downloadPdf")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Print or save these terms as a PDF</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={accepted}
+                    onClick={() => setAccepted(true)}
+                    className="cursor-pointer rounded-md bg-brand-navy-950 px-5 py-2.5 text-xs font-medium uppercase tracking-[1px] text-white transition-colors hover:bg-brand-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {accepted ? t("termsAccepted") : t("acceptTerms")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Confirm you accept these terms and conditions</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </article>
@@ -125,18 +136,38 @@ export default function TermsPage() {
 
           <div className="flex flex-col gap-2 text-xs text-white/60 sm:items-end">
             <div className="flex flex-wrap gap-x-4 gap-y-1 sm:justify-end">
-              <Link href="/homepage/term" className="font-semibold text-white">
-                {t("footerLinks.termsOfService")}
-              </Link>
-              <Link href="/homepage/term" className="transition-colors hover:text-white">
-                {t("footerLinks.privacyPolicy")}
-              </Link>
-              <Link href="/homepage/term" className="transition-colors hover:text-white">
-                {t("footerLinks.regulatoryCompliance")}
-              </Link>
-              <Link href="/homepage/term" className="transition-colors hover:text-white">
-                {t("footerLinks.contactUs")}
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/homepage/term" className="font-semibold text-white">
+                    {t("footerLinks.termsOfService")}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View the Terms of Service</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/homepage/term" className="transition-colors hover:text-white">
+                    {t("footerLinks.privacyPolicy")}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View the Privacy Policy</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/homepage/term" className="transition-colors hover:text-white">
+                    {t("footerLinks.regulatoryCompliance")}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View our regulatory compliance statement</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/homepage/term" className="transition-colors hover:text-white">
+                    {t("footerLinks.contactUs")}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Get in touch with our team</TooltipContent>
+              </Tooltip>
             </div>
             <p className="text-white/40">{t("copyright", { year: new Date().getFullYear() })}</p>
           </div>

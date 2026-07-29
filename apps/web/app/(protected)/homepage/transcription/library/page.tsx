@@ -4,14 +4,8 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, FileAudio, Copy, Check, ChevronDown, Trash2, Loader2, AlertCircle } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import CustomSelect from "@/components/ui/custom-select";
-import {
-  useTranscriptionsQuery,
-  useDeleteTranscriptionMutation,
-  useLinkTranscriptionMutation,
-  type Transcription,
-} from "@/lib/transcription/mutations";
-import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
+import { useTranscriptionsQuery, useDeleteTranscriptionMutation, type Transcription } from "@/lib/transcription/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "—";
@@ -60,20 +54,24 @@ function LibraryRow({ item, cases }: { item: Transcription; cases: CaseRecord[] 
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          title={t("delete")}
-          aria-label={t("deleteRecord", { name: item.title || t("library.untitled") })}
-          onClick={() => deleteTranscription.mutate(item.id)}
-          disabled={deleteTranscription.isPending}
-          className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
-        >
-          {deleteTranscription.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("deleteRecord", { name: item.title || t("library.untitled") })}
+              onClick={() => deleteTranscription.mutate(item.id)}
+              disabled={deleteTranscription.isPending}
+              className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+            >
+              {deleteTranscription.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("delete")}</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
@@ -108,14 +106,19 @@ function LibraryRow({ item, cases }: { item: Transcription; cases: CaseRecord[] 
       </div>
 
       {item.transcript ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="inline-flex w-fit cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:text-amber-700 dark:hover:text-amber-400"
-        >
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
-          {t("queue.viewTranscript")}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="inline-flex w-fit cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-foreground hover:text-amber-700 dark:hover:text-amber-400"
+            >
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+              {t("queue.viewTranscript")}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Expand the full transcript text</TooltipContent>
+        </Tooltip>
       ) : (
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{t(`queue.status.${item.status?.toLowerCase() ?? "local"}`, item.status ?? "")}</p>
       )}
@@ -123,14 +126,19 @@ function LibraryRow({ item, cases }: { item: Transcription; cases: CaseRecord[] 
       {expanded && item.transcript && (
         <div className="rounded-md border border-border bg-muted p-3">
           <div className="mb-2 flex justify-end">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            >
-              {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
-              {copied ? t("queue.copied") : t("queue.copyTranscript")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="inline-flex cursor-pointer items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+                  {copied ? t("queue.copied") : t("queue.copyTranscript")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Copy the transcript text to your clipboard</TooltipContent>
+            </Tooltip>
           </div>
           <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-foreground">
             {item.transcript}
@@ -153,13 +161,18 @@ export default function TranscriptionLibraryPage() {
 
       <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-12 py-12 md:py-16 flex flex-col gap-8">
         <div className="flex flex-col gap-3">
-          <Link
-            href="/homepage/transcription"
-            className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            {t("hero.titlePrefix")} {t("hero.titleEmphasis")}
-          </Link>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/transcription"
+                className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("hero.titlePrefix")} {t("hero.titleEmphasis")}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Return to the transcription workspace</TooltipContent>
+          </Tooltip>
           <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
             {t("queue.viewFullLibrary")}
           </h1>

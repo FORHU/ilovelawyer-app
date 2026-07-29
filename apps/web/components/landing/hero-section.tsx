@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export function HeroSection() {
   const { t } = useTranslation("landing");
@@ -30,21 +31,31 @@ export function HeroSection() {
             {t("hero.description")}
           </p>
           <div className="flex flex-wrap gap-6 pt-2">
-            <Link
-              href="/signup"
-              className="bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs tracking-[1.2px] uppercase px-8 py-4 flex items-center gap-3 hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
-              style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-            >
-              {t("hero.ctaPrimary")}
-              <ArrowUpRight size={14} className="text-white dark:text-primary-foreground" />
-            </Link>
-            <Link
-              href="#features"
-              className="border border-black text-black dark:border-foreground dark:text-foreground text-xs tracking-[1.2px] uppercase px-8 py-4 hover:bg-black/5 dark:hover:bg-foreground/5 transition-colors duration-200 inline-flex items-center"
-              style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-            >
-              {t("hero.ctaSecondary")}
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/signup"
+                  className="bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs tracking-[1.2px] uppercase px-8 py-4 flex items-center gap-3 hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
+                  style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                >
+                  {t("hero.ctaPrimary")}
+                  <ArrowUpRight size={14} className="text-white dark:text-primary-foreground" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Create your free ilovelawyer account</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="#features"
+                  className="border border-black text-black dark:border-foreground dark:text-foreground text-xs tracking-[1.2px] uppercase px-8 py-4 hover:bg-black/5 dark:hover:bg-foreground/5 transition-colors duration-200 inline-flex items-center"
+                  style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                >
+                  {t("hero.ctaSecondary")}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Jump down to see what the platform can do</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

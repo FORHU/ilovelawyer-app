@@ -3,7 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { Eye, EyeOff } from "lucide-react";
 import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 function ResetPasswordContent() {
   const { t } = useTranslation("auth");
@@ -98,13 +100,18 @@ function ResetPasswordContent() {
                   {t("resetPassword.invalidNotice")}
                 </p>
               </div>
-              <button
-                onClick={() => router.push("/forgot-password")}
-                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                {t("resetPassword.requestNewLink")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => router.push("/forgot-password")}
+                    className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("resetPassword.requestNewLink")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Request a fresh password-reset email</TooltipContent>
+              </Tooltip>
             </div>
           ) : success ? (
             <div className="flex flex-col gap-6">
@@ -113,13 +120,18 @@ function ResetPasswordContent() {
                   {t("resetPassword.successNotice")}
                 </p>
               </div>
-              <button
-                onClick={() => router.push("/login")}
-                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                {t("resetPassword.signIn")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => router.push("/login")}
+                    className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("resetPassword.signIn")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Go to the login page with your new password</TooltipContent>
+              </Tooltip>
             </div>
           ) : (
             <form
@@ -147,13 +159,19 @@ function ResetPasswordContent() {
                     className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
                     style={{ fontFamily: "Inter, sans-serif" }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
-                  >
-                    
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setShowNew(!showNew)}
+                        aria-label={showNew ? "Hide password" : "Show password"}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-[#6b7280] hover:text-black transition-colors"
+                      >
+                        {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{showNew ? "Hide password" : "Show password"}</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -171,13 +189,19 @@ function ResetPasswordContent() {
                     className="w-full border border-[#c6c6ce] border-b-2 bg-transparent px-3 py-4 text-base text-black placeholder-[#6b7280] outline-none focus:border-[#cca830] transition-colors pr-10"
                     style={{ fontFamily: "Inter, sans-serif" }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1"
-                  >
-                    
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        aria-label={showConfirm ? "Hide password" : "Show password"}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-[#6b7280] hover:text-black transition-colors"
+                      >
+                        {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{showConfirm ? "Hide password" : "Show password"}</TooltipContent>
+                  </Tooltip>
                 </div>
                 {confirmPassword && !passwordsMatch && (
                   <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>{t("resetPassword.passwordsMismatch")}</p>
@@ -190,14 +214,19 @@ function ResetPasswordContent() {
                 </p>
               )}
 
-              <button
-                type="submit"
-                disabled={!valid || !passwordsMatch || !token || resetPasswordMutation.isPending}
-                className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ fontFamily: "Inter, sans-serif" }}
-              >
-                {resetPasswordMutation.isPending ? t("resetPassword.resetting") : t("resetPassword.resetPassword")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="submit"
+                    disabled={!valid || !passwordsMatch || !token || resetPasswordMutation.isPending}
+                    className="w-full bg-black text-white text-base tracking-[3.2px] uppercase py-4 cursor-pointer hover:bg-[#1a1a1a] transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {resetPasswordMutation.isPending ? t("resetPassword.resetting") : t("resetPassword.resetPassword")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Save your new password and secure your account</TooltipContent>
+              </Tooltip>
             </form>
           )}
 
@@ -205,13 +234,18 @@ function ResetPasswordContent() {
             <span className="text-[rgba(69,70,77,0.5)] text-xs tracking-[1.2px] font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
               {t("footer.copyright", { year: new Date().getFullYear() })}
             </span>
-            <button
-              onClick={() => router.push("/login")}
-              className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
-              {t("footer.signIn")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push("/login")}
+                  className="text-[#45464d] text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-black transition-colors"
+                  style={{ fontFamily: "Inter, sans-serif" }}
+                >
+                  {t("footer.signIn")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Return to the login screen</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

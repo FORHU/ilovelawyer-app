@@ -8,6 +8,7 @@ import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import { Search, Plus, Briefcase, Loader2, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
@@ -92,13 +93,18 @@ export default function CaseManagerDashboard() {
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
             <p className="text-sm text-red-600">{t("loadError")}</p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-            >
-              {t("retry")}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+                >
+                  {t("retry")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Retry loading your cases</TooltipContent>
+            </Tooltip>
           </div>
         )}
 
@@ -110,66 +116,91 @@ export default function CaseManagerDashboard() {
                 className="relative group/card min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setEditingCase(c);
-                    }}
-                    className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label={t("editCase", { caseName: c.caseName })}
-                  >
-                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeletingCase(c);
-                    }}
-                    className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-red-600 hover:border-red-300 dark:hover:text-red-400 dark:hover:border-red-500/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                    aria-label={t("deleteCase", { caseName: c.caseName })}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingCase(c);
+                        }}
+                        className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        aria-label={t("editCase", { caseName: c.caseName })}
+                      >
+                        <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeletingCase(c);
+                        }}
+                        className="rounded-full p-2 bg-card border border-border text-muted-foreground hover:text-red-600 hover:border-red-300 dark:hover:text-red-400 dark:hover:border-red-500/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                        aria-label={t("deleteCase", { caseName: c.caseName })}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
+                  </Tooltip>
                 </div>
 
-                <Link href={`/homepage/case-portfolio/${c.id}`} className="w-full">
-                  <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
-                    {c.caseName}
-                  </h3>
-                  <p className="text-muted-foreground text-[14px] font-['Inter']">
-                    {c.partyInvolved || t("noPartyListed")}
-                  </p>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href={`/homepage/case-portfolio/${c.id}`} className="w-full">
+                      <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
+                        {c.caseName}
+                      </h3>
+                      <p className="text-muted-foreground text-[14px] font-['Inter']">
+                        {c.partyInvolved || t("noPartyListed")}
+                      </p>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Open {c.caseName}&rsquo;s full case record</TooltipContent>
+                </Tooltip>
 
-                <Link href={`/homepage/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
-                  <div>
-                    <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
-                      {t("lastUpdated")}
-                    </span>
-                    <span className="text-foreground text-[14px] font-semibold">
-                      {new Date(c.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href={`/homepage/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                      <div>
+                        <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
+                          {t("lastUpdated")}
+                        </span>
+                        <span className="text-foreground text-[14px] font-semibold">
+                          {new Date(c.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Open {c.caseName}&rsquo;s full case record</TooltipContent>
+                </Tooltip>
               </div>
             ))}
 
-            <button
-              type="button"
-              onClick={handleNewFiling}
-              className="group min-h-75 border-2 border-dashed border-border bg-transparent hover:bg-card hover:border-primary/30 rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors mb-3">
-                <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
-              </div>
-              <span className="text-[12px] font-semibold tracking-[1.2px] text-muted-foreground group-hover:text-foreground transition-colors uppercase">
-                {t("initiateNewFiling")}
-              </span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleNewFiling}
+                  className="group min-h-75 border-2 border-dashed border-border bg-transparent hover:bg-card hover:border-primary/30 rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors mb-3">
+                    <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+                  </div>
+                  <span className="text-[12px] font-semibold tracking-[1.2px] text-muted-foreground group-hover:text-foreground transition-colors uppercase">
+                    {t("initiateNewFiling")}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Start a new case intake form</TooltipContent>
+            </Tooltip>
           </section>
         )}
 

@@ -12,6 +12,7 @@ import {
   useDeleteAccountMutation,
   useUpdateCurrentUserMutation,
 } from "@/lib/user/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -218,15 +219,19 @@ export default function ProfilePage() {
                       </span>
                     )}
                     {!isEditingName && (
-                      <button
-                        type="button"
-                        onClick={startEditingName}
-                        title={t("fullName.editAriaLabel")}
-                        aria-label={t("fullName.editAriaLabel")}
-                        className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={startEditingName}
+                            aria-label={t("fullName.editAriaLabel")}
+                            className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("fullName.editAriaLabel")}</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
@@ -244,22 +249,32 @@ export default function ProfilePage() {
                     />
                     {nameError && <p className="text-[12px] text-red-600 dark:text-red-400">{nameError}</p>}
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={updateName.isPending}
-                        onClick={saveName}
-                        className="cursor-pointer rounded-lg bg-brand-navy-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-brand-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {updateName.isPending ? t("fullName.saving") : t("fullName.save")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={updateName.isPending}
-                        onClick={cancelEditingName}
-                        className="cursor-pointer rounded-lg px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                      >
-                        {t("fullName.cancel")}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={updateName.isPending}
+                            onClick={saveName}
+                            className="cursor-pointer rounded-lg bg-brand-navy-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-brand-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {updateName.isPending ? t("fullName.saving") : t("fullName.save")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Save your updated display name</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={updateName.isPending}
+                            onClick={cancelEditingName}
+                            className="cursor-pointer rounded-lg px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                          >
+                            {t("fullName.cancel")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Discard changes to your name</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                 ) : (
@@ -286,15 +301,19 @@ export default function ProfilePage() {
                       </span>
                     )}
                     {!isEditingUsername && username && (
-                      <button
-                        type="button"
-                        onClick={startEditingUsername}
-                        title={t("username.editAriaLabel")}
-                        aria-label={t("username.editAriaLabel")}
-                        className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={startEditingUsername}
+                            aria-label={t("username.editAriaLabel")}
+                            className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("username.editAriaLabel")}</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
@@ -312,18 +331,22 @@ export default function ProfilePage() {
                     {usernameSuggestions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {usernameSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setUsernameDraft(suggestion)}
-                            className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                              usernameDraft === suggestion
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                            }`}
-                          >
-                            {suggestion}
-                          </button>
+                          <Tooltip key={suggestion}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => setUsernameDraft(suggestion)}
+                                className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                                  usernameDraft === suggestion
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                                }`}
+                              >
+                                {suggestion}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Use this suggested username: {suggestion}</TooltipContent>
+                          </Tooltip>
                         ))}
                       </div>
                     )}
@@ -331,22 +354,32 @@ export default function ProfilePage() {
                     {usernameError && <p className="text-[12px] text-red-600 dark:text-red-400">{usernameError}</p>}
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={updateUsername.isPending}
-                        onClick={saveUsername}
-                        className="cursor-pointer rounded-lg bg-brand-navy-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-brand-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {updateUsername.isPending ? t("username.saving") : t("username.save")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={updateUsername.isPending}
-                        onClick={cancelEditingUsername}
-                        className="cursor-pointer rounded-lg px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                      >
-                        {t("username.cancel")}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={updateUsername.isPending}
+                            onClick={saveUsername}
+                            className="cursor-pointer rounded-lg bg-brand-navy-900 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-brand-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {updateUsername.isPending ? t("username.saving") : t("username.save")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Save your new username</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={updateUsername.isPending}
+                            onClick={cancelEditingUsername}
+                            className="cursor-pointer rounded-lg px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                          >
+                            {t("username.cancel")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Discard changes to your username</TooltipContent>
+                      </Tooltip>
                     </div>
                   </div>
                 ) : (
@@ -398,15 +431,20 @@ export default function ProfilePage() {
                   <p className="text-muted-foreground text-[14px]">{t("security.signOutDescription")}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                disabled={logout.isPending}
-                onClick={() => logout.mutate()}
-                className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                {logout.isPending ? t("security.loggingOut") : t("security.logout")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={logout.isPending}
+                    onClick={() => logout.mutate()}
+                    className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    {logout.isPending ? t("security.loggingOut") : t("security.logout")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Sign out of this device</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </section>
@@ -427,14 +465,19 @@ export default function ProfilePage() {
                   <p className="font-medium text-foreground text-[16px]">{t("Delete Account")}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                {t("Delete")}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {t("Delete")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Open the account-deletion confirmation dialog</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </section>
