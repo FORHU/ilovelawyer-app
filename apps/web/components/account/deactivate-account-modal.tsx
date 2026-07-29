@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface DeactivateAccountModalProps {
   isPending: boolean;
@@ -39,14 +40,19 @@ export default function DeactivateAccountModal({ isPending, error, onConfirm, on
           <h2 id="deactivate-account-title" className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
             {t("Disable Account")}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            aria-label={t("Close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label={t("Close")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("Close")}</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="px-6 py-6 flex gap-4">
@@ -65,23 +71,33 @@ export default function DeactivateAccountModal({ isPending, error, onConfirm, on
         )}
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/40">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isPending}
-            className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {t("Cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isPending}
-            className="inline-flex items-center gap-2 bg-amber-600 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-xl hover:bg-amber-700 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-            {isPending ? t("dangerZone.deactivateAccount.deactivating") : t("Yes, Disable Account")}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isPending}
+                className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {t("Cancel")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Keep your account active and close this dialog</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 bg-amber-600 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-xl hover:bg-amber-700 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                {isPending ? t("dangerZone.deactivateAccount.deactivating") : t("Yes, Disable Account")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Sign out and disable your account until reactivated</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

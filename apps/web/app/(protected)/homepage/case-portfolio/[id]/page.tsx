@@ -8,6 +8,7 @@ import GlobalHeader from "@/components/global-header";
 import ConsultationChat from "@/components/chat/consultation-chat";
 import CaseDetailsPanel from "@/components/cases/case-details-panel";
 import { useCaseQuery } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function CaseDetailPage() {
   const { t } = useTranslation("case-portfolio");
@@ -34,13 +35,18 @@ export default function CaseDetailPage() {
           // a single compact header row instead of a stacked block competing with the
           // chat input's own card below it.
           <div className="flex items-center justify-between gap-4 pb-4 mb-2 border-b border-border">
-            <Link
-              href="/homepage/case-portfolio"
-              className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("detail.backToPortfolio")}
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/homepage/case-portfolio"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("detail.backToPortfolio")}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Return to your case portfolio list</TooltipContent>
+            </Tooltip>
             <CaseDetailsPanel caseId={id} />
           </div>
         }

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, X } from "lucide-react";
 import type { CaseRecord, UpdateCasePayload } from "@/lib/cases/mutations";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface EditCaseModalProps {
   caseRecord: CaseRecord;
@@ -59,14 +60,19 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
           <h2 id="edit-case-title" className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
             {t("Edit Case")}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            aria-label={t("Close")}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label={t("Close")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("Close")}</TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="px-6 py-6 flex flex-col gap-5">
@@ -138,20 +144,30 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/40">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
-          >
-            {t("Cancel")}
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? t("editModal.saving") : t("Save Changes")}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+              >
+                {t("Cancel")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Discard changes and close without saving</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? t("editModal.saving") : t("Save Changes")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Save the updated case name, number, party, and notes</TooltipContent>
+          </Tooltip>
         </div>
       </form>
     </div>

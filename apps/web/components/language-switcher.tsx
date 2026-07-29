@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown, Globe } from "lucide-react"
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { useLanguageStore } from "@/lib/store/language.store"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
 /**
  * Display Language switcher. Styling is intentionally minimal (inherits
@@ -29,21 +30,26 @@ export function LanguageSwitcher() {
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 text-[10px] tracking-[1px] uppercase opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-label="Change display language"
-      >
-        <Globe className="w-4 h-4" aria-hidden="true" />
-        {LANGUAGE_LABELS[language]}
-        <ChevronDown
-          className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="flex items-center gap-1 text-[10px] tracking-[1px] uppercase opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+            aria-haspopup="menu"
+            aria-expanded={isOpen}
+            aria-label="Change display language"
+          >
+            <Globe className="w-4 h-4" aria-hidden="true" />
+            {LANGUAGE_LABELS[language]}
+            <ChevronDown
+              className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Change display language</TooltipContent>
+      </Tooltip>
 
       {isOpen && (
         <div

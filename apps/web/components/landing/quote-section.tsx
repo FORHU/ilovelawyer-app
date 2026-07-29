@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Quote {
   text: string;
@@ -65,18 +66,22 @@ export function QuoteSection() {
 
         <div className="flex gap-3 items-center justify-center">
           {quotes.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => changeQuote(i)}
-              aria-label={t("quotes.quoteLabel", { number: i + 1 })}
-              className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
-            >
-              <div
-                className={`rounded-full transition-all duration-300 ${
-                  i === displayed ? "size-2.5 bg-black dark:bg-foreground" : "size-2 bg-[#c6c6ce] hover:bg-[#888] dark:bg-muted-foreground/40 dark:hover:bg-muted-foreground/70"
-                }`}
-              />
-            </button>
+            <Tooltip key={i}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => changeQuote(i)}
+                  aria-label={t("quotes.quoteLabel", { number: i + 1 })}
+                  className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
+                >
+                  <div
+                    className={`rounded-full transition-all duration-300 ${
+                      i === displayed ? "size-2.5 bg-black dark:bg-foreground" : "size-2 bg-[#c6c6ce] hover:bg-[#888] dark:bg-muted-foreground/40 dark:hover:bg-muted-foreground/70"
+                    }`}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("quotes.quoteLabel", { number: i + 1 })}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>

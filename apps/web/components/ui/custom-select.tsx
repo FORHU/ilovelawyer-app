@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ChevronDown, Check } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export interface CustomSelectOption {
   value: string;
@@ -15,6 +16,9 @@ interface CustomSelectProps {
   options: CustomSelectOption[];
   placeholder?: string;
   className?: string;
+  /** Descriptive tooltip shown on hover over the trigger — this is a generic
+   * dropdown, so callers supply copy specific to what the field controls. */
+  triggerTooltip?: string;
 }
 
 interface MenuPosition {
@@ -28,7 +32,7 @@ interface MenuPosition {
 // states) in Chromium on Windows regardless of what CSS is applied to the
 // control itself, so this reimplements it as a plain button + listbox to get
 // full control over how the open menu looks.
-export default function CustomSelect({ id, value, onChange, options, placeholder, className = "" }: CustomSelectProps) {
+export default function CustomSelect({ id, value, onChange, options, placeholder, className = "", triggerTooltip }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -87,25 +91,36 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
 
   const selected = options.find((o) => o.value === value);
 
+  const trigger = (
+    <button
+      ref={triggerRef}
+      type="button"
+      id={id}
+      onClick={handleTriggerClick}
+      className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+    >
+      <span className={selected ? "text-foreground" : "text-muted-foreground"}>
+        {selected ? selected.label : placeholder}
+      </span>
+      <ChevronDown
+        className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        aria-hidden="true"
+      />
+    </button>
+  );
+
   return (
     <div ref={rootRef} className={`relative ${className}`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        id={id}
-        onClick={handleTriggerClick}
-        className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
-          {selected ? selected.label : placeholder}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+      {triggerTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent>{triggerTooltip}</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
 
       {open && menuPosition && (
         <ul
@@ -117,19 +132,24 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
             const isSelected = opt.value === value;
             return (
               <li key={opt.value} role="option" aria-selected={isSelected}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
-                    isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {opt.label}
-                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value);
+                        setOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
+                        isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      {opt.label}
+                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Select {opt.label}</TooltipContent>
+                </Tooltip>
               </li>
             );
           })}

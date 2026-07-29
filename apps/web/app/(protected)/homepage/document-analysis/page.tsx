@@ -6,6 +6,7 @@ import CustomSelect from "@/components/ui/custom-select";
 import { useMediaQueueStore, type QueuedDocument } from "@/lib/store/media-queue.store";
 import { useCasesQuery, useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
 import { FolderUp, FileText, Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 type SendStatus = "idle" | "sending" | "sent" | "error";
 interface SendState {
@@ -114,30 +115,35 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                 {t("dropzone.supports")}
               </p>
             </div>
-            <label
-              tabIndex={0}
-              role="button"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  fileInputRef.current?.click();
-                }
-              }}
-              className="bg-brand-navy-900 text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-brand-navy-800 transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
-            >
-              {t("dropzone.selectFile")}
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.docx"
-                className="hidden"
-                onChange={(e) => {
-                  queueFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label
+                  tabIndex={0}
+                  role="button"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  className="bg-brand-navy-900 text-white px-[32px] py-[12px] text-[12px] font-semibold tracking-[1.2px] uppercase rounded-xl cursor-pointer hover:bg-brand-navy-800 transition-colors mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
+                >
+                  {t("dropzone.selectFile")}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      queueFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </TooltipTrigger>
+              <TooltipContent>Choose PDF or DOCX files to analyze</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -166,15 +172,19 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                         <p className="text-muted-foreground text-[10px] tracking-wider uppercase font-semibold mt-0.5">{record.meta}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      title={t("delete")}
-                      aria-label={t("deleteRecord", { name: record.name })}
-                      onClick={() => deleteRecord(record.id)}
-                      className="shrink-0 p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t("deleteRecord", { name: record.name })}
+                          onClick={() => deleteRecord(record.id)}
+                          className="shrink-0 p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("delete")}</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {sendState.status === "sent" ? (
@@ -195,16 +205,24 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                         options={caseOptions}
                         placeholder={t("attachToCase")}
                         className="w-full sm:w-64"
+                        triggerTooltip="Attach this document to one of your cases"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleSend(record)}
-                        disabled={sendState.status === "sending"}
-                        className="inline-flex items-center justify-center gap-1.5 bg-brand-navy-900 text-white text-[12px] font-semibold tracking-wider px-4 py-2 rounded-lg hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {sendState.status === "sending" && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-                        {sendState.status === "sending" ? t("sending") : sendState.status === "error" ? t("retry") : t("send")}
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => handleSend(record)}
+                            disabled={sendState.status === "sending"}
+                            className="inline-flex items-center justify-center gap-1.5 bg-brand-navy-900 text-white text-[12px] font-semibold tracking-wider px-4 py-2 rounded-lg hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {sendState.status === "sending" && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                            {sendState.status === "sending" ? t("sending") : sendState.status === "error" ? t("retry") : t("send")}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {sendState.status === "error" ? "Retry the failed upload" : "Upload this document for AI analysis"}
+                        </TooltipContent>
+                      </Tooltip>
                       {sendState.status === "error" && sendState.error && (
                         <p className="flex items-center gap-1.5 text-[12px] text-red-600 dark:text-red-400">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
