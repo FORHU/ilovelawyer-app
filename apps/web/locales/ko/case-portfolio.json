@@ -7,5 +7,26 @@
   "all": "전체",
   "initiateNewFiling": "새 소송 접수 시작",
   "noMatchingCases": "일치하는 사건 없음",
-  "noMatchingCasesHint": "다른 검색어를 사용하거나 위의 카테고리 필터를 지워보세요."
+  "noMatchingCasesHint": "다른 검색어를 사용하거나 위의 카테고리 필터를 지워보세요.",
+  "noPartyListed": "등록된 당사자 없음",
+  "detail": {
+    "backToPortfolio": "사건 포트폴리오로 돌아가기",
+    "caseLabel": "사건",
+    "viewDetails": "세부 정보",
+    "hideDetails": "세부 정보 숨기기",
+    "party": "관련 당사자",
+    "notes": "메모",
+    "created": "생성일",
+    "updated": "최종 수정일",
+    "noNotes": "추가된 메모가 없습니다.",
+    "loading": "사건 불러오는 중…",
+    "loadError": "이 사건을 불러올 수 없습니다.",
+    "notFound": "사건을 찾을 수 없습니다.",
+    "mindMap": "마인드맵 보기",
+    "timeline": "타임라인 보기"
+  },
+  "chat": {
+    "emptyHeading": "{{caseName}}에 대해 질문하기",
+    "emptySubheading": "이 사건의 세부 정보가 이미 반영된 AI와 상담하세요 — 전략, 초안 작성, 다음 단계에 대해 물어보세요."
+  }
 }

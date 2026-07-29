@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw, FileText, Headphones } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import GlobalHeader from "@/components/global-header";
+import CustomSelect from "@/components/ui/custom-select";
 import { useMediaQueueStore, type QueuedTranscript } from "@/lib/store/media-queue.store";
 import {
   useUploadAudioMutation,
@@ -11,6 +13,7 @@ import {
   useStartTranscriptionJobMutation,
 } from "@/lib/transcription/mutations";
 import { useTranscriptionPolling } from "@/lib/transcription/use-transcription-polling";
+import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
 
 // Minimal shape of the non-standard Web Speech API — not part of lib.dom.d.ts.
 interface SpeechRecognitionResultLike {
@@ -76,10 +79,16 @@ const BUSY_STATUSES: ReadonlySet<QueuedTranscript["status"]> = new Set(["uploadi
 // Derives a playable object URL from the stored Blob and revokes it on unmount/change.
 function TranscriptRow({
   transcript,
+  cases,
+  caseId,
+  onCaseChange,
   onRemove,
   onTranscribe,
 }: {
   transcript: QueuedTranscript;
+  cases: CaseRecord[];
+  caseId: string;
+  onCaseChange: (id: string, caseId: string) => void;
   onRemove: (id: string) => void;
   onTranscribe: (transcript: QueuedTranscript) => void;
 }) {
@@ -96,6 +105,11 @@ function TranscriptRow({
   }, [transcript.blob]);
 
   const isBusy = BUSY_STATUSES.has(transcript.status);
+  const caseOptions = [
+    { value: "", label: t("queue.noCaseOption") },
+    ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+  ];
+  const linkedCaseName = cases.find((c) => c.id === caseId)?.caseName;
 
   const handleCopy = async () => {
     if (!transcript.transcript) return;
@@ -182,6 +196,16 @@ function TranscriptRow({
         <p className="text-[11px] text-red-600">{transcript.errorMessage}</p>
       )}
 
+      {(transcript.status === "local" || transcript.status === "failed") && (
+        <CustomSelect
+          value={caseId}
+          onChange={(v) => onCaseChange(transcript.id, v)}
+          options={caseOptions}
+          placeholder={t("queue.noCaseOption")}
+          className="w-full sm:w-56"
+        />
+      )}
+
       <div className="flex items-center gap-2">
         {(transcript.status === "local" || transcript.status === "failed") && (
           <button
@@ -212,6 +236,12 @@ function TranscriptRow({
         )}
       </div>
 
+      {transcript.backendId && !isBusy && (
+        <p className="text-[11px] text-muted-foreground">
+          {linkedCaseName ? t("queue.sentToCase", { caseName: linkedCaseName }) : t("queue.sentNoCase")}
+        </p>
+      )}
+
       {expanded && transcript.status === "completed" && (
         <div className="rounded-md border border-border bg-muted p-3">
           <div className="mb-2 flex justify-end">
@@ -235,6 +265,7 @@ function TranscriptRow({
 
 export default function IlovelawyerTranscriptionDashboard() {
   const { t } = useTranslation("transcription");
+  const searchParams = useSearchParams();
   const transcripts = useMediaQueueStore((s) => s.transcripts);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
   const removeTranscript = useMediaQueueStore((s) => s.removeTranscript);
@@ -244,8 +275,16 @@ export default function IlovelawyerTranscriptionDashboard() {
   const uploadAudio = useUploadAudioMutation();
   const createTranscription = useCreateTranscriptionMutation();
   const startTranscriptionJob = useStartTranscriptionJobMutation();
+  const casesQuery = useCasesQuery(1, 100);
+  const cases = casesQuery.data?.data ?? [];
+  const defaultCaseId = searchParams.get("caseId") ?? "";
+  const [caseIdByTranscript, setCaseIdByTranscript] = useState<Record<string, string>>({});
+  const getRowCaseId = (id: string) => caseIdByTranscript[id] ?? defaultCaseId;
+  const setRowCaseId = (id: string, value: string) =>
+    setCaseIdByTranscript((prev) => ({ ...prev, [id]: value }));
 
   const handleTranscribe = async (item: QueuedTranscript) => {
+    const rowCaseId = getRowCaseId(item.id);
     updateTranscript(item.id, { status: "uploading", errorMessage: undefined });
     try {
       const uploaded = await uploadAudio.mutateAsync({ blob: item.blob, filename: item.name });
@@ -254,6 +293,7 @@ export default function IlovelawyerTranscriptionDashboard() {
         title: item.name,
         audioFileId: uploaded.id,
         duration: item.durationSeconds,
+        caseId: rowCaseId || undefined,
       });
       updateTranscript(item.id, { backendId: created.id });
       await startTranscriptionJob.mutateAsync(created.id);
@@ -529,7 +569,15 @@ export default function IlovelawyerTranscriptionDashboard() {
             ) : (
               <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-1">
                 {transcripts.map((item) => (
-                  <TranscriptRow key={item.id} transcript={item} onRemove={removeTranscript} onTranscribe={handleTranscribe} />
+                  <TranscriptRow
+                    key={item.id}
+                    transcript={item}
+                    cases={cases}
+                    caseId={getRowCaseId(item.id)}
+                    onCaseChange={setRowCaseId}
+                    onRemove={removeTranscript}
+                    onTranscribe={handleTranscribe}
+                  />
                 ))}
               </div>
             )}

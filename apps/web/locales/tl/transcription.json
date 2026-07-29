@@ -4,6 +4,8 @@
     "titleEmphasis": "Muling Binalangkas.",
     "subtitle": "Itala ang mga hearing, deposisyon, at panayam sa kliyente gamit ang speaker-aware na transkripsyon na ginawa para sa mga pangangailangan ng legal practice."
   },
+  "linkToCase": "I-link sa kaso",
+  "noCase": "Walang naka-link na kaso",
   "recorder": {
     "startNewRecording": "Simulan ang Bagong Recording",
     "stopRecorder": "Ihinto ang Recorder",
@@ -30,6 +32,9 @@
     "copyTranscript": "Kopyahin",
     "copied": "Nakopya",
     "emptyTranscript": "Walang natukoy na pananalita sa recording na ito.",
+    "noCaseOption": "Walang kaso (pangkalahatan)",
+    "sentToCase": "Naipadala — naka-attach sa “{{caseName}}”",
+    "sentNoCase": "Naipadala — hindi naka-attach sa anumang kaso",
     "status": {
       "local": "Hindi Naipadala",
       "uploading": "Ina-upload",
@@ -42,7 +47,13 @@
   "library": {
     "untitled": "Walang Pamagat na Transcription",
     "loading": "Nilo-load ang mga transcription…",
-    "loadError": "Hindi na-load ang iyong mga transcription. Pakisubukang muli."
+    "loadError": "Hindi na-load ang iyong mga transcription. Pakisubukang muli.",
+    "noCaseOption": "Walang kaso (pangkalahatan)",
+    "linkedToCase": "Naka-link sa “{{caseName}}”",
+    "notLinked": "Hindi naka-link sa anumang kaso",
+    "save": "I-save",
+    "saving": "Sine-save…",
+    "saveFailed": "Hindi na-update ang naka-link na kaso."
   },
   "delete": "Burahin",
   "deleteRecord": "Burahin ang {{name}}",

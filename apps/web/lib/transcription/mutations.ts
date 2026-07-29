@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { transcriptionKeys } from "@/lib/query-keys"
+import { caseKeys, transcriptionKeys } from "@/lib/query-keys"
 
 export interface UploadedFile {
   id: string
@@ -11,6 +11,7 @@ export interface UploadedFile {
 export interface Transcription {
   id: string
   userId: string
+  caseId: string | null
   audioFileId: string | null
   title: string | null
   transcript: string | null
@@ -41,12 +42,28 @@ export function useUploadAudioMutation() {
 }
 
 export function useCreateTranscriptionMutation() {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ title, audioFileId, duration }: { title: string; audioFileId: string; duration: number }) =>
+    mutationFn: ({
+      title,
+      audioFileId,
+      duration,
+      caseId,
+    }: {
+      title: string
+      audioFileId: string
+      duration: number
+      caseId?: string
+    }) =>
       apiFetch<Transcription>("/api/transcriptions", {
         method: "POST",
-        body: JSON.stringify({ title, audioFileId, duration }),
+        body: JSON.stringify({ title, audioFileId, duration, caseId }),
       }),
+    onSuccess: (transcription) => {
+      if (transcription.caseId) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(transcription.caseId) })
+      }
+    },
   })
 }
 
@@ -68,6 +85,24 @@ export function useTranscriptionsQuery() {
   return useQuery({
     queryKey: transcriptionKeys.lists(),
     queryFn: () => apiFetch<Transcription[]>("/api/transcriptions"),
+  })
+}
+
+/** Attaches/reattaches (or clears, with `caseId: null`) the case a transcription belongs to,
+ * for transcriptions that were created without one or need to move to a different case. */
+export function useLinkTranscriptionMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, caseId }: { id: string; caseId: string | null }) =>
+      apiFetch<Transcription>(`/api/transcriptions/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ caseId }),
+      }),
+    onSuccess: (_data, { id, caseId }) => {
+      queryClient.invalidateQueries({ queryKey: transcriptionKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: transcriptionKeys.detail(id) })
+      if (caseId) queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    },
   })
 }
 

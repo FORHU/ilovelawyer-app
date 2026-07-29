@@ -11,12 +11,12 @@ Short-lived JWT returned in the login/Google OAuth response body. Held in memory
 _Avoid_: "auth token", "JWT token"
 
 **Refresh Token**
-Longer-lived JWT returned alongside the Access Token. Storage location depends on the "Remember session" choice at login: `localStorage` when checked (persists across browser restarts), `sessionStorage` when unchecked (cleared on tab close). Used exclusively to mint a new Access Token when the current one expires.
-_Avoid_: "session token" (ambiguous with the backend's Session concept)
+Longer-lived JWT returned alongside the Access Token. Never held in frontend JS — set by the backend as an httpOnly cookie (`refreshTokenCookie.ts`), scoped to the `/api/auth` path, so the frontend can neither read nor store it directly. Used exclusively to mint a new Access Token when the current one expires.
+_Avoid_: "session token" (ambiguous with the backend's Session concept), "stored in localStorage/sessionStorage" (that was the old design; the token now never reaches frontend JS)
 
 **Remember Session**
-A login-form preference that controls where the Refresh Token is stored — `localStorage` vs `sessionStorage`. Has no effect on the backend; purely a frontend behavior.
-_Avoid_: "stay logged in", "keep me signed in" (use the exact label from the UI: "Remember session")
+A login-form preference sent to the backend, which controls the Refresh Token cookie's `maxAge`: set (persists across browser restarts) when checked, omitted (browser-session cookie, cleared on browser close) when unchecked. Implemented entirely server-side in `setRefreshTokenCookie`— not a frontend storage choice.
+_Avoid_: "stay logged in", "keep me signed in" (use the exact label from the UI: "Remember session"), "controls localStorage vs sessionStorage" (outdated — see Refresh Token)
 
 **Auth Store**
 The Zustand store (`useAuthStore`) that holds the Access Token and current User in memory. The single source of truth for whether the app considers the user authenticated. Initialized on app mount by attempting a silent refresh using any persisted Refresh Token.
@@ -108,4 +108,5 @@ _Avoid_: "article", "legal document" alone (ambiguous with Generated Article)
 - Notes (calendar) — no backend endpoint or model exists; spec has been handed off to the backend team. Appointments, by contrast, now have a working backend home at `/api/events` (see `docs/adr/0001-calendar-wired-to-unbuilt-api.md` for the original context) and the Calendar page has been repointed there — though the Event model has no end-time/duration field, so Appointments show only a start time until the backend adds one (spec handed off).
 - Document Analysis page — scoped to become a per-Case feature (upload + analyze a document attached to a Case). Currently 100% client-side (queues files into IndexedDB via `useMediaQueueStore`, never calls the backend) — needs rebuilding against `POST /api/documents` once it's moved under a Case. Separately, even once wired up, there is no AI analysis pipeline on the backend yet — `aiSummary` is a plain column nothing currently populates.
 - Translating legal document content (case titles, summaries, full text served via `/api/legal-rag`) and AI chat responses (`/api/chat`) into a Supported Language — out of scope for the Language Catalog work, since that content is owned and served by `ilovelawyer-api`, not this repo. Left for a separate, backend-owned initiative.
+- OTP verification — `useVerifyOtpMutation` (`lib/auth/mutations.ts`) calls `POST /api/auth/verify-otp`, but `ilovelawyer-api`'s `auth.route.ts` has no such route; the call 404s unconditionally today.
 </content>

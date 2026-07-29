@@ -12,6 +12,8 @@ export const caseKeys = {
   list: (filters?: Record<string, unknown>) => [...caseKeys.lists(), filters] as const,
   details: () => [...caseKeys.all, "detail"] as const,
   detail: (id: string) => [...caseKeys.details(), id] as const,
+  timelines: () => [...caseKeys.all, "timeline"] as const,
+  timeline: (id: string) => [...caseKeys.timelines(), id] as const,
 }
 
 export const authKeys = {
@@ -27,8 +29,13 @@ export const userKeys = {
 export const chatKeys = {
   all: ["chat"] as const,
   session: () => [...chatKeys.all, "session"] as const,
-  conversations: () => [...chatKeys.all, "conversations"] as const,
+  // Broad key (no caseId segment) — use for invalidation so both the unfiltered list and
+  // every per-case list get refetched together, since any conversation could show up in
+  // either depending on where it lives.
+  conversationsAll: () => [...chatKeys.all, "conversations"] as const,
+  conversations: (caseId?: string) => [...chatKeys.conversationsAll(), caseId ?? null] as const,
   messages: (conversationId: string) => [...chatKeys.all, "messages", conversationId] as const,
+  relatedCases: (conversationId: string) => [...chatKeys.all, "related-cases", conversationId] as const,
 }
 
 export const appointmentKeys = {
