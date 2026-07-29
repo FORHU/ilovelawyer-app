@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertCircle, Network, Clock } from "lucide-react";
 import { useCaseQuery } from "@/lib/cases/mutations";
 
 interface CaseDetailsPanelProps {
@@ -67,7 +67,12 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
 
       {expanded && (
         <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 -mx-1">
+            <CaseToolRow icon={Network} label={t("MindMap")} />
+            <CaseToolRow icon={Clock} label={t("Timeline")} />
+          </div>
+
+          <div className="flex flex-col gap-1 border-t border-border pt-4">
             <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
               {t("detail.party")}
             </span>
@@ -106,5 +111,25 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Placeholder entry point for a not-yet-built case tool — styled and clickable now so it
+ * reads as a real menu item, wired up once the tool behind it exists. */
+function CaseToolRow({ icon: Icon, label }: { icon: typeof Network; label: string }) {
+  return (
+    <button
+      type="button"
+      className="group flex items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold">
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{label}</span>
+      <ChevronRight
+        className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </button>
   );
 }

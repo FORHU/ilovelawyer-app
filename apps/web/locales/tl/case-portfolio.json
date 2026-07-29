@@ -21,7 +21,9 @@
     "noNotes": "Walang naidagdag na tala.",
     "loading": "Nilo-load ang kaso…",
     "loadError": "Hindi ma-load ang kasong ito.",
-    "notFound": "Hindi natagpuan ang kaso."
+    "notFound": "Hindi natagpuan ang kaso.",
+    "mindMap": "Tingnan ang mind map",
+    "timeline": "Tingnan ang timeline"
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",
