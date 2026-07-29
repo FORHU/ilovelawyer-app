@@ -65,22 +65,24 @@ function LegalLibraryPageContent() {
                 {t("hero.titlePrefix")} <span className="font-['Libre_Caslon_Text',serif] italic block mt-1">{t("hero.titleEmphasis")}</span>
               </h1>
 
-              <form onSubmit={handleSearch} className="w-full bg-card border border-foreground rounded-lg flex items-center p-1.5 shadow-xl focus-within:ring-2 focus-within:ring-foreground/10 transition-shadow">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-3" aria-hidden="true" />
-                <input
-                  type="text"
-                  aria-label={t("hero.searchAriaLabel")}
-                  className="flex-1 bg-transparent py-3 px-3 outline-none text-base text-foreground placeholder-muted-foreground"
-                  placeholder={t("hero.searchPlaceholder")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <form onSubmit={handleSearch} className="w-full bg-card border border-foreground rounded-lg flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 p-1.5 shadow-xl focus-within:ring-2 focus-within:ring-foreground/10 transition-shadow">
+                <div className="flex items-center flex-1 min-w-0">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0 ml-3" aria-hidden="true" />
+                  <input
+                    type="text"
+                    aria-label={t("hero.searchAriaLabel")}
+                    className="flex-1 min-w-0 bg-transparent py-3 px-3 outline-none text-base text-foreground placeholder-muted-foreground"
+                    placeholder={t("hero.searchPlaceholder")}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="submit"
                       disabled={analyzeKeyword.isPending}
-                      className="bg-primary text-primary-foreground text-xs font-semibold tracking-wider px-6 py-3.5 rounded-md hover:bg-primary/90 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full sm:w-auto shrink-0 bg-primary text-primary-foreground text-xs font-semibold tracking-wider px-6 py-3.5 rounded-md hover:bg-primary/90 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {analyzeKeyword.isPending ? t("hero.searching") : t("hero.queryAi")}
                     </button>

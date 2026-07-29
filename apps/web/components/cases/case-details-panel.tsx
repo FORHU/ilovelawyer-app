@@ -72,7 +72,11 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
       </Tooltip>
 
       {expanded && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4">
+        // Fixed + viewport-anchored below sm: the trigger sits hard against the right edge
+        // of a full-width header row, so a popover positioned relative to it (the old
+        // `absolute right-0 w-80`) always overhung far past the screen's left edge on phones.
+        // From sm: up there's enough room for the compact, trigger-anchored version.
+        <div className="fixed inset-x-4 top-24 z-20 rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
           <div className="flex flex-col gap-1 -mx-1">
             <CaseToolRow icon={Network} label={t("MindMap")} />
             <CaseToolRow icon={Clock} label={t("Timeline")} />

@@ -45,6 +45,7 @@
     }
   },
   "library": {
+    "backToTranscription": "Bumalik sa Transcription",
     "untitled": "Walang Pamagat na Transcription",
     "loading": "Nilo-load ang mga transcription…",
     "loadError": "Hindi na-load ang iyong mga transcription. Pakisubukang muli.",

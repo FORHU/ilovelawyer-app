@@ -21,7 +21,6 @@
     "noCasesYet": "사건을 만들면 여기에서 관련 사건을 볼 수 있습니다.",
     "createCase": "사건 만들기",
     "openCase": "사건 열기",
-    "caseNumberPrefix": "사건 번호",
     "relatedCases": "관련 사건",
     "loadingCase": "불러오는 중…",
     "relatedEmpty": "아직 관련 사건이 없습니다.",

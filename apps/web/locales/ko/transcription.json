@@ -44,6 +44,7 @@
     }
   },
   "library": {
+    "backToTranscription": "녹취로 돌아가기",
     "untitled": "제목 없는 녹취록",
     "loading": "녹취록 불러오는 중…",
     "loadError": "녹취록을 불러오지 못했습니다. 다시 시도해 주세요.",
