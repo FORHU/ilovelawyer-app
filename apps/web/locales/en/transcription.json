@@ -4,6 +4,8 @@
     "titleEmphasis": "Redefined.",
     "subtitle": "Capture hearings, depositions, and client interviews with speaker-aware transcription built for the demands of legal practice."
   },
+  "linkToCase": "Link to case",
+  "noCase": "No linked case",
   "recorder": {
     "startNewRecording": "Start New Recording",
     "stopRecorder": "Stop Recorder",

@@ -29,6 +29,7 @@
   },
   "detail": {
     "backToPortfolio": "Back to Case Portfolio",
+    "caseNumber": "Case #",
     "party": "Party Involved",
     "notes": "Notes",
     "created": "Created",

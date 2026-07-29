@@ -13,6 +13,7 @@
   "notifyEmailPlaceholder": "알림 받을 이메일 (선택 사항)",
   "descriptionPlaceholder": "설명 (선택 사항)",
   "notePlaceholder": "메모",
+  "noCase": "연결된 사건 없음",
   "saving": "저장 중…",
   "addAppointment": "약속 추가",
   "addNote": "메모 추가",

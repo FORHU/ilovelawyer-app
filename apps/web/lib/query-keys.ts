@@ -12,6 +12,8 @@ export const caseKeys = {
   list: (filters?: Record<string, unknown>) => [...caseKeys.lists(), filters] as const,
   details: () => [...caseKeys.all, "detail"] as const,
   detail: (id: string) => [...caseKeys.details(), id] as const,
+  timelines: () => [...caseKeys.all, "timeline"] as const,
+  timeline: (id: string) => [...caseKeys.timelines(), id] as const,
 }
 
 export const authKeys = {

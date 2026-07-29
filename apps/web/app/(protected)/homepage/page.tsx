@@ -9,8 +9,10 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
+import { CaseHubWidget } from "@/components/chat/case-hub-widget";
 import {
   useChatSessionQuery,
+  useConversationsQuery,
   useCreateConversationMutation,
   useMessagesQuery,
   sendChatMessage,
@@ -44,6 +46,15 @@ export default function AiConsultationPage() {
   // The URL is the source of truth for which conversation is active, so refresh,
   // back/forward, and sidebar navigation all just work without a duplicate state sync.
   const conversationId = urlConversationId;
+
+  // Explicit case linkage for this conversation, if any (e.g. arrived via a case's
+  // "Start Chat" quick action carrying ?caseId=). CaseHubWidget falls back to the
+  // user's most recently active case when this is null, so no manual picking is needed.
+  const { data: conversations } = useConversationsQuery();
+  const pendingCaseId = searchParams.get("caseId") ?? "";
+  const linkedCaseId = conversationId
+    ? (conversations?.find((c) => c.id === conversationId)?.caseId ?? null)
+    : pendingCaseId || null;
 
   const [inputMessage, setInputMessage] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -203,11 +214,8 @@ export default function AiConsultationPage() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const text = inputMessage.trim();
+  const doSend = async (text: string) => {
     if (!text || !session || isSending) return;
-  
 
     // Identifies this send so it can tell, once it's back from an await, whether the
     // user has since navigated away (handleNewChat/handleSelectConversation bump the
@@ -215,15 +223,13 @@ export default function AiConsultationPage() {
     // whatever conversation is now on screen.
     const myToken = ++sendTokenRef.current;
 
-    setInputMessage("");
-    handleRemoveFile();
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsSending(true);
 
     try {
       let activeConversationId = conversationId;
       if (!activeConversationId) {
-        const conversation = await createConversation.mutateAsync({});
+        const conversation = await createConversation.mutateAsync({ caseId: pendingCaseId || undefined });
         activeConversationId = conversation.id;
         pendingSendConversationIdRef.current = conversation.id;
         router.push(`/homepage?c=${conversation.id}`);
@@ -258,6 +264,15 @@ export default function AiConsultationPage() {
     } finally {
       if (sendTokenRef.current === myToken) setIsSending(false);
     }
+  };
+
+  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const text = inputMessage.trim();
+    if (!text) return;
+    setInputMessage("");
+    handleRemoveFile();
+    void doSend(text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -429,6 +444,11 @@ export default function AiConsultationPage() {
                       </div>
                     );
                   })}
+
+                  {!isSending && messages.length > 0 && messages.at(-1)?.role === "assistant" && messages.at(-1)?.content && (
+                    <CaseHubWidget caseId={linkedCaseId} onAskFollowUp={(text) => void doSend(text)} />
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
               </div>
