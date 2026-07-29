@@ -1,63 +1,37 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Mic, CalendarClock, Grid2x2, Plus, SendHorizontal, Loader2, Link2, X } from "lucide-react";
-import { useCaseQuery, useCasesQuery, useUploadCaseDocumentMutation, type CaseRecord } from "@/lib/cases/mutations";
+import { Mic, Square, CalendarClock, Grid2x2, Plus, SendHorizontal, Loader2, FolderPlus, X, ExternalLink, BadgeCheck } from "lucide-react";
+import { useCaseQuery, useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
+import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { useCreateAppointmentMutation } from "@/lib/calendar/mutations";
-
-// Cheap, real (not mocked) relevance signal: how many meaningful words the two
-// cases' name/party/notes share. Good enough to rank "worth a look" until this
-// is backed by an actual embedding-similarity endpoint.
-const STOPWORDS = new Set(["the", "a", "an", "of", "and", "or", "vs", "v", "re", "for", "to", "in", "on"]);
-function keywordSet(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
-  );
-}
-function relevance(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
-  let shared = 0;
-  for (const w of a) if (b.has(w)) shared++;
-  return shared / Math.min(a.size, b.size);
-}
-
-function caseKeywords(c: CaseRecord): Set<string> {
-  return keywordSet(`${c.caseName} ${c.partyInvolved ?? ""} ${c.notes ?? ""}`);
-}
+import { useUploadAudioMutation, useCreateTranscriptionMutation, useStartTranscriptionJobMutation } from "@/lib/transcription/mutations";
+import { transcriptionKeys } from "@/lib/query-keys";
 
 export function CaseHubWidget({
   caseId,
+  conversationId,
   onAskFollowUp,
 }: {
   /** Explicit link for this conversation, if any (e.g. arrived via a case's "Start Chat"
-   * action). When absent, falls back to the user's most recently updated case — no
-   * manual picking required, the hub just shows up after every response. */
+   * action, or tagged on the conversation when the case was created from within it). Null
+   * means this conversation has no case of its own — must NOT fall back to some other
+   * case (e.g. the most recently updated one), or a case created in one chat would bleed
+   * into every other unrelated conversation's hub. */
   caseId: string | null;
+  /** Conversation the related-cases panel pulls legal-precedent citations for — those are
+   * surfaced by the AI's latest reply in this conversation, not tied to `caseId` at all. */
+  conversationId: string | null;
   onAskFollowUp: (text: string) => void;
 }) {
   const { t } = useTranslation("homepage");
   const [followUp, setFollowUp] = useState("");
 
-  // Already sorted by updatedAt desc server-side, so [0] is the most recently active case.
-  const allCasesQuery = useCasesQuery(1, 100);
-  const effectiveCaseId = caseId ?? allCasesQuery.data?.data[0]?.id ?? null;
-
-  const { data: caseRecord } = useCaseQuery(effectiveCaseId ?? "");
-
-  const relatedCases = useMemo(() => {
-    if (!caseRecord || !allCasesQuery.data) return [];
-    const mine = caseKeywords(caseRecord);
-    return allCasesQuery.data.data
-      .filter((c) => c.id !== effectiveCaseId)
-      .map((c) => ({ case: c, pct: Math.round(relevance(mine, caseKeywords(c)) * 100) }))
-      .filter((r) => r.pct > 0)
-      .sort((a, b) => b.pct - a.pct)
-      .slice(0, 5);
-  }, [caseRecord, allCasesQuery.data, effectiveCaseId]);
+  const { data: caseRecord } = useCaseQuery(caseId ?? "");
+  const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(conversationId ?? undefined);
+  const relatedCases = relatedData?.relatedCases ?? [];
 
   function submitFollowUp(e: React.FormEvent) {
     e.preventDefault();
@@ -67,25 +41,9 @@ export function CaseHubWidget({
     setFollowUp("");
   }
 
-  // No cases exist at all yet — nothing to show a case hub for.
-  if (!effectiveCaseId) {
-    return (
-      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold">
-          <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
-        <p className="min-w-0 flex-1 text-[13px] text-muted-foreground">{t("caseHub.noCasesYet")}</p>
-        <Link
-          href="/homepage/create-case"
-          className="shrink-0 rounded-full border border-brand-gold bg-brand-gold px-3 py-1.5 text-[12px] font-semibold text-[#221a05] cursor-pointer transition-colors hover:brightness-105"
-        >
-          {t("caseHub.createCase")}
-        </Link>
-      </section>
-    );
-  }
-
-  if (!caseRecord) {
+  // A case is linked/available but its full record hasn't loaded yet — don't flash the
+  // "no case" layout while that's in flight.
+  if (caseId && !caseRecord) {
     return (
       <section className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card py-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -96,20 +54,22 @@ export function CaseHubWidget({
 
   return (
     <section className="rounded-2xl border border-border bg-card overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-border">
-        <Link
-          href={`/homepage/case-portfolio/${effectiveCaseId}`}
-          className="flex items-center gap-2 font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-wide text-foreground min-w-0 hover:text-primary transition-colors"
-        >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold shadow-[0_0_0_3px_rgba(246,196,69,0.15)]" aria-hidden="true" />
-          <span className="truncate">{caseRecord.caseName}</span>
-        </Link>
-        {caseRecord.caseNumber && (
-          <span className="shrink-0 text-[11px] text-muted-foreground">
-            {t("caseHub.caseNumberPrefix")} {caseRecord.caseNumber}
-          </span>
-        )}
-      </div>
+      {caseRecord && (
+        <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-border">
+          <Link
+            href={`/homepage/case-portfolio/${caseId}`}
+            className="flex items-center gap-2 font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-wide text-foreground min-w-0 hover:text-primary transition-colors"
+          >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold shadow-[0_0_0_3px_rgba(246,196,69,0.15)]" aria-hidden="true" />
+            <span className="truncate">{caseRecord.caseName}</span>
+          </Link>
+          {caseRecord.caseNumber && (
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              {t("caseHub.caseNumberPrefix")} {caseRecord.caseNumber}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-[13px] font-semibold text-foreground">
         <Grid2x2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
@@ -118,46 +78,49 @@ export function CaseHubWidget({
       </div>
 
       <div className="max-h-[280px] overflow-y-auto px-4 py-3">
-        <HubRelatedCases entries={relatedCases} emptyLabel={t("caseHub.relatedEmpty")} jurisprudenceLabel={t("caseHub.yourCases")} />
+        <HubRelatedCases entries={relatedCases} isLoading={isLoadingRelated} emptyLabel={t("caseHub.relatedEmpty")} />
       </div>
 
       <div className="border-t border-border px-4 py-3 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t("caseHub.quickActionsLabel")}>
-          <AddDocumentButton caseId={effectiveCaseId} />
-          <ScheduleButton caseId={effectiveCaseId} />
+          <AddDocumentButton caseId={caseId ?? undefined} />
           <Link
-            href={`/homepage/transcription?caseId=${effectiveCaseId}`}
+            href="/homepage/create-case"
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-3 py-1.5 text-[12px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
           >
-            <Mic className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-            {t("caseHub.addTranscription")}
+            <FolderPlus className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            {t("caseHub.createCase")}
           </Link>
+          <ScheduleButton caseId={caseId ?? undefined} />
+          <TranscriptionButton caseId={caseId ?? undefined} />
         </div>
-        <form onSubmit={submitFollowUp} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-1.5">
-          <input
-            type="text"
-            value={followUp}
-            onChange={(e) => setFollowUp(e.target.value)}
-            placeholder={t("caseHub.followUpPlaceholder")}
-            aria-label={t("caseHub.followUpPlaceholder")}
-            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
-          />
-          <button
-            type="submit"
-            aria-label={t("caseHub.send")}
-            disabled={!followUp.trim()}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-          >
-            <SendHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </form>
+        {caseRecord && (
+          <form onSubmit={submitFollowUp} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-1.5">
+            <input
+              type="text"
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              placeholder={t("caseHub.followUpPlaceholder")}
+              aria-label={t("caseHub.followUpPlaceholder")}
+              className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+            />
+            <button
+              type="submit"
+              aria-label={t("caseHub.send")}
+              disabled={!followUp.trim()}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gold text-[#221a05] cursor-pointer hover:brightness-105 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+            >
+              <SendHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </form>
+        )}
       </div>
     </section>
   );
 }
 
 /** Direct file-picker trigger — skips the Document Analysis page and uploads straight to this case. */
-function AddDocumentButton({ caseId }: { caseId: string }) {
+function AddDocumentButton({ caseId }: { caseId?: string }) {
   const { t } = useTranslation("homepage");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: uploadDocument, isPending } = useUploadCaseDocumentMutation();
@@ -189,7 +152,7 @@ function AddDocumentButton({ caseId }: { caseId: string }) {
 }
 
 /** Compact popover scheduler — schedules straight from the hub instead of leaving for the full calendar page. */
-function ScheduleButton({ caseId }: { caseId: string }) {
+function ScheduleButton({ caseId }: { caseId?: string }) {
   const { t } = useTranslation("homepage");
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -299,56 +262,166 @@ function ScheduleButton({ caseId }: { caseId: string }) {
   );
 }
 
+/** Records straight into a transcription — no trip to the Transcription page. The clip is
+ * uploaded, saved, and queued for transcription immediately, tagged with `caseId` so it
+ * shows up both in the transcription library and on this case once that view exists. */
+function TranscriptionButton({ caseId }: { caseId?: string }) {
+  const { t } = useTranslation("homepage");
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
+  const queryClient = useQueryClient();
+
+  const { mutateAsync: uploadAudio } = useUploadAudioMutation();
+  const { mutateAsync: createTranscription } = useCreateTranscriptionMutation();
+  const { mutateAsync: startTranscriptionJob } = useStartTranscriptionJobMutation();
+
+  // Release the microphone if the widget unmounts mid-recording (e.g. navigating away).
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  async function saveRecording(blob: Blob, durationSeconds: number) {
+    setIsSaving(true);
+    try {
+      const uploaded = await uploadAudio({
+        blob,
+        filename: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
+      });
+      const created = await createTranscription({
+        title: `Recording ${new Date().toLocaleString()}`,
+        audioFileId: uploaded.id,
+        duration: durationSeconds,
+        caseId,
+      });
+      await startTranscriptionJob(created.id);
+      queryClient.invalidateQueries({ queryKey: transcriptionKeys.lists() });
+    } catch (error) {
+      console.error("Failed to save transcription:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleClick() {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+    if (isSaving) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recordingStartRef.current = Date.now();
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const durationSeconds = (Date.now() - recordingStartRef.current) / 1000;
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+        void saveRecording(blob, durationSeconds);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Microphone access failed:", error);
+      alert(t("microphoneError"));
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={isSaving}
+      aria-pressed={isRecording}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
+        isRecording
+          ? "border-red-400/40 bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse"
+          : "border-border bg-muted/60 text-foreground hover:border-brand-gold/40"
+      }`}
+    >
+      {isSaving ? (
+        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />
+      ) : isRecording ? (
+        <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+      ) : (
+        <Mic className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+      )}
+      {isSaving ? t("caseHub.savingTranscription") : isRecording ? t("caseHub.stopRecording") : t("caseHub.addTranscription")}
+    </button>
+  );
+}
+
+/** Renders legal-precedent citations (source, not the user's own cases) surfaced by the
+ * conversation's latest assistant reply. */
 function HubRelatedCases({
   entries,
+  isLoading,
   emptyLabel,
-  jurisprudenceLabel,
 }: {
-  entries: { case: CaseRecord; pct: number }[];
+  entries: RelatedCase[];
+  isLoading: boolean;
   emptyLabel: string;
-  jurisprudenceLabel: string;
 }) {
+  const { t } = useTranslation("homepage");
+
+  if (isLoading) {
+    return (
+      <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        {t("caseHub.loadingRelated")}
+      </p>
+    );
+  }
+
   if (entries.length === 0) {
     return <p className="py-6 text-center text-sm text-muted-foreground">{emptyLabel}</p>;
   }
 
-  const circumference = 2 * Math.PI * 18;
-
   return (
     <div className="flex flex-col gap-2">
-      {entries.map(({ case: c, pct }) => {
-        const offset = circumference * (1 - pct / 100);
+      {entries.map((entry, i) => {
+        const label = entry.title || entry.case_number || t("caseHub.untitledCitation");
+        const Wrapper = entry.url ? "a" : "div";
         return (
-          <Link
-            key={c.id}
-            href={`/homepage/case-portfolio/${c.id}`}
-            className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left cursor-pointer transition-colors hover:bg-muted/60 hover:border-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40"
+          <Wrapper
+            key={`${entry.case_number ?? entry.title ?? "citation"}-${i}`}
+            {...(entry.url ? { href: entry.url, target: "_blank", rel: "noopener noreferrer" } : {})}
+            className={`flex w-full flex-col gap-1 rounded-xl border border-border p-3 text-left transition-colors ${
+              entry.url ? "cursor-pointer hover:bg-muted/60 hover:border-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40" : ""
+            }`}
           >
-            <div className="relative h-[42px] w-[42px] shrink-0">
-              <svg width="42" height="42" viewBox="0 0 42 42" className="-rotate-90">
-                <circle cx="21" cy="21" r="18" fill="none" strokeWidth="3.5" className="stroke-border" />
-                <circle
-                  cx="21"
-                  cy="21"
-                  r="18"
-                  fill="none"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  className="stroke-brand-gold transition-[stroke-dashoffset] duration-500"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={offset}
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums text-foreground">{pct}%</span>
+            <div className="flex items-start justify-between gap-2">
+              <span className="min-w-0 flex-1 text-[13px] font-semibold text-foreground line-clamp-2">{label}</span>
+              {entry.url && <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold text-foreground">{c.caseName}</div>
-              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{c.partyInvolved || "—"}</div>
-              <span className="mt-1 inline-block rounded-md border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                {jurisprudenceLabel}
+            {entry.case_number && entry.title && (
+              <div className="text-[11px] text-muted-foreground">{entry.case_number}</div>
+            )}
+            {entry.snippet && <p className="line-clamp-2 text-[12px] text-muted-foreground">{entry.snippet}</p>}
+            {entry.vetted && (
+              <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <BadgeCheck className="h-3 w-3 text-brand-gold" aria-hidden="true" />
+                {t("caseHub.vetted")}
               </span>
-            </div>
-          </Link>
+            )}
+          </Wrapper>
         );
       })}
     </div>
