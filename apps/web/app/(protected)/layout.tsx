@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { attemptRefresh } from "@/lib/fetch"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 
-// Relative — proxied server-side to the real API by next.config.ts's rewrites(),
-// so this stays same-origin with the browser even when the API is on another host.
-const BASE_URL = ""
-
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
-  const setAccessToken = useAuthStore((s) => s.setAccessToken)
   const setAuth = useAuthStore((s) => s.setAuth)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const [hydrating, setHydrating] = useState(() => !accessToken)
@@ -24,21 +19,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     // No in-memory access token (fresh tab or reload) — the refresh token only
     // lives in the httpOnly cookie, so ask the server to mint a new access token.
-    fetch(`${BASE_URL}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Refresh failed")
-        return res.json()
-      })
-      .then((data) => {
-        setAccessToken(data.accessToken)
-        setHydrating(false)
-      })
+    // Shared with lib/fetch.ts's 401-retry path so concurrent refresh attempts
+    // (e.g. this effect firing alongside an in-flight authorized request) dedupe
+    // onto a single request instead of racing the single-use refresh token.
+    attemptRefresh()
+      .then(() => setHydrating(false))
       .catch(() => {
-        clearAuth()
-        router.replace("/login")
+        // attemptRefresh already clears auth and redirects to /login on failure.
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

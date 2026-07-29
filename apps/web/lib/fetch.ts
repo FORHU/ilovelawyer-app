@@ -2,12 +2,19 @@ import { useAuthStore } from "@/lib/store/auth.store"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
-// These two read the refreshToken httpOnly cookie, so they're proxied
+// These all set or read the refreshToken httpOnly cookie, so they're proxied
 // same-origin via next.config.ts's rewrites() (see that file for why).
 // Every other endpoint — including the streaming chat endpoint — calls the
 // API directly, since routing a streamed response through the Next proxy
 // buffers the whole thing before relaying it to the browser.
-const COOKIE_PROXIED_PATHS = new Set(["/api/auth/refresh", "/api/auth/logout"])
+const COOKIE_PROXIED_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/google",
+  "/api/auth/verify-otp",
+  "/api/auth/reset-password",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+])
 
 function resolveUrl(path: string): string {
   return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`
@@ -17,7 +24,7 @@ type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boole
 
 let refreshPromise: Promise<void> | null = null
 
-async function attemptRefresh(): Promise<void> {
+export async function attemptRefresh(): Promise<void> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {

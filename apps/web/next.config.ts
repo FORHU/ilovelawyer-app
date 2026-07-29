@@ -18,10 +18,14 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@workspace/ui"],
   allowedDevOrigins: ["192.168.1.29"],
   async rewrites() {
-    return [
-      { source: "/api/auth/refresh", destination: `${API_URL}/api/auth/refresh` },
-      { source: "/api/auth/logout", destination: `${API_URL}/api/auth/logout` },
-    ]
+    // These all set the refreshToken httpOnly cookie, so they must be proxied
+    // same-origin — otherwise the cookie ends up scoped to the API's own
+    // domain instead of the frontend's, and never gets sent back on reload.
+    const COOKIE_SETTING_AUTH_PATHS = ["login", "google", "verify-otp", "reset-password", "refresh", "logout"]
+    return COOKIE_SETTING_AUTH_PATHS.map((path) => ({
+      source: `/api/auth/${path}`,
+      destination: `${API_URL}/api/auth/${path}`,
+    }))
   },
 }
 
