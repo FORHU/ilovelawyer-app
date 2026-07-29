@@ -21,7 +21,6 @@
     "noCasesYet": "Create a case to see related cases right here.",
     "createCase": "Create a case",
     "openCase": "Open case",
-    "caseNumberPrefix": "Case #",
     "relatedCases": "Related Cases",
     "loadingCase": "Loading…",
     "relatedEmpty": "No related cases found yet.",

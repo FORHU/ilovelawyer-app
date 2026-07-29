@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, FileAudio, Copy, Check, ChevronDown, Trash2, Loader2, AlertCircle } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import { useTranscriptionsQuery, useDeleteTranscriptionMutation, type Transcription } from "@/lib/transcription/mutations";
+import CustomSelect from "@/components/ui/custom-select";
+import {
+  useTranscriptionsQuery,
+  useDeleteTranscriptionMutation,
+  useLinkTranscriptionMutation,
+  type Transcription,
+} from "@/lib/transcription/mutations";
+import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 function formatDuration(seconds: number | null): string {
@@ -159,7 +166,7 @@ export default function TranscriptionLibraryPage() {
     <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="transcription" />
 
-      <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-12 py-12 md:py-16 flex flex-col gap-8">
+      <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-12 pt-16 pb-12 md:pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -168,7 +175,7 @@ export default function TranscriptionLibraryPage() {
                 className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                {t("hero.titlePrefix")} {t("hero.titleEmphasis")}
+                {t("library.backToTranscription")}
               </Link>
             </TooltipTrigger>
             <TooltipContent>Return to the transcription workspace</TooltipContent>

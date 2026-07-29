@@ -69,11 +69,6 @@ export function CaseHubWidget({
             </TooltipTrigger>
             <TooltipContent>Open {caseRecord.caseName}&rsquo;s full record</TooltipContent>
           </Tooltip>
-          {caseRecord.caseNumber && (
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {t("caseHub.caseNumberPrefix")} {caseRecord.caseNumber}
-            </span>
-          )}
         </div>
       )}
 

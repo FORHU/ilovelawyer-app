@@ -489,7 +489,7 @@ export default function ConsultationChat({
           identity), not part of the centered conversation. Sits outside <main> so it isn't
           bound by that centering; ConversationSidebar is absolutely positioned so its own
           top-16 offset is unaffected by this sibling. */}
-      {headerSlot && <div className="relative z-10 shrink-0 pt-16 pb-4">{headerSlot}</div>}
+      {headerSlot && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       {/* Main Chat Interface */}
       <main className={`relative z-10 max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 ${headerSlot ? "" : "pt-16"}`}>
