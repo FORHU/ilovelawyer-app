@@ -50,6 +50,13 @@
     "untitledConversation": "Walang pamagat na usapan",
     "conversations": "Mga Usapan",
     "openConversations": "Buksan ang mga usapan",
-    "closeConversations": "Isara ang mga usapan"
+    "closeConversations": "Isara ang mga usapan",
+    "renameConversation": "Palitan ang pangalan",
+    "renameConversationNamed": "Palitan ang pangalan ng {{name}}",
+    "saveTitle": "I-save ang pamagat",
+    "deleteConversation": "Tanggalin",
+    "deleteConversationNamed": "Tanggalin ang {{name}}",
+    "deleteConversationConfirm": "Tanggalin ang usapang ito? Hindi na ito maibabalik.",
+    "collapseSidebar": "I-collapse ang sidebar"
   }
 }

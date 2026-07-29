@@ -90,5 +90,7 @@ export async function apiFetchRaw(path: string, options?: FetchOptions): Promise
 
 export async function apiFetch<T>(path: string, options?: FetchOptions): Promise<T> {
   const res = await apiFetchRaw(path, options)
+  // 204s (e.g. DELETE endpoints) have no body — res.json() would throw on the empty string.
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }

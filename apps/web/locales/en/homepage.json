@@ -50,6 +50,13 @@
     "untitledConversation": "Untitled conversation",
     "conversations": "Conversations",
     "openConversations": "Open conversations",
-    "closeConversations": "Close conversations"
+    "closeConversations": "Close conversations",
+    "renameConversation": "Rename",
+    "renameConversationNamed": "Rename {{name}}",
+    "saveTitle": "Save title",
+    "deleteConversation": "Delete",
+    "deleteConversationNamed": "Delete {{name}}",
+    "deleteConversationConfirm": "Delete this conversation? This can't be undone.",
+    "collapseSidebar": "Collapse sidebar"
   }
 }

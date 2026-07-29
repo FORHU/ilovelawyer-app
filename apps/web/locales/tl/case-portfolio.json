@@ -8,22 +8,23 @@
   "initiateNewFiling": "Simulan ang Bagong Filing",
   "noMatchingCases": "Walang tugmang kaso",
   "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas.",
-  "editCase": "I-edit ang {{caseName}}",
-  "deleteCase": "Burahin ang {{caseName}}",
-  "deleteConfirm": "Burahin ang \"{{caseName}}\"? Hindi na ito maibabalik.",
-  "editModal": {
-    "heading": "I-edit ang Kaso",
-    "close": "Isara",
-    "caseNameLabel": "Pamagat ng Kaso",
-    "caseNameError": "Kinakailangan ang pamagat ng kaso.",
-    "cancel": "Kanselahin",
-    "saveChanges": "I-save ang mga Pagbabago",
-    "saving": "Sine-save…",
-    "editCase": "I-edit",
-    "deleteCase": "Burahin"
-  },
+  "noPartyListed": "Walang nakalistang partido",
   "detail": {
+    "backToPortfolio": "Bumalik sa Case Portfolio",
+    "caseLabel": "Kaso",
+    "viewDetails": "Mga Detalye",
+    "hideDetails": "Itago ang mga detalye",
     "party": "Kasangkot na Partido",
-    "notes": "Mga Tala"
+    "notes": "Mga Tala",
+    "created": "Ginawa",
+    "updated": "Huling na-update",
+    "noNotes": "Walang naidagdag na tala.",
+    "loading": "Nilo-load ang kaso…",
+    "loadError": "Hindi ma-load ang kasong ito.",
+    "notFound": "Hindi natagpuan ang kaso."
+  },
+  "chat": {
+    "emptyHeading": "Magtanong tungkol sa {{caseName}}",
+    "emptySubheading": "Kumonsulta sa AI na may nakalagay nang detalye ng kasong ito — magtanong tungkol sa estratehiya, pagdadrap, o susunod na hakbang."
   }
 }

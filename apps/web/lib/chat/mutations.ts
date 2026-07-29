@@ -9,8 +9,8 @@ export interface ChatSession {
 export interface Conversation {
   id: string
   userId: string
-  caseId: string | null
   title: string | null
+  caseId: string | null
   createdAt: string
 }
 
@@ -41,31 +41,44 @@ export function useCreateConversationMutation() {
         body: JSON.stringify({ title, caseId }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
     },
   })
 }
 
-/** Links (or unlinks, with caseId: null) an existing conversation to a case — surfaces the case hub inline. */
-export function useLinkConversationCaseMutation() {
+/** Lists the current user's conversations, most recently created first. Pass `caseId` to
+ * scope the list to a single case's conversations instead of every conversation. */
+export function useConversationsQuery(caseId?: string) {
+  return useQuery({
+    queryKey: chatKeys.conversations(caseId),
+    queryFn: () => apiFetch<Conversation[]>(`/api/chat/conversations${caseId ? `?caseId=${caseId}` : ""}`),
+  })
+}
+
+export function useRenameConversationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ conversationId, caseId }: { conversationId: string; caseId: string | null }) =>
-      apiFetch<Conversation>(`/api/chat/conversations/${conversationId}/case`, {
+    mutationFn: ({ conversationId, title }: { conversationId: string; title: string }) =>
+      apiFetch<Conversation>(`/api/chat/conversations/${conversationId}`, {
         method: "PATCH",
-        body: JSON.stringify({ caseId }),
+        body: JSON.stringify({ title }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversations() })
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
     },
   })
 }
 
-/** Lists the current user's conversations, most recently created first. */
-export function useConversationsQuery() {
-  return useQuery({
-    queryKey: chatKeys.conversations(),
-    queryFn: () => apiFetch<Conversation[]>("/api/chat/conversations"),
+export function useDeleteConversationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      apiFetch<void>(`/api/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
+    },
   })
 }
 

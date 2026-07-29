@@ -29,7 +29,11 @@ export const userKeys = {
 export const chatKeys = {
   all: ["chat"] as const,
   session: () => [...chatKeys.all, "session"] as const,
-  conversations: () => [...chatKeys.all, "conversations"] as const,
+  // Broad key (no caseId segment) — use for invalidation so both the unfiltered list and
+  // every per-case list get refetched together, since any conversation could show up in
+  // either depending on where it lives.
+  conversationsAll: () => [...chatKeys.all, "conversations"] as const,
+  conversations: (caseId?: string) => [...chatKeys.conversationsAll(), caseId ?? null] as const,
   messages: (conversationId: string) => [...chatKeys.all, "messages", conversationId] as const,
 }
 

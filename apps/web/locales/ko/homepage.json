@@ -50,6 +50,13 @@
     "untitledConversation": "제목 없는 대화",
     "conversations": "대화 목록",
     "openConversations": "대화 목록 열기",
-    "closeConversations": "대화 목록 닫기"
+    "closeConversations": "대화 목록 닫기",
+    "renameConversation": "이름 바꾸기",
+    "renameConversationNamed": "{{name}} 이름 바꾸기",
+    "saveTitle": "제목 저장",
+    "deleteConversation": "삭제",
+    "deleteConversationNamed": "{{name}} 삭제",
+    "deleteConversationConfirm": "이 대화를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "collapseSidebar": "사이드바 접기"
   }
 }

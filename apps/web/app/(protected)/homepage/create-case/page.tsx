@@ -204,7 +204,7 @@ export default function CreateCasePage() {
         .filter((f): f is UploadedFile & { documentId: string } => f.status === "uploaded" && !!f.documentId);
       await Promise.all(documentIds.map((f) => linkDocument({ documentId: f.documentId, caseId: newCase.id })));
 
-      router.push("/homepage/case-portfolio");
+      router.push(`/homepage/case-portfolio/${newCase.id}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
