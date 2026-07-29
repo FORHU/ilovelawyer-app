@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw, FileText, Headphones } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import {
   useStartTranscriptionJobMutation,
 } from "@/lib/transcription/mutations";
 import { useTranscriptionPolling } from "@/lib/transcription/use-transcription-polling";
+import { useCasesQuery } from "@/lib/cases/mutations";
 
 // Minimal shape of the non-standard Web Speech API — not part of lib.dom.d.ts.
 interface SpeechRecognitionResultLike {
@@ -235,6 +237,7 @@ function TranscriptRow({
 
 export default function IlovelawyerTranscriptionDashboard() {
   const { t } = useTranslation("transcription");
+  const searchParams = useSearchParams();
   const transcripts = useMediaQueueStore((s) => s.transcripts);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
   const removeTranscript = useMediaQueueStore((s) => s.removeTranscript);
@@ -244,6 +247,9 @@ export default function IlovelawyerTranscriptionDashboard() {
   const uploadAudio = useUploadAudioMutation();
   const createTranscription = useCreateTranscriptionMutation();
   const startTranscriptionJob = useStartTranscriptionJobMutation();
+  const casesQuery = useCasesQuery(1, 100);
+  const cases = casesQuery.data?.data ?? [];
+  const [caseId, setCaseId] = useState(searchParams.get("caseId") ?? "");
 
   const handleTranscribe = async (item: QueuedTranscript) => {
     updateTranscript(item.id, { status: "uploading", errorMessage: undefined });
@@ -254,6 +260,7 @@ export default function IlovelawyerTranscriptionDashboard() {
         title: item.name,
         audioFileId: uploaded.id,
         duration: item.durationSeconds,
+        caseId: caseId || undefined,
       });
       updateTranscript(item.id, { backendId: created.id });
       await startTranscriptionJob.mutateAsync(created.id);
@@ -402,6 +409,21 @@ export default function IlovelawyerTranscriptionDashboard() {
           <p className="text-muted-foreground text-[14px] md:text-[15px] max-w-[560px] leading-relaxed">
             {t("hero.subtitle")}
           </p>
+          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            {t("linkToCase")}
+            <select
+              value={caseId}
+              onChange={(e) => setCaseId(e.target.value)}
+              className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary"
+            >
+              <option value="">{t("noCase")}</option>
+              {cases.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.caseName}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {/* Primary Functional Panel Columns */}

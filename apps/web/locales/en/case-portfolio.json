@@ -29,6 +29,9 @@
   },
   "detail": {
     "backToPortfolio": "Back to Case Portfolio",
+    "caseLabel": "Case",
+    "viewDetails": "Details",
+    "hideDetails": "Hide details",
     "party": "Party Involved",
     "notes": "Notes",
     "created": "Created",
@@ -37,5 +40,9 @@
     "loading": "Loading case…",
     "loadError": "Couldn't load this case.",
     "notFound": "Case not found."
+  },
+  "chat": {
+    "emptyHeading": "Ask about {{caseName}}",
+    "emptySubheading": "Consult the AI with this case's details already in context — ask about strategy, drafting, or next steps."
   }
 }

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format } from "date-fns"
 import { apiFetch } from "@/lib/fetch"
-import { appointmentKeys, noteKeys } from "@/lib/query-keys"
+import { appointmentKeys, caseKeys, noteKeys } from "@/lib/query-keys"
 
 export interface Appointment {
   id: string
@@ -13,6 +13,8 @@ export interface Appointment {
   description: string | null
   /** Address the appointment confirmation email is also sent to, if one was given. */
   notifyEmail: string | null
+  /** Case this appointment is scheduled for, if any — feeds the case timeline. */
+  caseId: string | null
 }
 
 export interface CreateAppointmentPayload {
@@ -24,6 +26,8 @@ export interface CreateAppointmentPayload {
   description?: string
   /** Optional recipient (e.g. a client) who should also get the confirmation email, in addition to the account owner. */
   notifyEmail?: string
+  /** Links this appointment to a case, so it shows up on that case's timeline. */
+  caseId?: string
 }
 
 export interface Note {
@@ -43,6 +47,7 @@ interface BackendEvent {
   dateTime: string
   notes: string | null
   clientEmail: string | null
+  caseId: string | null
 }
 
 function toAppointment(event: BackendEvent): Appointment {
@@ -55,6 +60,7 @@ function toAppointment(event: BackendEvent): Appointment {
     endTime: null,
     description: event.notes,
     notifyEmail: event.clientEmail,
+    caseId: event.caseId ?? null,
   }
 }
 
@@ -82,12 +88,16 @@ export function useCreateAppointmentMutation() {
           dateTime: new Date(`${payload.date}T${payload.startTime}`).toISOString(),
           notes: payload.description,
           clientEmail: payload.notifyEmail,
+          caseId: payload.caseId,
         }),
       })
       return toAppointment(event)
     },
-    onSuccess: () => {
+    onSuccess: (appointment) => {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() })
+      if (appointment.caseId) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(appointment.caseId) })
+      }
     },
   })
 }

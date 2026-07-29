@@ -7,6 +7,7 @@ import { caseKeys } from "@/lib/query-keys"
 export interface CaseRecord {
   id: string
   userId: string
+  caseNumber: string | null
   caseName: string
   partyInvolved: string | null
   notes: string | null
@@ -32,6 +33,8 @@ export function useCaseQuery(id: string) {
 
 export interface CreateCasePayload {
   caseName: string
+  /** Left blank, the backend auto-generates one (e.g. "2026-0001"). */
+  caseNumber?: string
   partyInvolved?: string
   notes?: string
 }
@@ -52,6 +55,7 @@ export function useCreateCaseMutation() {
 
 export interface UpdateCasePayload {
   caseName?: string
+  caseNumber?: string
   partyInvolved?: string
   notes?: string
 }
@@ -100,6 +104,7 @@ export interface UserDocument {
  * Pass `caseId` when the case already exists (e.g. Document Analysis); omit it when the file is
  * uploaded before the case does (e.g. Create Case), then link it after via useLinkCaseDocumentMutation. */
 export function useUploadCaseDocumentMutation() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ file, caseId }: { file: File; caseId?: string }) => {
       const formData = new FormData()
@@ -110,16 +115,25 @@ export function useUploadCaseDocumentMutation() {
         body: formData,
       })
     },
+    onSuccess: (doc) => {
+      if (doc.caseId) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(doc.caseId) })
+      }
+    },
   })
 }
 
 /** Links a previously-uploaded document to a case, once the case has been created and its id is known. */
 export function useLinkCaseDocumentMutation() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ documentId, caseId }: { documentId: string; caseId: string }) =>
       apiFetch<void>(`/api/documents/${documentId}`, {
         method: "PATCH",
         body: JSON.stringify({ caseId }),
       }),
+    onSuccess: (_data, { caseId }) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    },
   })
 }
