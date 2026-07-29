@@ -2,12 +2,21 @@ import { useAuthStore } from "@/lib/store/auth.store"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
-// These two read the refreshToken httpOnly cookie, so they're proxied
-// same-origin via next.config.ts's rewrites() (see that file for why).
+// These read or set the refreshToken httpOnly cookie, so they're proxied
+// same-origin via next.config.ts's rewrites() (see that file for why). Without
+// this, the cookie set by a direct cross-origin call to the API would be
+// scoped to the API's own host, not the frontend's — invisible to the
+// same-origin /api/auth/refresh call made on every page load.
 // Every other endpoint — including the streaming chat endpoint — calls the
 // API directly, since routing a streamed response through the Next proxy
 // buffers the whole thing before relaying it to the browser.
-const COOKIE_PROXIED_PATHS = new Set(["/api/auth/refresh", "/api/auth/logout"])
+const COOKIE_PROXIED_PATHS = new Set([
+  "/api/auth/refresh",
+  "/api/auth/logout",
+  "/api/auth/login",
+  "/api/auth/google",
+  "/api/auth/reset-password",
+])
 
 function resolveUrl(path: string): string {
   return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`

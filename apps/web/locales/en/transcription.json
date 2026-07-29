@@ -32,6 +32,9 @@
     "copyTranscript": "Copy",
     "copied": "Copied",
     "emptyTranscript": "No speech detected in this recording.",
+    "noCaseOption": "No case (general)",
+    "sentToCase": "Sent — attached to “{{caseName}}”",
+    "sentNoCase": "Sent — not attached to a case",
     "status": {
       "local": "Not Sent",
       "uploading": "Uploading",
@@ -44,7 +47,13 @@
   "library": {
     "untitled": "Untitled Transcription",
     "loading": "Loading transcriptions…",
-    "loadError": "Couldn't load your transcriptions. Please try again."
+    "loadError": "Couldn't load your transcriptions. Please try again.",
+    "noCaseOption": "No case (general)",
+    "linkedToCase": "Linked to “{{caseName}}”",
+    "notLinked": "Not linked to a case",
+    "save": "Save",
+    "saving": "Saving…",
+    "saveFailed": "Couldn't update the linked case."
   },
   "delete": "Delete",
   "deleteRecord": "Delete {{name}}",
