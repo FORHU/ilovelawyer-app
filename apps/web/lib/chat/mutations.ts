@@ -90,6 +90,29 @@ export function useMessagesQuery(conversationId: string | undefined) {
   })
 }
 
+/** Legal precedent citations (title, case number, snippet, source url) the AI surfaced
+ * while composing the conversation's latest assistant reply — not the user's own cases.
+ * Empty until at least one message has been sent in the conversation. */
+export interface RelatedCase {
+  type: string
+  title: string | null
+  url: string | null
+  case_number: string | null
+  ra_number: string | null
+  year: unknown
+  snippet: string | null
+  relevance: number | null
+  vetted: boolean
+}
+
+export function useRelatedCasesQuery(conversationId: string | undefined) {
+  return useQuery({
+    queryKey: chatKeys.relatedCases(conversationId ?? ""),
+    queryFn: () => apiFetch<{ relatedCases: RelatedCase[] }>(`/api/chat/conversations/${conversationId}/related-cases`),
+    enabled: !!conversationId,
+  })
+}
+
 /** Sends a message and streams the assistant's reply, invoking onChunk as text arrives. */
 export async function sendChatMessage({
   conversationId,

@@ -106,11 +106,12 @@ export default function ConsultationChat({
   const { data: history } = useMessagesQuery(conversationId ?? undefined);
   const { data: caseConversations } = useConversationsQuery(caseId);
 
-  // Explicit case linkage for CaseHubWidget's related-cases panel. On a case's own chat
+  // Explicit case linkage for CaseHubWidget's case-details panel. On a case's own chat
   // page the `caseId` prop already pins it; on the general /homepage chat, fall back to
   // whichever case the current conversation is tagged with, or a pending ?caseId= carried
-  // over from a case's "Start Chat" action — CaseHubWidget itself falls back further to
-  // the user's most recently active case when none of these resolve.
+  // over from a case's "Start Chat" action. Deliberately does NOT fall back further to
+  // "the user's most recently active case" — that previously leaked one conversation's
+  // case into every other unrelated conversation's hub.
   const pendingCaseId = searchParams.get("caseId") ?? "";
   const linkedCaseId =
     caseId ??
@@ -301,6 +302,7 @@ export default function ConsultationChat({
       // drop the local buffer in favor of the (now up to date) query cache.
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConversationId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() });
+      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConversationId) });
       if (sendTokenRef.current === myToken) setPendingTurn(null);
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -511,7 +513,7 @@ export default function ConsultationChat({
                 })}
 
                 {!isSending && messages.length > 0 && messages.at(-1)?.role === "assistant" && messages.at(-1)?.content && (
-                  <CaseHubWidget caseId={linkedCaseId} onAskFollowUp={(text) => void doSend(text)} />
+                  <CaseHubWidget caseId={linkedCaseId} conversationId={conversationId} onAskFollowUp={(text) => void doSend(text)} />
                 )}
 
                 <div ref={messagesEndRef} />
