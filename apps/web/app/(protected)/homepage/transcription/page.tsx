@@ -13,7 +13,7 @@ import {
   useStartTranscriptionJobMutation,
 } from "@/lib/transcription/mutations";
 import { useTranscriptionPolling } from "@/lib/transcription/use-transcription-polling";
-import { useCasesQuery } from "@/lib/cases/mutations";
+import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 // Minimal shape of the non-standard Web Speech API — not part of lib.dom.d.ts.
@@ -310,8 +310,11 @@ export default function IlovelawyerTranscriptionDashboard() {
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const defaultCaseId = searchParams.get("caseId") ?? "";
+  // The page-level "Link to case" selector's chosen default, editable independently of the
+  // URL param that seeded it — per-row overrides (caseIdByTranscript) still win over this.
+  const [linkedCaseId, setLinkedCaseId] = useState(defaultCaseId);
   const [caseIdByTranscript, setCaseIdByTranscript] = useState<Record<string, string>>({});
-  const getRowCaseId = (id: string) => caseIdByTranscript[id] ?? defaultCaseId;
+  const getRowCaseId = (id: string) => caseIdByTranscript[id] ?? linkedCaseId;
   const setRowCaseId = (id: string, value: string) =>
     setCaseIdByTranscript((prev) => ({ ...prev, [id]: value }));
 
@@ -479,8 +482,8 @@ export default function IlovelawyerTranscriptionDashboard() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <select
-                  value={caseId}
-                  onChange={(e) => setCaseId(e.target.value)}
+                  value={linkedCaseId}
+                  onChange={(e) => setLinkedCaseId(e.target.value)}
                   className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary"
                 >
                   <option value="">{t("noCase")}</option>
