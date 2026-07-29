@@ -88,6 +88,24 @@ export function useTranscriptionsQuery() {
   })
 }
 
+/** Attaches/reattaches (or clears, with `caseId: null`) the case a transcription belongs to,
+ * for transcriptions that were created without one or need to move to a different case. */
+export function useLinkTranscriptionMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, caseId }: { id: string; caseId: string | null }) =>
+      apiFetch<Transcription>(`/api/transcriptions/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ caseId }),
+      }),
+    onSuccess: (_data, { id, caseId }) => {
+      queryClient.invalidateQueries({ queryKey: transcriptionKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: transcriptionKeys.detail(id) })
+      if (caseId) queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    },
+  })
+}
+
 export function useDeleteTranscriptionMutation() {
   const queryClient = useQueryClient()
   return useMutation({

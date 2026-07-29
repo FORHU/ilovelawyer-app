@@ -2,9 +2,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, FileAudio, Copy, Check, ChevronDown, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, FileAudio, Copy, Check, ChevronDown, Trash2, Loader2, AlertCircle } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
-import { useTranscriptionsQuery, useDeleteTranscriptionMutation, type Transcription } from "@/lib/transcription/mutations";
+import CustomSelect from "@/components/ui/custom-select";
+import {
+  useTranscriptionsQuery,
+  useDeleteTranscriptionMutation,
+  useLinkTranscriptionMutation,
+  type Transcription,
+} from "@/lib/transcription/mutations";
+import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "—";
@@ -13,11 +20,24 @@ function formatDuration(seconds: number | null): string {
   return `${minutes.toString().padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
 }
 
-function LibraryRow({ item }: { item: Transcription }) {
+function LibraryRow({ item, cases }: { item: Transcription; cases: CaseRecord[] }) {
   const { t } = useTranslation("transcription");
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedCaseId, setSelectedCaseId] = useState(item.caseId ?? "");
   const deleteTranscription = useDeleteTranscriptionMutation();
+  const linkTranscription = useLinkTranscriptionMutation();
+
+  const caseOptions = [
+    { value: "", label: t("library.noCaseOption") },
+    ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+  ];
+  const linkedCaseName = cases.find((c) => c.id === item.caseId)?.caseName;
+  const hasChanges = selectedCaseId !== (item.caseId ?? "");
+
+  const handleSaveCase = () => {
+    linkTranscription.mutate({ id: item.id, caseId: selectedCaseId || null });
+  };
 
   const handleCopy = async () => {
     if (!item.transcript) return;
@@ -54,6 +74,37 @@ function LibraryRow({ item }: { item: Transcription }) {
             <Trash2 className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <CustomSelect
+          value={selectedCaseId}
+          onChange={setSelectedCaseId}
+          options={caseOptions}
+          placeholder={t("library.noCaseOption")}
+          className="w-full sm:w-56"
+        />
+        {hasChanges ? (
+          <button
+            type="button"
+            onClick={handleSaveCase}
+            disabled={linkTranscription.isPending}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {linkTranscription.isPending && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+            {linkTranscription.isPending ? t("library.saving") : t("library.save")}
+          </button>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            {linkedCaseName ? t("library.linkedToCase", { caseName: linkedCaseName }) : t("library.notLinked")}
+          </p>
+        )}
+        {linkTranscription.isError && (
+          <p className="flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400">
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {t("library.saveFailed")}
+          </p>
+        )}
       </div>
 
       {item.transcript ? (
@@ -93,6 +144,8 @@ function LibraryRow({ item }: { item: Transcription }) {
 export default function TranscriptionLibraryPage() {
   const { t } = useTranslation("transcription");
   const { data, isLoading, isError } = useTranscriptionsQuery();
+  const casesQuery = useCasesQuery(1, 100);
+  const cases = casesQuery.data?.data ?? [];
 
   return (
     <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif]">
@@ -133,7 +186,7 @@ export default function TranscriptionLibraryPage() {
             </div>
           )}
 
-          {data?.map((item) => <LibraryRow key={item.id} item={item} />)}
+          {data?.map((item) => <LibraryRow key={item.id} item={item} cases={cases} />)}
         </div>
       </main>
 

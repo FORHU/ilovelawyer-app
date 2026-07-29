@@ -95,7 +95,7 @@ export function CaseHubWidget({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card overflow-hidden">
+    <section className="rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-border">
         <Link
           href={`/homepage/case-portfolio/${effectiveCaseId}`}
