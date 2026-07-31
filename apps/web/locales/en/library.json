@@ -51,17 +51,18 @@
     "jurisprudence": {
       "title": "Jurisprudence",
       "description": "Explore binding legal doctrines and case law established by the Supreme Court of the Philippines.",
-      "enBancDecisions": "Supreme Court En Banc Decisions",
-      "divisionDecisions": "Supreme Court Division Decisions",
-      "lowerCourtRulings": "Persuasive Lower Court Rulings",
+      "supremeCourtDecisions": "Supreme Court Decisions",
+      "courtOfTaxAppeals": "Court of Tax Appeals",
       "indexedDecisions": "Browse Indexed Decisions"
     },
     "issuance": {
       "title": "Issuance",
       "description": "Browse administrative regulations, circulars, and executive orders that implement and enforce broader statutory laws.",
-      "presidentialIssuances": "Presidential Issuances",
-      "administrativeAgencyIssuances": "Administrative Agency Issuances",
-      "judicialIssuances": "Judicial Issuances"
+      "bureauOfInternalRevenue": "Bureau of Internal Revenue",
+      "departmentOfTheInteriorAndLocalGovernment": "Department of the Interior and Local Government",
+      "bureauOfCustoms": "Bureau of Customs",
+      "departmentOfLaborAndEmployment": "Department of Labor and Employment",
+      "departmentOfJustice": "Department of Justice"
     }
   },
   "bento": {

@@ -2,12 +2,25 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Search, Scale, Landmark, FileStack, ChevronRight, ChevronUp } from "lucide-react";
+import { Search, Scale, Landmark, FileStack, ChevronRight, ChevronUp, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import LegalMarkdown from "@/components/library/legal-markdown";
-import { useAnalyzeKeywordMutation } from "@/lib/legal-rag/mutations";
+import { useAnalyzeKeywordMutation, useLibrarySectionsQuery, type LibrarySectionItem } from "@/lib/legal-rag/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
+const SECTION_ICONS: Record<string, typeof Scale> = {
+  codals: Scale,
+  jurisprudence: Landmark,
+  issuance: FileStack,
+};
+
+function sectionItemHref(item: LibrarySectionItem): string {
+  if (!item.category) return "/homepage/library/documents";
+  const params = new URLSearchParams({ category: item.category });
+  if (item.subcategory) params.set("subcategory", item.subcategory);
+  return `/homepage/library/documents?${params.toString()}`;
+}
 
 export default function LegalLibraryPage() {
   return (
@@ -21,6 +34,7 @@ function LegalLibraryPageContent() {
   const { t } = useTranslation("library");
   const [searchQuery, setSearchQuery] = useState("");
   const analyzeKeyword = useAnalyzeKeywordMutation();
+  const librarySections = useLibrarySectionsQuery();
   const searchParams = useSearchParams();
   const lastAppliedPrefillRef = useRef<string | null>(null);
 
@@ -173,56 +187,77 @@ function LegalLibraryPageContent() {
 
         {/* CLASSIFICATION SUMMARY CARDS */}
         <section className="bg-muted border-b border-border py-8">
-          <div className="max-w-[1440px] mx-auto px-6 md:px-16 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="max-w-[1440px] mx-auto px-6 md:px-16">
+            {librarySections.isLoading && (
+              <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                {t("documents.loading")}
+              </div>
+            )}
 
-            <div className="bg-card rounded-2xl border border-border p-6 flex flex-col gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex justify-between items-center">
-                <h3 className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">{t("categories.codals.title")}</h3>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                  <Scale className="h-4 w-4" aria-hidden="true" />
-                </div>
-              </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">{t("categories.codals.description")}</p>
-              <div className="mt-1 flex flex-col gap-2 text-xs text-blue-900 dark:text-blue-400 font-medium">
-                <Link href="/homepage/civil-code" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.codals.civilCode")}</Link>
-                <Link href="/homepage/constitution" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.codals.constitution1987")}</Link>
-                <Link href="/homepage/revised-penal-code" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.codals.revisedPenalCode")}</Link>
-                <Link href="/homepage/labor-code" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.codals.laborCode")}</Link>
-                <Link href="/homepage/family-code" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.codals.familyCode")}</Link>
-              </div>
-            </div>
+            {librarySections.isError && (
+              <div className="py-8 text-center text-sm text-red-600 dark:text-red-400">{t("documents.loadError")}</div>
+            )}
 
-            <div className="bg-card rounded-2xl border border-border p-6 flex flex-col gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex justify-between items-center">
-                <h3 className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">{t("categories.jurisprudence.title")}</h3>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                  <Landmark className="h-4 w-4" aria-hidden="true" />
-                </div>
+            {librarySections.data && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {librarySections.data.sections.map((section) => {
+                  const Icon = SECTION_ICONS[section.key] ?? Scale;
+                  return (
+                    <div
+                      key={section.key}
+                      className="bg-card rounded-2xl border border-border p-6 flex flex-col gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    >
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">
+                          {t(`categories.${section.key}.title`)}
+                        </h3>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                          <Icon className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {t(`categories.${section.key}.description`)}
+                      </p>
+                      <div className="mt-1 flex flex-col gap-2 text-xs text-blue-900 dark:text-blue-400 font-medium">
+                        {section.items.map((item) => {
+                          const label = t(`categories.${section.key}.${item.key}`);
+                          const content = (
+                            <>
+                              <ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
+                              {label}
+                              {item.count !== null && <span className="text-muted-foreground">({item.count})</span>}
+                            </>
+                          );
+                          return (
+                            <Tooltip key={item.key}>
+                              <TooltipTrigger asChild>
+                                {item.mode === "analyze" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => runAnalysis(item.query ?? label)}
+                                    className="flex items-center gap-1.5 hover:underline text-left cursor-pointer"
+                                  >
+                                    {content}
+                                  </button>
+                                ) : (
+                                  <Link href={sectionItemHref(item)} className="flex items-center gap-1.5 hover:underline">
+                                    {content}
+                                  </Link>
+                                )}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {item.mode === "analyze" ? `Ask the AI to look up ${label}` : `Browse ${label}`}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">{t("categories.jurisprudence.description")}</p>
-              <div className="mt-1 flex flex-col gap-2 text-xs text-blue-900 dark:text-blue-400 font-medium">
-                <Link href="/homepage/scra-archive" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.jurisprudence.enBancDecisions")}</Link>
-                <Link href="/homepage/scra-archive" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.jurisprudence.divisionDecisions")}</Link>
-                <Link href="/homepage/persuasive-rulings" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.jurisprudence.lowerCourtRulings")}</Link>
-                <Link href="/homepage/library/documents" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.jurisprudence.indexedDecisions")}</Link>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-2xl border border-border p-6 flex flex-col gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex justify-between items-center">
-                <h3 className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">{t("categories.issuance.title")}</h3>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                  <FileStack className="h-4 w-4" aria-hidden="true" />
-                </div>
-              </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">{t("categories.issuance.description")}</p>
-              <div className="mt-1 flex flex-col gap-2 text-xs text-blue-900 dark:text-blue-400 font-medium">
-                <Tooltip><TooltipTrigger asChild><Link href="/homepage/presidential-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.presidentialIssuances")}</Link></TooltipTrigger><TooltipContent>Browse presidential issuances</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild><Link href="/homepage/administrative-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.administrativeAgencyIssuances")}</Link></TooltipTrigger><TooltipContent>Browse administrative agency issuances</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild><Link href="/homepage/judicial-issuances" className="flex items-center gap-1.5 hover:underline"><ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />{t("categories.issuance.judicialIssuances")}</Link></TooltipTrigger><TooltipContent>Browse judicial issuances</TooltipContent></Tooltip>
-              </div>
-            </div>
-
+            )}
           </div>
         </section>
       </main>
