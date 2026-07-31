@@ -51,17 +51,18 @@
     "jurisprudence": {
       "title": "판례",
       "description": "필리핀 대법원이 확립한 구속력 있는 법 원칙과 판례를 살펴보세요.",
-      "enBancDecisions": "대법원 전원합의체 판결",
-      "divisionDecisions": "대법원 소부 판결",
-      "lowerCourtRulings": "하급 법원 참고 판결",
+      "supremeCourtDecisions": "대법원 판결",
+      "courtOfTaxAppeals": "조세항소법원",
       "indexedDecisions": "색인된 판결 찾아보기"
     },
     "issuance": {
       "title": "행정 명령",
       "description": "더 넓은 범위의 법령을 시행하고 집행하는 행정 규정, 회람, 행정 명령을 살펴보세요.",
-      "presidentialIssuances": "대통령령",
-      "administrativeAgencyIssuances": "행정 기관 고시",
-      "judicialIssuances": "사법부 고시"
+      "bureauOfInternalRevenue": "국세청",
+      "departmentOfTheInteriorAndLocalGovernment": "내무자치부",
+      "bureauOfCustoms": "관세청",
+      "departmentOfLaborAndEmployment": "노동고용부",
+      "departmentOfJustice": "법무부"
     }
   },
   "bento": {

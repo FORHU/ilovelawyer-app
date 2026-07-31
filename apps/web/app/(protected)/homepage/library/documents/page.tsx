@@ -1,6 +1,7 @@
 "use client";
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, FileStack, Loader2, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
@@ -9,8 +10,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 
 const PAGE_SIZE = 20;
 
+function humanize(value: string): string {
+  return value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export default function LegalDocumentsPage() {
+  return (
+    <Suspense fallback={null}>
+      <LegalDocumentsPageContent />
+    </Suspense>
+  );
+}
+
+function LegalDocumentsPageContent() {
   const { t } = useTranslation("library");
+  const searchParams = useSearchParams();
+  const category = searchParams.get("category") || undefined;
+  const subcategory = searchParams.get("subcategory") || undefined;
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -19,6 +38,8 @@ export default function LegalDocumentsPage() {
     page,
     limit: PAGE_SIZE,
     search: search || undefined,
+    category,
+    subcategory,
   });
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -49,7 +70,13 @@ export default function LegalDocumentsPage() {
               <TooltipContent>Return to the Library home</TooltipContent>
             </Tooltip>
 
-            <h1 className="font-['Libre_Caslon_Text',serif] text-3xl md:text-4xl text-foreground">{t("documents.pageTitle")}</h1>
+            <h1 className="font-['Libre_Caslon_Text',serif] text-3xl md:text-4xl text-foreground">
+              {subcategory
+                ? `${humanize(category ?? "")} — ${humanize(subcategory)}`
+                : category
+                  ? humanize(category)
+                  : t("documents.pageTitle")}
+            </h1>
 
             <form
               onSubmit={handleSearch}
