@@ -63,4 +63,5 @@ export const legalRagKeys = {
   list: (filters?: Record<string, unknown>) => [...legalRagKeys.lists(), filters] as const,
   details: () => [...legalRagKeys.all, "detail"] as const,
   detail: (id: string | number) => [...legalRagKeys.details(), String(id)] as const,
+  sections: () => [...legalRagKeys.all, "sections"] as const,
 }

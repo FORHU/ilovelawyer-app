@@ -51,17 +51,18 @@
     "jurisprudence": {
       "title": "Jurisprudence",
       "description": "Galugarin ang mga nagbubuklod na legal doctrine at case law na itinatag ng Korte Suprema ng Pilipinas.",
-      "enBancDecisions": "Mga Desisyon ng Korte Suprema En Banc",
-      "divisionDecisions": "Mga Desisyon ng Dibisyon ng Korte Suprema",
-      "lowerCourtRulings": "Mga Persuasive na Desisyon ng Mas Mababang Hukuman",
+      "supremeCourtDecisions": "Mga Desisyon ng Korte Suprema",
+      "courtOfTaxAppeals": "Hukuman sa Paghahabol sa Buwis",
       "indexedDecisions": "Mag-browse ng mga Naka-indeks na Desisyon"
     },
     "issuance": {
       "title": "Issuance",
       "description": "Mag-browse ng mga administrative regulation, circular, at executive order na nagpapatupad ng mas malawak na statutory law.",
-      "presidentialIssuances": "Mga Presidential Issuance",
-      "administrativeAgencyIssuances": "Mga Isyu ng Administrative Agency",
-      "judicialIssuances": "Mga Judicial Issuance"
+      "bureauOfInternalRevenue": "Kawanihan ng Rentas Internas",
+      "departmentOfTheInteriorAndLocalGovernment": "Kagawaran ng Interyor at Pamahalaang Lokal",
+      "bureauOfCustoms": "Kawanihan ng Adwana",
+      "departmentOfLaborAndEmployment": "Kagawaran ng Paggawa at Empleyo",
+      "departmentOfJustice": "Kagawaran ng Katarungan"
     }
   },
   "bento": {

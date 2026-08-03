@@ -39,6 +39,7 @@ export interface LegalDocumentFilters {
   page?: number
   limit?: number
   category?: string
+  subcategory?: string
   year?: number
   search?: string
 }
@@ -48,6 +49,7 @@ function buildQueryString(filters: LegalDocumentFilters): string {
   if (filters.page) params.set("page", String(filters.page))
   if (filters.limit) params.set("limit", String(filters.limit))
   if (filters.category) params.set("category", filters.category)
+  if (filters.subcategory) params.set("subcategory", filters.subcategory)
   if (filters.year) params.set("year", String(filters.year))
   if (filters.search) params.set("search", filters.search)
 
@@ -59,6 +61,31 @@ export function useLegalDocumentsQuery(filters: LegalDocumentFilters = {}) {
   return useQuery({
     queryKey: legalRagKeys.list({ ...filters }),
     queryFn: () => apiFetch<LegalDocumentList>(`/api/legal-rag${buildQueryString(filters)}`),
+  })
+}
+
+export interface LibrarySectionItem {
+  key: string
+  mode: "browse" | "analyze"
+  category: string | null
+  subcategory: string | null
+  query: string | null
+  count: number | null
+}
+
+export interface LibrarySection {
+  key: string
+  items: LibrarySectionItem[]
+}
+
+export interface LibrarySectionsResponse {
+  sections: LibrarySection[]
+}
+
+export function useLibrarySectionsQuery() {
+  return useQuery({
+    queryKey: legalRagKeys.sections(),
+    queryFn: () => apiFetch<LibrarySectionsResponse>("/api/legal-rag/library-sections"),
   })
 }
 
