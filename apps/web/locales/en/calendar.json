@@ -15,6 +15,11 @@
   "notePlaceholder": "Note",
   "noCase": "No linked case",
   "saving": "Saving…",
+  "pastDate": {
+    "title": "This date has already passed",
+    "description": "Appointments can only be made for today or a future date.",
+    "tooltip": "View appointments on {{date}}"
+  },
   "addAppointment": "Add Appointment",
   "addNote": "Add Note",
   "errors": {

@@ -14,10 +14,18 @@ export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery();
+  // Debounce so we don't fire a request on every keystroke while searching across
+  // the user's full case set (not just the cases already loaded on this page).
+  React.useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
+  const { data, isLoading, isError, refetch } = useCasesQuery(1, 20, debouncedSearch);
   const cases = data?.data ?? [];
 
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
@@ -34,14 +42,6 @@ export default function CaseManagerDashboard() {
     await deleteCase(deletingCase.id);
     setDeletingCase(null);
   };
-
-  const filteredCases = cases.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      item.caseName.toLowerCase().includes(query) ||
-      (item.partyInvolved ?? "").toLowerCase().includes(query)
-    );
-  });
 
   const handleNewFiling = () => {
     router.push("/homepage/create-case");
@@ -110,7 +110,7 @@ export default function CaseManagerDashboard() {
 
         {!isLoading && !isError && (
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-            {filteredCases.map((c) => (
+            {cases.map((c) => (
               <div
                 key={c.id}
                 className="relative group/card min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
@@ -204,7 +204,7 @@ export default function CaseManagerDashboard() {
           </section>
         )}
 
-        {!isLoading && !isError && cases.length > 0 && filteredCases.length === 0 && (
+        {!isLoading && !isError && debouncedSearch !== "" && cases.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center py-16 -mt-4">
             <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 text-muted-foreground shadow-sm">
               <Briefcase className="h-6 w-6" aria-hidden="true" />

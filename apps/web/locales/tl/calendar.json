@@ -15,6 +15,11 @@
   "notePlaceholder": "Tala",
   "noCase": "Walang naka-link na kaso",
   "saving": "Sine-save…",
+  "pastDate": {
+    "title": "Nakalipas na ang petsang ito",
+    "description": "Maaari lang magdagdag ng appointment sa araw na ito o sa hinaharap.",
+    "tooltip": "Tingnan ang mga appointment sa {{date}}"
+  },
   "addAppointment": "Magdagdag ng Appointment",
   "addNote": "Magdagdag ng Tala",
   "errors": {

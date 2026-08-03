@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, AlertCircle, Network, Clock } from "lucide-react";
-import { useCaseQuery } from "@/lib/cases/mutations";
+import { ChevronDown, ChevronRight, AlertCircle, Network, Clock, FileText, Plus, Loader2, Trash2 } from "lucide-react";
+import {
+  useCaseQuery,
+  useCaseDocumentsQuery,
+  useUploadCaseDocumentMutation,
+  useDeleteCaseDocumentMutation,
+} from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface CaseDetailsPanelProps {
@@ -118,9 +123,117 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
               {caseRecord.notes || t("detail.noNotes")}
             </p>
           </div>
+
+          <div className="flex flex-col gap-2 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t("detail.documents")}
+              </span>
+              <DocumentUploadButton caseId={caseId} />
+            </div>
+            <CaseDocumentList caseId={caseId} />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+/** Small trigger + hidden file input that uploads straight into this case — same upload
+ * mutation the chat's "Add Document" quick action uses, so a file shows up here regardless
+ * of which entry point it was uploaded from. */
+function DocumentUploadButton({ caseId }: { caseId: string }) {
+  const { t } = useTranslation("case-portfolio");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { mutate: uploadDocument, isPending, isError } = useUploadCaseDocumentMutation();
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+          >
+            {isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
+            {isPending ? t("detail.uploading") : t("detail.addDocument")}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Upload a document to this case</TooltipContent>
+      </Tooltip>
+      {isError && <span className="block text-right text-[11px] text-red-600 dark:text-red-400">{t("detail.uploadError")}</span>}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) uploadDocument({ file, caseId });
+        }}
+      />
+    </>
+  );
+}
+
+function CaseDocumentList({ caseId }: { caseId: string }) {
+  const { t } = useTranslation("case-portfolio");
+  const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
+  const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation();
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>;
+  }
+
+  if (isError) {
+    return <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>;
+  }
+
+  if (!documents || documents.length === 0) {
+    return <p className="text-sm text-muted-foreground">{t("detail.noDocuments")}</p>;
+  }
+
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {documents.map((doc) => (
+        <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          {doc.fileUrl ? (
+            <a
+              href={doc.fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 flex-1 truncate text-sm text-foreground hover:text-brand-gold hover:underline"
+            >
+              {doc.name}
+            </a>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={isDeleting && deletingVars?.documentId === doc.id}
+                onClick={() => deleteDocument({ documentId: doc.id, caseId })}
+                aria-label={t("detail.removeDocument", { documentName: doc.name })}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                {isDeleting && deletingVars?.documentId === doc.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
+          </Tooltip>
+        </li>
+      ))}
+    </ul>
   );
 }
 

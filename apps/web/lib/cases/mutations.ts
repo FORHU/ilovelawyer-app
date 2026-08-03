@@ -14,11 +14,17 @@ export interface CaseRecord {
   updatedAt: string
 }
 
-/** Lists the current user's cases, paginated (backend default: page 1, limit 20). */
-export function useCasesQuery(page = 1, limit = 20) {
+/** Lists the current user's cases, paginated (backend default: page 1, limit 20).
+ * `search` is forwarded to the backend as a `search` query param so matching happens
+ * across the user's full case set, not just the cases already fetched for this page. */
+export function useCasesQuery(page = 1, limit = 20, search = "") {
   return useQuery({
-    queryKey: caseKeys.list({ page, limit }),
-    queryFn: () => apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?page=${page}&limit=${limit}`),
+    queryKey: caseKeys.list({ page, limit, search }),
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      if (search) params.set("search", search)
+      return apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?${params.toString()}`)
+    },
   })
 }
 
@@ -119,6 +125,17 @@ export function useUploadCaseDocumentMutation() {
   })
 }
 
+/** Lists the documents attached to a case. Uploading (useUploadCaseDocumentMutation) and
+ * linking (useLinkCaseDocumentMutation) both invalidate `caseKeys.timeline(caseId)`, so
+ * this refetches automatically after either. */
+export function useCaseDocumentsQuery(caseId: string) {
+  return useQuery({
+    queryKey: caseKeys.timeline(caseId),
+    queryFn: () => apiFetch<UserDocument[]>(`/api/documents?caseId=${caseId}`),
+    enabled: !!caseId,
+  })
+}
+
 /** Links a previously-uploaded document to a case, once the case has been created and its id is known. */
 export function useLinkCaseDocumentMutation() {
   const queryClient = useQueryClient()
@@ -128,6 +145,18 @@ export function useLinkCaseDocumentMutation() {
         method: "PATCH",
         body: JSON.stringify({ caseId }),
       }),
+    onSuccess: (_data, { caseId }) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    },
+  })
+}
+
+export function useDeleteCaseDocumentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ documentId }: { documentId: string; caseId: string }) => {
+      await apiFetchRaw(`/api/documents/${documentId}`, { method: "DELETE" })
+    },
     onSuccess: (_data, { caseId }) => {
       queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
     },

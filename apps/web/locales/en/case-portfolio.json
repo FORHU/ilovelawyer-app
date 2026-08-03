@@ -41,7 +41,14 @@
     "loadError": "Couldn't load this case.",
     "notFound": "Case not found.",
     "mindMap": "View mind map",
-    "timeline": "View timeline"
+    "timeline": "View timeline",
+    "documents": "Documents",
+    "noDocuments": "No documents attached.",
+    "addDocument": "Add",
+    "uploading": "Uploading…",
+    "uploadError": "Couldn't upload this file.",
+    "removeDocument": "Remove {{documentName}}",
+    "loadDocumentsError": "Couldn't load documents."
   },
   "chat": {
     "emptyHeading": "Ask about {{caseName}}",

@@ -15,6 +15,11 @@
   "notePlaceholder": "메모",
   "noCase": "연결된 사건 없음",
   "saving": "저장 중…",
+  "pastDate": {
+    "title": "이미 지난 날짜입니다",
+    "description": "오늘 또는 이후 날짜에만 약속을 추가할 수 있습니다.",
+    "tooltip": "{{date}}의 약속 보기"
+  },
   "addAppointment": "약속 추가",
   "addNote": "메모 추가",
   "errors": {

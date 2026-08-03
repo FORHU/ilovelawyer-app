@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
       { source: "/api/auth/login", destination: `${API_URL}/api/auth/login` },
       { source: "/api/auth/google", destination: `${API_URL}/api/auth/google` },
       { source: "/api/auth/reset-password", destination: `${API_URL}/api/auth/reset-password` },
+      { source: "/api/auth/verify-otp", destination: `${API_URL}/api/auth/verify-otp` },
     ]
   },
 }
