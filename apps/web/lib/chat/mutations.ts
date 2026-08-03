@@ -113,7 +113,11 @@ export function useRelatedCasesQuery(conversationId: string | undefined) {
   })
 }
 
-/** Sends a message and streams the assistant's reply, invoking onChunk as text arrives. */
+/** Sends a message and streams the assistant's reply, invoking onChunk as text arrives.
+ * Returns `newSessionId` if the backend had to silently rotate to a fresh Chat Wonder
+ * session_id mid-request (see ilovelawyer-api's ChatCtrl.sendMessage/streamWithSessionRetry) —
+ * callers should update their cached session_id with it so the next message doesn't
+ * repeat the same failed-then-retried round trip. */
 export async function sendChatMessage({
   conversationId,
   sessionId,
@@ -126,14 +130,16 @@ export async function sendChatMessage({
   message: string
   documentContext?: string
   onChunk: (text: string) => void
-}): Promise<void> {
+}): Promise<{ newSessionId?: string }> {
   const res = await apiFetchRaw(`/api/chat/conversations/${conversationId}/messages`, {
     method: "POST",
     body: JSON.stringify({ message, sessionId, documentContext }),
   })
 
+  const newSessionId = res.headers.get("X-Chat-Session-Id") ?? undefined
+
   const reader = res.body?.getReader()
-  if (!reader) return
+  if (!reader) return { newSessionId }
 
   const decoder = new TextDecoder()
   while (true) {
@@ -141,4 +147,6 @@ export async function sendChatMessage({
     if (done) break
     onChunk(decoder.decode(value, { stream: true }))
   }
+
+  return { newSessionId }
 }
