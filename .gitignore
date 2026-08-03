@@ -46,3 +46,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+handoff-chat-wonder-access-issue.md
