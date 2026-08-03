@@ -189,16 +189,12 @@ export default function CreateCasePage() {
 
     try {
       // Type of Action and Jurisdiction have no home on the backend yet (see CONTEXT.md
-      // pending section) — they're captured in the form but not sent. Parties collapse into
-      // the single `partyInvolved` string the backend does support.
-      const partyInvolved = formData.parties
-        .filter((p) => p.name.trim())
-        .map((p) => `${p.name.trim()} (${p.designation})`)
-        .join("; ");
-
+      // pending section) — they're captured in the form but not sent.
       const newCase = await createCase({
         caseName: formData.caseTitle.trim(),
-        partyInvolved: partyInvolved || undefined,
+        parties: formData.parties
+          .filter((p) => p.name.trim())
+          .map((p) => ({ name: p.name.trim(), designation: p.designation })),
       });
 
       const documentIds = formData.uploadedFiles

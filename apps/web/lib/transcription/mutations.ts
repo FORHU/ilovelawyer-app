@@ -25,6 +25,7 @@ export interface Transcription {
 export interface PollJobResult {
   status: string
   transcript?: string
+  failureReason?: string
 }
 
 /** Uploads an audio Blob to the generic file store — must bypass JSON content-type (multipart). */
