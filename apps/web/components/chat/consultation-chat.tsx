@@ -295,7 +295,7 @@ export default function ConsultationChat({
         router.push(`${basePath}?c=${activeConversationId}`);
       }
 
-      await sendChatMessage({
+      const { newSessionId } = await sendChatMessage({
         conversationId: activeConversationId,
         sessionId: session.session_id,
         message: text,
@@ -313,6 +313,13 @@ export default function ConsultationChat({
           });
         },
       });
+
+      // The backend silently rotated to a fresh Chat Wonder session_id mid-request (ours
+      // had expired) — update the cache so the next message uses it directly instead of
+      // repeating the same failed-then-retried round trip.
+      if (newSessionId) {
+        queryClient.setQueryData(chatKeys.session(), { session_id: newSessionId });
+      }
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
