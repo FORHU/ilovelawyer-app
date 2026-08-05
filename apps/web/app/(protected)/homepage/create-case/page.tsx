@@ -8,7 +8,6 @@ import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Sc
 import {
   useCreateCaseMutation,
   useUploadCaseDocumentMutation,
-  useLinkCaseDocumentMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -31,7 +30,7 @@ interface Party {
   designation: string;
 }
 
-type UploadStatus = "uploading" | "uploaded" | "error";
+type UploadStatus = "pending" | "uploading" | "uploaded" | "error";
 
 interface UploadedFile {
   id: string;
@@ -58,10 +57,12 @@ export default function CreateCasePage() {
   const [caseTitleError, setCaseTitleError] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Set once the case is created on first submit. Kept across retries so a resubmit after a
+  // partial upload failure reuses the existing case instead of creating a duplicate.
+  const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
   const nextPartyIdRef = useRef(2);
 
   const { mutateAsync: uploadDocument } = useUploadCaseDocumentMutation();
-  const { mutateAsync: linkDocument } = useLinkCaseDocumentMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
 
   const handleInputChange = (field: string, value: string) => {
@@ -106,34 +107,38 @@ export default function CreateCasePage() {
     }));
   };
 
-  // Uploads straight to our own API (POST /api/documents, multipart) — the document isn't
-  // linked to a case yet, since the case doesn't exist until the form is submitted. The link
-  // happens in handleSubmitFiling once the case's id is known.
-  const uploadOne = async (entry: UploadedFile) => {
+  // Uploads via presigned S3 URL (see useUploadCaseDocumentMutation), with caseId passed
+  // directly at confirm time — this only runs once the case already exists (from
+  // handleSubmitFiling), so there's no separate link step needed afterward.
+  const uploadOne = async (entry: UploadedFile, caseId: string): Promise<boolean> => {
+    updateUploadedFile(entry.id, { status: "uploading", error: undefined });
     try {
-      const doc = await uploadDocument({ file: entry.file });
+      const doc = await uploadDocument({ file: entry.file, caseId });
       updateUploadedFile(entry.id, { status: "uploaded", documentId: doc.id });
+      return true;
     } catch (err) {
       updateUploadedFile(entry.id, {
         status: "error",
         error: err instanceof Error ? err.message : t("sectionEvidence.uploadFailed"),
       });
+      return false;
     }
   };
 
+  // Files are only queued here, not uploaded — the case doesn't exist yet, and upload
+  // doesn't start until handleSubmitFiling creates it.
   const addFiles = (files: FileList | File[]) => {
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
     const entries: UploadedFile[] = incoming.map((file) => ({
       id: crypto.randomUUID(),
       file,
-      status: "uploading",
+      status: "pending",
     }));
     setFormData((prev) => ({
       ...prev,
       uploadedFiles: [...prev.uploadedFiles, ...entries],
     }));
-    entries.forEach((entry) => void uploadOne(entry));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,11 +153,13 @@ export default function CreateCasePage() {
     }));
   };
 
+  // Only reachable once a submit attempt has already run (that's the only way a file can be
+  // in "error" state), so createdCaseId is guaranteed to be set here.
   const retryUpload = (id: string) => {
+    if (!createdCaseId) return;
     const entry = formData.uploadedFiles.find((f) => f.id === id);
     if (!entry) return;
-    updateUploadedFile(id, { status: "uploading", error: undefined });
-    void uploadOne({ ...entry, status: "uploading", error: undefined });
+    void uploadOne(entry, createdCaseId);
   };
 
   const triggerFileSelect = () => {
@@ -175,8 +182,9 @@ export default function CreateCasePage() {
     addFiles(e.dataTransfer.files);
   };
 
+  // Errored files don't block resubmission — clicking submit again is the retry path, since
+  // the case (once created) is reused rather than duplicated.
   const hasFilesUploading = formData.uploadedFiles.some((f) => f.status === "uploading");
-  const hasFailedUploads = formData.uploadedFiles.some((f) => f.status === "error");
 
   const handleSubmitFiling = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -185,27 +193,38 @@ export default function CreateCasePage() {
       setCaseTitleError(true);
       return;
     }
-    if (hasFilesUploading || hasFailedUploads) return;
+    if (hasFilesUploading) return;
 
     try {
-      // Type of Action and Jurisdiction have no home on the backend yet (see CONTEXT.md
-      // pending section) — they're captured in the form but not sent. Parties collapse into
-      // the single `partyInvolved` string the backend does support.
-      const partyInvolved = formData.parties
-        .filter((p) => p.name.trim())
-        .map((p) => `${p.name.trim()} (${p.designation})`)
-        .join("; ");
+      // Reuse the case from a prior attempt if this is a retry after some files failed to
+      // upload — otherwise creating a new case on every resubmit would leave duplicates behind.
+      let caseId = createdCaseId;
+      if (!caseId) {
+        // Type of Action and Jurisdiction have no home on the backend yet (see CONTEXT.md
+        // pending section) — they're captured in the form but not sent. Parties collapse into
+        // the single `partyInvolved` string the backend does support.
+        const partyInvolved = formData.parties
+          .filter((p) => p.name.trim())
+          .map((p) => `${p.name.trim()} (${p.designation})`)
+          .join("; ");
 
-      const newCase = await createCase({
-        caseName: formData.caseTitle.trim(),
-        partyInvolved: partyInvolved || undefined,
-      });
+        const newCase = await createCase({
+          caseName: formData.caseTitle.trim(),
+          partyInvolved: partyInvolved || undefined,
+        });
+        caseId = newCase.id;
+        setCreatedCaseId(caseId);
+      }
 
-      const documentIds = formData.uploadedFiles
-        .filter((f): f is UploadedFile & { documentId: string } => f.status === "uploaded" && !!f.documentId);
-      await Promise.all(documentIds.map((f) => linkDocument({ documentId: f.documentId, caseId: newCase.id })));
+      const pending = formData.uploadedFiles.filter((f) => f.status !== "uploaded");
+      const results = await Promise.all(pending.map((f) => uploadOne(f, caseId as string)));
+      if (results.some((ok) => !ok)) {
+        // Case already exists (createdCaseId is set) — stay on the form so the user can retry
+        // the failed files individually or via resubmit, rather than losing the case entirely.
+        return;
+      }
 
-      router.push(`/homepage/case-portfolio/${newCase.id}`);
+      router.push(`/homepage/case-portfolio/${caseId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
@@ -550,7 +569,7 @@ export default function CreateCasePage() {
               <TooltipTrigger asChild>
                 <button
                   type="submit"
-                  disabled={hasFilesUploading || hasFailedUploads || isSubmitting}
+                  disabled={hasFilesUploading || isSubmitting}
                   className="bg-brand-navy-900 text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? t("submitting") : t("initiateFiling")}

@@ -5,6 +5,10 @@
 Accepted. Backend work not yet started (spec handed off — see the instructions produced alongside
 this ADR). Frontend work (Case Details document list, in-chat upload) tracked separately.
 
+The upload transport and pipeline parameters this ADR left unspecified are now decided in
+ADR 0009 (presigned S3 upload, replacing the proxied upload described below) and ADR 0010
+(extraction/chunking/embedding libraries, readiness enum, retrieval trigger and parameters).
+
 ## Context
 
 Two gaps existed side by side:

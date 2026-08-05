@@ -197,7 +197,7 @@ function CaseDocumentList({ caseId }: { caseId: string }) {
   }
 
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
       {documents.map((doc) => (
         <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
