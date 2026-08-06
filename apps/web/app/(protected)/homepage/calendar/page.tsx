@@ -9,8 +9,8 @@ import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
-import { addMonths, format, isSameDay, isSameMonth, parse, startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { AlertCircle, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
+import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
+import { AlertCircle, CalendarOff, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAppointmentsQuery, useCreateAppointmentMutation } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
@@ -19,6 +19,10 @@ const MAX_VISIBLE_PER_DAY = 2;
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
+}
+
+function isPastDay(date: Date): boolean {
+  return isBefore(startOfDay(date), startOfDay(new Date()));
 }
 
 function formatTime12h(time: string): string {
@@ -46,6 +50,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
 
   const dayItems = itemsByDate?.get(toDateKey(day.date));
   const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
+  const isPast = !!modifiers.past && !modifiers.today;
 
   return (
     <Tooltip>
@@ -57,6 +62,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
           className={cn(
             "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
             modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
+            isPast && !modifiers.outside && "bg-muted/30",
             isSelected && "border-primary bg-primary/10",
             className
           )}
@@ -64,7 +70,8 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
           <span
             className={cn(
               "flex size-5 items-center justify-center rounded-full text-xs font-medium",
-              modifiers.today && "bg-primary font-bold text-primary-foreground"
+              modifiers.today && "bg-primary font-bold text-primary-foreground",
+              isPast && "bg-muted text-muted-foreground"
             )}
           >
             {day.date.getDate()}
@@ -85,7 +92,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
           </div>
         </button>
       </TooltipTrigger>
-      <TooltipContent>View or add appointments on {format(day.date, "MMM d")}</TooltipContent>
+      <TooltipContent>{isPast ? t("pastDate.tooltip", { date: format(day.date, "MMM d") }) : `View or add appointments on ${format(day.date, "MMM d")}`}</TooltipContent>
     </Tooltip>
   );
 }
@@ -201,11 +208,12 @@ function PlannerPanel({
   const isSubmitting = createAppointment.isPending;
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
+  const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!selectedDate) return;
+    if (!selectedDate || isPastSelected) return;
     const date = toDateKey(selectedDate);
 
     if (!title.trim()) return setFormError(t("errors.titleRequired"));
@@ -241,6 +249,10 @@ function PlannerPanel({
           month={currentMonth}
           onMonthChange={onMonthChange}
           fixedWeeks
+          modifiers={{ past: isPastDay }}
+          modifiersClassNames={{
+            past: "rounded-(--cell-radius) bg-muted text-muted-foreground data-[selected=true]:rounded-none",
+          }}
           classNames={{
             today: "rounded-(--cell-radius) bg-accent text-accent-foreground data-[selected=true]:rounded-none",
           }}
@@ -248,70 +260,83 @@ function PlannerPanel({
         />
 
         <div className="border-t border-border pt-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
-          </p>
-
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
-
-            <input
-              type="text"
-              placeholder={t("titlePlaceholder")}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-            />
-            <div className="flex gap-2">
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
+          {isPastSelected ? (
+            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+              <CalendarOff className="size-3.5 shrink-0" aria-hidden="true" />
+              <p className="text-xs font-bold uppercase tracking-wider">{t("pastDate.title")}</p>
             </div>
-            <input
-              type="email"
-              placeholder={t("Email")}
-              value={notifyEmail}
-              onChange={(e) => setNotifyEmail(e.target.value)}
-              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-            />
-            <select
-              value={caseId}
-              onChange={(e) => setCaseId(e.target.value)}
-              className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary"
-            >
-              <option value="">{t("noCase")}</option>
-              {cases.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.caseName}
-                </option>
-              ))}
-            </select>
-            <textarea
-              placeholder={t("descriptionPlaceholder")}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-              className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-            />
+          ) : (
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
+            </p>
+          )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-                  {isSubmitting ? t("saving") : t("addAppointment")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Save this appointment to the selected day</TooltipContent>
-            </Tooltip>
-          </form>
+          {isPastSelected ? (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5">
+              <p className="text-xs text-muted-foreground">{t("pastDate.description")}</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
+
+              <input
+                type="text"
+                placeholder={t("titlePlaceholder")}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
+              </div>
+              <input
+                type="email"
+                placeholder={t("Email")}
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              <select
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+              >
+                <option value="">{t("noCase")}</option>
+                {cases.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.caseName}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                placeholder={t("descriptionPlaceholder")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
+                    {isSubmitting ? t("saving") : t("addAppointment")}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save this appointment to the selected day</TooltipContent>
+              </Tooltip>
+            </form>
+          )}
         </div>
       </CardContent>
 
@@ -510,6 +535,7 @@ export default function CalendarPage() {
                     showOutsideDays
                     fixedWeeks
                     components={{ DayButton: CalendarDayCell }}
+                    modifiers={{ past: isPastDay }}
                     classNames={{
                       nav: "hidden",
                       month_caption: "hidden",

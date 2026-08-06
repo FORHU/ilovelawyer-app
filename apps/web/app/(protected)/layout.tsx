@@ -2,17 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
-
-// Relative — proxied server-side to the real API by next.config.ts's rewrites(),
-// so this stays same-origin with the browser even when the API is on another host.
-const BASE_URL = ""
+import { PageTransition } from "@/components/page-transition"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
-  const setAccessToken = useAuthStore((s) => s.setAccessToken)
   const setAuth = useAuthStore((s) => s.setAuth)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const [hydrating, setHydrating] = useState(() => !accessToken)
@@ -24,18 +21,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     // No in-memory access token (fresh tab or reload) — the refresh token only
     // lives in the httpOnly cookie, so ask the server to mint a new access token.
-    fetch(`${BASE_URL}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Refresh failed")
-        return res.json()
-      })
-      .then((data) => {
-        setAccessToken(data.accessToken)
-        setHydrating(false)
-      })
+    // Goes through the shared single-flight refreshAccessToken (not a raw fetch)
+    // so this can't race the auth layout's own refresh call and burn the
+    // one-time refresh cookie, which would spuriously 401 whichever call loses.
+    refreshAccessToken()
+      .then(() => setHydrating(false))
       .catch(() => {
         clearAuth()
         router.replace("/login")
@@ -60,7 +50,13 @@ function CurrentUserSync({
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
-  const { data: currentUser, isError } = useCurrentUserQuery()
+  const { data: currentUser, isError, error } = useCurrentUserQuery()
+  // A missing/expired token is a real 401/403 from the API. Anything else (a
+  // dropped connection, a CORS misconfiguration, a 500) is transient and
+  // shouldn't sign the user out — apiFetch already throws with `.status` unset
+  // for those, since the underlying fetch() rejects before an HTTP response
+  // ever comes back to inspect.
+  const isAuthError = isError && ((error as { status?: number })?.status === 401 || (error as { status?: number })?.status === 403)
 
   useEffect(() => {
     if (!accessToken || user || !currentUser) return
@@ -72,14 +68,14 @@ function CurrentUserSync({
   }, [accessToken, user, currentUser])
 
   useEffect(() => {
-    if (isError) {
+    if (isAuthError) {
       clearAuth()
       router.replace("/login")
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isError])
+  }, [isAuthError])
 
   if (hydrating || (accessToken && !user && !isError)) return null
 
-  return <>{children}</>
+  return <PageTransition>{children}</PageTransition>
 }

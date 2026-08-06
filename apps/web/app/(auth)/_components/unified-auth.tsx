@@ -8,6 +8,7 @@ import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { TermsReviewDialog } from "./terms-review-dialog";
 
 import {
   useForgotPasswordMutation,
@@ -55,6 +56,8 @@ function UnifiedAuthContent() {
   const [showSignupPw, setShowSignupPw] = useState(false);
   const [showConfirmSignupPw, setShowConfirmSignupPw] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
 
   // Recover fields
   const [recoverEmail, setRecoverEmail] = useState("");
@@ -102,7 +105,28 @@ function UnifiedAuthContent() {
     setError(null);
     loginMutation.mutate(
       { email: signinEmail, password: signinPassword, remember },
-      { onError: (err) => setError((err as Error).message) }
+      {
+        onError: (err) => {
+          // 403 from login() means the account exists but hasn't completed
+          // email verification yet — drop them into the same OTP screen
+          // signup uses (reusing signupEmail, the state it already reads)
+          // and send a fresh code, rather than just showing an error.
+          if ((err as Error & { status?: number }).status === 403) {
+            setSignupEmail(signinEmail);
+            setOtpDigits(Array(OTP_LENGTH).fill(""));
+            setOtpStep(true);
+            sendOtpMutation.mutate(
+              { email: signinEmail },
+              {
+                onSuccess: () => setResendCooldown(RESEND_COOLDOWN_SECONDS),
+                onError: (otpErr) => setError((otpErr as Error).message),
+              }
+            );
+            return;
+          }
+          setError((err as Error).message);
+        },
+      }
     );
   }
 
@@ -152,6 +176,21 @@ function UnifiedAuthContent() {
     if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
+  }
+
+  function handleOtpPaste(index: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+    if (!pasted) return;
+    e.preventDefault();
+    setOtpDigits((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < pasted.length && index + i < OTP_LENGTH; i++) {
+        next[index + i] = pasted.charAt(i);
+      }
+      return next;
+    });
+    const nextIndex = Math.min(index + pasted.length, OTP_LENGTH - 1);
+    otpRefs.current[nextIndex]?.focus();
   }
 
   function handleVerifyOtp() {
@@ -262,7 +301,7 @@ function UnifiedAuthContent() {
               </div>
 
               <div className="flex flex-col gap-6">
-                <div className="flex gap-3">
+                <div className="flex w-full justify-between gap-3">
                   {otpDigits.map((digit, i) => (
                     <input
                       key={i}
@@ -275,6 +314,7 @@ function UnifiedAuthContent() {
                       value={digit}
                       onChange={(e) => handleOtpDigitChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      onPaste={(e) => handleOtpPaste(i, e)}
                       className="w-12 h-14 text-center text-xl font-semibold border border-border rounded-xl border-b-2 bg-transparent text-foreground outline-none focus:border-brand-gold transition-colors"
                     />
                   ))}
@@ -434,22 +474,38 @@ function UnifiedAuthContent() {
                     </div>
                   </div>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setRemember(!remember)}>
-                        <div className="relative size-4 border-2 border-border bg-background shrink-0 hover:border-brand-gold transition-colors">
-                          {remember && <div className="absolute inset-0.5 bg-foreground" />}
+                  <div className="flex items-center justify-between">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setRemember(!remember)}>
+                          <div className="relative size-4 border-2 border-border bg-background shrink-0 hover:border-brand-gold transition-colors">
+                            {remember && <div className="absolute inset-0.5 bg-foreground" />}
+                          </div>
+                          <span
+                            className="text-muted-foreground text-[10px] tracking-[0.5px] uppercase"
+                            style={{ fontFamily: "Inter, sans-serif" }}
+                          >
+                            {t("login.rememberSession")}
+                          </span>
                         </div>
-                        <span
-                          className="text-muted-foreground text-[10px] tracking-[0.5px] uppercase"
+                      </TooltipTrigger>
+                      <TooltipContent>Stay signed in on this device</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => selectTab("recover")}
+                          className="text-muted-foreground text-[10px] tracking-[0.5px] uppercase cursor-pointer bg-transparent border-0 p-0 hover:text-brand-gold transition-colors underline-offset-2 hover:underline"
                           style={{ fontFamily: "Inter, sans-serif" }}
                         >
-                          {t("login.rememberSession")}
-                        </span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Stay signed in on this device</TooltipContent>
-                  </Tooltip>
+                          {t("login.forgotPasswordLink")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Recover access to your account</TooltipContent>
+                    </Tooltip>
+                  </div>
 
                   {error && (
                     <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -646,26 +702,37 @@ function UnifiedAuthContent() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
-                            className="relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors"
-                            onClick={() => setAgreed(!agreed)}
+                            className={`relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors ${!hasReadTerms ? "opacity-50" : ""}`}
+                            onClick={() => (hasReadTerms ? setAgreed(!agreed) : setTermsDialogOpen(true))}
                           >
                             {agreed && <div className="absolute inset-0.5 bg-foreground rounded-sm" />}
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent>Agree to the Terms of Service and Privacy Policy</TooltipContent>
+                        <TooltipContent>
+                          {hasReadTerms ? "Agree to the Terms of Service" : t("signup.readTermsFirst")}
+                        </TooltipContent>
                       </Tooltip>
                       <p className="text-muted-foreground text-base leading-6.5" style={{ fontFamily: "Inter, sans-serif" }}>
                         {t("signup.agreementPrefix")}{" "}
-                        <span className="font-semibold text-foreground cursor-pointer hover:text-brand-gold transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => setTermsDialogOpen(true)}
+                          className="font-semibold text-foreground cursor-pointer hover:text-brand-gold transition-colors underline-offset-2 hover:underline"
+                        >
                           {t("signup.termsOfService")}
-                        </span>{" "}
-                        {t("signup.and")}{" "}
-                        <span className="font-semibold text-foreground cursor-pointer hover:text-brand-gold transition-colors">
-                          {t("signup.privacyPolicy")}
-                        </span>
+                        </button>
                         .
                       </p>
                     </div>
+
+                    <TermsReviewDialog
+                      open={termsDialogOpen}
+                      onOpenChange={setTermsDialogOpen}
+                      onAgree={() => {
+                        setHasReadTerms(true);
+                        setAgreed(true);
+                      }}
+                    />
 
                     {error && (
                       <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>

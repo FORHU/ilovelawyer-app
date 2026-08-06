@@ -23,7 +23,14 @@
     "loadError": "이 사건을 불러올 수 없습니다.",
     "notFound": "사건을 찾을 수 없습니다.",
     "mindMap": "마인드맵 보기",
-    "timeline": "타임라인 보기"
+    "timeline": "타임라인 보기",
+    "documents": "문서",
+    "noDocuments": "첨부된 문서가 없습니다.",
+    "addDocument": "추가",
+    "uploading": "업로드 중…",
+    "uploadError": "파일을 업로드하지 못했습니다.",
+    "removeDocument": "{{documentName}} 제거",
+    "loadDocumentsError": "문서를 불러올 수 없습니다."
   },
   "chat": {
     "emptyHeading": "{{caseName}}에 대해 질문하기",

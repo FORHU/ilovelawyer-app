@@ -1,7 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
+import { chatKeys } from "@/lib/query-keys"
 
 interface AuthTokensResponse {
   user: AuthUser
@@ -38,6 +39,7 @@ function generateUsername(fullName: string): string {
 export function useLoginMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
@@ -48,6 +50,11 @@ export function useLoginMutation() {
       }),
     onSuccess: (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
+      // Chat Wonder session_id is cached with staleTime: Infinity (see useChatSessionQuery)
+      // and survives client-side login/logout since it's just an SPA route change, not a
+      // page reload — without this, a stale pre-login session_id keeps getting reused
+      // until the tab is refreshed, even though the user just "freshly" logged in.
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       router.push("/homepage")
     },
   })
@@ -78,6 +85,7 @@ export function useSendOtpMutation() {
 export function useVerifyOtpMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ email, code }: { email: string; code: string }) =>
@@ -88,6 +96,7 @@ export function useVerifyOtpMutation() {
       }),
     onSuccess: (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       router.push("/homepage")
     },
   })
@@ -96,6 +105,7 @@ export function useVerifyOtpMutation() {
 export function useGoogleAuthMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ idToken }: { idToken: string }) =>
@@ -106,6 +116,7 @@ export function useGoogleAuthMutation() {
       }),
     onSuccess: (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       router.push("/homepage")
     },
   })

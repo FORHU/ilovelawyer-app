@@ -6,7 +6,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { ThemeProvider } from "@/components/theme-provider"
 import { I18nProvider } from "@/components/i18n-provider"
 import { GoogleOAuthProvider } from "@react-oauth/google"
-import { PageTransition } from "@/components/page-transition"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 
 function makeQueryClient() {
@@ -39,9 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <I18nProvider>
-            <TooltipProvider>
-              <PageTransition>{children}</PageTransition>
-            </TooltipProvider>
+            <TooltipProvider>{children}</TooltipProvider>
           </I18nProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />

@@ -23,7 +23,14 @@
     "loadError": "Hindi ma-load ang kasong ito.",
     "notFound": "Hindi natagpuan ang kaso.",
     "mindMap": "Tingnan ang mind map",
-    "timeline": "Tingnan ang timeline"
+    "timeline": "Tingnan ang timeline",
+    "documents": "Mga Dokumento",
+    "noDocuments": "Walang nakalakip na dokumento.",
+    "addDocument": "Idagdag",
+    "uploading": "Ina-upload…",
+    "uploadError": "Hindi na-upload ang file na ito.",
+    "removeDocument": "Alisin ang {{documentName}}",
+    "loadDocumentsError": "Hindi ma-load ang mga dokumento."
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",

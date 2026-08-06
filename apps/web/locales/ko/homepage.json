@@ -10,7 +10,9 @@
     "removeFile": "{{fileName}} 제거",
     "startRecording": "녹음 시작",
     "stopRecording": "녹음 중지",
-    "sendMessage": "메시지 보내기"
+    "sendMessage": "메시지 보내기",
+    "defaultAttachmentMessage": "첨부된 문서를 검토해 주세요: {{fileName}}",
+    "attachmentUploadError": "파일을 업로드하지 못했습니다. 제거 후 다시 시도해 주세요."
   },
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
