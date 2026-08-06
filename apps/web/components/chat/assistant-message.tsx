@@ -41,11 +41,21 @@ function stripRelatedQueries(content: string): string {
   return content.replace(/\[RELATED_QUERIES\][\s\S]*?\[\/RELATED_QUERIES\]/gi, "").trimEnd();
 }
 
+// Chat Wonder sometimes cites controlling authorities as literal `<a href="...">text</a>`
+// HTML anchors rather than markdown link syntax. react-markdown doesn't render embedded
+// raw HTML (by design, to avoid piping untrusted LLM output straight into the DOM), so
+// left alone these show up as literal tag text. Convert them to markdown links instead
+// of turning on raw HTML rendering.
+function convertHtmlAnchors(content: string): string {
+  return content.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
+}
+
 export default function AssistantMessage({ content }: { content: string }) {
+  const cleaned = convertHtmlAnchors(stripRelatedQueries(content));
   return (
     <div className="text-[15px] leading-6 font-['Inter'] text-foreground">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {stripRelatedQueries(content)}
+        {cleaned}
       </ReactMarkdown>
     </div>
   );

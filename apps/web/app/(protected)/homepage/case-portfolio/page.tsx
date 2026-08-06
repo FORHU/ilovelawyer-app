@@ -43,6 +43,14 @@ export default function CaseManagerDashboard() {
     setDeletingCase(null);
   };
 
+  const filteredCases = cases.filter((item) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      item.caseName.toLowerCase().includes(query) ||
+      item.parties.some((p) => p.name.toLowerCase().includes(query))
+    );
+  });
+
   const handleNewFiling = () => {
     router.push("/homepage/create-case");
   };
@@ -159,7 +167,7 @@ export default function CaseManagerDashboard() {
                         {c.caseName}
                       </h3>
                       <p className="text-muted-foreground text-[14px] font-['Inter']">
-                        {c.partyInvolved || t("noPartyListed")}
+                        {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("noPartyListed")}
                       </p>
                     </Link>
                   </TooltipTrigger>

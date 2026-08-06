@@ -92,7 +92,9 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
               {t("detail.party")}
             </span>
             <span className="text-sm text-foreground">
-              {caseRecord.partyInvolved || t("noPartyListed")}
+              {caseRecord.parties.length > 0
+                ? caseRecord.parties.map((p) => `${p.name} (${p.designation})`).join("; ")
+                : t("noPartyListed")}
             </span>
           </div>
 

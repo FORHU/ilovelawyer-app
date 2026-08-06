@@ -2,13 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys } from "@/lib/query-keys"
 
-/** The real shape `/api/my-cases` accepts/returns today. Type of Action, Jurisdiction, and
- * structured Parties are not yet supported by the backend — see CONTEXT.md pending section. */
+export interface Party {
+  id: string
+  name: string
+  designation: string
+}
+
+/** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
+ * not yet supported by the backend — see CONTEXT.md pending section. */
 export interface CaseRecord {
   id: string
   userId: string
   caseName: string
-  partyInvolved: string | null
+  parties: Party[]
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -38,7 +44,7 @@ export function useCaseQuery(id: string) {
 
 export interface CreateCasePayload {
   caseName: string
-  partyInvolved?: string
+  parties?: { name: string; designation: string }[]
   notes?: string
 }
 
@@ -58,7 +64,7 @@ export function useCreateCaseMutation() {
 
 export interface UpdateCasePayload {
   caseName?: string
-  partyInvolved?: string
+  parties?: { name: string; designation: string }[]
   notes?: string
 }
 

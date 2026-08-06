@@ -552,7 +552,7 @@ export default function ConsultationChat({
                 })}
 
                 {!isSending && messages.length > 0 && messages.at(-1)?.role === "assistant" && messages.at(-1)?.content && (
-                  <CaseHubWidget caseId={linkedCaseId} conversationId={conversationId} onAskFollowUp={(text) => void doSend(text)} />
+                  <CaseHubWidget caseId={linkedCaseId} conversationId={conversationId} />
                 )}
 
                 <div ref={messagesEndRef} />
