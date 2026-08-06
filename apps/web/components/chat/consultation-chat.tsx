@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConversationSidebar from "@/components/chat/conversation-sidebar";
@@ -15,6 +15,7 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
+import { useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -56,9 +57,14 @@ export default function ConsultationChat({
   // the expanded rail would otherwise cover.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  // Set once handleFileChange's upload (below) resolves — carries the id/name/aiSummary
+  // the send needs to reference this attachment as documentContext. Null while nothing's
+  // attached, while the upload is still in flight, or if it failed.
+  const [attachedDoc, setAttachedDoc] = useState<{ id: string; name: string; aiSummary: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
+  const uploadDocument = useUploadCaseDocumentMutation();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -197,20 +203,29 @@ export default function ConsultationChat({
     fileInputRef.current?.click();
   };
 
-  //handles state preservation when user picks a file, and queues it for the Documents page
+  // Queues the file for the separate Documents page (unrelated hand-off, unchanged) and,
+  // for this chat, uploads it immediately so it's ready to reference by the time the user
+  // hits send — uploading only on send was leaving the send button attached to a promise
+  // that hadn't started yet, so a file-only message just no-op'd instead of sending.
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.currentTarget.files?.[0];
-    if (selected) {
-      setFile(selected);
-      queueDocument(selected);
-    }
+    e.currentTarget.value = "";
+    if (!selected) return;
+    setFile(selected);
+    setAttachedDoc(null);
+    queueDocument(selected);
+    uploadDocument.mutate(
+      { file: selected, caseId: linkedCaseId ?? undefined },
+      { onSuccess: (doc) => setAttachedDoc({ id: doc.id, name: doc.name, aiSummary: doc.aiSummary }) },
+    );
   };
 
-    const handleRemoveFile = () => {
-      setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+  const handleRemoveFile = () => {
+    setFile(null);
+    setAttachedDoc(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Toggles in-place mic recording; the finished clip is queued for the Transcription page.
@@ -248,7 +263,7 @@ export default function ConsultationChat({
     }
   };
 
-  const doSend = async (text: string) => {
+  const doSend = async (text: string, documentContext?: string) => {
     if (!text || !session || isSending) return;
 
     // Identifies this send so it can tell, once it's back from an await, whether the
@@ -284,6 +299,7 @@ export default function ConsultationChat({
         conversationId: activeConversationId,
         sessionId: session.session_id,
         message: text,
+        documentContext,
         onChunk: (chunk) => {
           if (sendTokenRef.current !== myToken) return;
           setPendingTurn((prev) => {
@@ -333,10 +349,18 @@ export default function ConsultationChat({
   const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const text = inputMessage.trim();
-    if (!text) return;
+    // A file-only send (no typed text) used to silently no-op here — now it's allowed as
+    // long as there's something to send, text or attachment.
+    if (!text && !file) return;
+    // Still mid-upload or it failed — block send rather than firing without the attachment
+    // the user thinks they're sending (the button below is disabled for the same reason).
+    if (file && !attachedDoc) return;
+    const doc = attachedDoc;
+    const messageText = text || t("input.defaultAttachmentMessage", { fileName: doc?.name ?? "" });
+    const documentContext = doc ? `Attached document "${doc.name}":\n${doc.aiSummary ?? ""}` : undefined;
     setInputMessage("");
     handleRemoveFile();
-    void doSend(text);
+    void doSend(messageText, documentContext);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -360,8 +384,13 @@ export default function ConsultationChat({
         />
 
         {file && (
-          <div className="flex items-center gap-2 px-2">
-            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1">
+          <div className="flex flex-col gap-1 px-2">
+            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1 w-fit">
+              {uploadDocument.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              )}
               <span className="truncate max-w-[220px]">{file.name}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -369,14 +398,17 @@ export default function ConsultationChat({
                     type="button"
                     onClick={handleRemoveFile}
                     className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label="Remove attached file"
+                    aria-label={t("input.removeFile", { fileName: file.name })}
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Remove attached file</TooltipContent>
+                <TooltipContent>{t("input.removeFile", { fileName: file.name })}</TooltipContent>
               </Tooltip>
             </span>
+            {uploadDocument.isError && (
+              <span className="text-xs text-red-600 dark:text-red-400">{t("input.attachmentUploadError")}</span>
+            )}
           </div>
         )}
 
@@ -392,35 +424,9 @@ export default function ConsultationChat({
           disabled={isSending}
         />
 
-        {file && (
-          <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
-            <Paperclip className="w-3 h-3 shrink-0" aria-hidden="true" />
-            <span className="truncate">{file.name}</span>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleRemoveFile}
-                  className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 shrink-0"
-                  aria-label={t("input.removeFile", { fileName: file.name })}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("input.removeFile", { fileName: file.name })}</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
         {/* Toolbar row below the text, matching Gemini's layout */}
         <div className="flex items-center justify-between px-1">
           <div className="flex gap-1 text-muted-foreground">
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFileChange}
-            />
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -458,7 +464,7 @@ export default function ConsultationChat({
             <TooltipTrigger asChild>
               <button
                 type="submit"
-                disabled={isSending || !session}
+                disabled={isSending || !session || (!!file && !attachedDoc)}
                 aria-label={t("input.sendMessage")}
                 className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
               >

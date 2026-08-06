@@ -10,7 +10,9 @@
     "removeFile": "Remove {{fileName}}",
     "startRecording": "Start recording",
     "stopRecording": "Stop recording",
-    "sendMessage": "Send message"
+    "sendMessage": "Send message",
+    "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
+    "attachmentUploadError": "Couldn't upload this file. Remove it and try again."
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",

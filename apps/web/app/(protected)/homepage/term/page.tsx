@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -19,13 +19,12 @@ interface Section {
 export default function TermsPage() {
   const { t } = useTranslation("term");
   const SECTIONS = t("sections", { returnObjects: true }) as Section[];
-  const [accepted, setAccepted] = useState(false);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
       <GlobalHeader activeTab="term" />
 
-      <main className="mx-auto max-w-3xl px-6 pb-20 pt-28">
+      <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border">
           <div className="px-10 pb-4 pt-12 sm:px-14">
             <p className="border-b border-border pb-2 text-xs font-medium uppercase tracking-[2px] text-primary/70">
@@ -107,26 +106,13 @@ export default function TermsPage() {
                 </TooltipTrigger>
                 <TooltipContent>Print or save these terms as a PDF</TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={accepted}
-                    onClick={() => setAccepted(true)}
-                    className="cursor-pointer rounded-md bg-brand-navy-950 px-5 py-2.5 text-xs font-medium uppercase tracking-[1px] text-white transition-colors hover:bg-brand-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {accepted ? t("termsAccepted") : t("acceptTerms")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Confirm you accept these terms and conditions</TooltipContent>
-              </Tooltip>
             </div>
           </div>
         </article>
       </main>
 
       <footer className="border-t border-white/10 bg-[#0b132b]/95">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="font-['Libre_Caslon_Text'] text-lg text-white">ilovelawyer</p>
             <p className="mt-1 max-w-xs text-xs leading-relaxed text-white/50">
