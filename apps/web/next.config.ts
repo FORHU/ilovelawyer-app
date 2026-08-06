@@ -21,14 +21,25 @@ const nextConfig: NextConfig = {
   // which breaks the incremental chat streaming proxied through rewrites() below.
   compress: false,
   async rewrites() {
-    return [
-      { source: "/api/auth/refresh", destination: `${API_URL}/api/auth/refresh` },
-      { source: "/api/auth/logout", destination: `${API_URL}/api/auth/logout` },
-      { source: "/api/auth/login", destination: `${API_URL}/api/auth/login` },
-      { source: "/api/auth/google", destination: `${API_URL}/api/auth/google` },
-      { source: "/api/auth/reset-password", destination: `${API_URL}/api/auth/reset-password` },
-      { source: "/api/auth/verify-otp", destination: `${API_URL}/api/auth/verify-otp` },
+    // Mirrors lib/fetch.ts's API_PREFIX/versioned() logic exactly (same env var, same six
+    // COOKIE_PROXIED_PATHS) — duplicated here since Next's rewrites() runs at config-load time
+    // and can't import from lib/fetch.ts. Defaults to unversioned "/api/auth/..." until
+    // NEXT_PUBLIC_API_VERSION_PREFIX is set, matching fetch.ts's default so the two never
+    // disagree about what path the browser actually calls.
+    const prefix = process.env.NEXT_PUBLIC_API_VERSION_PREFIX ?? ""
+    const withPrefix = (p: string) => (prefix ? `${prefix}${p.slice("/api".length)}` : p)
+    const authPaths = [
+      "/api/auth/refresh",
+      "/api/auth/logout",
+      "/api/auth/login",
+      "/api/auth/google",
+      "/api/auth/reset-password",
+      "/api/auth/verify-otp",
     ]
+    return authPaths.map((p) => {
+      const versionedPath = withPrefix(p)
+      return { source: versionedPath, destination: `${API_URL}${versionedPath}` }
+    })
   },
 }
 

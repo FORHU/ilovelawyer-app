@@ -2,6 +2,21 @@ import { useAuthStore } from "@/lib/store/auth.store"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
+// Every call site below still writes paths as "/api/...", same as before versioning existed —
+// this is the one place that rewrites that to the real, versioned backend path. Bumping the API
+// version later means changing this env var's value, not touching every mutations file again.
+// Defaults to "" (no-op — paths hit the backend exactly as written, today's behavior) until
+// NEXT_PUBLIC_API_VERSION_PREFIX is set: the backend doesn't serve /api/v1 yet (see ADR 0011's
+// rollout note on ilovelawyer-api's presign endpoint for why shipping a frontend-only path
+// change ahead of backend support breaks every request). Set it to "/api/v1" only once that's
+// confirmed live.
+const API_PREFIX = process.env.NEXT_PUBLIC_API_VERSION_PREFIX ?? ""
+
+function versioned(path: string): string {
+  if (!API_PREFIX || !path.startsWith("/api/")) return path
+  return `${API_PREFIX}${path.slice("/api".length)}`
+}
+
 // These read or set the refreshToken httpOnly cookie, so they're proxied
 // same-origin via next.config.ts's rewrites() (see that file for why). Without
 // this, the cookie set by a direct cross-origin call to the API would be
@@ -10,17 +25,20 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 // Every other endpoint — including the streaming chat endpoint — calls the
 // API directly, since routing a streamed response through the Next proxy
 // buffers the whole thing before relaying it to the browser.
+// Listed as the pre-version paths call sites actually pass in — versioned() is applied after
+// this check, in resolveUrl below.
 const COOKIE_PROXIED_PATHS = new Set([
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/login",
-  "/api/auth/google",
-  "/api/auth/reset-password",
-  "/api/auth/verify-otp",
+  "/api/v1/auth/refresh",
+  "/api/v1/auth/logout",
+  "/api/v1/auth/login",
+  "/api/v1/auth/google",
+  "/api/v1/auth/reset-password",
+  "/api/v1/auth/verify-otp",
 ])
 
 function resolveUrl(path: string): string {
-  return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`
+  const versionedPath = versioned(path)
+  return COOKIE_PROXIED_PATHS.has(path) ? versionedPath : `${API_URL}${versionedPath}`
 }
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
@@ -36,7 +54,7 @@ export async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
-    const res = await fetch(resolveUrl("/api/auth/refresh"), {
+    const res = await fetch(resolveUrl("/api/v1/auth/refresh"), {
       method: "POST",
       credentials: "include",
     })
