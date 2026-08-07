@@ -123,17 +123,19 @@ export async function sendChatMessage({
   sessionId,
   message,
   documentContext,
+  caseDocumentId,
   onChunk,
 }: {
   conversationId: string
   sessionId: string
   message: string
   documentContext?: string
+  caseDocumentId?: string
   onChunk: (text: string) => void
 }): Promise<{ newSessionId?: string }> {
   const res = await apiFetchRaw(`/api/chat/conversations/${conversationId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ message, sessionId, documentContext }),
+    body: JSON.stringify({ message, sessionId, documentContext, caseDocumentId }),
   })
 
   const newSessionId = res.headers.get("X-Chat-Session-Id") ?? undefined

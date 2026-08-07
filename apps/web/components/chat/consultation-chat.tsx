@@ -263,7 +263,7 @@ export default function ConsultationChat({
     }
   };
 
-  const doSend = async (text: string, documentContext?: string) => {
+  const doSend = async (text: string, documentContext?: string, caseDocumentId?: string) => {
     if (!text || !session || isSending) return;
 
     // Identifies this send so it can tell, once it's back from an await, whether the
@@ -300,6 +300,7 @@ export default function ConsultationChat({
         sessionId: session.session_id,
         message: text,
         documentContext,
+        caseDocumentId,
         onChunk: (chunk) => {
           if (sendTokenRef.current !== myToken) return;
           setPendingTurn((prev) => {
@@ -360,7 +361,7 @@ export default function ConsultationChat({
     const documentContext = doc ? `Attached document "${doc.name}":\n${doc.aiSummary ?? ""}` : undefined;
     setInputMessage("");
     handleRemoveFile();
-    void doSend(messageText, documentContext);
+    void doSend(messageText, documentContext, doc?.id);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
