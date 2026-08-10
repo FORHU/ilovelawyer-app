@@ -1,6 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import type { NextConfig } from "next"
+import { AUTH_PATHS, versioned } from "./lib/api-version"
 
 // next build doesn't auto-load .env.staging (only recognizes standard names), so
 // load it explicitly — it's the one file CI writes NEXT_PUBLIC_* into from secrets.
@@ -21,14 +22,10 @@ const nextConfig: NextConfig = {
   // which breaks the incremental chat streaming proxied through rewrites() below.
   compress: false,
   async rewrites() {
-    return [
-      { source: "/api/auth/refresh", destination: `${API_URL}/api/auth/refresh` },
-      { source: "/api/auth/logout", destination: `${API_URL}/api/auth/logout` },
-      { source: "/api/auth/login", destination: `${API_URL}/api/auth/login` },
-      { source: "/api/auth/google", destination: `${API_URL}/api/auth/google` },
-      { source: "/api/auth/reset-password", destination: `${API_URL}/api/auth/reset-password` },
-      { source: "/api/auth/verify-otp", destination: `${API_URL}/api/auth/verify-otp` },
-    ]
+    return AUTH_PATHS.map((p) => {
+      const versionedPath = versioned(p)
+      return { source: versionedPath, destination: `${API_URL}${versionedPath}` }
+    })
   },
 }
 

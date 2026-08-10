@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/lib/store/auth.store"
+import { AUTH_PATHS, versioned } from "@/lib/api-version"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
@@ -10,17 +11,13 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 // Every other endpoint — including the streaming chat endpoint — calls the
 // API directly, since routing a streamed response through the Next proxy
 // buffers the whole thing before relaying it to the browser.
-const COOKIE_PROXIED_PATHS = new Set([
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/login",
-  "/api/auth/google",
-  "/api/auth/reset-password",
-  "/api/auth/verify-otp",
-])
+// Listed as the pre-version paths call sites actually pass in — versioned() is applied after
+// this check, in resolveUrl below.
+const COOKIE_PROXIED_PATHS = new Set<string>(AUTH_PATHS)
 
 function resolveUrl(path: string): string {
-  return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`
+  const versionedPath = versioned(path)
+  return COOKIE_PROXIED_PATHS.has(path) ? versionedPath : `${API_URL}${versionedPath}`
 }
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }

@@ -103,6 +103,10 @@ export interface UserDocument {
   caseId: string | null
   name: string
   fileUrl: string | null
+  s3Key?: string | null
+  documentType?: string | null
+  fileSize?: number | null
+  mimeType?: string | null
   aiSummary: string | null
   /** Background text-extraction/embedding status for chat retrieval — never surfaced as an
    * error to the user either way, so nothing in the UI needs to branch on this today. */
@@ -146,6 +150,83 @@ export function useUploadCaseDocumentMutation() {
     onSuccess: (doc) => {
       if (doc.caseId) {
         queryClient.invalidateQueries({ queryKey: caseKeys.timeline(doc.caseId) })
+      }
+    },
+  })
+}
+
+interface DocumentDataEntry {
+  filename: string
+  s3Key: string
+  metaData: {
+    documentType?: string
+    fileSize: number
+    mimeType: string
+  }
+}
+
+export interface BulkUploadResult {
+  /** Documents the backend confirmed, in the same order as the input `files` minus any that
+   * failed the presign/S3-PUT step (those never reach the confirm call at all). */
+  confirmed: UserDocument[]
+  /** The subset of input files whose presign or S3 PUT failed — never sent to confirm. */
+  failed: File[]
+  /** Parallel to `confirmed` — which input File each confirmed document came from. */
+  succeededFiles: File[]
+}
+
+/** Uploads any number of files to a case in one confirm call instead of one-per-file: each file
+ * still gets its own presign + S3 PUT (S3 has no batched-presign primitive), but the DB rows are
+ * created together via POST /api/v1/my-cases/:caseId/documents — see
+ * docs/case-document-rag-backend-handoff.md §7. A single S3 failure doesn't block the rest of the
+ * batch from confirming (Promise.allSettled), so one bad file doesn't lose N-1 good ones. */
+export function useUploadCaseDocumentsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ files, caseId }: { files: File[]; caseId: string }): Promise<BulkUploadResult> => {
+      const settled = await Promise.allSettled(
+        files.map(async (file) => {
+          const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
+            "/api/documents/presign",
+            {
+              method: "POST",
+              body: JSON.stringify({ filename: file.name, contentType: file.type, caseId }),
+            },
+          )
+
+          const putRes = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type },
+          })
+          if (!putRes.ok) throw new Error("Upload to storage failed")
+
+          return { file, key }
+        }),
+      )
+
+      const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
+      const failed = files.filter((_, i) => settled[i]!.status === "rejected")
+
+      let confirmed: UserDocument[] = []
+      if (succeeded.length > 0) {
+        const documentData: DocumentDataEntry[] = succeeded.map(({ file, key }) => ({
+          filename: file.name,
+          s3Key: key,
+          metaData: { fileSize: file.size, mimeType: file.type },
+        }))
+
+        confirmed = await apiFetch<UserDocument[]>(`/api/my-cases/${caseId}/documents`, {
+          method: "POST",
+          body: JSON.stringify({ documentData }),
+        })
+      }
+
+      return { confirmed, failed, succeededFiles: succeeded.map(({ file }) => file) }
+    },
+    onSuccess: ({ confirmed }, { caseId }) => {
+      if (confirmed.length > 0) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
       }
     },
   })

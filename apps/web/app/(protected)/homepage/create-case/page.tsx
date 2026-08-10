@@ -7,7 +7,7 @@ import CustomSelect from "@/components/ui/custom-select";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users, Loader2 } from "lucide-react";
 import {
   useCreateCaseMutation,
-  useUploadCaseDocumentMutation,
+  useUploadCaseDocumentsMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -62,7 +62,7 @@ export default function CreateCasePage() {
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
   const nextPartyIdRef = useRef(2);
 
-  const { mutateAsync: uploadDocument } = useUploadCaseDocumentMutation();
+  const { mutateAsync: uploadDocuments } = useUploadCaseDocumentsMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
 
   const handleInputChange = (field: string, value: string) => {
@@ -107,20 +107,39 @@ export default function CreateCasePage() {
     }));
   };
 
-  // Uploads via presigned S3 URL (see useUploadCaseDocumentMutation), with caseId passed
-  // directly at confirm time — this only runs once the case already exists (from
-  // handleSubmitFiling), so there's no separate link step needed afterward.
-  const uploadOne = async (entry: UploadedFile, caseId: string): Promise<boolean> => {
-    updateUploadedFile(entry.id, { status: "uploading", error: undefined });
+  // Uploads via presigned S3 URL (see useUploadCaseDocumentsMutation) — each file still gets its
+  // own presign + S3 PUT, but all resulting rows are confirmed in a single request. This only
+  // runs once the case already exists (from handleSubmitFiling), so there's no separate link
+  // step needed afterward.
+  const uploadBatch = async (entries: UploadedFile[], caseId: string): Promise<boolean> => {
+    if (entries.length === 0) return true;
+    entries.forEach((entry) => updateUploadedFile(entry.id, { status: "uploading", error: undefined }));
+
     try {
-      const doc = await uploadDocument({ file: entry.file, caseId });
-      updateUploadedFile(entry.id, { status: "uploaded", documentId: doc.id });
-      return true;
-    } catch (err) {
-      updateUploadedFile(entry.id, {
-        status: "error",
-        error: err instanceof Error ? err.message : t("sectionEvidence.uploadFailed"),
+      const { confirmed, failed, succeededFiles } = await uploadDocuments({
+        files: entries.map((entry) => entry.file),
+        caseId,
       });
+
+      succeededFiles.forEach((file, i) => {
+        const entry = entries.find((e) => e.file === file);
+        if (entry) updateUploadedFile(entry.id, { status: "uploaded", documentId: confirmed[i]?.id });
+      });
+      failed.forEach((file) => {
+        const entry = entries.find((e) => e.file === file);
+        if (entry) updateUploadedFile(entry.id, { status: "error", error: t("sectionEvidence.uploadFailed") });
+      });
+
+      return failed.length === 0;
+    } catch (err) {
+      // The confirm call itself failed after S3 PUTs succeeded — none of these entries got a
+      // DB row, so all of them (not just one) need to be retried.
+      entries.forEach((entry) =>
+        updateUploadedFile(entry.id, {
+          status: "error",
+          error: err instanceof Error ? err.message : t("sectionEvidence.uploadFailed"),
+        }),
+      );
       return false;
     }
   };
@@ -159,7 +178,7 @@ export default function CreateCasePage() {
     if (!createdCaseId) return;
     const entry = formData.uploadedFiles.find((f) => f.id === id);
     if (!entry) return;
-    void uploadOne(entry, createdCaseId);
+    void uploadBatch([entry], createdCaseId);
   };
 
   const triggerFileSelect = () => {
@@ -217,8 +236,8 @@ export default function CreateCasePage() {
       }
 
       const pending = formData.uploadedFiles.filter((f) => f.status !== "uploaded");
-      const results = await Promise.all(pending.map((f) => uploadOne(f, caseId as string)));
-      if (results.some((ok) => !ok)) {
+      const ok = await uploadBatch(pending, caseId as string);
+      if (!ok) {
         // Case already exists (createdCaseId is set) — stay on the form so the user can retry
         // the failed files individually or via resubmit, rather than losing the case entirely.
         return;
