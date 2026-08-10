@@ -44,7 +44,7 @@ export function useCaseQuery(id: string) {
 
 export interface CreateCasePayload {
   caseName: string
-  parties?: { name: string; designation: string }[]
+  partyInvolved?: string
   notes?: string
 }
 
