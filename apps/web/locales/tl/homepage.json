@@ -10,7 +10,9 @@
     "removeFile": "Alisin ang {{fileName}}",
     "startRecording": "Simulan ang pagre-record",
     "stopRecording": "Ihinto ang pagre-record",
-    "sendMessage": "Ipadala ang mensahe"
+    "sendMessage": "Ipadala ang mensahe",
+    "defaultAttachmentMessage": "Pakisuri ang nakalakip na dokumento: {{fileName}}",
+    "attachmentUploadError": "Hindi na-upload ang file na ito. Alisin at subukang muli."
   },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",

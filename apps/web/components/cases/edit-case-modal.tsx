@@ -18,24 +18,9 @@ interface Party {
   designation: string;
 }
 
-// caseRecord.partyInvolved is the "{{name}} ({{designation}}); {{name}} ({{designation}})"
-// string produced by this same join on the Create Case page — parse it back into rows so
-// existing parties are editable, not just appendable.
-function parsePartyInvolved(raw: string | null): Party[] {
-  const trimmed = (raw ?? "").trim();
-  if (!trimmed) return [{ id: "party-1", name: "", designation: DESIGNATION_OPTIONS[0].value }];
-
-  return trimmed.split(";").map((segment, index) => {
-    const match = segment.trim().match(/^(.*)\s\((.+)\)$/);
-    const designation = match?.[2]?.trim();
-    const isKnownDesignation = DESIGNATION_OPTIONS.some((o) => o.value === designation);
-    const name = isKnownDesignation ? (match?.[1] ?? segment) : segment;
-    return {
-      id: `party-${index + 1}`,
-      name: name.trim(),
-      designation: isKnownDesignation && designation ? designation : DESIGNATION_OPTIONS[0].value,
-    };
-  });
+function initialParties(parties: Party[]): Party[] {
+  if (parties.length === 0) return [{ id: "party-1", name: "", designation: DESIGNATION_OPTIONS[0].value }];
+  return parties.map((p) => ({ ...p }));
 }
 
 interface EditCaseModalProps {
@@ -48,7 +33,7 @@ interface EditCaseModalProps {
 export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onClose }: EditCaseModalProps) {
   const { t } = useTranslation(["case-portfolio", "create-case"]);
   const [caseName, setCaseName] = useState(caseRecord.caseName);
-  const [parties, setParties] = useState<Party[]>(() => parsePartyInvolved(caseRecord.partyInvolved));
+  const [parties, setParties] = useState<Party[]>(() => initialParties(caseRecord.parties));
   const [notes, setNotes] = useState(caseRecord.notes ?? "");
   const [nameError, setNameError] = useState(false);
   const nextPartyIdRef = useRef(parties.length + 1);
@@ -87,14 +72,11 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
       setNameError(true);
       return;
     }
-    const partyInvolved = parties
-      .filter((p) => p.name.trim())
-      .map((p) => `${p.name.trim()} (${p.designation})`)
-      .join("; ");
-
     onSubmit({
       caseName: caseName.trim(),
-      partyInvolved,
+      parties: parties
+        .filter((p) => p.name.trim())
+        .map((p) => ({ name: p.name.trim(), designation: p.designation })),
       notes,
     });
   };

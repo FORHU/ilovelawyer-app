@@ -40,7 +40,10 @@ export function useTranscriptionPolling() {
               return
             }
             if (result.status === "FAILED") {
-              updateTranscript(localId, { status: "failed", errorMessage: "AWS Transcribe reported the job as failed." })
+              updateTranscript(localId, {
+                status: "failed",
+                errorMessage: result.failureReason ?? "AWS Transcribe reported the job as failed.",
+              })
               return
             }
             // IN_PROGRESS / QUEUED — keep polling

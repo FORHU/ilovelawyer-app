@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/lib/store/auth.store"
+import { AUTH_PATHS, versioned } from "@/lib/api-version"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
@@ -10,46 +11,53 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 // Every other endpoint — including the streaming chat endpoint — calls the
 // API directly, since routing a streamed response through the Next proxy
 // buffers the whole thing before relaying it to the browser.
-const COOKIE_PROXIED_PATHS = new Set([
-  "/api/auth/refresh",
-  "/api/auth/logout",
-  "/api/auth/login",
-  "/api/auth/google",
-  "/api/auth/reset-password",
-])
+// Listed as the pre-version paths call sites actually pass in — versioned() is applied after
+// this check, in resolveUrl below.
+const COOKIE_PROXIED_PATHS = new Set<string>(AUTH_PATHS)
 
 function resolveUrl(path: string): string {
-  return COOKIE_PROXIED_PATHS.has(path) ? path : `${API_URL}${path}`
+  const versionedPath = versioned(path)
+  return COOKIE_PROXIED_PATHS.has(path) ? versionedPath : `${API_URL}${versionedPath}`
 }
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
-let refreshPromise: Promise<void> | null = null
+let refreshPromise: Promise<string> | null = null
 
-async function attemptRefresh(): Promise<void> {
+// The refresh token is single-use — the API deletes it as soon as one refresh
+// succeeds and issues a new one. Concurrent callers (e.g. React 18 StrictMode's
+// double effect invocation in dev, or the auth and protected layouts mounting
+// around the same navigation) must share one in-flight request instead of each
+// redeeming the cookie separately, or the loser gets a spurious 401.
+export async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = (async () => {
-    const { setAccessToken, clearAuth } = useAuthStore.getState()
-
     const res = await fetch(resolveUrl("/api/auth/refresh"), {
       method: "POST",
       credentials: "include",
     })
 
-    if (!res.ok) {
-      clearAuth()
-      if (typeof window !== "undefined") window.location.href = "/login"
-      throw new Error("Session expired")
-    }
+    if (!res.ok) throw new Error("Session expired")
 
     const data = await res.json()
-    setAccessToken(data.accessToken)
+    useAuthStore.getState().setAccessToken(data.accessToken)
+    return data.accessToken as string
   })().finally(() => {
     refreshPromise = null
   })
 
   return refreshPromise
+}
+
+async function attemptRefresh(): Promise<void> {
+  try {
+    await refreshAccessToken()
+  } catch (err) {
+    useAuthStore.getState().clearAuth()
+    if (typeof window !== "undefined") window.location.href = "/login"
+    throw err
+  }
 }
 
 function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
