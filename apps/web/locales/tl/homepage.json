@@ -12,7 +12,10 @@
     "stopRecording": "Ihinto ang pagre-record",
     "sendMessage": "Ipadala ang mensahe",
     "defaultAttachmentMessage": "Pakisuri ang nakalakip na dokumento: {{fileName}}",
-    "attachmentUploadError": "Hindi na-upload ang file na ito. Alisin at subukang muli."
+    "defaultAttachmentMessageMultiple": "Pakisuri ang mga nakalakip na dokumento ({{count}}).",
+    "attachmentUploadError": "Hindi na-upload ang isa o higit pang file. Subukang muli o alisin ang mga ito.",
+    "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
+    "dropFilesHint": "I-drop ang mga file dito para ilakip"
   },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
@@ -51,18 +54,18 @@
   "sidebar": {
     "newChat": "Bagong chat",
     "recent": "Kamakailan",
-    "recentConversationsTitle": "Mga kamakailang usapan",
+    "recentConsultationsTitle": "Mga kamakailang konsultasyon",
     "gallery": "Gallery",
-    "untitledConversation": "Walang pamagat na usapan",
-    "conversations": "Mga Usapan",
-    "openConversations": "Buksan ang mga usapan",
-    "closeConversations": "Isara ang mga usapan",
-    "renameConversation": "Palitan ang pangalan",
-    "renameConversationNamed": "Palitan ang pangalan ng {{name}}",
+    "untitledConsultation": "Walang pamagat na konsultasyon",
+    "consultations": "Mga Konsultasyon",
+    "openConsultations": "Buksan ang mga konsultasyon",
+    "closeConsultations": "Isara ang mga konsultasyon",
+    "renameConsultation": "Palitan ang pangalan",
+    "renameConsultationNamed": "Palitan ang pangalan ng {{name}}",
     "saveTitle": "I-save ang pamagat",
-    "deleteConversation": "Tanggalin",
-    "deleteConversationNamed": "Tanggalin ang {{name}}",
-    "deleteConversationConfirm": "Tanggalin ang usapang ito? Hindi na ito maibabalik.",
+    "deleteConsultation": "Tanggalin",
+    "deleteConsultationNamed": "Tanggalin ang {{name}}",
+    "deleteConsultationConfirm": "Tanggalin ang konsultasyong ito? Hindi na ito maibabalik.",
     "collapseSidebar": "I-collapse ang sidebar"
   }
 }

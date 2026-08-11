@@ -3,17 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, History, Image as ImageIcon, PanelLeft, PanelLeftClose, X, Pencil, Trash2, Check, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
-  useConversationsQuery,
-  useRenameConversationMutation,
-  useDeleteConversationMutation,
+  useConsultationsQuery,
+  useRenameConsultationMutation,
+  useDeleteConsultationMutation,
 } from "@/lib/chat/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-interface ConversationSidebarProps {
-  activeConversationId: string | null;
-  onSelectConversation: (id: string) => void;
+interface ConsultationSidebarProps {
+  activeConsultationId: string | null;
+  onSelectConsultation: (id: string) => void;
   onNewChat: () => void;
-  /** Scopes the list to a single case's conversations instead of every conversation. */
+  /** Scopes the list to a single case's consultations instead of every consultation. */
   caseId?: string;
   /** Desktop rail expand state, lifted up so the page can reserve space for it (e.g. push
    * a header row over) instead of letting the expanded rail overlay content next to it. */
@@ -21,19 +21,19 @@ interface ConversationSidebarProps {
   onExpandedChange: (expanded: boolean) => void;
 }
 
-export default function ConversationSidebar({
-  activeConversationId,
-  onSelectConversation,
+export default function ConsultationSidebar({
+  activeConsultationId,
+  onSelectConsultation,
   onNewChat,
   caseId,
   expanded,
   onExpandedChange,
-}: ConversationSidebarProps) {
+}: ConsultationSidebarProps) {
   const { t } = useTranslation("homepage");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const { data: conversations } = useConversationsQuery(caseId);
-  const renameConversation = useRenameConversationMutation();
-  const deleteConversation = useDeleteConversationMutation();
+  const { data: consultations } = useConsultationsQuery(caseId);
+  const renameConsultation = useRenameConsultationMutation();
+  const deleteConsultation = useDeleteConsultationMutation();
   const asideRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -53,14 +53,14 @@ export default function ConversationSidebar({
     const title = editValue.trim();
     const id = editingId;
     setEditingId(null);
-    if (title) renameConversation.mutate({ conversationId: id, title });
+    if (title) renameConsultation.mutate({ consultationId: id, title });
   };
 
   const handleDelete = (id: string) => {
-    if (!window.confirm(t("sidebar.deleteConversationConfirm"))) return;
-    deleteConversation.mutate(id, {
+    if (!window.confirm(t("sidebar.deleteConsultationConfirm"))) return;
+    deleteConsultation.mutate(id, {
       onSuccess: () => {
-        if (id === activeConversationId) onNewChat();
+        if (id === activeConsultationId) onNewChat();
       },
     });
   };
@@ -114,7 +114,7 @@ export default function ConversationSidebar({
         <TooltipTrigger asChild>
           <button
             onClick={() => !isMobile && onExpandedChange(!expanded)}
-            aria-label={t("sidebar.recentConversationsTitle")}
+            aria-label={t("sidebar.recentConsultationsTitle")}
             className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
               expanded || isMobile ? "" : "justify-center px-0"
             }`}
@@ -123,15 +123,15 @@ export default function ConversationSidebar({
             {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.recent")}</span>}
           </button>
         </TooltipTrigger>
-        <TooltipContent>{t("sidebar.recentConversationsTitle")}</TooltipContent>
+        <TooltipContent>{t("sidebar.recentConsultationsTitle")}</TooltipContent>
       </Tooltip>
 
       {(expanded || isMobile) && (
         <div className="relative flex-1 min-h-0 mt-2">
           <nav className="h-full overflow-y-auto px-2 pb-4 flex flex-col gap-1 scrollbar-none [-ms-overflow-style:none]">
-            {conversations?.map((c) => {
-              const isActive = c.id === activeConversationId;
-              const label = c.title?.trim() || t("sidebar.untitledConversation");
+            {consultations?.map((c) => {
+              const isActive = c.id === activeConsultationId;
+              const label = c.title?.trim() || t("sidebar.untitledConsultation");
               const isEditing = editingId === c.id;
 
               if (isEditing) {
@@ -184,11 +184,11 @@ export default function ConversationSidebar({
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => {
-                          onSelectConversation(c.id);
+                          onSelectConsultation(c.id);
                           onExpandedChange(false);
                           setIsMobileOpen(false);
                         }}
-                        // Gemini-style pill: the conversation you're currently in gets its own
+                        // Gemini-style pill: the consultation you're currently in gets its own
                         // rounded, bordered chip; a transparent border of the same width is kept
                         // on inactive rows so hovering doesn't shift layout by 1px.
                         className={`min-w-0 flex-1 text-left truncate pl-4 pr-1 py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
@@ -198,7 +198,7 @@ export default function ConversationSidebar({
                         {label}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">Open this conversation: {label}</TooltipContent>
+                    <TooltipContent side="right">Open this consultation: {label}</TooltipContent>
                   </Tooltip>
 
                   {/* Revealed on hover/focus so the row stays clean the rest of the time;
@@ -213,31 +213,31 @@ export default function ConversationSidebar({
                         <button
                           type="button"
                           onClick={() => startEditing(c.id, c.title?.trim() || "")}
-                          aria-label={t("sidebar.renameConversationNamed", { name: label })}
+                          aria-label={t("sidebar.renameConsultationNamed", { name: label })}
                           className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>{t("sidebar.renameConversation")}</TooltipContent>
+                      <TooltipContent>{t("sidebar.renameConsultation")}</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
                           onClick={() => handleDelete(c.id)}
-                          disabled={deleteConversation.isPending && deleteConversation.variables === c.id}
-                          aria-label={t("sidebar.deleteConversationNamed", { name: label })}
+                          disabled={deleteConsultation.isPending && deleteConsultation.variables === c.id}
+                          aria-label={t("sidebar.deleteConsultationNamed", { name: label })}
                           className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
                         >
-                          {deleteConversation.isPending && deleteConversation.variables === c.id ? (
+                          {deleteConsultation.isPending && deleteConsultation.variables === c.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                           )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>{t("sidebar.deleteConversation")}</TooltipContent>
+                      <TooltipContent>{t("sidebar.deleteConsultation")}</TooltipContent>
                     </Tooltip>
                   </div>
                 </div>
@@ -262,13 +262,13 @@ export default function ConversationSidebar({
           <button
             type="button"
             onClick={() => setIsMobileOpen(true)}
-            aria-label={t("sidebar.openConversations")}
+            aria-label={t("sidebar.openConsultations")}
             className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             <PanelLeft className="h-5 w-5" aria-hidden="true" />
           </button>
         </TooltipTrigger>
-        <TooltipContent>{t("sidebar.openConversations")}</TooltipContent>
+        <TooltipContent>{t("sidebar.openConsultations")}</TooltipContent>
       </Tooltip>
 
       {/* Desktop/tablet rail — collapsed-to-expanded width toggle, unchanged from before */}
@@ -286,7 +286,7 @@ export default function ConversationSidebar({
             <button
               type="button"
               onClick={() => onExpandedChange(!expanded)}
-              aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}
+              aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}
               className={`h-10 flex items-center shrink-0 rounded-full hover:bg-muted mx-2 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                 expanded ? "justify-end px-3" : "justify-center px-0"
               }`}
@@ -298,7 +298,7 @@ export default function ConversationSidebar({
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent>{expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConversations")}</TooltipContent>
+          <TooltipContent>{expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}</TooltipContent>
         </Tooltip>
         {panelBody(false)}
       </aside>
@@ -309,19 +309,19 @@ export default function ConversationSidebar({
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
           <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
-              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.conversations")}</span>
+              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={() => setIsMobileOpen(false)}
-                    aria-label={t("sidebar.closeConversations")}
+                    aria-label={t("sidebar.closeConsultations")}
                     className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>{t("sidebar.closeConversations")}</TooltipContent>
+                <TooltipContent>{t("sidebar.closeConsultations")}</TooltipContent>
               </Tooltip>
             </div>
             {panelBody(true)}

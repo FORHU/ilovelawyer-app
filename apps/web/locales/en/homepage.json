@@ -12,7 +12,10 @@
     "stopRecording": "Stop recording",
     "sendMessage": "Send message",
     "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
-    "attachmentUploadError": "Couldn't upload this file. Remove it and try again."
+    "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
+    "attachmentUploadError": "Couldn't upload one or more files. Retry or remove them and try again.",
+    "retryUpload": "Retry uploading {{fileName}}",
+    "dropFilesHint": "Drop files to attach"
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
@@ -51,18 +54,18 @@
   "sidebar": {
     "newChat": "New chat",
     "recent": "Recent",
-    "recentConversationsTitle": "Recent conversations",
+    "recentConsultationsTitle": "Recent consultations",
     "gallery": "Gallery",
-    "untitledConversation": "Untitled conversation",
-    "conversations": "Conversations",
-    "openConversations": "Open conversations",
-    "closeConversations": "Close conversations",
-    "renameConversation": "Rename",
-    "renameConversationNamed": "Rename {{name}}",
+    "untitledConsultation": "Untitled consultation",
+    "consultations": "Consultations",
+    "openConsultations": "Open consultations",
+    "closeConsultations": "Close consultations",
+    "renameConsultation": "Rename",
+    "renameConsultationNamed": "Rename {{name}}",
     "saveTitle": "Save title",
-    "deleteConversation": "Delete",
-    "deleteConversationNamed": "Delete {{name}}",
-    "deleteConversationConfirm": "Delete this conversation? This can't be undone.",
+    "deleteConsultation": "Delete",
+    "deleteConsultationNamed": "Delete {{name}}",
+    "deleteConsultationConfirm": "Delete this consultation? This can't be undone.",
     "collapseSidebar": "Collapse sidebar"
   }
 }

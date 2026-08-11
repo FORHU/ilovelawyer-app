@@ -3,19 +3,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2 } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
-import ConversationSidebar from "@/components/chat/conversation-sidebar";
+import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import { CaseHubWidget } from "@/components/chat/case-hub-widget";
 import {
   useChatSessionQuery,
-  useConversationsQuery,
-  useCreateConversationMutation,
+  useConsultationsQuery,
+  useCreateConsultationMutation,
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
+import { useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -28,14 +28,14 @@ interface DisplayMessage {
 const MAX_TEXTAREA_HEIGHT = 200;
 
 interface ConsultationChatProps {
-  /** Route this chat lives at — conversation selection is driven by a `?c=<id>` query
+  /** Route this chat lives at — consultation selection is driven by a `?c=<id>` query
    * param appended to this path, so the same component works at "/homepage" and at a
    * case's own route. */
   basePath: string;
-  /** Scopes the sidebar's conversation list to this case, and tags new conversations
-   * created here with it, so a case's chat only ever shows conversations about that case. */
+  /** Scopes the sidebar's consultation list to this case, and tags new consultations
+   * created here with it, so a case's chat only ever shows consultations about that case. */
   caseId?: string;
-  /** Overrides for the empty-state copy shown before any conversation is picked/started. */
+  /** Overrides for the empty-state copy shown before any consultation is picked/started. */
   emptyStateHeading?: string;
   emptyStateSubheading?: string;
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
@@ -51,116 +51,132 @@ export default function ConsultationChat({
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
-  // Lifted out of ConversationSidebar so the workspace below can reserve room for the
+  // Lifted out of ConsultationSidebar so the workspace below can reserve room for the
   // expanded rail (pushing content over) instead of letting it overlay whatever's at the
   // page's left edge — on the case page that's the back link/case chip header row, which
   // the expanded rail would otherwise cover.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  // Set once handleFileChange's upload (below) resolves — carries the id/name/aiSummary
-  // the send needs to reference this attachment as documentContext. Null while nothing's
-  // attached, while the upload is still in flight, or if it failed.
-  const [attachedDoc, setAttachedDoc] = useState<{ id: string; name: string; aiSummary: string | null } | null>(null);
+  // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
+  // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
+  // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
+  const [queuedFiles, setQueuedFiles] = useState<
+    Array<{
+      id: string;
+      file: File;
+      status: "pending" | "uploading" | "uploaded" | "error";
+      doc?: { id: string; name: string; aiSummary: string | null };
+    }>
+  >([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
-  const uploadDocument = useUploadCaseDocumentMutation();
+  const uploadDocuments = useUploadDocumentsMutation();
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef<number>(0);
   const searchParams = useSearchParams();
-  const urlConversationId = searchParams.get("c");
+  const urlConsultationId = searchParams.get("c");
   const queryClient = useQueryClient();
 
-  // The URL is the source of truth for which conversation is active, so refresh,
+  // The URL is the source of truth for which consultation is active, so refresh,
   // back/forward, and sidebar navigation all just work without any duplicated state sync.
-  const conversationId = urlConversationId;
-  // Key used to scope a pending (in-flight) send's local buffer to a conversation. A
+  const consultationId = urlConsultationId;
+  // Key used to scope a pending (in-flight) send's local buffer to a consultation. A
   // brand-new chat (first message, no id yet) uses this placeholder until the backend
   // assigns a real id.
-  const NEW_CONVERSATION_KEY = "__new__";
+  const NEW_CONSULTATION_KEY = "__new__";
 
   const [inputMessage, setInputMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
   // Holds the user message + streaming assistant reply for a send that hasn't landed in
-  // the conversation's saved history yet, keyed to the conversation it belongs to. The
-  // rendered `messages` below only use it while `key` matches the conversation on screen,
-  // so switching conversations mid-send stops showing it automatically — no manual
+  // the consultation's saved history yet, keyed to the consultation it belongs to. The
+  // rendered `messages` below only use it while `key` matches the consultation on screen,
+  // so switching consultations mid-send stops showing it automatically — no manual
   // clearing/resetting required, which is what made the old version prone to getting
   // stuck showing stale or empty content until a full reload.
   const [pendingTurn, setPendingTurn] = useState<{ key: string; messages: DisplayMessage[] } | null>(null);
-  // Bumped on every send and on every explicit navigation away from the conversation a
+  // Bumped on every send and on every explicit navigation away from the consultation a
   // send belongs to, so a stale in-flight stream can recognize it's been abandoned and
-  // stop writing chunks into whatever conversation is now on screen.
+  // stop writing chunks into whatever consultation is now on screen.
   const sendTokenRef = useRef(0);
-  // Set right after a first-message send creates a brand-new conversation, to the id it
+  // Set right after a first-message send creates a brand-new consultation, to the id it
   // was just given — before `router.push(...?c=<id>)`'s URL change has actually landed in
-  // `conversationId` (that takes an extra render). Without this, `conversationKey` below
+  // `consultationId` (that takes an extra render). Without this, `consultationKey` below
   // would still read as "new" for that gap, `pendingTurn` (already re-keyed to the real
   // id) would stop matching it, and the reply being streamed into it would render as
-  // missing — exactly for a brand-new conversation's first message, self-correcting on
-  // every message after since `conversationId` is already resolved by then. Cleared once
+  // missing — exactly for a brand-new consultation's first message, self-correcting on
+  // every message after since `consultationId` is already resolved by then. Cleared once
   // the send settles or the user explicitly navigates elsewhere. State (not a ref) since
   // it has to affect what gets rendered.
-  const [pendingUrlConversationId, setPendingUrlConversationId] = useState<string | null>(null);
+  const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
+  // only reflects it a render later, which is too late for callers within the same
+  // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
+  // explicitly leaves this consultation (new chat / switch), so a stale id from the previous
+  // chat never leaks into the next one's uploads.
+  const resolvedConsultationIdRef = useRef<string | null>(null);
+  // Dedupes concurrent ensureConsultationId() calls (e.g. an upload racing the send that
+  // triggered it) onto a single create-consultation request instead of firing one each.
+  const consultationCreationRef = useRef<Promise<string> | null>(null);
 
   const { data: session } = useChatSessionQuery();
-  const createConversation = useCreateConversationMutation();
-  const { data: history } = useMessagesQuery(conversationId ?? undefined);
-  const { data: caseConversations } = useConversationsQuery(caseId);
+  const createConsultation = useCreateConsultationMutation();
+  const { data: history } = useMessagesQuery(consultationId ?? undefined);
+  const { data: caseConsultations } = useConsultationsQuery(caseId);
 
   // Explicit case linkage for CaseHubWidget's case-details panel. On a case's own chat
   // page the `caseId` prop already pins it; on the general /homepage chat, fall back to
-  // whichever case the current conversation is tagged with, or a pending ?caseId= carried
+  // whichever case the current consultation is tagged with, or a pending ?caseId= carried
   // over from a case's "Start Chat" action. Deliberately does NOT fall back further to
-  // "the user's most recently active case" — that previously leaked one conversation's
-  // case into every other unrelated conversation's hub.
+  // "the user's most recently active case" — that previously leaked one consultation's
+  // case into every other unrelated consultation's hub.
   const pendingCaseId = searchParams.get("caseId") ?? "";
   const linkedCaseId =
     caseId ??
-    (conversationId
-      ? (caseConversations?.find((c) => c.id === conversationId)?.caseId ?? null)
+    (consultationId
+      ? (caseConsultations?.find((c) => c.id === consultationId)?.caseId ?? null)
       : pendingCaseId || null);
 
-  // The transcript for the conversation currently on screen comes straight from the
-  // React Query cache — keyed by conversationId, so switching conversations just means a
+  // The transcript for the consultation currently on screen comes straight from the
+  // React Query cache — keyed by consultationId, so switching consultations just means a
   // different query result, with no manual copy-into-local-state step to keep in sync.
-  const baseMessages: DisplayMessage[] = conversationId
+  const baseMessages: DisplayMessage[] = consultationId
     ? (history ?? [])
         .filter((m) => m.role !== "system")
         .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
     : [];
 
-  const conversationKey = conversationId ?? pendingUrlConversationId ?? NEW_CONVERSATION_KEY;
-  const isPendingTurnActive = pendingTurn?.key === conversationKey;
+  const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
+  const isPendingTurnActive = pendingTurn?.key === consultationKey;
   const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
 
   // For a case's chat, arriving with no `?c=` param (e.g. leaving and coming back to the
   // case, rather than clicking "New Chat" from within it) shouldn't dump you on the blank
-  // empty state when a conversation already exists — that reads as "my prompts vanished"
+  // empty state when a consultation already exists — that reads as "my prompts vanished"
   // even though they're just sitting in the sidebar unselected. Redirect straight to the
   // most recent one. Runs at most once per mount: `autoSelectedRef` is set as soon as
-  // either branch below resolves (a conversation gets auto-picked, or the case turns out
+  // either branch below resolves (a consultation gets auto-picked, or the case turns out
   // to have none yet), so a later explicit "New Chat" click — which also clears `?c=` —
-  // is never re-hijacked back into a conversation.
+  // is never re-hijacked back into a consultation.
   const autoSelectedRef = useRef(false);
   useEffect(() => {
     if (!caseId || autoSelectedRef.current) return;
-    if (conversationId) {
+    if (consultationId) {
       autoSelectedRef.current = true;
       return;
     }
-    if (!caseConversations) return; // still loading — wait for it rather than assuming "none"
+    if (!caseConsultations) return; // still loading — wait for it rather than assuming "none"
     autoSelectedRef.current = true;
-    const mostRecent = caseConversations[0];
+    const mostRecent = caseConsultations[0];
     if (mostRecent) {
       router.replace(`${basePath}?c=${mostRecent.id}`);
     }
-  }, [caseId, conversationId, caseConversations, basePath, router]);
+  }, [caseId, consultationId, caseConsultations, basePath, router]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -183,18 +199,41 @@ export default function ConsultationChat({
   }, []);
 
   const handleNewChat = () => {
-    sendTokenRef.current++; // abandon any in-flight send for the conversation we're leaving
-    setPendingUrlConversationId(null);
+    sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
+    setPendingUrlConsultationId(null);
+    resolvedConsultationIdRef.current = null;
+    consultationCreationRef.current = null;
     setIsSending(false);
     router.push(basePath);
   };
 
-  const handleSelectConversation = (id: string) => {
-    if (id === conversationId) return;
+  const handleSelectConsultation = (id: string) => {
+    if (id === consultationId) return;
     sendTokenRef.current++;
-    setPendingUrlConversationId(null);
+    setPendingUrlConsultationId(null);
+    resolvedConsultationIdRef.current = null;
+    consultationCreationRef.current = null;
     setIsSending(false);
     router.push(`${basePath}?c=${id}`);
+  };
+
+  // Resolves to a real consultation id, creating one exactly once if none exists yet —
+  // needed because an attachment upload must be keyed to a consultationId before the
+  // consultation otherwise gets created (at send time). Concurrent callers (upload + doSend
+  // within the same send) share the single in-flight create via consultationCreationRef.
+  const ensureConsultationId = async (): Promise<string> => {
+    if (consultationId) return consultationId;
+    if (resolvedConsultationIdRef.current) return resolvedConsultationIdRef.current;
+    if (!consultationCreationRef.current) {
+      consultationCreationRef.current = (async () => {
+        const consultation = await createConsultation.mutateAsync({ caseId });
+        resolvedConsultationIdRef.current = consultation.id;
+        setPendingUrlConsultationId(consultation.id);
+        router.push(`${basePath}?c=${consultation.id}`);
+        return consultation.id;
+      })();
+    }
+    return consultationCreationRef.current;
   };
 
   //trigger hidden file input without router redirect
@@ -203,29 +242,104 @@ export default function ConsultationChat({
     fileInputRef.current?.click();
   };
 
-  // Queues the file for the separate Documents page (unrelated hand-off, unchanged) and,
-  // for this chat, uploads it immediately so it's ready to reference by the time the user
-  // hits send — uploading only on send was leaving the send button attached to a promise
-  // that hadn't started yet, so a file-only message just no-op'd instead of sending.
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.currentTarget.files?.[0];
-    e.currentTarget.value = "";
-    if (!selected) return;
-    setFile(selected);
-    setAttachedDoc(null);
-    queueDocument(selected);
-    uploadDocument.mutate(
-      { file: selected, caseId: linkedCaseId ?? undefined },
-      { onSuccess: (doc) => setAttachedDoc({ id: doc.id, name: doc.name, aiSummary: doc.aiSummary }) },
-    );
+  // Adds files to the local queue as "pending" — upload doesn't start until Send is
+  // clicked (see handleSendMessage). Also queues each into the separate Document Analysis
+  // page's store (unrelated hand-off, unchanged from the single-file behavior).
+  const addFiles = (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setQueuedFiles((prev) => [
+      ...prev,
+      ...list.map((file) => ({ id: crypto.randomUUID(), file, status: "pending" as const })),
+    ]);
+    list.forEach(queueDocument);
   };
 
-  const handleRemoveFile = () => {
-    setFile(null);
-    setAttachedDoc(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // input.files is a live FileList tied to the element — it must be materialized into a
+    // plain array before resetting .value, otherwise clearing the selection empties this
+    // reference too and addFiles sees zero files.
+    const files = e.currentTarget.files ? Array.from(e.currentTarget.files) : [];
+    e.currentTarget.value = "";
+    addFiles(files);
+  };
+
+  const handleRemoveFile = (id: string) => {
+    setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  };
+
+  // Runs presign→PUT for each queue entry in parallel (S3 has no batched-presign primitive),
+  // then confirms every successfully-uploaded file in a single call — so a multi-file
+  // attachment lands as one /api/documents/bulk request instead of one /api/documents
+  // request per file. Updates each entry's status as it settles and returns the updated
+  // entries so callers (handleSendMessage) can act on the outcome without racing the state
+  // update. `consultationId` scopes the S3 key to this consultation when there's no linked
+  // case yet (the backend prioritizes `caseId` over it, so it's harmless to always pass both).
+  const uploadQueuedFiles = async (entries: typeof queuedFiles, consultationId?: string) => {
+    const ids = new Set(entries.map((e) => e.id));
+    setQueuedFiles((prev) => prev.map((f) => (ids.has(f.id) ? { ...f, status: "uploading" } : f)));
+
+    // The confirm call (POST /api/documents) can reject outright — e.g. a backend/frontend
+    // payload mismatch — not just have individual files fail. Without this catch that throw
+    // propagates out of handleSendMessage and every entry here is left stuck at "uploading"
+    // forever (no error shown, no retry control, Send permanently disabled), since the state
+    // update that maps failures to "error" never runs. Fall back to marking the whole batch
+    // "error" instead so the existing retry UI still applies.
+    type ConfirmResult = Awaited<ReturnType<typeof uploadDocuments.mutateAsync>>;
+    let confirmed: ConfirmResult["confirmed"];
+    let succeededFiles: ConfirmResult["succeededFiles"];
+    try {
+      ({ confirmed, succeededFiles } = await uploadDocuments.mutateAsync({
+        files: entries.map((e) => e.file),
+        caseId: linkedCaseId ?? undefined,
+        consultationId,
+      }));
+    } catch (error) {
+      console.error("Failed to confirm document upload:", error);
+      const updated = entries.map((entry) => ({ ...entry, status: "error" as const }));
+      const updatedById = new Map(updated.map((f) => [f.id, f]));
+      setQueuedFiles((prev) => prev.map((f) => updatedById.get(f.id) ?? f));
+      return updated;
     }
+
+    // `succeededFiles` is parallel to `confirmed` — match back to queue entries by File
+    // identity (the exact instance queued), not name, since two queued files can share a
+    // filename.
+    const docByFile = new Map(succeededFiles.map((file, i) => [file, confirmed[i]!]));
+
+    const updated = entries.map((entry) => {
+      const doc = docByFile.get(entry.file);
+      return doc
+        ? { ...entry, status: "uploaded" as const, doc: { id: doc.id, name: doc.name, aiSummary: doc.aiSummary } }
+        : { ...entry, status: "error" as const };
+    });
+
+    const updatedById = new Map(updated.map((f) => [f.id, f]));
+    setQueuedFiles((prev) => prev.map((f) => updatedById.get(f.id) ?? f));
+    return updated;
+  };
+
+  const retryUpload = (id: string) => {
+    const entry = queuedFiles.find((f) => f.id === id);
+    // A prior attempt already resolved (or is resolving) a consultation id for this send —
+    // reuse it rather than creating a second consultation on retry.
+    if (entry) void uploadQueuedFiles([entry], consultationId ?? resolvedConsultationIdRef.current ?? undefined);
   };
 
   // Toggles in-place mic recording; the finished clip is queued for the Transcription page.
@@ -267,13 +381,13 @@ export default function ConsultationChat({
     if (!text || !session || isSending) return;
 
     // Identifies this send so it can tell, once it's back from an await, whether the
-    // user has since navigated away (handleNewChat/handleSelectConversation bump the
+    // user has since navigated away (handleNewChat/handleSelectConsultation bump the
     // counter) — an abandoned send must not write its chunks/errors/isSending into
-    // whatever conversation is now on screen.
+    // whatever consultation is now on screen.
     const myToken = ++sendTokenRef.current;
-    // The conversation this send belongs to, fixed at send time (before the id might
-    // change under us, e.g. a brand-new conversation getting its real id).
-    const turnKey = conversationKey;
+    // The consultation this send belongs to, fixed at send time (before the id might
+    // change under us, e.g. a brand-new consultation getting its real id).
+    const turnKey = consultationKey;
 
     setIsSending(true);
     setPendingTurn({
@@ -282,21 +396,20 @@ export default function ConsultationChat({
     });
 
     try {
-      let activeConversationId = conversationId;
-      if (!activeConversationId) {
-        const conversation = await createConversation.mutateAsync({ caseId });
-        activeConversationId = conversation.id;
+      let activeConsultationId = consultationId;
+      if (!activeConsultationId) {
+        // Reuses the consultation an in-flight attachment upload already created for this
+        // send (see handleSendMessage), rather than creating a second one.
+        activeConsultationId = await ensureConsultationId();
         // Re-key the pending turn to the real id so it keeps showing once the URL
-        // (and thus `conversationKey`) catches up to it. Until that render lands,
-        // `pendingUrlConversationId` covers the gap so the re-keyed turn keeps
-        // matching `conversationKey` instead of going invisible for a beat.
-        setPendingUrlConversationId(activeConversationId);
-        setPendingTurn((prev) => (prev && prev.key === turnKey ? { ...prev, key: activeConversationId! } : prev));
-        router.push(`${basePath}?c=${activeConversationId}`);
+        // (and thus `consultationKey`) catches up to it. Until that render lands,
+        // `pendingUrlConsultationId` covers the gap so the re-keyed turn keeps
+        // matching `consultationKey` instead of going invisible for a beat.
+        setPendingTurn((prev) => (prev && prev.key === turnKey ? { ...prev, key: activeConsultationId! } : prev));
       }
 
       const { newSessionId } = await sendChatMessage({
-        conversationId: activeConversationId,
+        consultationId: activeConsultationId,
         sessionId: session.session_id,
         message: text,
         documentContext,
@@ -324,9 +437,9 @@ export default function ConsultationChat({
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
       // drop the local buffer in favor of the (now up to date) query cache.
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConversationId) });
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() });
-      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConversationId) });
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId) });
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
+      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
       if (sendTokenRef.current === myToken) setPendingTurn(null);
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -341,25 +454,52 @@ export default function ConsultationChat({
     } finally {
       if (sendTokenRef.current === myToken) {
         setIsSending(false);
-        setPendingUrlConversationId(null);
+        setPendingUrlConsultationId(null);
       }
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const text = inputMessage.trim();
-    // A file-only send (no typed text) used to silently no-op here — now it's allowed as
-    // long as there's something to send, text or attachment.
-    if (!text && !file) return;
-    // Still mid-upload or it failed — block send rather than firing without the attachment
-    // the user thinks they're sending (the button below is disabled for the same reason).
-    if (file && !attachedDoc) return;
-    const doc = attachedDoc;
-    const messageText = text || t("input.defaultAttachmentMessage", { fileName: doc?.name ?? "" });
-    const documentContext = doc ? `Attached document "${doc.name}":\n${doc.aiSummary ?? ""}` : undefined;
+    // A file-only send (no typed text) is allowed as long as there's something to send,
+    // text or attachment(s).
+    if (!text && queuedFiles.length === 0) return;
+    // A previous Send click's upload is still in flight — ignore this click rather than
+    // starting a second overlapping upload pass over the same entries.
+    if (queuedFiles.some((f) => f.status === "uploading")) return;
+
+    const alreadyUploaded = queuedFiles.filter((f) => f.status === "uploaded");
+    const needsUpload = queuedFiles.filter((f) => f.status !== "uploaded");
+
+    let finalFiles = alreadyUploaded;
+    if (needsUpload.length > 0) {
+      // Resolve (creating if necessary) the consultation this attachment belongs to before
+      // uploading, so the S3 key can be scoped under documents/consultations/{id}/ instead
+      // of falling back to the generic per-user key — same idea as a case upload being
+      // scoped to its caseId. doSend below reuses this same consultation rather than
+      // creating a second one.
+      const resolvedConsultationId = await ensureConsultationId();
+      const settled = await uploadQueuedFiles(needsUpload, resolvedConsultationId);
+      // At least one file failed — leave it visible with a retry control instead of
+      // sending a message that silently drops the attachment the user asked for.
+      if (settled.some((f) => f.status === "error")) return;
+      finalFiles = [...alreadyUploaded, ...settled];
+    }
+
+    const docs = finalFiles.map((f) => f.doc).filter((d): d is NonNullable<typeof d> => !!d);
+    const messageText =
+      text ||
+      (docs.length === 1
+        ? t("input.defaultAttachmentMessage", { fileName: docs[0]!.name })
+        : t("input.defaultAttachmentMessageMultiple", { count: docs.length }));
+    const documentContext =
+      docs.length > 0
+        ? docs.map((d) => `Attached document "${d.name}":\n${d.aiSummary ?? ""}`).join("\n\n")
+        : undefined;
+
     setInputMessage("");
-    handleRemoveFile();
+    setQueuedFiles([]);
     void doSend(messageText, documentContext);
   };
 
@@ -374,39 +514,77 @@ export default function ConsultationChat({
     <div className="w-full max-w-3xl mx-auto shrink-0">
       <form
         onSubmit={handleSendMessage}
-        className="w-full backdrop-blur-md bg-card/80 p-3 rounded-3xl border border-border shadow-xl flex flex-col gap-2"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`relative w-full backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl flex flex-col gap-2 transition-colors ${
+          isDraggingOver ? "border-primary border-dashed" : "border-border"
+        }`}
       >
+        {isDraggingOver && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-card/90 pointer-events-none">
+            <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
+          </div>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className="hidden"
           onChange={handleFileChange}
         />
 
-        {file && (
+        {queuedFiles.length > 0 && (
           <div className="flex flex-col gap-1 px-2">
-            <span className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1 w-fit">
-              {uploadDocument.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
-              ) : (
-                <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-              )}
-              <span className="truncate max-w-[220px]">{file.name}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label={t("input.removeFile", { fileName: file.name })}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.removeFile", { fileName: file.name })}</TooltipContent>
-              </Tooltip>
-            </span>
-            {uploadDocument.isError && (
+            <div className="flex flex-wrap gap-1.5">
+              {queuedFiles.map((f) => (
+                <span
+                  key={f.id}
+                  className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1 w-fit"
+                >
+                  {f.status === "uploading" ? (
+                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                  ) : f.status === "uploaded" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+                  ) : f.status === "error" ? (
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                  ) : (
+                    <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  )}
+                  <span className="truncate max-w-[220px]">{f.file.name}</span>
+                  {f.status === "error" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => retryUpload(f.id)}
+                          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          aria-label={t("input.retryUpload", { fileName: f.file.name })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("input.retryUpload", { fileName: f.file.name })}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(f.id)}
+                        className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        aria-label={t("input.removeFile", { fileName: f.file.name })}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("input.removeFile", { fileName: f.file.name })}</TooltipContent>
+                  </Tooltip>
+                </span>
+              ))}
+            </div>
+            {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-xs text-red-600 dark:text-red-400">{t("input.attachmentUploadError")}</span>
             )}
           </div>
@@ -464,7 +642,7 @@ export default function ConsultationChat({
             <TooltipTrigger asChild>
               <button
                 type="submit"
-                disabled={isSending || !session || (!!file && !attachedDoc)}
+                disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
                 aria-label={t("input.sendMessage")}
                 className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
               >
@@ -488,9 +666,9 @@ export default function ConsultationChat({
       }`}
     >
       {/* Left Sidebar Panel */}
-      <ConversationSidebar
-        activeConversationId={conversationId}
-        onSelectConversation={handleSelectConversation}
+      <ConsultationSidebar
+        activeConsultationId={consultationId}
+        onSelectConsultation={handleSelectConsultation}
         onNewChat={handleNewChat}
         caseId={caseId}
         expanded={sidebarExpanded}
@@ -499,15 +677,15 @@ export default function ConsultationChat({
 
       {/* Pinned directly under the navbar, spanning the full workspace width rather than
           the chat column's narrower max-w-5xl — a page-level strip (back link, case
-          identity), not part of the centered conversation. Sits outside <main> so it isn't
-          bound by that centering; ConversationSidebar is absolutely positioned so its own
+          identity), not part of the centered consultation. Sits outside <main> so it isn't
+          bound by that centering; ConsultationSidebar is absolutely positioned so its own
           top-16 offset is unaffected by this sibling. */}
       {headerSlot && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       {/* Main Chat Interface */}
       <main className={`relative z-10 max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 ${headerSlot ? "" : "pt-16"}`}>
-        {!conversationId && messages.length === 0 ? (
-          /* No conversation yet — heading and input are centered together, like Gemini's landing state */
+        {!consultationId && messages.length === 0 ? (
+          /* No consultation yet — heading and input are centered together, like Gemini's landing state */
           <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
             <div className="text-center max-w-2xl mx-auto px-2">
               <h1 className="font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
@@ -552,7 +730,7 @@ export default function ConsultationChat({
                 })}
 
                 {!isSending && messages.length > 0 && messages.at(-1)?.role === "assistant" && messages.at(-1)?.content && (
-                  <CaseHubWidget caseId={linkedCaseId} conversationId={conversationId} />
+                  <CaseHubWidget caseId={linkedCaseId} consultationId={consultationId} />
                 )}
 
                 <div ref={messagesEndRef} />

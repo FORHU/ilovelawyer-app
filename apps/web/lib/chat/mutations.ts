@@ -6,7 +6,7 @@ export interface ChatSession {
   session_id: string
 }
 
-export interface Conversation {
+export interface Consultation {
   id: string
   userId: string
   title: string | null
@@ -18,7 +18,7 @@ export type MessageRole = "user" | "assistant" | "system"
 
 export interface ChatMessage {
   id: string
-  conversationId: string
+  consultationId: string
   role: MessageRole
   content: string
   createdAt: string
@@ -32,67 +32,67 @@ export function useChatSessionQuery() {
   })
 }
 
-export function useCreateConversationMutation() {
+export function useCreateConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ title, caseId }: { title?: string; caseId?: string } = {}) =>
-      apiFetch<Conversation>("/api/chat/conversations", {
+      apiFetch<Consultation>("/api/chat/consultations", {
         method: "POST",
         body: JSON.stringify({ title, caseId }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
   })
 }
 
-/** Lists the current user's conversations, most recently created first. Pass `caseId` to
- * scope the list to a single case's conversations instead of every conversation. */
-export function useConversationsQuery(caseId?: string) {
+/** Lists the current user's consultations, most recently created first. Pass `caseId` to
+ * scope the list to a single case's consultations instead of every consultation. */
+export function useConsultationsQuery(caseId?: string) {
   return useQuery({
-    queryKey: chatKeys.conversations(caseId),
-    queryFn: () => apiFetch<Conversation[]>(`/api/chat/conversations${caseId ? `?caseId=${caseId}` : ""}`),
+    queryKey: chatKeys.consultations(caseId),
+    queryFn: () => apiFetch<Consultation[]>(`/api/chat/consultations${caseId ? `?caseId=${caseId}` : ""}`),
   })
 }
 
-export function useRenameConversationMutation() {
+export function useRenameConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ conversationId, title }: { conversationId: string; title: string }) =>
-      apiFetch<Conversation>(`/api/chat/conversations/${conversationId}`, {
+    mutationFn: ({ consultationId, title }: { consultationId: string; title: string }) =>
+      apiFetch<Consultation>(`/api/chat/consultations/${consultationId}`, {
         method: "PATCH",
         body: JSON.stringify({ title }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
   })
 }
 
-export function useDeleteConversationMutation() {
+export function useDeleteConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (conversationId: string) =>
-      apiFetch<void>(`/api/chat/conversations/${conversationId}`, {
+    mutationFn: (consultationId: string) =>
+      apiFetch<void>(`/api/chat/consultations/${consultationId}`, {
         method: "DELETE",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: chatKeys.conversationsAll() })
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
   })
 }
 
-export function useMessagesQuery(conversationId: string | undefined) {
+export function useMessagesQuery(consultationId: string | undefined) {
   return useQuery({
-    queryKey: chatKeys.messages(conversationId ?? ""),
-    queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/conversations/${conversationId}/messages`),
-    enabled: !!conversationId,
+    queryKey: chatKeys.messages(consultationId ?? ""),
+    queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
+    enabled: !!consultationId,
   })
 }
 
 /** Legal precedent citations (title, case number, snippet, source url) the AI surfaced
- * while composing the conversation's latest assistant reply — not the user's own cases.
- * Empty until at least one message has been sent in the conversation. */
+ * while composing the consultation's latest assistant reply — not the user's own cases.
+ * Empty until at least one message has been sent in the consultation. */
 export interface RelatedCase {
   type: string
   title: string | null
@@ -105,11 +105,11 @@ export interface RelatedCase {
   vetted: boolean
 }
 
-export function useRelatedCasesQuery(conversationId: string | undefined) {
+export function useRelatedCasesQuery(consultationId: string | undefined) {
   return useQuery({
-    queryKey: chatKeys.relatedCases(conversationId ?? ""),
-    queryFn: () => apiFetch<{ relatedCases: RelatedCase[] }>(`/api/chat/conversations/${conversationId}/related-cases`),
-    enabled: !!conversationId,
+    queryKey: chatKeys.relatedCases(consultationId ?? ""),
+    queryFn: () => apiFetch<{ relatedCases: RelatedCase[] }>(`/api/chat/consultations/${consultationId}/related-cases`),
+    enabled: !!consultationId,
   })
 }
 
@@ -119,19 +119,19 @@ export function useRelatedCasesQuery(conversationId: string | undefined) {
  * callers should update their cached session_id with it so the next message doesn't
  * repeat the same failed-then-retried round trip. */
 export async function sendChatMessage({
-  conversationId,
+  consultationId,
   sessionId,
   message,
   documentContext,
   onChunk,
 }: {
-  conversationId: string
+  consultationId: string
   sessionId: string
   message: string
   documentContext?: string
   onChunk: (text: string) => void
 }): Promise<{ newSessionId?: string }> {
-  const res = await apiFetchRaw(`/api/chat/conversations/${conversationId}/messages`, {
+  const res = await apiFetchRaw(`/api/chat/consultations/${consultationId}/messages`, {
     method: "POST",
     body: JSON.stringify({ message, sessionId, documentContext }),
   })
