@@ -377,7 +377,10 @@ export default function ConsultationChat({
     }
   };
 
-  const doSend = async (text: string, documentContext?: string) => {
+  const doSend = async (
+    text: string,
+    opts?: { documentContext?: string; caseDocumentId?: string },
+  ) => {
     if (!text || !session || isSending) return;
 
     // Identifies this send so it can tell, once it's back from an await, whether the
@@ -412,7 +415,11 @@ export default function ConsultationChat({
         consultationId: activeConsultationId,
         sessionId: session.session_id,
         message: text,
-        documentContext,
+        documentContext: opts?.documentContext,
+        caseDocumentId: opts?.caseDocumentId,
+        // Lets backend fall back to READY case docs when this consultation has none yet
+        // (homepage chat linked to a case, or case-portfolio without consultation uploads).
+        caseId: linkedCaseId || caseId || undefined,
         onChunk: (chunk) => {
           if (sendTokenRef.current !== myToken) return;
           setPendingTurn((prev) => {
@@ -493,14 +500,18 @@ export default function ConsultationChat({
       (docs.length === 1
         ? t("input.defaultAttachmentMessage", { fileName: docs[0]!.name })
         : t("input.defaultAttachmentMessageMultiple", { count: docs.length }));
-    const documentContext =
-      docs.length > 0
-        ? docs.map((d) => `Attached document "${d.name}":\n${d.aiSummary ?? ""}`).join("\n\n")
-        : undefined;
+    // Only inline real summary text — a filename-only "Attached document …" string makes the
+    // model think a file is present without giving it content, so it asks the user to re-upload.
+    // Chunk text is grounded server-side via caseDocumentId / consultation / case RAG instead.
+    const summaries = docs
+      .map((d) => (d.aiSummary?.trim() ? `Attached document "${d.name}":\n${d.aiSummary.trim()}` : null))
+      .filter((s): s is string => !!s);
+    const documentContext = summaries.length > 0 ? summaries.join("\n\n") : undefined;
+    const caseDocumentId = docs.length === 1 ? docs[0]!.id : undefined;
 
     setInputMessage("");
     setQueuedFiles([]);
-    void doSend(messageText, documentContext);
+    void doSend(messageText, { documentContext, caseDocumentId });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

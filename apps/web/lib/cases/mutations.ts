@@ -238,11 +238,10 @@ export function useUploadCaseDocumentsMutation() {
 /** Uploads any number of files in one confirm call without requiring a caseId — unlike
  * useUploadCaseDocumentsMutation, which is case-only. Each file still gets its own presign
  * + S3 PUT (S3 has no batched-presign primitive), but they're all confirmed together via one
- * POST /api/documents call carrying a `files` array of the S3 keys returned by presign (same
- * endpoint the single-file confirm uses, branching on `files` vs `key`/`name` — see backend),
- * so a multi-file attachment (e.g. consultation chat, before it's linked to a case) shows up
- * as one confirm request instead of one per file. `consultationId` is presign-only (S3 key
- * scoping, see ADR 0011) — the confirm call only persists `caseId`.
+ * POST /api/documents call with `{ items: [{ key, name }] }` (batch shape; single-file uses
+ * `{ key, name }` — see DocumentCtrl.create), so a multi-file attachment (e.g. consultation
+ * chat, before it's linked to a case) shows up as one confirm request instead of one per file.
+ * `consultationId` is sent on both presign (S3 key scoping, ADR 0011) and confirm (DB link).
  * A single presign/PUT failure doesn't block the rest of the batch from confirming
  * (Promise.allSettled). */
 export function useUploadDocumentsMutation() {
@@ -286,8 +285,9 @@ export function useUploadDocumentsMutation() {
         confirmed = await apiFetch<UserDocument[]>("/api/documents", {
           method: "POST",
           body: JSON.stringify({
-            files: succeeded.map(({ key }) => key),
+            items: succeeded.map(({ file, key }) => ({ key, name: file.name })),
             caseId,
+            consultationId,
           }),
         })
       }
