@@ -8,22 +8,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 
 export function CaseHubWidget({
   caseId,
-  conversationId,
+  consultationId,
 }: {
-  /** Explicit link for this conversation, if any (e.g. arrived via a case's "Start Chat"
-   * action, or tagged on the conversation when the case was created from within it). Null
-   * means this conversation has no case of its own — must NOT fall back to some other
+  /** Explicit link for this consultation, if any (e.g. arrived via a case's "Start Chat"
+   * action, or tagged on the consultation when the case was created from within it). Null
+   * means this consultation has no case of its own — must NOT fall back to some other
    * case (e.g. the most recently updated one), or a case created in one chat would bleed
-   * into every other unrelated conversation's hub. */
+   * into every other unrelated consultation's hub. */
   caseId: string | null;
-  /** Conversation the related-cases panel pulls legal-precedent citations for — those are
-   * surfaced by the AI's latest reply in this conversation, not tied to `caseId` at all. */
-  conversationId: string | null;
+  /** Consultation the related-cases panel pulls legal-precedent citations for — those are
+   * surfaced by the AI's latest reply in this consultation, not tied to `caseId` at all. */
+  consultationId: string | null;
 }) {
   const { t } = useTranslation("homepage");
 
   const { data: caseRecord } = useCaseQuery(caseId ?? "");
-  const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(conversationId ?? undefined);
+  const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(consultationId ?? undefined);
   const relatedCases = relatedData?.relatedCases ?? [];
 
   // A case is linked/available but its full record hasn't loaded yet — don't flash the
@@ -70,7 +70,7 @@ export function CaseHubWidget({
 }
 
 /** Renders legal-precedent citations (source, not the user's own cases) surfaced by the
- * conversation's latest assistant reply. */
+ * consultation's latest assistant reply. */
 function HubRelatedCases({
   entries,
   isLoading,

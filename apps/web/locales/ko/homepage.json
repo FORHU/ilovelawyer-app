@@ -12,7 +12,10 @@
     "stopRecording": "녹음 중지",
     "sendMessage": "메시지 보내기",
     "defaultAttachmentMessage": "첨부된 문서를 검토해 주세요: {{fileName}}",
-    "attachmentUploadError": "파일을 업로드하지 못했습니다. 제거 후 다시 시도해 주세요."
+    "defaultAttachmentMessageMultiple": "첨부된 문서({{count}}개)를 검토해 주세요.",
+    "attachmentUploadError": "하나 이상의 파일을 업로드하지 못했습니다. 다시 시도하거나 제거해 주세요.",
+    "retryUpload": "{{fileName}} 업로드 재시도",
+    "dropFilesHint": "파일을 여기에 놓아 첨부하세요"
   },
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
@@ -51,18 +54,18 @@
   "sidebar": {
     "newChat": "새 채팅",
     "recent": "최근",
-    "recentConversationsTitle": "최근 대화",
+    "recentConsultationsTitle": "최근 상담",
     "gallery": "갤러리",
-    "untitledConversation": "제목 없는 대화",
-    "conversations": "대화 목록",
-    "openConversations": "대화 목록 열기",
-    "closeConversations": "대화 목록 닫기",
-    "renameConversation": "이름 바꾸기",
-    "renameConversationNamed": "{{name}} 이름 바꾸기",
+    "untitledConsultation": "제목 없는 상담",
+    "consultations": "상담 목록",
+    "openConsultations": "상담 목록 열기",
+    "closeConsultations": "상담 목록 닫기",
+    "renameConsultation": "이름 바꾸기",
+    "renameConsultationNamed": "{{name}} 이름 바꾸기",
     "saveTitle": "제목 저장",
-    "deleteConversation": "삭제",
-    "deleteConversationNamed": "{{name}} 삭제",
-    "deleteConversationConfirm": "이 대화를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleteConsultation": "삭제",
+    "deleteConsultationNamed": "{{name}} 삭제",
+    "deleteConsultationConfirm": "이 상담을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "collapseSidebar": "사이드바 접기"
   }
 }

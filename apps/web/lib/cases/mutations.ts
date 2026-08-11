@@ -120,16 +120,19 @@ export interface UserDocument {
  * case-scoped S3 key — see ADR 0011. Re-enabled 2026-08-05 after confirming the backend's
  * `documents/users/{userId}/{timestamp}-{shortId}.ext` no-case fallback is live; re-test the
  * with-caseId path immediately after this change (it previously 400'd with `"caseId" is not
- * allowed` before this backend deploy — revert this if that recurs). */
+ * allowed` before this backend deploy — revert this if that recurs).
+ * `consultationId` (a not-yet-cased consultation) is a fallback scope for presign only — same
+ * idea as `caseId`, so a consultation's attachments land under documents/consultations/{id}/
+ * instead of the generic per-user bucket. Ignored by the backend whenever `caseId` is present. */
 export function useUploadCaseDocumentMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ file, caseId }: { file: File; caseId?: string }) => {
+    mutationFn: async ({ file, caseId, consultationId }: { file: File; caseId?: string; consultationId?: string }) => {
       const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
         "/api/documents/presign",
         {
           method: "POST",
-          body: JSON.stringify({ filename: file.name, contentType: file.type, caseId }),
+          body: JSON.stringify({ filename: file.name, contentType: file.type, caseId, consultationId }),
         },
       )
 
@@ -226,6 +229,73 @@ export function useUploadCaseDocumentsMutation() {
     },
     onSuccess: ({ confirmed }, { caseId }) => {
       if (confirmed.length > 0) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+      }
+    },
+  })
+}
+
+/** Uploads any number of files in one confirm call without requiring a caseId — unlike
+ * useUploadCaseDocumentsMutation, which is case-only. Each file still gets its own presign
+ * + S3 PUT (S3 has no batched-presign primitive), but they're all confirmed together via one
+ * POST /api/documents call carrying a `files` array of the S3 keys returned by presign (same
+ * endpoint the single-file confirm uses, branching on `files` vs `key`/`name` — see backend),
+ * so a multi-file attachment (e.g. consultation chat, before it's linked to a case) shows up
+ * as one confirm request instead of one per file. `consultationId` is presign-only (S3 key
+ * scoping, see ADR 0011) — the confirm call only persists `caseId`.
+ * A single presign/PUT failure doesn't block the rest of the batch from confirming
+ * (Promise.allSettled). */
+export function useUploadDocumentsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      files,
+      caseId,
+      consultationId,
+    }: {
+      files: File[]
+      caseId?: string
+      consultationId?: string
+    }): Promise<BulkUploadResult> => {
+      const settled = await Promise.allSettled(
+        files.map(async (file) => {
+          const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
+            "/api/documents/presign",
+            {
+              method: "POST",
+              body: JSON.stringify({ filename: file.name, contentType: file.type, caseId, consultationId }),
+            },
+          )
+
+          const putRes = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type },
+          })
+          if (!putRes.ok) throw new Error("Upload to storage failed")
+
+          return { file, key }
+        }),
+      )
+
+      const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
+      const failed = files.filter((_, i) => settled[i]!.status === "rejected")
+
+      let confirmed: UserDocument[] = []
+      if (succeeded.length > 0) {
+        confirmed = await apiFetch<UserDocument[]>("/api/documents", {
+          method: "POST",
+          body: JSON.stringify({
+            files: succeeded.map(({ key }) => key),
+            caseId,
+          }),
+        })
+      }
+
+      return { confirmed, failed, succeededFiles: succeeded.map(({ file }) => file) }
+    },
+    onSuccess: ({ confirmed }, { caseId }) => {
+      if (caseId && confirmed.length > 0) {
         queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
       }
     },
