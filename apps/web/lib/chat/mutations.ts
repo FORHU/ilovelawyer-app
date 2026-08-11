@@ -123,17 +123,23 @@ export async function sendChatMessage({
   sessionId,
   message,
   documentContext,
+  caseDocumentId,
+  caseId,
   onChunk,
 }: {
   consultationId: string
   sessionId: string
   message: string
   documentContext?: string
+  /** Single attached document — backend ranks its chunks for chat-wonder. */
+  caseDocumentId?: string
+  /** Case scope fallback when consultation docs aren't READY yet / not linked. */
+  caseId?: string
   onChunk: (text: string) => void
 }): Promise<{ newSessionId?: string }> {
   const res = await apiFetchRaw(`/api/chat/consultations/${consultationId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ message, sessionId, documentContext }),
+    body: JSON.stringify({ message, sessionId, documentContext, caseDocumentId, caseId }),
   })
 
   const newSessionId = res.headers.get("X-Chat-Session-Id") ?? undefined
