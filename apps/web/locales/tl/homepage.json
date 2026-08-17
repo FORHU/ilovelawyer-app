@@ -17,6 +17,13 @@
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
     "dropFilesHint": "I-drop ang mga file dito para ilakip"
   },
+  "attachment": {
+    "viewFile": "Tingnan ang {{fileName}}",
+    "closePreview": "Isara ang preview",
+    "openInNewTab": "Buksan sa bagong tab",
+    "previewUnavailable": "Hindi available ang preview para sa ganitong uri ng file.",
+    "previewFailed": "Hindi ma-preview ang file na ito dito."
+  },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
@@ -50,6 +57,32 @@
     "scheduleTimeLabel": "Oras",
     "scheduleSubmit": "I-schedule",
     "scheduling": "Ineiskedyul…"
+  },
+  "mindMap": {
+    "chatTab": "Chat",
+    "mapTab": "Mind Map",
+    "emptyState": "Wala pang strategy map para sa konsultasyong ito",
+    "generating": "Ginagawa ang iyong case strategy map",
+    "generateCta": "Bumuo ng visual na strategy map"
+  },
+  "email": {
+    "action": "Email",
+    "composerTitle": "Gumawa ng email",
+    "to": "Para kay",
+    "toPlaceholder": "recipient@example.com",
+    "subject": "Paksa",
+    "subjectPlaceholder": "Paksa",
+    "sourceMessageLabel": "Isama ang sagot ng AI",
+    "sourceMessageOption": "Sagot {{index}}",
+    "body": "Mensahe",
+    "attachmentsLabel": "Maglakip ng mga file",
+    "noAttachments": "Wala pang file na maaaring ilakip.",
+    "send": "Ipadala",
+    "sending": "Ipinapadala…",
+    "cancel": "Kanselahin",
+    "close": "Isara",
+    "notAvailable": "Hindi pa available ang pagpapadala ng email — hinihintay pa ang backend deployment.",
+    "sendSuccess": "Naipadala ang email."
   },
   "sidebar": {
     "newChat": "Bagong chat",

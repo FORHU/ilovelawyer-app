@@ -1,13 +1,17 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import { CaseHubWidget } from "@/components/chat/case-hub-widget";
+import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
+import FilePreviewModal from "@/components/chat/file-preview-modal";
+import EmailComposerModal from "@/components/chat/email-composer-modal";
+import { MindMap } from "@/components/chat/mind-map";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -15,7 +19,8 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { useUploadDocumentsMutation } from "@/lib/cases/mutations";
+import { extractMindMap, stripStructuredBlocks, type MindMapItem } from "@/lib/chat/mind-map-parser";
+import { useCaseQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -23,9 +28,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 interface DisplayMessage {
   role: "user" | "assistant";
   content: string;
+  /** Only ever set when `enableFileChips` is on (ADR 0012) — Case Chat never populates this. */
+  attachments?: MessageAttachment[];
+  /** The AI's case strategy map, extracted from `[MINDMAP]...[/MINDMAP]` — during streaming
+   * this is recomputed from the raw accumulated text on every chunk (see doSend); once the
+   * message is persisted it comes straight from the backend (see baseMessages below). */
+  mindMap?: MindMapItem;
 }
 
 const MAX_TEXTAREA_HEIGHT = 200;
+
+// Sent verbatim (both by the auto-trigger and the manual retry button) so the Chat tab can
+// recognize and hide this system-driven turn instead of showing it as a bubble the user
+// never actually typed — see the `visibleMessages` filter below.
+const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
 
 interface ConsultationChatProps {
   /** Route this chat lives at — consultation selection is driven by a `?c=<id>` query
@@ -40,6 +56,12 @@ interface ConsultationChatProps {
   emptyStateSubheading?: string;
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
+  /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
+   * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
+   * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
+   * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
+   * already-planned changes of its own that this deliberately doesn't preempt. */
+  enableFileChips?: boolean;
 }
 
 export default function ConsultationChat({
@@ -48,6 +70,7 @@ export default function ConsultationChat({
   emptyStateHeading,
   emptyStateSubheading,
   headerSlot,
+  enableFileChips = false,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -69,6 +92,21 @@ export default function ConsultationChat({
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
+  const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
+  // Whether the Email action (docs/adr/0013-case-consultation-email-action.md) is open — lives
+  // here (not per-page) since the toolbar button that opens it is shared by every consultation.
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  // Blob URLs minted for just-sent attachments (see handleSendMessage) so this session's own
+  // sends preview instantly without waiting on the backend's fileUrl (not live yet — ADR 0012).
+  // Revoked on unmount only, not per-send, since a still-open preview modal or a message still
+  // visible in the transcript may reference one after the send that created it has settled.
+  const blobUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    return () => {
+      blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
   const uploadDocuments = useUploadDocumentsMutation();
@@ -148,12 +186,70 @@ export default function ConsultationChat({
   const baseMessages: DisplayMessage[] = consultationId
     ? (history ?? [])
         .filter((m) => m.role !== "system")
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          // Empty on messages sent before the backend shipped message-scoped attachments
+          // (handoff doc §5) — falls back to no chips for those, same as today.
+          attachments: enableFileChips
+            ? (m.documents ?? []).map((d) => ({ id: d.id, name: d.name, url: d.fileUrl, mimeType: d.mimeType }))
+            : undefined,
+          mindMap: m.mindMap?.data,
+        }))
     : [];
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
   const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
+
+  // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
+  // links here) — the lazy initializer covers a fresh mount from that link, and the effect
+  // below covers the same-instance case (already on this page, no remount happens when only
+  // the query string changes). Mind Map is Case-only (see CONTEXT.md), so both gate on the
+  // `caseId` prop — a `?tab=mindmap` link on the general /homepage Consultation is ignored.
+  const [activeTab, setActiveTab] = useState<"chat" | "mindmap">(() =>
+    caseId && searchParams.get("tab") === "mindmap" ? "mindmap" : "chat",
+  );
+  useEffect(() => {
+    if (caseId && searchParams.get("tab") === "mindmap") setActiveTab("mindmap");
+  }, [caseId, searchParams]);
+
+  const handleTabChange = (tab: "chat" | "mindmap") => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "mindmap") params.set("tab", "mindmap");
+    else params.delete("tab");
+    const qs = params.toString();
+    router.replace(`${basePath}${qs ? `?${qs}` : ""}`);
+  };
+
+  const { data: linkedCaseRecord } = useCaseQuery(linkedCaseId ?? "");
+
+  // The mind map is a living document for the whole consultation, not any one message — so
+  // this walks the transcript (including whatever's still streaming in) back-to-front and
+  // surfaces the most recent one the AI actually populated, same as law-ph's `activeMindMap`.
+  const activeMindMap = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const map = messages[i]?.mindMap;
+      if (map && Array.isArray(map.children) && map.children.length > 0) return map;
+    }
+    return undefined;
+  }, [messages]);
+
+  // The Mind Map tab's auto/manual "generate" turn is a system-driven request the user never
+  // typed — it shouldn't clutter the Chat tab as an ordinary bubble. Drops that user message
+  // and its paired assistant reply (both while streaming and once persisted); `activeMindMap`
+  // above still walks the full `messages`, so the map itself is unaffected.
+  const visibleMessages = useMemo(() => {
+    const hidden = new Set<number>();
+    messages.forEach((m, i) => {
+      if (m.role === "user" && m.content === AUTO_MINDMAP_PROMPT) {
+        hidden.add(i);
+        if (messages[i + 1]?.role === "assistant") hidden.add(i + 1);
+      }
+    });
+    return hidden.size > 0 ? messages.filter((_, i) => !hidden.has(i)) : messages;
+  }, [messages]);
 
   // For a case's chat, arriving with no `?c=` param (e.g. leaving and coming back to the
   // case, rather than clicking "New Chat" from within it) shouldn't dump you on the blank
@@ -204,6 +300,7 @@ export default function ConsultationChat({
     resolvedConsultationIdRef.current = null;
     consultationCreationRef.current = null;
     setIsSending(false);
+    setActiveTab("chat");
     router.push(basePath);
   };
 
@@ -214,6 +311,7 @@ export default function ConsultationChat({
     resolvedConsultationIdRef.current = null;
     consultationCreationRef.current = null;
     setIsSending(false);
+    setActiveTab("chat");
     router.push(`${basePath}?c=${id}`);
   };
 
@@ -379,7 +477,18 @@ export default function ConsultationChat({
 
   const doSend = async (
     text: string,
-    opts?: { documentContext?: string; caseDocumentId?: string },
+    opts?: {
+      documentContext?: string;
+      caseDocumentId?: string;
+      /** What the AI receives (`text` above, possibly a placeholder) and what's shown in the
+       * optimistic bubble can differ — see `handleSendMessage`'s displayText/attachments. */
+      displayText?: string;
+      attachments?: MessageAttachment[];
+      /** All documents attached to this send, for message-scoped attachment display (ADR 0012) —
+       * distinct from caseDocumentId, which is grounding-only. Live as of
+       * ilovelawyer-api@bfde68b (docs/message-attachments-backend-handoff.md §3). */
+      documentIds?: string[];
+    },
   ) => {
     if (!text || !session || isSending) return;
 
@@ -395,7 +504,11 @@ export default function ConsultationChat({
     setIsSending(true);
     setPendingTurn({
       key: turnKey,
-      messages: [...baseMessages, { role: "user", content: text }, { role: "assistant", content: "" }],
+      messages: [
+        ...baseMessages,
+        { role: "user", content: opts?.displayText ?? text, attachments: opts?.attachments },
+        { role: "assistant", content: "" },
+      ],
     });
 
     try {
@@ -411,24 +524,35 @@ export default function ConsultationChat({
         setPendingTurn((prev) => (prev && prev.key === turnKey ? { ...prev, key: activeConsultationId! } : prev));
       }
 
+      // Kept separate from the displayed bubble text: the stream can carry a trailing
+      // [MINDMAP]...[/MINDMAP] block that must never render as raw JSON mid-stream (the API
+      // only strips/persists it from the *final* response — see mind-map-parser.ts's header
+      // comment). Re-derived from scratch on every chunk rather than appended incrementally,
+      // so a tag that straddles a chunk boundary still resolves correctly once it closes.
+      let rawAccumulated = "";
+
       const { newSessionId } = await sendChatMessage({
         consultationId: activeConsultationId,
         sessionId: session.session_id,
         message: text,
         documentContext: opts?.documentContext,
         caseDocumentId: opts?.caseDocumentId,
+        documentIds: opts?.documentIds,
         // Lets backend fall back to READY case docs when this consultation has none yet
         // (homepage chat linked to a case, or case-portfolio without consultation uploads).
         caseId: linkedCaseId || caseId || undefined,
         onChunk: (chunk) => {
           if (sendTokenRef.current !== myToken) return;
+          rawAccumulated += chunk;
+          const displayContent = stripStructuredBlocks(rawAccumulated);
+          const mindMap = extractMindMap(rawAccumulated);
           setPendingTurn((prev) => {
             if (!prev) return prev;
             const lastIndex = prev.messages.length - 1;
             const last = prev.messages[lastIndex];
             if (!last) return prev;
             const nextMessages = [...prev.messages];
-            nextMessages[lastIndex] = { role: last.role, content: last.content + chunk };
+            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap };
             return { ...prev, messages: nextMessages };
           });
         },
@@ -465,6 +589,19 @@ export default function ConsultationChat({
       }
     }
   };
+
+  // Mind Map tab shouldn't need an explicit "Generate" click every time — fire the same
+  // request automatically the first time this case-chat mounts with the tab reachable and
+  // nothing generated yet. Ref-scoped rather than persisted, so a fresh page load naturally
+  // retries on its own if the previous attempt only came back empty because case documents
+  // were still processing (see docs/case-document-rag-backend-handoff.md).
+  const autoGeneratedMindMapRef = useRef(false);
+  useEffect(() => {
+    if (autoGeneratedMindMapRef.current) return;
+    if (!caseId || activeTab !== "mindmap" || activeMindMap || isSending || !session) return;
+    autoGeneratedMindMapRef.current = true;
+    void doSend(AUTO_MINDMAP_PROMPT);
+  }, [caseId, activeTab, activeMindMap, isSending, session]);
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -509,9 +646,34 @@ export default function ConsultationChat({
     const documentContext = summaries.length > 0 ? summaries.join("\n\n") : undefined;
     const caseDocumentId = docs.length === 1 ? docs[0]!.id : undefined;
 
+    // The optimistic bubble shows real typed text as-is, but drops the auto-generated
+    // placeholder in favor of letting the attachment chips speak for themselves (ADR 0012) —
+    // only when this page opted into chips at all; Case Chat keeps showing `messageText`
+    // (unchanged) since it never gets chips to fall back on.
+    const displayText = enableFileChips ? text : messageText;
+    const attachments: MessageAttachment[] | undefined = enableFileChips
+      ? finalFiles
+          .map((f): MessageAttachment | null => {
+            if (!f.doc) return null;
+            // Mint a same-session blob URL rather than waiting on a refetch for the backend's
+            // fileUrl, so the chip is clickable/previewable the instant it's sent. Once the
+            // invalidateQueries in doSend lands, baseMessages picks up the real fileUrl from
+            // the backend on its own — no change needed here.
+            const url = URL.createObjectURL(f.file);
+            blobUrlsRef.current.add(url);
+            return { id: f.doc.id, name: f.doc.name, url, mimeType: f.file.type || null };
+          })
+          .filter((a): a is MessageAttachment => a !== null)
+      : undefined;
+    // Message-scoped linkage (ADR 0012) — lets these documents survive a refetch/navigation
+    // instead of only existing as blob URLs in this component instance's local state. Gated on
+    // enableFileChips for the same reason `attachments` is: Case Chat has no chip UI to show them
+    // with, so there's no point linking there yet.
+    const documentIds = enableFileChips && docs.length > 0 ? docs.map((d) => d.id) : undefined;
+
     setInputMessage("");
     setQueuedFiles([]);
-    void doSend(messageText, { documentContext, caseDocumentId });
+    void doSend(messageText, { documentContext, caseDocumentId, displayText, attachments, documentIds });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -647,6 +809,20 @@ export default function ConsultationChat({
               </TooltipTrigger>
               <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setEmailComposerOpen(true)}
+                  disabled={!consultationId}
+                  aria-label={t("email.action")}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                >
+                  <Mail className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("email.action")}</TooltipContent>
+            </Tooltip>
           </div>
 
           <Tooltip>
@@ -695,39 +871,116 @@ export default function ConsultationChat({
 
       {/* Main Chat Interface */}
       <main className={`relative z-10 max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 ${headerSlot ? "" : "pt-16"}`}>
-        {!consultationId && messages.length === 0 ? (
-          /* No consultation yet — heading and input are centered together, like Gemini's landing state */
-          <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
-            <div className="text-center max-w-2xl mx-auto px-2">
-              <h1 className="font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
-                {emptyStateHeading ?? t("emptyState.heading")}
-              </h1>
-              <p className="font-['Inter'] text-foreground text-[15px] md:text-[16px] leading-6">
-                {emptyStateSubheading ?? t("emptyState.subheading")}
-              </p>
-            </div>
-            {chatInputBar}
-          </div>
-        ) : (
+        {(() => {
+          const isEmptyChatLanding = activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          // Mind Map is Case-only (see CONTEXT.md) — the tab switcher itself only exists inside
+          // a Case's own chat (caseId prop set), never on the general /homepage Consultation.
+          // Once there's more than one destination (Chat / Mind Map), the switcher has to be
+          // visible even from the very first, pre-consultation landing state — otherwise a link
+          // into ?tab=mindmap (case-details-panel.tsx's "MindMap" row) has nothing to land on for
+          // a case with no consultation yet, and can't get back to Chat either.
+          return (
           <>
-            {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
+            {caseId && (
+              <div className="flex items-center gap-1 pt-4 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("chat")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                    activeTab === "chat" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t("mindMap.chatTab")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("mindmap")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                    activeTab === "mindmap" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Workflow className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t("mindMap.mapTab")}
+                </button>
+              </div>
+            )}
+
+            {caseId && activeTab === "mindmap" ? (
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] py-4">
+                {activeMindMap ? (
+                  <MindMap
+                    rootTitle={linkedCaseRecord?.caseName}
+                    data={activeMindMap}
+                    consultationId={consultationId ?? undefined}
+                  />
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 py-24 text-center">
+                    {isSending ? (
+                      <p
+                        className="flex items-center gap-1 text-sm text-muted-foreground max-w-sm font-['Inter']"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {t("mindMap.generating")}
+                        <span className="flex items-center gap-0.5" aria-hidden="true">
+                          <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
+                          <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
+                          <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none" />
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground max-w-sm font-['Inter']">{t("mindMap.emptyState")}</p>
+                    )}
+                    {!isSending && (
+                      <button
+                        type="button"
+                        onClick={() => void doSend(AUTO_MINDMAP_PROMPT)}
+                        disabled={!session}
+                        className="rounded-full bg-brand-navy-950 text-white px-5 py-2.5 text-[13px] font-['Inter'] font-medium shadow-md hover:bg-[#162244] transition-colors disabled:opacity-50"
+                      >
+                        {t("mindMap.generateCta")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : isEmptyChatLanding ? (
+              /* No consultation yet — heading and input are centered together, like Gemini's landing state */
+              <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
+                <div className="text-center max-w-2xl mx-auto px-2">
+                  <h1 className="font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
+                    {emptyStateHeading ?? t("emptyState.heading")}
+                  </h1>
+                  <p className="font-['Inter'] text-foreground text-[15px] md:text-[16px] leading-6">
+                    {emptyStateSubheading ?? t("emptyState.subheading")}
+                  </p>
+                </div>
+                {chatInputBar}
+              </div>
+            ) : (
+            /* Scrollable message pane — input bar below stays put regardless of scroll position */
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
               <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 px-2 py-4">
-                {messages.map((m, i) => {
+                {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
-                      <div
-                        key={i}
-                        className="max-w-[80%] self-end rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground"
-                      >
-                        {m.content}
+                      <div key={i} className="flex flex-col items-end gap-1.5">
+                        {m.attachments && m.attachments.length > 0 && (
+                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
+                        )}
+                        {m.content && (
+                          <div className="max-w-[80%] rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground">
+                            {m.content}
+                          </div>
+                        )}
                       </div>
                     );
                   }
 
                   // The last assistant message is a placeholder pushed synchronously at send
                   // time, before any chunk streams in — that's the window "thinking" covers.
-                  const isStreamingThis = isSending && isPendingTurnActive && i === messages.length - 1;
+                  const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
 
                   return (
                     <div key={i} className="w-full rounded-2xl px-4 py-3">
@@ -740,17 +993,32 @@ export default function ConsultationChat({
                   );
                 })}
 
-                {!isSending && messages.length > 0 && messages.at(-1)?.role === "assistant" && messages.at(-1)?.content && (
+                {!isSending && visibleMessages.length > 0 && visibleMessages.at(-1)?.role === "assistant" && visibleMessages.at(-1)?.content && (
                   <CaseHubWidget caseId={linkedCaseId} consultationId={consultationId} />
                 )}
 
                 <div ref={messagesEndRef} />
               </div>
             </div>
-            <div className="pt-4 pb-6">{chatInputBar}</div>
+            )}
+            {!isEmptyChatLanding && activeTab !== "mindmap" && <div className="pt-4 pb-6">{chatInputBar}</div>}
           </>
-        )}
+          );
+        })()}
       </main>
+
+      {previewAttachment && (
+        <FilePreviewModal attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
+      )}
+
+      {emailComposerOpen && consultationId && (
+        <EmailComposerModal
+          consultationId={consultationId}
+          caseId={caseId}
+          messages={history ?? []}
+          onClose={() => setEmailComposerOpen(false)}
+        />
+      )}
     </div>
   );
 }

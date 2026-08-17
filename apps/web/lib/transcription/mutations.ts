@@ -82,6 +82,19 @@ export function pollTranscriptionJob(id: string): Promise<PollJobResult> {
   return apiFetch<PollJobResult>(`/api/transcriptions/${id}/poll-job`)
 }
 
+export interface ChunkTranscriptionResult {
+  ragStatus: string
+  chunkCount: number
+}
+
+/** Chunks + embeds a completed transcript so Case Chat can retrieve excerpts from it (see
+ * docs/adr/0013-transcript-rag-chunking.md). Called once, right after a job reaches COMPLETED —
+ * not a hook, since it's fired imperatively from useTranscriptionPolling's poll loop rather than
+ * from component render. */
+export function chunkTranscription(id: string): Promise<ChunkTranscriptionResult> {
+  return apiFetch<ChunkTranscriptionResult>(`/api/transcriptions/${id}/chunk`, { method: "POST" })
+}
+
 export function useTranscriptionsQuery() {
   return useQuery({
     queryKey: transcriptionKeys.lists(),

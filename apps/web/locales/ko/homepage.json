@@ -17,6 +17,13 @@
     "retryUpload": "{{fileName}} 업로드 재시도",
     "dropFilesHint": "파일을 여기에 놓아 첨부하세요"
   },
+  "attachment": {
+    "viewFile": "{{fileName}} 보기",
+    "closePreview": "미리보기 닫기",
+    "openInNewTab": "새 탭에서 열기",
+    "previewUnavailable": "이 파일 형식은 미리 볼 수 없습니다.",
+    "previewFailed": "이 파일은 여기서 미리 볼 수 없습니다."
+  },
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "thinking": "가 생각 중입니다",
@@ -50,6 +57,32 @@
     "scheduleTimeLabel": "시간",
     "scheduleSubmit": "일정 등록",
     "scheduling": "등록 중…"
+  },
+  "mindMap": {
+    "chatTab": "채팅",
+    "mapTab": "마인드맵",
+    "emptyState": "아직 이 상담에 대한 전략 맵이 없습니다",
+    "generating": "사건 전략 맵을 생성하는 중",
+    "generateCta": "시각적 전략 맵 생성"
+  },
+  "email": {
+    "action": "이메일",
+    "composerTitle": "이메일 작성",
+    "to": "받는 사람",
+    "toPlaceholder": "recipient@example.com",
+    "subject": "제목",
+    "subjectPlaceholder": "제목",
+    "sourceMessageLabel": "AI 응답 포함",
+    "sourceMessageOption": "응답 {{index}}",
+    "body": "내용",
+    "attachmentsLabel": "파일 첨부",
+    "noAttachments": "아직 첨부할 수 있는 파일이 없습니다.",
+    "send": "보내기",
+    "sending": "보내는 중…",
+    "cancel": "취소",
+    "close": "닫기",
+    "notAvailable": "이메일 전송 기능은 아직 사용할 수 없습니다 — 백엔드 배포를 기다리고 있습니다.",
+    "sendSuccess": "이메일을 보냈습니다."
   },
   "sidebar": {
     "newChat": "새 채팅",
