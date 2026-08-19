@@ -22,6 +22,26 @@ export function useCreateOrganizationMutation() {
   })
 }
 
+export interface UpdateOrganizationPayload {
+  name?: string
+  slug?: string
+}
+
+export function useUpdateOrganizationMutation(organizationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpdateOrganizationPayload) =>
+      apiFetch<OrganizationRecord>(`/api/organizations/${organizationId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.detail(organizationId) })
+      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+    },
+  })
+}
+
 export interface InviteMemberPayload {
   email: string
   role?: OrganizationRole
@@ -36,6 +56,32 @@ export function useInviteMemberMutation(organizationId: string) {
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
+    },
+  })
+}
+
+export function useChangeMemberRoleMutation(organizationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: OrganizationRole }) =>
+      apiFetch<OrganizationMemberRecord>(`/api/organizations/${organizationId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
+    },
+  })
+}
+
+export function useLeaveOrganizationMutation(organizationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<void>(`/api/organizations/${organizationId}/members/me`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
       queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
     },
   })

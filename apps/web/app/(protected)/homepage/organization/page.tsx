@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Loader2, Mail, UserCircle2, Users } from "lucide-react";
+import { AlertCircle, Check, Loader2, Mail, Pencil, UserCircle2, Users, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useOrganizationMembersQuery, type OrganizationRole } from "@/lib/organizations/queries";
-import { useInviteMemberMutation } from "@/lib/organizations/mutations";
+import {
+  useInviteMemberMutation,
+  useLeaveOrganizationMutation,
+  useChangeMemberRoleMutation,
+  useUpdateOrganizationMutation,
+} from "@/lib/organizations/mutations";
 
 const ROLE_RANK: Record<OrganizationRole, number> = { OWNER: 4, ADMIN: 3, MANAGER: 2, MEMBER: 1 };
 const INVITABLE_ROLES: OrganizationRole[] = ["MEMBER", "MANAGER", "ADMIN"];
@@ -23,16 +28,66 @@ export default function OrganizationPage() {
   const { t } = useTranslation("organization");
   const organization = useAuthStore((s) => s.organization);
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const setOrganization = useAuthStore((s) => s.setOrganization);
 
   const membersQuery = useOrganizationMembersQuery(organization?.id ?? "");
   const inviteMutation = useInviteMemberMutation(organization?.id ?? "");
+  const leaveMutation = useLeaveOrganizationMutation(organization?.id ?? "");
+  const changeRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
+  const updateOrgMutation = useUpdateOrganizationMutation(organization?.id ?? "");
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrganizationRole>("MEMBER");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [showTransferPicker, setShowTransferPicker] = useState(false);
+  const [successorId, setSuccessorId] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
 
-  const canInvite = !!organization && ROLE_RANK[organization.role] >= ROLE_RANK.ADMIN;
+  const canManageOrg = !!organization && ROLE_RANK[organization.role] >= ROLE_RANK.ADMIN;
+  const canInvite = canManageOrg;
+  const otherMembers = (membersQuery.data ?? []).filter((m) => m.userId !== currentUserId);
+  const isOwner = organization?.role === "OWNER";
+  const isTransferring = changeRoleMutation.isPending || leaveMutation.isPending;
+
+  function handleStartEditName() {
+    if (!organization) return;
+    setNameError(null);
+    setNameDraft(organization.name);
+    setIsEditingName(true);
+  }
+
+  function handleCancelEditName() {
+    setIsEditingName(false);
+    setNameError(null);
+  }
+
+  function handleSaveName() {
+    if (!organization) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setNameError(t("overview.nameRequired"));
+      return;
+    }
+    if (trimmed === organization.name) {
+      setIsEditingName(false);
+      return;
+    }
+    setNameError(null);
+    updateOrgMutation.mutate(
+      { name: trimmed },
+      {
+        onSuccess: () => {
+          setOrganization({ ...organization, name: trimmed });
+          setIsEditingName(false);
+        },
+        onError: (err) => setNameError((err as Error).message),
+      },
+    );
+  }
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -47,6 +102,41 @@ export default function OrganizationPage() {
           setInviteSuccess(true);
         },
         onError: (err) => setInviteError((err as Error).message),
+      },
+    );
+  }
+
+  function handleLeaveClick() {
+    if (!organization) return;
+    if (isOwner && otherMembers.length > 0) {
+      setLeaveError(null);
+      setShowTransferPicker(true);
+      return;
+    }
+    if (!window.confirm(t("overview.leaveConfirm"))) return;
+    setLeaveError(null);
+    leaveMutation.mutate(undefined, {
+      onSuccess: () => setOrganization(null),
+      onError: (err) => setLeaveError((err as Error).message),
+    });
+  }
+
+  function handleConfirmTransferAndLeave() {
+    if (!organization || !successorId) return;
+    setLeaveError(null);
+    changeRoleMutation.mutate(
+      { userId: successorId, role: "OWNER" },
+      {
+        onSuccess: () => {
+          leaveMutation.mutate(undefined, {
+            onSuccess: () => setOrganization(null),
+            onError: (err) =>
+              setLeaveError(
+                `${t("overview.transferSucceededLeaveFailed")} (${(err as Error).message})`,
+              ),
+          });
+        },
+        onError: (err) => setLeaveError((err as Error).message),
       },
     );
   }
@@ -77,11 +167,66 @@ export default function OrganizationPage() {
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
                     <Users className="h-4 w-4" aria-hidden="true" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
                       {t("overview.nameLabel")}
                     </span>
-                    <p className="text-[16px] text-foreground mt-1">{organization.name}</p>
+                    {isEditingName ? (
+                      <div className="mt-1 flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={nameDraft}
+                            onChange={(e) => setNameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveName();
+                              if (e.key === "Escape") handleCancelEditName();
+                            }}
+                            autoFocus
+                            maxLength={120}
+                            disabled={updateOrgMutation.isPending}
+                            className="flex-1 min-w-0 rounded-lg border border-border bg-card px-3 py-1.5 text-[16px] text-foreground outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-50"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveName}
+                            disabled={updateOrgMutation.isPending}
+                            aria-label={t("overview.saveName")}
+                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {updateOrgMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Check className="h-4 w-4" aria-hidden="true" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelEditName}
+                            disabled={updateOrgMutation.isPending}
+                            aria-label={t("overview.cancelName")}
+                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                        {nameError && <p className="text-[12px] text-red-600 dark:text-red-400">{nameError}</p>}
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-2">
+                        <p className="text-[16px] text-foreground truncate">{organization.name}</p>
+                        {canManageOrg && (
+                          <button
+                            type="button"
+                            onClick={handleStartEditName}
+                            aria-label={t("overview.editName")}
+                            className="cursor-pointer flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="px-6 md:px-8 py-5 flex gap-4">
@@ -95,6 +240,59 @@ export default function OrganizationPage() {
                     <p className="text-[16px] text-foreground mt-1">{organization.role}</p>
                   </div>
                 </div>
+              </div>
+              <div className="px-6 md:px-8 py-5 border-t border-border flex flex-col gap-3">
+                {!showTransferPicker ? (
+                  <button
+                    type="button"
+                    onClick={handleLeaveClick}
+                    disabled={leaveMutation.isPending}
+                    className="cursor-pointer self-start rounded-lg border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 transition-colors hover:bg-red-600/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {leaveMutation.isPending ? t("overview.leaving") : t("overview.leaveButton")}
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+                    <p className="text-[13px] text-foreground">{t("overview.transferPrompt")}</p>
+                    <select
+                      value={successorId}
+                      onChange={(e) => setSuccessorId(e.target.value)}
+                      className="rounded-lg border border-border bg-card px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+                    >
+                      <option value="" disabled>
+                        {t("overview.transferSelectPlaceholder")}
+                      </option>
+                      {otherMembers.map((m) => (
+                        <option key={m.userId} value={m.userId}>
+                          {(m.user.name ?? m.user.username) + ` (${m.role})`}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={handleConfirmTransferAndLeave}
+                        disabled={!successorId || isTransferring}
+                        className="cursor-pointer rounded-lg bg-brand-navy-900 px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-brand-navy-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isTransferring ? t("overview.leaving") : t("overview.transferConfirm")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowTransferPicker(false);
+                          setSuccessorId("");
+                          setLeaveError(null);
+                        }}
+                        disabled={isTransferring}
+                        className="cursor-pointer rounded-lg border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {t("overview.transferCancel")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {leaveError && <p className="text-[12px] text-red-600 dark:text-red-400">{leaveError}</p>}
               </div>
             </section>
 

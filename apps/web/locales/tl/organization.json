@@ -5,7 +5,19 @@
   "overview": {
     "heading": "Pangkalahatang-ideya",
     "nameLabel": "Pangalan ng Organisasyon",
-    "yourRoleLabel": "Iyong Tungkulin"
+    "yourRoleLabel": "Iyong Tungkulin",
+    "editName": "I-edit ang pangalan ng organisasyon",
+    "saveName": "I-save ang pangalan",
+    "cancelName": "Kanselahin ang pag-edit ng pangalan",
+    "nameRequired": "Hindi maaaring walang laman ang pangalan ng organisasyon.",
+    "leaveButton": "Umalis sa Organisasyon",
+    "leaveConfirm": "Sigurado ka bang gusto mong umalis sa organisasyong ito? Kakailanganin mo ng imbitasyon para sumali sa iba.",
+    "leaving": "Umaalis…",
+    "transferPrompt": "Ikaw ang may-ari. Pumili ng bagong may-ari bago ka umalis.",
+    "transferSelectPlaceholder": "Pumili ng miyembro…",
+    "transferConfirm": "Gawing May-ari at Umalis",
+    "transferCancel": "Kanselahin",
+    "transferSucceededLeaveFailed": "Naipasa na ang pagmamay-ari, pero nabigo ang pag-alis. Subukan ulit."
   },
   "members": {
     "heading": "Mga Miyembro",

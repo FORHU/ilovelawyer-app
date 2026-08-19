@@ -5,7 +5,19 @@
   "overview": {
     "heading": "Overview",
     "nameLabel": "Organization Name",
-    "yourRoleLabel": "Your Role"
+    "yourRoleLabel": "Your Role",
+    "editName": "Edit organization name",
+    "saveName": "Save name",
+    "cancelName": "Cancel editing name",
+    "nameRequired": "Organization name can't be empty.",
+    "leaveButton": "Leave Organization",
+    "leaveConfirm": "Are you sure you want to leave this organization? You'll need an invite to join another one.",
+    "leaving": "Leaving…",
+    "transferPrompt": "You're the owner. Choose a new owner before you leave.",
+    "transferSelectPlaceholder": "Select a member…",
+    "transferConfirm": "Make Owner & Leave",
+    "transferCancel": "Cancel",
+    "transferSucceededLeaveFailed": "Ownership was transferred, but leaving failed. Try leaving again."
   },
   "members": {
     "heading": "Members",
