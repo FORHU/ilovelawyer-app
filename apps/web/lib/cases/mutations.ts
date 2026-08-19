@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys } from "@/lib/query-keys"
+import { CONFIRM_BATCH_SIZE, chunk, mapPoolSettled, putFileToS3, UPLOAD_CONCURRENCY } from "@/lib/cases/upload-batch"
 
 export interface Party {
   id: string
@@ -136,14 +137,7 @@ export function useUploadCaseDocumentMutation() {
         },
       )
 
-      // Straight to S3 — not apiFetch, since this must not carry our API's bearer token
-      // or same-origin credentials to a third-party (presigned) URL.
-      const putRes = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      })
-      if (!putRes.ok) throw new Error("Upload to storage failed")
+      await putFileToS3(uploadUrl, file)
 
       return apiFetch<UserDocument>("/api/documents", {
         method: "POST",
@@ -172,60 +166,76 @@ export interface BulkUploadResult {
   /** Documents the backend confirmed, in the same order as the input `files` minus any that
    * failed the presign/S3-PUT step (those never reach the confirm call at all). */
   confirmed: UserDocument[]
-  /** The subset of input files whose presign or S3 PUT failed — never sent to confirm. */
+  /** Files whose presign, S3 PUT, or confirm call failed. */
   failed: File[]
   /** Parallel to `confirmed` — which input File each confirmed document came from. */
   succeededFiles: File[]
 }
 
-/** Uploads any number of files to a case in one confirm call instead of one-per-file: each file
- * still gets its own presign + S3 PUT (S3 has no batched-presign primitive), but the DB rows are
- * created together via POST /api/v1/my-cases/:caseId/documents — see
- * docs/case-document-rag-backend-handoff.md §7. A single S3 failure doesn't block the rest of the
- * batch from confirming (Promise.allSettled), so one bad file doesn't lose N-1 good ones. */
+/** Uploads any number of files to a case. Presigns in batches of CONFIRM_BATCH_SIZE (one API
+ * call per chunk, not one per file), PUTs to S3 with a small concurrency pool, then confirms
+ * each chunk via POST /api/v1/my-cases/:caseId/documents. A single S3 or confirm failure
+ * doesn't block other chunks or files in the same chunk. */
 export function useUploadCaseDocumentsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ files, caseId }: { files: File[]; caseId: string }): Promise<BulkUploadResult> => {
-      const settled = await Promise.allSettled(
-        files.map(async (file) => {
-          const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
+      const confirmed: UserDocument[] = []
+      const failed: File[] = []
+      const succeededFiles: File[] = []
+
+      for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+        let items: { uploadUrl: string; key: string }[]
+        try {
+          const res = await apiFetch<{ items: { uploadUrl: string; key: string }[] }>(
             "/api/documents/presign",
             {
               method: "POST",
-              body: JSON.stringify({ filename: file.name, contentType: file.type, caseId }),
+              body: JSON.stringify({
+                files: fileChunk.map((file) => ({ filename: file.name, contentType: file.type })),
+                caseId,
+              }),
             },
           )
+          items = res.items
+          if (!items || items.length !== fileChunk.length) throw new Error("Presign batch size mismatch")
+        } catch {
+          failed.push(...fileChunk)
+          continue
+        }
 
-          const putRes = await fetch(uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type },
-          })
-          if (!putRes.ok) throw new Error("Upload to storage failed")
-
+        const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
+          const { uploadUrl, key } = items[i]!
+          await putFileToS3(uploadUrl, file)
           return { file, key }
-        }),
-      )
-
-      const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
-      const failed = files.filter((_, i) => settled[i]!.status === "rejected")
-
-      let confirmed: UserDocument[] = []
-      if (succeeded.length > 0) {
-        const documentData: DocumentDataEntry[] = succeeded.map(({ file, key }) => ({
-          filename: file.name,
-          s3Key: key,
-          metaData: { fileSize: file.size, mimeType: file.type },
-        }))
-
-        confirmed = await apiFetch<UserDocument[]>(`/api/my-cases/${caseId}/documents`, {
-          method: "POST",
-          body: JSON.stringify({ documentData }),
         })
+
+        const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
+        settled.forEach((r, i) => {
+          if (r.status === "rejected") failed.push(fileChunk[i]!)
+        })
+
+        if (succeeded.length === 0) continue
+
+        try {
+          const documentData: DocumentDataEntry[] = succeeded.map(({ file, key }) => ({
+            filename: file.name,
+            s3Key: key,
+            metaData: { fileSize: file.size, mimeType: file.type },
+          }))
+
+          const docs = await apiFetch<UserDocument[]>(`/api/my-cases/${caseId}/documents`, {
+            method: "POST",
+            body: JSON.stringify({ documentData }),
+          })
+          confirmed.push(...docs)
+          succeededFiles.push(...succeeded.map(({ file }) => file))
+        } catch {
+          failed.push(...succeeded.map(({ file }) => file))
+        }
       }
 
-      return { confirmed, failed, succeededFiles: succeeded.map(({ file }) => file) }
+      return { confirmed, failed, succeededFiles }
     },
     onSuccess: ({ confirmed }, { caseId }) => {
       if (confirmed.length > 0) {
@@ -235,15 +245,10 @@ export function useUploadCaseDocumentsMutation() {
   })
 }
 
-/** Uploads any number of files in one confirm call without requiring a caseId — unlike
- * useUploadCaseDocumentsMutation, which is case-only. Each file still gets its own presign
- * + S3 PUT (S3 has no batched-presign primitive), but they're all confirmed together via one
- * POST /api/documents call with `{ items: [{ key, name }] }` (batch shape; single-file uses
- * `{ key, name }` — see DocumentCtrl.create), so a multi-file attachment (e.g. consultation
- * chat, before it's linked to a case) shows up as one confirm request instead of one per file.
- * `consultationId` is sent on both presign (S3 key scoping, ADR 0011) and confirm (DB link).
- * A single presign/PUT failure doesn't block the rest of the batch from confirming
- * (Promise.allSettled). */
+/** Uploads any number of files without requiring a caseId — unlike
+ * useUploadCaseDocumentsMutation, which is case-only. Presigns and confirms in batches of
+ * CONFIRM_BATCH_SIZE; S3 PUTs run through a small concurrency pool. `consultationId` is sent
+ * on both presign (S3 key scoping, ADR 0011) and confirm (DB link). */
 export function useUploadDocumentsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -256,43 +261,61 @@ export function useUploadDocumentsMutation() {
       caseId?: string
       consultationId?: string
     }): Promise<BulkUploadResult> => {
-      const settled = await Promise.allSettled(
-        files.map(async (file) => {
-          const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
+      const confirmed: UserDocument[] = []
+      const failed: File[] = []
+      const succeededFiles: File[] = []
+
+      for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+        let items: { uploadUrl: string; key: string }[]
+        try {
+          const res = await apiFetch<{ items: { uploadUrl: string; key: string }[] }>(
             "/api/documents/presign",
             {
               method: "POST",
-              body: JSON.stringify({ filename: file.name, contentType: file.type, caseId, consultationId }),
+              body: JSON.stringify({
+                files: fileChunk.map((file) => ({ filename: file.name, contentType: file.type })),
+                caseId,
+                consultationId,
+              }),
             },
           )
+          items = res.items
+          if (!items || items.length !== fileChunk.length) throw new Error("Presign batch size mismatch")
+        } catch {
+          failed.push(...fileChunk)
+          continue
+        }
 
-          const putRes = await fetch(uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type },
-          })
-          if (!putRes.ok) throw new Error("Upload to storage failed")
-
+        const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
+          const { uploadUrl, key } = items[i]!
+          await putFileToS3(uploadUrl, file)
           return { file, key }
-        }),
-      )
-
-      const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
-      const failed = files.filter((_, i) => settled[i]!.status === "rejected")
-
-      let confirmed: UserDocument[] = []
-      if (succeeded.length > 0) {
-        confirmed = await apiFetch<UserDocument[]>("/api/documents", {
-          method: "POST",
-          body: JSON.stringify({
-            items: succeeded.map(({ file, key }) => ({ key, name: file.name })),
-            caseId,
-            consultationId,
-          }),
         })
+
+        const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
+        settled.forEach((r, i) => {
+          if (r.status === "rejected") failed.push(fileChunk[i]!)
+        })
+
+        if (succeeded.length === 0) continue
+
+        try {
+          const docs = await apiFetch<UserDocument[]>("/api/documents", {
+            method: "POST",
+            body: JSON.stringify({
+              items: succeeded.map(({ file, key }) => ({ key, name: file.name })),
+              caseId,
+              consultationId,
+            }),
+          })
+          confirmed.push(...docs)
+          succeededFiles.push(...succeeded.map(({ file }) => file))
+        } catch {
+          failed.push(...succeeded.map(({ file }) => file))
+        }
       }
 
-      return { confirmed, failed, succeededFiles: succeeded.map(({ file }) => file) }
+      return { confirmed, failed, succeededFiles }
     },
     onSuccess: ({ confirmed }, { caseId }) => {
       if (caseId && confirmed.length > 0) {
