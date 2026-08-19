@@ -15,7 +15,10 @@
     "defaultAttachmentMessageMultiple": "Pakisuri ang mga nakalakip na dokumento ({{count}}).",
     "attachmentUploadError": "Hindi na-upload ang isa o higit pang file. Subukang muli o alisin ang mga ito.",
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
-    "dropFilesHint": "I-drop ang mga file dito para ilakip"
+    "dropFilesHint": "I-drop ang mga file dito para ilakip",
+    "indexing": "Ini-index para sa chat…",
+    "indexingHint": "Pwede nang magpadala. Magagamit ng chat ang file kapag tapos na ang indexing.",
+    "indexingFailed": "Hindi na-index ang file na ito para sa chat."
   },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",

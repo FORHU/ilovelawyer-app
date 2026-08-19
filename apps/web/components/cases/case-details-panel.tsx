@@ -9,6 +9,7 @@ import {
   useDeleteCaseDocumentMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { RagStatusBadge } from "@/components/cases/rag-status-badge";
 
 interface CaseDetailsPanelProps {
   caseId: string;
@@ -215,6 +216,7 @@ function CaseDocumentList({ caseId }: { caseId: string }) {
           ) : (
             <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
           )}
+          <RagStatusBadge status={doc.ragStatus} />
           <Tooltip>
             <TooltipTrigger asChild>
               <button
