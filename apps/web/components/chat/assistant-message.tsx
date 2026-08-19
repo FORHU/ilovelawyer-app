@@ -50,10 +50,10 @@ function convertHtmlAnchors(content: string): string {
   return content.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
 }
 
-export default function AssistantMessage({ content }: { content: string }) {
+export default function AssistantMessage({ content, className }: { content: string; className?: string }) {
   const cleaned = convertHtmlAnchors(stripRelatedQueries(content));
   return (
-    <div className="text-[15px] leading-6 font-['Inter'] text-foreground">
+    <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {cleaned}
       </ReactMarkdown>
