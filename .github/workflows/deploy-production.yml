@@ -85,15 +85,27 @@ jobs:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           EOF
 
+      # EC2 is Graviton (linux/arm64). ubuntu-latest builds amd64 by default,
+      # which produces: exec /usr/local/bin/docker-entrypoint.sh: exec format error
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push Docker image
-        run: |
-          ECR="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}"
-          docker build \
-            -t "$ECR:${{ env.IMAGE_TAG }}" \
-            -t "$ECR:latest" \
-            .
-          docker push "$ECR:${{ env.IMAGE_TAG }}"
-          docker push "$ECR:latest"
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/arm64
+          provenance: false
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
 
       - name: Clean up stale env path on EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -129,11 +141,12 @@ jobs:
           script: |
             set -e
             echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            docker pull "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
+            docker pull --platform linux/arm64 "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
 
             docker stop ilovelawyer-app 2>/dev/null || true
             docker rm   ilovelawyer-app 2>/dev/null || true
             docker run -d --name ilovelawyer-app --restart unless-stopped \
+              --platform linux/arm64 \
               -p 3002:3002 \
               --env-file /home/ec2-user/ilovelawyer-app/.env.staging \
               "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
