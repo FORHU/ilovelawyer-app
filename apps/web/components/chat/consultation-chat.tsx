@@ -284,10 +284,9 @@ export default function ConsultationChat({
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   };
 
-  // Runs presign→PUT for each queue entry in parallel (S3 has no batched-presign primitive),
-  // then confirms every successfully-uploaded file in a single call — so a multi-file
-  // attachment lands as one /api/documents/bulk request instead of one /api/documents
-  // request per file. Updates each entry's status as it settles and returns the updated
+  // Runs presign→PUT in a concurrency pool, then confirms successfully-uploaded files in
+  // batches of 50 — so a multi-file attachment does not fire one API call per file or one
+  // unbounded Promise.all. Updates each entry's status as it settles and returns the updated
   // entries so callers (handleSendMessage) can act on the outcome without racing the state
   // update. `consultationId` scopes the S3 key to this consultation when there's no linked
   // case yet (the backend prioritizes `caseId` over it, so it's harmless to always pass both).
