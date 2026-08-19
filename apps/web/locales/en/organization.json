@@ -1,0 +1,29 @@
+{
+  "title": "Organization",
+  "subtitle": "Manage your organization and invite teammates.",
+  "noOrganization": "You're not part of an organization yet.",
+  "overview": {
+    "heading": "Overview",
+    "nameLabel": "Organization Name",
+    "yourRoleLabel": "Your Role"
+  },
+  "members": {
+    "heading": "Members",
+    "subheading": "People with access to this organization.",
+    "loading": "Loading members…",
+    "error": "Couldn't load members.",
+    "retry": "Retry",
+    "you": "You"
+  },
+  "invite": {
+    "heading": "Invite a Member",
+    "subheading": "They must already have an ilovelawyer account.",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "colleague@lawfirm.ph",
+    "roleLabel": "Role",
+    "submit": "Send Invite",
+    "sending": "Sending…",
+    "success": "Invitation sent.",
+    "onlyAdmins": "Only owners and admins can invite members."
+  }
+}

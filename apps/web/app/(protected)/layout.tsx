@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
+import { useOrganizationsQuery } from "@/lib/organizations/queries"
 import { PageTransition } from "@/components/page-transition"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -50,7 +51,15 @@ function CurrentUserSync({
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
+  const organization = useAuthStore((s) => s.organization)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
   const { data: currentUser, isError, error } = useCurrentUserQuery()
+  // Rehydrates the active org after a fresh tab/reload — the store has no persist
+  // middleware, so `organization` resets to null even though accessToken/user come back
+  // via the refresh-token flow. Without this, every resource-route call 400s with
+  // "X-Organization-Id header is required" until the next login. See
+  // docs/organization-feature-frontend-handoff.md §3.
+  const { data: orgs } = useOrganizationsQuery({ enabled: !!accessToken && !!user && !organization })
   // A missing/expired token is a real 401/403 from the API. Anything else (a
   // dropped connection, a CORS misconfiguration, a 500) is transient and
   // shouldn't sign the user out — apiFetch already throws with `.status` unset
@@ -74,6 +83,13 @@ function CurrentUserSync({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthError])
+
+  useEffect(() => {
+    if (organization || !orgs?.[0]) return
+    const org = orgs[0]
+    setOrganization({ id: org.id, name: org.name, slug: org.slug, role: org.role })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization, orgs])
 
   if (hydrating || (accessToken && !user && !isError)) return null
 

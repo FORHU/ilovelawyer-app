@@ -13,6 +13,7 @@
   "userMenu": {
     "accountMenu": "계정 메뉴",
     "profile": "프로필",
+    "organization": "조직",
     "terms": "이용약관",
     "logout": "로그아웃",
     "loggingOut": "로그아웃 중…"

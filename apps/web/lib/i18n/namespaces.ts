@@ -10,6 +10,7 @@ export const NAMESPACES = [
   "library",
   "transcription",
   "profile",
+  "organization",
   "term",
 ] as const
 

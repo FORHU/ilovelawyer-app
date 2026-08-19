@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
+import { Building2, ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -22,6 +22,7 @@ interface GlobalHeaderProps {
     | "calendar"
     | "term"
     | "profile"
+    | "organization"
     // Secondary destinations — not part of the primary nav
     | "constitution"
     | "civil-code"
@@ -42,6 +43,7 @@ const CASE_MENU_ITEMS = [
 
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
+  { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
   { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText, tooltip: "Read the terms and conditions" },
 ] as const;
 

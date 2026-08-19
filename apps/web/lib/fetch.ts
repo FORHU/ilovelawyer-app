@@ -61,11 +61,15 @@ async function attemptRefresh(): Promise<void> {
 }
 
 function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
-  const { accessToken } = useAuthStore.getState()
+  const { accessToken, organization } = useAuthStore.getState()
   return {
     // Omitted for FormData bodies — the browser must set its own multipart boundary.
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    // Required by resolve-organization.middleware.ts on resource routes (cases, chat,
+    // events, bookmarks, transcriptions, documents) — see
+    // docs/organization-feature-frontend-handoff.md §2.
+    ...(organization ? { "X-Organization-Id": organization.id } : {}),
     ...(extra as Record<string, string>),
   }
 }

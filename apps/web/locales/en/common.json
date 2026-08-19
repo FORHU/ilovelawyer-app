@@ -13,6 +13,7 @@
   "userMenu": {
     "accountMenu": "Account menu",
     "profile": "Profile",
+    "organization": "Organization",
     "terms": "Terms & Conditions",
     "logout": "Log Out",
     "loggingOut": "Logging out…"

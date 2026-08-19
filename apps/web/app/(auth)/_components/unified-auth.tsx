@@ -50,6 +50,7 @@ function UnifiedAuthContent() {
 
   // Sign up fields
   const [name, setName] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmSignupPassword, setConfirmSignupPassword] = useState("");
@@ -142,7 +143,7 @@ function UnifiedAuthContent() {
     }
     setError(null);
     signupMutation.mutate(
-      { name, email: signupEmail, password: signupPassword },
+      { name, email: signupEmail, password: signupPassword, orgName },
       {
         onSuccess: () => {
           setOtpDigits(Array(OTP_LENGTH).fill(""));
@@ -601,6 +602,24 @@ function UnifiedAuthContent() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder={t("signup.fullNamePlaceholder")}
+                        required
+                        className={inputClass}
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label
+                        className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {t("signup.orgNameLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        value={orgName}
+                        onChange={(e) => setOrgName(e.target.value)}
+                        placeholder={t("signup.orgNamePlaceholder")}
                         required
                         className={inputClass}
                         style={{ fontFamily: "Inter, sans-serif" }}

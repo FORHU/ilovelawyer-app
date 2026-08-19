@@ -141,7 +141,7 @@ export function useUploadCaseDocumentMutation() {
 
       return apiFetch<UserDocument>("/api/documents", {
         method: "POST",
-        body: JSON.stringify({ key, name: file.name, caseId }),
+        body: JSON.stringify({ key, name: file.name, contentType: file.type, caseId }),
       })
     },
     onSuccess: (doc) => {

@@ -1,0 +1,29 @@
+{
+  "title": "조직",
+  "subtitle": "조직을 관리하고 팀원을 초대하세요.",
+  "noOrganization": "아직 조직에 속해 있지 않습니다.",
+  "overview": {
+    "heading": "개요",
+    "nameLabel": "조직 이름",
+    "yourRoleLabel": "내 역할"
+  },
+  "members": {
+    "heading": "멤버",
+    "subheading": "이 조직에 접근할 수 있는 사용자입니다.",
+    "loading": "멤버를 불러오는 중…",
+    "error": "멤버를 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "you": "나"
+  },
+  "invite": {
+    "heading": "멤버 초대",
+    "subheading": "초대 대상은 이미 ilovelawyer 계정이 있어야 합니다.",
+    "emailLabel": "이메일 주소",
+    "emailPlaceholder": "colleague@lawfirm.ph",
+    "roleLabel": "역할",
+    "submit": "초대 보내기",
+    "sending": "보내는 중…",
+    "success": "초대를 보냈습니다.",
+    "onlyAdmins": "소유자와 관리자만 멤버를 초대할 수 있습니다."
+  }
+}

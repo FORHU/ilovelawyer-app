@@ -1,0 +1,29 @@
+{
+  "title": "Organisasyon",
+  "subtitle": "Pamahalaan ang inyong organisasyon at mag-imbita ng mga miyembro.",
+  "noOrganization": "Wala ka pang kasapi sa isang organisasyon.",
+  "overview": {
+    "heading": "Pangkalahatang-ideya",
+    "nameLabel": "Pangalan ng Organisasyon",
+    "yourRoleLabel": "Iyong Tungkulin"
+  },
+  "members": {
+    "heading": "Mga Miyembro",
+    "subheading": "Mga taong may access sa organisasyong ito.",
+    "loading": "Naglo-load ng mga miyembro…",
+    "error": "Hindi ma-load ang mga miyembro.",
+    "retry": "Subukang Muli",
+    "you": "Ikaw"
+  },
+  "invite": {
+    "heading": "Mag-imbita ng Miyembro",
+    "subheading": "Dapat mayroon na silang ilovelawyer account.",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "colleague@lawfirm.ph",
+    "roleLabel": "Tungkulin",
+    "submit": "Ipadala ang Imbitasyon",
+    "sending": "Ipinapadala…",
+    "success": "Naipadala na ang imbitasyon.",
+    "onlyAdmins": "Ang mga owner at admin lamang ang maaaring mag-imbita ng mga miyembro."
+  }
+}

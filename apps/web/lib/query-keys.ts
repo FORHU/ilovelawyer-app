@@ -16,6 +16,14 @@ export const caseKeys = {
   timeline: (id: string) => [...caseKeys.timelines(), id] as const,
 }
 
+export const organizationKeys = {
+  all: ["organizations"] as const,
+  lists: () => [...organizationKeys.all, "list"] as const,
+  details: () => [...organizationKeys.all, "detail"] as const,
+  detail: (id: string) => [...organizationKeys.details(), id] as const,
+  members: (id: string) => [...organizationKeys.detail(id), "members"] as const,
+}
+
 export const authKeys = {
   all: ["auth"] as const,
   session: () => [...authKeys.all, "session"] as const,
