@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
-import { caseKeys } from "@/lib/query-keys"
+import { caseKeys, chatKeys } from "@/lib/query-keys"
 import { CONFIRM_BATCH_SIZE, chunk, mapPoolSettled, putFileToS3, UPLOAD_CONCURRENCY } from "@/lib/cases/upload-batch"
 
 export interface Party {
@@ -109,8 +109,7 @@ export interface UserDocument {
   fileSize?: number | null
   mimeType?: string | null
   aiSummary: string | null
-  /** Background text-extraction/embedding status for chat retrieval — never surfaced as an
-   * error to the user either way, so nothing in the UI needs to branch on this today. */
+  /** Background text-extraction/embedding status for chat retrieval. */
   ragStatus: "PENDING" | "READY" | "FAILED"
   createdAt: string
 }
@@ -317,21 +316,39 @@ export function useUploadDocumentsMutation() {
 
       return { confirmed, failed, succeededFiles }
     },
-    onSuccess: ({ confirmed }, { caseId }) => {
+    onSuccess: ({ confirmed }, { caseId, consultationId }) => {
       if (caseId && confirmed.length > 0) {
         queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+      }
+      if (consultationId && confirmed.length > 0) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.documents(consultationId) })
       }
     },
   })
 }
 
+function refetchWhileIndexing(query: { state: { data?: UserDocument[] } }) {
+  return query.state.data?.some((doc) => doc.ragStatus === "PENDING") ? 4000 : false
+}
+
 /** Lists the documents attached to a case. Uploading (useUploadCaseDocumentMutation)
- * invalidates `caseKeys.timeline(caseId)`, so this refetches automatically afterward. */
+ * invalidates `caseKeys.timeline(caseId)`, so this refetches automatically afterward.
+ * Polls while any row is PENDING so the indexing badge flips to ready without a reload. */
 export function useCaseDocumentsQuery(caseId: string) {
   return useQuery({
     queryKey: caseKeys.timeline(caseId),
     queryFn: () => apiFetch<UserDocument[]>(`/api/documents?caseId=${caseId}`),
     enabled: !!caseId,
+    refetchInterval: refetchWhileIndexing,
+  })
+}
+
+export function useConsultationDocumentsQuery(consultationId: string | undefined) {
+  return useQuery({
+    queryKey: chatKeys.documents(consultationId ?? ""),
+    queryFn: () => apiFetch<UserDocument[]>(`/api/documents?consultationId=${consultationId}`),
+    enabled: !!consultationId,
+    refetchInterval: refetchWhileIndexing,
   })
 }
 
