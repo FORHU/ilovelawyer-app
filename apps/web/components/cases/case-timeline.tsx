@@ -142,7 +142,8 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
                 {dated.map((item, index) => {
                   const at = item.at as Date
                   const year = yearOf(at)
-                  const prevYear = index > 0 ? yearOf(dated[index - 1].at as Date) : null
+                  const previous = dated[index - 1]
+                  const prevYear = previous?.at ? yearOf(previous.at) : null
                   const showYear = showYearHeaders && year !== prevYear
                   const caption = formatCaptionDate(at)
 
