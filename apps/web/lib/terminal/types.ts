@@ -7,6 +7,7 @@ export const PANEL_IDS = [
   "mindMap",
   "redTeam",
   "procedure",
+  "risk",
   "teamAudit",
 ] as const
 

@@ -160,10 +160,13 @@ export function TerminalPanelBody({
   panelId,
   caseId,
   snapshot,
+  basePath,
 }: {
   panelId: PanelId
   caseId: string
   snapshot: CaseSnapshot
+  /** Pop-out windows pass their own route so chat/mind-map navigation stays in this window. */
+  basePath?: string
 }) {
   switch (panelId) {
     case "command":
@@ -175,13 +178,15 @@ export function TerminalPanelBody({
     case "dates":
       return null
     case "chat":
-      return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} />
+      return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} basePath={basePath} />
     case "mindMap":
-      return <MindMapPanel caseId={caseId} />
+      return <MindMapPanel caseId={caseId} basePath={basePath} />
     case "redTeam":
       return <RedTeamPanel />
     case "procedure":
       return <ProcedurePanel snapshot={snapshot} caseId={caseId} />
+    case "risk":
+      return <RiskPanel snapshot={snapshot} />
     case "teamAudit":
       return <TeamAuditPanel snapshot={snapshot} />
     default:
@@ -189,12 +194,20 @@ export function TerminalPanelBody({
   }
 }
 
-function ChatPanel({ caseId, caseName }: { caseId: string; caseName: string }) {
+function ChatPanel({
+  caseId,
+  caseName,
+  basePath,
+}: {
+  caseId: string
+  caseName: string
+  basePath?: string
+}) {
   const { t } = useTranslation("terminal")
   return (
     <ConsultationChat
       embedded
-      basePath={`/homepage/terminal/${caseId}`}
+      basePath={basePath ?? `/homepage/terminal/${caseId}`}
       caseId={caseId}
       emptyStateHeading={t("chatEmptyHeading", { caseName })}
       emptyStateSubheading={t("chatEmptySubheading")}
@@ -203,12 +216,12 @@ function ChatPanel({ caseId, caseName }: { caseId: string; caseName: string }) {
   )
 }
 
-function MindMapPanel({ caseId }: { caseId: string }) {
+function MindMapPanel({ caseId, basePath }: { caseId: string; basePath?: string }) {
   return (
     <ConsultationChat
       embedded
       mindMapOnly
-      basePath={`/homepage/terminal/${caseId}`}
+      basePath={basePath ?? `/homepage/terminal/${caseId}`}
       caseId={caseId}
     />
   )
@@ -430,8 +443,6 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
   const approachItems = items.filter((item) => item.kind.toUpperCase() === "STRATEGY")
   const todoItems = items.filter((item) => item.kind.toUpperCase() !== "STRATEGY")
   const fallbackApproach = snapshot.risks.slice(0, 3).map((risk) => risk.title)
-  const overall = snapshot.riskAnalysis?.overall ?? EMPTY_METER
-  const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-4 text-sm text-foreground">
@@ -500,14 +511,6 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
       </div>
 
       <div>
-        <SectionLabel>{t("riskAnalysis")}</SectionLabel>
-        <div className="space-y-3">
-          <RiskMeter label={t("overallRisk")} score={overall.score} level={overall.level} drivers={overall.drivers} />
-          <RiskMeter label={t("liabilityRisk")} score={liability.score} level={liability.level} drivers={liability.drivers} />
-        </div>
-      </div>
-
-      <div>
         <SectionLabel>{t("deadlines")}</SectionLabel>
         {snapshot.procedure.deadlines.length === 0 ? (
           <EmptyNote>{t("computeDeadline")}</EmptyNote>
@@ -561,6 +564,31 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
             {t("computeDeadline")}
           </button>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function RiskPanel({ snapshot }: { snapshot: CaseSnapshot }) {
+  const { t } = useTranslation("terminal")
+  const overall = snapshot.riskAnalysis?.overall ?? EMPTY_METER
+  const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
+  const fatal = snapshot.fatalRisks
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-4 text-sm text-foreground">
+      {fatal.length > 0 ? (
+        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>
+            <span className="font-semibold">{t("fatalBanner")}</span> {fatal.map((risk) => risk.title).join(" · ")}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        <RiskMeter label={t("overallRisk")} score={overall.score} level={overall.level} drivers={overall.drivers} />
+        <RiskMeter label={t("liabilityRisk")} score={liability.score} level={liability.level} drivers={liability.drivers} />
       </div>
     </div>
   )

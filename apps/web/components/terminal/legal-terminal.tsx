@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw } from "lucide-react"
+import { ArrowLeft, ExternalLink, Grip, Loader2, AlertCircle, X, RefreshCw } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
 import {
   useApplyWorkspaceMutation,
@@ -14,22 +15,9 @@ import {
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
 } from "@/lib/terminal/mutations"
+import { HIDDEN_PANELS, PANEL_TITLES, openTerminalWindow } from "@/lib/terminal/panels"
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
-
-const HIDDEN_PANELS = new Set<PanelId>(["redTeam", "dates"])
-
-const PANEL_TITLES: Record<PanelId, string> = {
-  command: "Case Summary",
-  evidence: "Evidence & Timeline",
-  law: "Law & Precedent",
-  dates: "Timeline",
-  chat: "AI Legal Assistant",
-  mindMap: "Visual Strategy Map",
-  redTeam: "Red Team",
-  procedure: "Case Strategy",
-  teamAudit: "Team & Audit",
-}
 
 const PRESET_LABELS: Record<PresetValue, string> = {
   PANE_1: "preset1",
@@ -80,6 +68,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
+  const popoutsRef = useRef<Map<PanelId, { win: Window; restore: PaneRect | null; timer: number }>>(new Map())
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
@@ -109,13 +98,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     return [...layout.panels].filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).sort((a, b) => a.order - b.order)
   }, [layout])
 
-  const hiddenPanels = useMemo(() => {
-    if (!layout || !catalog.data) return []
-    return catalog.data.panels.filter((panel) => {
-      if (!panel.available || HIDDEN_PANELS.has(panel.id)) return false
-      return !layout.panels.find((p) => p.id === panel.id)?.visible
-    })
-  }, [layout, catalog.data])
+  const openablePanels = useMemo(() => {
+    if (!catalog.data) return []
+    return catalog.data.panels.filter((panel) => panel.available && !HIDDEN_PANELS.has(panel.id))
+  }, [catalog.data])
 
   const setPreset = (preset: PresetValue) => {
     setLayout((prev) => {
@@ -127,17 +113,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const hidePanel = (id: PanelId) => {
     setLayout((prev) => {
       if (!prev) return prev
-      const visibleCount = prev.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).length
-      if (visibleCount <= 1) return prev
       return { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
     })
   }
 
-  const showPanel = (id: PanelId) => {
+  const showPanel = (id: PanelId, rect?: PaneRect) => {
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(prev.panels) }
+      const next = { id, visible: true, order: maxOrder + 1, ...(rect ?? cascadeRect(prev.panels)) }
       if (prev.panels.some((panel) => panel.id === id)) {
         return {
           ...prev,
@@ -147,6 +131,43 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       return { ...prev, panels: [...prev.panels, next] }
     })
   }
+
+  const watchPopup = (panelId: PanelId, win: Window, restore: PaneRect | null) => {
+    const existing = popoutsRef.current.get(panelId)
+    if (existing) window.clearInterval(existing.timer)
+    const timer = window.setInterval(() => {
+      if (!win.closed) return
+      window.clearInterval(timer)
+      popoutsRef.current.delete(panelId)
+      if (restore) showPanel(panelId, restore)
+    }, 400)
+    popoutsRef.current.set(panelId, { win, restore, timer })
+  }
+
+  const openChosenTerminal = (panelId: PanelId) => {
+    const existing = popoutsRef.current.get(panelId)
+    if (existing && !existing.win.closed) {
+      existing.win.focus()
+      return
+    }
+    const panel = layout?.panels.find((item) => item.id === panelId)
+    const wasVisible = Boolean(panel?.visible)
+    const restore = wasVisible && panel ? panelRect(panel) : null
+    const win = openTerminalWindow(caseId, panelId)
+    if (win) {
+      if (wasVisible) hidePanel(panelId)
+      watchPopup(panelId, win, restore)
+      return
+    }
+    if (!wasVisible) showPanel(panelId)
+  }
+
+  useEffect(() => {
+    const popouts = popoutsRef.current
+    return () => {
+      for (const entry of popouts.values()) window.clearInterval(entry.timer)
+    }
+  }, [])
 
   const bringToFront = (panelId: PanelId) => {
     setLayout((prev) => {
@@ -260,7 +281,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
-      <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto">
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
@@ -280,6 +302,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
           {t("next")}: {nextLabel}
         </span>
+        </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <select
             value={layout.preset}
@@ -293,23 +316,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               </option>
             ))}
           </select>
-          {hiddenPanels.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) showPanel(e.target.value as PanelId)
-              }}
-              className={controlClass}
-              aria-label={t("addPane")}
-            >
-              <option value="">{t("addPane")}</option>
-              {hiddenPanels.map((panel) => (
-                <option key={panel.id} value={panel.id}>
-                  {PANEL_TITLES[panel.id] ?? panel.label}
-                </option>
-              ))}
-            </select>
-          )}
+          <OpenWindowMenu
+            label={t("openWindow")}
+            className={controlClass}
+            panels={openablePanels.map((panel) => ({
+              id: panel.id,
+              title: PANEL_TITLES[panel.id] ?? panel.label,
+            }))}
+            onPick={openChosenTerminal}
+          />
           <select
             value={selectedWorkspaceId}
             onChange={(e) => {
@@ -390,6 +405,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       )}
 
       <div id="terminal-grid" className="relative min-h-0 flex-1 overflow-hidden p-3">
+        {visiblePanels.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+            <p className="text-sm text-muted-foreground">{t("emptyWorkspace")}</p>
+            <OpenWindowMenu
+              label={t("openWindow")}
+              className={controlClass}
+              align="center"
+              panels={openablePanels.map((panel) => ({
+                id: panel.id,
+                title: PANEL_TITLES[panel.id] ?? panel.label,
+              }))}
+              onPick={openChosenTerminal}
+            />
+          </div>
+        ) : null}
         {visiblePanels.map((panel) => {
           const rect = panelRect(panel)
           const label = PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
@@ -422,22 +452,34 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {label}
                 </span>
-                {visiblePanels.length > 1 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={() => hidePanel(panel.id)}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        aria-label={t("hidePane")}
-                      >
-                        <X className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("hidePane")}</TooltipContent>
-                  </Tooltip>
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => openChosenTerminal(panel.id)}
+                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={t("popOut")}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("popOut")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => hidePanel(panel.id)}
+                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={t("hidePane")}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("hidePane")}</TooltipContent>
+                </Tooltip>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                 <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
@@ -464,6 +506,101 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         })}
       </div>
     </div>
+  )
+}
+
+function OpenWindowMenu({
+  label,
+  className,
+  panels,
+  onPick,
+  align = "right",
+}: {
+  label: string
+  className: string
+  panels: { id: PanelId; title: string }[]
+  onPick: (id: PanelId) => void
+  align?: "left" | "right" | "center"
+}) {
+  const [open, setOpen] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 208 })
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) return
+    const place = () => {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const width = Math.max(208, rect.width)
+      const left =
+        align === "center"
+          ? rect.left + rect.width / 2 - width / 2
+          : align === "left"
+            ? rect.left
+            : rect.right - width
+      setPos({
+        top: rect.bottom + 6,
+        left: Math.min(Math.max(8, left), window.innerWidth - width - 8),
+        width,
+      })
+    }
+    place()
+    const onDoc = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (menuRef.current?.contains(target) || buttonRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    window.addEventListener("resize", place)
+    document.addEventListener("mousedown", onDoc)
+    return () => {
+      window.removeEventListener("resize", place)
+      document.removeEventListener("mousedown", onDoc)
+    }
+  }, [open, align])
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={className}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {label}
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              className="fixed z-[200] overflow-hidden rounded-md border border-border bg-card py-1 shadow-xl"
+              style={{ top: pos.top, left: pos.left, width: pos.width }}
+            >
+              <ul className="max-h-72 overflow-y-auto">
+                {panels.map((panel) => (
+                  <li key={panel.id}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-xs leading-5 text-foreground hover:bg-muted"
+                      onClick={() => {
+                        onPick(panel.id)
+                        setOpen(false)
+                      }}
+                    >
+                      {panel.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }
 
@@ -616,9 +753,9 @@ function defaultIdsForPreset(preset: PresetValue): PanelId[] {
     case "PANE_2":
       return ["command", "evidence"]
     case "PANE_4":
-      return ["command", "evidence", "chat", "procedure", "mindMap"]
+      return ["command", "evidence", "chat", "procedure", "mindMap", "risk"]
     case "PANE_6":
-      return ["command", "evidence", "law", "mindMap", "procedure", "chat"]
+      return ["command", "evidence", "law", "mindMap", "procedure", "chat", "risk"]
     default:
       return ["command", "evidence"]
   }
