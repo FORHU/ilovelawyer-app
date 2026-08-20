@@ -17,6 +17,7 @@
     "@tanstack/react-query-devtools": "^5.101.1",
     "@workspace/ui": "workspace:*",
     "date-fns": "^4.4.0",
+    "framer-motion": "^12.31.0",
     "i18next": "^26.3.6",
     "lucide-react": "^1.21.0",
     "next": "16.2.6",
@@ -24,9 +25,12 @@
     "react": "19.2.4",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.4",
+    "react-force-graph-3d": "^1.29.1",
     "react-i18next": "^17.0.10",
     "react-markdown": "^10.1.0",
+    "reactflow": "^11.11.4",
     "remark-gfm": "^4.0.1",
+    "three": "^0.183.2",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -34,6 +38,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9",

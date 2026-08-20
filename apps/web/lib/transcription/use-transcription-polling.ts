@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useMediaQueueStore } from "@/lib/store/media-queue.store"
-import { pollTranscriptionJob } from "@/lib/transcription/mutations"
+import { pollTranscriptionJob, chunkTranscription } from "@/lib/transcription/mutations"
 
 const POLL_INTERVAL_MS = 4000
 const MAX_POLL_ATTEMPTS = 150 // ~10 minutes ceiling for a single batch job
@@ -37,6 +37,12 @@ export function useTranscriptionPolling() {
             const result = await pollTranscriptionJob(backendId)
             if (result.status === "COMPLETED") {
               updateTranscript(localId, { status: "completed", transcript: result.transcript ?? "" })
+              // Fire-and-forget: makes the transcript retrievable by Case Chat (ADR 0013). Not
+              // yet live on the backend as of this writing — failures are swallowed so a missing
+              // endpoint there can't regress the transcript's own completed status here.
+              chunkTranscription(backendId).catch((err) => {
+                console.error("Failed to chunk transcription for RAG retrieval:", err)
+              })
               return
             }
             if (result.status === "FAILED") {

@@ -144,8 +144,13 @@ export function useUploadCaseDocumentMutation() {
       })
     },
     onSuccess: (doc) => {
+      // Splice straight into the cached list instead of invalidating — invalidating here
+      // would force a second GET /api/documents?caseId= round trip immediately after the
+      // POST that already told us everything about the new document.
       if (doc.caseId) {
-        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(doc.caseId) })
+        queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(doc.caseId), (old) =>
+          old ? [doc, ...old] : old,
+        )
       }
     },
   })
@@ -316,9 +321,14 @@ export function useUploadDocumentsMutation() {
 
       return { confirmed, failed, succeededFiles }
     },
+      // Same reasoning as useUploadCaseDocumentMutation above: splice the confirmed batch
+      // straight into the cache rather than forcing a refetch right after the POST that
+      // already returned every document we'd get back from one.
     onSuccess: ({ confirmed }, { caseId, consultationId }) => {
       if (caseId && confirmed.length > 0) {
-        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+        queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
+          old ? [...confirmed, ...old] : old,
+        )
       }
       if (consultationId && confirmed.length > 0) {
         queryClient.invalidateQueries({ queryKey: chatKeys.documents(consultationId) })
@@ -358,8 +368,13 @@ export function useDeleteCaseDocumentMutation() {
     mutationFn: async ({ documentId }: { documentId: string; caseId: string }) => {
       await apiFetchRaw(`/api/documents/${documentId}`, { method: "DELETE" })
     },
-    onSuccess: (_data, { caseId }) => {
-      queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    onSuccess: (_data, { documentId, caseId }) => {
+      // Filter the deleted id out of the cache in place rather than invalidating — same
+      // reasoning as the upload mutations above: no need for a refetch to learn what we
+      // already know just deleted successfully.
+      queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
+        old ? old.filter((d) => d.id !== documentId) : old,
+      )
     },
   })
 }
