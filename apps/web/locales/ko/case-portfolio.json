@@ -30,7 +30,13 @@
     "uploading": "업로드 중…",
     "uploadError": "파일을 업로드하지 못했습니다.",
     "removeDocument": "{{documentName}} 제거",
-    "loadDocumentsError": "문서를 불러올 수 없습니다."
+    "loadDocumentsError": "문서를 불러올 수 없습니다.",
+    "ragIndexing": "색인 중",
+    "ragIndexingHint": "파일은 업로드되었습니다. 색인이 끝나면 채팅에서 검색할 수 있습니다.",
+    "ragReady": "준비됨",
+    "ragReadyHint": "채팅에서 이 문서를 검색할 수 있습니다.",
+    "ragFailed": "색인 실패",
+    "ragFailedHint": "파일은 저장되었지만 아직 채팅에서 검색할 수 없습니다."
   },
   "chat": {
     "emptyHeading": "{{caseName}}에 대해 질문하기",

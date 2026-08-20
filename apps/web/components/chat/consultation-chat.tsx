@@ -21,6 +21,7 @@ import {
 } from "@/lib/chat/mutations";
 import { extractMindMap, stripStructuredBlocks, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import { useCaseQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
+
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -87,7 +88,7 @@ export default function ConsultationChat({
       id: string;
       file: File;
       status: "pending" | "uploading" | "uploaded" | "error";
-      doc?: { id: string; name: string; aiSummary: string | null };
+      doc?: { id: string; name: string; aiSummary: string | null; ragStatus?: "PENDING" | "READY" | "FAILED" };
     }>
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -179,6 +180,14 @@ export default function ConsultationChat({
     (consultationId
       ? (caseConsultations?.find((c) => c.id === consultationId)?.caseId ?? null)
       : pendingCaseId || null);
+
+  const { data: caseDocuments } = useCaseDocumentsQuery(linkedCaseId || caseId || "");
+  const { data: consultationDocuments } = useConsultationDocumentsQuery(consultationId ?? undefined);
+  const ragStatusById = new Map(
+    [...(caseDocuments ?? []), ...(consultationDocuments ?? [])].map((doc) => [doc.id, doc.ragStatus]),
+  );
+  const resolvedRagStatus = (entry: (typeof queuedFiles)[number]) =>
+    (entry.doc?.id ? ragStatusById.get(entry.doc.id) : undefined) ?? entry.doc?.ragStatus;
 
   // The transcript for the consultation currently on screen comes straight from the
   // React Query cache — keyed by consultationId, so switching consultations just means a
@@ -382,10 +391,9 @@ export default function ConsultationChat({
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   };
 
-  // Runs presign→PUT for each queue entry in parallel (S3 has no batched-presign primitive),
-  // then confirms every successfully-uploaded file in a single call — so a multi-file
-  // attachment lands as one /api/documents/bulk request instead of one /api/documents
-  // request per file. Updates each entry's status as it settles and returns the updated
+  // Runs presign→PUT in a concurrency pool, then confirms successfully-uploaded files in
+  // batches of 50 — so a multi-file attachment does not fire one API call per file or one
+  // unbounded Promise.all. Updates each entry's status as it settles and returns the updated
   // entries so callers (handleSendMessage) can act on the outcome without racing the state
   // update. `consultationId` scopes the S3 key to this consultation when there's no linked
   // case yet (the backend prioritizes `caseId` over it, so it's harmless to always pass both).
@@ -424,7 +432,7 @@ export default function ConsultationChat({
     const updated = entries.map((entry) => {
       const doc = docByFile.get(entry.file);
       return doc
-        ? { ...entry, status: "uploaded" as const, doc: { id: doc.id, name: doc.name, aiSummary: doc.aiSummary } }
+        ? { ...entry, status: "uploaded" as const, doc: { id: doc.id, name: doc.name, aiSummary: doc.aiSummary, ragStatus: doc.ragStatus } }
         : { ...entry, status: "error" as const };
     });
 
@@ -718,6 +726,10 @@ export default function ConsultationChat({
                 >
                   {f.status === "uploading" ? (
                     <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                  ) : f.status === "uploaded" && resolvedRagStatus(f) === "PENDING" ? (
+                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                  ) : f.status === "uploaded" && resolvedRagStatus(f) === "FAILED" ? (
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
                   ) : f.status === "uploaded" ? (
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
                   ) : f.status === "error" ? (
@@ -759,6 +771,12 @@ export default function ConsultationChat({
             </div>
             {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-xs text-red-600 dark:text-red-400">{t("input.attachmentUploadError")}</span>
+            )}
+            {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "PENDING") && (
+              <span className="text-xs text-muted-foreground">{t("input.indexingHint")}</span>
+            )}
+            {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "FAILED") && (
+              <span className="text-xs text-red-600 dark:text-red-400">{t("input.indexingFailed")}</span>
             )}
           </div>
         )}

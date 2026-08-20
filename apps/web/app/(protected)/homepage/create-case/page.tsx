@@ -107,10 +107,9 @@ export default function CreateCasePage() {
     }));
   };
 
-  // Uploads via presigned S3 URL (see useUploadCaseDocumentsMutation) — each file still gets its
-  // own presign + S3 PUT, but all resulting rows are confirmed in a single request. This only
-  // runs once the case already exists (from handleSubmitFiling), so there's no separate link
-  // step needed afterward.
+  // Uploads via presigned S3 URL (see useUploadCaseDocumentsMutation) — files are presigned
+  // and confirmed in batches of 50, with a small S3 PUT pool. This only runs once the case
+  // already exists (from handleSubmitFiling), so there's no separate link step afterward.
   const uploadBatch = async (entries: UploadedFile[], caseId: string): Promise<boolean> => {
     if (entries.length === 0) return true;
     entries.forEach((entry) => updateUploadedFile(entry.id, { status: "uploading", error: undefined }));

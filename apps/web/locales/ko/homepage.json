@@ -15,7 +15,10 @@
     "defaultAttachmentMessageMultiple": "첨부된 문서({{count}}개)를 검토해 주세요.",
     "attachmentUploadError": "하나 이상의 파일을 업로드하지 못했습니다. 다시 시도하거나 제거해 주세요.",
     "retryUpload": "{{fileName}} 업로드 재시도",
-    "dropFilesHint": "파일을 여기에 놓아 첨부하세요"
+    "dropFilesHint": "파일을 여기에 놓아 첨부하세요",
+    "indexing": "채팅용 색인 중…",
+    "indexingHint": "지금은 보낼 수 있습니다. 색인이 끝나면 채팅에서 이 파일을 검색합니다.",
+    "indexingFailed": "이 파일을 채팅용으로 색인하지 못했습니다."
   },
   "attachment": {
     "viewFile": "{{fileName}} 보기",

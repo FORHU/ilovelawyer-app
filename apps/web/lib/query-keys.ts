@@ -36,6 +36,7 @@ export const chatKeys = {
   consultations: (caseId?: string) => [...chatKeys.consultationsAll(), caseId ?? null] as const,
   messages: (consultationId: string) => [...chatKeys.all, "messages", consultationId] as const,
   relatedCases: (consultationId: string) => [...chatKeys.all, "related-cases", consultationId] as const,
+  documents: (consultationId: string) => [...chatKeys.all, "documents", consultationId] as const,
 }
 
 export const appointmentKeys = {
