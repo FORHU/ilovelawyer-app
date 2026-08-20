@@ -30,7 +30,7 @@
   "preset6": "6 panes",
   "addPane": "Add pane",
   "hidePane": "Hide pane",
-  "dragHint": "Drag the title bar to reorder. Drag the pane edges to resize.",
+  "dragHint": "Drag the title bar to move this pane. Drag any edge or corner to resize. Other panes stay put.",
   "fatalBanner": "Fatal risks are open on this case.",
   "loading": "Loading terminal…",
   "loadError": "Couldn't load this terminal.",

@@ -19,6 +19,8 @@ export interface PanelLayout {
   order: number
   width: number
   height: number
+  x?: number
+  y?: number
 }
 
 export interface WorkspaceLayout {

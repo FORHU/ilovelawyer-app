@@ -30,7 +30,7 @@
   "preset6": "6 panes",
   "addPane": "Magdagdag ng pane",
   "hidePane": "Itago ang pane",
-  "dragHint": "I-drag ang title bar para i-reorder. I-drag ang mga gilid para i-resize.",
+  "dragHint": "I-drag ang title bar para ilipat ang pane. I-drag ang gilid o kanto para i-resize. Hindi magbabago ang ibang panes.",
   "fatalBanner": "May bukas na fatal risks sa kasong ito.",
   "loading": "Niloload ang terminal…",
   "loadError": "Hindi ma-load ang terminal na ito.",
