@@ -64,9 +64,22 @@
   "mindMap": {
     "chatTab": "Chat",
     "mapTab": "Mind Map",
+    "timelineTab": "Timeline",
     "emptyState": "No strategy map yet for this consultation",
     "generating": "Generating your case strategy map",
     "generateCta": "Generate visual strategy map"
+  },
+  "timeline": {
+    "emptyState": "No events on this case yet. Add one below, or refresh analysis to extract dates from documents.",
+    "loading": "Loading timeline…",
+    "loadError": "Couldn't load this timeline.",
+    "nextSteps": "Next steps",
+    "addHeading": "Add event",
+    "addTitle": "Event title",
+    "addDescription": "What happened",
+    "addCta": "Add event",
+    "date": "Date",
+    "time": "Time"
   },
   "email": {
     "action": "Email",

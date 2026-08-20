@@ -13,9 +13,40 @@ export interface MindMapItem {
 }
 
 function isMindMapShape(v: unknown): v is MindMapItem {
-  if (!v || typeof v !== "object") return false;
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
   const anyV: any = v;
   return Boolean(anyV.id || anyV.nodes || anyV.label || anyV.children);
+}
+
+function branchList(item: unknown): unknown[] {
+  if (!item || typeof item !== "object") return [];
+  const anyItem = item as Record<string, unknown>;
+  const kids =
+    anyItem.children ?? anyItem.items ?? anyItem.nodes ?? anyItem.subnodes ?? anyItem.branches ?? anyItem.subitems;
+  return Array.isArray(kids) ? kids : [];
+}
+
+/** Unwraps Chat Wonder wrappers (`mindMap`, `root`) down to a renderable tree. */
+export function normalizeMindMap(v: unknown): MindMapItem | undefined {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+  const anyV: any = v;
+  const nested = anyV.mindMap ?? anyV.mindmap ?? anyV.mind_map;
+  const tree =
+    nested && typeof nested === "object" && !Array.isArray(nested)
+      ? nested
+      : anyV.root && typeof anyV.root === "object" && !Array.isArray(anyV.root) &&
+          (anyV.root.label || anyV.root.id || anyV.root.children)
+        ? anyV.root
+        : anyV;
+  if (!isMindMapShape(tree)) return undefined;
+  return tree as MindMapItem;
+}
+
+/** True when the tree has at least one child branch (the map tab's render gate). */
+export function usableMindMap(v: unknown): MindMapItem | undefined {
+  const tree = normalizeMindMap(v);
+  if (!tree) return undefined;
+  return branchList(tree).length > 0 ? tree : undefined;
 }
 
 /**
@@ -58,9 +89,7 @@ export function extractMindMap(text: string): MindMapItem | undefined {
     .trim();
 
   const parsed = safeJsonParse(cleaned);
-  if (isMindMapShape(parsed)) return parsed as MindMapItem;
-
-  return undefined;
+  return normalizeMindMap(parsed);
 }
 
 /**

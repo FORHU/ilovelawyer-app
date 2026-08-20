@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -12,6 +12,7 @@ import { MessageAttachments, type MessageAttachment } from "@/components/chat/me
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import EmailComposerModal from "@/components/chat/email-composer-modal";
 import { MindMap } from "@/components/chat/mind-map";
+import { CaseTimelineView } from "@/components/cases/case-timeline";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -19,8 +20,8 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { extractMindMap, stripStructuredBlocks, type MindMapItem } from "@/lib/chat/mind-map-parser";
-import { useCaseQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
+import { extractMindMap, stripStructuredBlocks, usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
+import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
@@ -44,6 +45,16 @@ const MAX_TEXTAREA_HEIGHT = 200;
 // never actually typed — see the `visibleMessages` filter below.
 const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
 
+type CaseChatTab = "chat" | "mindmap" | "timeline";
+
+function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, caseId?: string): CaseChatTab {
+  if (mindMapOnly) return "mindmap";
+  if (!caseId) return "chat";
+  const tab = searchParams.get("tab");
+  if (tab === "mindmap" || tab === "timeline") return tab;
+  return "chat";
+}
+
 interface ConsultationChatProps {
   /** Route this chat lives at — consultation selection is driven by a `?c=<id>` query
    * param appended to this path, so the same component works at "/homepage" and at a
@@ -57,6 +68,12 @@ interface ConsultationChatProps {
   emptyStateSubheading?: string;
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
+  /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
+  embedded?: boolean;
+  /** Terminal Visual Strategy Map pane — map canvas only, no chat transcript. */
+  mindMapOnly?: boolean;
+  /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
+  inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
    * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
    * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
@@ -71,6 +88,9 @@ export default function ConsultationChat({
   emptyStateHeading,
   emptyStateSubheading,
   headerSlot,
+  embedded = false,
+  mindMapOnly = false,
+  inputPlaceholder,
   enableFileChips = false,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
@@ -216,18 +236,19 @@ export default function ConsultationChat({
   // below covers the same-instance case (already on this page, no remount happens when only
   // the query string changes). Mind Map is Case-only (see CONTEXT.md), so both gate on the
   // `caseId` prop — a `?tab=mindmap` link on the general /homepage Consultation is ignored.
-  const [activeTab, setActiveTab] = useState<"chat" | "mindmap">(() =>
-    caseId && searchParams.get("tab") === "mindmap" ? "mindmap" : "chat",
+  const [activeTab, setActiveTab] = useState<CaseChatTab>(() =>
+    tabFromSearch(searchParams, mindMapOnly, caseId),
   );
   useEffect(() => {
-    if (caseId && searchParams.get("tab") === "mindmap") setActiveTab("mindmap");
-  }, [caseId, searchParams]);
+    if (mindMapOnly) return;
+    setActiveTab(tabFromSearch(searchParams, mindMapOnly, caseId));
+  }, [mindMapOnly, caseId, searchParams]);
 
-  const handleTabChange = (tab: "chat" | "mindmap") => {
+  const handleTabChange = (tab: CaseChatTab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
-    if (tab === "mindmap") params.set("tab", "mindmap");
-    else params.delete("tab");
+    if (tab === "chat") params.delete("tab");
+    else params.set("tab", tab);
     const qs = params.toString();
     router.replace(`${basePath}${qs ? `?${qs}` : ""}`);
   };
@@ -239,8 +260,8 @@ export default function ConsultationChat({
   // surfaces the most recent one the AI actually populated, same as law-ph's `activeMindMap`.
   const activeMindMap = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      const map = messages[i]?.mindMap;
-      if (map && Array.isArray(map.children) && map.children.length > 0) return map;
+      const map = usableMindMap(messages[i]?.mindMap);
+      if (map) return map;
     }
     return undefined;
   }, [messages]);
@@ -606,10 +627,11 @@ export default function ConsultationChat({
   const autoGeneratedMindMapRef = useRef(false);
   useEffect(() => {
     if (autoGeneratedMindMapRef.current) return;
-    if (!caseId || activeTab !== "mindmap" || activeMindMap || isSending || !session) return;
+    if (!caseId || activeMindMap || isSending || !session) return;
+    if (!mindMapOnly && (embedded || activeTab !== "mindmap")) return;
     autoGeneratedMindMapRef.current = true;
     void doSend(AUTO_MINDMAP_PROMPT);
-  }, [caseId, activeTab, activeMindMap, isSending, session]);
+  }, [embedded, mindMapOnly, caseId, activeTab, activeMindMap, isSending, session]);
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -692,18 +714,26 @@ export default function ConsultationChat({
   };
 
   const chatInputBar = (
-    <div className="w-full max-w-3xl mx-auto shrink-0">
+    <div className={`w-full shrink-0 ${embedded ? "" : "max-w-3xl mx-auto"}`}>
       <form
         onSubmit={handleSendMessage}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative w-full backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl flex flex-col gap-2 transition-colors ${
-          isDraggingOver ? "border-primary border-dashed" : "border-border"
+        className={`relative w-full flex flex-col gap-2 transition-colors ${
+          embedded
+            ? `rounded-lg border bg-muted p-2 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
+            : `backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl ${
+                isDraggingOver ? "border-primary border-dashed" : "border-border"
+              }`
         }`}
       >
         {isDraggingOver && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-card/90 pointer-events-none">
+          <div
+            className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
+              embedded ? "rounded-lg bg-card/90" : "rounded-3xl bg-card/90"
+            }`}
+          >
             <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
           </div>
         )}
@@ -782,18 +812,37 @@ export default function ConsultationChat({
         )}
 
         {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input */}
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          className="w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] text-[15px] text-foreground placeholder-muted-foreground px-2 py-1 leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none]"
-          placeholder={t("input.placeholder")}
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isSending}
-        />
+        <div className={embedded ? "flex items-end gap-1.5" : "contents"}>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            className={`w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+              embedded
+                ? "px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
+                : "text-[15px] text-foreground placeholder-muted-foreground px-2 py-1"
+            }`}
+            placeholder={inputPlaceholder ?? t("input.placeholder")}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isSending}
+          />
 
-        {/* Toolbar row below the text, matching Gemini's layout */}
+          {embedded ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="submit"
+                  disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                  aria-label={t("input.sendMessage")}
+                  className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50"
+                >
+                  <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+            </Tooltip>
+          ) : (
         <div className="flex items-center justify-between px-1">
           <div className="flex gap-1 text-muted-foreground">
             <Tooltip>
@@ -857,6 +906,8 @@ export default function ConsultationChat({
             <TooltipContent>{t("input.sendMessage")}</TooltipContent>
           </Tooltip>
         </div>
+          )}
+        </div>
       </form>
     </div>
   );
@@ -866,31 +917,32 @@ export default function ConsultationChat({
     // instead of letting it overlay whatever sits at the page's left edge — otherwise the
     // expanded rail covers the case header row's back link/case chip underneath it.
     <div
-      className={`relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left] duration-200 ${
-        sidebarExpanded ? "md:pl-80 md:pr-32" : "md:px-32"
-      }`}
+      className={
+        embedded
+          ? "relative flex h-full min-h-0 flex-1 flex-col px-2"
+          : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left] duration-200 ${
+              sidebarExpanded ? "md:pl-80 md:pr-32" : "md:px-32"
+            }`
+      }
     >
-      {/* Left Sidebar Panel */}
-      <ConsultationSidebar
-        activeConsultationId={consultationId}
-        onSelectConsultation={handleSelectConsultation}
-        onNewChat={handleNewChat}
-        caseId={caseId}
-        expanded={sidebarExpanded}
-        onExpandedChange={setSidebarExpanded}
-      />
+      {!embedded && (
+        <ConsultationSidebar
+          activeConsultationId={consultationId}
+          onSelectConsultation={handleSelectConsultation}
+          onNewChat={handleNewChat}
+          caseId={caseId}
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+        />
+      )}
 
-      {/* Pinned directly under the navbar, spanning the full workspace width rather than
-          the chat column's narrower max-w-5xl — a page-level strip (back link, case
-          identity), not part of the centered consultation. Sits outside <main> so it isn't
-          bound by that centering; ConsultationSidebar is absolutely positioned so its own
-          top-16 offset is unaffected by this sibling. */}
-      {headerSlot && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
+      {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
-      {/* Main Chat Interface */}
-      <main className={`relative z-10 max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 ${headerSlot ? "" : "pt-16"}`}>
+      <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
         {(() => {
-          const isEmptyChatLanding = activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          const isEmptyChatLanding = !mindMapOnly && activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          const showMindMapPane = Boolean(caseId && (mindMapOnly || (!embedded && activeTab === "mindmap")));
+          const showTimelinePane = Boolean(caseId && !embedded && !mindMapOnly && activeTab === "timeline");
           // Mind Map is Case-only (see CONTEXT.md) — the tab switcher itself only exists inside
           // a Case's own chat (caseId prop set), never on the general /homepage Consultation.
           // Once there's more than one destination (Chat / Mind Map), the switcher has to be
@@ -899,7 +951,7 @@ export default function ConsultationChat({
           // a case with no consultation yet, and can't get back to Chat either.
           return (
           <>
-            {caseId && (
+            {!mindMapOnly && !embedded && caseId && (
               <div className="flex items-center gap-1 pt-4 shrink-0">
                 <button
                   type="button"
@@ -921,11 +973,21 @@ export default function ConsultationChat({
                   <Workflow className="w-3.5 h-3.5" aria-hidden="true" />
                   {t("mindMap.mapTab")}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("timeline")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                    activeTab === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t("mindMap.timelineTab", { defaultValue: "Timeline" })}
+                </button>
               </div>
             )}
 
-            {caseId && activeTab === "mindmap" ? (
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] py-4">
+            {showMindMapPane ? (
+              <div className={`flex-1 min-h-0 ${mindMapOnly ? "overflow-hidden py-1" : "overflow-y-auto scrollbar-none [-ms-overflow-style:none] py-4"}`}>
                 {activeMindMap ? (
                   <MindMap
                     rootTitle={linkedCaseRecord?.caseName}
@@ -933,7 +995,7 @@ export default function ConsultationChat({
                     consultationId={consultationId ?? undefined}
                   />
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-4 py-24 text-center">
+                  <div className={`flex-1 flex flex-col items-center justify-center gap-4 text-center ${mindMapOnly ? "h-full py-8" : "py-24"}`}>
                     {isSending ? (
                       <p
                         className="flex items-center gap-1 text-sm text-muted-foreground max-w-sm font-['Inter']"
@@ -963,14 +1025,28 @@ export default function ConsultationChat({
                   </div>
                 )}
               </div>
+            ) : showTimelinePane && caseId ? (
+              <div className="flex-1 min-h-0">
+                <CaseTimelineView caseId={caseId} />
+              </div>
             ) : isEmptyChatLanding ? (
               /* No consultation yet — heading and input are centered together, like Gemini's landing state */
-              <div className="flex-1 flex flex-col items-center justify-center gap-8 min-h-0 pb-24 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
+              <div className={`flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-8 pb-24"}`}>
                 <div className="text-center max-w-2xl mx-auto px-2">
-                  <h1 className="font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4">
+                  <h1
+                    className={
+                      embedded
+                        ? "mb-2 font-['Inter'] text-lg font-medium tracking-[-0.3px] text-foreground"
+                        : "font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4"
+                    }
+                  >
                     {emptyStateHeading ?? t("emptyState.heading")}
                   </h1>
-                  <p className="font-['Inter'] text-foreground text-[15px] md:text-[16px] leading-6">
+                  <p
+                    className={`font-['Inter'] leading-6 ${
+                      embedded ? "text-[13px] text-muted-foreground" : "text-foreground text-[15px] md:text-[16px]"
+                    }`}
+                  >
                     {emptyStateSubheading ?? t("emptyState.subheading")}
                   </p>
                 </div>
@@ -979,7 +1055,7 @@ export default function ConsultationChat({
             ) : (
             /* Scrollable message pane — input bar below stays put regardless of scroll position */
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
-              <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 px-2 py-4">
+              <div className={`w-full mx-auto flex flex-col gap-4 px-2 py-4 ${embedded ? "" : "max-w-3xl"}`}>
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
@@ -988,7 +1064,9 @@ export default function ConsultationChat({
                           <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
                         )}
                         {m.content && (
-                          <div className="max-w-[80%] rounded-2xl border border-border bg-muted px-4 py-3 text-[15px] leading-6 font-['Inter'] whitespace-pre-wrap text-foreground">
+                          <div className={`max-w-[80%] rounded-2xl border border-border bg-muted font-['Inter'] whitespace-pre-wrap text-foreground ${
+                            embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
+                          }`}>
                             {m.content}
                           </div>
                         )}
@@ -1001,17 +1079,20 @@ export default function ConsultationChat({
                   const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
 
                   return (
-                    <div key={i} className="w-full rounded-2xl px-4 py-3">
+                    <div key={i} className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"}`}>
                       {isStreamingThis && !m.content ? (
                         <ThinkingIndicator label={t("thinking")} />
                       ) : (
-                        <AssistantMessage content={m.content || "…"} />
+                        <AssistantMessage
+                          content={m.content || "…"}
+                          className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
+                        />
                       )}
                     </div>
                   );
                 })}
 
-                {!isSending && visibleMessages.length > 0 && visibleMessages.at(-1)?.role === "assistant" && visibleMessages.at(-1)?.content && (
+                {!embedded && !isSending && visibleMessages.length > 0 && visibleMessages.at(-1)?.role === "assistant" && visibleMessages.at(-1)?.content && (
                   <CaseHubWidget caseId={linkedCaseId} consultationId={consultationId} />
                 )}
 
@@ -1019,17 +1100,19 @@ export default function ConsultationChat({
               </div>
             </div>
             )}
-            {!isEmptyChatLanding && activeTab !== "mindmap" && <div className="pt-4 pb-6">{chatInputBar}</div>}
+            {!isEmptyChatLanding && activeTab === "chat" && (
+              <div className={embedded ? "pt-2 pb-2" : "pt-4 pb-6"}>{chatInputBar}</div>
+            )}
           </>
           );
         })()}
       </main>
 
-      {previewAttachment && (
+      {previewAttachment && !embedded && (
         <FilePreviewModal attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
       )}
 
-      {emailComposerOpen && consultationId && (
+      {emailComposerOpen && !embedded && consultationId && (
         <EmailComposerModal
           consultationId={consultationId}
           caseId={caseId}

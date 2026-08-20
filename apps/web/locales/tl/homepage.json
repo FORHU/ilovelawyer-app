@@ -64,9 +64,22 @@
   "mindMap": {
     "chatTab": "Chat",
     "mapTab": "Mind Map",
+    "timelineTab": "Timeline",
     "emptyState": "Wala pang strategy map para sa konsultasyong ito",
     "generating": "Ginagawa ang iyong case strategy map",
     "generateCta": "Bumuo ng visual na strategy map"
+  },
+  "timeline": {
+    "emptyState": "Wala pang event sa kasong ito. Magdagdag sa ibaba, o i-refresh ang analysis para kunin ang mga petsa mula sa mga dokumento.",
+    "loading": "Nilo-load ang timeline…",
+    "loadError": "Hindi ma-load ang timeline na ito.",
+    "nextSteps": "Mga susunod na hakbang",
+    "addHeading": "Magdagdag ng event",
+    "addTitle": "Pamagat ng event",
+    "addDescription": "Ano ang nangyari",
+    "addCta": "Magdagdag ng event",
+    "date": "Petsa",
+    "time": "Oras"
   },
   "email": {
     "action": "Email",

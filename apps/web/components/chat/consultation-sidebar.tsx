@@ -19,6 +19,8 @@ interface ConsultationSidebarProps {
    * a header row over) instead of letting the expanded rail overlay content next to it. */
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  /** Offset the rail from the global header. Terminal panes sit below their own chrome. */
+  compact?: boolean;
 }
 
 export default function ConsultationSidebar({
@@ -28,6 +30,7 @@ export default function ConsultationSidebar({
   caseId,
   expanded,
   onExpandedChange,
+  compact = false,
 }: ConsultationSidebarProps) {
   const { t } = useTranslation("homepage");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -263,7 +266,7 @@ export default function ConsultationSidebar({
             type="button"
             onClick={() => setIsMobileOpen(true)}
             aria-label={t("sidebar.openConsultations")}
-            className="md:hidden absolute left-2 top-[72px] z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className={`md:hidden absolute left-2 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${compact ? "top-2" : "top-[72px]"}`}
           >
             <PanelLeft className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -274,9 +277,9 @@ export default function ConsultationSidebar({
       {/* Desktop/tablet rail — collapsed-to-expanded width toggle, unchanged from before */}
       <aside
         ref={asideRef}
-        className={`hidden md:flex absolute left-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-r border-y border-border rounded-r-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
-          expanded ? "w-72" : "w-16"
-        }`}
+        className={`hidden md:flex absolute left-0 bottom-0 bg-card/90 backdrop-blur-md border-r border-y border-border rounded-r-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+          compact ? "top-0" : "top-16"
+        } ${expanded ? "w-72" : "w-16"}`}
       >
         {/* One toggle, always in its own row above "New chat" — not floated over it — so
             open and close share a single, consistent, discoverable control instead of

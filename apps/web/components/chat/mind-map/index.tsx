@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import ReactDOM from 'react-dom';
+import { useTheme } from 'next-themes';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -18,7 +19,7 @@ import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor } from 'lucide-react';
 import { MindMapProps } from './types';
-import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME } from './constants';
+import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
 import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
@@ -26,7 +27,7 @@ import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
 const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-[#050505]/40 animate-pulse flex items-center justify-center text-white/20 text-xs font-black uppercase tracking-widest">
+    <div className={MIND_MAP_CHROME.loading3d}>
       Loading mind map...
     </div>
   ),
@@ -53,6 +54,12 @@ const getInitialNodes = (): Node[] => {
 };
 
 function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: MindMapProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === 'dark';
+
   const [layout, setLayout] = useState<'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual'>('horizontal');
   const [nodes, setNodes, onNodesChange] = useNodesState(getInitialNodes());
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -106,7 +113,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
   }, [is3D, fitView]);
 
   const getChildren = (item: any) => {
-    return item.children || item.items || item.subnodes || item.branches || item.subitems || [];
+    return item.children || item.items || item.nodes || item.subnodes || item.branches || item.subitems || [];
   };
 
   const treeToGraph = useCallback((root: any, currentLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual') => {
@@ -458,8 +465,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 border-[#722f37]/25 overflow-hidden shadow-[0_8px_24px_rgba(15,23,42,0.08)] relative transition-colors duration-500 scrollbar-hide flex flex-col ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
-      style={{ backgroundColor: MIND_MAP_THEME.bg }}
+      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
     >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none !important; }
@@ -476,6 +482,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
               ref={mindMap3DRef}
               root={data}
               rootTitle={rootTitle}
+              isDark={isDark}
               onNodeClick={(node: any) => {
                 setSelectedNodeId(node.id);
                 // Store full enriched data so detail panel works in 3D mode
@@ -527,7 +534,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
             style={{ background: 'transparent', transition: 'all 0.24s ease' }}
             proOptions={{ hideAttribution: true }}
           >
-            <Background color={MIND_MAP_THEME.gridColor} gap={24} />
+            <Background color={mindMapGridColor(isDark)} gap={24} />
           </ReactFlow>
         </div>
       </div>
@@ -536,7 +543,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       <div className="absolute top-4 left-4 z-[100000] flex items-center gap-2">
         <button
           onClick={() => setIs3D(!is3D)}
-          className={`flex items-center gap-2 px-3 py-1 md:px-3.5 md:py-1.5 rounded-full backdrop-blur-md shadow-lg transition-all border border-white/10 ${is3D ? 'bg-white text-black font-black' : 'bg-[#0B0B0C]/80 text-[#e9c176] font-black border-[#e9c176]/30'}`}
+          className={is3D ? MIND_MAP_CHROME.toggleOn : MIND_MAP_CHROME.toggleOff}
         >
           {is3D ? <Monitor size={14} /> : <Box size={14} />}
           <span className="text-[8px] md:text-[9px] uppercase tracking-widest leading-none">{is3D ? '2D' : '3D'}</span>
@@ -546,16 +553,16 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
         <div className="relative">
           <button
             onClick={() => setIsLayoutMenuOpen(!isLayoutMenuOpen)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all border border-white/10 ${isLayoutMenuOpen ? 'bg-white text-black font-bold' : 'bg-[#e9c176] text-black font-bold shadow-[0_0_20px_rgba(233,193,118,0.4)] hover:scale-105 active:scale-95 uppercase tracking-widest text-[10px]'}`}
+            className={MIND_MAP_CHROME.accentBtn}
           >
             <Layout size={12} />
             <span className="text-[9px] uppercase tracking-wider leading-none">Structure</span>
           </button>
 
           {isLayoutMenuOpen && (
-            <div className="absolute top-full left-0 mt-2 w-48 bg-[#0A0A0A] border border-white/20 rounded-xl shadow-2xl z-[210] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
-              <div className="p-2 border-b border-white/10 bg-white/5 text-center">
-                <span className="text-[8px] uppercase tracking-widest font-black text-white/30">Layout Models</span>
+            <div className={MIND_MAP_CHROME.menu}>
+              <div className={MIND_MAP_CHROME.menuHeader}>
+                <span className={MIND_MAP_CHROME.menuHeaderLabel}>Layout Models</span>
               </div>
               <div className="p-1 grid grid-cols-1">
                 {[
@@ -568,7 +575,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                   <button
                     key={item.id}
                     onClick={() => handleLayoutChange(item.id as any)}
-                    className={`w-full px-4 py-3 flex items-center justify-between rounded-xl hover:bg-white/5 transition-all text-[10px] font-bold uppercase tracking-widest ${layout === item.id ? 'text-[#e9c176] bg-[#722f37]/20 border border-[#722f37]/30' : 'text-gray-400'}`}
+                    className={layout === item.id ? MIND_MAP_CHROME.menuItemActive : MIND_MAP_CHROME.menuItem}
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-4 text-center opacity-50">{item.icon}</span>
@@ -586,7 +593,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       <div className="absolute top-4 right-4 z-[100000] pointer-events-auto flex items-center gap-2">
         <button
           onClick={toggleFullScreen}
-          className="flex items-center gap-2 px-5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all border border-white/10 bg-[#e9c176] text-black font-bold shadow-[0_0_20px_rgba(233,193,118,0.4)] hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-[10px]"
+          className={MIND_MAP_CHROME.fullBtn}
         >
           <Maximize size={12} />
           <span className="hidden sm:inline text-[9px] uppercase tracking-wider">{isFullScreen ? 'Exit' : 'Full'}</span>
@@ -594,27 +601,27 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       </div>
 
       {/* Ultra-Compact Vertical Hub - Snug Corner */}
-      <div className="absolute bottom-6 left-4 md:left-6 z-[100000] flex flex-col items-center gap-1 p-1 rounded-full bg-[#0A0A0A]/95 backdrop-blur-3xl border border-white/10 shadow-[5px_0_20px_rgba(0,0,0,0.5)] ring-1 ring-white/5 w-max pointer-events-auto transition-all hover:ring-white/20 scale-90 md:scale-100 origin-bottom-left">
+      <div className={MIND_MAP_CHROME.hub}>
 
         {/* Navigation Group - Minimalist */}
-        <div className="flex flex-col items-center gap-0.5 pb-1 border-b border-white/10">
+        <div className={MIND_MAP_CHROME.hubGroup}>
           <button
             onClick={() => is3D ? mindMap3DRef.current?.zoomIn() : zoomIn()}
-            className="p-2 text-white/30 hover:text-[#e9c176] hover:bg-[#722f37]/20 rounded-full transition-all active:scale-95 border border-transparent hover:border-[#722f37]/30"
+            className={MIND_MAP_CHROME.hubBtn}
             title="Zoom In"
           >
             <Plus size={14} />
           </button>
           <button
             onClick={() => is3D ? mindMap3DRef.current?.zoomOut() : zoomOut()}
-            className="p-2 text-white/30 hover:text-[#e9c176] hover:bg-[#722f37]/20 rounded-full transition-all active:scale-95 border border-transparent hover:border-[#722f37]/30"
+            className={MIND_MAP_CHROME.hubBtn}
             title="Zoom Out"
           >
             <Minus size={14} />
           </button>
           <button
             onClick={() => is3D ? mindMap3DRef.current?.recenter() : fitView({ padding: 0.05, duration: 800 })}
-            className="p-1.5 text-white/30 hover:text-white hover:bg-white/5 rounded-full transition-all active:scale-95"
+            className={MIND_MAP_CHROME.hubBtnSm}
             title="Recenter"
           >
             <Target size={14} />
@@ -625,10 +632,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
         <div className="relative group/mem">
           <button
             onClick={() => setIsMemoryOpen(!isMemoryOpen)}
-            className={`p-1.5 rounded-full transition-all active:scale-95 border ${isMemoryOpen
-              ? 'bg-[#722f37]/30 text-[#e9c176] border-[#722f37]/50'
-              : 'text-white/30 hover:bg-white/5 border-transparent'
-              } flex items-center justify-center`}
+            className={isMemoryOpen ? MIND_MAP_CHROME.hubBtnActive : MIND_MAP_CHROME.hubBtnIdle}
             title="Snapshots"
           >
             <Save size={14} />
@@ -636,34 +640,34 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
 
           {/* Pop-out Dropdown - Snug position */}
           {isMemoryOpen && (
-            <div className="absolute left-[calc(100%+8px)] bottom-0 w-max min-w-[240px] p-2.5 rounded-2xl bg-[#0F0F0F]/99 backdrop-blur-3xl border border-white/10 shadow-[30px_0_60px_rgba(0,0,0,0.9)] animate-in fade-in slide-in-from-left-1">
-              <div className="text-[10px] font-black text-[#e9c176] uppercase tracking-[0.25em] mb-4 pb-2 border-b border-[#722f37]/30 px-1">Saved Structures</div>
+            <div className={MIND_MAP_CHROME.memory}>
+              <div className={MIND_MAP_CHROME.memoryTitle}>Saved Structures</div>
               <div className="flex flex-col gap-2">
                 {[0, 1, 2].map(idx => (
-                  <div key={idx} className="flex items-center justify-between p-1.5 px-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 group/item transition-all">
-                    <div className="w-6 h-6 flex items-center justify-center rounded-lg bg-[#722f37]/10 text-[10px] font-bold text-white/30 border border-[#722f37]/20 group-hover/item:text-[#e9c176] group-hover/item:border-[#e9c176]/30 transition-all">
+                  <div key={idx} className={MIND_MAP_CHROME.memoryRow}>
+                    <div className={MIND_MAP_CHROME.memoryIndex}>
                       {idx + 1}
                     </div>
 
                     <div className="flex items-center gap-1.5 ml-4">
                       <button
                         onClick={() => { saveToSlot(idx); setIsMemoryOpen(false); }}
-                        className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[#e9c176] hover:bg-[#e9c176]/10 rounded-lg transition-all"
+                        className={MIND_MAP_CHROME.memorySave}
                       >
                         SAVE
                       </button>
                       {slots[idx] && (
                         <>
-                          <div className="w-[1px] h-3 bg-white/10" />
+                          <div className="w-[1px] h-3 bg-border" />
                           <button
                             onClick={() => { loadFromSlot(idx); setIsMemoryOpen(false); }}
-                            className="px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-white hover:bg-white/10 rounded-lg transition-all"
+                            className={MIND_MAP_CHROME.memoryLoad}
                           >
                             LOAD
                           </button>
                           <button
                             onClick={() => deleteSlot(idx)}
-                            className="p-1 px-1.5 text-white/10 hover:text-red-400 rounded-md transition-colors"
+                            className="p-1 px-1.5 text-muted-foreground hover:text-red-400 rounded-md transition-colors"
                           >
                             <Trash2 size={10} />
                           </button>
@@ -677,12 +681,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
           )}
         </div>
 
-        <div className="w-3 h-[1px] bg-white/10" />
+        <div className={MIND_MAP_CHROME.hubDivider} />
 
         {/* Reset - Flush Bottom */}
         <button
           onClick={resetLayout}
-          className="p-1.5 text-white/20 hover:text-red-500 transition-all group active:scale-95"
+          className="p-1.5 text-muted-foreground hover:text-red-500 transition-all group active:scale-95"
           title="Reset Map"
         >
           <RotateCcw size={14} className="group-hover:rotate-[-45deg] transition-transform" />
@@ -698,7 +702,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 20 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute z-[99999] bg-[#0A0A0A]/95 backdrop-blur-2xl border border-white/10 rounded-t-3xl md:rounded-2xl shadow-[0_50px_100px_rgba(0,0,0,0.9)] flex flex-col pointer-events-auto overflow-hidden ring-1 ring-white/5 inset-x-4 bottom-4 md:inset-auto md:top-28 md:right-10 md:w-[320px]"
+              className={MIND_MAP_CHROME.detail}
             >
               {/* Elegant Header Accent */}
               <div
@@ -718,12 +722,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                 }}
               >
                 <div className="flex items-start justify-between mb-4 gap-3 min-w-0">
-                  <h3 className="text-xl font-bold text-white leading-tight truncate">
+                  <h3 className={MIND_MAP_CHROME.detailTitle}>
                     {selectedNodeData.label}
                   </h3>
                   <button
                     onClick={handleCloseDetails}
-                    className="p-1 -mt-1 text-white/20 hover:text-white transition-colors shrink-0 bg-white/5 rounded-full hover:bg-white/10"
+                    className={MIND_MAP_CHROME.detailClose}
                   >
                     <X size={18} />
                   </button>
@@ -738,15 +742,15 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                       const lines = desc.split('\n').map((l: string) => l.replace(/^[-*]\s*/, '').trim()).filter(Boolean);
                       return (
                         <div className="flex flex-col gap-3">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#e9c176]">Key Evidence</span>
+                          <span className={MIND_MAP_CHROME.detailLabel}>Key Evidence</span>
                           <ul className="space-y-2">
                             {lines.map((line: string, i: number) => (
-                              <li key={i} className="text-[14px] text-white/70 flex items-start gap-2 leading-tight">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#e9c176]/40 mt-1 shrink-0" />
+                              <li key={i} className="text-[14px] text-muted-foreground flex items-start gap-2 leading-tight">
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-gold/40 mt-1 shrink-0" />
                                 <ReactMarkdown
                                   components={{
                                     p: ({ children }) => <span className="inline-block">{children}</span>,
-                                    strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>
+                                    strong: ({ children }) => <strong className={MIND_MAP_CHROME.detailStrong}>{children}</strong>
                                   }}
                                 >
                                   {line}
@@ -759,11 +763,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                     }
 
                     return (
-                      <div className="text-[14px] text-white/70 leading-relaxed font-medium">
+                      <div className={MIND_MAP_CHROME.detailBody}>
                         <ReactMarkdown
                           components={{
                             p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                            strong: ({ children }) => <strong className="text-white font-bold">{children}</strong>
+                            strong: ({ children }) => <strong className={MIND_MAP_CHROME.detailStrong}>{children}</strong>
                           }}
                         >
                           {desc}
@@ -776,8 +780,8 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                       pipeline today — MindMapItem carries no `media` field yet — but rendered
                       here so nodes light this up automatically once it is. */}
                   {selectedNodeData.media && selectedNodeData.media.length > 0 && (
-                    <div className="mt-8 border-t border-white/5 pt-6 space-y-4">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#e9c176]">Attached Files ({selectedNodeData.media.length})</span>
+                    <div className="mt-8 border-t border-border pt-6 space-y-4">
+                      <span className={MIND_MAP_CHROME.detailLabel}>Attached Files ({selectedNodeData.media.length})</span>
                       <div className="flex flex-col gap-3">
                         {selectedNodeData.media.map((item: any, idx: number) => {
                           if (item.type === 'image') return (
@@ -788,9 +792,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                                 const isMissingUrl = !url || url === '#' || isBlobUrl;
                                 if (isMissingUrl) {
                                   return (
-                                    <div className="w-full h-full min-h-[140px] bg-white/5 border border-dashed border-white/20 flex flex-col items-center justify-center text-center p-4">
+                                    <div className="w-full h-full min-h-[140px] bg-muted border border-dashed border-border flex flex-col items-center justify-center text-center p-4">
                                       <span className="text-4xl mb-2 grayscale opacity-50">🖼️</span>
-                                      <span className="text-white/70 text-xs font-semibold">{item.name || 'Image'} Preview Not Available</span>
+                                      <span className="text-muted-foreground text-xs font-semibold">{item.name || 'Image'} Preview Not Available</span>
                                     </div>
                                   );
                                 }
@@ -826,14 +830,14 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                             // (unlike law-ph) — matches this app's file-preview-modal.tsx policy
                             // of never sending a document's URL to a third party.
                             return (
-                              <div key={idx} className="flex items-center gap-3 bg-[#0A0A0A] p-2.5 rounded-xl border border-white/10 shadow-lg">
-                                <div className="bg-[#e9c176] text-black w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
+                              <div key={idx} className="flex items-center gap-3 bg-muted p-2.5 rounded-xl border border-border shadow-lg">
+                                <div className="bg-brand-gold text-brand-navy-950 w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
                                 <div className="flex flex-col min-w-0 flex-1">
-                                  <span className="text-sm font-medium truncate text-white/90">{item.name}</span>
+                                  <span className="text-sm font-medium truncate text-foreground">{item.name}</span>
                                   {isMissingUrl ? (
-                                    <span className="text-[10px] text-white/40">Preview not available</span>
+                                    <span className="text-[10px] text-muted-foreground">Preview not available</span>
                                   ) : (
-                                    <a href={item.url} target="_blank" rel="noreferrer" className="text-[10px] text-[#e9c176] hover:text-white uppercase tracking-[0.15em] font-bold transition-all w-fit">
+                                    <a href={item.url} target="_blank" rel="noreferrer" className="text-[10px] text-brand-gold hover:text-foreground uppercase tracking-[0.15em] font-bold transition-all w-fit">
                                       Open Original Source ↗
                                     </a>
                                   )}
@@ -858,7 +862,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.98, x: 20 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[85vw] max-w-[760px] z-[99998] bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/95 to-[#0A0A0A]/80 backdrop-blur-xl border-t border-[#00E5FF]/20 px-6 py-6 shadow-2xl rounded-t-2xl"
+              className={MIND_MAP_CHROME.audioBar}
               onClick={(e: React.MouseEvent) => {
                 // Close modal when clicking on the background (not on the content)
                 if (e.target === e.currentTarget) {
@@ -871,13 +875,13 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="text-3xl">🎵</div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-white font-bold truncate">{playingAudio.name}</h4>
-                      <p className="text-white/40 text-sm">Now Playing</p>
+                      <h4 className="text-foreground font-bold truncate">{playingAudio.name}</h4>
+                      <p className="text-muted-foreground text-sm">Now Playing</p>
                     </div>
                   </div>
                   <button
                     onClick={handleCloseDetails}
-                    className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all"
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition-all"
                   >
                     <X size={20} />
                   </button>
@@ -890,10 +894,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
 
                   if (isMissingUrl) {
                     return (
-                      <div className="w-full py-8 rounded-lg bg-white/5 border border-dashed border-white/20 flex flex-col items-center justify-center text-center">
+                      <div className="w-full py-8 rounded-lg bg-muted border border-dashed border-border flex flex-col items-center justify-center text-center">
                         <span className="text-2xl mb-2 grayscale opacity-50">🔇</span>
-                        <span className="text-white/60 text-sm font-semibold">Preview Not Available</span>
-                        <span className="text-white/40 text-xs mt-1">This audio file was uploaded offline or its URL has expired.</span>
+                        <span className="text-muted-foreground text-sm font-semibold">Preview Not Available</span>
+                        <span className="text-muted-foreground/80 text-xs mt-1">This audio file was uploaded offline or its URL has expired.</span>
                       </div>
                     );
                   }
