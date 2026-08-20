@@ -20,6 +20,13 @@
     "indexingHint": "Pwede nang magpadala. Magagamit ng chat ang file kapag tapos na ang indexing.",
     "indexingFailed": "Hindi na-index ang file na ito para sa chat."
   },
+  "attachment": {
+    "viewFile": "Tingnan ang {{fileName}}",
+    "closePreview": "Isara ang preview",
+    "openInNewTab": "Buksan sa bagong tab",
+    "previewUnavailable": "Hindi available ang preview para sa ganitong uri ng file.",
+    "previewFailed": "Hindi ma-preview ang file na ito dito."
+  },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
@@ -53,6 +60,45 @@
     "scheduleTimeLabel": "Oras",
     "scheduleSubmit": "I-schedule",
     "scheduling": "Ineiskedyul…"
+  },
+  "mindMap": {
+    "chatTab": "Chat",
+    "mapTab": "Mind Map",
+    "timelineTab": "Timeline",
+    "emptyState": "Wala pang strategy map para sa konsultasyong ito",
+    "generating": "Ginagawa ang iyong case strategy map",
+    "generateCta": "Bumuo ng visual na strategy map"
+  },
+  "timeline": {
+    "emptyState": "Wala pang event sa kasong ito. Magdagdag sa ibaba, o i-refresh ang analysis para kunin ang mga petsa mula sa mga dokumento.",
+    "loading": "Nilo-load ang timeline…",
+    "loadError": "Hindi ma-load ang timeline na ito.",
+    "nextSteps": "Mga susunod na hakbang",
+    "addHeading": "Magdagdag ng event",
+    "addTitle": "Pamagat ng event",
+    "addDescription": "Ano ang nangyari",
+    "addCta": "Magdagdag ng event",
+    "date": "Petsa",
+    "time": "Oras"
+  },
+  "email": {
+    "action": "Email",
+    "composerTitle": "Gumawa ng email",
+    "to": "Para kay",
+    "toPlaceholder": "recipient@example.com",
+    "subject": "Paksa",
+    "subjectPlaceholder": "Paksa",
+    "sourceMessageLabel": "Isama ang sagot ng AI",
+    "sourceMessageOption": "Sagot {{index}}",
+    "body": "Mensahe",
+    "attachmentsLabel": "Maglakip ng mga file",
+    "noAttachments": "Wala pang file na maaaring ilakip.",
+    "send": "Ipadala",
+    "sending": "Ipinapadala…",
+    "cancel": "Kanselahin",
+    "close": "Isara",
+    "notAvailable": "Hindi pa available ang pagpapadala ng email — hinihintay pa ang backend deployment.",
+    "sendSuccess": "Naipadala ang email."
   },
   "sidebar": {
     "newChat": "Bagong chat",

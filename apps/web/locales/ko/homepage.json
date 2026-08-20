@@ -20,6 +20,13 @@
     "indexingHint": "지금은 보낼 수 있습니다. 색인이 끝나면 채팅에서 이 파일을 검색합니다.",
     "indexingFailed": "이 파일을 채팅용으로 색인하지 못했습니다."
   },
+  "attachment": {
+    "viewFile": "{{fileName}} 보기",
+    "closePreview": "미리보기 닫기",
+    "openInNewTab": "새 탭에서 열기",
+    "previewUnavailable": "이 파일 형식은 미리 볼 수 없습니다.",
+    "previewFailed": "이 파일은 여기서 미리 볼 수 없습니다."
+  },
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "thinking": "가 생각 중입니다",
@@ -53,6 +60,45 @@
     "scheduleTimeLabel": "시간",
     "scheduleSubmit": "일정 등록",
     "scheduling": "등록 중…"
+  },
+  "mindMap": {
+    "chatTab": "채팅",
+    "mapTab": "마인드맵",
+    "timelineTab": "타임라인",
+    "emptyState": "아직 이 상담에 대한 전략 맵이 없습니다",
+    "generating": "사건 전략 맵을 생성하는 중",
+    "generateCta": "시각적 전략 맵 생성"
+  },
+  "timeline": {
+    "emptyState": "이 사건에 아직 일정이 없습니다. 아래에서 추가하거나, 분석을 새로고침해 문서에서 날짜를 추출하세요.",
+    "loading": "타임라인을 불러오는 중…",
+    "loadError": "타임라인을 불러오지 못했습니다.",
+    "nextSteps": "다음 단계",
+    "addHeading": "일정 추가",
+    "addTitle": "일정 제목",
+    "addDescription": "무슨 일이 있었는지",
+    "addCta": "일정 추가",
+    "date": "날짜",
+    "time": "시간"
+  },
+  "email": {
+    "action": "이메일",
+    "composerTitle": "이메일 작성",
+    "to": "받는 사람",
+    "toPlaceholder": "recipient@example.com",
+    "subject": "제목",
+    "subjectPlaceholder": "제목",
+    "sourceMessageLabel": "AI 응답 포함",
+    "sourceMessageOption": "응답 {{index}}",
+    "body": "내용",
+    "attachmentsLabel": "파일 첨부",
+    "noAttachments": "아직 첨부할 수 있는 파일이 없습니다.",
+    "send": "보내기",
+    "sending": "보내는 중…",
+    "cancel": "취소",
+    "close": "닫기",
+    "notAvailable": "이메일 전송 기능은 아직 사용할 수 없습니다 — 백엔드 배포를 기다리고 있습니다.",
+    "sendSuccess": "이메일을 보냈습니다."
   },
   "sidebar": {
     "newChat": "새 채팅",

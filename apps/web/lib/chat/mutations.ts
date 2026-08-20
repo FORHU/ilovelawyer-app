@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
+import type { MindMapItem } from "@/lib/chat/mind-map-parser"
 
 export interface ChatSession {
   session_id: string
@@ -16,12 +17,30 @@ export interface Consultation {
 
 export type MessageRole = "user" | "assistant" | "system"
 
+/** A Case Document attached to the specific message it was sent with (not just the
+ * consultation) — see docs/adr/0012-message-scoped-document-attachments.md. `fileUrl` and this
+ * whole field are live as of ilovelawyer-api@bfde68b (handoff doc §1, §5); still worth treating
+ * a missing/empty array as "no attachments to show" rather than an error, for older messages
+ * sent before the backend shipped this. */
+export interface MessageDocument {
+  id: string
+  name: string
+  fileUrl: string | null
+  mimeType: string | null
+}
+
 export interface ChatMessage {
   id: string
   consultationId: string
   role: MessageRole
   content: string
   createdAt: string
+  /** Populated by GET .../messages (handoff doc §5). Absent/undefined on messages sent before
+   * the backend shipped this — always treat as `?? []`. */
+  documents?: MessageDocument[]
+  /** The AI's `[MINDMAP]...[/MINDMAP]` block for this message, extracted and persisted
+   * server-side (ilovelawyer-api's chat.service.ts). `null`/absent on messages with no map. */
+  mindMap?: { data: MindMapItem } | null
 }
 
 export function useChatSessionQuery() {
@@ -124,6 +143,7 @@ export async function sendChatMessage({
   message,
   documentContext,
   caseDocumentId,
+  documentIds,
   caseId,
   onChunk,
 }: {
@@ -133,13 +153,17 @@ export async function sendChatMessage({
   documentContext?: string
   /** Single attached document — backend ranks its chunks for chat-wonder. */
   caseDocumentId?: string
+  /** All documents attached to this send, for message-scoped attachment display (ADR 0012) —
+   * distinct from caseDocumentId, which is grounding-only. Live as of ilovelawyer-api@bfde68b
+   * (docs/message-attachments-backend-handoff.md §3). */
+  documentIds?: string[]
   /** Case scope fallback when consultation docs aren't READY yet / not linked. */
   caseId?: string
   onChunk: (text: string) => void
 }): Promise<{ newSessionId?: string }> {
   const res = await apiFetchRaw(`/api/chat/consultations/${consultationId}/messages`, {
     method: "POST",
-    body: JSON.stringify({ message, sessionId, documentContext, caseDocumentId, caseId }),
+    body: JSON.stringify({ message, sessionId, documentContext, caseDocumentId, documentIds, caseId }),
   })
 
   const newSessionId = res.headers.get("X-Chat-Session-Id") ?? undefined

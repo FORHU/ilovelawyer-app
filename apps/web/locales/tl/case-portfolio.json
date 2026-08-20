@@ -9,6 +9,10 @@
   "noMatchingCases": "Walang tugmang kaso",
   "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas.",
   "noPartyListed": "Walang nakalistang partido",
+  "tools": {
+    "mindMap": "Mind Map",
+    "timeline": "Timeline"
+  },
   "detail": {
     "backToPortfolio": "Bumalik sa Case Portfolio",
     "caseLabel": "Kaso",
