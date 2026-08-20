@@ -9,6 +9,10 @@
   "noMatchingCases": "Walang tugmang kaso",
   "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas.",
   "noPartyListed": "Walang nakalistang partido",
+  "tools": {
+    "mindMap": "Mind Map",
+    "timeline": "Timeline"
+  },
   "detail": {
     "backToPortfolio": "Bumalik sa Case Portfolio",
     "caseLabel": "Kaso",
@@ -30,7 +34,13 @@
     "uploading": "Ina-upload…",
     "uploadError": "Hindi na-upload ang file na ito.",
     "removeDocument": "Alisin ang {{documentName}}",
-    "loadDocumentsError": "Hindi ma-load ang mga dokumento."
+    "loadDocumentsError": "Hindi ma-load ang mga dokumento.",
+    "ragIndexing": "Ini-index",
+    "ragIndexingHint": "Na-upload na ang file. Magagamit ito sa chat kapag tapos na ang indexing.",
+    "ragReady": "Handa",
+    "ragReadyHint": "Maaaring hanapin ng chat ang dokumentong ito.",
+    "ragFailed": "Hindi na-index",
+    "ragFailedHint": "Naka-save ang file, pero hindi pa ito mahahanap ng chat."
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",

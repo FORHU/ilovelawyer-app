@@ -10,6 +10,7 @@ import enLibrary from "@/locales/en/library.json"
 import enOrganization from "@/locales/en/organization.json"
 import enProfile from "@/locales/en/profile.json"
 import enTerm from "@/locales/en/term.json"
+import enTerminal from "@/locales/en/terminal.json"
 import enTranscription from "@/locales/en/transcription.json"
 
 import koAuth from "@/locales/ko/auth.json"
@@ -24,6 +25,7 @@ import koLibrary from "@/locales/ko/library.json"
 import koOrganization from "@/locales/ko/organization.json"
 import koProfile from "@/locales/ko/profile.json"
 import koTerm from "@/locales/ko/term.json"
+import koTerminal from "@/locales/ko/terminal.json"
 import koTranscription from "@/locales/ko/transcription.json"
 
 import tlAuth from "@/locales/tl/auth.json"
@@ -38,6 +40,7 @@ import tlLibrary from "@/locales/tl/library.json"
 import tlOrganization from "@/locales/tl/organization.json"
 import tlProfile from "@/locales/tl/profile.json"
 import tlTerm from "@/locales/tl/term.json"
+import tlTerminal from "@/locales/tl/terminal.json"
 import tlTranscription from "@/locales/tl/transcription.json"
 
 // Statically bundled: catalogs are small, curated, and this avoids a runtime
@@ -57,6 +60,7 @@ export const I18N_RESOURCES = {
     profile: enProfile,
     organization: enOrganization,
     term: enTerm,
+    terminal: enTerminal,
   },
   ko: {
     common: koCommon,
@@ -72,6 +76,7 @@ export const I18N_RESOURCES = {
     profile: koProfile,
     organization: koOrganization,
     term: koTerm,
+    terminal: koTerminal,
   },
   tl: {
     common: tlCommon,
@@ -87,5 +92,6 @@ export const I18N_RESOURCES = {
     profile: tlProfile,
     organization: tlOrganization,
     term: tlTerm,
+    terminal: tlTerminal,
   },
 } as const

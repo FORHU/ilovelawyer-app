@@ -15,11 +15,21 @@
     "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
     "attachmentUploadError": "Couldn't upload one or more files. Retry or remove them and try again.",
     "retryUpload": "Retry uploading {{fileName}}",
-    "dropFilesHint": "Drop files to attach"
+    "dropFilesHint": "Drop files to attach",
+    "indexing": "Indexing for chat…",
+    "indexingHint": "You can send now. Chat can search this file once indexing finishes.",
+    "indexingFailed": "Couldn't index this file for chat."
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "thinking": "is thinking",
+  "attachment": {
+    "viewFile": "View {{fileName}}",
+    "closePreview": "Close preview",
+    "openInNewTab": "Open in new tab",
+    "previewUnavailable": "Preview isn't available for this file type.",
+    "previewFailed": "This file couldn't be previewed here."
+  },
   "caseHub": {
     "linkedCase": "Linked case",
     "noCase": "No linked case",
@@ -50,6 +60,45 @@
     "scheduleTimeLabel": "Time",
     "scheduleSubmit": "Schedule",
     "scheduling": "Scheduling…"
+  },
+  "mindMap": {
+    "chatTab": "Chat",
+    "mapTab": "Mind Map",
+    "timelineTab": "Timeline",
+    "emptyState": "No strategy map yet for this consultation",
+    "generating": "Generating your case strategy map",
+    "generateCta": "Generate visual strategy map"
+  },
+  "timeline": {
+    "emptyState": "No events on this case yet. Add one below, or refresh analysis to extract dates from documents.",
+    "loading": "Loading timeline…",
+    "loadError": "Couldn't load this timeline.",
+    "nextSteps": "Next steps",
+    "addHeading": "Add event",
+    "addTitle": "Event title",
+    "addDescription": "What happened",
+    "addCta": "Add event",
+    "date": "Date",
+    "time": "Time"
+  },
+  "email": {
+    "action": "Email",
+    "composerTitle": "Compose email",
+    "to": "To",
+    "toPlaceholder": "recipient@example.com",
+    "subject": "Subject",
+    "subjectPlaceholder": "Subject",
+    "sourceMessageLabel": "Include AI response",
+    "sourceMessageOption": "Response {{index}}",
+    "body": "Message",
+    "attachmentsLabel": "Attach files",
+    "noAttachments": "No files available to attach yet.",
+    "send": "Send",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "notAvailable": "Email sending isn't available yet — this feature is waiting on a backend deployment.",
+    "sendSuccess": "Email sent."
   },
   "sidebar": {
     "newChat": "New chat",

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight, AlertCircle, Network, Clock, FileText, Plus, Loader2, Trash2 } from "lucide-react";
 import {
@@ -9,6 +10,7 @@ import {
   useDeleteCaseDocumentMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { RagStatusBadge } from "@/components/cases/rag-status-badge";
 
 interface CaseDetailsPanelProps {
   caseId: string;
@@ -24,6 +26,26 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
   const { data: caseRecord, isLoading, isError, error } = useCaseQuery(caseId);
   const notFound = isError && error instanceof Error && error.message.toLowerCase().includes("not found");
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Opens ConsultationChat's Mind Map tab for whichever consultation is already selected
+  // (?c=, if any — case-portfolio/[id]/page.tsx auto-selects the most recent one on arrival)
+  // via the same ?tab=mindmap param ConsultationChat itself reads.
+  const openMindMap = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "mindmap");
+    router.push(`${pathname}?${params.toString()}`);
+    setExpanded(false);
+  };
+
+  const openTimeline = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "timeline");
+    router.push(`${pathname}?${params.toString()}`);
+    setExpanded(false);
+  };
 
   useEffect(() => {
     if (!expanded) return;
@@ -83,8 +105,8 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
         // From sm: up there's enough room for the compact, trigger-anchored version.
         <div className="fixed inset-x-4 top-24 z-20 rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
           <div className="flex flex-col gap-1 -mx-1">
-            <CaseToolRow icon={Network} label={t("MindMap")} />
-            <CaseToolRow icon={Clock} label={t("Timeline")} />
+            <CaseToolRow icon={Network} label={t("tools.mindMap")} onClick={openMindMap} />
+            <CaseToolRow icon={Clock} label={t("tools.timeline")} onClick={openTimeline} />
           </div>
 
           <div className="flex flex-col gap-1 border-t border-border pt-4">
@@ -215,6 +237,7 @@ function CaseDocumentList({ caseId }: { caseId: string }) {
           ) : (
             <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
           )}
+          <RagStatusBadge status={doc.ragStatus} />
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -239,20 +262,23 @@ function CaseDocumentList({ caseId }: { caseId: string }) {
   );
 }
 
-/** Placeholder entry point for a not-yet-built case tool — styled and clickable now so it
- * reads as a real menu item, wired up once the tool behind it exists. */
-function CaseToolRow({ icon: Icon, label }: { icon: typeof Network; label: string }) {
+/** A case tool entry — pass `onClick` once the tool behind it exists. Without one, this stays
+ * a styled, inert placeholder (dimmed, no hover/click affordance) so it still reads as a real
+ * menu item without misleadingly inviting a click that does nothing. */
+function CaseToolRow({ icon: Icon, label, onClick }: { icon: typeof Network; label: string; onClick?: () => void }) {
   return (
     <button
       type="button"
-      className="group flex items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+      disabled={!onClick}
+      onClick={onClick}
+      className="group flex items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors enabled:hover:bg-muted enabled:focus-visible:outline-none enabled:focus-visible:ring-2 enabled:focus-visible:ring-brand-gold/50 disabled:cursor-default disabled:opacity-50"
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{label}</span>
       <ChevronRight
-        className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-enabled:group-hover:translate-x-0.5"
         aria-hidden="true"
       />
     </button>

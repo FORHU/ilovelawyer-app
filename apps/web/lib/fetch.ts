@@ -22,6 +22,15 @@ function resolveUrl(path: string): string {
 
 type FetchOptions = Omit<RequestInit, "credentials"> & { skipAuthRefresh?: boolean }
 
+// Non-httpOnly companion to the refreshToken cookie (see refreshTokenCookie.ts on the API):
+// carries no secret, just a "1" flag readable via document.cookie, mirroring refreshToken's
+// lifetime. Lets callers skip a silent refresh that's guaranteed to 401 when no session
+// cookie could possibly exist (e.g. a first-time visitor landing on /login).
+export function hasSessionHint(): boolean {
+  if (typeof document === "undefined") return false
+  return document.cookie.split("; ").some((c) => c === "hasSession=1")
+}
+
 let refreshPromise: Promise<string> | null = null
 
 // The refresh token is single-use — the API deletes it as soon as one refresh

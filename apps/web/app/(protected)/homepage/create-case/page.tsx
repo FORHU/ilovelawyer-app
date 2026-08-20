@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import CustomSelect from "@/components/ui/custom-select";
@@ -42,8 +42,17 @@ interface UploadedFile {
 
 
 export default function CreateCasePage() {
+  return (
+    <Suspense fallback={null}>
+      <CreateCasePageContent />
+    </Suspense>
+  );
+}
+
+function CreateCasePageContent() {
   const { t } = useTranslation("create-case");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Seeded party keeps a stable id (safe for the initial server/client render);
   // parties added afterward only ever happen client-side, via addParty below.
@@ -242,7 +251,11 @@ export default function CreateCasePage() {
         return;
       }
 
-      router.push(`/homepage/case-portfolio/${caseId}`);
+      router.push(
+        searchParams.get("next") === "terminal"
+          ? `/homepage/terminal/${caseId}`
+          : `/homepage/case-portfolio/${caseId}`,
+      );
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }

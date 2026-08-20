@@ -9,6 +9,10 @@
   "noMatchingCases": "No matching cases",
   "noMatchingCasesHint": "Try a different search term.",
   "noPartyListed": "No party listed",
+  "tools": {
+    "mindMap": "Mind Map",
+    "timeline": "Timeline"
+  },
   "lastUpdated": "Last updated",
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",
@@ -48,7 +52,13 @@
     "uploading": "Uploading…",
     "uploadError": "Couldn't upload this file.",
     "removeDocument": "Remove {{documentName}}",
-    "loadDocumentsError": "Couldn't load documents."
+    "loadDocumentsError": "Couldn't load documents.",
+    "ragIndexing": "Indexing",
+    "ragIndexingHint": "File is uploaded. Chat can search it once indexing finishes.",
+    "ragReady": "Ready",
+    "ragReadyHint": "Chat can search this document.",
+    "ragFailed": "Indexing failed",
+    "ragFailedHint": "The file is saved, but chat cannot search it yet."
   },
   "chat": {
     "emptyHeading": "Ask about {{caseName}}",

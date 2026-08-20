@@ -17,6 +17,7 @@ interface GlobalHeaderProps {
     | "create-case"
     | "library"
     | "case-portfolio"
+    | "terminal"
     | "transcription"
     | "document-analysis"
     | "calendar"
@@ -54,6 +55,7 @@ const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat" },
   { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case", tooltip: "Start a new case filing" },
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
+  { tab: "terminal", labelKey: "nav.legalTerminal", href: "/homepage/terminal", tooltip: "Open a case in the Legal Terminal" },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library" },
   { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio" },
   { tab: "document-analysis", labelKey: "nav.documents", href: "/homepage/document-analysis", tooltip: "Upload and analyze legal documents" },
@@ -189,6 +191,12 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             )}
           </div>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/terminal" className={getSubTabClass("terminal")}>{t("nav.legalTerminal").toUpperCase()}</Link>
+            </TooltipTrigger>
+            <TooltipContent>Open a case in the Legal Terminal</TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</Link>
