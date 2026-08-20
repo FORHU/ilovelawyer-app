@@ -40,6 +40,13 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
     setExpanded(false);
   };
 
+  const openTimeline = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "timeline");
+    router.push(`${pathname}?${params.toString()}`);
+    setExpanded(false);
+  };
+
   useEffect(() => {
     if (!expanded) return;
     const handlePointerDown = (e: MouseEvent) => {
@@ -98,8 +105,8 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
         // From sm: up there's enough room for the compact, trigger-anchored version.
         <div className="fixed inset-x-4 top-24 z-20 rounded-xl border border-border bg-card shadow-lg p-5 flex flex-col gap-4 sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-80 sm:max-w-[calc(100vw-2rem)]">
           <div className="flex flex-col gap-1 -mx-1">
-            <CaseToolRow icon={Network} label={t("MindMap")} onClick={openMindMap} />
-            <CaseToolRow icon={Clock} label={t("Timeline")} />
+            <CaseToolRow icon={Network} label={t("tools.mindMap")} onClick={openMindMap} />
+            <CaseToolRow icon={Clock} label={t("tools.timeline")} onClick={openTimeline} />
           </div>
 
           <div className="flex flex-col gap-1 border-t border-border pt-4">

@@ -4,13 +4,13 @@ import { useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, Info, Search } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
+import { CaseTimelineView } from "@/components/cases/case-timeline"
 import {
   useCheckCitationMutation,
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
   useCreateProcedureItemMutation,
   useCreateRiskMutation,
-  useCreateTimelineMutation,
   useProcedureRulesQuery,
   useScanContradictionsMutation,
   useUpdateProcedureItemMutation,
@@ -173,9 +173,11 @@ export function TerminalPanelBody({
     case "law":
       return <LawPanel snapshot={snapshot} caseId={caseId} />
     case "dates":
-      return <DatesPanel snapshot={snapshot} />
+      return null
     case "chat":
       return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} />
+    case "mindMap":
+      return <MindMapPanel caseId={caseId} />
     case "redTeam":
       return <RedTeamPanel />
     case "procedure":
@@ -197,6 +199,17 @@ function ChatPanel({ caseId, caseName }: { caseId: string; caseName: string }) {
       emptyStateHeading={t("chatEmptyHeading", { caseName })}
       emptyStateSubheading={t("chatEmptySubheading")}
       inputPlaceholder={t("askQuestion")}
+    />
+  )
+}
+
+function MindMapPanel({ caseId }: { caseId: string }) {
+  return (
+    <ConsultationChat
+      embedded
+      mindMapOnly
+      basePath={`/homepage/terminal/${caseId}`}
+      caseId={caseId}
     />
   )
 }
@@ -279,9 +292,7 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
 
 function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
-  const createTimeline = useCreateTimelineMutation(caseId)
   const scan = useScanContradictionsMutation(caseId)
-  const [title, setTitle] = useState("")
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
@@ -336,38 +347,7 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
 
       <div>
         <SectionLabel>{t("timeline")}</SectionLabel>
-        {snapshot.timeline.length === 0 ? (
-          <EmptyNote>{t("addEvent")}</EmptyNote>
-        ) : (
-          <ul className="space-y-2">
-            {snapshot.timeline.map((event) => (
-              <li key={event.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2">
-                <span>{event.title}</span>
-                <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">{formatDate(event.occurredOn)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const value = title.trim()
-            if (!value) return
-            createTimeline.mutate({ title: value })
-            setTitle("")
-          }}
-        >
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t("addEvent")}
-            className={`flex-1 ${fieldClass}`}
-          />
-          <button type="submit" disabled={createTimeline.isPending} className={primaryBtnClass}>
-            {t("add")}
-          </button>
-        </form>
+        <CaseTimelineView caseId={caseId} fill={false} />
       </div>
     </div>
   )
@@ -422,48 +402,6 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
           {t("verify")}
         </button>
       </form>
-    </div>
-  )
-}
-
-function DatesPanel({ snapshot }: { snapshot: CaseSnapshot }) {
-  const { t } = useTranslation("terminal")
-  const fromCalendar = snapshot.dates.map((item) => ({
-    id: `cal-${item.id}`,
-    title: item.title,
-    date: item.dateTime,
-    source: item.source === "AI" ? t("dateSourceAi") : t("dateSourceCalendar"),
-  }))
-  const fromDocuments = snapshot.timeline
-    .filter((item) => item.occurredOn)
-    .map((item) => ({
-      id: `tl-${item.id}`,
-      title: item.title,
-      date: item.occurredOn as string,
-      source: item.source === "LAWYER" ? t("dateSourceLawyer") : t("dateSourceAi"),
-    }))
-  const dates = [...fromCalendar, ...fromDocuments].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  )
-
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
-      <SectionLabel>{t("dates")}</SectionLabel>
-      {dates.length === 0 ? (
-        <EmptyNote>{t("noDates")}</EmptyNote>
-      ) : (
-        <ul className="space-y-2">
-          {dates.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2">
-              <div className="min-w-0">
-                <p>{item.title}</p>
-                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{item.source}</p>
-              </div>
-              <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">{formatDate(item.date)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }

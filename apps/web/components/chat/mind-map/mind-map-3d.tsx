@@ -4,11 +4,12 @@ import React, { useRef, useMemo, useEffect, useCallback, forwardRef, useImperati
 import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
 import { MindMapItem } from './types';
-import { MIND_MAP_HEX_COLORS } from './constants';
+import { MIND_MAP_HEX_COLORS, mindMapLink3dColor } from './constants';
 
 export interface MindMap3DProps {
   root: MindMapItem | null;
   rootTitle: string;
+  isDark?: boolean;
   onNodeClick: (node: any) => void;
   onBackgroundClick?: () => void;
 }
@@ -19,7 +20,7 @@ export interface MindMap3DHandle {
   zoomOut: () => void;
 }
 
-export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, rootTitle, onNodeClick, onBackgroundClick }, ref) => {
+export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, rootTitle, isDark = false, onNodeClick, onBackgroundClick }, ref) => {
   const fgRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
@@ -84,7 +85,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
     const links: any[] = [];
 
     // Robust field extraction matching index.tsx
-    const getChildren = (item: any) => item.children || item.items || item.subnodes || item.branches || item.subitems || [];
+    const getChildren = (item: any) => item.children || item.items || item.nodes || item.subnodes || item.branches || item.subitems || [];
     const getLabel = (item: any) => item.label || item.text || item.title || 'Untitled';
     const getDescription = (item: any) => item.description || item.details || item.summary || item.content || '';
     const getMedia = (item: any) => item.media || item.evidence || item.attachments || [];
@@ -207,7 +208,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
       const rgb = hexToRgb(node.color);
 
       // Semi-transparent colored background (20% opacity like Tailwind's /20)
-      context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`;
+      context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${isDark ? 0.28 : 0.92})`;
       context.fillRect(0, 0, canvas.width, canvas.height);
 
       // Colored border matching node color (50% opacity) - only for root nodes
@@ -235,7 +236,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
     }
 
     return group;
-  }, []);
+  }, [isDark]);
 
   const handleNodeClick = useCallback((node: any) => {
     lastNodeClickAt.current = Date.now();
@@ -263,7 +264,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
   }, [onNodeClick]);
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-[#050505]/40 backdrop-blur-sm">
+    <div ref={containerRef} className="w-full h-full bg-transparent">
       <ForceGraph3D
         ref={fgRef}
         graphData={graphData}
@@ -273,7 +274,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
         nodeAutoColorBy="id"
         nodeThreeObject={nodeThreeObject}
         linkWidth={1.8}
-        linkColor={() => '#3a3a3a'}
+        linkColor={() => mindMapLink3dColor(isDark)}
         linkDirectionalParticles={0}
         onNodeClick={handleNodeClick}
         onBackgroundClick={() => {

@@ -9,6 +9,10 @@
   "noMatchingCases": "일치하는 사건 없음",
   "noMatchingCasesHint": "다른 검색어를 사용하거나 위의 카테고리 필터를 지워보세요.",
   "noPartyListed": "등록된 당사자 없음",
+  "tools": {
+    "mindMap": "마인드맵",
+    "timeline": "타임라인"
+  },
   "detail": {
     "backToPortfolio": "사건 포트폴리오로 돌아가기",
     "caseLabel": "사건",

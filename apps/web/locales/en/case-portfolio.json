@@ -9,6 +9,10 @@
   "noMatchingCases": "No matching cases",
   "noMatchingCasesHint": "Try a different search term.",
   "noPartyListed": "No party listed",
+  "tools": {
+    "mindMap": "Mind Map",
+    "timeline": "Timeline"
+  },
   "lastUpdated": "Last updated",
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",

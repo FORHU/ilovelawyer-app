@@ -14,6 +14,7 @@ export const terminalKeys = {
   catalog: () => [...terminalKeys.all, "catalog"] as const,
   workspaces: () => [...terminalKeys.all, "workspaces"] as const,
   snapshot: (caseId: string) => [...terminalKeys.all, "snapshot", caseId] as const,
+  timeline: (caseId: string) => [...terminalKeys.all, "timeline", caseId] as const,
   rules: () => [...terminalKeys.all, "procedure-rules"] as const,
 }
 
@@ -107,16 +108,35 @@ export function useRefreshSnapshotMutation(caseId: string) {
   })
 }
 
+export interface CaseTimelineEvent {
+  id: string
+  caseId: string
+  title: string
+  occurredOn: string | null
+  description: string | null
+  status: string
+  source: "AI" | "LAWYER" | "CALENDAR"
+}
+
+export function useCaseTimelineQuery(caseId: string) {
+  return useQuery({
+    queryKey: terminalKeys.timeline(caseId),
+    queryFn: () => apiFetch<CaseTimelineEvent[]>(`/api/my-cases/${caseId}/timeline`),
+    enabled: !!caseId,
+  })
+}
+
 export function useCreateTimelineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title: string; occurredOn?: string }) =>
+    mutationFn: (body: { title: string; occurredOn?: string; description?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/timeline`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
     },
   })
 }

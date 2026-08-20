@@ -17,12 +17,15 @@ import {
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
+const HIDDEN_PANELS = new Set<PanelId>(["redTeam", "dates"])
+
 const PANEL_TITLES: Record<PanelId, string> = {
   command: "Case Summary",
   evidence: "Evidence & Timeline",
   law: "Law & Precedent",
-  dates: "Key Dates",
+  dates: "Timeline",
   chat: "AI Legal Assistant",
+  mindMap: "Visual Strategy Map",
   redTeam: "Red Team",
   procedure: "Case Strategy",
   teamAudit: "Team & Audit",
@@ -49,6 +52,14 @@ function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
     preset: raw.preset ?? fallback.preset,
     panels: raw.panels as PanelLayout[],
   }
+}
+
+function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): WorkspaceLayout {
+  const have = new Set(layout.panels.map((panel) => panel.id))
+  const extras: PanelLayout[] = catalogIds
+    .filter((id) => !have.has(id) && !HIDDEN_PANELS.has(id))
+    .map((id, index) => ({ id, visible: false, order: 100 + index, width: 1, height: 1 }))
+  return extras.length ? { ...layout, panels: [...layout.panels, ...extras] } : layout
 }
 
 export default function LegalTerminal({ caseId }: { caseId: string }) {
@@ -84,7 +95,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     if (lastUsed) {
-      setLayout(asLayout(lastUsed.layoutJson, fallback))
+      setLayout(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id)))
       setSelectedWorkspaceId(lastUsed.id)
       return
     }
@@ -93,7 +104,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const visiblePanels = useMemo(() => {
     if (!layout) return []
-    return [...layout.panels].filter((p) => p.visible && p.id !== "redTeam").sort((a, b) => a.order - b.order)
+    return [...layout.panels].filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).sort((a, b) => a.order - b.order)
   }, [layout])
 
   const cols = columnCount(layout?.preset ?? "PANE_2", visiblePanels.length)
@@ -103,7 +114,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const hiddenPanels = useMemo(() => {
     if (!layout || !catalog.data) return []
     return catalog.data.panels.filter((panel) => {
-      if (!panel.available || panel.id === "redTeam") return false
+      if (!panel.available || HIDDEN_PANELS.has(panel.id)) return false
       return !layout.panels.find((p) => p.id === panel.id)?.visible
     })
   }, [layout, catalog.data])
@@ -118,7 +129,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const hidePanel = (id: PanelId) => {
     setLayout((prev) => {
       if (!prev) return prev
-      const visibleCount = prev.panels.filter((p) => p.visible && p.id !== "redTeam").length
+      const visibleCount = prev.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).length
       if (visibleCount <= 1) return prev
       return { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
     })
@@ -128,12 +139,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      return {
-        ...prev,
-        panels: prev.panels.map((panel) =>
-          panel.id === id ? { ...panel, visible: true, order: maxOrder + 1, width: 1, height: 1 } : panel,
-        ),
+      const next = { id, visible: true, order: maxOrder + 1, width: 1, height: 1 }
+      if (prev.panels.some((panel) => panel.id === id)) {
+        return {
+          ...prev,
+          panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, ...next } : panel)),
+        }
       }
+      return { ...prev, panels: [...prev.panels, next] }
     })
   }
 
@@ -320,7 +333,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               setSelectedWorkspaceId(id)
               const workspace = workspaces.data?.find((w) => w.id === id)
               if (!workspace) return
-              setLayout(asLayout(workspace.layoutJson, layout))
+              setLayout(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
               applyWorkspace.mutate(id)
             }}
             className={`${controlClass} max-w-40`}
@@ -357,7 +370,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             onClick={() => {
               resetWorkspace.mutate(layout.preset, {
                 onSuccess: (workspace) => {
-                  setLayout(asLayout(workspace.layoutJson, layout))
+                  setLayout(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
                   setSelectedWorkspaceId(workspace.id)
                 },
               })
@@ -516,10 +529,11 @@ function applyTracks(
 }
 
 function applyPreset(layout: WorkspaceLayout, preset: PresetValue, availableIds: PanelId[]): WorkspaceLayout {
-  const visibleIds = defaultIdsForPreset(preset).filter((id) => availableIds.includes(id) && id !== "redTeam")
+  const merged = mergeCatalogPanels(layout, availableIds)
+  const visibleIds = defaultIdsForPreset(preset).filter((id) => availableIds.includes(id) && !HIDDEN_PANELS.has(id))
   return {
     preset,
-    panels: layout.panels.map((panel, index) => {
+    panels: merged.panels.map((panel, index) => {
       const visibleIndex = visibleIds.indexOf(panel.id)
       const visible = visibleIndex !== -1
       return {
@@ -540,9 +554,9 @@ function defaultIdsForPreset(preset: PresetValue): PanelId[] {
     case "PANE_2":
       return ["command", "evidence"]
     case "PANE_4":
-      return ["command", "evidence", "chat", "procedure"]
+      return ["command", "evidence", "chat", "procedure", "mindMap"]
     case "PANE_6":
-      return ["command", "evidence", "law", "dates", "procedure", "chat"]
+      return ["command", "evidence", "law", "mindMap", "procedure", "chat"]
     default:
       return ["command", "evidence"]
   }

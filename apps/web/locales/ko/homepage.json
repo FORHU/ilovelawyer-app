@@ -64,9 +64,22 @@
   "mindMap": {
     "chatTab": "채팅",
     "mapTab": "마인드맵",
+    "timelineTab": "타임라인",
     "emptyState": "아직 이 상담에 대한 전략 맵이 없습니다",
     "generating": "사건 전략 맵을 생성하는 중",
     "generateCta": "시각적 전략 맵 생성"
+  },
+  "timeline": {
+    "emptyState": "이 사건에 아직 일정이 없습니다. 아래에서 추가하거나, 분석을 새로고침해 문서에서 날짜를 추출하세요.",
+    "loading": "타임라인을 불러오는 중…",
+    "loadError": "타임라인을 불러오지 못했습니다.",
+    "nextSteps": "다음 단계",
+    "addHeading": "일정 추가",
+    "addTitle": "일정 제목",
+    "addDescription": "무슨 일이 있었는지",
+    "addCta": "일정 추가",
+    "date": "날짜",
+    "time": "시간"
   },
   "email": {
     "action": "이메일",

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -12,6 +12,7 @@ import { MessageAttachments, type MessageAttachment } from "@/components/chat/me
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import EmailComposerModal from "@/components/chat/email-composer-modal";
 import { MindMap } from "@/components/chat/mind-map";
+import { CaseTimelineView } from "@/components/cases/case-timeline";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -19,7 +20,7 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { extractMindMap, stripStructuredBlocks, type MindMapItem } from "@/lib/chat/mind-map-parser";
+import { extractMindMap, stripStructuredBlocks, usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
@@ -44,6 +45,16 @@ const MAX_TEXTAREA_HEIGHT = 200;
 // never actually typed — see the `visibleMessages` filter below.
 const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
 
+type CaseChatTab = "chat" | "mindmap" | "timeline";
+
+function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, caseId?: string): CaseChatTab {
+  if (mindMapOnly) return "mindmap";
+  if (!caseId) return "chat";
+  const tab = searchParams.get("tab");
+  if (tab === "mindmap" || tab === "timeline") return tab;
+  return "chat";
+}
+
 interface ConsultationChatProps {
   /** Route this chat lives at — consultation selection is driven by a `?c=<id>` query
    * param appended to this path, so the same component works at "/homepage" and at a
@@ -59,6 +70,8 @@ interface ConsultationChatProps {
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
   embedded?: boolean;
+  /** Terminal Visual Strategy Map pane — map canvas only, no chat transcript. */
+  mindMapOnly?: boolean;
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
   inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
@@ -76,6 +89,7 @@ export default function ConsultationChat({
   emptyStateSubheading,
   headerSlot,
   embedded = false,
+  mindMapOnly = false,
   inputPlaceholder,
   enableFileChips = false,
 }: ConsultationChatProps) {
@@ -222,18 +236,19 @@ export default function ConsultationChat({
   // below covers the same-instance case (already on this page, no remount happens when only
   // the query string changes). Mind Map is Case-only (see CONTEXT.md), so both gate on the
   // `caseId` prop — a `?tab=mindmap` link on the general /homepage Consultation is ignored.
-  const [activeTab, setActiveTab] = useState<"chat" | "mindmap">(() =>
-    caseId && searchParams.get("tab") === "mindmap" ? "mindmap" : "chat",
+  const [activeTab, setActiveTab] = useState<CaseChatTab>(() =>
+    tabFromSearch(searchParams, mindMapOnly, caseId),
   );
   useEffect(() => {
-    if (caseId && searchParams.get("tab") === "mindmap") setActiveTab("mindmap");
-  }, [caseId, searchParams]);
+    if (mindMapOnly) return;
+    setActiveTab(tabFromSearch(searchParams, mindMapOnly, caseId));
+  }, [mindMapOnly, caseId, searchParams]);
 
-  const handleTabChange = (tab: "chat" | "mindmap") => {
+  const handleTabChange = (tab: CaseChatTab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
-    if (tab === "mindmap") params.set("tab", "mindmap");
-    else params.delete("tab");
+    if (tab === "chat") params.delete("tab");
+    else params.set("tab", tab);
     const qs = params.toString();
     router.replace(`${basePath}${qs ? `?${qs}` : ""}`);
   };
@@ -245,8 +260,8 @@ export default function ConsultationChat({
   // surfaces the most recent one the AI actually populated, same as law-ph's `activeMindMap`.
   const activeMindMap = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      const map = messages[i]?.mindMap;
-      if (map && Array.isArray(map.children) && map.children.length > 0) return map;
+      const map = usableMindMap(messages[i]?.mindMap);
+      if (map) return map;
     }
     return undefined;
   }, [messages]);
@@ -611,11 +626,12 @@ export default function ConsultationChat({
   // were still processing (see docs/case-document-rag-backend-handoff.md).
   const autoGeneratedMindMapRef = useRef(false);
   useEffect(() => {
-    if (embedded || autoGeneratedMindMapRef.current) return;
-    if (!caseId || activeTab !== "mindmap" || activeMindMap || isSending || !session) return;
+    if (autoGeneratedMindMapRef.current) return;
+    if (!caseId || activeMindMap || isSending || !session) return;
+    if (!mindMapOnly && (embedded || activeTab !== "mindmap")) return;
     autoGeneratedMindMapRef.current = true;
     void doSend(AUTO_MINDMAP_PROMPT);
-  }, [embedded, caseId, activeTab, activeMindMap, isSending, session]);
+  }, [embedded, mindMapOnly, caseId, activeTab, activeMindMap, isSending, session]);
 
   const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -924,7 +940,9 @@ export default function ConsultationChat({
 
       <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
         {(() => {
-          const isEmptyChatLanding = activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          const isEmptyChatLanding = !mindMapOnly && activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          const showMindMapPane = Boolean(caseId && (mindMapOnly || (!embedded && activeTab === "mindmap")));
+          const showTimelinePane = Boolean(caseId && !embedded && !mindMapOnly && activeTab === "timeline");
           // Mind Map is Case-only (see CONTEXT.md) — the tab switcher itself only exists inside
           // a Case's own chat (caseId prop set), never on the general /homepage Consultation.
           // Once there's more than one destination (Chat / Mind Map), the switcher has to be
@@ -933,7 +951,7 @@ export default function ConsultationChat({
           // a case with no consultation yet, and can't get back to Chat either.
           return (
           <>
-            {!embedded && caseId && (
+            {!mindMapOnly && !embedded && caseId && (
               <div className="flex items-center gap-1 pt-4 shrink-0">
                 <button
                   type="button"
@@ -955,11 +973,21 @@ export default function ConsultationChat({
                   <Workflow className="w-3.5 h-3.5" aria-hidden="true" />
                   {t("mindMap.mapTab")}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("timeline")}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                    activeTab === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t("mindMap.timelineTab", { defaultValue: "Timeline" })}
+                </button>
               </div>
             )}
 
-            {!embedded && caseId && activeTab === "mindmap" ? (
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] py-4">
+            {showMindMapPane ? (
+              <div className={`flex-1 min-h-0 ${mindMapOnly ? "overflow-hidden py-1" : "overflow-y-auto scrollbar-none [-ms-overflow-style:none] py-4"}`}>
                 {activeMindMap ? (
                   <MindMap
                     rootTitle={linkedCaseRecord?.caseName}
@@ -967,7 +995,7 @@ export default function ConsultationChat({
                     consultationId={consultationId ?? undefined}
                   />
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-4 py-24 text-center">
+                  <div className={`flex-1 flex flex-col items-center justify-center gap-4 text-center ${mindMapOnly ? "h-full py-8" : "py-24"}`}>
                     {isSending ? (
                       <p
                         className="flex items-center gap-1 text-sm text-muted-foreground max-w-sm font-['Inter']"
@@ -996,6 +1024,10 @@ export default function ConsultationChat({
                     )}
                   </div>
                 )}
+              </div>
+            ) : showTimelinePane && caseId ? (
+              <div className="flex-1 min-h-0">
+                <CaseTimelineView caseId={caseId} />
               </div>
             ) : isEmptyChatLanding ? (
               /* No consultation yet — heading and input are centered together, like Gemini's landing state */
@@ -1068,7 +1100,7 @@ export default function ConsultationChat({
               </div>
             </div>
             )}
-            {!isEmptyChatLanding && activeTab !== "mindmap" && (
+            {!isEmptyChatLanding && activeTab === "chat" && (
               <div className={embedded ? "pt-2 pb-2" : "pt-4 pb-6"}>{chatInputBar}</div>
             )}
           </>

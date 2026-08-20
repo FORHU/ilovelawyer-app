@@ -4,6 +4,7 @@ export const PANEL_IDS = [
   "law",
   "dates",
   "chat",
+  "mindMap",
   "redTeam",
   "procedure",
   "teamAudit",
