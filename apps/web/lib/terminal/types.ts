@@ -8,6 +8,15 @@ export const PANEL_IDS = [
   "redTeam",
   "procedure",
   "teamAudit",
+  "contradictions",
+  "legalIssues",
+  "weaknesses",
+  "strengths",
+  "attackStrategy",
+  "defenseStrategy",
+  "witnesses",
+  "damages",
+  "caseReconstruction",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
@@ -166,11 +175,58 @@ export interface CaseSnapshot {
   law: { citations: SnapshotCitation[] }
   procedure: { deadlines: SnapshotDeadline[]; items: SnapshotProcedureItem[] }
   teamAudit: { accesses: unknown[]; audit: SnapshotAuditEvent[] }
+  findings: CaseFinding[]
+  witnesses: Witness[]
+  damages: DamageClaim[]
+  reconstruction: CaseReconstruction | null
   riskAnalysis?: {
     overall: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
     liability: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
   }
   lastRefreshedAt: string | null
+}
+
+export type FindingCategory = "LEGAL_ISSUE" | "WEAKNESS" | "STRENGTH" | "ATTACK_STRATEGY" | "DEFENSE_STRATEGY"
+
+export interface CaseFinding {
+  id: string
+  caseId: string
+  category: FindingCategory
+  label: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Witness {
+  id: string
+  caseId: string
+  name: string
+  role: string | null
+  contact: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type DamageCategory = "ACTUAL" | "MORAL" | "EXEMPLARY" | "ATTORNEYS_FEES" | "OTHER"
+
+export interface DamageClaim {
+  id: string
+  caseId: string
+  category: DamageCategory
+  description: string | null
+  amount: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CaseReconstruction {
+  id: string
+  caseId: string
+  narrative: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface DeadlineRule {

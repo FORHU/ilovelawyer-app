@@ -29,6 +29,15 @@ const PANEL_TITLES: Record<PanelId, string> = {
   redTeam: "Red Team",
   procedure: "Case Strategy",
   teamAudit: "Team & Audit",
+  contradictions: "Contradictions",
+  legalIssues: "Legal Issues",
+  weaknesses: "Weaknesses",
+  strengths: "Strengths",
+  attackStrategy: "Attack Strategies",
+  defenseStrategy: "Defense Strategies",
+  witnesses: "Witnesses",
+  damages: "Damages & Remedies",
+  caseReconstruction: "Case Reconstruction",
 }
 
 const PRESET_LABELS: Record<PresetValue, string> = {
@@ -80,6 +89,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
+  // Drag/resize used to call setLayout() (a full state update, re-rendering every visible
+  // pane's contents) on every raw pointermove — the measured cause of the reported lag. This
+  // ref instead tracks the in-progress rect and is written straight to the pane's DOM style
+  // (applyLivePaneStyle, bypassing React) on each move; the single commit to React state
+  // happens once, on pointer-up.
+  const pendingRectRef = useRef<{ panelId: PanelId; rect: PaneRect } | null>(null)
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
@@ -186,10 +201,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     if (!drag || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
     const dx = (event.clientX - drag.startX) / grid.clientWidth
     const dy = (event.clientY - drag.startY) / grid.clientHeight
-    patchPanelRect(drag.panelId, clampResize(drag, dx, dy))
+    const rect = clampResize(drag, dx, dy)
+    pendingRectRef.current = { panelId: drag.panelId, rect }
+    applyLivePaneStyle(drag.panelId, rect)
   }
 
   const onResizePointerUp = () => {
+    if (pendingRectRef.current) {
+      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
+      pendingRectRef.current = null
+    }
     resizeRef.current = null
   }
 
@@ -210,15 +231,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setDraggingId(move.panelId)
     const dx = (event.clientX - move.startX) / grid.clientWidth
     const dy = (event.clientY - move.startY) / grid.clientHeight
-    patchPanelRect(move.panelId, {
+    const rect = {
       x: clamp(move.x + dx, 0, 1 - move.width),
       y: clamp(move.y + dy, 0, 1 - move.height),
       width: move.width,
       height: move.height,
-    })
+    }
+    pendingRectRef.current = { panelId: move.panelId, rect }
+    applyLivePaneStyle(move.panelId, rect)
   }
 
   const onHeaderPointerUp = () => {
+    if (pendingRectRef.current) {
+      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
+      pendingRectRef.current = null
+    }
     moveRef.current = null
     setDraggingId(null)
   }
@@ -469,6 +496,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+// Writes a pane's position/size straight to its DOM node during an active drag/resize,
+// bypassing React so the gesture doesn't re-render the whole Terminal (and every visible
+// pane's contents) on every pointermove. Mirrors the `style` computed from `rect` in the
+// JSX below — must stay in sync with it, since a later React re-render will overwrite
+// whatever this wrote with `rect` from committed state.
+function applyLivePaneStyle(panelId: PanelId, rect: PaneRect) {
+  const el = document.querySelector<HTMLElement>(`[data-panel-id="${panelId}"]`)
+  if (!el) return
+  el.style.left = `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`
+  el.style.top = `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`
+  el.style.width = `calc(${rect.width * 100}% - ${PANE_GAP_PX * 2}px)`
+  el.style.height = `calc(${rect.height * 100}% - ${PANE_GAP_PX * 2}px)`
 }
 
 function panelRect(panel: PanelLayout): PaneRect {

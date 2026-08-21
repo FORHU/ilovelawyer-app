@@ -1,11 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import type {
+  CaseFinding,
+  CaseReconstruction,
   CaseSnapshot,
+  DamageCategory,
+  DamageClaim,
   DeadlineRule,
+  FindingCategory,
   PresetValue,
   TerminalCatalog,
   TerminalWorkspace,
+  Witness,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 
@@ -228,6 +234,112 @@ export function useConfirmDeadlineMutation(caseId: string) {
       apiFetch(`/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/confirm`, {
         method: "POST",
         body: JSON.stringify({ confirmed: true }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Backs five Terminal panels (Legal Issues / Weaknesses / Strengths / Attack Strategies /
+// Defense Strategies) — one CaseFinding table filtered by category, same as the backend.
+export function useCreateFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { category: FindingCategory; label: string }) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/findings/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useCreateWitnessMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; role?: string; contact?: string; notes?: string }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteWitnessMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/witnesses/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useCreateDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { category: DamageCategory; description?: string; amount?: number }) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/damages/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// A dedicated action (not part of useRefreshSnapshotMutation) — narrative generation is a
+// heavier, slower single-shot AI call the lawyer triggers deliberately.
+export function useGenerateReconstructionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<CaseReconstruction>(`/api/my-cases/${caseId}/reconstruction/generate`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useUpdateReconstructionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (narrative: string) =>
+      apiFetch<CaseReconstruction>(`/api/my-cases/${caseId}/reconstruction`, {
+        method: "PATCH",
+        body: JSON.stringify({ narrative }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
