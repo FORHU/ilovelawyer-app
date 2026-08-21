@@ -17,7 +17,9 @@ import {
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
-const HIDDEN_PANELS = new Set<PanelId>(["redTeam", "dates"])
+// "dates" is permanently folded into Evidence & Timeline (TerminalPanelBody renders it as
+// null) — redTeam is a real, addable panel now, not force-hidden the way it used to be.
+const HIDDEN_PANELS = new Set<PanelId>(["dates"])
 
 const PANEL_TITLES: Record<PanelId, string> = {
   command: "Case Summary",

@@ -59,7 +59,6 @@
   "dateSourceAi": "문서에서",
   "dateSourceCalendar": "캘린더",
   "dateSourceLawyer": "직접 추가",
-  "redTeamParked": "레드팀은 SCL이 출시될 때까지 비활성화됩니다.",
   "deadlines": "기한",
   "confirmed": "확인됨",
   "confirmDeadline": "확인",
@@ -119,5 +118,7 @@
   "generate": "생성",
   "regenerate": "재생성",
   "generating": "생성 중…",
-  "noReconstruction": "아직 재구성이 없습니다 — 이 사건의 색인된 문서로부터 생성하세요."
+  "noReconstruction": "아직 재구성이 없습니다 — 이 사건의 색인된 문서로부터 생성하세요.",
+  "redTeamAssessment": "위협 평가",
+  "noRedTeam": "아직 평가가 없습니다 — 이 사건의 법적 쟁점, 약점, 모순, 증인, 손해배상으로부터 생성하세요."
 }

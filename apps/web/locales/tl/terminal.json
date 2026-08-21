@@ -59,7 +59,6 @@
   "dateSourceAi": "Mula sa dokumento",
   "dateSourceCalendar": "Calendar",
   "dateSourceLawyer": "Idinagdag",
-  "redTeamParked": "Naka-park ang red team hanggang sa dumating ang SCL.",
   "deadlines": "Mga deadline",
   "confirmed": "nakumpirma",
   "confirmDeadline": "Kumpirmahin",
@@ -119,5 +118,7 @@
   "generate": "Bumuo",
   "regenerate": "Bumuo Muli",
   "generating": "Bumubuo…",
-  "noReconstruction": "Wala pang reconstruction — bumuo mula sa mga na-index na dokumento ng kasong ito."
+  "noReconstruction": "Wala pang reconstruction — bumuo mula sa mga na-index na dokumento ng kasong ito.",
+  "redTeamAssessment": "Threat Assessment",
+  "noRedTeam": "Wala pang assessment — bumuo mula sa Legal Issues, Weaknesses, Contradictions, Witnesses, at Damages ng kasong ito."
 }

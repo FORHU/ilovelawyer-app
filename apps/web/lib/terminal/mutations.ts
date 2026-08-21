@@ -9,6 +9,7 @@ import type {
   DeadlineRule,
   FindingCategory,
   PresetValue,
+  RedTeamAssessment,
   TerminalCatalog,
   TerminalWorkspace,
   Witness,
@@ -341,6 +342,20 @@ export function useUpdateReconstructionMutation(caseId: string) {
         method: "PATCH",
         body: JSON.stringify({ narrative }),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Attacks the case's own structured findings (Legal Issues, Weaknesses, Contradictions,
+// Witnesses, Damages) rather than raw documents — see RedTeamSvc.generate on the backend.
+// No manual-edit counterpart to useUpdateReconstructionMutation: this is opposing counsel's
+// own commentary, not something the lawyer rewrites in their own voice.
+export function useGenerateRedTeamMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<RedTeamAssessment>(`/api/my-cases/${caseId}/red-team/generate`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },

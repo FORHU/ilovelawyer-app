@@ -179,6 +179,7 @@ export interface CaseSnapshot {
   witnesses: Witness[]
   damages: DamageClaim[]
   reconstruction: CaseReconstruction | null
+  redTeamAssessment: RedTeamAssessment | null
   riskAnalysis?: {
     overall: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
     liability: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
@@ -225,6 +226,14 @@ export interface CaseReconstruction {
   id: string
   caseId: string
   narrative: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RedTeamAssessment {
+  id: string
+  caseId: string
+  content: string
   createdAt: string
   updatedAt: string
 }

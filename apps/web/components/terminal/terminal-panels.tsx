@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
+import LegalMarkdown from "@/components/library/legal-markdown"
 import {
   useCheckCitationMutation,
   useConfirmDeadlineMutation,
@@ -18,6 +19,7 @@ import {
   useDeleteFindingMutation,
   useDeleteWitnessMutation,
   useGenerateReconstructionMutation,
+  useGenerateRedTeamMutation,
   useProcedureRulesQuery,
   useScanContradictionsMutation,
   useUpdateProcedureItemMutation,
@@ -187,7 +189,7 @@ export function TerminalPanelBody({
     case "mindMap":
       return <MindMapPanel caseId={caseId} />
     case "redTeam":
-      return <RedTeamPanel />
+      return <RedTeamPanel snapshot={snapshot} caseId={caseId} />
     case "procedure":
       return <ProcedurePanel snapshot={snapshot} caseId={caseId} />
     case "teamAudit":
@@ -446,11 +448,38 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
   )
 }
 
-function RedTeamPanel() {
+// Opposing counsel's own adversarial read of the case — generated from the case's structured
+// findings (Legal Issues, Weaknesses, Contradictions, Witnesses, Damages), not raw documents.
+// No manual edit, unlike Case Reconstruction: this is meant to be read as their commentary.
+function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
+  const generate = useGenerateRedTeamMutation(caseId)
+  const content = snapshot.redTeamAssessment?.content ?? ""
+
   return (
-    <div className="p-4">
-      <EmptyNote>{t("redTeamParked")}</EmptyNote>
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
+        <button
+          type="button"
+          onClick={() => generate.mutate()}
+          disabled={generate.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+        >
+          {generate.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+          )}
+          {generate.isPending ? t("generating") : content ? t("regenerate") : t("generate")}
+        </button>
+      </div>
+
+      {!content && !generate.isPending ? (
+        <EmptyNote>{t("noRedTeam")}</EmptyNote>
+      ) : content ? (
+        <LegalMarkdown content={content} />
+      ) : null}
     </div>
   )
 }

@@ -59,7 +59,6 @@
   "dateSourceAi": "From documents",
   "dateSourceCalendar": "Calendar",
   "dateSourceLawyer": "Added",
-  "redTeamParked": "Red team is parked until SCL ships.",
   "deadlines": "Deadlines",
   "confirmed": "confirmed",
   "confirmDeadline": "Confirm",
@@ -119,5 +118,7 @@
   "generate": "Generate",
   "regenerate": "Regenerate",
   "generating": "Generating…",
-  "noReconstruction": "No reconstruction yet — generate one from this case's indexed documents."
+  "noReconstruction": "No reconstruction yet — generate one from this case's indexed documents.",
+  "redTeamAssessment": "Threat Assessment",
+  "noRedTeam": "No assessment yet — generate one from this case's Legal Issues, Weaknesses, Contradictions, Witnesses, and Damages."
 }
