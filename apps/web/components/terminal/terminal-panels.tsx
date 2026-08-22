@@ -2,20 +2,30 @@
 
 import { useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, Info, Search } from "lucide-react"
+import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
+import LegalMarkdown from "@/components/library/legal-markdown"
 import {
   useCheckCitationMutation,
   useConfirmDeadlineMutation,
+  useCreateDamageMutation,
   useCreateDeadlineMutation,
+  useCreateFindingMutation,
   useCreateProcedureItemMutation,
   useCreateRiskMutation,
+  useCreateWitnessMutation,
+  useDeleteDamageMutation,
+  useDeleteFindingMutation,
+  useDeleteWitnessMutation,
+  useGenerateReconstructionMutation,
+  useGenerateRedTeamMutation,
   useProcedureRulesQuery,
   useScanContradictionsMutation,
   useUpdateProcedureItemMutation,
+  useUpdateReconstructionMutation,
 } from "@/lib/terminal/mutations"
-import type { CaseSnapshot, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
+import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
 
 function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
@@ -179,11 +189,29 @@ export function TerminalPanelBody({
     case "mindMap":
       return <MindMapPanel caseId={caseId} />
     case "redTeam":
-      return <RedTeamPanel />
+      return <RedTeamPanel snapshot={snapshot} caseId={caseId} />
     case "procedure":
       return <ProcedurePanel snapshot={snapshot} caseId={caseId} />
     case "teamAudit":
       return <TeamAuditPanel snapshot={snapshot} />
+    case "contradictions":
+      return <ContradictionsPanel snapshot={snapshot} caseId={caseId} />
+    case "legalIssues":
+      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="LEGAL_ISSUE" />
+    case "weaknesses":
+      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="WEAKNESS" />
+    case "strengths":
+      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="STRENGTH" />
+    case "attackStrategy":
+      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="ATTACK_STRATEGY" />
+    case "defenseStrategy":
+      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="DEFENSE_STRATEGY" />
+    case "witnesses":
+      return <WitnessPanel snapshot={snapshot} caseId={caseId} />
+    case "damages":
+      return <DamagePanel snapshot={snapshot} caseId={caseId} />
+    case "caseReconstruction":
+      return <CaseReconstructionPanel snapshot={snapshot} caseId={caseId} />
     default:
       return null
   }
@@ -292,7 +320,6 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
 
 function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
-  const scan = useScanContradictionsMutation(caseId)
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
@@ -314,6 +341,24 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
         )}
       </div>
 
+      <div>
+        <SectionLabel>{t("timeline")}</SectionLabel>
+        <CaseTimelineView caseId={caseId} fill={false} />
+      </div>
+    </div>
+  )
+}
+
+// Split out of EvidencePanel into its own pane — the underlying data (EvidenceContradiction
+// rows, scanned via regex + an LLM pass through chat-wonder-v2-api) already existed; this is
+// purely giving it dedicated screen space instead of competing with Documents/Timeline for it.
+function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+  const { t } = useTranslation("terminal")
+  const scan = useScanContradictionsMutation(caseId)
+  const contradictions = snapshot.evidence.contradictions
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
       <button
         type="button"
         onClick={() => scan.mutate()}
@@ -324,11 +369,13 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
         {scan.isPending ? t("scanning") : t("scan")}
       </button>
 
-      {snapshot.evidence.contradictions.length > 0 && (
+      {contradictions.length === 0 ? (
+        <EmptyNote>{t("noContradictions")}</EmptyNote>
+      ) : (
         <div>
           <SectionLabel>{t("contradictions")}</SectionLabel>
           <ul className="space-y-3">
-            {snapshot.evidence.contradictions.map((item) => (
+            {contradictions.map((item) => (
               <li key={item.id} className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5">
                 <p className="font-mono text-[12px] text-orange-400">
                   {contradictionHeadline(item)}
@@ -344,11 +391,6 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
           </ul>
         </div>
       )}
-
-      <div>
-        <SectionLabel>{t("timeline")}</SectionLabel>
-        <CaseTimelineView caseId={caseId} fill={false} />
-      </div>
     </div>
   )
 }
@@ -406,11 +448,38 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
   )
 }
 
-function RedTeamPanel() {
+// Opposing counsel's own adversarial read of the case — generated from the case's structured
+// findings (Legal Issues, Weaknesses, Contradictions, Witnesses, Damages), not raw documents.
+// No manual edit, unlike Case Reconstruction: this is meant to be read as their commentary.
+function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
+  const generate = useGenerateRedTeamMutation(caseId)
+  const content = snapshot.redTeamAssessment?.content ?? ""
+
   return (
-    <div className="p-4">
-      <EmptyNote>{t("redTeamParked")}</EmptyNote>
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
+        <button
+          type="button"
+          onClick={() => generate.mutate()}
+          disabled={generate.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+        >
+          {generate.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+          )}
+          {generate.isPending ? t("generating") : content ? t("regenerate") : t("generate")}
+        </button>
+      </div>
+
+      {!content && !generate.isPending ? (
+        <EmptyNote>{t("noRedTeam")}</EmptyNote>
+      ) : content ? (
+        <LegalMarkdown content={content} />
+      ) : null}
     </div>
   )
 }
@@ -582,6 +651,299 @@ function TeamAuditPanel({ snapshot }: { snapshot: CaseSnapshot }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  )
+}
+
+// Backs Legal Issues / Weaknesses / Strengths / Attack Strategies / Defense Strategies — one
+// CaseFinding table filtered by category (see lib/terminal/mutations.ts), same as the backend.
+const FINDING_ADD_LABEL_KEYS: Record<FindingCategory, string> = {
+  LEGAL_ISSUE: "addLegalIssue",
+  WEAKNESS: "addWeakness",
+  STRENGTH: "addStrength",
+  ATTACK_STRATEGY: "addAttackStrategy",
+  DEFENSE_STRATEGY: "addDefenseStrategy",
+}
+
+function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapshot; caseId: string; category: FindingCategory }) {
+  const { t } = useTranslation("terminal")
+  const create = useCreateFindingMutation(caseId)
+  const del = useDeleteFindingMutation(caseId)
+  const [label, setLabel] = useState("")
+  const items = snapshot.findings.filter((f) => f.category === category)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+      {items.length === 0 ? (
+        <EmptyNote>{t("noFindings")}</EmptyNote>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="leading-5 text-foreground">{item.label}</p>
+                {item.notes === "AI" && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    {t("aiGenerated")}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => del.mutate(item.id)}
+                disabled={del.isPending}
+                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                aria-label={t("delete")}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="mt-auto flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const value = label.trim()
+          if (!value) return
+          create.mutate({ category, label: value })
+          setLabel("")
+        }}
+      >
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={t(FINDING_ADD_LABEL_KEYS[category])}
+          className={`flex-1 ${fieldClass}`}
+        />
+        <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+          {t("add")}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+  const { t } = useTranslation("terminal")
+  const create = useCreateWitnessMutation(caseId)
+  const del = useDeleteWitnessMutation(caseId)
+  const [name, setName] = useState("")
+  const [role, setRole] = useState("")
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+      {snapshot.witnesses.length === 0 ? (
+        <EmptyNote>{t("noWitnesses")}</EmptyNote>
+      ) : (
+        <ul className="space-y-2">
+          {snapshot.witnesses.map((w) => (
+            <li key={w.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground">{w.name}</p>
+                {w.role ? <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{w.role}</p> : null}
+                {w.contact ? <p className="mt-1 text-[12px] text-muted-foreground">{w.contact}</p> : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => del.mutate(w.id)}
+                disabled={del.isPending}
+                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                aria-label={t("delete")}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="mt-auto flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const value = name.trim()
+          if (!value) return
+          create.mutate({ name: value, role: role.trim() || undefined })
+          setName("")
+          setRole("")
+        }}
+      >
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("witnessName")} className={fieldClass} />
+        <div className="flex gap-2">
+          <input
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder={t("witnessRole")}
+            className={`flex-1 ${fieldClass}`}
+          />
+          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+            {t("add")}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
+  ACTUAL: "damageActual",
+  MORAL: "damageMoral",
+  EXEMPLARY: "damageExemplary",
+  ATTORNEYS_FEES: "damageAttorneysFees",
+  OTHER: "damageOther",
+}
+
+function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+  const { t } = useTranslation("terminal")
+  const create = useCreateDamageMutation(caseId)
+  const del = useDeleteDamageMutation(caseId)
+  const [category, setCategory] = useState<DamageCategory>("ACTUAL")
+  const [description, setDescription] = useState("")
+  const [amount, setAmount] = useState("")
+
+  const total = snapshot.damages.reduce((sum, d) => sum + (d.amount ?? 0), 0)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+      {snapshot.damages.length === 0 ? (
+        <EmptyNote>{t("noDamages")}</EmptyNote>
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {snapshot.damages.map((d) => (
+              <li key={d.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">
+                    {t(DAMAGE_CATEGORY_KEYS[d.category])}
+                  </p>
+                  {d.description ? <p className="mt-0.5 leading-5 text-foreground">{d.description}</p> : null}
+                  {d.amount != null ? <p className="mt-1 font-mono text-[13px] text-foreground">{d.amount.toLocaleString()}</p> : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => del.mutate(d.id)}
+                  disabled={del.isPending}
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                  aria-label={t("delete")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground">
+            <span>{t("damageTotal")}</span>
+            <span className="font-mono">{total.toLocaleString()}</span>
+          </div>
+        </>
+      )}
+      <form
+        className="mt-auto flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const parsedAmount = amount.trim() ? Number(amount) : undefined
+          create.mutate({ category, description: description.trim() || undefined, amount: parsedAmount })
+          setDescription("")
+          setAmount("")
+        }}
+      >
+        <select value={category} onChange={(e) => setCategory(e.target.value as DamageCategory)} className={fieldClass}>
+          {(Object.keys(DAMAGE_CATEGORY_KEYS) as DamageCategory[]).map((c) => (
+            <option key={c} value={c}>
+              {t(DAMAGE_CATEGORY_KEYS[c])}
+            </option>
+          ))}
+        </select>
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t("damageDescription")}
+          className={fieldClass}
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={t("damageAmount")}
+            className={`flex-1 ${fieldClass}`}
+          />
+          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+            {t("add")}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+  const { t } = useTranslation("terminal")
+  const narrative = snapshot.reconstruction?.narrative ?? ""
+  const [draft, setDraft] = useState(narrative)
+  const [dirty, setDirty] = useState(false)
+  const generate = useGenerateReconstructionMutation(caseId)
+  const update = useUpdateReconstructionMutation(caseId)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+      <div className="flex items-center justify-between gap-2">
+        <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
+        <button
+          type="button"
+          onClick={() =>
+            generate.mutate(undefined, {
+              onSuccess: (data) => {
+                setDraft(data.narrative)
+                setDirty(false)
+              },
+            })
+          }
+          disabled={generate.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+        >
+          {generate.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+          )}
+          {generate.isPending ? t("generating") : narrative ? t("regenerate") : t("generate")}
+        </button>
+      </div>
+
+      {!narrative && !generate.isPending ? (
+        <EmptyNote>{t("noReconstruction")}</EmptyNote>
+      ) : (
+        <textarea
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            setDirty(true)
+          }}
+          rows={16}
+          className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5 text-[13px] leading-6 text-foreground outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
+        />
+      )}
+
+      {dirty && (
+        <button
+          type="button"
+          onClick={() => update.mutate(draft, { onSuccess: () => setDirty(false) })}
+          disabled={update.isPending}
+          className={`inline-flex items-center gap-1.5 self-end ${primaryBtnClass}`}
+        >
+          {update.isPending ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Save className="h-3 w-3" aria-hidden="true" />
+          )}
+          {update.isPending ? t("saving") : t("save")}
+        </button>
       )}
     </div>
   )
