@@ -334,18 +334,46 @@ export function useGenerateReconstructionMutation(caseId: string) {
   })
 }
 
+export interface UpdateReconstructionPayload {
+  narrative?: string
+  narrativeCourt?: string
+  narrativeOpposing?: string
+}
+
+// Any of the three registers can be edited independently — the backend only marks audio
+// stale when `narrative` (the General register audio is synthesized from) is the one that
+// changed, so editing Court/Opposing text alone leaves existing audio untouched.
 export function useUpdateReconstructionMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (narrative: string) =>
+    mutationFn: (payload: UpdateReconstructionPayload) =>
       apiFetch<CaseReconstruction>(`/api/my-cases/${caseId}/reconstruction`, {
         method: "PATCH",
-        body: JSON.stringify({ narrative }),
+        body: JSON.stringify(payload),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
+}
+
+// Audio narrates the General register only (see CaseReconstructionAudioSvc on the backend) —
+// this kicks off an async Polly job; the panel itself owns the poll loop while it's mounted.
+export function useGenerateReconstructionAudioMutation(caseId: string) {
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ jobName: string; status: string }>(`/api/my-cases/${caseId}/reconstruction/audio`, { method: "POST" }),
+  })
+}
+
+export interface ReconstructionAudioPollResult {
+  status: "IN_PROGRESS" | "COMPLETED" | "FAILED"
+  audioFile?: { id: string; fileUrl: string | null }
+  failureReason?: string
+}
+
+export function pollReconstructionAudio(caseId: string) {
+  return apiFetch<ReconstructionAudioPollResult>(`/api/my-cases/${caseId}/reconstruction/audio/poll`)
 }
 
 // Attacks the case's own structured findings (Legal Issues, Weaknesses, Contradictions,

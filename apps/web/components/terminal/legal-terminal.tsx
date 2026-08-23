@@ -134,6 +134,42 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }, [layout, catalog.data])
 
+  // Heuristic-only, no AI call: a hidden panel is "suggested" purely because its backing
+  // data already exists in the snapshot we've already fetched — never a judgment about
+  // case type or content, which would need an actual AI call to do honestly.
+  const suggestedPanels = useMemo(() => {
+    if (!snapshot.data) return []
+    const countFor = (id: PanelId): number | null => {
+      switch (id) {
+        case "contradictions":
+          return snapshot.data.evidence.contradictions.length || null
+        case "legalIssues":
+          return snapshot.data.findings.filter((f) => f.category === "LEGAL_ISSUE").length || null
+        case "weaknesses":
+          return snapshot.data.findings.filter((f) => f.category === "WEAKNESS").length || null
+        case "strengths":
+          return snapshot.data.findings.filter((f) => f.category === "STRENGTH").length || null
+        case "attackStrategy":
+          return snapshot.data.findings.filter((f) => f.category === "ATTACK_STRATEGY").length || null
+        case "defenseStrategy":
+          return snapshot.data.findings.filter((f) => f.category === "DEFENSE_STRATEGY").length || null
+        case "witnesses":
+          return snapshot.data.witnesses.length || null
+        case "damages":
+          return snapshot.data.damages.length || null
+        case "caseReconstruction":
+          return snapshot.data.reconstruction ? 1 : null
+        case "redTeam":
+          return snapshot.data.redTeamAssessment ? 1 : null
+        default:
+          return null
+      }
+    }
+    return hiddenPanels
+      .map((panel) => ({ panel, count: countFor(panel.id) }))
+      .filter((entry): entry is { panel: (typeof hiddenPanels)[number]; count: number } => entry.count !== null)
+  }, [hiddenPanels, snapshot.data])
+
   const setPreset = (preset: PresetValue) => {
     setLayout((prev) => {
       if (!prev || !catalog.data) return prev
@@ -411,6 +447,28 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </button>
         </div>
       </div>
+
+      {suggestedPanels.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-3 py-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("suggested")}</span>
+          {suggestedPanels.map(({ panel, count }) => (
+            <Tooltip key={panel.id}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => showPanel(panel.id)}
+                  className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold transition-colors hover:bg-brand-gold/20"
+                >
+                  {PANEL_TITLES[panel.id] ?? panel.label}
+                  {" · "}
+                  {count > 1 ? t("suggestReasonCount", { count }) : t("suggestReasonReady")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("suggestedAdd", { name: PANEL_TITLES[panel.id] ?? panel.label })}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      )}
 
       {snapshot.data.fatalRisks.length > 0 && (
         <div className="px-3 pt-3">

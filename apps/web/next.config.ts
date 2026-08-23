@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@workspace/ui"],
   allowedDevOrigins: ["192.168.1.29"],
+  // Pin the workspace root to this pnpm workspace so Turbopack doesn't infer it
+  // from the unrelated package-lock.json at the parent forhu-project/ directory.
+  turbopack: {
+    root: path.join(import.meta.dirname, "..", ".."),
+  },
   // Next's default gzip compression buffers the whole response before flushing,
   // which breaks the incremental chat streaming proxied through rewrites() below.
   compress: false,
