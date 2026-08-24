@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { chatKeys } from "@/lib/query-keys"
+import type { OrganizationWithRole } from "@/lib/organizations/queries"
 
 interface AuthTokensResponse {
   user: AuthUser
@@ -14,6 +15,23 @@ interface SignupResponse {
   username: string
   email: string
   name: string | null
+}
+
+/** Fetches the user's orgs right after a session is established and activates the first
+ * one — signup only ever creates one, and multi-org selection isn't supported yet. Never
+ * throws: a failed fetch here shouldn't block login/signup, just leaves org state empty
+ * for whatever next screen/hook re-fetches it. */
+async function hydrateActiveOrganization(setOrganization: (org: ReturnType<typeof toActiveOrg>) => void) {
+  try {
+    const orgs = await apiFetch<OrganizationWithRole[]>("/api/organizations")
+    if (orgs[0]) setOrganization(toActiveOrg(orgs[0]))
+  } catch {
+    // non-fatal — see doc comment above
+  }
+}
+
+export function toActiveOrg(org: OrganizationWithRole) {
+  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku }
 }
 
 interface ResetPasswordResponse {
@@ -39,6 +57,7 @@ function generateUsername(fullName: string): string {
 export function useLoginMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -48,13 +67,14 @@ export function useLoginMutation() {
         body: JSON.stringify({ email, password, remember }),
         skipAuthRefresh: true,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
       // Chat Wonder session_id is cached with staleTime: Infinity (see useChatSessionQuery)
       // and survives client-side login/logout since it's just an SPA route change, not a
       // page reload — without this, a stale pre-login session_id keeps getting reused
       // until the tab is refreshed, even though the user just "freshly" logged in.
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
       router.push("/homepage")
     },
   })
@@ -82,9 +102,13 @@ export function useSendOtpMutation() {
   })
 }
 
+/** Unlike the other post-auth mutations, this deliberately does NOT redirect to
+ * /homepage on success. A freshly-verified signup still needs to go through the
+ * solo/create-org/join-org workspace step (see WorkspaceSetup) before landing in
+ * the app, so navigation is left to the caller. */
 export function useVerifyOtpMutation() {
-  const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -94,10 +118,10 @@ export function useVerifyOtpMutation() {
         body: JSON.stringify({ email, code }),
         skipAuthRefresh: true,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
-      router.push("/homepage")
+      await hydrateActiveOrganization(setOrganization)
     },
   })
 }
@@ -105,6 +129,7 @@ export function useVerifyOtpMutation() {
 export function useGoogleAuthMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -114,9 +139,10 @@ export function useGoogleAuthMutation() {
         body: JSON.stringify({ idToken }),
         skipAuthRefresh: true,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
       router.push("/homepage")
     },
   })
