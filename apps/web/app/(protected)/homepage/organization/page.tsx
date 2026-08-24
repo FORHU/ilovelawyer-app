@@ -21,7 +21,13 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { useOrganizationMembersQuery, useMyInviteQuery, type OrganizationRole } from "@/lib/organizations/queries";
+import {
+  useOrganizationMembersQuery,
+  useMyInviteQuery,
+  PACKAGE_SKUS,
+  type OrganizationRole,
+  type PackageSku,
+} from "@/lib/organizations/queries";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -38,8 +44,6 @@ const INVITABLE_ROLES: OrganizationRole[] = ["MEMBER", "MANAGER", "ADMIN"];
 // OWNER is deliberately excluded — ownership only ever moves via the "Make Owner & Leave"
 // transfer flow above, never as a quick role-swap on an otherwise-active member.
 const GRANTABLE_ROLES: OrganizationRole[] = ["ADMIN", "MANAGER", "MEMBER"];
-const PACKAGE_SKUS = ["SOLO", "PROFESSIONAL", "ENTERPRISE"] as const;
-type PackageSku = (typeof PACKAGE_SKUS)[number];
 const PLAN_ICONS: Record<PackageSku, typeof UserCircle2> = {
   SOLO: UserCircle2,
   PROFESSIONAL: Users2,
@@ -232,7 +236,7 @@ export default function OrganizationPage() {
       { name: trimmed, packageSku: newOrgPlan ?? undefined },
       {
         onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER" });
+          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku });
           setNewOrgName("");
           setNewOrgPlan(null);
         },
@@ -269,6 +273,7 @@ export default function OrganizationPage() {
           name: invite.organization.name,
           slug: invite.organization.slug,
           role: invite.role,
+          packageSku: invite.organization.packageSku,
         });
       },
       onError: (err) => setInviteActionError((err as Error).message),

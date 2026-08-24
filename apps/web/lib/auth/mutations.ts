@@ -30,8 +30,8 @@ async function hydrateActiveOrganization(setOrganization: (org: ReturnType<typeo
   }
 }
 
-function toActiveOrg(org: OrganizationWithRole) {
-  return { id: org.id, name: org.name, slug: org.slug, role: org.role }
+export function toActiveOrg(org: OrganizationWithRole) {
+  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku }
 }
 
 interface ResetPasswordResponse {
@@ -102,8 +102,11 @@ export function useSendOtpMutation() {
   })
 }
 
+/** Unlike the other post-auth mutations, this deliberately does NOT redirect to
+ * /homepage on success. A freshly-verified signup still needs to go through the
+ * solo/create-org/join-org workspace step (see WorkspaceSetup) before landing in
+ * the app, so navigation is left to the caller. */
 export function useVerifyOtpMutation() {
-  const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
@@ -119,7 +122,6 @@ export function useVerifyOtpMutation() {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      router.push("/homepage")
     },
   })
 }
