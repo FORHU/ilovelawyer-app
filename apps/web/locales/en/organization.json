@@ -1,7 +1,35 @@
 {
   "title": "Organization",
   "subtitle": "Manage your organization and invite teammates.",
-  "noOrganization": "You're not part of an organization yet.",
+  "create": {
+    "heading": "Create your organization",
+    "subheading": "Set up your firm's organization so you can start inviting teammates and collaborating on cases.",
+    "nameLabel": "Organization Name",
+    "namePlaceholder": "Enter organization name here",
+    "nameRequired": "Organization name can't be empty.",
+    "requiredIndicator": "(required)",
+    "optionalIndicator": "(optional)",
+    "planLabel": "Plan",
+    "planHint": "You can change this anytime.",
+    "recommendedBadge": "Recommended",
+    "plan": {
+      "solo": {
+        "label": "Solo",
+        "description": "For an individual practitioner working independently."
+      },
+      "professional": {
+        "label": "Professional",
+        "description": "For a growing firm that collaborates across cases."
+      },
+      "enterprise": {
+        "label": "Enterprise",
+        "description": "For a large firm that needs advanced controls and support."
+      }
+    },
+    "submit": "Create Organization",
+    "creating": "Creating…",
+    "inviteHint": "Already been invited to join a firm? Ask its owner or admin to send an invite to this email address — it'll show up here automatically."
+  },
   "overview": {
     "heading": "Overview",
     "nameLabel": "Organization Name",
@@ -25,7 +53,22 @@
     "loading": "Loading members…",
     "error": "Couldn't load members.",
     "retry": "Retry",
-    "you": "You"
+    "you": "You",
+    "pending": "Pending",
+    "changeRoleTooltip": "Change this member's role",
+    "changeRoleAriaLabel": "Change {{name}}'s role",
+    "roleDowngradeTitle": "Change Role?",
+    "roleDowngradeConfirm": "Changing {{name}}'s role from {{fromRole}} to {{toRole}} will remove some of their current permissions.",
+    "roleDowngradeCancel": "Cancel",
+    "roleDowngradeContinue": "Change Role",
+    "removeTooltip": "Remove this member",
+    "removeAriaLabel": "Remove {{name}} from this organization",
+    "removeConfirmTitle": "Remove Member?",
+    "removeConfirmBody": "{{name}} will lose access to this organization immediately. This can't be undone.",
+    "removeConfirmCancel": "Cancel",
+    "removeConfirmCancelTooltip": "Keep this member and close this dialog",
+    "removeConfirmContinue": "Remove Member",
+    "removeConfirmContinueTooltip": "Permanently remove this member from the organization"
   },
   "invite": {
     "heading": "Invite a Member",
@@ -36,6 +79,13 @@
     "submit": "Send Invite",
     "sending": "Sending…",
     "success": "Invitation sent.",
-    "onlyAdmins": "Only owners and admins can invite members."
+    "onlyAdmins": "Only owners and admins can invite members.",
+    "pendingHeading": "You've Been Invited",
+    "pendingPrompt": "\"{{orgName}}\" wants you to join their team.",
+    "accept": "Accept Invite",
+    "accepting": "Accepting…",
+    "decline": "Decline",
+    "declining": "Declining…",
+    "declineConfirm": "Are you sure you want to decline this invite?"
   }
 }

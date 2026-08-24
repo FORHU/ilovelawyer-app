@@ -5,7 +5,7 @@ import type { OrganizationRecord, OrganizationMemberRecord, OrganizationRole } f
 
 export interface CreateOrganizationPayload {
   name: string
-  slug: string
+  packageSku?: string
 }
 
 export function useCreateOrganizationMutation() {
@@ -71,6 +71,44 @@ export function useChangeMemberRoleMutation(organizationId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
+    },
+  })
+}
+
+export function useRemoveMemberMutation(organizationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) =>
+      apiFetch<void>(`/api/organizations/${organizationId}/members/${userId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
+    },
+  })
+}
+
+export function useAcceptInviteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      apiFetch<OrganizationMemberRecord>(`/api/organizations/invites/${organizationId}/accept`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.myInvite() })
+      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
+    },
+  })
+}
+
+export function useDeclineInviteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      apiFetch<void>(`/api/organizations/invites/${organizationId}/decline`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.myInvite() })
     },
   })
 }

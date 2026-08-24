@@ -253,7 +253,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               >
                 {user && (
                   <div className="px-4 py-2.5 border-b border-border">
-                    <p className="truncate text-xs font-bold text-foreground">{user.username}</p>
+                    <p className="truncate text-xs font-bold text-foreground">{user.name ?? user.username}</p>
+                    {user.name && <p className="truncate text-[10px] text-muted-foreground">@{user.username}</p>}
                     <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
                   </div>
                 )}
@@ -343,7 +344,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             {user && (
               <div className="flex items-center justify-between gap-2 px-3 pb-3">
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-white">{user.username}</p>
+                  <p className="truncate text-xs font-bold text-white">{user.name ?? user.username}</p>
+                  {user.name && <p className="truncate text-[10px] text-white/50">@{user.username}</p>}
                   <p className="truncate text-[10px] text-white/50">{user.email}</p>
                 </div>
                 <ThemeToggle />

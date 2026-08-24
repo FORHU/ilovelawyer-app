@@ -1,7 +1,35 @@
 {
   "title": "Organisasyon",
   "subtitle": "Pamahalaan ang inyong organisasyon at mag-imbita ng mga miyembro.",
-  "noOrganization": "Wala ka pang kasapi sa isang organisasyon.",
+  "create": {
+    "heading": "Gumawa ng inyong organisasyon",
+    "subheading": "I-set up ang organisasyon ng inyong law firm para makapag-imbita ng mga kasamahan at magtulungan sa mga kaso.",
+    "nameLabel": "Pangalan ng Organisasyon",
+    "namePlaceholder": "Acme Law Firm",
+    "nameRequired": "Hindi maaaring walang laman ang pangalan ng organisasyon.",
+    "requiredIndicator": "(kailangan)",
+    "optionalIndicator": "(opsyonal)",
+    "planLabel": "Plano",
+    "planHint": "Puwede mo itong baguhin anumang oras.",
+    "recommendedBadge": "Inirerekomenda",
+    "plan": {
+      "solo": {
+        "label": "Solo",
+        "description": "Para sa abogadong nagsasarili sa trabaho."
+      },
+      "professional": {
+        "label": "Professional",
+        "description": "Para sa lumalagong law firm na nagtutulungan sa mga kaso."
+      },
+      "enterprise": {
+        "label": "Enterprise",
+        "description": "Para sa malaking law firm na nangangailangan ng advanced na kontrol at suporta."
+      }
+    },
+    "submit": "Gumawa ng Organisasyon",
+    "creating": "Ginagawa…",
+    "inviteHint": "Naimbitahan ka na ba sa ibang firm? Hilingin sa may-ari o admin nito na mag-imbita gamit ang email address na ito — awtomatiko itong lalabas dito."
+  },
   "overview": {
     "heading": "Pangkalahatang-ideya",
     "nameLabel": "Pangalan ng Organisasyon",
@@ -25,7 +53,22 @@
     "loading": "Naglo-load ng mga miyembro…",
     "error": "Hindi ma-load ang mga miyembro.",
     "retry": "Subukang Muli",
-    "you": "Ikaw"
+    "you": "Ikaw",
+    "pending": "Nakabinbin",
+    "changeRoleTooltip": "Baguhin ang tungkulin ng miyembrong ito",
+    "changeRoleAriaLabel": "Baguhin ang tungkulin ni {{name}}",
+    "roleDowngradeTitle": "Baguhin ang Tungkulin?",
+    "roleDowngradeConfirm": "Kapag binago ang tungkulin ni {{name}} mula {{fromRole}} patungong {{toRole}}, mawawala ang ilan sa kanilang kasalukuyang pahintulot.",
+    "roleDowngradeCancel": "Kanselahin",
+    "roleDowngradeContinue": "Baguhin ang Tungkulin",
+    "removeTooltip": "Alisin ang miyembrong ito",
+    "removeAriaLabel": "Alisin si {{name}} sa organisasyong ito",
+    "removeConfirmTitle": "Alisin ang Miyembro?",
+    "removeConfirmBody": "Mawawalan agad ng access si {{name}} sa organisasyong ito. Hindi na ito maibabalik pa.",
+    "removeConfirmCancel": "Kanselahin",
+    "removeConfirmCancelTooltip": "Panatilihin ang miyembrong ito at isara ang dialog na ito",
+    "removeConfirmContinue": "Alisin ang Miyembro",
+    "removeConfirmContinueTooltip": "Permanenteng alisin ang miyembrong ito sa organisasyon"
   },
   "invite": {
     "heading": "Mag-imbita ng Miyembro",
@@ -36,6 +79,13 @@
     "submit": "Ipadala ang Imbitasyon",
     "sending": "Ipinapadala…",
     "success": "Naipadala na ang imbitasyon.",
-    "onlyAdmins": "Ang mga owner at admin lamang ang maaaring mag-imbita ng mga miyembro."
+    "onlyAdmins": "Ang mga owner at admin lamang ang maaaring mag-imbita ng mga miyembro.",
+    "pendingHeading": "Naimbitahan Ka",
+    "pendingPrompt": "Gusto kang isama ng \"{{orgName}}\" sa kanilang team.",
+    "accept": "Tanggapin ang Imbitasyon",
+    "accepting": "Tinatanggap…",
+    "decline": "Tanggihan",
+    "declining": "Tinatanggihan…",
+    "declineConfirm": "Sigurado ka bang gusto mong tanggihan ang imbitasyong ito?"
   }
 }

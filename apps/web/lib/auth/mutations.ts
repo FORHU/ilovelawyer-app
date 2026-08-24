@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { chatKeys } from "@/lib/query-keys"
-import type { OrganizationRole, OrganizationWithRole } from "@/lib/organizations/queries"
+import type { OrganizationWithRole } from "@/lib/organizations/queries"
 
 interface AuthTokensResponse {
   user: AuthUser
@@ -15,9 +15,6 @@ interface SignupResponse {
   username: string
   email: string
   name: string | null
-  organization: { id: string; name: string; slug: string }
-  organizationMemberId: string
-  role: OrganizationRole
 }
 
 /** Fetches the user's orgs right after a session is established and activates the first
@@ -85,10 +82,10 @@ export function useLoginMutation() {
 
 export function useSignupMutation() {
   return useMutation({
-    mutationFn: ({ name, email, password, orgName }: { name: string; email: string; password: string; orgName: string }) =>
+    mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
       apiFetch<SignupResponse>("/api/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ username: generateUsername(name), name, email, password, orgName }),
+        body: JSON.stringify({ username: generateUsername(name), name, email, password }),
         skipAuthRefresh: true,
       }),
   })
