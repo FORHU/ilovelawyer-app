@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw } from "lucide-react"
@@ -17,7 +17,9 @@ import {
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
-const HIDDEN_PANELS = new Set<PanelId>(["redTeam", "dates"])
+// "dates" is permanently folded into Evidence & Timeline (TerminalPanelBody renders it as
+// null) — redTeam is a real, addable panel now, not force-hidden the way it used to be.
+const HIDDEN_PANELS = new Set<PanelId>(["dates"])
 
 const PANEL_TITLES: Record<PanelId, string> = {
   command: "Case Summary",
@@ -29,6 +31,15 @@ const PANEL_TITLES: Record<PanelId, string> = {
   redTeam: "Red Team",
   procedure: "Case Strategy",
   teamAudit: "Team & Audit",
+  contradictions: "Contradictions",
+  legalIssues: "Legal Issues",
+  weaknesses: "Weaknesses",
+  strengths: "Strengths",
+  attackStrategy: "Attack Strategies",
+  defenseStrategy: "Defense Strategies",
+  witnesses: "Witnesses",
+  damages: "Damages & Remedies",
+  caseReconstruction: "Case Reconstruction",
 }
 
 const PRESET_LABELS: Record<PresetValue, string> = {
@@ -39,10 +50,12 @@ const PRESET_LABELS: Record<PresetValue, string> = {
 }
 
 const MIN_FR = 0.18
+const PANE_GAP_PX = 6
 
-type ResizeDrag =
-  | { kind: "col"; leftCol: number; rightCol: number; startX: number; leftFr: number; rightFr: number }
-  | { kind: "row"; topRow: number; bottomRow: number; startY: number; topFr: number; bottomFr: number }
+type PaneRect = { x: number; y: number; width: number; height: number }
+type ResizeEdge = { n?: boolean; s?: boolean; e?: boolean; w?: boolean }
+type ResizeDrag = PaneRect & { panelId: PanelId; edges: ResizeEdge; startX: number; startY: number }
+type MoveDrag = PaneRect & { panelId: PanelId; startX: number; startY: number; armed: boolean }
 
 function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
   if (!value || typeof value !== "object") return fallback
@@ -76,10 +89,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [workspaceName, setWorkspaceName] = useState("")
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<PanelId | null>(null)
   const resizeRef = useRef<ResizeDrag | null>(null)
-  const moveRef = useRef<{ panelId: PanelId; startX: number; startY: number; armed: boolean } | null>(null)
-  const dropTargetRef = useRef<PanelId | null>(null)
+  const moveRef = useRef<MoveDrag | null>(null)
+  // Drag/resize used to call setLayout() (a full state update, re-rendering every visible
+  // pane's contents) on every raw pointermove — the measured cause of the reported lag. This
+  // ref instead tracks the in-progress rect and is written straight to the pane's DOM style
+  // (applyLivePaneStyle, bypassing React) on each move; the single commit to React state
+  // happens once, on pointer-up.
+  const pendingRectRef = useRef<{ panelId: PanelId; rect: PaneRect } | null>(null)
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
@@ -95,7 +112,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     if (lastUsed) {
-      setLayout(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id)))
+      setLayout(
+        hydrateFreeform(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id))),
+      )
       setSelectedWorkspaceId(lastUsed.id)
       return
     }
@@ -106,10 +125,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     if (!layout) return []
     return [...layout.panels].filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).sort((a, b) => a.order - b.order)
   }, [layout])
-
-  const cols = columnCount(layout?.preset ?? "PANE_2", visiblePanels.length)
-  const rows = Math.max(1, Math.ceil(visiblePanels.length / cols))
-  const { colFr, rowFr } = tracksFromPanels(visiblePanels, cols, rows)
 
   const hiddenPanels = useMemo(() => {
     if (!layout || !catalog.data) return []
@@ -139,7 +154,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const next = { id, visible: true, order: maxOrder + 1, width: 1, height: 1 }
+      const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(prev.panels) }
       if (prev.panels.some((panel) => panel.id === id)) {
         return {
           ...prev,
@@ -150,101 +165,99 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
-  const swapPanels = (fromId: PanelId, toId: PanelId) => {
-    if (fromId === toId) return
+  const bringToFront = (panelId: PanelId) => {
     setLayout((prev) => {
       if (!prev) return prev
-      const from = prev.panels.find((p) => p.id === fromId)
-      const to = prev.panels.find((p) => p.id === toId)
-      if (!from || !to) return prev
+      const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
+      const current = prev.panels.find((p) => p.id === panelId)
+      if (!current || current.order >= maxOrder) return prev
       return {
         ...prev,
-        panels: prev.panels.map((panel) => {
-          if (panel.id === fromId) return { ...panel, order: to.order }
-          if (panel.id === toId) return { ...panel, order: from.order }
-          return panel
-        }),
+        panels: prev.panels.map((panel) => (panel.id === panelId ? { ...panel, order: maxOrder + 1 } : panel)),
       }
     })
   }
 
-  const writeTracks = (nextCol: number[], nextRow: number[]) => {
+  const patchPanelRect = (panelId: PanelId, rect: PaneRect) => {
     setLayout((prev) => {
       if (!prev) return prev
-      return { ...prev, panels: applyTracks(prev.panels, visiblePanels, cols, nextCol, nextRow) }
+      return {
+        ...prev,
+        panels: prev.panels.map((panel) => (panel.id === panelId ? { ...panel, ...rect } : panel)),
+      }
     })
   }
 
-  const onResizePointerDown = (drag: ResizeDrag, event: PointerEvent<HTMLDivElement>) => {
+  const onResizePointerDown = (panel: PanelLayout, edges: ResizeEdge, event: PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
-    resizeRef.current = drag
+    const rect = panelRect(panel)
+    bringToFront(panel.id)
+    resizeRef.current = { panelId: panel.id, edges, startX: event.clientX, startY: event.clientY, ...rect }
   }
 
   const onResizePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const drag = resizeRef.current
     const grid = document.getElementById("terminal-grid")
-    if (!drag || !grid) return
-    if (drag.kind === "col") {
-      const delta = (event.clientX - drag.startX) / grid.clientWidth
-      const left = Math.max(MIN_FR, drag.leftFr + delta)
-      const right = Math.max(MIN_FR, drag.rightFr - delta)
-      const next = [...colFr]
-      next[drag.leftCol] = left
-      next[drag.rightCol] = right
-      writeTracks(next, rowFr)
-      return
-    }
-    const delta = (event.clientY - drag.startY) / grid.clientHeight
-    const top = Math.max(MIN_FR, drag.topFr + delta)
-    const bottom = Math.max(MIN_FR, drag.bottomFr - delta)
-    const next = [...rowFr]
-    next[drag.topRow] = top
-    next[drag.bottomRow] = bottom
-    writeTracks(colFr, next)
+    if (!drag || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
+    const dx = (event.clientX - drag.startX) / grid.clientWidth
+    const dy = (event.clientY - drag.startY) / grid.clientHeight
+    const rect = clampResize(drag, dx, dy)
+    pendingRectRef.current = { panelId: drag.panelId, rect }
+    applyLivePaneStyle(drag.panelId, rect)
   }
 
   const onResizePointerUp = () => {
+    if (pendingRectRef.current) {
+      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
+      pendingRectRef.current = null
+    }
     resizeRef.current = null
   }
 
-  const onHeaderPointerDown = (panelId: PanelId, event: PointerEvent<HTMLDivElement>) => {
+  const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
-    moveRef.current = { panelId, startX: event.clientX, startY: event.clientY, armed: false }
     event.currentTarget.setPointerCapture(event.pointerId)
+    bringToFront(panel.id)
+    moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
   }
 
   const onHeaderPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const move = moveRef.current
-    if (!move) return
+    const grid = document.getElementById("terminal-grid")
+    if (!move || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
     const distance = Math.hypot(event.clientX - move.startX, event.clientY - move.startY)
     if (!move.armed && distance < 6) return
     move.armed = true
     setDraggingId(move.panelId)
-    const el = document.elementFromPoint(event.clientX, event.clientY)
-    const target = el?.closest("[data-panel-id]")?.getAttribute("data-panel-id") as PanelId | null
-    const nextTarget = target && target !== move.panelId ? target : null
-    dropTargetRef.current = nextTarget
-    setDropTargetId(nextTarget)
+    const dx = (event.clientX - move.startX) / grid.clientWidth
+    const dy = (event.clientY - move.startY) / grid.clientHeight
+    const rect = {
+      x: clamp(move.x + dx, 0, 1 - move.width),
+      y: clamp(move.y + dy, 0, 1 - move.height),
+      width: move.width,
+      height: move.height,
+    }
+    pendingRectRef.current = { panelId: move.panelId, rect }
+    applyLivePaneStyle(move.panelId, rect)
   }
 
   const onHeaderPointerUp = () => {
-    const move = moveRef.current
-    const target = dropTargetRef.current
-    if (move?.armed && target) swapPanels(move.panelId, target)
+    if (pendingRectRef.current) {
+      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
+      pendingRectRef.current = null
+    }
     moveRef.current = null
-    dropTargetRef.current = null
     setDraggingId(null)
-    setDropTargetId(null)
   }
 
   const controlClass =
-    "h-8 rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none transition-colors hover:border-foreground/20 focus:border-ring focus:ring-2 focus:ring-ring/20"
+    "h-8 rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none transition-colors hover:border-foreground/20 focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
   const ghostBtnClass =
-    "h-8 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
+    "h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
   const primaryBtnClass =
-    "h-8 rounded-md bg-secondary px-3 text-[10px] font-semibold uppercase tracking-[1px] text-secondary-foreground transition-colors hover:bg-secondary/80 disabled:opacity-50"
+    "h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
 
   if (snapshot.isLoading || catalog.isLoading) {
     return (
@@ -260,7 +273,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
         <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
         <p className="text-red-400">{t("loadError")}</p>
-        <button type="button" onClick={() => snapshot.refetch()} className="text-xs font-semibold uppercase tracking-wider text-blue-400 hover:underline">
+        <button type="button" onClick={() => snapshot.refetch()} className="text-xs font-semibold uppercase tracking-wider text-brand-gold hover:underline">
           {t("retry")}
         </button>
       </div>
@@ -290,7 +303,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <TooltipContent>{t("backToCases")}</TooltipContent>
         </Tooltip>
         <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
-        <h1 className="min-w-0 shrink truncate text-sm font-medium text-foreground md:text-base">
+        <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
           {snapshot.data.case.caseName}
         </h1>
         <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
@@ -333,7 +346,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               setSelectedWorkspaceId(id)
               const workspace = workspaces.data?.find((w) => w.id === id)
               if (!workspace) return
-              setLayout(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
+              setLayout(
+                hydrateFreeform(
+                  mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+                ),
+              )
               applyWorkspace.mutate(id)
             }}
             className={`${controlClass} max-w-40`}
@@ -350,7 +367,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
             placeholder={t("workspaceName")}
-            className={`${controlClass} w-36`}
+            className={`${controlClass} w-36 placeholder:text-muted-foreground`}
           />
           <button
             type="button"
@@ -370,7 +387,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             onClick={() => {
               resetWorkspace.mutate(layout.preset, {
                 onSuccess: (workspace) => {
-                  setLayout(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
+                  setLayout(
+                    hydrateFreeform(
+                      mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+                    ),
+                  )
                   setSelectedWorkspaceId(workspace.id)
                 },
               })
@@ -383,7 +404,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             type="button"
             onClick={() => refresh.mutate()}
             disabled={refresh.isPending}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refresh.isPending ? "animate-spin" : ""}`} aria-hidden="true" />
             {refresh.isPending ? t("refreshing") : t("refresh")}
@@ -397,34 +418,33 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       )}
 
-      <div
-        id="terminal-grid"
-        className="grid min-h-0 flex-1 gap-3 overflow-hidden p-3"
-        style={{
-          gridTemplateColumns: colFr.map((fr) => `minmax(0, ${fr}fr)`).join(" "),
-          gridTemplateRows: rowFr.map((fr) => `minmax(0, ${fr}fr)`).join(" "),
-        }}
-      >
-        {visiblePanels.map((panel, index) => {
-          const col = index % cols
-          const row = Math.floor(index / cols)
+      <div id="terminal-grid" className="relative min-h-0 flex-1 overflow-hidden p-3">
+        {visiblePanels.map((panel) => {
+          const rect = panelRect(panel)
           const label = PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
-          const isDrop = dropTargetId === panel.id
+          const isDragging = draggingId === panel.id
           return (
             <div
               key={panel.id}
               data-panel-id={panel.id}
-              className={`relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card ${
-                draggingId === panel.id ? "opacity-50" : ""
-              } ${isDrop ? "ring-2 ring-blue-500" : ""}`}
-              style={{ gridColumn: col + 1, gridRow: row + 1 }}
+              className={`absolute flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card ${
+                isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""
+              }`}
+              style={{
+                left: `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`,
+                top: `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`,
+                width: `calc(${rect.width * 100}% - ${PANE_GAP_PX * 2}px)`,
+                height: `calc(${rect.height * 100}% - ${PANE_GAP_PX * 2}px)`,
+                zIndex: isDragging ? 80 : panel.order + 1,
+              }}
+              onPointerDown={() => bringToFront(panel.id)}
             >
               <div
-                onPointerDown={(e) => onHeaderPointerDown(panel.id, e)}
+                onPointerDown={(e) => onHeaderPointerDown(panel, e)}
                 onPointerMove={onHeaderPointerMove}
                 onPointerUp={onHeaderPointerUp}
                 onPointerCancel={onHeaderPointerUp}
-                className="flex h-9 shrink-0 cursor-grab items-center gap-2 border-b border-border bg-muted px-3 active:cursor-grabbing"
+                className="flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
                 title={t("dragHint")}
               >
                 <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -438,7 +458,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         type="button"
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => hidePanel(panel.id)}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label={t("hidePane")}
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -448,46 +468,97 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   </Tooltip>
                 )}
               </div>
-              <div className="min-h-0 flex-1 overflow-hidden bg-card">
+              <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                 <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
               </div>
-
-              {col < cols - 1 && index + 1 < visiblePanels.length && (
-                <div
-                  role="separator"
-                  aria-orientation="vertical"
-                  onPointerDown={(e) =>
-                    onResizePointerDown(
-                      { kind: "col", leftCol: col, rightCol: col + 1, startX: e.clientX, leftFr: colFr[col] ?? 1, rightFr: colFr[col + 1] ?? 1 },
-                      e,
-                    )
-                  }
-                  onPointerMove={onResizePointerMove}
-                  onPointerUp={onResizePointerUp}
-                  className="absolute -right-1.5 top-0 z-20 h-full w-3 cursor-col-resize"
-                />
-              )}
-              {row < rows - 1 && (
-                <div
-                  role="separator"
-                  aria-orientation="horizontal"
-                  onPointerDown={(e) =>
-                    onResizePointerDown(
-                      { kind: "row", topRow: row, bottomRow: row + 1, startY: e.clientY, topFr: rowFr[row] ?? 1, bottomFr: rowFr[row + 1] ?? 1 },
-                      e,
-                    )
-                  }
-                  onPointerMove={onResizePointerMove}
-                  onPointerUp={onResizePointerUp}
-                  className="absolute -bottom-1.5 left-0 z-20 h-3 w-full cursor-row-resize"
-                />
-              )}
+              <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+              <ResizeHandle
+                edge={{ s: true, e: true }}
+                className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
+                panel={panel}
+                onDown={onResizePointerDown}
+                onMove={onResizePointerMove}
+                onUp={onResizePointerUp}
+              >
+                <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
+              </ResizeHandle>
             </div>
           )
         })}
       </div>
     </div>
   )
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+// Writes a pane's position/size straight to its DOM node during an active drag/resize,
+// bypassing React so the gesture doesn't re-render the whole Terminal (and every visible
+// pane's contents) on every pointermove. Mirrors the `style` computed from `rect` in the
+// JSX below — must stay in sync with it, since a later React re-render will overwrite
+// whatever this wrote with `rect` from committed state.
+function applyLivePaneStyle(panelId: PanelId, rect: PaneRect) {
+  const el = document.querySelector<HTMLElement>(`[data-panel-id="${panelId}"]`)
+  if (!el) return
+  el.style.left = `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`
+  el.style.top = `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`
+  el.style.width = `calc(${rect.width * 100}% - ${PANE_GAP_PX * 2}px)`
+  el.style.height = `calc(${rect.height * 100}% - ${PANE_GAP_PX * 2}px)`
+}
+
+function panelRect(panel: PanelLayout): PaneRect {
+  return {
+    x: Number.isFinite(panel.x) ? Number(panel.x) : 0,
+    y: Number.isFinite(panel.y) ? Number(panel.y) : 0,
+    width: Math.max(MIN_FR, panel.width || MIN_FR),
+    height: Math.max(MIN_FR, panel.height || MIN_FR),
+  }
+}
+
+function clampResize(drag: ResizeDrag, dx: number, dy: number): PaneRect {
+  const right = drag.x + drag.width
+  const bottom = drag.y + drag.height
+  let x = drag.x
+  let y = drag.y
+  let width = drag.width
+  let height = drag.height
+
+  if (drag.edges.w) {
+    x = clamp(drag.x + dx, 0, right - MIN_FR)
+    width = right - x
+  } else if (drag.edges.e) {
+    width = clamp(drag.width + dx, MIN_FR, 1 - drag.x)
+  }
+
+  if (drag.edges.n) {
+    y = clamp(drag.y + dy, 0, bottom - MIN_FR)
+    height = bottom - y
+  } else if (drag.edges.s) {
+    height = clamp(drag.height + dy, MIN_FR, 1 - drag.y)
+  }
+
+  return { x, y, width, height }
+}
+
+function cascadeRect(panels: PanelLayout[]): PaneRect {
+  const visible = panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+  const offset = (visible.length % 8) * 0.04
+  const width = 0.48
+  const height = 0.48
+  return {
+    x: clamp(0.08 + offset, 0, 1 - width),
+    y: clamp(0.08 + offset, 0, 1 - height),
+    width,
+    height,
+  }
 }
 
 function columnCount(preset: PresetValue, n: number) {
@@ -497,41 +568,46 @@ function columnCount(preset: PresetValue, n: number) {
   return 2
 }
 
-function tracksFromPanels(panels: PanelLayout[], cols: number, rows: number) {
-  const colFr = Array.from({ length: cols }, (_, col) => {
-    const cell = panels.find((_, index) => index % cols === col)
-    return Math.max(MIN_FR, cell?.width || 1)
-  })
-  const rowFr = Array.from({ length: rows }, (_, row) => {
-    const cell = panels[row * cols]
-    return Math.max(MIN_FR, cell?.height || 1)
-  })
-  return { colFr, rowFr }
+function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
+  const visible = [...layout.panels]
+    .filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+    .sort((a, b) => a.order - b.order)
+  const cols = columnCount(layout.preset, visible.length)
+  const rows = Math.max(1, Math.ceil(visible.length / cols))
+  const width = 1 / cols
+  const height = 1 / rows
+  const byId = new Map(
+    visible.map((panel, index) => [
+      panel.id,
+      {
+        x: (index % cols) * width,
+        y: Math.floor(index / cols) * height,
+        width,
+        height,
+      },
+    ]),
+  )
+  return {
+    ...layout,
+    panels: layout.panels.map((panel) => {
+      const rect = byId.get(panel.id)
+      return rect ? { ...panel, ...rect } : panel
+    }),
+  }
 }
 
-function applyTracks(
-  all: PanelLayout[],
-  visible: PanelLayout[],
-  cols: number,
-  colFr: number[],
-  rowFr: number[],
-): PanelLayout[] {
-  const byId = new Map(visible.map((panel, index) => [panel.id, { col: index % cols, row: Math.floor(index / cols) }]))
-  return all.map((panel) => {
-    const pos = byId.get(panel.id)
-    if (!pos) return panel
-    return {
-      ...panel,
-      width: colFr[pos.col] ?? 1,
-      height: rowFr[pos.row] ?? 1,
-    }
-  })
+function hydrateFreeform(layout: WorkspaceLayout): WorkspaceLayout {
+  const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+  if (visible.some((panel) => !Number.isFinite(panel.x) || !Number.isFinite(panel.y))) {
+    return tileLayout(layout)
+  }
+  return layout
 }
 
 function applyPreset(layout: WorkspaceLayout, preset: PresetValue, availableIds: PanelId[]): WorkspaceLayout {
   const merged = mergeCatalogPanels(layout, availableIds)
   const visibleIds = defaultIdsForPreset(preset).filter((id) => availableIds.includes(id) && !HIDDEN_PANELS.has(id))
-  return {
+  return tileLayout({
     preset,
     panels: merged.panels.map((panel, index) => {
       const visibleIndex = visibleIds.indexOf(panel.id)
@@ -540,11 +616,40 @@ function applyPreset(layout: WorkspaceLayout, preset: PresetValue, availableIds:
         ...panel,
         visible,
         order: visible ? visibleIndex : 100 + index,
-        width: 1,
-        height: 1,
       }
     }),
-  }
+  })
+}
+
+function ResizeHandle({
+  edge,
+  className,
+  panel,
+  onDown,
+  onMove,
+  onUp,
+  children,
+}: {
+  edge: ResizeEdge
+  className: string
+  panel: PanelLayout
+  onDown: (panel: PanelLayout, edges: ResizeEdge, event: PointerEvent<HTMLDivElement>) => void
+  onMove: (event: PointerEvent<HTMLDivElement>) => void
+  onUp: () => void
+  children?: ReactNode
+}) {
+  return (
+    <div
+      role="separator"
+      className={className}
+      onPointerDown={(event) => onDown(panel, edge, event)}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+    >
+      {children}
+    </div>
+  )
 }
 
 function defaultIdsForPreset(preset: PresetValue): PanelId[] {
