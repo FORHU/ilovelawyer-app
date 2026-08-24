@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { OrganizationRole } from "@/lib/organizations/queries"
+import type { OrganizationRole, PackageSku } from "@/lib/organizations/queries"
 
 export interface AuthUser {
   id: string
@@ -13,6 +13,7 @@ export interface ActiveOrganization {
   name: string
   slug: string
   role: OrganizationRole
+  packageSku: PackageSku
 }
 
 interface AuthState {

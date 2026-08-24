@@ -9,6 +9,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { TermsReviewDialog } from "./terms-review-dialog";
+import { WorkspaceSetup } from "./workspace-setup";
 
 import {
   useForgotPasswordMutation,
@@ -65,6 +66,8 @@ function UnifiedAuthContent() {
 
   // Post-signup OTP step
   const [otpStep, setOtpStep] = useState(false);
+  // Post-verification workspace step (solo / create org / join org)
+  const [workspaceStep, setWorkspaceStep] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -197,7 +200,13 @@ function UnifiedAuthContent() {
     setError(null);
     verifyOtpMutation.mutate(
       { email: signupEmail, code: otpDigits.join("") },
-      { onError: (err) => setError((err as Error).message) }
+      {
+        onSuccess: () => {
+          setOtpStep(false);
+          setWorkspaceStep(true);
+        },
+        onError: (err) => setError((err as Error).message),
+      }
     );
   }
 
@@ -223,7 +232,7 @@ function UnifiedAuthContent() {
   
   const tabs: { key: Tab; labelKey: string; tooltip: string }[] = [
     { key: "signin", labelKey: "login.tabs.signIn", tooltip: "Switch to the sign-in form" },
-    { key: "signup", labelKey: "login.tabs.joinPlatform", tooltip: "Switch to the account creation form" },
+    { key: "signup", labelKey: "login.tabs.signUp", tooltip: "Switch to the sign-up form" },
     { key: "recover", labelKey: "login.tabs.recover", tooltip: "Switch to the password recovery form" },
   ];
 
@@ -286,7 +295,9 @@ function UnifiedAuthContent() {
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
-          {otpStep ? (
+          {workspaceStep ? (
+            <WorkspaceSetup defaultOrgName={name} onDone={() => router.push("/homepage")} />
+          ) : otpStep ? (
             <>
               <div className="flex flex-col gap-1">
                 <h1
@@ -664,7 +675,7 @@ function UnifiedAuthContent() {
                         className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold"
                         style={{ fontFamily: "Inter, sans-serif" }}
                       >
-                        {t("Re-enter Password")}
+                        {t("signup.confirmPasswordLabel")}
                       </label>
                       <div className="relative">
                         <input

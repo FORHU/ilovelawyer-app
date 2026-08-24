@@ -5,10 +5,14 @@ import { organizationKeys } from "@/lib/query-keys"
 export type OrganizationRole = "OWNER" | "ADMIN" | "MANAGER" | "MEMBER"
 export type OrganizationMemberStatus = "PENDING" | "ACCEPTED"
 
+export const PACKAGE_SKUS = ["SOLO", "PROFESSIONAL", "ENTERPRISE"] as const
+export type PackageSku = (typeof PACKAGE_SKUS)[number]
+
 export interface OrganizationRecord {
   id: string
   name: string
   slug: string
+  packageSku: PackageSku
   createdAt: string
   updatedAt: string
 }

@@ -6,6 +6,7 @@ import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
+import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -93,8 +94,7 @@ function CurrentUserSync({
 
   useEffect(() => {
     if (organization || !orgs?.[0]) return
-    const org = orgs[0]
-    setOrganization({ id: org.id, name: org.name, slug: org.slug, role: org.role })
+    setOrganization(toActiveOrg(orgs[0]))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, orgs])
 
