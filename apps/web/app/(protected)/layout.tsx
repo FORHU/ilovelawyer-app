@@ -1,11 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { refreshAccessToken } from "@/lib/fetch"
-import { useAuthStore } from "@/lib/store/auth.store"
+import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
+import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
 import { PageTransition } from "@/components/page-transition"
+
+const ORGANIZATION_PATH = "/homepage/organization"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -43,14 +46,27 @@ function CurrentUserSync({
   children,
 }: {
   hydrating: boolean
-  setAuth: (params: { accessToken: string; user: { id: string; username: string; email: string } }) => void
+  setAuth: (params: { accessToken: string; user: AuthUser }) => void
   clearAuth: () => void
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
+  const organization = useAuthStore((s) => s.organization)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
   const { data: currentUser, isError, error } = useCurrentUserQuery()
+  // Rehydrates the active org after a fresh tab/reload — the store has no persist
+  // middleware, so `organization` resets to null even though accessToken/user come back
+  // via the refresh-token flow. Without this, every resource-route call 400s with
+  // "X-Organization-Id header is required" until the next login. See
+  // docs/organization-feature-frontend-handoff.md §3.
+  const { data: orgs } = useOrganizationsQuery({ enabled: !!accessToken && !!user && !organization })
+  // A user with no active org but a pending invite has nothing else to do in the app —
+  // the accept/decline UI lives on the Organization page, so route them there directly
+  // instead of leaving them stranded wherever they landed post-login.
+  const { data: pendingInvite } = useMyInviteQuery({ enabled: !!accessToken && !!user && !organization })
   // A missing/expired token is a real 401/403 from the API. Anything else (a
   // dropped connection, a CORS misconfiguration, a 500) is transient and
   // shouldn't sign the user out — apiFetch already throws with `.status` unset
@@ -62,7 +78,7 @@ function CurrentUserSync({
     if (!accessToken || user || !currentUser) return
     setAuth({
       accessToken,
-      user: { id: currentUser.id, username: currentUser.username, email: currentUser.email },
+      user: { id: currentUser.id, username: currentUser.username, email: currentUser.email, name: currentUser.name },
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, user, currentUser])
@@ -74,6 +90,19 @@ function CurrentUserSync({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthError])
+
+  useEffect(() => {
+    if (organization || !orgs?.[0]) return
+    const org = orgs[0]
+    setOrganization({ id: org.id, name: org.name, slug: org.slug, role: org.role })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization, orgs])
+
+  useEffect(() => {
+    if (organization || !pendingInvite || pathname === ORGANIZATION_PATH) return
+    router.replace(ORGANIZATION_PATH)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization, pendingInvite, pathname])
 
   if (hydrating || (accessToken && !user && !isError)) return null
 

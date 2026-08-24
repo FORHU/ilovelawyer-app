@@ -1,0 +1,91 @@
+{
+  "title": "조직",
+  "subtitle": "조직을 관리하고 팀원을 초대하세요.",
+  "create": {
+    "heading": "조직 만들기",
+    "subheading": "팀원을 초대하고 사건을 함께 처리할 수 있도록 로펌의 조직을 만드세요.",
+    "nameLabel": "조직 이름",
+    "namePlaceholder": "법무법인 에이스",
+    "nameRequired": "조직 이름은 비워둘 수 없습니다.",
+    "requiredIndicator": "(필수)",
+    "optionalIndicator": "(선택)",
+    "planLabel": "요금제",
+    "planHint": "나중에 언제든지 변경할 수 있습니다.",
+    "recommendedBadge": "추천",
+    "plan": {
+      "solo": {
+        "label": "솔로",
+        "description": "혼자 일하는 개인 변호사를 위한 요금제입니다."
+      },
+      "professional": {
+        "label": "프로페셔널",
+        "description": "여러 사건에서 협업하는 성장하는 로펌을 위한 요금제입니다."
+      },
+      "enterprise": {
+        "label": "엔터프라이즈",
+        "description": "고급 관리 기능과 전담 지원이 필요한 대형 로펌을 위한 요금제입니다."
+      }
+    },
+    "submit": "조직 만들기",
+    "creating": "만드는 중…",
+    "inviteHint": "이미 다른 로펌에 초대받으셨나요? 소유자나 관리자에게 이 이메일 주소로 초대를 요청하세요. 초대가 오면 이 화면에 자동으로 표시됩니다."
+  },
+  "overview": {
+    "heading": "개요",
+    "nameLabel": "조직 이름",
+    "yourRoleLabel": "내 역할",
+    "editName": "조직 이름 수정",
+    "saveName": "이름 저장",
+    "cancelName": "이름 수정 취소",
+    "nameRequired": "조직 이름은 비워둘 수 없습니다.",
+    "leaveButton": "조직 나가기",
+    "leaveConfirm": "정말 이 조직을 나가시겠습니까? 다른 조직에 가입하려면 초대가 필요합니다.",
+    "leaving": "나가는 중…",
+    "transferPrompt": "회원님은 소유자입니다. 나가기 전에 새 소유자를 선택하세요.",
+    "transferSelectPlaceholder": "멤버 선택…",
+    "transferConfirm": "소유자로 지정하고 나가기",
+    "transferCancel": "취소",
+    "transferSucceededLeaveFailed": "소유권은 이전되었지만 나가기에 실패했습니다. 다시 시도해 주세요."
+  },
+  "members": {
+    "heading": "멤버",
+    "subheading": "이 조직에 접근할 수 있는 사용자입니다.",
+    "loading": "멤버를 불러오는 중…",
+    "error": "멤버를 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "you": "나",
+    "pending": "대기 중",
+    "changeRoleTooltip": "이 멤버의 역할 변경",
+    "changeRoleAriaLabel": "{{name}}님의 역할 변경",
+    "roleDowngradeTitle": "역할을 변경하시겠습니까?",
+    "roleDowngradeConfirm": "{{name}}님의 역할을 {{fromRole}}에서 {{toRole}}(으)로 변경하면 현재 권한 일부가 사라집니다.",
+    "roleDowngradeCancel": "취소",
+    "roleDowngradeContinue": "역할 변경",
+    "removeTooltip": "이 멤버 제거",
+    "removeAriaLabel": "{{name}}님을 조직에서 제거",
+    "removeConfirmTitle": "멤버를 제거하시겠습니까?",
+    "removeConfirmBody": "{{name}}님은 즉시 이 조직에 대한 접근 권한을 잃게 됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "removeConfirmCancel": "취소",
+    "removeConfirmCancelTooltip": "멤버를 유지하고 이 대화상자를 닫습니다",
+    "removeConfirmContinue": "멤버 제거",
+    "removeConfirmContinueTooltip": "이 멤버를 조직에서 영구적으로 제거합니다"
+  },
+  "invite": {
+    "heading": "멤버 초대",
+    "subheading": "초대 대상은 이미 ilovelawyer 계정이 있어야 합니다.",
+    "emailLabel": "이메일 주소",
+    "emailPlaceholder": "colleague@lawfirm.ph",
+    "roleLabel": "역할",
+    "submit": "초대 보내기",
+    "sending": "보내는 중…",
+    "success": "초대를 보냈습니다.",
+    "onlyAdmins": "소유자와 관리자만 멤버를 초대할 수 있습니다.",
+    "pendingHeading": "초대를 받았습니다",
+    "pendingPrompt": "\"{{orgName}}\"에서 팀에 합류해달라고 요청했습니다.",
+    "accept": "초대 수락",
+    "accepting": "수락하는 중…",
+    "decline": "거절",
+    "declining": "거절하는 중…",
+    "declineConfirm": "정말 이 초대를 거절하시겠습니까?"
+  }
+}

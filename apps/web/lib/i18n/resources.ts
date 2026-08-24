@@ -7,6 +7,7 @@ import enDocumentAnalysis from "@/locales/en/document-analysis.json"
 import enHomepage from "@/locales/en/homepage.json"
 import enLanding from "@/locales/en/landing.json"
 import enLibrary from "@/locales/en/library.json"
+import enOrganization from "@/locales/en/organization.json"
 import enProfile from "@/locales/en/profile.json"
 import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
@@ -21,6 +22,7 @@ import koDocumentAnalysis from "@/locales/ko/document-analysis.json"
 import koHomepage from "@/locales/ko/homepage.json"
 import koLanding from "@/locales/ko/landing.json"
 import koLibrary from "@/locales/ko/library.json"
+import koOrganization from "@/locales/ko/organization.json"
 import koProfile from "@/locales/ko/profile.json"
 import koTerm from "@/locales/ko/term.json"
 import koTerminal from "@/locales/ko/terminal.json"
@@ -35,6 +37,7 @@ import tlDocumentAnalysis from "@/locales/tl/document-analysis.json"
 import tlHomepage from "@/locales/tl/homepage.json"
 import tlLanding from "@/locales/tl/landing.json"
 import tlLibrary from "@/locales/tl/library.json"
+import tlOrganization from "@/locales/tl/organization.json"
 import tlProfile from "@/locales/tl/profile.json"
 import tlTerm from "@/locales/tl/term.json"
 import tlTerminal from "@/locales/tl/terminal.json"
@@ -55,6 +58,7 @@ export const I18N_RESOURCES = {
     library: enLibrary,
     transcription: enTranscription,
     profile: enProfile,
+    organization: enOrganization,
     term: enTerm,
     terminal: enTerminal,
   },
@@ -70,6 +74,7 @@ export const I18N_RESOURCES = {
     library: koLibrary,
     transcription: koTranscription,
     profile: koProfile,
+    organization: koOrganization,
     term: koTerm,
     terminal: koTerminal,
   },
@@ -85,6 +90,7 @@ export const I18N_RESOURCES = {
     library: tlLibrary,
     transcription: tlTranscription,
     profile: tlProfile,
+    organization: tlOrganization,
     term: tlTerm,
     terminal: tlTerminal,
   },
