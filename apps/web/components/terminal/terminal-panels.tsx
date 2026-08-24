@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save } from "lucide-react"
+import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save, Volume2 } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import LegalMarkdown from "@/components/library/legal-markdown"
 import {
+  pollReconstructionAudio,
+  terminalKeys,
   useCheckCitationMutation,
   useConfirmDeadlineMutation,
   useCreateDamageMutation,
@@ -18,6 +21,7 @@ import {
   useDeleteDamageMutation,
   useDeleteFindingMutation,
   useDeleteWitnessMutation,
+  useGenerateReconstructionAudioMutation,
   useGenerateReconstructionMutation,
   useGenerateRedTeamMutation,
   useProcedureRulesQuery,
@@ -25,6 +29,7 @@ import {
   useUpdateProcedureItemMutation,
   useUpdateReconstructionMutation,
 } from "@/lib/terminal/mutations"
+import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
 
 function formatDate(value: string | Date | null | undefined) {
@@ -882,13 +887,70 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
   )
 }
 
+type ReconstructionRegister = "general" | "court" | "opposing"
+
+const REGISTER_TAB_KEYS: Record<ReconstructionRegister, string> = {
+  general: "registerGeneral",
+  court: "registerCourt",
+  opposing: "registerOpposing",
+}
+
+function registerText(reconstruction: CaseSnapshot["reconstruction"], register: ReconstructionRegister): string {
+  if (!reconstruction) return ""
+  if (register === "general") return reconstruction.narrative
+  if (register === "court") return reconstruction.narrativeCourt ?? ""
+  return reconstruction.narrativeOpposing ?? ""
+}
+
+function buildUpdatePayload(register: ReconstructionRegister, text: string): UpdateReconstructionPayload {
+  if (register === "general") return { narrative: text }
+  if (register === "court") return { narrativeCourt: text }
+  return { narrativeOpposing: text }
+}
+
 function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
-  const narrative = snapshot.reconstruction?.narrative ?? ""
-  const [draft, setDraft] = useState(narrative)
-  const [dirty, setDirty] = useState(false)
+  const queryClient = useQueryClient()
+  const reconstruction = snapshot.reconstruction
+  const narrative = reconstruction?.narrative ?? ""
+
+  const [activeRegister, setActiveRegister] = useState<ReconstructionRegister>("general")
+  const [drafts, setDrafts] = useState<Record<ReconstructionRegister, string>>({
+    general: registerText(reconstruction, "general"),
+    court: registerText(reconstruction, "court"),
+    opposing: registerText(reconstruction, "opposing"),
+  })
+  const [dirty, setDirty] = useState<Record<ReconstructionRegister, boolean>>({
+    general: false,
+    court: false,
+    opposing: false,
+  })
+  const [audioPolling, setAudioPolling] = useState(false)
+
   const generate = useGenerateReconstructionMutation(caseId)
   const update = useUpdateReconstructionMutation(caseId)
+  const generateAudio = useGenerateReconstructionAudioMutation(caseId)
+
+  // Polls a Polly async job while one is in flight — same "caller drives the loop" contract
+  // as the Transcription feature's job polling, just scoped locally to this panel instead of
+  // a cross-page store, since there's only ever one audio job per reconstruction.
+  useEffect(() => {
+    if (!audioPolling) return
+    const interval = setInterval(() => {
+      pollReconstructionAudio(caseId)
+        .then((result) => {
+          if (result.status === "IN_PROGRESS") return
+          setAudioPolling(false)
+          queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+        })
+        .catch(() => setAudioPolling(false))
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [audioPolling, caseId, queryClient])
+
+  const activeDraft = drafts[activeRegister]
+  const activeDirty = dirty[activeRegister]
+  const activeText = registerText(reconstruction, activeRegister)
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
@@ -899,8 +961,12 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           onClick={() =>
             generate.mutate(undefined, {
               onSuccess: (data) => {
-                setDraft(data.narrative)
-                setDirty(false)
+                setDrafts({
+                  general: data.narrative,
+                  court: data.narrativeCourt ?? "",
+                  opposing: data.narrativeOpposing ?? "",
+                })
+                setDirty({ general: false, court: false, opposing: false })
               },
             })
           }
@@ -916,24 +982,48 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
         </button>
       </div>
 
+      <div className="flex gap-1 border-b border-border">
+        {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map((register) => (
+          <button
+            key={register}
+            type="button"
+            onClick={() => setActiveRegister(register)}
+            className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+              activeRegister === register
+                ? "border-b-2 border-brand-gold text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(REGISTER_TAB_KEYS[register])}
+          </button>
+        ))}
+      </div>
+
       {!narrative && !generate.isPending ? (
         <EmptyNote>{t("noReconstruction")}</EmptyNote>
+      ) : activeRegister !== "general" && !activeText && !activeDirty ? (
+        <EmptyNote>{t("registerNotGenerated")}</EmptyNote>
       ) : (
         <textarea
-          value={draft}
+          key={activeRegister}
+          value={activeDraft}
           onChange={(e) => {
-            setDraft(e.target.value)
-            setDirty(true)
+            setDrafts((prev) => ({ ...prev, [activeRegister]: e.target.value }))
+            setDirty((prev) => ({ ...prev, [activeRegister]: true }))
           }}
           rows={16}
           className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5 text-[13px] leading-6 text-foreground outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
         />
       )}
 
-      {dirty && (
+      {activeDirty && (
         <button
           type="button"
-          onClick={() => update.mutate(draft, { onSuccess: () => setDirty(false) })}
+          onClick={() =>
+            update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
+              onSuccess: () => setDirty((prev) => ({ ...prev, [activeRegister]: false })),
+            })
+          }
           disabled={update.isPending}
           className={`inline-flex items-center gap-1.5 self-end ${primaryBtnClass}`}
         >
@@ -944,6 +1034,56 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           )}
           {update.isPending ? t("saving") : t("save")}
         </button>
+      )}
+
+      {reconstruction && reconstruction.gaps.length > 0 && (
+        <div>
+          <SectionLabel>{t("reconstructionGaps")}</SectionLabel>
+          <ul className="list-disc space-y-1 pl-4 text-[12px] leading-5 text-muted-foreground">
+            {reconstruction.gaps.map((gap, index) => (
+              <li key={index}>{gap}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {activeRegister === "general" && narrative && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <SectionLabel>{t("audioNarration")}</SectionLabel>
+            <button
+              type="button"
+              onClick={() =>
+                generateAudio.mutate(undefined, {
+                  onSuccess: () => {
+                    setAudioPolling(true)
+                    queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+                  },
+                })
+              }
+              disabled={generateAudio.isPending || audioPolling}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+            >
+              {generateAudio.isPending || audioPolling ? (
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              ) : (
+                <Volume2 className="h-3 w-3" aria-hidden="true" />
+              )}
+              {generateAudio.isPending || audioPolling
+                ? t("generatingAudio")
+                : reconstruction?.audioFile?.fileUrl
+                  ? t("regenerateAudio")
+                  : t("generateAudio")}
+            </button>
+          </div>
+
+          {reconstruction?.audioFile?.fileUrl && (
+            <audio controls src={reconstruction.audioFile.fileUrl} className="h-8 w-full" />
+          )}
+          {reconstruction?.audioStaleAt && (
+            <p className="text-[11px] text-muted-foreground">{t("audioOutOfDate")}</p>
+          )}
+        </div>
       )}
     </div>
   )
