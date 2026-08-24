@@ -63,5 +63,28 @@
   "chat": {
     "emptyHeading": "Ask about {{caseName}}",
     "emptySubheading": "Consult the AI with this case's details already in context — ask about strategy, drafting, or next steps."
+  },
+  "workspace": {
+    "sources": "Sources",
+    "studio": "Studio",
+    "collapseSources": "Collapse Sources",
+    "expandSources": "Expand Sources",
+    "collapseStudio": "Collapse Studio",
+    "expandStudio": "Expand Studio",
+    "backToStudio": "Back to Studio",
+    "documentsTab": "Documents",
+    "relatedTab": "Related Cases",
+    "relatedEmpty": "No related cases surfaced yet for this chat.",
+    "relatedNoConsultation": "Start a chat to see related cases here.",
+    "mindMapTile": "Mind Map",
+    "timelineTile": "Timeline",
+    "audioOverviewTile": "Audio Overview",
+    "audioComingSoon": "Coming soon",
+    "mindMapEmpty": "No mind map generated for this chat yet.",
+    "mindMapGenerateCta": "Generate mind map",
+    "mindMapRegenerateCta": "Regenerate mind map",
+    "mindMapGenerating": "Generating mind map…",
+    "mindMapGenerateError": "Couldn't generate a mind map. Try again.",
+    "mindMapNoConsultation": "Start a chat to generate a mind map."
   }
 }

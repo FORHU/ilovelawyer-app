@@ -71,7 +71,7 @@ export function CaseHubWidget({
 
 /** Renders legal-precedent citations (source, not the user's own cases) surfaced by the
  * consultation's latest assistant reply. */
-function HubRelatedCases({
+export function HubRelatedCases({
   entries,
   isLoading,
   emptyLabel,

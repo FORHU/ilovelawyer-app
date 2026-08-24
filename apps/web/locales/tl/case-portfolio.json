@@ -45,5 +45,28 @@
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",
     "emptySubheading": "Kumonsulta sa AI na may nakalagay nang detalye ng kasong ito — magtanong tungkol sa estratehiya, pagdadrap, o susunod na hakbang."
+  },
+  "workspace": {
+    "sources": "Mga Source",
+    "studio": "Studio",
+    "collapseSources": "I-collapse ang Sources",
+    "expandSources": "Buksan ang Sources",
+    "collapseStudio": "I-collapse ang Studio",
+    "expandStudio": "Buksan ang Studio",
+    "backToStudio": "Bumalik sa Studio",
+    "documentsTab": "Mga Dokumento",
+    "relatedTab": "Kaugnay na mga Kaso",
+    "relatedEmpty": "Wala pang kaugnay na kaso na lumabas para sa chat na ito.",
+    "relatedNoConsultation": "Magsimula ng chat para makita rito ang mga kaugnay na kaso.",
+    "mindMapTile": "Mind Map",
+    "timelineTile": "Timeline",
+    "audioOverviewTile": "Audio Overview",
+    "audioComingSoon": "Malapit nang available",
+    "mindMapEmpty": "Wala pang na-generate na mind map para sa chat na ito.",
+    "mindMapGenerateCta": "Bumuo ng mind map",
+    "mindMapRegenerateCta": "Bumuo ulit ng mind map",
+    "mindMapGenerating": "Bumubuo ng mind map…",
+    "mindMapGenerateError": "Hindi nabuo ang mind map. Subukan ulit.",
+    "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
   }
 }

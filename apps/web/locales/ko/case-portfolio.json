@@ -45,5 +45,28 @@
   "chat": {
     "emptyHeading": "{{caseName}}에 대해 질문하기",
     "emptySubheading": "이 사건의 세부 정보가 이미 반영된 AI와 상담하세요 — 전략, 초안 작성, 다음 단계에 대해 물어보세요."
+  },
+  "workspace": {
+    "sources": "소스",
+    "studio": "스튜디오",
+    "collapseSources": "소스 패널 접기",
+    "expandSources": "소스 패널 펼치기",
+    "collapseStudio": "스튜디오 패널 접기",
+    "expandStudio": "스튜디오 패널 펼치기",
+    "backToStudio": "스튜디오로 돌아가기",
+    "documentsTab": "문서",
+    "relatedTab": "관련 사건",
+    "relatedEmpty": "이 채팅에서 아직 표시된 관련 사건이 없습니다.",
+    "relatedNoConsultation": "채팅을 시작하면 관련 사건이 여기에 표시됩니다.",
+    "mindMapTile": "마인드맵",
+    "timelineTile": "타임라인",
+    "audioOverviewTile": "오디오 개요",
+    "audioComingSoon": "곧 제공 예정",
+    "mindMapEmpty": "이 채팅에 대해 생성된 마인드맵이 아직 없습니다.",
+    "mindMapGenerateCta": "마인드맵 생성",
+    "mindMapRegenerateCta": "마인드맵 다시 생성",
+    "mindMapGenerating": "마인드맵 생성 중…",
+    "mindMapGenerateError": "마인드맵을 생성하지 못했습니다. 다시 시도해 주세요.",
+    "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다."
   }
 }
