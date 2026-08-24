@@ -226,6 +226,13 @@ export interface CaseReconstruction {
   id: string
   caseId: string
   narrative: string
+  narrativeCourt: string | null
+  narrativeOpposing: string | null
+  gaps: string[]
+  audioFileId: string | null
+  audioFile: { id: string; fileUrl: string | null } | null
+  audioStatus: string | null
+  audioStaleAt: string | null
   createdAt: string
   updatedAt: string
 }
