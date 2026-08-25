@@ -31,7 +31,7 @@ async function hydrateActiveOrganization(setOrganization: (org: ReturnType<typeo
 }
 
 export function toActiveOrg(org: OrganizationWithRole) {
-  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku }
+  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku, jurisdiction: org.jurisdiction }
 }
 
 interface ResetPasswordResponse {

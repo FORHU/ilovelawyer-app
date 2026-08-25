@@ -5,8 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { ThemeProvider } from "@/components/theme-provider"
 import { I18nProvider } from "@/components/i18n-provider"
+import { JurisdictionProvider } from "@/components/jurisdiction-provider"
 import { GoogleOAuthProvider } from "@react-oauth/google"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import type { Jurisdiction } from "@/lib/jurisdiction/resolve-host"
 
 function makeQueryClient() {
   return new QueryClient({
@@ -30,7 +32,13 @@ function getQueryClient() {
   return browserQueryClient
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  jurisdictionHint,
+}: {
+  children: React.ReactNode
+  jurisdictionHint: Jurisdiction | null
+}) {
   const queryClient = getQueryClient()
 
   return (
@@ -38,7 +46,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <I18nProvider>
-            <TooltipProvider>{children}</TooltipProvider>
+            <JurisdictionProvider jurisdiction={jurisdictionHint}>
+              <TooltipProvider>{children}</TooltipProvider>
+            </JurisdictionProvider>
           </I18nProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />

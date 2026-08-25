@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BookOpen, Scale } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
+import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Provision {
@@ -40,6 +41,8 @@ const PROVISIONS: Provision[] = [
 ];
 
 export default function FamilyCodePage() {
+  const jurisdictionGuard = usePhStatutoryContentGuard("family-code");
+  if (jurisdictionGuard) return jurisdictionGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="family-code" />

@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-provider";
+import { useJurisdictionHint } from "@/components/jurisdiction-provider";
+import { getJurisdictionConfig } from "@/config/jurisdictions";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup } from "./workspace-setup";
@@ -42,6 +44,8 @@ function UnifiedAuthContent() {
 
   const [tab, setTab] = useState<Tab>(() => tabFromParam(searchParams.get("tab")));
   const [error, setError] = useState<string | null>(null);
+  const jurisdictionHint = useJurisdictionHint();
+  const jurisdictionConfig = getJurisdictionConfig(jurisdictionHint);
 
   // Sign in fields
   const [signinEmail, setSigninEmail] = useState("");
@@ -572,6 +576,11 @@ function UnifiedAuthContent() {
 
               {tab === "signup" && (
                 <div className="flex flex-col gap-5">
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-accent/40 px-3 py-2 text-sm text-foreground">
+                    <span aria-hidden="true">{jurisdictionConfig.branding.flag}</span>
+                    <span style={{ fontFamily: "Inter, sans-serif" }}>{jurisdictionConfig.displayName}</span>
+                  </div>
+
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button

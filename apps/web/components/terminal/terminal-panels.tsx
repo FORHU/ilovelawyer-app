@@ -31,6 +31,8 @@ import {
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
+import { useAuthStore } from "@/lib/store/auth.store"
+import { getStatus } from "@/config/jurisdictions/capabilities"
 
 function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
@@ -491,6 +493,8 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
 
 function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
+  const jurisdiction = useAuthStore((s) => s.organization?.jurisdiction)
+  const deadlinesProvisional = getStatus(jurisdiction, "deadlines") === "available-provisional"
   const rules = useProcedureRulesQuery()
   const createDeadline = useCreateDeadlineMutation(caseId)
   const confirmDeadline = useConfirmDeadlineMutation(caseId)
@@ -582,7 +586,14 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
       </div>
 
       <div>
-        <SectionLabel>{t("deadlines")}</SectionLabel>
+        <div className="flex items-center gap-2">
+          <SectionLabel>{t("deadlines")}</SectionLabel>
+          {deadlinesProvisional && (
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-amber-700 dark:text-amber-400">
+              {t("deadlinesProvisional")}
+            </span>
+          )}
+        </div>
         {snapshot.procedure.deadlines.length === 0 ? (
           <EmptyNote>{t("computeDeadline")}</EmptyNote>
         ) : (

@@ -4,9 +4,16 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useJurisdictionHint } from "@/components/jurisdiction-provider";
 
 export function HeroSection() {
   const { t } = useTranslation("landing");
+  // i18next's `context` option looks up a `_UK`-suffixed key (e.g. "hero.titleEmphasis_UK")
+  // and falls back to the base key when no such variant exists — so only the genuinely
+  // jurisdiction-specific strings (the ones naming "Philippine"/"UK") need a _UK entry in the
+  // locale JSON; everything else (eyebrow, CTAs) is shared across jurisdictions automatically.
+  const jurisdiction = useJurisdictionHint();
+  const tCtx = { context: jurisdiction ?? undefined };
   return (
     <section id="hero" className="relative min-h-[85vh] flex items-center overflow-hidden bg-[#f7fafc] dark:bg-background">
       <div className="absolute inset-0 pointer-events-none">
@@ -23,12 +30,12 @@ export function HeroSection() {
             className="text-black dark:text-foreground text-[clamp(40px,5.5vw,64px)] tracking-[-1.28px] leading-[1.1]"
             style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
           >
-            {t("hero.titleLine1")}<br />
-            <em style={{ fontStyle: "italic" }}>{t("hero.titleEmphasis")}</em><br />
-            {t("hero.titleLine3")}
+            {t("hero.titleLine1", tCtx)}<br />
+            <em style={{ fontStyle: "italic" }}>{t("hero.titleEmphasis", tCtx)}</em><br />
+            {t("hero.titleLine3", tCtx)}
           </h1>
           <p className="text-[#45464d] dark:text-muted-foreground text-lg leading-[1.6] max-w-[576px]" style={{ fontFamily: "Inter, sans-serif" }}>
-            {t("hero.description")}
+            {t("hero.description", tCtx)}
           </p>
           <div className="flex flex-wrap gap-6 pt-2">
             <Tooltip>

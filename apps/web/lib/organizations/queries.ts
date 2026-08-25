@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 import { organizationKeys } from "@/lib/query-keys"
+import type { Jurisdiction } from "@/lib/jurisdiction/resolve-host"
 
 export type OrganizationRole = "OWNER" | "ADMIN" | "MANAGER" | "MEMBER"
 export type OrganizationMemberStatus = "PENDING" | "ACCEPTED"
@@ -13,6 +14,9 @@ export interface OrganizationRecord {
   name: string
   slug: string
   packageSku: PackageSku
+  /** Persisted, authoritative jurisdiction — server-resolved at creation from the signup
+   * domain, never client-editable. See ilovelawyer-api's Organization.jurisdiction. */
+  jurisdiction: Jurisdiction
   createdAt: string
   updatedAt: string
 }

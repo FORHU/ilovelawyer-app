@@ -10,6 +10,7 @@ import {
   useUploadCaseDocumentsMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { generateId } from "@/lib/id";
 
 const ACTION_TYPE_OPTIONS = [
   { value: "Civil Litigation", labelKey: "actionTypes.civilLitigation" },
@@ -133,9 +134,9 @@ function CreateCasePageContent() {
         const entry = entries.find((e) => e.file === file);
         if (entry) updateUploadedFile(entry.id, { status: "uploaded", documentId: confirmed[i]?.id });
       });
-      failed.forEach((file) => {
+      failed.forEach(({ file, reason }) => {
         const entry = entries.find((e) => e.file === file);
-        if (entry) updateUploadedFile(entry.id, { status: "error", error: t("sectionEvidence.uploadFailed") });
+        if (entry) updateUploadedFile(entry.id, { status: "error", error: reason });
       });
 
       return failed.length === 0;
@@ -158,7 +159,7 @@ function CreateCasePageContent() {
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
     const entries: UploadedFile[] = incoming.map((file) => ({
-      id: crypto.randomUUID(),
+      id: generateId(),
       file,
       status: "pending",
     }));

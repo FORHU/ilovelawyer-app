@@ -64,6 +64,7 @@
   "dateSourceCalendar": "Calendar",
   "dateSourceLawyer": "Added",
   "deadlines": "Deadlines",
+  "deadlinesProvisional": "Provisional — pending legal review",
   "confirmed": "confirmed",
   "confirmDeadline": "Confirm",
   "computeDeadline": "Compute deadline",

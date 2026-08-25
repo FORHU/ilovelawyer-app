@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Landmark, Scale } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
+import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Source {
@@ -30,6 +31,8 @@ const SOURCES: Source[] = [
 ];
 
 export default function PersuasiveRulingsPage() {
+  const jurisdictionGuard = usePhStatutoryContentGuard("persuasive-rulings");
+  if (jurisdictionGuard) return jurisdictionGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="persuasive-rulings" />

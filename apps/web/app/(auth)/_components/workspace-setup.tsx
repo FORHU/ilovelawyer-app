@@ -68,7 +68,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
       { name: defaultOrgName || "My Practice", packageSku: "SOLO" },
       {
         onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku });
+          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku, jurisdiction: org.jurisdiction });
           onDone();
         },
         onError: (err) => setError((err as Error).message),
@@ -83,7 +83,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
       { name: orgName },
       {
         onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku });
+          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku, jurisdiction: org.jurisdiction });
           setCreatedOrgId(org.id);
           setChoice("inviteTeam");
         },
@@ -104,6 +104,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
           slug: invite.organization.slug,
           role: invite.role,
           packageSku: invite.organization.packageSku,
+          jurisdiction: invite.organization.jurisdiction,
         });
         onDone();
       },

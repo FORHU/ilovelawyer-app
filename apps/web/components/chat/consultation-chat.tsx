@@ -24,6 +24,7 @@ import { extractMindMap, stripStructuredBlocks, getActiveMindMap, type MindMapIt
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
+import { generateId } from "@/lib/id";
 import { useMediaQueueStore } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -372,7 +373,7 @@ export default function ConsultationChat({
     if (list.length === 0) return;
     setQueuedFiles((prev) => [
       ...prev,
-      ...list.map((file) => ({ id: crypto.randomUUID(), file, status: "pending" as const })),
+      ...list.map((file) => ({ id: generateId(), file, status: "pending" as const })),
     ]);
     list.forEach(queueDocument);
   };
