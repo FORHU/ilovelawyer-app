@@ -10,6 +10,8 @@ export interface CurrentUser {
   username: string
   email: string
   name: string | null
+  approvalStatus: "PENDING" | "ACTIVE" | "DENIED" | "BLOCKED"
+  denialReason: string | null
   createdAt: string
   lastLoginAt: string | null
 }
