@@ -166,7 +166,7 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
 /** Small trigger + hidden file input that uploads straight into this case — same upload
  * mutation the chat's "Add Document" quick action uses, so a file shows up here regardless
  * of which entry point it was uploaded from. */
-function DocumentUploadButton({ caseId }: { caseId: string }) {
+export function DocumentUploadButton({ caseId }: { caseId: string }) {
   const { t } = useTranslation("case-portfolio");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: uploadDocument, isPending, isError } = useUploadCaseDocumentMutation();
@@ -203,7 +203,15 @@ function DocumentUploadButton({ caseId }: { caseId: string }) {
   );
 }
 
-function CaseDocumentList({ caseId }: { caseId: string }) {
+export function CaseDocumentList({
+  caseId,
+  listClassName = "max-h-48",
+}: {
+  caseId: string;
+  /** Overrides the list's height constraint — the default `max-h-48` fits this component's
+   * original popover home; Case Workspace's Sources panel passes a taller one instead. */
+  listClassName?: string;
+}) {
   const { t } = useTranslation("case-portfolio");
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation();
@@ -221,7 +229,7 @@ function CaseDocumentList({ caseId }: { caseId: string }) {
   }
 
   return (
-    <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+    <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>
       {documents.map((doc) => (
         <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

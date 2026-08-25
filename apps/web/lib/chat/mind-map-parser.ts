@@ -49,6 +49,18 @@ export function usableMindMap(v: unknown): MindMapItem | undefined {
   return branchList(tree).length > 0 ? tree : undefined;
 }
 
+/** The mind map is a living document for the whole consultation, not any one message — this
+ * walks the transcript back-to-front and surfaces the most recent one the AI actually
+ * populated. Shared by ConsultationChat's own Mind Map tab and the Case Workspace Studio
+ * panel's Mind Map modal, so both derive the "current" map identically. */
+export function getActiveMindMap(messages: { mindMap?: unknown }[]): MindMapItem | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const map = usableMindMap(messages[i]?.mindMap);
+    if (map) return map;
+  }
+  return undefined;
+}
+
 /**
  * Extracts a mind map structure from AI responses.
  * Supports [MINDMAP]...[/MINDMAP] wrapper, an unclosed tag (streaming cutoff),

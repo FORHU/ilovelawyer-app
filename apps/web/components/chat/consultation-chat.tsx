@@ -20,7 +20,7 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { extractMindMap, stripStructuredBlocks, usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
+import { extractMindMap, stripStructuredBlocks, getActiveMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
@@ -43,7 +43,7 @@ const MAX_TEXTAREA_HEIGHT = 200;
 // Sent verbatim (both by the auto-trigger and the manual retry button) so the Chat tab can
 // recognize and hide this system-driven turn instead of showing it as a bubble the user
 // never actually typed — see the `visibleMessages` filter below.
-const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
+export const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -258,13 +258,7 @@ export default function ConsultationChat({
   // The mind map is a living document for the whole consultation, not any one message — so
   // this walks the transcript (including whatever's still streaming in) back-to-front and
   // surfaces the most recent one the AI actually populated, same as law-ph's `activeMindMap`.
-  const activeMindMap = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const map = usableMindMap(messages[i]?.mindMap);
-      if (map) return map;
-    }
-    return undefined;
-  }, [messages]);
+  const activeMindMap = useMemo(() => getActiveMindMap(messages), [messages]);
 
   // The Mind Map tab's auto/manual "generate" turn is a system-driven request the user never
   // typed — it shouldn't clutter the Chat tab as an ordinary bubble. Drops that user message
