@@ -141,3 +141,40 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* Legal Terminal — docs/adr/0013-legal-terminal-redesign.md */
+
+/* Subtle background texture for the terminal canvas, always on. */
+.terminal-grid-texture {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.35;
+}
+
+/* Denser overlay shown only while Grid Snapping is on, so the snap increments
+   are visible while dragging/resizing. */
+.terminal-grid-texture[data-grid-snapping="on"] {
+  background-image:
+    linear-gradient(to right, var(--sidebar-accent) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--sidebar-accent) 1px, transparent 1px);
+  background-size: calc(100% / 24) calc(100% / 24);
+  opacity: 0.5;
+}
+
+/* Panel Labels preference: hides a pane's header bar until hovered/focused.
+   Touch devices have no hover state, so no rule applies there and the header
+   stays visible regardless of the toggle — see docs/adr/0013. */
+@media (hover: hover) {
+  .terminal-pane[data-panel-labels="off"] .terminal-pane-header {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .terminal-pane[data-panel-labels="off"]:hover .terminal-pane-header,
+  .terminal-pane[data-panel-labels="off"]:focus-within .terminal-pane-header {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

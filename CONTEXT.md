@@ -80,6 +80,48 @@ The Case Workspace's left panel. Two tabs: a Documents tab (a Case's Case Docume
 **Studio Panel**
 The Case Workspace's right panel. Three tiles: Mind Map and Timeline (existing Conversation views, opened inline in the panel itself — the panel widens and shows a "Studio > {tile}" breadcrumb with a back control, not a modal) and Audio Overview (visible but disabled — see Pending, below). Independently collapsible to a slim rail. Deliberately does not include the reference design's other tiles (Slide Deck, Video Overview, Reports, Flashcards, Quiz, Infographic, Data Table) — Case Workspace replicates the reference's layout, not its full generative toolset.
 
+## Legal Terminal
+
+A separate multi-pane case workspace from Case Workspace (above) — freeform rather than a fixed three-panel layout, and with a much larger catalog of panes (18, vs. Case Workspace's 3 Studio tiles). The two features share no code and are never shown on the same page, but their names collide enough in writing that this glossary always qualifies "workspace" — see Terminal Workspace, below.
+
+**Pane**
+A single draggable/resizable tile in the Legal Terminal grid (`/homepage/terminal/[caseId]`), rendering one Panel Catalog entry's content. Freely positioned, not confined to a fixed grid cell — moved by dragging its header's grip handle, resized from any edge or corner.
+_Avoid_: "panel" in UI copy or glossary writing — matches this feature's own UI copy ("Add pane", "Hide pane", "1 pane"/"2 panes"). The code's type names (`PanelId`, `PanelLayout`, `TerminalPanelBody`) keep "Panel" as-is; that's a naming a future refactor shouldn't chase.
+
+**Panel Catalog**
+The full set of possible Pane types (`useTerminalCatalogQuery`), each with an id (`PanelId`), a label, and an `available` flag. Not all of them are visible by default — see Suggested Pane.
+
+**Suggested Pane**
+A hidden Panel Catalog entry surfaced in the toolbar because its backing data already exists in the case snapshot — a heuristic frontend-only check, not an AI judgment call.
+_Avoid_: implying this is an AI recommendation.
+
+**Preset**
+A starting Pane arrangement (`PANE_1`/`PANE_2`/`PANE_4`/`PANE_6` — which Panel Catalog entries are visible, tiled into columns) applied from the sidebar. Doesn't lock the layout: Panes can be freely moved/resized afterward.
+
+**Terminal Workspace**
+A named, saved arrangement of Panes (visibility, position, size, active Preset) for one case, persisted server-side as `layoutJson` and managed from the Workspace Settings sidebar (save/load/reset).
+_Avoid_: bare "workspace" in any writing that also touches Case Workspace — always say "Terminal Workspace" or "Case Workspace" explicitly; they are unrelated concepts that happen to share a name.
+
+**Workspace Settings sidebar**
+The collapsible left sidebar hosting Preset selection, the Panel Library, Terminal Workspace save/load/reset, and Display Preferences. Replaced the previous top-bar row of dropdowns/buttons. See `docs/adr/0013-legal-terminal-redesign.md`.
+
+**Panel Library**
+The Workspace Settings sidebar's list of every Panel Catalog entry. Dragging an entry onto the grid adds it as a new Pane at the drop position.
+_Avoid_: "add pane dropdown" (that was the pre-redesign mechanic; the Panel Library replaces it with drag-and-drop)
+
+**Display Preferences**
+Three global, per-browser toggles for the Legal Terminal, persisted in `localStorage` only — same pattern as Language Preference, not saved per Terminal Workspace (so they stay put regardless of which one is loaded): High Density Mode, Grid Snapping, Panel Labels.
+
+**High Density Mode**
+A Display Preference that tightens spacing and typography across both the Legal Terminal's chrome and every Pane's internal content.
+
+**Grid Snapping**
+A Display Preference (UI label: "Show Grid Lines") that makes Pane dragging/resizing snap to grid increments instead of moving freely.
+_Avoid_: "Show Grid Lines" as the glossary term for this — the UI label undersells that this is a real interaction change, not a cosmetic overlay.
+
+**Panel Labels**
+A Display Preference that, when off, hides a Pane's entire header bar (grip handle, title, close control) — revealed only on hover. Touch devices (no hover state, detected via `(hover: hover)`) always show the header regardless of this toggle, so Panes stay movable/closable there.
+
 ## Calendar
 
 **Appointment**
@@ -133,4 +175,5 @@ _Avoid_: "article", "legal document" alone (ambiguous with Generated Article)
 - OTP verification — `useVerifyOtpMutation` (`lib/auth/mutations.ts`) calls `POST /api/auth/verify-otp`, but `ilovelawyer-api`'s `auth.route.ts` has no such route; the call 404s unconditionally today.
 - Case Workspace — Studio Panel's Audio Overview tile is visible but disabled ("coming soon"); no audio-generation backend exists yet. Sources Panel's Documents tab has no include/exclude selection (deliberately dropped — see `docs/adr/0012-case-workspace-parallel-route.md`), unlike the reference design it's modeled on.
 - Legal Terminal — **all requested + recommended panels shipped.** Contradictions was split out of Evidence & Timeline first (pure UI move, no new data). The follow-up batch — Legal Issues, Weaknesses, Strengths, Attack Strategies, Defense Strategies (one `CaseFinding` model, `category` discriminator, `notes: "AI"` tags AI-authored rows exactly like `ProcedureItem`'s STRATEGY convention, replaced wholesale each Refresh via `CaseFindingAiSvc`), Witnesses (`Witness` model, manual only), Damages & Remedies (`DamageClaim` model, manual only) — is now built end-to-end: Prisma models, `/api/my-cases/:caseId/{findings,witnesses,damages}` CRUD, all folded into `CaseSnapshotSvc.get()` so panels read off the existing snapshot like every other panel. Case Reconstruction (`CaseReconstruction` model, one narrative per case) is also live — `POST /api/my-cases/:caseId/reconstruction/generate` asks Chat Wonder (now via WS streaming, not blocking REST, to avoid Cloudflare 524s on long generations) for a tagged 4-block response (`[NARRATIVE]`/`[COURT_VERSION]`/`[OPPOSING_VERSION]`/`[GAPS]`, parsed by `case-reconstruction-parse.ts`) — it's a dedicated action, not bundled into the general Refresh, and the lawyer can edit any of the three narrative registers afterward (`PATCH .../reconstruction`, per-field). The panel now has three tabs — General (the original client-facing narrative), For the Court, From the Other Side — plus a "what this narrative doesn't cover" gaps list (qualitative, not a fabricated coverage percentage, per the zero-hallucination policy). Audio narration (General register only) is generated on demand via an async AWS Polly job (`POST/GET .../reconstruction/audio`, `pollAudioJob`, mirrors `TranscriptionSvc`'s start-job/poll-status pattern), stored as a `File` row and played back with a native `<audio>` element; editing the narrative marks existing audio stale (`audioStaleAt`) rather than deleting it. All 8 new panels default to hidden (opt-in via "Add pane"), and the toolbar now surfaces a "Suggested" chip row (heuristic, frontend-only, no AI call) that points at any hidden panel whose backing data already exists. Migrations `20260821020000_add_case_findings_witnesses_damages_reconstruction` and `20260822000000_case_reconstruction_registers_gaps_audio` applied to the shared staging DB.
+- Legal Terminal redesign — **spec agreed, not yet built.** A brand-consistent visual reskin plus three new pieces of real functionality: the Workspace Settings sidebar (replacing top-bar dropdowns), drag-and-drop Panel Library, and the three Display Preferences (High Density Mode, Grid Snapping, Panel Labels — see Language above for definitions). All 18 existing Panes, the freeform drag/resize model, Presets, and Terminal Workspace save/load stay as they work today. See `docs/adr/0013-legal-terminal-redesign.md`.
 </content>

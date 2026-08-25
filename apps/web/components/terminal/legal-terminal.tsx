@@ -15,13 +15,15 @@ import {
   useTerminalWorkspacesQuery,
 } from "@/lib/terminal/mutations"
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
+import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
+import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
 // "dates" is permanently folded into Evidence & Timeline (TerminalPanelBody renders it as
 // null) — redTeam is a real, addable panel now, not force-hidden the way it used to be.
 const HIDDEN_PANELS = new Set<PanelId>(["dates"])
 
-const PANEL_TITLES: Record<PanelId, string> = {
+export const PANEL_TITLES: Record<PanelId, string> = {
   command: "Case Summary",
   evidence: "Evidence & Timeline",
   law: "Law & Precedent",
@@ -42,7 +44,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
   caseReconstruction: "Case Reconstruction",
 }
 
-const PRESET_LABELS: Record<PresetValue, string> = {
+export const PRESET_LABELS: Record<PresetValue, string> = {
   PANE_1: "preset1",
   PANE_2: "preset2",
   PANE_4: "preset4",
@@ -51,6 +53,9 @@ const PRESET_LABELS: Record<PresetValue, string> = {
 
 const MIN_FR = 0.18
 const PANE_GAP_PX = 6
+// 1/24 gives a 24-column/row grid — fine enough not to feel restrictive at
+// MIN_FR-sized panes (~4.3 cells) but still a real snap, not a cosmetic one.
+const GRID_SNAP_STEP = 1 / 24
 
 type PaneRect = { x: number; y: number; width: number; height: number }
 type ResizeEdge = { n?: boolean; s?: boolean; e?: boolean; w?: boolean }
@@ -89,6 +94,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [workspaceName, setWorkspaceName] = useState("")
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
+  const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
+  const gridSnapping = useTerminalDisplayStore((state) => state.gridSnapping)
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
   // Drag/resize used to call setLayout() (a full state update, re-rendering every visible
@@ -186,11 +194,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
-  const showPanel = (id: PanelId) => {
+  // rect is explicit for a drag-and-drop drop position; omitted for the Panel Library's
+  // click fallback, which keeps today's cascade placement.
+  const showPanelAt = (id: PanelId, rect?: PaneRect) => {
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(prev.panels) }
+      const next = { id, visible: true, order: maxOrder + 1, ...(rect ?? cascadeRect(prev.panels)) }
       if (prev.panels.some((panel) => panel.id === id)) {
         return {
           ...prev,
@@ -239,7 +249,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     if (!drag || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
     const dx = (event.clientX - drag.startX) / grid.clientWidth
     const dy = (event.clientY - drag.startY) / grid.clientHeight
-    const rect = clampResize(drag, dx, dy)
+    const rect = clampResize(drag, dx, dy, useTerminalDisplayStore.getState().gridSnapping)
     pendingRectRef.current = { panelId: drag.panelId, rect }
     applyLivePaneStyle(drag.panelId, rect)
   }
@@ -269,12 +279,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setDraggingId(move.panelId)
     const dx = (event.clientX - move.startX) / grid.clientWidth
     const dy = (event.clientY - move.startY) / grid.clientHeight
-    const rect = {
-      x: clamp(move.x + dx, 0, 1 - move.width),
-      y: clamp(move.y + dy, 0, 1 - move.height),
-      width: move.width,
-      height: move.height,
+    let x = clamp(move.x + dx, 0, 1 - move.width)
+    let y = clamp(move.y + dy, 0, 1 - move.height)
+    if (useTerminalDisplayStore.getState().gridSnapping) {
+      x = clamp(snapValue(x, GRID_SNAP_STEP), 0, 1 - move.width)
+      y = clamp(snapValue(y, GRID_SNAP_STEP), 0, 1 - move.height)
     }
+    const rect = { x, y, width: move.width, height: move.height }
     pendingRectRef.current = { panelId: move.panelId, rect }
     applyLivePaneStyle(move.panelId, rect)
   }
@@ -287,13 +298,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     moveRef.current = null
     setDraggingId(null)
   }
-
-  const controlClass =
-    "h-8 rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none transition-colors hover:border-foreground/20 focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
-  const ghostBtnClass =
-    "h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
-  const primaryBtnClass =
-    "h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
 
   if (snapshot.isLoading || catalog.isLoading) {
     return (
@@ -324,7 +328,55 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         : t("noNextDate")
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
+    <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <TerminalSettingsSidebar
+        expanded={sidebarExpanded}
+        onExpandedChange={setSidebarExpanded}
+        hiddenPanels={hiddenPanels}
+        onAddPanel={(id) => showPanelAt(id)}
+        presets={catalog.data?.presets ?? []}
+        currentPreset={layout.preset}
+        onSelectPreset={setPreset}
+        workspaces={workspaces.data ?? []}
+        selectedWorkspaceId={selectedWorkspaceId}
+        onSelectWorkspace={(id) => {
+          setSelectedWorkspaceId(id)
+          const workspace = workspaces.data?.find((w) => w.id === id)
+          if (!workspace) return
+          setLayout(
+            hydrateFreeform(
+              mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+            ),
+          )
+          applyWorkspace.mutate(id)
+        }}
+        workspaceName={workspaceName}
+        onWorkspaceNameChange={setWorkspaceName}
+        onSaveWorkspace={() => {
+          const name = workspaceName.trim()
+          if (!name || !layout) return
+          createWorkspace.mutate({ name, preset: layout.preset, layoutJson: layout })
+          setWorkspaceName("")
+        }}
+        saveDisabled={!workspaceName.trim() || createWorkspace.isPending}
+        onResetWorkspace={() => {
+          resetWorkspace.mutate(layout.preset, {
+            onSuccess: (workspace) => {
+              setLayout(
+                hydrateFreeform(
+                  mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+                ),
+              )
+              setSelectedWorkspaceId(workspace.id)
+            },
+          })
+        }}
+      />
+      <div
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground transition-[padding-left] duration-200 md:pl-16 ${
+          sidebarExpanded ? "md:pl-72" : ""
+        }`}
+      >
       <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -343,99 +395,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           {snapshot.data.case.caseName}
         </h1>
         <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
-          {t("next")}: {nextLabel}
+          {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <select
-            value={layout.preset}
-            onChange={(e) => setPreset(e.target.value as PresetValue)}
-            aria-label={t("preset")}
-            className={controlClass}
-          >
-            {(catalog.data?.presets ?? []).map((preset) => (
-              <option key={preset} value={preset}>
-                {t(PRESET_LABELS[preset])}
-              </option>
-            ))}
-          </select>
-          {hiddenPanels.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) showPanel(e.target.value as PanelId)
-              }}
-              className={controlClass}
-              aria-label={t("addPane")}
-            >
-              <option value="">{t("addPane")}</option>
-              {hiddenPanels.map((panel) => (
-                <option key={panel.id} value={panel.id}>
-                  {PANEL_TITLES[panel.id] ?? panel.label}
-                </option>
-              ))}
-            </select>
-          )}
-          <select
-            value={selectedWorkspaceId}
-            onChange={(e) => {
-              const id = e.target.value
-              setSelectedWorkspaceId(id)
-              const workspace = workspaces.data?.find((w) => w.id === id)
-              if (!workspace) return
-              setLayout(
-                hydrateFreeform(
-                  mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
-                ),
-              )
-              applyWorkspace.mutate(id)
-            }}
-            className={`${controlClass} max-w-40`}
-            aria-label={t("loadWorkspace")}
-          >
-            <option value="">{t("loadWorkspace")}</option>
-            {(workspaces.data ?? []).map((workspace) => (
-              <option key={workspace.id} value={workspace.id}>
-                {workspace.name}
-              </option>
-            ))}
-          </select>
-          <input
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            placeholder={t("workspaceName")}
-            className={`${controlClass} w-36 placeholder:text-muted-foreground`}
-          />
-          <button
-            type="button"
-            disabled={!workspaceName.trim() || createWorkspace.isPending}
-            onClick={() => {
-              const name = workspaceName.trim()
-              if (!name || !layout) return
-              createWorkspace.mutate({ name, preset: layout.preset, layoutJson: layout })
-              setWorkspaceName("")
-            }}
-            className={primaryBtnClass}
-          >
-            {t("save")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              resetWorkspace.mutate(layout.preset, {
-                onSuccess: (workspace) => {
-                  setLayout(
-                    hydrateFreeform(
-                      mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
-                    ),
-                  )
-                  setSelectedWorkspaceId(workspace.id)
-                },
-              })
-            }}
-            className={ghostBtnClass}
-          >
-            {t("reset")}
-          </button>
           <button
             type="button"
             onClick={() => refresh.mutate()}
@@ -456,7 +418,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => showPanel(panel.id)}
+                  onClick={() => showPanelAt(panel.id)}
                   className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold transition-colors hover:bg-brand-gold/20"
                 >
                   {PANEL_TITLES[panel.id] ?? panel.label}
@@ -476,7 +438,27 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       )}
 
-      <div id="terminal-grid" className="relative min-h-0 flex-1 overflow-hidden p-3">
+      <div
+        id="terminal-grid"
+        data-grid-snapping={gridSnapping ? "on" : "off"}
+        className="terminal-grid-texture relative min-h-0 flex-1 overflow-hidden p-3"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault()
+          const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
+          if (!id) return
+          const bounds = e.currentTarget.getBoundingClientRect()
+          const width = 0.32
+          const height = 0.32
+          let x = clamp((e.clientX - bounds.left) / bounds.width, 0, 1 - width)
+          let y = clamp((e.clientY - bounds.top) / bounds.height, 0, 1 - height)
+          if (useTerminalDisplayStore.getState().gridSnapping) {
+            x = clamp(snapValue(x, GRID_SNAP_STEP), 0, 1 - width)
+            y = clamp(snapValue(y, GRID_SNAP_STEP), 0, 1 - height)
+          }
+          showPanelAt(id, { x, y, width, height })
+        }}
+      >
         {visiblePanels.map((panel) => {
           const rect = panelRect(panel)
           const label = PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
@@ -485,7 +467,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             <div
               key={panel.id}
               data-panel-id={panel.id}
-              className={`absolute flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card ${
+              data-panel-labels={panelLabels ? "on" : "off"}
+              className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card ${
                 isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""
               }`}
               style={{
@@ -502,7 +485,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 onPointerMove={onHeaderPointerMove}
                 onPointerUp={onHeaderPointerUp}
                 onPointerCancel={onHeaderPointerUp}
-                className="flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
+                className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
                 title={t("dragHint")}
               >
                 <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -550,6 +533,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           )
         })}
       </div>
+      </div>
     </div>
   )
 }
@@ -581,7 +565,11 @@ function panelRect(panel: PanelLayout): PaneRect {
   }
 }
 
-function clampResize(drag: ResizeDrag, dx: number, dy: number): PaneRect {
+function snapValue(value: number, step: number): number {
+  return Math.round(value / step) * step
+}
+
+function clampResize(drag: ResizeDrag, dx: number, dy: number, snap: boolean): PaneRect {
   const right = drag.x + drag.width
   const bottom = drag.y + drag.height
   let x = drag.x
@@ -601,6 +589,23 @@ function clampResize(drag: ResizeDrag, dx: number, dy: number): PaneRect {
     height = bottom - y
   } else if (drag.edges.s) {
     height = clamp(drag.height + dy, MIN_FR, 1 - drag.y)
+  }
+
+  // Snap after the normal clamp so the fixed (unmoved) edge stays exactly put —
+  // re-clamping post-snap keeps the moved edge from crossing the fixed one.
+  if (snap) {
+    if (drag.edges.w) {
+      x = clamp(snapValue(x, GRID_SNAP_STEP), 0, right - MIN_FR)
+      width = right - x
+    } else if (drag.edges.e) {
+      width = clamp(snapValue(width, GRID_SNAP_STEP), MIN_FR, 1 - drag.x)
+    }
+    if (drag.edges.n) {
+      y = clamp(snapValue(y, GRID_SNAP_STEP), 0, bottom - MIN_FR)
+      height = bottom - y
+    } else if (drag.edges.s) {
+      height = clamp(snapValue(height, GRID_SNAP_STEP), MIN_FR, 1 - drag.y)
+    }
   }
 
   return { x, y, width, height }

@@ -31,6 +31,7 @@ import {
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
+import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 
 function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
@@ -87,6 +88,25 @@ function EmptyNote({ children }: { children: ReactNode }) {
   return <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">{children}</p>
 }
 
+// Shared root wrapper for every panel body. Density lives here in one place —
+// see High Density Mode in CONTEXT.md / docs/adr/0013-legal-terminal-redesign.md —
+// so a panel author never touches spacing tokens directly.
+const DENSE_GAP = { "3": "gap-1.5", "4": "gap-2.5", "5": "gap-3" } as const
+const NORMAL_GAP = { "3": "gap-3", "4": "gap-4", "5": "gap-5" } as const
+
+function PanelBody({ gap, children }: { gap: keyof typeof NORMAL_GAP; children: ReactNode }) {
+  const dense = useTerminalDisplayStore((state) => state.highDensity)
+  return (
+    <div
+      className={`flex h-full min-h-0 flex-col ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto ${
+        dense ? "p-2.5 text-[13px]" : "p-4 text-sm"
+      } text-foreground`}
+    >
+      {children}
+    </div>
+  )
+}
+
 function TerminalRagBadge({ status }: { status: string | null }) {
   const { t } = useTranslation("terminal")
   if (status === "READY") {
@@ -129,7 +149,7 @@ function RiskMeter({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{label}</span>
-        <span className={`rounded px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] ${badge}`}>
+        <span className={`rounded px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[1px] ${badge}`}>
           {level} · {score}
         </span>
       </div>
@@ -254,7 +274,7 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
   const statusLabel = snapshot.case.actionType?.trim() || snapshot.case.jurisdiction?.trim() || null
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="5">
       <div>
         <SectionLabel>{t("parties")}</SectionLabel>
         {snapshot.case.parties.length === 0 ? (
@@ -319,7 +339,7 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           </div>
         </div>
       ) : null}
-    </div>
+    </PanelBody>
   )
 }
 
@@ -327,7 +347,7 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
   const { t } = useTranslation("terminal")
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       <div>
         <SectionLabel>
           {t("documents")} ({snapshot.documents.length})
@@ -350,7 +370,7 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
         <SectionLabel>{t("timeline")}</SectionLabel>
         <CaseTimelineView caseId={caseId} fill={false} />
       </div>
-    </div>
+    </PanelBody>
   )
 }
 
@@ -363,7 +383,7 @@ function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; cas
   const contradictions = snapshot.evidence.contradictions
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       <button
         type="button"
         onClick={() => scan.mutate()}
@@ -396,7 +416,7 @@ function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; cas
           </ul>
         </div>
       )}
-    </div>
+    </PanelBody>
   )
 }
 
@@ -407,7 +427,7 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
   const [officialText, setOfficialText] = useState("")
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       <SectionLabel>{t("citations")}</SectionLabel>
       {snapshot.law.citations.length === 0 ? (
         <EmptyNote>{t("noCitations")}</EmptyNote>
@@ -449,7 +469,7 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
           {t("verify")}
         </button>
       </form>
-    </div>
+    </PanelBody>
   )
 }
 
@@ -462,7 +482,7 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
   const content = snapshot.redTeamAssessment?.content ?? ""
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="3">
       <div className="flex items-center justify-between gap-2">
         <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
         <button
@@ -485,7 +505,7 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
       ) : content ? (
         <LegalMarkdown content={content} />
       ) : null}
-    </div>
+    </PanelBody>
   )
 }
 
@@ -508,7 +528,7 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
   const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="5">
       <div>
         <SectionLabel>{t("recommendedApproach")}</SectionLabel>
         {approachItems.length > 0 ? (
@@ -593,7 +613,7 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
                 <li key={deadline.id} className="rounded-md border border-border p-3">
                   <p className="font-medium">{deadline.label}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDate(deadline.computedDueDate)} · {confirms}/2 {t("confirmed")}
+                    <span className="font-mono">{formatDate(deadline.computedDueDate)}</span> · {confirms}/2 {t("confirmed")}
                   </p>
                   <button
                     type="button"
@@ -636,14 +656,14 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
           </button>
         </form>
       </div>
-    </div>
+    </PanelBody>
   )
 }
 
 function TeamAuditPanel({ snapshot }: { snapshot: CaseSnapshot }) {
   const { t } = useTranslation("terminal")
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="3">
       <SectionLabel>{t("audit")}</SectionLabel>
       {snapshot.teamAudit.audit.length === 0 ? (
         <EmptyNote>{t("noAudit")}</EmptyNote>
@@ -657,7 +677,7 @@ function TeamAuditPanel({ snapshot }: { snapshot: CaseSnapshot }) {
           ))}
         </ul>
       )}
-    </div>
+    </PanelBody>
   )
 }
 
@@ -679,7 +699,7 @@ function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapsh
   const items = snapshot.findings.filter((f) => f.category === category)
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       {items.length === 0 ? (
         <EmptyNote>{t("noFindings")}</EmptyNote>
       ) : (
@@ -728,7 +748,7 @@ function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapsh
           {t("add")}
         </button>
       </form>
-    </div>
+    </PanelBody>
   )
 }
 
@@ -740,7 +760,7 @@ function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
   const [role, setRole] = useState("")
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       {snapshot.witnesses.length === 0 ? (
         <EmptyNote>{t("noWitnesses")}</EmptyNote>
       ) : (
@@ -789,7 +809,7 @@ function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           </button>
         </div>
       </form>
-    </div>
+    </PanelBody>
   )
 }
 
@@ -812,7 +832,7 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
   const total = snapshot.damages.reduce((sum, d) => sum + (d.amount ?? 0), 0)
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="4">
       {snapshot.damages.length === 0 ? (
         <EmptyNote>{t("noDamages")}</EmptyNote>
       ) : (
@@ -883,7 +903,7 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
           </button>
         </div>
       </form>
-    </div>
+    </PanelBody>
   )
 }
 
@@ -953,7 +973,7 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
   const activeText = registerText(reconstruction, activeRegister)
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+    <PanelBody gap="3">
       <div className="flex items-center justify-between gap-2">
         <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
         <button
@@ -1085,6 +1105,6 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           )}
         </div>
       )}
-    </div>
+    </PanelBody>
   )
 }

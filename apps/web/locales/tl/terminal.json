@@ -134,5 +134,16 @@
   "generatingAudio": "Bumubuo ng audio…",
   "audioOutOfDate": "Nagbago ang salaysay mula nang gawin ang audio na ito.",
   "redTeamAssessment": "Threat Assessment",
-  "noRedTeam": "Wala pang assessment — bumuo mula sa Legal Issues, Weaknesses, Contradictions, Witnesses, at Damages ng kasong ito."
+  "noRedTeam": "Wala pang assessment — bumuo mula sa Legal Issues, Weaknesses, Contradictions, Witnesses, at Damages ng kasong ito.",
+  "sidebarWorkspaceSettings": "Mga setting ng workspace",
+  "sidebarOpen": "Buksan ang mga setting ng workspace",
+  "sidebarCollapse": "I-collapse ang sidebar",
+  "sidebarClose": "Isara ang mga setting ng workspace",
+  "panelLibrary": "Panel library",
+  "panelLibraryHint": "I-drag ang isang panel papunta sa grid, o i-click para idagdag ito.",
+  "panelLibraryEmpty": "Nasa grid na ang lahat ng panel.",
+  "displayPreferences": "Mga kagustuhan sa display",
+  "highDensityMode": "High density mode",
+  "showGridLines": "Ipakita ang grid lines",
+  "panelLabels": "Mga label ng panel"
 }

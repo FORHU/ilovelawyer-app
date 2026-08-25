@@ -134,5 +134,16 @@
   "generatingAudio": "Generating audio…",
   "audioOutOfDate": "Narrative changed since this audio was generated.",
   "redTeamAssessment": "Threat Assessment",
-  "noRedTeam": "No assessment yet — generate one from this case's Legal Issues, Weaknesses, Contradictions, Witnesses, and Damages."
+  "noRedTeam": "No assessment yet — generate one from this case's Legal Issues, Weaknesses, Contradictions, Witnesses, and Damages.",
+  "sidebarWorkspaceSettings": "Workspace settings",
+  "sidebarOpen": "Open workspace settings",
+  "sidebarCollapse": "Collapse sidebar",
+  "sidebarClose": "Close workspace settings",
+  "panelLibrary": "Panel library",
+  "panelLibraryHint": "Drag a panel onto the grid, or click to add it.",
+  "panelLibraryEmpty": "All panels are already on the grid.",
+  "displayPreferences": "Display preferences",
+  "highDensityMode": "High density mode",
+  "showGridLines": "Show grid lines",
+  "panelLabels": "Panel labels"
 }
