@@ -13,12 +13,16 @@ interface TerminalSettingsSidebarProps {
   onExpandedChange: (expanded: boolean) => void
   hiddenPanels: PanelCatalogEntry[]
   onAddPanel: (id: PanelId) => void
+  suggestedPanels: Array<{ panel: PanelCatalogEntry; count: number }>
+  onAddSuggested: () => void
   presets: PresetValue[]
   currentPreset: PresetValue
   onSelectPreset: (preset: PresetValue) => void
   workspaces: TerminalWorkspace[]
   selectedWorkspaceId: string
   onSelectWorkspace: (id: string) => void
+  onUpdateWorkspace: () => void
+  updateDisabled: boolean
   workspaceName: string
   onWorkspaceNameChange: (value: string) => void
   onSaveWorkspace: () => void
@@ -39,12 +43,16 @@ export default function TerminalSettingsSidebar({
   onExpandedChange,
   hiddenPanels,
   onAddPanel,
+  suggestedPanels,
+  onAddSuggested,
   presets,
   currentPreset,
   onSelectPreset,
   workspaces,
   selectedWorkspaceId,
   onSelectWorkspace,
+  onUpdateWorkspace,
+  updateDisabled,
   workspaceName,
   onWorkspaceNameChange,
   onSaveWorkspace,
@@ -86,6 +94,29 @@ export default function TerminalSettingsSidebar({
 
   const panelBody = (isMobile: boolean) => (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-2 pb-4">
+      <div>
+        <p className={sectionLabelClass}>{t("suggested")}</p>
+        {suggestedPanels.length === 0 ? (
+          <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">{t("addSuggestedEmpty")}</p>
+        ) : (
+          <>
+            <p className="mb-2 text-[11px] leading-4 text-muted-foreground">
+              {t("addSuggestedCount", { count: suggestedPanels.length })}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                onAddSuggested()
+                if (isMobile) setIsMobileOpen(false)
+              }}
+              className={primaryBtnClass}
+            >
+              {t("addSuggested")}
+            </button>
+          </>
+        )}
+      </div>
+
       <div>
         <p className={sectionLabelClass}>{t("panelLibrary")}</p>
         <p className="mb-2 text-[11px] leading-4 text-muted-foreground">{t("panelLibraryHint")}</p>
@@ -149,14 +180,21 @@ export default function TerminalSettingsSidebar({
             </option>
           ))}
         </select>
+        {/* Only meaningful once a workspace is actually loaded — saves the current layout back
+         * onto that same row (PATCH) instead of always minting a new named one. */}
+        {selectedWorkspaceId && (
+          <button type="button" disabled={updateDisabled} onClick={onUpdateWorkspace} className={primaryBtnClass}>
+            {t("saveChanges")}
+          </button>
+        )}
         <input
           value={workspaceName}
           onChange={(e) => onWorkspaceNameChange(e.target.value)}
           placeholder={t("workspaceName")}
           className={fieldClass}
         />
-        <button type="button" disabled={saveDisabled} onClick={onSaveWorkspace} className={primaryBtnClass}>
-          {t("save")}
+        <button type="button" disabled={saveDisabled} onClick={onSaveWorkspace} className={ghostBtnClass}>
+          {t("saveAsNew")}
         </button>
         <button type="button" onClick={onResetWorkspace} className={ghostBtnClass}>
           {t("reset")}
@@ -211,7 +249,21 @@ export default function TerminalSettingsSidebar({
           </TooltipTrigger>
           <TooltipContent>{expanded ? t("sidebarCollapse") : t("sidebarOpen")}</TooltipContent>
         </Tooltip>
-        {expanded && panelBody(false)}
+        {/* Kept mounted (not conditionally rendered) and cross-faded instead — mounting it
+         * only once `expanded` is already true made the text pop in at full width instantly
+         * while the aside was still mid-animation on its own 200ms width transition, so it
+         * visibly reflowed/rewrapped every frame as the width grew. The opacity transition's
+         * delay is tuned to trail the width transition on expand (so text only appears once
+         * there's room for it) and lead it on collapse (so text disappears before the width
+         * starts shrinking under it). */}
+        <div
+          aria-hidden={!expanded}
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden transition-opacity ${
+            expanded ? "duration-150 delay-150 opacity-100" : "pointer-events-none duration-75 opacity-0"
+          }`}
+        >
+          {panelBody(false)}
+        </div>
       </aside>
 
       {isMobileOpen && (

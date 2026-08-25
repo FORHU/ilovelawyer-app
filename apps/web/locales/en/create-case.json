@@ -33,7 +33,7 @@
     "heading": "III. Evidentiary Submissions",
     "subheading": "Attach any documents to be indexed with this filing.",
     "depositCaseFiles": "Deposit Case Files",
-    "dropHint": "Drag & drop, or browse. PDF or DOCX standard for automated indexing",
+    "dropHint": "Drag & drop, or browse. PDF, DOCX, XLSX, JPG, or PNG for automated indexing",
     "selectDocuments": "Select Documents",
     "attachedDossiers": "Attached Dossiers ({{count}}):",
     "retryUpload": "Retry uploading {{fileName}}",

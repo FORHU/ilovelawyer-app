@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Plus } from "lucide-react";
 import { useConsultationsQuery } from "@/lib/chat/mutations";
@@ -8,17 +7,20 @@ import { useConsultationsQuery } from "@/lib/chat/mutations";
 interface ThreadPickerProps {
   caseId: string;
   activeConsultationId: string | null;
-  /** Same basePath ConsultationChat below is given — navigating here just changes `?c=`,
-   * which ConsultationChat reads as its source of truth (see consultation-chat.tsx). */
-  basePath: string;
+  /** How selection actually gets applied is left to the caller — Case Workspace pushes
+   * `?c=<id>` onto the URL (its ConsultationChat reads that as source of truth); the Terminal
+   * Chat pane instead needs this routed through ConsultationChat's own local, per-pane state
+   * (see isolateConsultation on ConsultationChat) since it can share a page with a sibling
+   * Mind Map pane that must not be redirected by this picker's selection. */
+  onSelectConsultation: (id: string) => void;
+  onNewChat: () => void;
 }
 
 /** Compact stand-in for ConsultationSidebar's full rail (deliberately not shown in Case
- * Workspace — see docs/adr/0012) — same consultations list and same URL-driven switching,
- * just collapsed into a single header dropdown above the embedded chat panel. */
-export function ThreadPicker({ caseId, activeConsultationId, basePath }: ThreadPickerProps) {
+ * Workspace — see docs/adr/0012) — same consultations list, just collapsed into a single
+ * header dropdown above the embedded chat panel. */
+export function ThreadPicker({ caseId, activeConsultationId, onSelectConsultation, onNewChat }: ThreadPickerProps) {
   const { t } = useTranslation("homepage");
-  const router = useRouter();
   const { data: consultations } = useConsultationsQuery(caseId);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +58,7 @@ export function ThreadPicker({ caseId, activeConsultationId, basePath }: ThreadP
             type="button"
             onClick={() => {
               setOpen(false);
-              router.push(basePath);
+              onNewChat();
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium text-foreground hover:bg-muted"
           >
@@ -75,7 +77,7 @@ export function ThreadPicker({ caseId, activeConsultationId, basePath }: ThreadP
                     type="button"
                     onClick={() => {
                       setOpen(false);
-                      router.push(`${basePath}?c=${c.id}`);
+                      onSelectConsultation(c.id);
                     }}
                     className={`block w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] font-medium ${
                       isActive ? "bg-muted text-primary" : "text-foreground hover:bg-muted"

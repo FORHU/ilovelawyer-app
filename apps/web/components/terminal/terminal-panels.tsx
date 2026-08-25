@@ -247,6 +247,7 @@ function ChatPanel({ caseId, caseName }: { caseId: string; caseName: string }) {
   return (
     <ConsultationChat
       embedded
+      isolateConsultation
       basePath={`/homepage/terminal/${caseId}`}
       caseId={caseId}
       emptyStateHeading={t("chatEmptyHeading", { caseName })}
@@ -260,6 +261,7 @@ function MindMapPanel({ caseId }: { caseId: string }) {
   return (
     <ConsultationChat
       embedded
+      isolateConsultation
       mindMapOnly
       basePath={`/homepage/terminal/${caseId}`}
       caseId={caseId}

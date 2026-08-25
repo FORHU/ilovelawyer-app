@@ -505,7 +505,7 @@ function CreateCasePageContent() {
                   multiple
                   ref={fileInputRef}
                   className="hidden"
-                  accept=".pdf,.docx"
+                  accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
                   onChange={handleFileChange}
                 />
 

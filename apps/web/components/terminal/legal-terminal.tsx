@@ -13,6 +13,7 @@ import {
   useResetWorkspaceMutation,
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
+  useUpdateWorkspaceMutation,
 } from "@/lib/terminal/mutations"
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -86,6 +87,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const workspaces = useTerminalWorkspacesQuery()
   const snapshot = useCaseSnapshotQuery(caseId)
   const createWorkspace = useCreateWorkspaceMutation()
+  const updateWorkspace = useUpdateWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const resetWorkspace = useResetWorkspaceMutation()
   const refresh = useRefreshSnapshotMutation(caseId)
@@ -178,6 +180,31 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       .filter((entry): entry is { panel: (typeof hiddenPanels)[number]; count: number } => entry.count !== null)
   }, [hiddenPanels, snapshot.data])
 
+  // Re-runnable: suggestedPanels only ever lists panels not yet visible, so calling this
+  // again later (e.g. after Refresh Analysis surfaces new findings) naturally just adds
+  // whatever's newly suggested — anything already added has already dropped out of the list.
+  // Unlike a single "Add pane" click (which cascades — fine for one panel), this places each
+  // new panel into free grid space via findFreeRect, without moving/resizing anything already
+  // on the grid, since several panels can land at once here.
+  const addAllSuggested = () => {
+    setLayout((prev) => {
+      if (!prev) return prev
+      const occupied = prev.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).map(panelRect)
+      let maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
+      let panels = prev.panels
+      suggestedPanels.forEach(({ panel }) => {
+        const rect = findFreeRect(occupied, 0.42) ?? cascadeRect(panels)
+        occupied.push(rect)
+        maxOrder += 1
+        const entry: PanelLayout = { id: panel.id, visible: true, order: maxOrder, ...rect }
+        panels = panels.some((p) => p.id === panel.id)
+          ? panels.map((p) => (p.id === panel.id ? { ...p, ...entry } : p))
+          : [...panels, entry]
+      })
+      return { ...prev, panels }
+    })
+  }
+
   const setPreset = (preset: PresetValue) => {
     setLayout((prev) => {
       if (!prev || !catalog.data) return prev
@@ -188,8 +215,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const hidePanel = (id: PanelId) => {
     setLayout((prev) => {
       if (!prev) return prev
-      const visibleCount = prev.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).length
-      if (visibleCount <= 1) return prev
       return { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
     })
   }
@@ -334,6 +359,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         onExpandedChange={setSidebarExpanded}
         hiddenPanels={hiddenPanels}
         onAddPanel={(id) => showPanelAt(id)}
+        suggestedPanels={suggestedPanels}
+        onAddSuggested={addAllSuggested}
         presets={catalog.data?.presets ?? []}
         currentPreset={layout.preset}
         onSelectPreset={setPreset}
@@ -350,6 +377,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           )
           applyWorkspace.mutate(id)
         }}
+        onUpdateWorkspace={() => {
+          if (!selectedWorkspaceId || !layout) return
+          updateWorkspace.mutate({ id: selectedWorkspaceId, preset: layout.preset, layoutJson: layout })
+        }}
+        updateDisabled={!selectedWorkspaceId || updateWorkspace.isPending}
         workspaceName={workspaceName}
         onWorkspaceNameChange={setWorkspaceName}
         onSaveWorkspace={() => {
@@ -410,28 +442,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       </div>
 
-      {suggestedPanels.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("suggested")}</span>
-          {suggestedPanels.map(({ panel, count }) => (
-            <Tooltip key={panel.id}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => showPanelAt(panel.id)}
-                  className="rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold transition-colors hover:bg-brand-gold/20"
-                >
-                  {PANEL_TITLES[panel.id] ?? panel.label}
-                  {" · "}
-                  {count > 1 ? t("suggestReasonCount", { count }) : t("suggestReasonReady")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("suggestedAdd", { name: PANEL_TITLES[panel.id] ?? panel.label })}</TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      )}
-
       {snapshot.data.fatalRisks.length > 0 && (
         <div className="px-3 pt-3">
           <FatalRiskBanner risks={snapshot.data.fatalRisks} />
@@ -459,6 +469,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           showPanelAt(id, { x, y, width, height })
         }}
       >
+        {visiblePanels.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
+            <p className="text-sm text-muted-foreground">{t("emptyGrid")}</p>
+          </div>
+        )}
         {visiblePanels.map((panel) => {
           const rect = panelRect(panel)
           const label = PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
@@ -492,22 +507,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {label}
                 </span>
-                {visiblePanels.length > 1 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={() => hidePanel(panel.id)}
-                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        aria-label={t("hidePane")}
-                      >
-                        <X className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("hidePane")}</TooltipContent>
-                  </Tooltip>
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => hidePanel(panel.id)}
+                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={t("hidePane")}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("hidePane")}</TooltipContent>
+                </Tooltip>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                 <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
@@ -609,6 +622,30 @@ function clampResize(drag: ResizeDrag, dx: number, dy: number, snap: boolean): P
   }
 
   return { x, y, width, height }
+}
+
+function rectsOverlap(a: PaneRect, b: PaneRect): boolean {
+  return !(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y)
+}
+
+// Scans the grid in reading order (top-left to bottom-right) at GRID_SNAP_STEP resolution
+// for the first spot a `size`x`size` pane fits without overlapping any rect in `occupied`.
+// Shrinks the candidate size through a few steps before giving up, so a fairly full grid
+// still finds somewhere small to land rather than refusing outright. Returns null only when
+// nothing fits even at the minimum pane size — callers should fall back to cascadeRect then.
+function findFreeRect(occupied: PaneRect[], preferredSize: number): PaneRect | null {
+  const sizesToTry = [preferredSize, 0.32, 0.24, MIN_FR]
+  for (const size of sizesToTry) {
+    const width = size
+    const height = size
+    for (let y = 0; y <= 1 - height + 1e-6; y += GRID_SNAP_STEP) {
+      for (let x = 0; x <= 1 - width + 1e-6; x += GRID_SNAP_STEP) {
+        const candidate = { x, y, width, height }
+        if (!occupied.some((r) => rectsOverlap(candidate, r))) return candidate
+      }
+    }
+  }
+  return null
 }
 
 function cascadeRect(panels: PanelLayout[]): PaneRect {

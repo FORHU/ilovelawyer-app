@@ -3,7 +3,7 @@
   "subtitle": "고급 신경망 처리를 활용하여 복잡한 법률 문서에서 인사이트를 추출하세요. 필리핀 판례나 법령 문서를 업로드하면 즉시 분석 결과를 확인할 수 있습니다.",
   "dropzone": {
     "heading": "법률 파일을 이곳에 드래그 앤 드롭하세요",
-    "supports": "PDF, DOCX 지원 (최대 50MB)",
+    "supports": "PDF, DOCX, XLSX, JPG, PNG 지원 (최대 50MB)",
     "selectFile": "파일 선택"
   },
   "recentAnalysis": "최근 분석",

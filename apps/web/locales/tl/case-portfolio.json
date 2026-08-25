@@ -67,6 +67,23 @@
     "mindMapRegenerateCta": "Bumuo ulit ng mind map",
     "mindMapGenerating": "Bumubuo ng mind map…",
     "mindMapGenerateError": "Hindi nabuo ang mind map. Subukan ulit.",
+    "updatedJustNow": "Na-update ngayon lang",
+    "updatedMinutesAgo": "Na-update {{count}}m ang nakalipas",
+    "updatedHoursAgo": "Na-update {{count}}h ang nakalipas",
+    "updatedDaysAgo": "Na-update {{count}}d ang nakalipas",
+    "timelineRefreshing": "Nire-refresh ang timeline…",
+    "timelineEventCount": "{{count}} (na) kaganapan",
+    "dataTableTile": "Data Table",
+    "dataTableRefreshing": "Nire-refresh ang data table…",
+    "dataTableFactCount": "{{count}} (na) detalye",
+    "dataTableEmpty": "Wala pang naitalang testigo, danyos, deadline, o findings para sa case na ito.",
+    "dataTableColType": "Uri",
+    "dataTableColLabel": "Label",
+    "dataTableColDetail": "Detalye",
+    "dataTableTypeWitness": "Testigo",
+    "dataTableTypeDamage": "Danyos",
+    "dataTableTypeDeadline": "Deadline",
+    "dataTableAiGenerated": "AI-generated",
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
   }
 }
