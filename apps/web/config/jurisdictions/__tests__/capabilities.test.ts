@@ -26,16 +26,15 @@ describe("getJurisdictionCapabilities / isFeatureEnabled", () => {
     expect(isFeatureEnabled("UK", "citations")).toBe(true)
   })
 
-  it("UK treats provisional deadlines and pending-persona chat as enabled, not gated", () => {
+  it("UK treats provisional deadlines as enabled, not gated", () => {
     expect(getStatus("UK", "deadlines")).toBe("available-provisional")
-    expect(getStatus("UK", "aiChat")).toBe("pending-persona")
     expect(isFeatureEnabled("UK", "deadlines")).toBe(true)
-    expect(isFeatureEnabled("UK", "aiChat")).toBe(true)
   })
 
-  it("UK cases and documents are fully available (jurisdiction-neutral features)", () => {
+  it("UK cases, documents, and AI chat are fully available (jurisdiction-neutral features, plus chat-wonder-v2-api's dedicated legal_uk persona)", () => {
     expect(getStatus("UK", "cases")).toBe("available")
     expect(getStatus("UK", "documents")).toBe("available")
+    expect(getStatus("UK", "aiChat")).toBe("available")
   })
 
   it("defaults to PH capabilities when jurisdiction is unresolved", () => {
