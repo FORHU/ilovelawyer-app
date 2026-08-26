@@ -134,9 +134,9 @@ function CreateCasePageContent() {
         const entry = entries.find((e) => e.file === file);
         if (entry) updateUploadedFile(entry.id, { status: "uploaded", documentId: confirmed[i]?.id });
       });
-      failed.forEach(({ file, reason }) => {
+      failed.forEach((file) => {
         const entry = entries.find((e) => e.file === file);
-        if (entry) updateUploadedFile(entry.id, { status: "error", error: reason });
+        if (entry) updateUploadedFile(entry.id, { status: "error", error: t("sectionEvidence.uploadFailed") });
       });
 
       return failed.length === 0;
