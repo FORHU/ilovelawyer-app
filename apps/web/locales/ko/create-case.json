@@ -32,7 +32,7 @@
     "heading": "III. 증거 자료 제출",
     "subheading": "이 접수 건과 함께 색인할 문서를 첨부하세요.",
     "depositCaseFiles": "사건 파일 제출",
-    "dropHint": "드래그 앤 드롭 또는 찾아보기. 자동 색인을 위해 PDF 또는 DOCX 표준을 권장합니다",
+    "dropHint": "드래그 앤 드롭 또는 찾아보기. 자동 색인을 위해 PDF, DOCX, XLSX, JPG, PNG를 지원합니다",
     "selectDocuments": "문서 선택",
     "attachedDossiers": "첨부된 자료 ({{count}}개):",
     "retryUpload": "{{fileName}} 업로드 재시도",

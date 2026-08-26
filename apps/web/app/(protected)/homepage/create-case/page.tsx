@@ -254,7 +254,7 @@ function CreateCasePageContent() {
       router.push(
         searchParams.get("next") === "terminal"
           ? `/homepage/terminal/${caseId}`
-          : `/homepage/case-portfolio/${caseId}`,
+          : `/homepage/v2/case-portfolio/${caseId}`,
       );
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
@@ -505,7 +505,7 @@ function CreateCasePageContent() {
                   multiple
                   ref={fileInputRef}
                   className="hidden"
-                  accept=".pdf,.docx"
+                  accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
                   onChange={handleFileChange}
                 />
 

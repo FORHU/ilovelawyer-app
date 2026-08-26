@@ -29,6 +29,17 @@ export interface MessageDocument {
   mimeType: string | null
 }
 
+export interface AudioOverviewTurn {
+  speaker: "HOST_A" | "HOST_B"
+  text: string
+}
+
+export interface MessageAudioOverview {
+  turns: AudioOverviewTurn[]
+  audioFileId: string | null
+  audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
+}
+
 export interface ChatMessage {
   id: string
   consultationId: string
@@ -41,6 +52,11 @@ export interface ChatMessage {
   /** The AI's `[MINDMAP]...[/MINDMAP]` block for this message, extracted and persisted
    * server-side (ilovelawyer-api's chat.service.ts). `null`/absent on messages with no map. */
   mindMap?: { data: MindMapItem } | null
+  /** The two-host script for this message, from Chat Wonder's `[AUDIO_OVERVIEW_DATA]` frame
+   * (only present when the message matched the audio-overview trigger phrase) — persisted the
+   * same way mindMap is. Rendering the script to actual speech is a separate, explicit action
+   * (see useGenerateAudioOverviewAudioMutation) — audioFileId/audioStatus start null. */
+  audioOverview?: MessageAudioOverview | null
 }
 
 export function useChatSessionQuery() {
@@ -179,4 +195,28 @@ export async function sendChatMessage({
   }
 
   return { newSessionId }
+}
+
+/** Kicks off Audio Overview rendering for a message's already-generated script — the
+ * separate, explicit "Generate Audio" action, never auto-triggered. Mirrors
+ * useGenerateReconstructionAudioMutation's shape (start job, then poll). */
+export function useGenerateAudioOverviewAudioMutation(consultationId: string) {
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      apiFetch<{ jobName?: string; status: string }>(
+        `/api/chat/consultations/${consultationId}/messages/${messageId}/audio-overview/audio`,
+        { method: "POST" },
+      ),
+  })
+}
+
+export interface AudioOverviewAudioPollResult {
+  status: "IN_PROGRESS" | "COMPLETED" | "FAILED"
+  audioFile?: { id: string; fileUrl: string | null }
+}
+
+export function pollAudioOverviewAudio(consultationId: string, messageId: string) {
+  return apiFetch<AudioOverviewAudioPollResult>(
+    `/api/chat/consultations/${consultationId}/messages/${messageId}/audio-overview/audio/poll`,
+  )
 }

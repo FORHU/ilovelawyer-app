@@ -44,7 +44,7 @@ export function CaseHubWidget({
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                href={`/homepage/case-portfolio/${caseId}`}
+                href={`/homepage/v2/case-portfolio/${caseId}`}
                 className="flex items-center gap-2 font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-wide text-foreground min-w-0 hover:text-primary transition-colors"
               >
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold shadow-[0_0_0_3px_rgba(246,196,69,0.15)]" aria-hidden="true" />

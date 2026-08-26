@@ -68,6 +68,22 @@ export function useCreateWorkspaceMutation() {
   })
 }
 
+// Updates an existing workspace's layout in place — distinct from useCreateWorkspaceMutation,
+// which always makes a new named row. Backend already supports this (PATCH .../:id).
+export function useUpdateWorkspaceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; name?: string; preset?: PresetValue; layoutJson?: WorkspaceLayout }) =>
+      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+    },
+  })
+}
+
 export function useApplyWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({

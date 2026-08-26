@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
+import { ThreadPicker } from "@/components/chat/thread-picker";
 import { CaseHubWidget } from "@/components/chat/case-hub-widget";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
@@ -44,6 +45,10 @@ const MAX_TEXTAREA_HEIGHT = 200;
 // recognize and hide this system-driven turn instead of showing it as a bubble the user
 // never actually typed — see the `visibleMessages` filter below.
 export const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
+// Must contain the exact phrase "audio overview" — the_server.py's _wants_audio_overview and
+// ilovelawyer-api's chat.service.ts wantsAudioOverview both gate on that substring, case-
+// insensitively, to decide whether to run the (expensive) script-generation call at all.
+export const AUTO_AUDIO_OVERVIEW_PROMPT = "Please generate an audio overview discussing this case.";
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -70,6 +75,13 @@ interface ConsultationChatProps {
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
   embedded?: boolean;
+  /** Tracks the active consultation in local state instead of the page's `?c=` URL param.
+   * Needed only when more than one ConsultationChat can be mounted on the same page at once
+   * (Terminal's Chat and Mind Map panes) — otherwise they fight over the one shared param, and
+   * one resolving/creating its consultation silently redirects the other's transcript out from
+   * under it. Case Workspace's embedded chat is still URL-driven (its sibling ThreadPicker
+   * navigates the same `?c=` param), so this defaults to false rather than following `embedded`. */
+  isolateConsultation?: boolean;
   /** Terminal Visual Strategy Map pane — map canvas only, no chat transcript. */
   mindMapOnly?: boolean;
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
@@ -89,6 +101,7 @@ export default function ConsultationChat({
   emptyStateSubheading,
   headerSlot,
   embedded = false,
+  isolateConsultation = false,
   mindMapOnly = false,
   inputPlaceholder,
   enableFileChips = false,
@@ -137,12 +150,28 @@ export default function ConsultationChat({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef<number>(0);
   const searchParams = useSearchParams();
-  const urlConsultationId = searchParams.get("c");
+  // See isolateConsultation's doc comment above — only set for panes that can be mounted
+  // alongside another ConsultationChat sharing the same page URL.
+  const [localConsultationId, setLocalConsultationId] = useState<string | null>(null);
+  const urlConsultationId = isolateConsultation ? localConsultationId : searchParams.get("c");
   const queryClient = useQueryClient();
 
-  // The URL is the source of truth for which consultation is active, so refresh,
-  // back/forward, and sidebar navigation all just work without any duplicated state sync.
   const consultationId = urlConsultationId;
+  // Centralizes every place that used to write `?c=` to the URL — routes through local
+  // state instead when isolated, per isolateConsultation's doc comment. useCallback keeps this
+  // referentially stable so the auto-select effect below can safely depend on it.
+  const navigateToConsultation = useCallback(
+    (id: string | null, opts?: { replace?: boolean }) => {
+      if (isolateConsultation) {
+        setLocalConsultationId(id);
+        return;
+      }
+      const href = id ? `${basePath}?c=${id}` : basePath;
+      if (opts?.replace) router.replace(href);
+      else router.push(href);
+    },
+    [isolateConsultation, basePath, router],
+  );
   // Key used to scope a pending (in-flight) send's local buffer to a consultation. A
   // brand-new chat (first message, no id yet) uses this placeholder until the backend
   // assigns a real id.
@@ -185,7 +214,7 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history } = useMessagesQuery(consultationId ?? undefined);
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
 
   // Explicit case linkage for CaseHubWidget's case-details panel. On a case's own chat
@@ -267,7 +296,7 @@ export default function ConsultationChat({
   const visibleMessages = useMemo(() => {
     const hidden = new Set<number>();
     messages.forEach((m, i) => {
-      if (m.role === "user" && m.content === AUTO_MINDMAP_PROMPT) {
+      if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
         hidden.add(i);
         if (messages[i + 1]?.role === "assistant") hidden.add(i + 1);
       }
@@ -294,9 +323,9 @@ export default function ConsultationChat({
     autoSelectedRef.current = true;
     const mostRecent = caseConsultations[0];
     if (mostRecent) {
-      router.replace(`${basePath}?c=${mostRecent.id}`);
+      navigateToConsultation(mostRecent.id, { replace: true });
     }
-  }, [caseId, consultationId, caseConsultations, basePath, router]);
+  }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -325,7 +354,7 @@ export default function ConsultationChat({
     consultationCreationRef.current = null;
     setIsSending(false);
     setActiveTab("chat");
-    router.push(basePath);
+    navigateToConsultation(null);
   };
 
   const handleSelectConsultation = (id: string) => {
@@ -336,7 +365,7 @@ export default function ConsultationChat({
     consultationCreationRef.current = null;
     setIsSending(false);
     setActiveTab("chat");
-    router.push(`${basePath}?c=${id}`);
+    navigateToConsultation(id);
   };
 
   // Resolves to a real consultation id, creating one exactly once if none exists yet —
@@ -351,7 +380,7 @@ export default function ConsultationChat({
         const consultation = await createConsultation.mutateAsync({ caseId });
         resolvedConsultationIdRef.current = consultation.id;
         setPendingUrlConsultationId(consultation.id);
-        router.push(`${basePath}?c=${consultation.id}`);
+        navigateToConsultation(consultation.id);
         return consultation.id;
       })();
     }
@@ -404,6 +433,17 @@ export default function ConsultationChat({
     e.preventDefault();
     setIsDraggingOver(false);
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
+  };
+
+  // Only intercepts when the clipboard actually carries a file (e.g. a copied screenshot, or
+  // a file copied from the OS file manager) — plain text paste is left alone so preventDefault
+  // never runs and the browser's normal paste behavior still applies.
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = e.clipboardData?.files;
+    if (files && files.length > 0) {
+      e.preventDefault();
+      addFiles(files);
+    }
   };
 
   // Runs presign→PUT in a concurrency pool, then confirms successfully-uploaded files in
@@ -805,37 +845,62 @@ export default function ConsultationChat({
           </div>
         )}
 
-        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input */}
-        <div className={embedded ? "flex items-end gap-1.5" : "contents"}>
+        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input.
+         * items-center (not items-end) so the send button stays vertically centered against
+         * whatever height the textarea actually renders at — items-end previously relied on a
+         * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
+         * out of alignment whenever the real rendered height differed even slightly. */}
+        <div className={embedded ? "flex items-center gap-1.5" : "contents"}>
           <textarea
             ref={textareaRef}
             rows={1}
-            className={`w-full shrink-0 resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+              // Embedded shares this row with the send button (see the wrapping div above),
+              // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
+              // styling, where this is the row's only child) forced it to claim the full row
+              // width regardless of the button, pushing the button out past the pane's
+              // clipped edge (or spilling past the rounded border where nothing clips it).
               embedded
-                ? "px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
-                : "text-[15px] text-foreground placeholder-muted-foreground px-2 py-1"
+                ? "min-w-0 flex-1 px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
+                : "w-full shrink-0 text-[15px] text-foreground placeholder-muted-foreground px-2 py-1"
             }`}
             placeholder={inputPlaceholder ?? t("input.placeholder")}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             disabled={isSending}
           />
 
           {embedded ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="submit"
-                  disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                  aria-label={t("input.sendMessage")}
-                  className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50"
-                >
-                  <Send className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleClipClick}
+                    aria-label={t("input.attachFile")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <Paperclip className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("input.attachFile")}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="submit"
+                    disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                    aria-label={t("input.sendMessage")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50"
+                  >
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+              </Tooltip>
+            </>
           ) : (
         <div className="flex items-center justify-between px-1">
           <div className="flex gap-1 text-muted-foreground">
@@ -933,6 +998,22 @@ export default function ConsultationChat({
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+        {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
+         * !embedded above) and no external picker of its own (unlike Case Workspace, which
+         * already renders its own ThreadPicker above this component — see case-workspace.tsx),
+         * so this is its only way to reach past conversations for the case. Gated on
+         * isolateConsultation specifically, not embedded: Case Workspace's chat is embedded
+         * too, and would otherwise get this a second time, stacked on top of its own picker. */}
+        {isolateConsultation && !mindMapOnly && caseId && (
+          <div className="flex shrink-0 pb-2">
+            <ThreadPicker
+              caseId={caseId}
+              activeConsultationId={consultationId}
+              onSelectConsultation={handleSelectConsultation}
+              onNewChat={handleNewChat}
+            />
+          </div>
+        )}
         {(() => {
           const isEmptyChatLanding = !mindMapOnly && activeTab === "chat" && !consultationId && visibleMessages.length === 0;
           const showMindMapPane = Boolean(caseId && (mindMapOnly || (!embedded && activeTab === "mindmap")));
@@ -1050,6 +1131,15 @@ export default function ConsultationChat({
             /* Scrollable message pane — input bar below stays put regardless of scroll position */
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none]">
               <div className={`w-full mx-auto flex flex-col gap-4 px-2 py-4 ${embedded ? "" : "max-w-3xl"}`}>
+                {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
+                 * whose only messages are hidden system turns (e.g. the auto mind-map prompt
+                 * filtered out of visibleMessages above) — without this, that renders as a bare
+                 * pane with no explanation once the history query has actually settled. */}
+                {visibleMessages.length === 0 && !historyLoading && !isSending && (
+                  <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground font-['Inter']">
+                    {emptyStateSubheading ?? t("emptyState.subheading")}
+                  </p>
+                )}
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
