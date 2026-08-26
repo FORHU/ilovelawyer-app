@@ -102,6 +102,19 @@
     "dataTableTypeDamage": "Damage",
     "dataTableTypeDeadline": "Deadline",
     "dataTableAiGenerated": "AI-generated",
+    "audioOverviewGenerating": "Generating audio overview…",
+    "audioOverviewGenerateCta": "Generate audio overview",
+    "audioOverviewGenerateError": "Couldn't generate an audio overview. Try again.",
+    "audioOverviewEmpty": "No audio overview generated for this chat yet.",
+    "audioOverviewNoConsultation": "Start a chat to generate an audio overview.",
+    "audioOverviewGenerateAudioCta": "Generate audio",
+    "audioOverviewRendering": "Rendering audio…",
+    "audioOverviewPlay": "Play",
+    "audioOverviewPause": "Pause",
+    "audioOverviewRegenerateAudioCta": "Regenerate audio",
+    "audioOverviewRenderError": "Couldn't render the audio. Try again.",
+    "audioOverviewHostA": "Host A",
+    "audioOverviewHostB": "Host B",
     "mindMapNoConsultation": "Start a chat to generate a mind map."
   }
 }

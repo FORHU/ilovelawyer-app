@@ -84,6 +84,19 @@
     "dataTableTypeDamage": "Danyos",
     "dataTableTypeDeadline": "Deadline",
     "dataTableAiGenerated": "AI-generated",
+    "audioOverviewGenerating": "Gumagawa ng audio overview…",
+    "audioOverviewGenerateCta": "Gumawa ng audio overview",
+    "audioOverviewGenerateError": "Hindi nagawa ang audio overview. Subukan ulit.",
+    "audioOverviewEmpty": "Wala pang audio overview na nabuo para sa chat na ito.",
+    "audioOverviewNoConsultation": "Magsimula ng chat para makagawa ng audio overview.",
+    "audioOverviewGenerateAudioCta": "Gumawa ng audio",
+    "audioOverviewRendering": "Ginagawa ang audio…",
+    "audioOverviewPlay": "I-play",
+    "audioOverviewPause": "I-pause",
+    "audioOverviewRegenerateAudioCta": "Muling gawin ang audio",
+    "audioOverviewRenderError": "Hindi nagawa ang audio. Subukan ulit.",
+    "audioOverviewHostA": "Host A",
+    "audioOverviewHostB": "Host B",
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
   }
 }

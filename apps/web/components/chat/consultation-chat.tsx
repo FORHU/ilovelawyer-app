@@ -45,6 +45,10 @@ const MAX_TEXTAREA_HEIGHT = 200;
 // recognize and hide this system-driven turn instead of showing it as a bubble the user
 // never actually typed — see the `visibleMessages` filter below.
 export const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
+// Must contain the exact phrase "audio overview" — the_server.py's _wants_audio_overview and
+// ilovelawyer-api's chat.service.ts wantsAudioOverview both gate on that substring, case-
+// insensitively, to decide whether to run the (expensive) script-generation call at all.
+export const AUTO_AUDIO_OVERVIEW_PROMPT = "Please generate an audio overview discussing this case.";
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -292,7 +296,7 @@ export default function ConsultationChat({
   const visibleMessages = useMemo(() => {
     const hidden = new Set<number>();
     messages.forEach((m, i) => {
-      if (m.role === "user" && m.content === AUTO_MINDMAP_PROMPT) {
+      if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
         hidden.add(i);
         if (messages[i + 1]?.role === "assistant") hidden.add(i + 1);
       }

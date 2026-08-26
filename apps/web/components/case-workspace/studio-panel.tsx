@@ -2,27 +2,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Play, Pause, RotateCcw, RotateCw, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
-import { AUTO_MINDMAP_PROMPT } from "@/components/chat/consultation-chat";
-import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
+import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/components/chat/consultation-chat";
+import {
+  useMessagesQuery,
+  useChatSessionQuery,
+  sendChatMessage,
+  useGenerateAudioOverviewAudioMutation,
+  pollAudioOverviewAudio,
+  type ChatMessage,
+} from "@/lib/chat/mutations";
 import { useCaseQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useCaseTimelineQuery } from "@/lib/terminal/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
-export type StudioTileKind = "mindmap" | "timeline" | "dataTable";
+export type StudioTileKind = "mindmap" | "timeline" | "dataTable" | "audioOverview";
 
 // How wide the panel gets once a tile's detail view is open — tuned per tile rather than one
 // fixed size, since they need very different amounts of room: Mind Map is an interactive
 // node canvas (wants the most space to actually be usable), Data Table has three text columns
-// that truncate awkwardly if too narrow, Timeline is just a scrollable vertical list.
+// that truncate awkwardly if too narrow, Timeline is just a scrollable vertical list, Audio
+// Overview is a transcript list plus a single <audio> player.
 const OPEN_TILE_WIDTH_CLASS: Record<StudioTileKind, string> = {
   mindmap: "w-[70%] min-w-[640px] max-w-[1100px]",
   dataTable: "w-[58%] min-w-[520px] max-w-[900px]",
   timeline: "w-[42%] min-w-[420px] max-w-[680px]",
+  audioOverview: "w-[46%] min-w-[440px] max-w-[720px]",
 };
 
 interface DataTableRow {
@@ -189,6 +198,186 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     void handleGenerateMindMap();
   }, [consultationId, session, history, activeMindMap, handleGenerateMindMap]);
 
+  // The message carrying the current script — kept as the full message (not just its
+  // audioOverview data) since triggerAudioRender and the poll loop below both need its id.
+  const activeAudioOverviewMessage = useMemo<ChatMessage | undefined>(() => {
+    const list = history ?? [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i]?.audioOverview?.turns?.length) return list[i];
+    }
+    return undefined;
+  }, [history]);
+  const [isGeneratingAudioOverview, setIsGeneratingAudioOverview] = useState(false);
+  const [audioOverviewGenerateError, setAudioOverviewGenerateError] = useState(false);
+
+  const generateAudioOverviewAudio = useGenerateAudioOverviewAudioMutation(consultationId ?? "");
+  const [audioRendering, setAudioRendering] = useState(false);
+  const [audioRenderError, setAudioRenderError] = useState(false);
+  const [renderedAudioUrl, setRenderedAudioUrl] = useState<string | null>(null);
+
+  const audioOverviewMessageId = activeAudioOverviewMessage?.id;
+  const audioOverviewStatus = activeAudioOverviewMessage?.audioOverview?.audioStatus ?? null;
+  const audioOverviewStatusLabel =
+    isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending
+      ? isGeneratingAudioOverview
+        ? t("workspace.audioOverviewGenerating")
+        : t("workspace.audioOverviewRendering")
+      : formatUpdatedAt(t, activeAudioOverviewMessage?.createdAt ?? null);
+
+  // Starts (or restarts) rendering for a specific message id — a plain id param, not the
+  // activeAudioOverviewMessage/audioOverviewMessageId derived above, because
+  // handleGenerateAudioOverviewScript below needs to call this for a message that was JUST
+  // created, before a re-render has caught those memoized values up to it.
+  const triggerAudioRender = useCallback(
+    (messageId: string) => {
+      setAudioRenderError(false);
+      setRenderedAudioUrl(null);
+      generateAudioOverviewAudio.mutate(messageId, {
+        onSuccess: () => setAudioRendering(true),
+        onError: () => setAudioRenderError(true),
+      });
+    },
+    [generateAudioOverviewAudio],
+  );
+
+  // Already-rendered audio from a previous visit: status is COMPLETED but this session hasn't
+  // fetched a (short-lived, presigned) playback URL for it yet — one poll call gets it without
+  // starting a new render.
+  useEffect(() => {
+    if (!consultationId || !audioOverviewMessageId || audioOverviewStatus !== "COMPLETED" || renderedAudioUrl) {
+      return;
+    }
+    pollAudioOverviewAudio(consultationId, audioOverviewMessageId)
+      .then((result) => {
+        if (result.status === "COMPLETED" && result.audioFile?.fileUrl) setRenderedAudioUrl(result.audioFile.fileUrl);
+      })
+      .catch(() => {});
+  }, [consultationId, audioOverviewMessageId, audioOverviewStatus, renderedAudioUrl]);
+
+  useEffect(() => {
+    if (!audioRendering || !consultationId || !audioOverviewMessageId) return;
+    const interval = setInterval(() => {
+      pollAudioOverviewAudio(consultationId, audioOverviewMessageId)
+        .then((result) => {
+          if (result.status === "IN_PROGRESS") return;
+          setAudioRendering(false);
+          if (result.status === "COMPLETED" && result.audioFile?.fileUrl) {
+            setRenderedAudioUrl(result.audioFile.fileUrl);
+          } else if (result.status === "FAILED") {
+            setAudioRenderError(true);
+          }
+        })
+        .catch(() => setAudioRendering(false));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [audioRendering, consultationId, audioOverviewMessageId]);
+
+  // Auto-chains straight into rendering once the script lands — script generation and audio
+  // rendering used to be two separate explicit steps (Polly cost was the reason to gate it
+  // manually), but this is a deliberate later reversal of that call: read the request.
+  const handleGenerateAudioOverviewScript = useCallback(async () => {
+    if (!consultationId || !session || isGeneratingAudioOverview) return;
+    setIsGeneratingAudioOverview(true);
+    setAudioOverviewGenerateError(false);
+    try {
+      await sendChatMessage({
+        consultationId,
+        sessionId: session.session_id,
+        message: AUTO_AUDIO_OVERVIEW_PROMPT,
+        caseId,
+        onChunk: () => {},
+      });
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      // Read the just-invalidated cache directly instead of activeAudioOverviewMessage —
+      // that memo won't reflect this new message until the next render, but the mutate call
+      // right below needs its id now, in this same synchronous continuation.
+      const freshHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(consultationId));
+      const newMessage = (freshHistory ?? []).slice().reverse().find((m) => m.audioOverview?.turns?.length);
+      if (newMessage) triggerAudioRender(newMessage.id);
+    } catch {
+      setAudioOverviewGenerateError(true);
+    } finally {
+      setIsGeneratingAudioOverview(false);
+    }
+  }, [consultationId, session, isGeneratingAudioOverview, caseId, queryClient, triggerAudioRender]);
+
+  const handleGenerateAudioOverviewAudio = () => {
+    if (!audioOverviewMessageId) return;
+    triggerAudioRender(audioOverviewMessageId);
+  };
+
+  // One <audio> element for the whole panel (not one per player UI) so the compact row's mini
+  // player and the detail view's player control the same actual playback instead of each
+  // starting their own — see the hidden <audio> mounted near the bottom of the JSX below.
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [playbackDuration, setPlaybackDuration] = useState(0);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  // Dismissing the bottom player bar (X button) only hides it — the underlying <audio> and its
+  // position aren't touched, so switching back to the Audio Overview tile brings it right back.
+  const [playerBarDismissed, setPlayerBarDismissed] = useState(false);
+  const toggleAudioOverviewPlayback = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) void el.play();
+    else el.pause();
+  };
+  const seekAudioOverview = (seconds: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Math.min(seconds, playbackDuration || seconds));
+  };
+  const skipAudioOverview = (deltaSeconds: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    seekAudioOverview(el.currentTime + deltaSeconds);
+  };
+  const cycleAudioOverviewRate = () => {
+    const el = audioRef.current;
+    const next = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+    setPlaybackRate(next);
+    if (el) el.playbackRate = next;
+  };
+  function formatDuration(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+  useEffect(() => {
+    setIsPlaying(false);
+    setPlaybackTime(0);
+    setPlaybackDuration(0);
+    setPlaybackRate(1);
+    setPlayerBarDismissed(false);
+    // Not resetting lastSavedPositionRef here — onPause/onEnded on the <audio> element below
+    // always save the exact position immediately regardless of this ref's throttle state, so a
+    // stale threshold carried over from a previous track only delays the periodic autosave for
+    // the new one, never loses the position entirely.
+  }, [renderedAudioUrl]);
+
+  // Resume position — per-browser (localStorage, same pattern this app already uses for
+  // Display Preferences/Language Preference), not per-account: it survives a refresh or a
+  // logout/login in the same browser, which is what was actually asked for, without needing a
+  // backend column just to remember a scrub position. Keyed by messageId, not audioFileId, so
+  // it still resolves correctly across a "Regenerate audio" that reuses the same script.
+  const lastSavedPositionRef = useRef(0);
+  const savePlaybackPosition = (messageId: string, seconds: number) => {
+    try {
+      localStorage.setItem(`audio-overview-position:${messageId}`, String(Math.floor(seconds)));
+    } catch {
+      // localStorage unavailable (private browsing, storage disabled) — resume just won't work
+    }
+  };
+  const readPlaybackPosition = (messageId: string): number => {
+    try {
+      return Number(localStorage.getItem(`audio-overview-position:${messageId}`)) || 0;
+    } catch {
+      return 0;
+    }
+  };
+
   const tileLabel =
     openTile === "mindmap"
       ? t("workspace.mindMapTile")
@@ -196,7 +385,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         ? t("workspace.timelineTile")
         : openTile === "dataTable"
           ? t("workspace.dataTableTile")
-          : null;
+          : openTile === "audioOverview"
+            ? t("workspace.audioOverviewTile")
+            : null;
 
   return (
     <aside
@@ -314,24 +505,27 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             disabled={snapshotQuery.isFetching}
             onClick={() => void snapshotQuery.refetch()}
           />
+          {/* Same tile/result-row split as Mind Map, but deliberately no auto-generate-on-mount
+           * effect — see activeAudioOverviewMessage's comment above for why. */}
           <StudioTile
-            icon={AudioLines}
-            label={t("workspace.audioOverviewTile")}
+            icon={isGeneratingAudioOverview ? Loader2 : AudioLines}
+            iconSpinning={isGeneratingAudioOverview}
+            label={isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewTile")}
             expanded={expanded}
-            disabled
-            disabledHint={t("workspace.audioComingSoon")}
+            disabled={isGeneratingAudioOverview}
+            onClick={() => void handleGenerateAudioOverviewScript()}
           />
 
           {/* Result of clicking a tile above — persists here once a tile actually has something
            * to show (generated/generating, or fetched data), so it stays reachable without
-           * re-opening the tile grid. Nothing shown for Audio Overview — still disabled, no
-           * feature behind it yet. */}
+           * re-opening the tile grid. */}
           {expanded &&
             ((consultationId && (isGenerating || activeMindMap)) ||
               (timelineQuery.data && timelineQuery.data.length > 0) ||
               timelineQuery.isFetching ||
               dataTableRows.length > 0 ||
-              snapshotQuery.isFetching) && (
+              snapshotQuery.isFetching ||
+              (consultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
               <div className="mt-1 flex flex-col gap-1.5 border-t border-border pt-2">
                 {consultationId && (isGenerating || activeMindMap) && (
                   <ResultRow
@@ -368,6 +562,27 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("dataTable")}
                   />
                 )}
+                {consultationId &&
+                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending || activeAudioOverviewMessage) &&
+                  (renderedAudioUrl ? (
+                    <AudioOverviewMiniPlayer
+                      title={t("workspace.audioOverviewTile")}
+                      isPlaying={isPlaying}
+                      currentTime={playbackTime}
+                      duration={playbackDuration}
+                      onTogglePlay={toggleAudioOverviewPlayback}
+                      onOpen={() => openStudioTile("audioOverview")}
+                      formatDuration={formatDuration}
+                    />
+                  ) : (
+                    <ResultRow
+                      icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending ? Loader2 : AudioLines}
+                      iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending}
+                      title={t("workspace.audioOverviewTile")}
+                      subtitle={audioOverviewStatusLabel}
+                      onClick={() => openStudioTile("audioOverview")}
+                    />
+                  ))}
               </div>
             )}
         </div>
@@ -416,35 +631,313 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             )
           ) : openTile === "timeline" ? (
             <CaseTimelineView caseId={caseId} fill />
-          ) : dataTableRows.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="py-2 pr-3">{t("workspace.dataTableColType")}</th>
-                    <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
-                    <th className="py-2">{t("workspace.dataTableColDetail")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dataTableRows.map((row, i) => (
-                    <tr key={i} className="border-b border-border/60 last:border-0">
-                      <td className="py-2 pr-3 align-top text-muted-foreground">{row.type}</td>
-                      <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
-                      <td className="py-2 align-top text-muted-foreground">{row.detail}</td>
+          ) : openTile === "dataTable" ? (
+            dataTableRows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <th className="py-2 pr-3">{t("workspace.dataTableColType")}</th>
+                      <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
+                      <th className="py-2">{t("workspace.dataTableColDetail")}</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {dataTableRows.map((row, i) => (
+                      <tr key={i} className="border-b border-border/60 last:border-0">
+                        <td className="py-2 pr-3 align-top text-muted-foreground">{row.type}</td>
+                        <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
+                        <td className="py-2 align-top text-muted-foreground">{row.detail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("workspace.dataTableEmpty")}
+              </p>
+            )
+          ) : consultationId ? (
+            activeAudioOverviewMessage ? (
+              <div className="flex h-full flex-col gap-3">
+                {audioRenderError && (
+                  <p className="shrink-0 text-center text-xs text-red-600 dark:text-red-400">
+                    {t("workspace.audioOverviewRenderError")}
+                  </p>
+                )}
+                {/* Once audio exists, playback is entirely the bottom-docked player bar's job
+                 * (play/pause, scrub, skip, speed) — this used to also render its own inline
+                 * play/progress block here, duplicating the same controls at the same time.
+                 * Only the pre-render "Generate audio" state still needs anything here. */}
+                {!renderedAudioUrl && (
+                  <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-border p-3">
+                    <button
+                      type="button"
+                      onClick={handleGenerateAudioOverviewAudio}
+                      disabled={audioRendering || generateAudioOverviewAudio.isPending}
+                      className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                    >
+                      {audioRendering || generateAudioOverviewAudio.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : null}
+                      {audioRendering || generateAudioOverviewAudio.isPending
+                        ? t("workspace.audioOverviewRendering")
+                        : t("workspace.audioOverviewGenerateAudioCta")}
+                    </button>
+                  </div>
+                )}
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                  {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
+                    <div key={i}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold">
+                        {turn.speaker === "HOST_A" ? t("workspace.audioOverviewHostA") : t("workspace.audioOverviewHostB")}
+                      </p>
+                      <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                <p className="max-w-xs text-sm text-muted-foreground">
+                  {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
+                </p>
+                {!isGeneratingAudioOverview && (
+                  <button
+                    type="button"
+                    onClick={() => void handleGenerateAudioOverviewScript()}
+                    disabled={!session}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                  >
+                    {t("workspace.audioOverviewGenerateCta")}
+                  </button>
+                )}
+                {isGeneratingAudioOverview && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+                )}
+                {audioOverviewGenerateError && (
+                  <p className="text-xs text-red-600 dark:text-red-400">{t("workspace.audioOverviewGenerateError")}</p>
+                )}
+              </div>
+            )
           ) : (
             <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              {t("workspace.dataTableEmpty")}
+              {t("workspace.audioOverviewNoConsultation")}
             </p>
           )}
         </div>
       )}
+
+      {expanded && renderedAudioUrl && !playerBarDismissed && (
+        <AudioOverviewPlayerBar
+          title={t("workspace.audioOverviewTile")}
+          isPlaying={isPlaying}
+          currentTime={playbackTime}
+          duration={playbackDuration}
+          playbackRate={playbackRate}
+          onTogglePlay={toggleAudioOverviewPlayback}
+          onSeek={seekAudioOverview}
+          onSkip={skipAudioOverview}
+          onCycleRate={cycleAudioOverviewRate}
+          onClose={() => setPlayerBarDismissed(true)}
+          formatDuration={formatDuration}
+        />
+      )}
+
+      {/* One <audio> for the whole panel — not rendered with the native `controls` UI; the
+       * mini player row and the detail view (both below) drive it via audioRef and read its
+       * play/pause/time state back out through these event handlers, so playback started from
+       * one keeps going (and stays reflected) if you open/close the detail view mid-play. */}
+      {renderedAudioUrl && audioOverviewMessageId && (
+        <audio
+          ref={audioRef}
+          src={renderedAudioUrl}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => {
+            setIsPlaying(false);
+            // Captured immediately on pause (not just the throttled interval below) so
+            // stopping right after seeking, before the next timeupdate tick, isn't lost.
+            savePlaybackPosition(audioOverviewMessageId, audioRef.current?.currentTime ?? 0);
+          }}
+          onEnded={() => {
+            setIsPlaying(false);
+            // Finished — resume-from-here no longer makes sense; next play starts over.
+            savePlaybackPosition(audioOverviewMessageId, 0);
+          }}
+          onTimeUpdate={(e) => {
+            const seconds = e.currentTarget.currentTime;
+            setPlaybackTime(seconds);
+            // Throttled to ~every 5s of playback (timeupdate fires several times a second) —
+            // frequent enough that a crash/tab-close never loses more than a few seconds,
+            // without hammering localStorage on every tick.
+            if (seconds - lastSavedPositionRef.current >= 5) {
+              lastSavedPositionRef.current = seconds;
+              savePlaybackPosition(audioOverviewMessageId, seconds);
+            }
+          }}
+          onLoadedMetadata={(e) => {
+            setPlaybackDuration(e.currentTarget.duration);
+            const resumeAt = readPlaybackPosition(audioOverviewMessageId);
+            if (resumeAt > 0 && resumeAt < e.currentTarget.duration) {
+              e.currentTarget.currentTime = resumeAt;
+              setPlaybackTime(resumeAt);
+              lastSavedPositionRef.current = resumeAt;
+            }
+          }}
+          className="hidden"
+        />
+      )}
     </aside>
+  );
+}
+
+// The reference (NotebookLM's Studio list) shows a play button and progress bar directly on
+// the collapsed row, playable without opening the item — this is that, for Audio Overview
+// specifically. Not folded into ResultRow (used by the other three tiles too) since a
+// play/pause button with its own click target inside a row that also opens on click needs
+// event.stopPropagation() precision the generic component has no reason to carry.
+// The reference's persistent bottom "now playing" bar — richer than AudioOverviewMiniPlayer
+// (scrub, ±10s skip, speed), docked to the bottom of the panel itself (not the whole browser
+// window — Studio is a side panel, not a full page) whenever audio is loaded and hasn't been
+// dismissed. Deliberately omits the reference's thumbs up/down and history/queue icons — no
+// feedback or playback-history feature exists behind them, and a button that does nothing on
+// click doesn't belong here just to match a screenshot.
+function AudioOverviewPlayerBar({
+  title,
+  isPlaying,
+  currentTime,
+  duration,
+  playbackRate,
+  onTogglePlay,
+  onSeek,
+  onSkip,
+  onCycleRate,
+  onClose,
+  formatDuration,
+}: {
+  title: string;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  playbackRate: number;
+  onTogglePlay: () => void;
+  onSeek: (seconds: number) => void;
+  onSkip: (deltaSeconds: number) => void;
+  onCycleRate: () => void;
+  onClose: () => void;
+  formatDuration: (seconds: number) => string;
+}) {
+  return (
+    <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[12px] font-medium text-foreground">{title}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close player"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="flex flex-col gap-1">
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={Math.min(currentTime, duration || currentTime)}
+          onChange={(e) => onSeek(Number(e.target.value))}
+          className="w-full accent-brand-gold"
+          aria-label="Seek"
+        />
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{formatDuration(currentTime)}</span>
+          <span>{formatDuration(duration)}</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-center gap-4">
+        <button
+          type="button"
+          onClick={onCycleRate}
+          className="w-9 shrink-0 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {playbackRate}x
+        </button>
+        <button
+          type="button"
+          onClick={() => onSkip(-10)}
+          aria-label="Back 10 seconds"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          aria-label={isPlaying ? "Pause" : "Play"}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+        >
+          {isPlaying ? <Pause className="h-4 w-4 fill-current" aria-hidden="true" /> : <Play className="h-4 w-4 fill-current" aria-hidden="true" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSkip(10)}
+          aria-label="Forward 10 seconds"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <RotateCw className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <div className="w-9 shrink-0" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
+function AudioOverviewMiniPlayer({
+  title,
+  isPlaying,
+  currentTime,
+  duration,
+  onTogglePlay,
+  onOpen,
+  formatDuration,
+}: {
+  title: string;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  onTogglePlay: () => void;
+  onOpen: () => void;
+  formatDuration: (seconds: number) => string;
+}) {
+  return (
+    <div className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 transition-colors hover:border-brand-gold/40 hover:bg-muted">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onTogglePlay();
+        }}
+        aria-label={isPlaying ? "Pause" : "Play"}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+      >
+        {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> : <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
+      </button>
+      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
+        <span className="mt-1 flex items-center gap-2">
+          <span className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <span
+              className="block h-full rounded-full bg-brand-gold"
+              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+            />
+          </span>
+          <span className="shrink-0 text-[10px] text-muted-foreground">{formatDuration(duration)}</span>
+        </span>
+      </button>
+    </div>
   );
 }
 
