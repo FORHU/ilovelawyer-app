@@ -193,6 +193,7 @@ export function useResetPasswordMutation() {
 export function useLogoutMutation() {
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: () =>
@@ -202,6 +203,10 @@ export function useLogoutMutation() {
       }),
     onSettled: () => {
       clearAuth()
+      // Without this, every query keyed independently of the user (e.g. userKeys.me())
+      // keeps serving the just-logged-out account's cached data/error to whichever
+      // account logs in next in the same tab, instead of refetching for the new session.
+      queryClient.clear()
       router.push("/login")
     },
   })

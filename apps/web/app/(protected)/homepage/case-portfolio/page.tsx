@@ -162,7 +162,7 @@ export default function CaseManagerDashboard() {
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href={`/homepage/case-portfolio/${c.id}`} className="w-full">
+                    <Link href={`/homepage/v2/case-portfolio/${c.id}`} className="w-full">
                       <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
                         {c.caseName}
                       </h3>
@@ -176,7 +176,7 @@ export default function CaseManagerDashboard() {
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href={`/homepage/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                    <Link href={`/homepage/v2/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
                       <div>
                         <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
                           {t("lastUpdated")}
