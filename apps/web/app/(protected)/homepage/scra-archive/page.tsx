@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Landmark, Sparkles } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
+import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Decision {
@@ -20,6 +21,8 @@ const DECISIONS: Decision[] = [
 ];
 
 export default function ScraArchivePage() {
+  const jurisdictionGuard = usePhStatutoryContentGuard("scra-archive");
+  if (jurisdictionGuard) return jurisdictionGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="scra-archive" />

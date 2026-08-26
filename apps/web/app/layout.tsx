@@ -3,6 +3,7 @@ import { Geist_Mono, Inter } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 import { cn } from "@workspace/ui/lib/utils";
+import { getJurisdictionHint } from "@/lib/jurisdiction/get-jurisdiction-hint"
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -11,11 +12,13 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const jurisdictionHint = await getJurisdictionHint()
+
   return (
     <html
       lang="en"
@@ -23,7 +26,7 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers jurisdictionHint={jurisdictionHint}>{children}</Providers>
       </body>
     </html>
   )

@@ -1,5 +1,7 @@
 import { create } from "zustand"
 
+import { generateId } from "@/lib/id"
+
 export interface QueuedDocument {
   id: string
   name: string
@@ -94,7 +96,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
 
   queueDocument: (file) => {
     const doc: QueuedDocument = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: file.name,
       meta: `QUEUED FROM CONSULTATION • ${new Date().toLocaleString()}`,
       file,
@@ -110,7 +112,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
 
   queueTranscript: (blob, durationSeconds, text) => {
     const transcript: QueuedTranscript = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
       meta: `QUEUED FROM CONSULTATION • ${Math.max(1, Math.round(durationSeconds))}s`,
       blob,

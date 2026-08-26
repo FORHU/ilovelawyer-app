@@ -17,7 +17,7 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@workspace/ui"],
-  allowedDevOrigins: ["192.168.1.29"],
+  allowedDevOrigins: ["192.168.1.29", "ph.ilovelawyer", "uk.ilovelawyer", "ph.ilovelawyer.local", "uk.ilovelawyer.local"],
   // Pin the workspace root to this pnpm workspace so Turbopack doesn't infer it
   // from the unrelated package-lock.json at the parent forhu-project/ directory.
   turbopack: {
