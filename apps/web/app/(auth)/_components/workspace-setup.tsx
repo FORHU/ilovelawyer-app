@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Building2, Loader2, Mail, UserCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { toActiveOrg } from "@/lib/auth/mutations";
 import { useMyInviteQuery, type OrganizationRole } from "@/lib/organizations/queries";
 import {
   useAcceptInviteMutation,
@@ -68,7 +69,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
       { name: defaultOrgName || "My Practice", packageSku: "SOLO" },
       {
         onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku, jurisdiction: org.jurisdiction });
+          setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
           onDone();
         },
         onError: (err) => setError((err as Error).message),
@@ -83,7 +84,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
       { name: orgName },
       {
         onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku, jurisdiction: org.jurisdiction });
+          setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
           setCreatedOrgId(org.id);
           setChoice("inviteTeam");
         },
@@ -98,14 +99,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
     const invite = myInviteQuery.data;
     acceptInviteMutation.mutate(invite.organizationId, {
       onSuccess: () => {
-        setOrganization({
-          id: invite.organization.id,
-          name: invite.organization.name,
-          slug: invite.organization.slug,
-          role: invite.role,
-          packageSku: invite.organization.packageSku,
-          jurisdiction: invite.organization.jurisdiction,
-        });
+        setOrganization(toActiveOrg({ ...invite.organization, role: invite.role }));
         onDone();
       },
       onError: (err) => setError((err as Error).message),

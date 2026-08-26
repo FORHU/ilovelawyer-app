@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { toActiveOrg } from "@/lib/auth/mutations";
 import { getJurisdictionConfig } from "@/config/jurisdictions";
 import {
   useOrganizationMembersQuery,
@@ -249,7 +250,7 @@ export default function OrganizationPage() {
         { name: trimmed, packageSku: newOrgPlan ?? undefined },
         {
           onSuccess: (org) => {
-            setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku, jurisdiction: org.jurisdiction });
+            setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
             setNewOrgName("");
             setNewOrgPlan(null);
           },
@@ -298,14 +299,7 @@ export default function OrganizationPage() {
     setInviteActionError(null);
     acceptInviteMutation.mutate(invite.organizationId, {
       onSuccess: () => {
-        setOrganization({
-          id: invite.organization.id,
-          name: invite.organization.name,
-          slug: invite.organization.slug,
-          role: invite.role,
-          packageSku: invite.organization.packageSku,
-          jurisdiction: invite.organization.jurisdiction,
-        });
+        setOrganization(toActiveOrg({ ...invite.organization, role: invite.role }));
       },
       onError: (err) => setInviteActionError((err as Error).message),
     });
