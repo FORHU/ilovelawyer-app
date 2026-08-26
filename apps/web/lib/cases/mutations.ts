@@ -175,8 +175,8 @@ export interface BulkUploadResult {
   /** Documents the backend confirmed, in the same order as the input `files` minus any that
    * failed the presign/S3-PUT step (those never reach the confirm call at all). */
   confirmed: UserDocument[]
-  /** Files whose presign, S3 PUT, or confirm call failed. */
-  failed: File[]
+  /** Files whose presign, S3 PUT, or confirm call failed, with why. */
+  failed: { file: File; reason: string }[]
   /** Parallel to `confirmed` — which input File each confirmed document came from. */
   succeededFiles: File[]
 }
@@ -190,7 +190,7 @@ export function useUploadCaseDocumentsMutation() {
   return useMutation({
     mutationFn: async ({ files, caseId }: { files: File[]; caseId: string }): Promise<BulkUploadResult> => {
       const confirmed: UserDocument[] = []
-      const failed: File[] = []
+      const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
 
       for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
@@ -208,8 +208,9 @@ export function useUploadCaseDocumentsMutation() {
           )
           items = res.items
           if (!items || items.length !== fileChunk.length) throw new Error("Presign batch size mismatch")
-        } catch {
-          failed.push(...fileChunk)
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Presign request failed"
+          failed.push(...fileChunk.map((file) => ({ file, reason })))
           continue
         }
 
@@ -221,7 +222,9 @@ export function useUploadCaseDocumentsMutation() {
 
         const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
         settled.forEach((r, i) => {
-          if (r.status === "rejected") failed.push(fileChunk[i]!)
+          if (r.status === "rejected") {
+            failed.push({ file: fileChunk[i]!, reason: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+          }
         })
 
         if (succeeded.length === 0) continue
@@ -239,8 +242,9 @@ export function useUploadCaseDocumentsMutation() {
           })
           confirmed.push(...docs)
           succeededFiles.push(...succeeded.map(({ file }) => file))
-        } catch {
-          failed.push(...succeeded.map(({ file }) => file))
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Confirm request failed"
+          failed.push(...succeeded.map(({ file }) => ({ file, reason })))
         }
       }
 
@@ -271,7 +275,7 @@ export function useUploadDocumentsMutation() {
       consultationId?: string
     }): Promise<BulkUploadResult> => {
       const confirmed: UserDocument[] = []
-      const failed: File[] = []
+      const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
 
       for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
@@ -290,8 +294,9 @@ export function useUploadDocumentsMutation() {
           )
           items = res.items
           if (!items || items.length !== fileChunk.length) throw new Error("Presign batch size mismatch")
-        } catch {
-          failed.push(...fileChunk)
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Presign request failed"
+          failed.push(...fileChunk.map((file) => ({ file, reason })))
           continue
         }
 
@@ -303,7 +308,9 @@ export function useUploadDocumentsMutation() {
 
         const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
         settled.forEach((r, i) => {
-          if (r.status === "rejected") failed.push(fileChunk[i]!)
+          if (r.status === "rejected") {
+            failed.push({ file: fileChunk[i]!, reason: r.reason instanceof Error ? r.reason.message : String(r.reason) })
+          }
         })
 
         if (succeeded.length === 0) continue
@@ -319,8 +326,9 @@ export function useUploadDocumentsMutation() {
           })
           confirmed.push(...docs)
           succeededFiles.push(...succeeded.map(({ file }) => file))
-        } catch {
-          failed.push(...succeeded.map(({ file }) => file))
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Confirm request failed"
+          failed.push(...succeeded.map(({ file }) => ({ file, reason })))
         }
       }
 
