@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, FileStack, Loader2, Search } from
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
+import { useJurisdictionFeatureGuard } from "@/components/jurisdiction-feature-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const PAGE_SIZE = 20;
@@ -26,6 +27,11 @@ export default function LegalDocumentsPage() {
 }
 
 function LegalDocumentsPageContent() {
+  const guard = useJurisdictionFeatureGuard("legalSearch", "library", {
+    eyebrow: "Research · Library",
+    heading: "Not available for your jurisdiction",
+    body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,
+  });
   const { t } = useTranslation("library");
   const searchParams = useSearchParams();
   const category = searchParams.get("category") || undefined;
@@ -49,6 +55,8 @@ function LegalDocumentsPageContent() {
   };
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
+
+  if (guard) return guard;
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">

@@ -31,7 +31,15 @@ async function hydrateActiveOrganization(setOrganization: (org: ReturnType<typeo
 }
 
 export function toActiveOrg(org: OrganizationWithRole) {
-  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku }
+  // Type says `jurisdiction` is required, but that only holds if the API actually sent it —
+  // a legacy org row or an out-of-order deploy (frontend ships before the backend backfills
+  // Organization.jurisdiction) can still hand us `undefined` at runtime. Failing loudly here,
+  // at the one place every org gets constructed, beats letting it reach hostForJurisdiction()
+  // and crash on `undefined.toLowerCase()` deep inside the domain-redirect effect.
+  if (!org.jurisdiction) {
+    throw new Error(`Organization ${org.id} ("${org.name}") is missing jurisdiction — cannot activate it.`)
+  }
+  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku, jurisdiction: org.jurisdiction }
 }
 
 interface ResetPasswordResponse {

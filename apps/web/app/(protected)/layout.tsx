@@ -8,6 +8,8 @@ import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
+import { useJurisdictionHint } from "@/components/jurisdiction-provider"
+import { hostForJurisdiction } from "@/lib/jurisdiction/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -58,6 +60,7 @@ function CurrentUserSync({
   const user = useAuthStore((s) => s.user)
   const organization = useAuthStore((s) => s.organization)
   const setOrganization = useAuthStore((s) => s.setOrganization)
+  const hostJurisdiction = useJurisdictionHint()
   const { data: currentUser, isError, error } = useCurrentUserQuery()
   // Rehydrates the active org after a fresh tab/reload — the store has no persist
   // middleware, so `organization` resets to null even though accessToken/user come back
@@ -114,6 +117,21 @@ function CurrentUserSync({
     router.replace(ORGANIZATION_PATH)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, pendingInvite, pathname])
+
+  // Domain/tenant mismatch: the organization's persisted jurisdiction is authoritative and
+  // never changes because of which subdomain the browser happens to be on — if they disagree
+  // (including an unresolved/apex host), redirect to the organization's correct subdomain
+  // rather than silently rendering under the wrong one. This is a UX redirect only; it does
+  // not and cannot change which jurisdiction's legal engine/prompts the backend uses for this
+  // organization — that's resolved server-side from Organization.jurisdiction regardless of
+  // hostname.
+  useEffect(() => {
+    if (!organization || typeof window === "undefined") return
+    if (hostJurisdiction === organization.jurisdiction) return
+    const targetHost = hostForJurisdiction(organization.jurisdiction, window.location.host)
+    if (targetHost === window.location.host) return
+    window.location.href = `${window.location.protocol}//${targetHost}${window.location.pathname}${window.location.search}`
+  }, [organization, hostJurisdiction])
 
   // Renders children only once we actually KNOW the approval status — not just once
   // `user` (a minimal object, set immediately by login/verifyOtp/WorkspaceSetup) exists.

@@ -8,6 +8,7 @@ import {
   Building2,
   Check,
   ChevronDown,
+  Globe,
   Loader2,
   Mail,
   Pencil,
@@ -21,6 +22,8 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { toActiveOrg } from "@/lib/auth/mutations";
+import { getJurisdictionConfig } from "@/config/jurisdictions";
 import {
   useOrganizationMembersQuery,
   useMyInviteQuery,
@@ -72,7 +75,17 @@ export default function OrganizationPage() {
   const memberRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
   const removeMemberMutation = useRemoveMemberMutation(organization?.id ?? "");
   const updateOrgMutation = useUpdateOrganizationMutation(organization?.id ?? "");
-  const myInviteQuery = useMyInviteQuery({ enabled: !organization });
+  const otherMembers = (membersQuery.data ?? []).filter(
+    (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
+  );
+  // A solo practitioner's auto-created Organization (packageSku "SOLO") still backs their
+  // chat/documents/etc. under the hood, but is presented as if they have no organization at
+  // all — the create-organization card shows instead of an Overview to manage. See
+  // ilovelawyer-app's onboarding WorkspaceSetup.handleContinueSolo, which creates this org
+  // silently. Once they actually invite someone, this stops applying (real membership, not
+  // the packageSku tag, is what makes it a team from here on).
+  const isSoloWithNoTeam = organization?.packageSku === "SOLO" && otherMembers.length === 0;
+  const myInviteQuery = useMyInviteQuery({ enabled: !organization || isSoloWithNoTeam });
   const acceptInviteMutation = useAcceptInviteMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const createOrgMutation = useCreateOrganizationMutation();
@@ -102,12 +115,10 @@ export default function OrganizationPage() {
   } | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<{ userId: string; memberName: string } | null>(null);
   const [removeError, setRemoveError] = useState<{ userId: string; message: string } | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const canManageOrg = !!organization && ROLE_RANK[organization.role] >= ROLE_RANK.ADMIN;
   const canInvite = canManageOrg;
-  const otherMembers = (membersQuery.data ?? []).filter(
-    (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
-  );
   const isOwner = organization?.role === "OWNER";
   const isTransferring = changeRoleMutation.isPending || leaveMutation.isPending;
   const acceptedOwnerCount = (membersQuery.data ?? []).filter(
@@ -177,16 +188,17 @@ export default function OrganizationPage() {
   }
 
   useEffect(() => {
-    if (!pendingRoleChange && !pendingRemoval) return;
+    if (!pendingRoleChange && !pendingRemoval && !showLeaveConfirm) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPendingRoleChange(null);
         setPendingRemoval(null);
+        setShowLeaveConfirm(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingRoleChange, pendingRemoval]);
+  }, [pendingRoleChange, pendingRemoval, showLeaveConfirm]);
 
   function handleStartEditName() {
     if (!organization) return;
@@ -232,17 +244,36 @@ export default function OrganizationPage() {
       return;
     }
     setCreateOrgError(null);
-    createOrgMutation.mutate(
-      { name: trimmed, packageSku: newOrgPlan ?? undefined },
-      {
-        onSuccess: (org) => {
-          setOrganization({ id: org.id, name: org.name, slug: org.slug, role: "OWNER", packageSku: org.packageSku });
-          setNewOrgName("");
-          setNewOrgPlan(null);
+
+    const doCreate = () => {
+      createOrgMutation.mutate(
+        { name: trimmed, packageSku: newOrgPlan ?? undefined },
+        {
+          onSuccess: (org) => {
+            setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
+            setNewOrgName("");
+            setNewOrgPlan(null);
+          },
+          onError: (err) => setCreateOrgError((err as Error).message),
+        },
+      );
+    };
+
+    // A solo practitioner already owns a lightweight auto-created org (see isSoloWithNoTeam) —
+    // membership is one-org-per-user, so creating their real organization means silently
+    // leaving that placeholder first. A user with genuinely no organization skips straight
+    // to creating.
+    if (organization) {
+      leaveMutation.mutate(undefined, {
+        onSuccess: () => {
+          setOrganization(null);
+          doCreate();
         },
         onError: (err) => setCreateOrgError((err as Error).message),
-      },
-    );
+      });
+    } else {
+      doCreate();
+    }
   }
 
   function handleInvite(e: React.FormEvent) {
@@ -268,13 +299,7 @@ export default function OrganizationPage() {
     setInviteActionError(null);
     acceptInviteMutation.mutate(invite.organizationId, {
       onSuccess: () => {
-        setOrganization({
-          id: invite.organization.id,
-          name: invite.organization.name,
-          slug: invite.organization.slug,
-          role: invite.role,
-          packageSku: invite.organization.packageSku,
-        });
+        setOrganization(toActiveOrg({ ...invite.organization, role: invite.role }));
       },
       onError: (err) => setInviteActionError((err as Error).message),
     });
@@ -296,7 +321,12 @@ export default function OrganizationPage() {
       setShowTransferPicker(true);
       return;
     }
-    if (!window.confirm(t("overview.leaveConfirm"))) return;
+    setLeaveError(null);
+    setShowLeaveConfirm(true);
+  }
+
+  function confirmLeave() {
+    setShowLeaveConfirm(false);
     setLeaveError(null);
     leaveMutation.mutate(undefined, {
       onSuccess: () => setOrganization(null),
@@ -334,7 +364,7 @@ export default function OrganizationPage() {
           <p className="text-muted-foreground text-[16px] md:text-[18px] max-w-[672px] leading-relaxed">{t("subtitle")}</p>
         </div>
 
-        {!organization ? (
+        {!organization || isSoloWithNoTeam ? (
           myInviteQuery.data ? (
             <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/5 dark:ring-white/[0.06]">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />
@@ -414,7 +444,7 @@ export default function OrganizationPage() {
                     maxLength={120}
                     required
                     aria-required="true"
-                    disabled={createOrgMutation.isPending}
+                    disabled={createOrgMutation.isPending || leaveMutation.isPending}
                     className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:opacity-50"
                   />
                 </div>
@@ -444,7 +474,7 @@ export default function OrganizationPage() {
                             value={sku}
                             checked={newOrgPlan === sku}
                             onChange={() => setNewOrgPlan(sku)}
-                            disabled={createOrgMutation.isPending}
+                            disabled={createOrgMutation.isPending || leaveMutation.isPending}
                             className="peer sr-only"
                           />
                           <span className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/40 px-4 py-3.5 h-full transition-colors hover:border-brand-gold/50 peer-checked:border-brand-gold peer-checked:bg-brand-gold/[0.08] peer-checked:ring-1 peer-checked:ring-brand-gold/30 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold/40 peer-disabled:opacity-50">
@@ -464,10 +494,10 @@ export default function OrganizationPage() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    disabled={createOrgMutation.isPending}
+                    disabled={createOrgMutation.isPending || leaveMutation.isPending}
                     className="cursor-pointer w-full sm:w-auto rounded-lg bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {createOrgMutation.isPending ? t("create.creating") : t("create.submit")}
+                    {createOrgMutation.isPending || leaveMutation.isPending ? t("create.creating") : t("create.submit")}
                   </button>
                 </div>
               </form>
@@ -552,6 +582,20 @@ export default function OrganizationPage() {
                         )}
                       </div>
                     )}
+                  </div>
+                </div>
+                <div className="px-6 md:px-8 py-5 flex gap-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                    <Globe className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                      {t("overview.jurisdictionLabel")}
+                    </span>
+                    <p className="mt-1 flex items-center gap-2 text-[16px] text-foreground">
+                      <span aria-hidden="true">{getJurisdictionConfig(organization.jurisdiction).branding.flag}</span>
+                      {getJurisdictionConfig(organization.jurisdiction).displayName}
+                    </p>
                   </div>
                 </div>
                 <div className="px-6 md:px-8 py-5 flex gap-4">
@@ -956,6 +1000,79 @@ export default function OrganizationPage() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{t("members.removeConfirmContinueTooltip")}</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLeaveConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          onClick={() => setShowLeaveConfirm(false)}
+          role="presentation"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-card rounded-2xl border border-border shadow-lg overflow-hidden"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="leave-org-title"
+            aria-describedby="leave-org-desc"
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/60">
+              <h2 id="leave-org-title" className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">
+                {t("overview.leaveButton")}
+              </h2>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowLeaveConfirm(false)}
+                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label={t("overview.leaveCancel")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("overview.leaveCancel")}</TooltipContent>
+              </Tooltip>
+            </div>
+
+            <div className="px-6 py-6 flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
+              </div>
+              <p id="leave-org-desc" className="text-sm text-foreground leading-relaxed">
+                {t("overview.leaveConfirm")}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/40">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowLeaveConfirm(false)}
+                    className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {t("overview.leaveCancel")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Stay in this organization and close this dialog</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={confirmLeave}
+                    disabled={leaveMutation.isPending}
+                    className="cursor-pointer rounded-xl bg-red-600 px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm shadow-red-600/30 transition-colors hover:bg-red-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {leaveMutation.isPending ? t("overview.leaving") : t("overview.leaveButton")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Leave this organization</TooltipContent>
               </Tooltip>
             </div>
           </div>

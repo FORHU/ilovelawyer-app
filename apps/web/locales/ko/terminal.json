@@ -70,6 +70,7 @@
   "dateSourceCalendar": "캘린더",
   "dateSourceLawyer": "직접 추가",
   "deadlines": "기한",
+  "deadlinesProvisional": "잠정 — 법률 검토 대기 중",
   "confirmed": "확인됨",
   "confirmDeadline": "확인",
   "computeDeadline": "기한 계산",
