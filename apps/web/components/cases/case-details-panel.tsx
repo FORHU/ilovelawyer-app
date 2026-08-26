@@ -191,7 +191,7 @@ export function DocumentUploadButton({ caseId }: { caseId: string }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx"
+        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

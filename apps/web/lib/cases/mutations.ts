@@ -138,9 +138,14 @@ export function useUploadCaseDocumentMutation() {
 
       await putFileToS3(uploadUrl, file)
 
+      // POST /api/documents' confirm schema only accepts key/name/caseId/consultationId — it
+      // has no use for contentType (DocumentSvc.create never reads it), and since the backend
+      // rejects unknown body fields, sending it here 400s this call every time, after the file
+      // has already landed in S3: the upload looks like it failed, but really it never got
+      // confirmed/registered at all.
       return apiFetch<UserDocument>("/api/documents", {
         method: "POST",
-        body: JSON.stringify({ key, name: file.name, contentType: file.type, caseId }),
+        body: JSON.stringify({ key, name: file.name, caseId }),
       })
     },
     onSuccess: (doc) => {

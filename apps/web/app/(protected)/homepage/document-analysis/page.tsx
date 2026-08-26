@@ -133,7 +133,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".pdf,.docx"
+                    accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
                     className="hidden"
                     onChange={(e) => {
                       queueFiles(e.target.files);

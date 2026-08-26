@@ -8,6 +8,7 @@ import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
+import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 
@@ -92,6 +93,16 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthError])
 
+  // A PENDING/DENIED/BLOCKED user has a valid session (needed to finish solo/org setup
+  // and to see /account-pending) but no business in the actual app — send them there
+  // instead of ever rendering a protected page.
+  const needsApproval = !!currentUser && currentUser.approvalStatus !== "ACTIVE"
+
+  useEffect(() => {
+    if (needsApproval) router.replace("/account-pending")
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsApproval])
+
   useEffect(() => {
     if (organization || !orgs?.[0]) return
     setOrganization(toActiveOrg(orgs[0]))
@@ -104,7 +115,17 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, pendingInvite, pathname])
 
-  if (hydrating || (accessToken && !user && !isError)) return null
+  // Renders children only once we actually KNOW the approval status — not just once
+  // `user` (a minimal object, set immediately by login/verifyOtp/WorkspaceSetup) exists.
+  // `currentUser` (this layout's own /api/users/me fetch, which carries approvalStatus)
+  // can still be in flight at that point; blocking on `user` alone let a PENDING/DENIED/
+  // BLOCKED account render one frame of real app content before the redirect effect
+  // below had a chance to fire. Bails out on `isError` (any failure, not just auth)
+  // rather than blocking forever on a transient error — isAuthError's own effect
+  // handles the redirect; other errors fall through to render children as before.
+  const statusUnknown = !!accessToken && !currentUser && !isError
+
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError) return <LoadingScreen />
 
   return <PageTransition>{children}</PageTransition>
 }

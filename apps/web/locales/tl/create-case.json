@@ -32,7 +32,7 @@
     "heading": "III. Mga Ebidensyang Isusumite",
     "subheading": "Maglakip ng anumang dokumento na iindeks kasama ng filing na ito.",
     "depositCaseFiles": "Idiposito ang mga Case File",
-    "dropHint": "I-drag at i-drop, o mag-browse. PDF o DOCX ang standard para sa automated indexing",
+    "dropHint": "I-drag at i-drop, o mag-browse. Suportado ang PDF, DOCX, XLSX, JPG, PNG para sa automated indexing",
     "selectDocuments": "Pumili ng mga Dokumento",
     "attachedDossiers": "Mga Nakalakip na Dossier ({{count}}):",
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
