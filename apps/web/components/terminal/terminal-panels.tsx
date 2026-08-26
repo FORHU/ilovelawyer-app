@@ -7,6 +7,8 @@ import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save, Volume2 }
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import LegalMarkdown from "@/components/library/legal-markdown"
+import { useConsultationsQuery } from "@/lib/chat/mutations"
+import { useAudioOverview } from "@/lib/chat/use-audio-overview"
 import {
   pollReconstructionAudio,
   terminalKeys,
@@ -239,6 +241,8 @@ export function TerminalPanelBody({
       return <DamagePanel snapshot={snapshot} caseId={caseId} />
     case "caseReconstruction":
       return <CaseReconstructionPanel snapshot={snapshot} caseId={caseId} />
+    case "audioOverview":
+      return <AudioOverviewPanel caseId={caseId} />
     default:
       return null
   }
@@ -1118,6 +1122,91 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           )}
         </div>
       )}
+    </PanelBody>
+  )
+}
+
+// Not to be confused with CaseReconstructionPanel's audio (a single narrator reading Polly's
+// OutputUri directly) — this is the two-host podcast-style script from useAudioOverview (shared
+// with Case Workspace's Studio panel), driven off whichever consultation is most recently
+// active for this case, the same "isolated" resolution ConsultationChat does internally for
+// ChatPanel/MindMapPanel above. No docked player bar here (that's Studio-specific chrome) — a
+// plain native <audio controls>, same as CaseReconstructionPanel's, is enough for a Terminal pane.
+function AudioOverviewPanel({ caseId }: { caseId: string }) {
+  const { t } = useTranslation(["terminal", "case-portfolio"])
+  const { data: caseConsultations } = useConsultationsQuery(caseId)
+  const consultationId = caseConsultations?.[0]?.id ?? null
+  const {
+    activeAudioOverviewMessage,
+    isGeneratingScript,
+    generateScriptError,
+    generateScript,
+    audioRendering,
+    audioRenderError,
+    renderedAudioUrl,
+    isGeneratingAudio,
+  } = useAudioOverview(consultationId, caseId)
+
+  if (!consultationId) {
+    return (
+      <PanelBody gap="4">
+        <EmptyNote>{t("case-portfolio:workspace.audioOverviewNoConsultation")}</EmptyNote>
+      </PanelBody>
+    )
+  }
+
+  if (!activeAudioOverviewMessage) {
+    return (
+      <PanelBody gap="4">
+        <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+          <Volume2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <p className="max-w-xs text-muted-foreground">
+            {isGeneratingScript
+              ? t("case-portfolio:workspace.audioOverviewGenerating")
+              : t("case-portfolio:workspace.audioOverviewEmpty")}
+          </p>
+          {isGeneratingScript ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : (
+            <button type="button" onClick={() => void generateScript()} className={primaryBtnClass}>
+              {t("case-portfolio:workspace.audioOverviewGenerateCta")}
+            </button>
+          )}
+          {generateScriptError && (
+            <p className="text-xs text-red-500">{t("case-portfolio:workspace.audioOverviewGenerateError")}</p>
+          )}
+        </div>
+      </PanelBody>
+    )
+  }
+
+  const rendering = audioRendering || isGeneratingAudio
+
+  return (
+    <PanelBody gap="4">
+      {audioRenderError && (
+        <p className="text-center text-xs text-red-500">{t("case-portfolio:workspace.audioOverviewRenderError")}</p>
+      )}
+      {renderedAudioUrl ? (
+        <audio controls src={renderedAudioUrl} className="h-8 w-full shrink-0" />
+      ) : (
+        <div className="flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
+          {rendering && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+          {rendering ? t("case-portfolio:workspace.audioOverviewRendering") : null}
+        </div>
+      )}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+        {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
+          <div key={i}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold">
+              {turn.speaker === "HOST_A"
+                ? t("case-portfolio:workspace.audioOverviewHostA")
+                : t("case-portfolio:workspace.audioOverviewHostB")}
+            </p>
+            <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
+          </div>
+        ))}
+      </div>
     </PanelBody>
   )
 }
