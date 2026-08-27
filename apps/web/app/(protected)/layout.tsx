@@ -9,7 +9,7 @@ import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/que
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
 import { useJurisdictionHint } from "@/components/jurisdiction-provider"
-import { hostForJurisdiction } from "@/lib/jurisdiction/resolve-host"
+import { hostForJurisdiction, isAppHost } from "@/lib/jurisdiction/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -125,9 +125,11 @@ function CurrentUserSync({
   // rather than silently rendering under the wrong one. This is a UX redirect only; it does
   // not and cannot change which jurisdiction's legal engine/prompts the backend uses for this
   // organization — that's resolved server-side from Organization.jurisdiction regardless of
-  // hostname.
+  // hostname. app.ilovelawyer.com is exempt: it's a standalone entry point parallel to the
+  // ph./uk. subdomains, not a mismatched one, so it's never a redirect target or source.
   useEffect(() => {
     if (!organization || typeof window === "undefined") return
+    if (isAppHost(window.location.host)) return
     if (hostJurisdiction === organization.jurisdiction) return
     const targetHost = hostForJurisdiction(organization.jurisdiction, window.location.host)
     if (targetHost === window.location.host) return

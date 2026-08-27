@@ -16,18 +16,6 @@ import { chatKeys } from "@/lib/query-keys";
 
 export type StudioTileKind = "mindmap" | "timeline" | "dataTable" | "audioOverview";
 
-// How wide the panel gets once a tile's detail view is open — tuned per tile rather than one
-// fixed size, since they need very different amounts of room: Mind Map is an interactive
-// node canvas (wants the most space to actually be usable), Data Table has three text columns
-// that truncate awkwardly if too narrow, Timeline is just a scrollable vertical list, Audio
-// Overview is a transcript list plus a single <audio> player.
-const OPEN_TILE_WIDTH_CLASS: Record<StudioTileKind, string> = {
-  mindmap: "w-[70%] min-w-[640px] max-w-[1100px]",
-  dataTable: "w-[58%] min-w-[520px] max-w-[900px]",
-  timeline: "w-[42%] min-w-[420px] max-w-[680px]",
-  audioOverview: "w-[46%] min-w-[440px] max-w-[720px]",
-};
-
 interface DataTableRow {
   type: string;
   label: string;
@@ -66,6 +54,15 @@ interface StudioPanelProps {
   consultationId: string | null;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  /** Expanded width in px, owned by case-workspace.tsx's useResizableWidth — applies whether
+   * the tile grid or an open tile's detail view is showing, so opening Mind Map/Timeline/Data
+   * Table/Audio Overview never grows the panel past the same resizable bounds (260–460px) the
+   * user already controls via the divider. Ignored while collapsed (fixed slim rail). */
+  width: number;
+  /** True mid-drag — suppresses the width transition so the panel tracks the pointer 1:1
+   * instead of easing behind it, while collapse/expand and tile open/close keep their
+   * animation. */
+  isResizing: boolean;
 }
 
 /** Case Workspace's right panel. Deliberately only 4 tiles — Mind Map (per-consultation),
@@ -73,8 +70,10 @@ interface StudioPanelProps {
  * a disabled Audio Overview placeholder — not the reference design's full generative toolset
  * (see docs/adr/0012). A live tile's click triggers its action (generate/refresh) in place; the
  * result row that appears below the grid once there's something to show is what actually opens
- * the view *inline*, widening the panel (not a modal) with a breadcrumb back control. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange }: StudioPanelProps) {
+ * the view *inline* (not a modal) with a breadcrumb back control, within the panel's existing
+ * resizable width rather than growing past it — the user can still drag it wider first if a
+ * tile's content (e.g. Mind Map's node canvas) needs more room. */
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -298,9 +297,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card transition-[width] duration-200 ${
-        !expanded ? "w-14" : openTile ? OPEN_TILE_WIDTH_CLASS[openTile] : "w-80"
-      }`}
+      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
+        isResizing ? "" : "transition-[width] duration-200"
+      } ${!expanded ? "w-14" : ""}`}
+      style={expanded ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center gap-1 border-b border-border ${
