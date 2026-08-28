@@ -9,7 +9,7 @@ import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/que
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
 import { useJurisdictionHint } from "@/components/jurisdiction-provider"
-import { hostForJurisdiction } from "@/lib/jurisdiction/resolve-host"
+import { hostForJurisdiction, isAppHost } from "@/lib/jurisdiction/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -67,7 +67,8 @@ function CurrentUserSync({
   // via the refresh-token flow. Without this, every resource-route call 400s with
   // "X-Organization-Id header is required" until the next login. See
   // docs/organization-feature-frontend-handoff.md §3.
-  const { data: orgs } = useOrganizationsQuery({ enabled: !!accessToken && !!user && !organization })
+  const orgsQuery = useOrganizationsQuery({ enabled: !!accessToken && !!user && !organization })
+  const { data: orgs } = orgsQuery
   // A user with no active org but a pending invite has nothing else to do in the app —
   // the accept/decline UI lives on the Organization page, so route them there directly
   // instead of leaving them stranded wherever they landed post-login.
@@ -124,9 +125,11 @@ function CurrentUserSync({
   // rather than silently rendering under the wrong one. This is a UX redirect only; it does
   // not and cannot change which jurisdiction's legal engine/prompts the backend uses for this
   // organization — that's resolved server-side from Organization.jurisdiction regardless of
-  // hostname.
+  // hostname. app.ilovelawyer.com is exempt: it's a standalone entry point parallel to the
+  // ph./uk. subdomains, not a mismatched one, so it's never a redirect target or source.
   useEffect(() => {
     if (!organization || typeof window === "undefined") return
+    if (isAppHost(window.location.host)) return
     if (hostJurisdiction === organization.jurisdiction) return
     const targetHost = hostForJurisdiction(organization.jurisdiction, window.location.host)
     if (targetHost === window.location.host) return
@@ -142,8 +145,19 @@ function CurrentUserSync({
   // rather than blocking forever on a transient error — isAuthError's own effect
   // handles the redirect; other errors fall through to render children as before.
   const statusUnknown = !!accessToken && !currentUser && !isError
+  // Resource routes (chat, cases, events, ...) 400 with "X-Organization-Id header is
+  // required" until `organization` is set — block children (which fire those requests on
+  // mount, e.g. the chat sidebar) until it's actually set, not just until the fetch that
+  // feeds the `setOrganization` effect above has resolved (that effect runs one render/
+  // commit after `orgsQuery` resolves, and child effects — e.g. the chat sidebar's own
+  // mount-time fetch — can run before it does). Once `orgsQuery` has fetched and truly
+  // found no org (e.g. a pending-invite-only user), stop blocking so the redirect effect
+  // above can send them to the organization page instead of loading forever.
+  const orgResolved = !!organization || (orgsQuery.isFetched && !orgs?.length)
+  const orgUnknown = !!accessToken && !!currentUser && !needsApproval && !orgResolved
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError) return <LoadingScreen />
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown)
+    return <LoadingScreen />
 
   return <PageTransition>{children}</PageTransition>
 }

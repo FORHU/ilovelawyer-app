@@ -43,6 +43,7 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   witnesses: "Witnesses",
   damages: "Damages & Remedies",
   caseReconstruction: "Case Reconstruction",
+  audioOverview: "Audio Overview",
 }
 
 export const PRESET_LABELS: Record<PresetValue, string> = {

@@ -38,10 +38,18 @@ export async function mapPoolSettled<T, R>(
 
 /** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL. */
 export async function putFileToS3(uploadUrl: string, file: File): Promise<void> {
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": file.type },
-  })
-  if (!putRes.ok) throw new Error("Upload to storage failed")
+  let putRes: Response
+  try {
+    putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type },
+    })
+  } catch (err) {
+    throw new Error(`Network error uploading to storage: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  if (!putRes.ok) {
+    const body = await putRes.text().catch(() => "")
+    throw new Error(`Upload to storage failed (${putRes.status})${body ? `: ${body.slice(0, 200)}` : ""}`)
+  }
 }

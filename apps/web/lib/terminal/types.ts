@@ -17,6 +17,7 @@ export const PANEL_IDS = [
   "witnesses",
   "damages",
   "caseReconstruction",
+  "audioOverview",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]

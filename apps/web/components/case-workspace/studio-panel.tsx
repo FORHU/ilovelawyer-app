@@ -6,33 +6,15 @@ import { Workflow, Clock, Table as TableIcon, AudioLines, PanelRight, PanelRight
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
-import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/components/chat/consultation-chat";
-import {
-  useMessagesQuery,
-  useChatSessionQuery,
-  sendChatMessage,
-  useGenerateAudioOverviewAudioMutation,
-  pollAudioOverviewAudio,
-  type ChatMessage,
-} from "@/lib/chat/mutations";
+import { AUTO_MINDMAP_PROMPT } from "@/components/chat/consultation-chat";
+import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
+import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useCaseQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useCaseTimelineQuery } from "@/lib/terminal/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
 export type StudioTileKind = "mindmap" | "timeline" | "dataTable" | "audioOverview";
-
-// How wide the panel gets once a tile's detail view is open — tuned per tile rather than one
-// fixed size, since they need very different amounts of room: Mind Map is an interactive
-// node canvas (wants the most space to actually be usable), Data Table has three text columns
-// that truncate awkwardly if too narrow, Timeline is just a scrollable vertical list, Audio
-// Overview is a transcript list plus a single <audio> player.
-const OPEN_TILE_WIDTH_CLASS: Record<StudioTileKind, string> = {
-  mindmap: "w-[70%] min-w-[640px] max-w-[1100px]",
-  dataTable: "w-[58%] min-w-[520px] max-w-[900px]",
-  timeline: "w-[42%] min-w-[420px] max-w-[680px]",
-  audioOverview: "w-[46%] min-w-[440px] max-w-[720px]",
-};
 
 interface DataTableRow {
   type: string;
@@ -72,6 +54,15 @@ interface StudioPanelProps {
   consultationId: string | null;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  /** Expanded width in px, owned by case-workspace.tsx's useResizableWidth — applies whether
+   * the tile grid or an open tile's detail view is showing, so opening Mind Map/Timeline/Data
+   * Table/Audio Overview never grows the panel past the same resizable bounds (260–460px) the
+   * user already controls via the divider. Ignored while collapsed (fixed slim rail). */
+  width: number;
+  /** True mid-drag — suppresses the width transition so the panel tracks the pointer 1:1
+   * instead of easing behind it, while collapse/expand and tile open/close keep their
+   * animation. */
+  isResizing: boolean;
 }
 
 /** Case Workspace's right panel. Deliberately only 4 tiles — Mind Map (per-consultation),
@@ -79,8 +70,10 @@ interface StudioPanelProps {
  * a disabled Audio Overview placeholder — not the reference design's full generative toolset
  * (see docs/adr/0012). A live tile's click triggers its action (generate/refresh) in place; the
  * result row that appears below the grid once there's something to show is what actually opens
- * the view *inline*, widening the panel (not a modal) with a breadcrumb back control. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange }: StudioPanelProps) {
+ * the view *inline* (not a modal) with a breadcrumb back control, within the panel's existing
+ * resizable width rather than growing past it — the user can still drag it wider first if a
+ * tile's content (e.g. Mind Map's node canvas) needs more room. */
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -198,113 +191,26 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     void handleGenerateMindMap();
   }, [consultationId, session, history, activeMindMap, handleGenerateMindMap]);
 
-  // The message carrying the current script — kept as the full message (not just its
-  // audioOverview data) since triggerAudioRender and the poll loop below both need its id.
-  const activeAudioOverviewMessage = useMemo<ChatMessage | undefined>(() => {
-    const list = history ?? [];
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (list[i]?.audioOverview?.turns?.length) return list[i];
-    }
-    return undefined;
-  }, [history]);
-  const [isGeneratingAudioOverview, setIsGeneratingAudioOverview] = useState(false);
-  const [audioOverviewGenerateError, setAudioOverviewGenerateError] = useState(false);
-
-  const generateAudioOverviewAudio = useGenerateAudioOverviewAudioMutation(consultationId ?? "");
-  const [audioRendering, setAudioRendering] = useState(false);
-  const [audioRenderError, setAudioRenderError] = useState(false);
-  const [renderedAudioUrl, setRenderedAudioUrl] = useState<string | null>(null);
-
+  // Script generation → Polly render polling → playable URL — shared with the Legal
+  // Terminal's Audio Overview panel via useAudioOverview (lib/chat/use-audio-overview.ts).
+  const {
+    activeAudioOverviewMessage,
+    isGeneratingScript: isGeneratingAudioOverview,
+    generateScriptError: audioOverviewGenerateError,
+    generateScript: handleGenerateAudioOverviewScript,
+    audioRendering,
+    audioRenderError,
+    renderedAudioUrl,
+    regenerateAudio: handleGenerateAudioOverviewAudio,
+    isGeneratingAudio: generateAudioOverviewAudioPending,
+  } = useAudioOverview(consultationId, caseId);
   const audioOverviewMessageId = activeAudioOverviewMessage?.id;
-  const audioOverviewStatus = activeAudioOverviewMessage?.audioOverview?.audioStatus ?? null;
   const audioOverviewStatusLabel =
-    isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending
+    isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending
       ? isGeneratingAudioOverview
         ? t("workspace.audioOverviewGenerating")
         : t("workspace.audioOverviewRendering")
       : formatUpdatedAt(t, activeAudioOverviewMessage?.createdAt ?? null);
-
-  // Starts (or restarts) rendering for a specific message id — a plain id param, not the
-  // activeAudioOverviewMessage/audioOverviewMessageId derived above, because
-  // handleGenerateAudioOverviewScript below needs to call this for a message that was JUST
-  // created, before a re-render has caught those memoized values up to it.
-  const triggerAudioRender = useCallback(
-    (messageId: string) => {
-      setAudioRenderError(false);
-      setRenderedAudioUrl(null);
-      generateAudioOverviewAudio.mutate(messageId, {
-        onSuccess: () => setAudioRendering(true),
-        onError: () => setAudioRenderError(true),
-      });
-    },
-    [generateAudioOverviewAudio],
-  );
-
-  // Already-rendered audio from a previous visit: status is COMPLETED but this session hasn't
-  // fetched a (short-lived, presigned) playback URL for it yet — one poll call gets it without
-  // starting a new render.
-  useEffect(() => {
-    if (!consultationId || !audioOverviewMessageId || audioOverviewStatus !== "COMPLETED" || renderedAudioUrl) {
-      return;
-    }
-    pollAudioOverviewAudio(consultationId, audioOverviewMessageId)
-      .then((result) => {
-        if (result.status === "COMPLETED" && result.audioFile?.fileUrl) setRenderedAudioUrl(result.audioFile.fileUrl);
-      })
-      .catch(() => {});
-  }, [consultationId, audioOverviewMessageId, audioOverviewStatus, renderedAudioUrl]);
-
-  useEffect(() => {
-    if (!audioRendering || !consultationId || !audioOverviewMessageId) return;
-    const interval = setInterval(() => {
-      pollAudioOverviewAudio(consultationId, audioOverviewMessageId)
-        .then((result) => {
-          if (result.status === "IN_PROGRESS") return;
-          setAudioRendering(false);
-          if (result.status === "COMPLETED" && result.audioFile?.fileUrl) {
-            setRenderedAudioUrl(result.audioFile.fileUrl);
-          } else if (result.status === "FAILED") {
-            setAudioRenderError(true);
-          }
-        })
-        .catch(() => setAudioRendering(false));
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [audioRendering, consultationId, audioOverviewMessageId]);
-
-  // Auto-chains straight into rendering once the script lands — script generation and audio
-  // rendering used to be two separate explicit steps (Polly cost was the reason to gate it
-  // manually), but this is a deliberate later reversal of that call: read the request.
-  const handleGenerateAudioOverviewScript = useCallback(async () => {
-    if (!consultationId || !session || isGeneratingAudioOverview) return;
-    setIsGeneratingAudioOverview(true);
-    setAudioOverviewGenerateError(false);
-    try {
-      await sendChatMessage({
-        consultationId,
-        sessionId: session.session_id,
-        message: AUTO_AUDIO_OVERVIEW_PROMPT,
-        caseId,
-        onChunk: () => {},
-      });
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
-      // Read the just-invalidated cache directly instead of activeAudioOverviewMessage —
-      // that memo won't reflect this new message until the next render, but the mutate call
-      // right below needs its id now, in this same synchronous continuation.
-      const freshHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(consultationId));
-      const newMessage = (freshHistory ?? []).slice().reverse().find((m) => m.audioOverview?.turns?.length);
-      if (newMessage) triggerAudioRender(newMessage.id);
-    } catch {
-      setAudioOverviewGenerateError(true);
-    } finally {
-      setIsGeneratingAudioOverview(false);
-    }
-  }, [consultationId, session, isGeneratingAudioOverview, caseId, queryClient, triggerAudioRender]);
-
-  const handleGenerateAudioOverviewAudio = () => {
-    if (!audioOverviewMessageId) return;
-    triggerAudioRender(audioOverviewMessageId);
-  };
 
   // One <audio> element for the whole panel (not one per player UI) so the compact row's mini
   // player and the detail view's player control the same actual playback instead of each
@@ -391,9 +297,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card transition-[width] duration-200 ${
-        !expanded ? "w-14" : openTile ? OPEN_TILE_WIDTH_CLASS[openTile] : "w-80"
-      }`}
+      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
+        isResizing ? "" : "transition-[width] duration-200"
+      } ${!expanded ? "w-14" : ""}`}
+      style={expanded ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center gap-1 border-b border-border ${
@@ -563,7 +470,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   />
                 )}
                 {consultationId &&
-                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending || activeAudioOverviewMessage) &&
+                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending || activeAudioOverviewMessage) &&
                   (renderedAudioUrl ? (
                     <AudioOverviewMiniPlayer
                       title={t("workspace.audioOverviewTile")}
@@ -576,8 +483,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     />
                   ) : (
                     <ResultRow
-                      icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending ? Loader2 : AudioLines}
-                      iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudio.isPending}
+                      icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending ? Loader2 : AudioLines}
+                      iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending}
                       title={t("workspace.audioOverviewTile")}
                       subtitle={audioOverviewStatusLabel}
                       onClick={() => openStudioTile("audioOverview")}
@@ -675,13 +582,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     <button
                       type="button"
                       onClick={handleGenerateAudioOverviewAudio}
-                      disabled={audioRendering || generateAudioOverviewAudio.isPending}
+                      disabled={audioRendering || generateAudioOverviewAudioPending}
                       className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
                     >
-                      {audioRendering || generateAudioOverviewAudio.isPending ? (
+                      {audioRendering || generateAudioOverviewAudioPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                       ) : null}
-                      {audioRendering || generateAudioOverviewAudio.isPending
+                      {audioRendering || generateAudioOverviewAudioPending
                         ? t("workspace.audioOverviewRendering")
                         : t("workspace.audioOverviewGenerateAudioCta")}
                     </button>

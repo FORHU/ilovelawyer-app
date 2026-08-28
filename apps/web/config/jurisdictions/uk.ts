@@ -13,10 +13,10 @@ export const ukJurisdictionConfig: JurisdictionConfig = {
     organizationLabel: "Organisation",
     showPhilippineStatutoryLibrary: false,
     capabilities: {
-      // AI chat itself works, but its live grounding (chat-wonder-v2-api) isn't
-      // jurisdiction-aware yet — see UK_PERSONA_PENDING in ilovelawyer-api's
+      // chat-wonder-v2-api routes UK requests to its own `legal_uk` persona (UK tool
+      // whitelist + prompt) — see ilovelawyer-api's chatWonder.ts and
       // legal/uk/legal-knowledge/uk-legal-knowledge.provider.ts.
-      aiChat: "pending-persona",
+      aiChat: "available",
       cases: "available",
       documents: "available",
       // No UK case-law/statute corpus yet — see ilovelawyer-api's

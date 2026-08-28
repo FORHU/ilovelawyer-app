@@ -7,19 +7,36 @@ export type Jurisdiction = "PH" | "UK"
  * ilovelawyer-api/src/utils/jurisdiction-host.ts — two separate deployables, no shared package
  * between them (packages/ only has ui/eslint-config/typescript-config).
  *
- * Three host conventions are recognized for local dev, all mapping to the same jurisdiction:
- * `ph.ilovelawyer.local` (the spec's required form), and the bare `ph.ilovelawyer` this repo's
+ * Four host conventions are recognized for local dev, all mapping to the same jurisdiction:
+ * `ph.ilovelawyer.local` (the spec's required form), the bare `ph.ilovelawyer` this repo's
  * own `next.config.ts` `allowedDevOrigins` already anticipated before this feature was built
- * (that's what this environment's hosts file actually points at) — plus the `.com` production
- * form. Port is stripped before matching, so `:3002` works on any of them.
+ * (that's what this environment's hosts file actually points at), and `ph.localhost` (browsers
+ * resolve any `*.localhost` subdomain to 127.0.0.1 without a hosts file entry, so this needs no
+ * local setup) — plus the `.com` production form. Port is stripped before matching, so `:3002`
+ * works on any of them.
  */
 const HOST_JURISDICTION_MAP: Record<string, Jurisdiction> = {
   "ph.ilovelawyer.com": "PH",
   "ph.ilovelawyer.local": "PH",
   "ph.ilovelawyer": "PH",
+  "ph.localhost": "PH",
   "uk.ilovelawyer.com": "UK",
   "uk.ilovelawyer.local": "UK",
   "uk.ilovelawyer": "UK",
+  "uk.localhost": "UK",
+}
+
+/** `app.ilovelawyer.com` (and its local-dev equivalents) is a jurisdiction-neutral entry point —
+ * it runs standalone, parallel to `ph.ilovelawyer.com`/`uk.ilovelawyer.com`, not a fallback of
+ * them. Listed explicitly so the domain-mismatch redirect (app/(protected)/layout.tsx) can
+ * recognize it and skip redirecting away from it, instead of treating it as an unresolved host
+ * and bouncing users onto a `ph.`/`uk.` subdomain. */
+const APP_HOSTS = new Set(["app.ilovelawyer.com", "app.ilovelawyer.local", "app.ilovelawyer", "app.localhost"])
+
+export function isAppHost(hostname: string | undefined | null): boolean {
+  if (!hostname) return false
+  const host = (hostname.split(":")[0] ?? "").trim().toLowerCase()
+  return APP_HOSTS.has(host)
 }
 
 /** Strips a trailing `:port` (present on `Host` in local dev, e.g. `ph.ilovelawyer.local:3002`)
