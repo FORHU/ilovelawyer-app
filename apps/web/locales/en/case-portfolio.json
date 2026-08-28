@@ -52,6 +52,7 @@
     "uploading": "Uploading…",
     "uploadError": "Couldn't upload this file.",
     "removeDocument": "Remove {{documentName}}",
+    "viewDocument": "View {{documentName}}",
     "loadDocumentsError": "Couldn't load documents.",
     "ragIndexing": "Indexing",
     "ragIndexingHint": "File is uploaded. Chat can search it once indexing finishes.",
@@ -117,6 +118,15 @@
     "audioOverviewRenderError": "Couldn't render the audio. Try again.",
     "audioOverviewHostA": "Host A",
     "audioOverviewHostB": "Host B",
-    "mindMapNoConsultation": "Start a chat to generate a mind map."
+    "mindMapNoConsultation": "Start a chat to generate a mind map.",
+    "sourceViewerBack": "Back to Sources",
+    "sourceGuideTitle": "Source Guide",
+    "sourceGuideType": "File type",
+    "sourceGuideSize": "Size",
+    "sourceGuideUploaded": "Uploaded",
+    "sourceGuideSummaryHeading": "Summary",
+    "sourceGuideNoSummary": "No summary available yet.",
+    "sourcePreviewUnavailable": "Preview isn't available for this file type.",
+    "sourceOpenOriginal": "Open original file"
   }
 }

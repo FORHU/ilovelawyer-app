@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock, Copy, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -59,6 +59,40 @@ function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, case
   const tab = searchParams.get("tab");
   if (tab === "mindmap" || tab === "timeline") return tab;
   return "chat";
+}
+
+/** Copies a settled assistant reply to the clipboard — swaps to a checkmark for a beat as
+ * the only confirmation (no toast), matching this row's otherwise-icon-only chrome. */
+function CopyMessageButton({ text }: { text: string }) {
+  const { t } = useTranslation("homepage");
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API unavailable or permission denied — nothing to recover into, the
+      // button just doesn't confirm.
+    }
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={copied ? t("message.copied") : t("message.copyResponse")}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{copied ? t("message.copied") : t("message.copyResponse")}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 interface ConsultationChatProps {
@@ -213,6 +247,7 @@ export default function ConsultationChat({
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
   // only reflects it a render later, which is too late for callers within the same
   // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
@@ -252,20 +287,30 @@ export default function ConsultationChat({
   // The transcript for the consultation currently on screen comes straight from the
   // React Query cache — keyed by consultationId, so switching consultations just means a
   // different query result, with no manual copy-into-local-state step to keep in sync.
-  const baseMessages: DisplayMessage[] = consultationId
-    ? (history ?? [])
-        .filter((m) => m.role !== "system")
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          // Empty on messages sent before the backend shipped message-scoped attachments
-          // (handoff doc §5) — falls back to no chips for those, same as today.
-          attachments: enableFileChips
-            ? (m.documents ?? []).map((d) => ({ id: d.id, name: d.name, url: d.fileUrl, mimeType: d.mimeType }))
-            : undefined,
-          mindMap: m.mindMap?.data,
-        }))
-    : [];
+  //
+  // Memoized (not rebuilt inline) so its reference only changes when `history` itself does —
+  // otherwise every render (e.g. a sibling panel like Case Workspace's Studio expanding/
+  // resizing, which re-renders this whole tree) produced a brand-new array, and the
+  // scroll-to-bottom effect below — keyed on this array's identity — fired on every one of
+  // those unrelated re-renders, yanking the transcript back to the bottom mid-read.
+  const baseMessages: DisplayMessage[] = useMemo(
+    () =>
+      consultationId
+        ? (history ?? [])
+            .filter((m) => m.role !== "system")
+            .map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              // Empty on messages sent before the backend shipped message-scoped attachments
+              // (handoff doc §5) — falls back to no chips for those, same as today.
+              attachments: enableFileChips
+                ? (m.documents ?? []).map((d) => ({ id: d.id, name: d.name, url: d.fileUrl, mimeType: d.mimeType }))
+                : undefined,
+              mindMap: m.mindMap?.data,
+            }))
+        : [],
+    [consultationId, history, enableFileChips],
+  );
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
@@ -345,7 +390,21 @@ export default function ConsultationChat({
     el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
   }, [inputMessage]);
 
+  // Only auto-follows new content while the user is already at (or near) the bottom — if
+  // they've scrolled up mid-response to read something, new chunks streaming in must not
+  // yank them back down. Reset to "follow" whenever the visible consultation itself changes
+  // (switching threads, or this send's first chunk) — see the effects below.
+  const isNearBottomRef = useRef(true);
+  const handleMessagesScroll = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
   useEffect(() => {
+    isNearBottomRef.current = true;
+  }, [consultationId]);
+  useEffect(() => {
+    if (!isNearBottomRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -575,6 +634,9 @@ export default function ConsultationChat({
     // change under us, e.g. a brand-new consultation getting its real id).
     const turnKey = consultationKey;
 
+    // A user who's sending a message wants to see it (and the reply that follows) even if
+    // they'd scrolled up reading earlier history first.
+    isNearBottomRef.current = true;
     setIsSending(true);
     setPendingTurn({
       key: turnKey,
@@ -1148,7 +1210,11 @@ export default function ConsultationChat({
               </div>
             ) : (
             /* Scrollable message pane — input bar below stays put regardless of scroll position */
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleMessagesScroll}
+              className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]"
+            >
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
@@ -1186,10 +1252,20 @@ export default function ConsultationChat({
                       {isStreamingThis && !m.content ? (
                         <ThinkingIndicator label={t("thinking")} />
                       ) : (
-                        <AssistantMessage
-                          content={m.content || "…"}
-                          className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
-                        />
+                        <>
+                          <AssistantMessage
+                            content={m.content || "…"}
+                            className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
+                          />
+                          {/* Only once the reply has actually settled — mid-stream text keeps
+                           * changing underneath a copy, and there's nothing to copy yet for the
+                           * "…" placeholder. */}
+                          {!isStreamingThis && m.content && (
+                            <div className="mt-1 flex items-center gap-1">
+                              <CopyMessageButton text={m.content} />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );

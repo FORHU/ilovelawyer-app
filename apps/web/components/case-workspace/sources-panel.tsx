@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { Files, Link2, PanelLeft, PanelLeftClose } from "lucide-react";
 import { DocumentUploadButton, CaseDocumentList } from "@/components/cases/case-details-panel";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
+import { SourceViewer } from "@/components/case-workspace/source-viewer";
 import { useRelatedCasesQuery } from "@/lib/chat/mutations";
+import type { UserDocument } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 type SourcesTab = "documents" | "related";
@@ -31,9 +33,18 @@ interface SourcesPanelProps {
 export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsultationId, width, isResizing }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [tab, setTab] = useState<SourcesTab>("documents");
+  // Which document (if any) the Documents tab's source list has drilled into — cleared on
+  // tab switch below so leaving Documents and coming back always lands on the list, not
+  // wherever the user last left the viewer.
+  const [viewingDocument, setViewingDocument] = useState<UserDocument | null>(null);
   const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(
     tab === "related" && activeConsultationId ? activeConsultationId : undefined,
   );
+
+  const selectTab = (next: SourcesTab) => {
+    setTab(next);
+    setViewingDocument(null);
+  };
 
   return (
     <aside
@@ -82,7 +93,7 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
           <div className="flex items-center gap-1 px-3 pt-3">
             <button
               type="button"
-              onClick={() => setTab("documents")}
+              onClick={() => selectTab("documents")}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 tab === "documents" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -92,7 +103,7 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
             </button>
             <button
               type="button"
-              onClick={() => setTab("related")}
+              onClick={() => selectTab("related")}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 tab === "related" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -102,29 +113,36 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {tab === "documents" ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                    {t("detail.documents")}
-                  </span>
-                  <DocumentUploadButton caseId={caseId} />
+          {tab === "documents" && viewingDocument ? (
+            // No p-3/overflow-y-auto wrapper here — the viewer owns its own header, collapsible
+            // guide, and scrollable content area (a PDF iframe needs the full remaining height,
+            // not a padded/scrolling ancestor squeezing it).
+            <SourceViewer document={viewingDocument} onBack={() => setViewingDocument(null)} />
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {tab === "documents" ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                      {t("detail.documents")}
+                    </span>
+                    <DocumentUploadButton caseId={caseId} />
+                  </div>
+                  <CaseDocumentList caseId={caseId} listClassName="max-h-[70vh]" onSelectDocument={setViewingDocument} />
                 </div>
-                <CaseDocumentList caseId={caseId} listClassName="max-h-[70vh]" />
-              </div>
-            ) : activeConsultationId ? (
-              <HubRelatedCases
-                entries={relatedData?.relatedCases ?? []}
-                isLoading={isLoadingRelated}
-                emptyLabel={t("workspace.relatedEmpty")}
-              />
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {t("workspace.relatedNoConsultation")}
-              </p>
-            )}
-          </div>
+              ) : activeConsultationId ? (
+                <HubRelatedCases
+                  entries={relatedData?.relatedCases ?? []}
+                  isLoading={isLoadingRelated}
+                  emptyLabel={t("workspace.relatedEmpty")}
+                />
+              ) : (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t("workspace.relatedNoConsultation")}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </aside>
