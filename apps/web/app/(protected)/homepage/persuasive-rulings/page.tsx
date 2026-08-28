@@ -31,8 +31,8 @@ const SOURCES: Source[] = [
 ];
 
 export default function PersuasiveRulingsPage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("persuasive-rulings");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("persuasive-rulings");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="persuasive-rulings" />

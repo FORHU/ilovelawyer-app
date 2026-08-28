@@ -2,7 +2,7 @@
 
 import GlobalHeader from "@/components/global-header"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { getJurisdictionConfig } from "@/config/jurisdictions"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
 
 type ActiveTab = Parameters<typeof GlobalHeader>[0]["activeTab"]
 
@@ -14,8 +14,8 @@ type ActiveTab = Parameters<typeof GlobalHeader>[0]["activeTab"]
  * return guard;` right at the top of the page component.
  */
 export function usePhStatutoryContentGuard(activeTab: ActiveTab) {
-  const jurisdiction = useAuthStore((s) => s.organization?.jurisdiction)
-  const config = getJurisdictionConfig(jurisdiction)
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const config = getTenantCodeConfig(tenantCode)
 
   if (config.ui.showPhilippineStatutoryLibrary) return null
 

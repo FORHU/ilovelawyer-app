@@ -31,8 +31,8 @@ const ISSUANCES: Issuance[] = [
 ];
 
 export default function AdministrativeIssuancesPage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("administrative-issuances");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("administrative-issuances");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="administrative-issuances" />

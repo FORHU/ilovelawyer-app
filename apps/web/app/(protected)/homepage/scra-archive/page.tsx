@@ -21,8 +21,8 @@ const DECISIONS: Decision[] = [
 ];
 
 export default function ScraArchivePage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("scra-archive");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("scra-archive");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="scra-archive" />

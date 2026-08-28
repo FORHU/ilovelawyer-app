@@ -23,7 +23,7 @@ import GlobalHeader from "@/components/global-header";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
-import { getJurisdictionConfig } from "@/config/jurisdictions";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 import {
   useOrganizationMembersQuery,
   useMyInviteQuery,
@@ -590,11 +590,11 @@ export default function OrganizationPage() {
                   </div>
                   <div>
                     <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
-                      {t("overview.jurisdictionLabel")}
+                      {t("overview.tenantCodeLabel")}
                     </span>
                     <p className="mt-1 flex items-center gap-2 text-[16px] text-foreground">
-                      <span aria-hidden="true">{getJurisdictionConfig(organization.jurisdiction).branding.flag}</span>
-                      {getJurisdictionConfig(organization.jurisdiction).displayName}
+                      <span aria-hidden="true">{getTenantCodeConfig(organization.tenantCode).branding.flag}</span>
+                      {getTenantCodeConfig(organization.tenantCode).displayName}
                     </p>
                   </div>
                 </div>

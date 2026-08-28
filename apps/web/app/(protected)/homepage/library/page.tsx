@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import LegalMarkdown from "@/components/library/legal-markdown";
 import { useAnalyzeKeywordMutation, useLibrarySectionsQuery, type LibrarySectionItem } from "@/lib/legal-rag/mutations";
-import { useJurisdictionFeatureGuard } from "@/components/jurisdiction-feature-guard";
+import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const SECTION_ICONS: Record<string, typeof Scale> = {
@@ -32,7 +32,7 @@ export default function LegalLibraryPage() {
 }
 
 function LegalLibraryPageContent() {
-  const guard = useJurisdictionFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,

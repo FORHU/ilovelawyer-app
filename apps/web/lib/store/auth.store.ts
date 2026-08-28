@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import type { OrganizationRole, PackageSku } from "@/lib/organizations/queries"
-import type { Jurisdiction } from "@/lib/jurisdiction/resolve-host"
+import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 
 export interface AuthUser {
   id: string
@@ -15,7 +15,7 @@ export interface ActiveOrganization {
   slug: string
   role: OrganizationRole
   packageSku: PackageSku
-  jurisdiction: Jurisdiction
+  tenantCode: TenantCode
 }
 
 interface AuthState {

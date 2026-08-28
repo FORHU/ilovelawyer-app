@@ -46,8 +46,8 @@ const ARTICLES: Article[] = [
 ];
 
 export default function ConstitutionPage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("constitution");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("constitution");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="constitution" />

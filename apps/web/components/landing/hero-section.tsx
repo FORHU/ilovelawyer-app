@@ -4,16 +4,16 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useJurisdictionHint } from "@/components/jurisdiction-provider";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
 
 export function HeroSection() {
   const { t } = useTranslation("landing");
   // i18next's `context` option looks up a `_UK`-suffixed key (e.g. "hero.titleEmphasis_UK")
   // and falls back to the base key when no such variant exists — so only the genuinely
-  // jurisdiction-specific strings (the ones naming "Philippine"/"UK") need a _UK entry in the
-  // locale JSON; everything else (eyebrow, CTAs) is shared across jurisdictions automatically.
-  const jurisdiction = useJurisdictionHint();
-  const tCtx = { context: jurisdiction ?? undefined };
+  // tenant-specific strings (the ones naming "Philippine"/"UK") need a _UK entry in the
+  // locale JSON; everything else (eyebrow, CTAs) is shared across tenants automatically.
+  const tenantCode = useTenantCodeHint();
+  const tCtx = { context: tenantCode ?? undefined };
   return (
     <section id="hero" className="relative min-h-[85vh] flex items-center overflow-hidden bg-[#f7fafc] dark:bg-background">
       <div className="absolute inset-0 pointer-events-none">

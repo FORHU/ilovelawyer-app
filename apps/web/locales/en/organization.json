@@ -33,7 +33,7 @@
   "overview": {
     "heading": "Overview",
     "nameLabel": "Organization Name",
-    "jurisdictionLabel": "Jurisdiction",
+    "tenantCodeLabel": "Jurisdiction",
     "yourRoleLabel": "Your Role",
     "editName": "Edit organization name",
     "saveName": "Save name",
