@@ -81,27 +81,22 @@ export default function TerminalLandingPage() {
         {!isLoading && !isError && (
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
             {cases.map((c) => (
-              <div
-                key={c.id}
-                className="relative min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href={`/homepage/terminal/${c.id}`} className="w-full">
+              <Tooltip key={c.id}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={`/homepage/terminal/${c.id}`}
+                    className="relative min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    <div>
                       <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2">
                         {c.caseName}
                       </h3>
                       <p className="text-muted-foreground text-[14px] font-['Inter']">
                         {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("landing.noPartyListed")}
                       </p>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("landing.openTerminal")}</TooltipContent>
-                </Tooltip>
+                    </div>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href={`/homepage/terminal/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                    <div className="border-t border-border pt-5 mt-8 flex items-end justify-between">
                       <div>
                         <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
                           {t("landing.lastUpdated")}
@@ -110,14 +105,11 @@ export default function TerminalLandingPage() {
                           {new Date(c.updatedAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-                        {t("landing.openTerminal")}
-                      </span>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("landing.openTerminal")}</TooltipContent>
-                </Tooltip>
-              </div>
+                    </div>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>{t("landing.openTerminal")}</TooltipContent>
+              </Tooltip>
             ))}
 
             <Tooltip>

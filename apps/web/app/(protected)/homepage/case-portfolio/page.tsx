@@ -121,9 +121,9 @@ export default function CaseManagerDashboard() {
             {cases.map((c) => (
               <div
                 key={c.id}
-                className="relative group/card min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="relative group/card min-h-75 rounded-2xl transition-all duration-200"
               >
-                <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-1 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -162,28 +162,28 @@ export default function CaseManagerDashboard() {
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href={`/homepage/v2/case-portfolio/${c.id}`} className="w-full">
-                      <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
-                        {c.caseName}
-                      </h3>
-                      <p className="text-muted-foreground text-[14px] font-['Inter']">
-                        {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("noPartyListed")}
-                      </p>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>Open {c.caseName}&rsquo;s full case record</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href={`/homepage/v2/case-portfolio/${c.id}`} className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                    <Link
+                      href={`/homepage/v2/case-portfolio/${c.id}`}
+                      className="h-full bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    >
                       <div>
-                        <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
-                          {t("lastUpdated")}
-                        </span>
-                        <span className="text-foreground text-[14px] font-semibold">
-                          {new Date(c.updatedAt).toLocaleDateString()}
-                        </span>
+                        <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
+                          {c.caseName}
+                        </h3>
+                        <p className="text-muted-foreground text-[14px] font-['Inter']">
+                          {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("noPartyListed")}
+                        </p>
+                      </div>
+
+                      <div className="border-t border-border pt-5 mt-8 flex items-end justify-between">
+                        <div>
+                          <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
+                            {t("lastUpdated")}
+                          </span>
+                          <span className="text-foreground text-[14px] font-semibold">
+                            {new Date(c.updatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   </TooltipTrigger>

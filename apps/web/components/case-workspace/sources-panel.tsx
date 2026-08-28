@@ -17,12 +17,18 @@ interface SourcesPanelProps {
    * thread's latest reply), not per-case — so it follows whichever thread ThreadPicker has
    * active, not a document selection of its own. */
   activeConsultationId: string | null;
+  /** Expanded-state width in px, owned by case-workspace.tsx's useResizableWidth — ignored
+   * while collapsed (a fixed slim rail regardless of the last dragged width). */
+  width: number;
+  /** True mid-drag — suppresses the width transition so the panel tracks the pointer 1:1
+   * instead of easing behind it, while collapse/expand keeps its smooth animation. */
+  isResizing: boolean;
 }
 
 /** Case Workspace's left panel — Documents (this case's Case Documents, upload/list/delete
  * reused as-is from case-details-panel.tsx) and Related Cases (this consultation's AI-surfaced
  * legal-precedent citations, reused from case-hub-widget.tsx). Collapses to a slim rail. */
-export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsultationId }: SourcesPanelProps) {
+export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsultationId, width, isResizing }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [tab, setTab] = useState<SourcesTab>("documents");
   const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(
@@ -31,9 +37,10 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ${
-        expanded ? "w-80" : "w-14"
-      }`}
+      className={`flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card ${
+        isResizing ? "" : "transition-[width] duration-200"
+      } ${expanded ? "" : "w-14"}`}
+      style={expanded ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center border-b border-border ${
