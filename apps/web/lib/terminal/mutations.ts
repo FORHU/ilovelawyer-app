@@ -164,6 +164,21 @@ export function useCreateTimelineMutation(caseId: string) {
   })
 }
 
+export function useUpdateTimelineMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, occurredOn }: { id: string; occurredOn: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/timeline/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ occurredOn }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
+    },
+  })
+}
+
 export function useCreateRiskMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -205,7 +220,7 @@ export function useCheckCitationMutation(caseId: string) {
 export function useCreateDeadlineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { ruleCode: string; triggerDate: string }) =>
+    mutationFn: (body: { ruleCode: string; triggerDate: string; sourceTimelineEventId?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/deadlines`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -251,6 +266,19 @@ export function useConfirmDeadlineMutation(caseId: string) {
       apiFetch(`/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/confirm`, {
         method: "POST",
         body: JSON.stringify({ confirmed: true }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useRecomputeDeadlineMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (deadlineId: string) =>
+      apiFetch(`/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/recompute`, {
+        method: "POST",
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
