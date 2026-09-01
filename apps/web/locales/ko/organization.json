@@ -33,7 +33,7 @@
   "overview": {
     "heading": "개요",
     "nameLabel": "조직 이름",
-    "jurisdictionLabel": "관할권",
+    "tenantCodeLabel": "관할권",
     "yourRoleLabel": "내 역할",
     "editName": "조직 이름 수정",
     "saveName": "이름 저장",

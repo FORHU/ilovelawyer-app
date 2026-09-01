@@ -31,8 +31,8 @@ const ISSUANCES: Issuance[] = [
 ];
 
 export default function PresidentialIssuancesPage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("presidential-issuances");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("presidential-issuances");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="presidential-issuances" />

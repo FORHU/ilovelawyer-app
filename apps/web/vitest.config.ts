@@ -1,8 +1,8 @@
 import { defineConfig } from "vitest/config"
 import path from "node:path"
 
-// Scoped to pure-function/unit tests only (jurisdiction resolver, jurisdiction config) — no
-// component/E2E harness. See lib/jurisdiction and config/jurisdictions __tests__ folders.
+// Scoped to pure-function/unit tests only (tenant-code resolver, tenant-code config) — no
+// component/E2E harness. See lib/tenant-code and config/tenant-codes __tests__ folders.
 export default defineConfig({
   resolve: {
     alias: {

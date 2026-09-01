@@ -35,7 +35,7 @@ import {
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { getStatus } from "@/config/jurisdictions/capabilities"
+import { getStatus } from "@/config/tenant-codes/capabilities"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 
 function formatDate(value: string | Date | null | undefined) {
@@ -520,8 +520,8 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
 
 function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
-  const jurisdiction = useAuthStore((s) => s.organization?.jurisdiction)
-  const deadlinesProvisional = getStatus(jurisdiction, "deadlines") === "available-provisional"
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const deadlinesProvisional = getStatus(tenantCode, "deadlines") === "available-provisional"
   const rules = useProcedureRulesQuery()
   const createDeadline = useCreateDeadlineMutation(caseId)
   const confirmDeadline = useConfirmDeadlineMutation(caseId)

@@ -1,29 +1,29 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { resolveJurisdictionFromHost } from "@/lib/jurisdiction/resolve-host"
+import { resolveTenantCodeFromHost } from "@/lib/tenant-code/resolve-host"
 
 // Next.js 16 renamed middleware.ts -> proxy.ts (see node_modules/next/dist/docs/.../proxy.md) —
 // this repo had neither file before, so proxy.ts is the correct convention for this version.
 //
-// This resolves jurisdiction from the request hostname only — it is presentation/routing
+// This resolves the Tenant code from the request hostname only — it is presentation/routing
 // context for unauthenticated pages (signup badge, initial UI), never the authority for an
-// authenticated organization's legal jurisdiction (that's Organization.jurisdiction, resolved
-// server-side on the API — see app/(protected)/layout.tsx for the mismatch-redirect that keeps
-// these two concepts separate). No URL rewrites — every jurisdiction renders the same routes.
+// authenticated organization's Tenant (that's Organization.tenantId, resolved server-side on
+// the API — see app/(protected)/layout.tsx for the mismatch-redirect that keeps these two
+// concepts separate). No URL rewrites — every tenant renders the same routes.
 export function proxy(request: NextRequest) {
-  const jurisdiction = resolveJurisdictionFromHost(request.headers.get("host"))
+  const tenantCode = resolveTenantCodeFromHost(request.headers.get("host"))
 
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set("x-jurisdiction", jurisdiction ?? "")
+  requestHeaders.set("x-tenant-code", tenantCode ?? "")
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
 
   // Non-httpOnly, presentation-only hint so client components can read the current hostname's
-  // jurisdiction without a hydration flash. Never treated as a trust boundary.
-  if (jurisdiction) {
-    response.cookies.set("jurisdiction-hint", jurisdiction, { httpOnly: false, sameSite: "lax", path: "/" })
+  // Tenant code without a hydration flash. Never treated as a trust boundary.
+  if (tenantCode) {
+    response.cookies.set("tenant-code-hint", tenantCode, { httpOnly: false, sameSite: "lax", path: "/" })
   } else {
-    response.cookies.delete("jurisdiction-hint")
+    response.cookies.delete("tenant-code-hint")
   }
 
   return response

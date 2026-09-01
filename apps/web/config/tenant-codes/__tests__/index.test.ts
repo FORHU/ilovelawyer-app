@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { getJurisdictionConfig } from "../index"
+import { getTenantCodeConfig } from "../index"
 
-describe("getJurisdictionConfig", () => {
+describe("getTenantCodeConfig", () => {
   it("returns correct PH presentation config", () => {
-    const config = getJurisdictionConfig("PH")
+    const config = getTenantCodeConfig("PH")
     expect(config.code).toBe("PH")
     expect(config.displayName).toBe("Philippines")
     expect(config.locale).toBe("en-PH")
@@ -12,7 +12,7 @@ describe("getJurisdictionConfig", () => {
   })
 
   it("returns correct UK presentation config, independently terminologically", () => {
-    const config = getJurisdictionConfig("UK")
+    const config = getTenantCodeConfig("UK")
     expect(config.code).toBe("UK")
     expect(config.displayName).toBe("United Kingdom")
     expect(config.locale).toBe("en-GB")
@@ -20,12 +20,12 @@ describe("getJurisdictionConfig", () => {
     expect(config.ui.showPhilippineStatutoryLibrary).toBe(false)
   })
 
-  it("defaults to PH presentation when jurisdiction is unresolved (display default only)", () => {
-    expect(getJurisdictionConfig(null).code).toBe("PH")
-    expect(getJurisdictionConfig(undefined).code).toBe("PH")
+  it("defaults to PH presentation when the tenant code is unresolved (display default only)", () => {
+    expect(getTenantCodeConfig(null).code).toBe("PH")
+    expect(getTenantCodeConfig(undefined).code).toBe("PH")
   })
 
   it("PH and UK configs use distinct flags", () => {
-    expect(getJurisdictionConfig("PH").branding.flag).not.toBe(getJurisdictionConfig("UK").branding.flag)
+    expect(getTenantCodeConfig("PH").branding.flag).not.toBe(getTenantCodeConfig("UK").branding.flag)
   })
 })

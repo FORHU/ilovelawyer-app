@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, FileStack, Loader2, Search } from
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
-import { useJurisdictionFeatureGuard } from "@/components/jurisdiction-feature-guard";
+import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const PAGE_SIZE = 20;
@@ -27,7 +27,7 @@ export default function LegalDocumentsPage() {
 }
 
 function LegalDocumentsPageContent() {
-  const guard = useJurisdictionFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,

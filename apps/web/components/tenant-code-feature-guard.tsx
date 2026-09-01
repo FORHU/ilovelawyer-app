@@ -2,9 +2,9 @@
 
 import GlobalHeader from "@/components/global-header"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { getJurisdictionConfig } from "@/config/jurisdictions"
-import { isFeatureEnabled } from "@/config/jurisdictions/capabilities"
-import type { JurisdictionCapabilities } from "@/config/jurisdictions/types"
+import { getTenantCodeConfig } from "@/config/tenant-codes"
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities"
+import type { TenantCapabilities } from "@/config/tenant-codes/types"
 
 type ActiveTab = Parameters<typeof GlobalHeader>[0]["activeTab"]
 
@@ -16,23 +16,23 @@ interface FeatureGuardCopy {
 
 /**
  * General-purpose capability gate: renders a "coming soon" notice for any capability the
- * jurisdiction registry (config/jurisdictions/capabilities.ts) marks "coming-soon" for the
- * caller's org, instead of scattering `jurisdiction === "UK"` checks through page components.
+ * tenant-code registry (config/tenant-codes/capabilities.ts) marks "coming-soon" for the
+ * caller's org, instead of scattering `tenantCode === "UK"` checks through page components.
  * Returns null when the feature should render normally (enabled, or no org loaded yet), so
- * callers do `const guard = useJurisdictionFeatureGuard("legalSearch", "library", copy); if
+ * callers do `const guard = useTenantCodeFeatureGuard("legalSearch", "library", copy); if
  * (guard) return guard;` at the top of the page component — same convention as
  * usePhStatutoryContentGuard, which stays separate since it gates a specific hardcoded PH
  * statute library, not a general capability.
  */
-export function useJurisdictionFeatureGuard(
-  feature: keyof JurisdictionCapabilities,
+export function useTenantCodeFeatureGuard(
+  feature: keyof TenantCapabilities,
   activeTab: ActiveTab,
   copy: FeatureGuardCopy,
 ) {
-  const jurisdiction = useAuthStore((s) => s.organization?.jurisdiction)
-  const config = getJurisdictionConfig(jurisdiction)
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const config = getTenantCodeConfig(tenantCode)
 
-  if (isFeatureEnabled(jurisdiction, feature)) return null
+  if (isFeatureEnabled(tenantCode, feature)) return null
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">

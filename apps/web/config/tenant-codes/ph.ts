@@ -1,6 +1,6 @@
-import type { JurisdictionConfig } from "./types"
+import type { TenantCodeConfig } from "./types"
 
-export const phJurisdictionConfig: JurisdictionConfig = {
+export const phTenantCodeConfig: TenantCodeConfig = {
   code: "PH",
   displayName: "Philippines",
   countryName: "Philippines",
@@ -9,7 +9,7 @@ export const phJurisdictionConfig: JurisdictionConfig = {
     flag: "🇵🇭",
   },
   ui: {
-    jurisdictionLabel: "Philippine jurisdiction",
+    tenantCodeLabel: "Philippine jurisdiction",
     organizationLabel: "Organization",
     showPhilippineStatutoryLibrary: true,
     capabilities: {

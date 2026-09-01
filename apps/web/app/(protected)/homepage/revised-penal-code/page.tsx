@@ -43,8 +43,8 @@ const PROVISIONS: Provision[] = [
 ];
 
 export default function RevisedPenalCodePage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("revised-penal-code");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("revised-penal-code");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="revised-penal-code" />

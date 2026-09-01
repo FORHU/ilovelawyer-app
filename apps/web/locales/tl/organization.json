@@ -33,7 +33,7 @@
   "overview": {
     "heading": "Pangkalahatang-ideya",
     "nameLabel": "Pangalan ng Organisasyon",
-    "jurisdictionLabel": "Hurisdiksyon",
+    "tenantCodeLabel": "Hurisdiksyon",
     "yourRoleLabel": "Iyong Tungkulin",
     "editName": "I-edit ang pangalan ng organisasyon",
     "saveName": "I-save ang pangalan",

@@ -41,8 +41,8 @@ const PROVISIONS: Provision[] = [
 ];
 
 export default function FamilyCodePage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("family-code");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("family-code");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="family-code" />

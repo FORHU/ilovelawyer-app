@@ -1,6 +1,6 @@
-import type { JurisdictionConfig } from "./types"
+import type { TenantCodeConfig } from "./types"
 
-export const ukJurisdictionConfig: JurisdictionConfig = {
+export const ukTenantCodeConfig: TenantCodeConfig = {
   code: "UK",
   displayName: "United Kingdom",
   countryName: "United Kingdom",
@@ -9,7 +9,7 @@ export const ukJurisdictionConfig: JurisdictionConfig = {
     flag: "🇬🇧",
   },
   ui: {
-    jurisdictionLabel: "UK jurisdiction",
+    tenantCodeLabel: "UK jurisdiction",
     organizationLabel: "Organisation",
     showPhilippineStatutoryLibrary: false,
     capabilities: {
@@ -23,7 +23,7 @@ export const ukJurisdictionConfig: JurisdictionConfig = {
       // docs/uk-legal-corpus-contract.md.
       legalSearch: "coming-soon",
       // The citation-check UI only ever submits free-text quotedText/officialText — it never
-      // exposes a legalRagId picker into the PH-only corpus, so it's already jurisdiction-neutral
+      // exposes a legalRagId picker into the PH-only corpus, so it's already tenant-neutral
       // and fully available. (The backend still rejects a legalRagId-based check against a
       // non-PH case as defense-in-depth, in case another client ever sends one.)
       citations: "available",

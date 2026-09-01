@@ -8,8 +8,8 @@ import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
-import { useJurisdictionHint } from "@/components/jurisdiction-provider"
-import { hostForJurisdiction, isAppHost } from "@/lib/jurisdiction/resolve-host"
+import { useTenantCodeHint } from "@/components/tenant-code-provider"
+import { hostForTenantCode, isAppHost } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -60,7 +60,7 @@ function CurrentUserSync({
   const user = useAuthStore((s) => s.user)
   const organization = useAuthStore((s) => s.organization)
   const setOrganization = useAuthStore((s) => s.setOrganization)
-  const hostJurisdiction = useJurisdictionHint()
+  const hostTenantCode = useTenantCodeHint()
   const { data: currentUser, isError, error } = useCurrentUserQuery()
   // Rehydrates the active org after a fresh tab/reload — the store has no persist
   // middleware, so `organization` resets to null even though accessToken/user come back
@@ -119,22 +119,22 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, pendingInvite, pathname])
 
-  // Domain/tenant mismatch: the organization's persisted jurisdiction is authoritative and
+  // Domain/tenant mismatch: the organization's persisted Tenant is authoritative and
   // never changes because of which subdomain the browser happens to be on — if they disagree
   // (including an unresolved/apex host), redirect to the organization's correct subdomain
   // rather than silently rendering under the wrong one. This is a UX redirect only; it does
-  // not and cannot change which jurisdiction's legal engine/prompts the backend uses for this
-  // organization — that's resolved server-side from Organization.jurisdiction regardless of
+  // not and cannot change which tenant's legal engine/prompts the backend uses for this
+  // organization — that's resolved server-side from Organization.tenantId regardless of
   // hostname. app.ilovelawyer.com is exempt: it's a standalone entry point parallel to the
   // ph./uk. subdomains, not a mismatched one, so it's never a redirect target or source.
   useEffect(() => {
     if (!organization || typeof window === "undefined") return
     if (isAppHost(window.location.host)) return
-    if (hostJurisdiction === organization.jurisdiction) return
-    const targetHost = hostForJurisdiction(organization.jurisdiction, window.location.host)
+    if (hostTenantCode === organization.tenantCode) return
+    const targetHost = hostForTenantCode(organization.tenantCode, window.location.host)
     if (targetHost === window.location.host) return
     window.location.href = `${window.location.protocol}//${targetHost}${window.location.pathname}${window.location.search}`
-  }, [organization, hostJurisdiction])
+  }, [organization, hostTenantCode])
 
   // Renders children only once we actually KNOW the approval status — not just once
   // `user` (a minimal object, set immediately by login/verifyOtp/WorkspaceSetup) exists.

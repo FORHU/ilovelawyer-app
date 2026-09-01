@@ -31,8 +31,8 @@ const ISSUANCES: Issuance[] = [
 ];
 
 export default function JudicialIssuancesPage() {
-  const jurisdictionGuard = usePhStatutoryContentGuard("judicial-issuances");
-  if (jurisdictionGuard) return jurisdictionGuard;
+  const tenantCodeGuard = usePhStatutoryContentGuard("judicial-issuances");
+  if (tenantCodeGuard) return tenantCodeGuard;
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="judicial-issuances" />
