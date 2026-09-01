@@ -23,6 +23,10 @@
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "thinking": "is thinking",
+  "message": {
+    "copyResponse": "Copy response",
+    "copied": "Copied to clipboard"
+  },
   "attachment": {
     "viewFile": "View {{fileName}}",
     "closePreview": "Close preview",

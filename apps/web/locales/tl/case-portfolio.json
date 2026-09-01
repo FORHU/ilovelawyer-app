@@ -34,6 +34,7 @@
     "uploading": "Ina-upload…",
     "uploadError": "Hindi na-upload ang file na ito.",
     "removeDocument": "Alisin ang {{documentName}}",
+    "viewDocument": "Tingnan ang {{documentName}}",
     "loadDocumentsError": "Hindi ma-load ang mga dokumento.",
     "ragIndexing": "Ini-index",
     "ragIndexingHint": "Na-upload na ang file. Magagamit ito sa chat kapag tapos na ang indexing.",
@@ -99,6 +100,15 @@
     "audioOverviewRenderError": "Hindi nagawa ang audio. Subukan ulit.",
     "audioOverviewHostA": "Host A",
     "audioOverviewHostB": "Host B",
-    "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
+    "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map.",
+    "sourceViewerBack": "Bumalik sa Sources",
+    "sourceGuideTitle": "Source Guide",
+    "sourceGuideType": "Uri ng file",
+    "sourceGuideSize": "Laki",
+    "sourceGuideUploaded": "Na-upload",
+    "sourceGuideSummaryHeading": "Buod",
+    "sourceGuideNoSummary": "Wala pang available na buod.",
+    "sourcePreviewUnavailable": "Hindi pa available ang preview para sa file type na ito.",
+    "sourceOpenOriginal": "Buksan ang orihinal na file"
   }
 }

@@ -20,7 +20,13 @@ const SOURCES_MIN_WIDTH = 220;
 const SOURCES_MAX_WIDTH = 420;
 const STUDIO_DEFAULT_WIDTH = 340;
 const STUDIO_MIN_WIDTH = 260;
-const STUDIO_MAX_WIDTH = 460;
+// Was 460 — too narrow to make an open Mind Map's node canvas usable (matches the old
+// per-tile OPEN_TILE_WIDTH_CLASS.mindmap's own max-width, back when Mind Map got a wider
+// fixed width than Studio's other tiles). Studio has one shared drag width for every tile
+// now, not a per-tile one, so the cap has to accommodate Mind Map even though Timeline/Data
+// Table/Audio Overview don't need this much room — the user can just drag it narrower for
+// those.
+const STUDIO_MAX_WIDTH = 1100;
 // The center chat column's hard floor — both panels' dynamic max clamps to this so dragging
 // either sidebar can never crush the reading area into overflow.
 const CENTER_MIN_WIDTH = 400;
