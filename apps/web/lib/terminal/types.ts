@@ -157,6 +157,13 @@ export interface SnapshotAuditEvent {
   actorId?: string | null
 }
 
+export interface SnapshotStaleness {
+  nodeType: "TIMELINE_EVENT" | "PROCEDURAL_DEADLINE"
+  refId: string
+  staleReason: string
+  staleAt: string
+}
+
 export interface CaseSnapshot {
   case: {
     id: string
@@ -174,13 +181,14 @@ export interface CaseSnapshot {
   fatalRisks: SnapshotRisk[]
   evidence: { matrix: unknown[]; contradictions: SnapshotContradiction[] }
   law: { citations: SnapshotCitation[] }
-  procedure: { deadlines: SnapshotDeadline[]; items: SnapshotProcedureItem[] }
+  procedure: { deadlines: SnapshotDeadline[]; items: SnapshotProcedureItem[]; requiredConfirmations: number }
   teamAudit: { accesses: unknown[]; audit: SnapshotAuditEvent[] }
   findings: CaseFinding[]
   witnesses: Witness[]
   damages: DamageClaim[]
   reconstruction: CaseReconstruction | null
   redTeamAssessment: RedTeamAssessment | null
+  staleness: SnapshotStaleness[]
   riskAnalysis?: {
     overall: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
     liability: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }

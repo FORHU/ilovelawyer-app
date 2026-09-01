@@ -4,7 +4,12 @@ import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { useCreateTimelineMutation, useCaseTimelineQuery, type CaseTimelineEvent } from "@/lib/terminal/mutations"
+import {
+  useCreateTimelineMutation,
+  useUpdateTimelineMutation,
+  useCaseTimelineQuery,
+  type CaseTimelineEvent,
+} from "@/lib/terminal/mutations"
 
 interface CalendarEvent {
   id: string
@@ -15,9 +20,14 @@ interface CalendarEvent {
 
 interface TimelineRow {
   id: string
+  rawId: string | null
   at: Date | null
   title: string
   description: string | null
+}
+
+function toDateInputValue(at: Date) {
+  return at.toISOString().slice(0, 10)
 }
 
 function isDateOnly(at: Date) {
@@ -70,21 +80,26 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
     enabled: !!caseId,
   })
   const create = useCreateTimelineMutation(caseId)
+  const update = useUpdateTimelineMutation(caseId)
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editDate, setEditDate] = useState("")
 
   const items = useMemo<TimelineRow[]>(() => {
     const fromCase: TimelineRow[] = (timeline.data ?? []).map((event: CaseTimelineEvent) => ({
       id: `tl-${event.id}`,
+      rawId: event.id,
       at: event.occurredOn ? new Date(event.occurredOn) : null,
       title: event.title,
       description: event.description,
     }))
     const fromCalendar: TimelineRow[] = (calendar.data?.events ?? []).map((event) => ({
       id: `cal-${event.id}`,
+      rawId: null,
       at: new Date(event.dateTime),
       title: event.title,
       description: event.notes,
@@ -159,10 +174,54 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
                         </p>
                       ) : null}
                       <div className="grid grid-cols-[5.25rem_1.75rem_minmax(0,1fr)] items-start">
-                        <div className="flex justify-end pr-3">
+                        <div className="flex flex-col items-end gap-1 pr-3">
                           <span className="inline-flex h-7 min-w-[3.75rem] shrink-0 items-center justify-center rounded-full bg-rose-300 px-2.5 text-[11px] font-semibold tabular-nums tracking-wide text-white dark:bg-rose-400/90">
                             {formatBadge(at)}
                           </span>
+                          {item.rawId && editingId !== item.id ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingId(item.id)
+                                setEditDate(toDateInputValue(at))
+                              }}
+                              className="text-[10px] font-medium text-muted-foreground hover:underline"
+                            >
+                              {t("timeline.editDate", { defaultValue: "Edit date" })}
+                            </button>
+                          ) : null}
+                          {item.rawId && editingId === item.id ? (
+                            <div className="flex flex-col items-end gap-1">
+                              <input
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                                className="h-7 w-[7.5rem] rounded-lg border border-border bg-muted px-1.5 text-[11px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={update.isPending || !editDate}
+                                  onClick={() => {
+                                    update.mutate(
+                                      { id: item.rawId as string, occurredOn: new Date(`${editDate}T00:00:00Z`).toISOString() },
+                                      { onSuccess: () => setEditingId(null) },
+                                    )
+                                  }}
+                                  className="text-[10px] font-semibold text-brand-gold hover:underline disabled:opacity-50"
+                                >
+                                  {t("timeline.save", { defaultValue: "Save" })}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  className="text-[10px] font-medium text-muted-foreground hover:underline"
+                                >
+                                  {t("timeline.cancel", { defaultValue: "Cancel" })}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                         <div className="relative flex justify-center pt-2">
                           <span

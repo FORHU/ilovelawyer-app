@@ -14,6 +14,7 @@ import {
   terminalKeys,
   useCheckCitationMutation,
   useConfirmDeadlineMutation,
+  useRecomputeDeadlineMutation,
   useCreateDamageMutation,
   useCreateDeadlineMutation,
   useCreateFindingMutation,
@@ -524,11 +525,15 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
   const rules = useProcedureRulesQuery()
   const createDeadline = useCreateDeadlineMutation(caseId)
   const confirmDeadline = useConfirmDeadlineMutation(caseId)
+  const recomputeDeadline = useRecomputeDeadlineMutation(caseId)
   const createItem = useCreateProcedureItemMutation(caseId)
   const updateItem = useUpdateProcedureItemMutation(caseId)
   const [ruleCode, setRuleCode] = useState("")
   const [triggerDate, setTriggerDate] = useState("")
+  const [sourceTimelineEventId, setSourceTimelineEventId] = useState("")
   const [todoLabel, setTodoLabel] = useState("")
+
+  const timelineEventOptions = snapshot.timeline.filter((event) => event.occurredOn)
 
   const items = snapshot.procedure.items
   const approachItems = items.filter((item) => item.kind.toUpperCase() === "STRATEGY")
@@ -626,20 +631,46 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
           <ul className="space-y-2">
             {snapshot.procedure.deadlines.map((deadline) => {
               const confirms = (deadline.confirmations ?? []).filter((c) => c.confirmed).length
+              const stale = snapshot.staleness.find(
+                (s) => s.nodeType === "PROCEDURAL_DEADLINE" && s.refId === deadline.id,
+              )
               return (
                 <li key={deadline.id} className="rounded-md border border-border p-3">
-                  <p className="font-medium">{deadline.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{deadline.label}</p>
+                    {stale && (
+                      <span
+                        title={stale.staleReason}
+                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-amber-700 dark:text-amber-400"
+                      >
+                        {t("staleBadge")}
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    <span className="font-mono">{formatDate(deadline.computedDueDate)}</span> · {confirms}/2 {t("confirmed")}
+                    <span className="font-mono">{formatDate(deadline.computedDueDate)}</span> ·{" "}
+                    {confirms}/{snapshot.procedure.requiredConfirmations} {t("confirmed")}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => confirmDeadline.mutate(deadline.id)}
-                    disabled={confirmDeadline.isPending}
-                    className="mt-2 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline disabled:opacity-50"
-                  >
-                    {t("confirmDeadline")}
-                  </button>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => confirmDeadline.mutate(deadline.id)}
+                      disabled={confirmDeadline.isPending}
+                      className="text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline disabled:opacity-50"
+                    >
+                      {t("confirmDeadline")}
+                    </button>
+                    {stale && (
+                      <button
+                        type="button"
+                        onClick={() => recomputeDeadline.mutate(deadline.id)}
+                        disabled={recomputeDeadline.isPending}
+                        className="text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline disabled:opacity-50"
+                      >
+                        {t("recomputeDeadline")}
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}
@@ -650,7 +681,11 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
           onSubmit={(e) => {
             e.preventDefault()
             if (!ruleCode || !triggerDate) return
-            createDeadline.mutate({ ruleCode, triggerDate })
+            createDeadline.mutate({
+              ruleCode,
+              triggerDate,
+              sourceTimelineEventId: sourceTimelineEventId || undefined,
+            })
           }}
         >
           <select value={ruleCode} onChange={(e) => setRuleCode(e.target.value)} className={fieldClass}>
@@ -668,6 +703,19 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
             aria-label={t("triggerDate")}
             className={fieldClass}
           />
+          <select
+            value={sourceTimelineEventId}
+            onChange={(e) => setSourceTimelineEventId(e.target.value)}
+            className={fieldClass}
+          >
+            <option value="">{t("noTimelineLink")}</option>
+            {timelineEventOptions.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.title}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground">{t("linkToTimelineEvent")}</p>
           <button type="submit" disabled={createDeadline.isPending} className={`${primaryBtnClass} self-start`}>
             {t("computeDeadline")}
           </button>
