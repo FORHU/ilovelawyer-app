@@ -8,7 +8,6 @@ import {
   useCaseDocumentsQuery,
   useUploadCaseDocumentMutation,
   useDeleteCaseDocumentMutation,
-  type UserDocument,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { RagStatusBadge } from "@/components/cases/rag-status-badge";
@@ -207,17 +206,11 @@ export function DocumentUploadButton({ caseId }: { caseId: string }) {
 export function CaseDocumentList({
   caseId,
   listClassName = "max-h-48",
-  onSelectDocument,
 }: {
   caseId: string;
   /** Overrides the list's height constraint — the default `max-h-48` fits this component's
    * original popover home; Case Workspace's Sources panel passes a taller one instead. */
   listClassName?: string;
-  /** Case Workspace's Sources panel passes this to open a document in its in-panel Source
-   * Viewer instead of a new tab — the filename becomes a button rather than a plain link.
-   * Omitted everywhere else (this component's original small popover), which keeps the
-   * existing "open the file directly" behavior unchanged there. */
-  onSelectDocument?: (doc: UserDocument) => void;
 }) {
   const { t } = useTranslation("case-portfolio");
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
@@ -240,16 +233,7 @@ export function CaseDocumentList({
       {documents.map((doc) => (
         <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {onSelectDocument ? (
-            <button
-              type="button"
-              onClick={() => onSelectDocument(doc)}
-              aria-label={t("detail.viewDocument", { documentName: doc.name })}
-              className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:text-brand-gold hover:underline"
-            >
-              {doc.name}
-            </button>
-          ) : doc.fileUrl ? (
+          {doc.fileUrl ? (
             <a
               href={doc.fileUrl}
               target="_blank"

@@ -34,7 +34,6 @@
     "uploading": "업로드 중…",
     "uploadError": "파일을 업로드하지 못했습니다.",
     "removeDocument": "{{documentName}} 제거",
-    "viewDocument": "{{documentName}} 보기",
     "loadDocumentsError": "문서를 불러올 수 없습니다.",
     "ragIndexing": "색인 중",
     "ragIndexingHint": "파일은 업로드되었습니다. 색인이 끝나면 채팅에서 검색할 수 있습니다.",
@@ -100,15 +99,6 @@
     "audioOverviewRenderError": "오디오를 렌더링하지 못했습니다. 다시 시도해 주세요.",
     "audioOverviewHostA": "호스트 A",
     "audioOverviewHostB": "호스트 B",
-    "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다.",
-    "sourceViewerBack": "소스로 돌아가기",
-    "sourceGuideTitle": "소스 가이드",
-    "sourceGuideType": "파일 형식",
-    "sourceGuideSize": "크기",
-    "sourceGuideUploaded": "업로드됨",
-    "sourceGuideSummaryHeading": "요약",
-    "sourceGuideNoSummary": "아직 사용 가능한 요약이 없습니다.",
-    "sourcePreviewUnavailable": "이 파일 형식은 미리보기를 지원하지 않습니다.",
-    "sourceOpenOriginal": "원본 파일 열기"
+    "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다."
   }
 }

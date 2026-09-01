@@ -110,10 +110,8 @@ export function extractMindMap(text: string): MindMapItem | undefined {
  */
 export function stripStructuredBlocks(text: string): string {
   let cleaned = text
-    // Tolerates the closing tag itself carrying stray whitespace (e.g. `[/MINDMAP ]`) — a
-    // real Chat Wonder quirk (see response-parser.ts's server-side twin for the full story).
-    .replace(/\[TIMELINE\][\s\S]*?\[\/\s*TIMELINE\s*\]/gi, "")
-    .replace(/\[MINDMAP\][\s\S]*?\[\/\s*MINDMAP\s*\]/gi, "");
+    .replace(/\[TIMELINE\][\s\S]*?\[\/TIMELINE\]/gi, "")
+    .replace(/\[MINDMAP\][\s\S]*?\[\/MINDMAP\]/gi, "");
 
   const startTags = [/\[TIMELINE\]/i, /\[MINDMAP\]/i];
   let firstTagIdx = -1;
