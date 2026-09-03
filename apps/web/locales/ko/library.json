@@ -17,6 +17,26 @@
     "viewSource": "출처 보기 →",
     "minimize": "최소화"
   },
+  "lawSearch": {
+    "title": "판례 및 공화국법 검색",
+    "subtitle": "사건명, G.R. 번호 또는 R.A. 번호로 필리핀 판례와 공화국법을 검색하세요.",
+    "searchAriaLabel": "필리핀 판례 및 공화국법 검색",
+    "searchPlaceholder": "사건명, G.R. No. 또는 R.A. No…",
+    "searchButton": "검색",
+    "searching": "검색 중…",
+    "categories": {
+      "jurisprudence": "판례",
+      "republicActs": "공화국법"
+    },
+    "resultCount": "결과: {{count}}",
+    "empty": "결과가 없습니다.",
+    "untitled": "(제목 없음)",
+    "viewDocument": "문서 보기",
+    "openInNewTab": "새 탭에서 열기",
+    "error": "검색을 실행할 수 없습니다. 다시 시도해 주세요.",
+    "comingSoon": "귀하의 관할권에서는 필리핀 판례 및 공화국법 검색이 곧 제공될 예정입니다.",
+    "notAvailable": "귀하의 조직에서는 법률 검색을 사용할 수 없습니다."
+  },
   "documents": {
     "pageTitle": "판례 문서",
     "backToLibrary": "라이브러리로 돌아가기",

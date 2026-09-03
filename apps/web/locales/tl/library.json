@@ -17,6 +17,26 @@
     "viewSource": "Tingnan ang source →",
     "minimize": "I-minimize"
   },
+  "lawSearch": {
+    "title": "Maghanap sa jurisprudence at republic acts",
+    "subtitle": "Maghanap sa Philippine jurisprudence at republic acts ayon sa pamagat ng kaso, G.R. number, o R.A. number.",
+    "searchAriaLabel": "Maghanap sa Philippine jurisprudence at republic acts",
+    "searchPlaceholder": "Pamagat ng kaso, G.R. No., o R.A. No…",
+    "searchButton": "Hanapin",
+    "searching": "Naghahanap…",
+    "categories": {
+      "jurisprudence": "Jurisprudence",
+      "republicActs": "Republic Acts"
+    },
+    "resultCount": "Mga resulta: {{count}}",
+    "empty": "Walang resulta.",
+    "untitled": "(walang pamagat)",
+    "viewDocument": "Tingnan ang dokumento",
+    "openInNewTab": "Buksan sa bagong tab",
+    "error": "Hindi maisagawa ang paghahanap. Pakisubukang muli.",
+    "comingSoon": "Malapit nang available ang paghahanap ng Philippine jurisprudence at republic acts para sa inyong hurisdiksyon.",
+    "notAvailable": "Hindi available ang law search para sa inyong organisasyon."
+  },
   "documents": {
     "pageTitle": "Mga Case Law Document",
     "backToLibrary": "Bumalik sa Library",
