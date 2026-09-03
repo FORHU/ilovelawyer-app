@@ -17,6 +17,26 @@
     "viewSource": "View source →",
     "minimize": "Minimize"
   },
+  "lawSearch": {
+    "title": "Search jurisprudence & republic acts",
+    "subtitle": "Search Philippine jurisprudence and republic acts by case title, G.R. number, or R.A. number.",
+    "searchAriaLabel": "Search Philippine jurisprudence and republic acts",
+    "searchPlaceholder": "Case title, G.R. No., or R.A. No…",
+    "searchButton": "Search",
+    "searching": "Searching…",
+    "categories": {
+      "jurisprudence": "Jurisprudence",
+      "republicActs": "Republic Acts"
+    },
+    "resultCount": "Results: {{count}}",
+    "empty": "No results.",
+    "untitled": "(untitled)",
+    "viewDocument": "View document",
+    "openInNewTab": "Open in a new tab",
+    "error": "Couldn't run that search. Please try again.",
+    "comingSoon": "Philippine jurisprudence and republic-act search is coming soon for your jurisdiction.",
+    "notAvailable": "Law search isn't available for your organization."
+  },
   "documents": {
     "pageTitle": "Case Law Documents",
     "backToLibrary": "Back to Library",
