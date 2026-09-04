@@ -3,10 +3,21 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, Info, Search, Trash2, Sparkles, Loader2, Save, Volume2 } from "lucide-react"
+import {
+  AlertTriangle,
+  Info,
+  Search,
+  Trash2,
+  Sparkles,
+  Loader2,
+  Save,
+  Volume2,
+} from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
+import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import LegalMarkdown from "@/components/library/legal-markdown"
+import { Badge } from "@workspace/ui/components/badge"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
 import {
@@ -33,12 +44,23 @@ import {
   useUpdateReconstructionMutation,
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
-import type { CaseSnapshot, DamageCategory, FindingCategory, PanelId, SnapshotContradiction, SnapshotRisk } from "@/lib/terminal/types"
+import type {
+  CaseSnapshot,
+  DamageCategory,
+  FindingCategory,
+  HearsayCategory,
+  PanelId,
+  PrivilegeStatus,
+  SnapshotContradiction,
+  SnapshotEvidenceMatrixItem,
+  SnapshotRisk,
+  Witness,
+} from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { getStatus } from "@/config/tenant-codes/capabilities"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 
-function formatDate(value: string | Date | null | undefined) {
+export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
   const date = typeof value === "string" ? new Date(value) : value
   if (Number.isNaN(date.getTime())) return "—"
@@ -55,20 +77,27 @@ function formatContradictionValue(kind: string, value: string) {
 function contradictionHeadline(item: SnapshotContradiction) {
   const left = formatContradictionValue(item.kind, item.leftValue)
   const right = formatContradictionValue(item.kind, item.rightValue)
-  const label = item.factKey && item.factKey !== "other" ? item.factKey.replace(/_/g, " ") : null
+  const label =
+    item.factKey && item.factKey !== "other"
+      ? item.factKey.replace(/_/g, " ")
+      : null
   return label ? `${label}: ${left} vs ${right}` : `${left} vs ${right}`
 }
 
-const fieldClass =
+export const fieldClass =
   "h-8 min-w-0 rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground hover:border-foreground/20 focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
-const primaryBtnClass =
+export const primaryBtnClass =
   "h-8 shrink-0 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
 const ghostBtnClass =
   "h-8 shrink-0 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
 
 type RiskLevel = "HIGH" | "MEDIUM" | "LOW"
 
-const EMPTY_METER = { score: 0, level: "LOW" as const, drivers: [] as { code: string; count: number }[] }
+const EMPTY_METER = {
+  score: 0,
+  level: "LOW" as const,
+  drivers: [] as { code: string; count: number }[],
+}
 
 const RISK_DRIVER_KEYS: Record<string, string> = {
   fatal: "riskDriverFatal",
@@ -85,12 +114,18 @@ const RISK_DRIVER_KEYS: Record<string, string> = {
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">{children}</p>
+    <p className="mb-2 text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase">
+      {children}
+    </p>
   )
 }
 
 function EmptyNote({ children }: { children: ReactNode }) {
-  return <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">{children}</p>
+  return (
+    <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">
+      {children}
+    </p>
+  )
 }
 
 // Shared root wrapper for every panel body. Density lives here in one place —
@@ -99,7 +134,13 @@ function EmptyNote({ children }: { children: ReactNode }) {
 const DENSE_GAP = { "3": "gap-1.5", "4": "gap-2.5", "5": "gap-3" } as const
 const NORMAL_GAP = { "3": "gap-3", "4": "gap-4", "5": "gap-5" } as const
 
-function PanelBody({ gap, children }: { gap: keyof typeof NORMAL_GAP; children: ReactNode }) {
+function PanelBody({
+  gap,
+  children,
+}: {
+  gap: keyof typeof NORMAL_GAP
+  children: ReactNode
+}) {
   const dense = useTerminalDisplayStore((state) => state.highDensity)
   return (
     <div
@@ -115,12 +156,24 @@ function PanelBody({ gap, children }: { gap: keyof typeof NORMAL_GAP; children: 
 function TerminalRagBadge({ status }: { status: string | null }) {
   const { t } = useTranslation("terminal")
   if (status === "READY") {
-    return <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[1px] text-emerald-400">{t("ragReady")}</span>
+    return (
+      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-emerald-400 uppercase">
+        {t("ragReady")}
+      </span>
+    )
   }
   if (status === "FAILED") {
-    return <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[1px] text-red-400">{t("ragFailed")}</span>
+    return (
+      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-red-400 uppercase">
+        {t("ragFailed")}
+      </span>
+    )
   }
-  return <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{t("ragPending")}</span>
+  return (
+    <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+      {t("ragPending")}
+    </span>
+  )
 }
 
 function RiskMeter({
@@ -136,7 +189,12 @@ function RiskMeter({
 }) {
   const { t } = useTranslation("terminal")
   const width = Math.max(8, Math.min(100, score))
-  const barColor = level === "HIGH" ? "bg-red-500" : level === "MEDIUM" ? "bg-orange-400" : "bg-emerald-400"
+  const barColor =
+    level === "HIGH"
+      ? "bg-red-500"
+      : level === "MEDIUM"
+        ? "bg-orange-400"
+        : "bg-emerald-400"
   const badge =
     level === "HIGH"
       ? "bg-red-500/15 text-red-300"
@@ -153,15 +211,26 @@ function RiskMeter({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{label}</span>
-        <span className={`rounded px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[1px] ${badge}`}>
+        <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+          {label}
+        </span>
+        <span
+          className={`rounded px-2 py-0.5 font-mono text-[9px] font-semibold tracking-[1px] uppercase ${badge}`}
+        >
           {level} · {score}
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${width}%` }} />
+        <div
+          className={`h-full rounded-full ${barColor}`}
+          style={{ width: `${width}%` }}
+        />
       </div>
-      {driverText ? <p className="text-[11px] leading-4 text-muted-foreground">{driverText}</p> : null}
+      {driverText ? (
+        <p className="text-[11px] leading-4 text-muted-foreground">
+          {driverText}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -173,7 +242,8 @@ export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
     <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <p>
-        <span className="font-semibold">{t("fatalBanner")}</span> {risks.map((r) => r.title).join(" · ")}
+        <span className="font-semibold">{t("fatalBanner")}</span>{" "}
+        {risks.map((r) => r.title).join(" · ")}
       </p>
     </div>
   )
@@ -190,7 +260,12 @@ export function RefreshButton({
 }) {
   const { t } = useTranslation("terminal")
   return (
-    <button type="button" onClick={onClick} disabled={pending} className={className ?? ghostBtnClass}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={pending}
+      className={className ?? ghostBtnClass}
+    >
       {pending ? t("refreshing") : t("refresh")}
     </button>
   )
@@ -227,15 +302,45 @@ export function TerminalPanelBody({
     case "contradictions":
       return <ContradictionsPanel snapshot={snapshot} caseId={caseId} />
     case "legalIssues":
-      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="LEGAL_ISSUE" />
+      return (
+        <CaseFindingPanel
+          snapshot={snapshot}
+          caseId={caseId}
+          category="LEGAL_ISSUE"
+        />
+      )
     case "weaknesses":
-      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="WEAKNESS" />
+      return (
+        <CaseFindingPanel
+          snapshot={snapshot}
+          caseId={caseId}
+          category="WEAKNESS"
+        />
+      )
     case "strengths":
-      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="STRENGTH" />
+      return (
+        <CaseFindingPanel
+          snapshot={snapshot}
+          caseId={caseId}
+          category="STRENGTH"
+        />
+      )
     case "attackStrategy":
-      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="ATTACK_STRATEGY" />
+      return (
+        <CaseFindingPanel
+          snapshot={snapshot}
+          caseId={caseId}
+          category="ATTACK_STRATEGY"
+        />
+      )
     case "defenseStrategy":
-      return <CaseFindingPanel snapshot={snapshot} caseId={caseId} category="DEFENSE_STRATEGY" />
+      return (
+        <CaseFindingPanel
+          snapshot={snapshot}
+          caseId={caseId}
+          category="DEFENSE_STRATEGY"
+        />
+      )
     case "witnesses":
       return <WitnessPanel snapshot={snapshot} caseId={caseId} />
     case "damages":
@@ -276,11 +381,20 @@ function MindMapPanel({ caseId }: { caseId: string }) {
   )
 }
 
-function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function CommandPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const createRisk = useCreateRiskMutation(caseId)
   const [title, setTitle] = useState("")
-  const statusLabel = snapshot.case.actionType?.trim() || snapshot.case.jurisdiction?.trim() || null
+  const statusLabel =
+    snapshot.case.actionType?.trim() ||
+    snapshot.case.jurisdiction?.trim() ||
+    null
 
   return (
     <PanelBody gap="5">
@@ -292,9 +406,11 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           <ul className="space-y-2">
             {snapshot.case.parties.map((party) => (
               <li key={party.id}>
-                <p className="text-[15px] font-medium leading-snug text-foreground">{party.name}</p>
+                <p className="text-[15px] leading-snug font-medium text-foreground">
+                  {party.name}
+                </p>
                 {party.designation ? (
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                  <p className="mt-0.5 text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
                     {party.designation}
                   </p>
                 ) : null}
@@ -312,7 +428,10 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           <ul className="space-y-2.5">
             {snapshot.risks.map((risk) => (
               <li key={risk.id} className="flex items-start gap-2.5">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
+                <Info
+                  className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold"
+                  aria-hidden="true"
+                />
                 <span className="leading-5 text-foreground">{risk.title}</span>
               </li>
             ))}
@@ -334,7 +453,11 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
             placeholder={t("addRisk")}
             className={`flex-1 ${fieldClass}`}
           />
-          <button type="submit" disabled={createRisk.isPending} className={primaryBtnClass}>
+          <button
+            type="submit"
+            disabled={createRisk.isPending}
+            className={primaryBtnClass}
+          >
             {t("add")}
           </button>
         </form>
@@ -352,8 +475,70 @@ function CommandPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
   )
 }
 
-function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+export const PRIVILEGE_STATUS_KEYS: Record<PrivilegeStatus, string> = {
+  NONE: "privilegeNone",
+  ATTORNEY_CLIENT: "privilegeAttorneyClient",
+  WORK_PRODUCT: "privilegeWorkProduct",
+}
+
+export const HEARSAY_CATEGORY_KEYS: Record<HearsayCategory, string> = {
+  DIRECT_EVIDENCE: "hearsayDirectEvidence",
+  BUSINESS_RECORD: "hearsayBusinessRecord",
+  PRESENT_SENSE_IMPRESSION: "hearsayPresentSenseImpression",
+  EXCITED_UTTERANCE: "hearsayExcitedUtterance",
+  OTHER_EXCEPTION: "hearsayOtherException",
+  NOT_APPLICABLE: "hearsayNotApplicable",
+}
+
+function EvidenceRowPills({
+  matrixItem,
+  witnesses,
+}: {
+  matrixItem: SnapshotEvidenceMatrixItem | undefined
+  witnesses: Witness[]
+}) {
   const { t } = useTranslation("terminal")
+  const custodyCount = matrixItem?.custodyEvents.length ?? 0
+  const sponsoringWitness = matrixItem?.sponsoringWitnessId
+    ? witnesses.find((w) => w.id === matrixItem.sponsoringWitnessId)
+    : undefined
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-1">
+      {matrixItem && matrixItem.privilegeStatus !== "NONE" ? (
+        <Badge tone="warning">
+          {t(PRIVILEGE_STATUS_KEYS[matrixItem.privilegeStatus])}
+        </Badge>
+      ) : null}
+      {matrixItem && matrixItem.hearsayCategory !== "NOT_APPLICABLE" ? (
+        <Badge tone="neutral">
+          {t(HEARSAY_CATEGORY_KEYS[matrixItem.hearsayCategory])}
+        </Badge>
+      ) : null}
+      <Badge tone={sponsoringWitness ? "success" : "neutral"}>
+        {sponsoringWitness ? sponsoringWitness.name : t("noSponsoringWitness")}
+      </Badge>
+      <Badge tone={custodyCount === 0 ? "warning" : "neutral"}>
+        {t("custodyEventCount", { n: custodyCount })}
+      </Badge>
+    </div>
+  )
+}
+
+function EvidencePanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
+  const { t } = useTranslation("terminal")
+  const [openDocumentId, setOpenDocumentId] = useState<string | null>(null)
+  const openDocument =
+    snapshot.documents.find((doc) => doc.id === openDocumentId) ?? null
+  const openMatrixItem = snapshot.evidence.matrix.find(
+    (m) => m.documentId === openDocumentId
+  )
 
   return (
     <PanelBody gap="4">
@@ -365,12 +550,31 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
           <EmptyNote>{t("noDocuments")}</EmptyNote>
         ) : (
           <ul className="space-y-1">
-            {snapshot.documents.map((doc) => (
-              <li key={doc.id} className="flex items-center justify-between gap-3 rounded-md px-1 py-1.5">
-                <span className="truncate text-[13px] text-foreground">{doc.name}</span>
-                <TerminalRagBadge status={doc.ragStatus} />
-              </li>
-            ))}
+            {snapshot.documents.map((doc) => {
+              const matrixItem = snapshot.evidence.matrix.find(
+                (m) => m.documentId === doc.id
+              )
+              return (
+                <li key={doc.id}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenDocumentId(doc.id)}
+                    className="flex w-full flex-col items-start gap-1 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-muted"
+                  >
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+                        {doc.name}
+                      </span>
+                      <TerminalRagBadge status={doc.ragStatus} />
+                    </div>
+                    <EvidenceRowPills
+                      matrixItem={matrixItem}
+                      witnesses={snapshot.witnesses}
+                    />
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
@@ -379,6 +583,17 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
         <SectionLabel>{t("timeline")}</SectionLabel>
         <CaseTimelineView caseId={caseId} fill={false} />
       </div>
+
+      <EvidenceDetailDrawer
+        open={!!openDocumentId}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setOpenDocumentId(null)
+        }}
+        caseId={caseId}
+        document={openDocument}
+        matrixItem={openMatrixItem}
+        witnesses={snapshot.witnesses}
+      />
     </PanelBody>
   )
 }
@@ -386,7 +601,13 @@ function EvidencePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: s
 // Split out of EvidencePanel into its own pane — the underlying data (EvidenceContradiction
 // rows, scanned via regex + an LLM pass through chat-wonder-v2-api) already existed; this is
 // purely giving it dedicated screen space instead of competing with Documents/Timeline for it.
-function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function ContradictionsPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const scan = useScanContradictionsMutation(caseId)
   const contradictions = snapshot.evidence.contradictions
@@ -397,7 +618,7 @@ function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; cas
         type="button"
         onClick={() => scan.mutate()}
         disabled={scan.isPending}
-        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-gold text-[11px] font-semibold uppercase tracking-[1.4px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
+        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-gold text-[11px] font-semibold tracking-[1.4px] text-brand-navy-950 uppercase transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
       >
         <Search className="h-3.5 w-3.5" aria-hidden="true" />
         {scan.isPending ? t("scanning") : t("scan")}
@@ -410,15 +631,22 @@ function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; cas
           <SectionLabel>{t("contradictions")}</SectionLabel>
           <ul className="space-y-3">
             {contradictions.map((item) => (
-              <li key={item.id} className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5">
+              <li
+                key={item.id}
+                className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5"
+              >
                 <p className="font-mono text-[12px] text-orange-400">
                   {contradictionHeadline(item)}
                 </p>
                 {item.leftExcerpt ? (
-                  <p className="mt-2 text-[12px] leading-5 text-foreground/80">“{item.leftExcerpt}”</p>
+                  <p className="mt-2 text-[12px] leading-5 text-foreground/80">
+                    “{item.leftExcerpt}”
+                  </p>
                 ) : null}
                 {item.rightExcerpt ? (
-                  <p className="mt-1 text-[12px] leading-5 text-muted-foreground">“{item.rightExcerpt}”</p>
+                  <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                    “{item.rightExcerpt}”
+                  </p>
                 ) : null}
               </li>
             ))}
@@ -429,7 +657,13 @@ function ContradictionsPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; cas
   )
 }
 
-function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function LawPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const check = useCheckCitationMutation(caseId)
   const [quotedText, setQuotedText] = useState("")
@@ -443,9 +677,16 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
       ) : (
         <ul className="space-y-2">
           {snapshot.law.citations.map((citation) => (
-            <li key={citation.id} className="rounded-md border border-border p-3">
-              <p className="line-clamp-3 text-sm leading-5">{citation.quotedText}</p>
-              <p className="mt-2 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{citation.status}</p>
+            <li
+              key={citation.id}
+              className="rounded-md border border-border p-3"
+            >
+              <p className="line-clamp-3 text-sm leading-5">
+                {citation.quotedText}
+              </p>
+              <p className="mt-2 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                {citation.status}
+              </p>
             </li>
           ))}
         </ul>
@@ -456,7 +697,10 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
           e.preventDefault()
           const quote = quotedText.trim()
           if (!quote) return
-          check.mutate({ quotedText: quote, officialText: officialText.trim() || undefined })
+          check.mutate({
+            quotedText: quote,
+            officialText: officialText.trim() || undefined,
+          })
           setQuotedText("")
           setOfficialText("")
         }}
@@ -474,7 +718,11 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
           placeholder={t("officialText")}
           className={fieldClass}
         />
-        <button type="submit" disabled={check.isPending} className={`${primaryBtnClass} self-start`}>
+        <button
+          type="submit"
+          disabled={check.isPending}
+          className={`${primaryBtnClass} self-start`}
+        >
           {t("verify")}
         </button>
       </form>
@@ -485,7 +733,13 @@ function LawPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string
 // Opposing counsel's own adversarial read of the case — generated from the case's structured
 // findings (Legal Issues, Weaknesses, Contradictions, Witnesses, Damages), not raw documents.
 // No manual edit, unlike Case Reconstruction: this is meant to be read as their commentary.
-function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function RedTeamPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const generate = useGenerateRedTeamMutation(caseId)
   const content = snapshot.redTeamAssessment?.content ?? ""
@@ -498,14 +752,18 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           type="button"
           onClick={() => generate.mutate()}
           disabled={generate.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
         >
           {generate.isPending ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
             <Sparkles className="h-3 w-3" aria-hidden="true" />
           )}
-          {generate.isPending ? t("generating") : content ? t("regenerate") : t("generate")}
+          {generate.isPending
+            ? t("generating")
+            : content
+              ? t("regenerate")
+              : t("generate")}
         </button>
       </div>
 
@@ -518,10 +776,17 @@ function RedTeamPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
   )
 }
 
-function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function ProcedurePanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
-  const deadlinesProvisional = getStatus(tenantCode, "deadlines") === "available-provisional"
+  const deadlinesProvisional =
+    getStatus(tenantCode, "deadlines") === "available-provisional"
   const rules = useProcedureRulesQuery()
   const createDeadline = useCreateDeadlineMutation(caseId)
   const confirmDeadline = useConfirmDeadlineMutation(caseId)
@@ -533,11 +798,17 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
   const [sourceTimelineEventId, setSourceTimelineEventId] = useState("")
   const [todoLabel, setTodoLabel] = useState("")
 
-  const timelineEventOptions = snapshot.timeline.filter((event) => event.occurredOn)
+  const timelineEventOptions = snapshot.timeline.filter(
+    (event) => event.occurredOn
+  )
 
   const items = snapshot.procedure.items
-  const approachItems = items.filter((item) => item.kind.toUpperCase() === "STRATEGY")
-  const todoItems = items.filter((item) => item.kind.toUpperCase() !== "STRATEGY")
+  const approachItems = items.filter(
+    (item) => item.kind.toUpperCase() === "STRATEGY"
+  )
+  const todoItems = items.filter(
+    (item) => item.kind.toUpperCase() !== "STRATEGY"
+  )
   const fallbackApproach = snapshot.risks.slice(0, 3).map((risk) => risk.title)
   const overall = snapshot.riskAnalysis?.overall ?? EMPTY_METER
   const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
@@ -575,10 +846,14 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
                   <input
                     type="checkbox"
                     checked={item.done}
-                    onChange={() => updateItem.mutate({ id: item.id, done: !item.done })}
+                    onChange={() =>
+                      updateItem.mutate({ id: item.id, done: !item.done })
+                    }
                     className="mt-0.5 h-3.5 w-3.5 rounded border-border bg-muted accent-brand-gold"
                   />
-                  <span className={`text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  <span
+                    className={`text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}
+                  >
                     {item.label}
                   </span>
                 </label>
@@ -602,7 +877,11 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
             placeholder={t("addTodo")}
             className={`flex-1 ${fieldClass}`}
           />
-          <button type="submit" disabled={createItem.isPending} className={primaryBtnClass}>
+          <button
+            type="submit"
+            disabled={createItem.isPending}
+            className={primaryBtnClass}
+          >
             {t("add")}
           </button>
         </form>
@@ -611,8 +890,18 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
       <div>
         <SectionLabel>{t("riskAnalysis")}</SectionLabel>
         <div className="space-y-3">
-          <RiskMeter label={t("overallRisk")} score={overall.score} level={overall.level} drivers={overall.drivers} />
-          <RiskMeter label={t("liabilityRisk")} score={liability.score} level={liability.level} drivers={liability.drivers} />
+          <RiskMeter
+            label={t("overallRisk")}
+            score={overall.score}
+            level={overall.level}
+            drivers={overall.drivers}
+          />
+          <RiskMeter
+            label={t("liabilityRisk")}
+            score={liability.score}
+            level={liability.level}
+            drivers={liability.drivers}
+          />
         </div>
       </div>
 
@@ -620,7 +909,7 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
         <div className="flex items-center gap-2">
           <SectionLabel>{t("deadlines")}</SectionLabel>
           {deadlinesProvisional && (
-            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-amber-700 dark:text-amber-400">
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold tracking-[1px] text-amber-700 uppercase dark:text-amber-400">
               {t("deadlinesProvisional")}
             </span>
           )}
@@ -630,33 +919,43 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
         ) : (
           <ul className="space-y-2">
             {snapshot.procedure.deadlines.map((deadline) => {
-              const confirms = (deadline.confirmations ?? []).filter((c) => c.confirmed).length
+              const confirms = (deadline.confirmations ?? []).filter(
+                (c) => c.confirmed
+              ).length
               const stale = snapshot.staleness.find(
-                (s) => s.nodeType === "PROCEDURAL_DEADLINE" && s.refId === deadline.id,
+                (s) =>
+                  s.nodeType === "PROCEDURAL_DEADLINE" &&
+                  s.refId === deadline.id
               )
               return (
-                <li key={deadline.id} className="rounded-md border border-border p-3">
+                <li
+                  key={deadline.id}
+                  className="rounded-md border border-border p-3"
+                >
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{deadline.label}</p>
                     {stale && (
                       <span
                         title={stale.staleReason}
-                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-amber-700 dark:text-amber-400"
+                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-semibold tracking-[1px] text-amber-700 uppercase dark:text-amber-400"
                       >
                         {t("staleBadge")}
                       </span>
                     )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    <span className="font-mono">{formatDate(deadline.computedDueDate)}</span> ·{" "}
-                    {confirms}/{snapshot.procedure.requiredConfirmations} {t("confirmed")}
+                    <span className="font-mono">
+                      {formatDate(deadline.computedDueDate)}
+                    </span>{" "}
+                    · {confirms}/{snapshot.procedure.requiredConfirmations}{" "}
+                    {t("confirmed")}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => confirmDeadline.mutate(deadline.id)}
                       disabled={confirmDeadline.isPending}
-                      className="text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline disabled:opacity-50"
+                      className="text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
                     >
                       {t("confirmDeadline")}
                     </button>
@@ -665,7 +964,7 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
                         type="button"
                         onClick={() => recomputeDeadline.mutate(deadline.id)}
                         disabled={recomputeDeadline.isPending}
-                        className="text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline disabled:opacity-50"
+                        className="text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
                       >
                         {t("recomputeDeadline")}
                       </button>
@@ -688,7 +987,11 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
             })
           }}
         >
-          <select value={ruleCode} onChange={(e) => setRuleCode(e.target.value)} className={fieldClass}>
+          <select
+            value={ruleCode}
+            onChange={(e) => setRuleCode(e.target.value)}
+            className={fieldClass}
+          >
             <option value="">{t("computeDeadline")}</option>
             {(rules.data ?? []).map((rule) => (
               <option key={rule.code} value={rule.code}>
@@ -715,8 +1018,14 @@ function ProcedurePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: 
               </option>
             ))}
           </select>
-          <p className="text-[11px] text-muted-foreground">{t("linkToTimelineEvent")}</p>
-          <button type="submit" disabled={createDeadline.isPending} className={`${primaryBtnClass} self-start`}>
+          <p className="text-[11px] text-muted-foreground">
+            {t("linkToTimelineEvent")}
+          </p>
+          <button
+            type="submit"
+            disabled={createDeadline.isPending}
+            className={`${primaryBtnClass} self-start`}
+          >
             {t("computeDeadline")}
           </button>
         </form>
@@ -735,9 +1044,14 @@ function TeamAuditPanel({ snapshot }: { snapshot: CaseSnapshot }) {
       ) : (
         <ul className="space-y-2">
           {snapshot.teamAudit.audit.map((event) => (
-            <li key={event.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2">
+            <li
+              key={event.id}
+              className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2"
+            >
               <span>{event.action}</span>
-              <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">{formatDate(event.createdAt)}</span>
+              <span className="shrink-0 text-[10px] tracking-wider text-muted-foreground uppercase">
+                {formatDate(event.createdAt)}
+              </span>
             </li>
           ))}
         </ul>
@@ -756,7 +1070,15 @@ const FINDING_ADD_LABEL_KEYS: Record<FindingCategory, string> = {
   DEFENSE_STRATEGY: "addDefenseStrategy",
 }
 
-function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapshot; caseId: string; category: FindingCategory }) {
+function CaseFindingPanel({
+  snapshot,
+  caseId,
+  category,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+  category: FindingCategory
+}) {
   const { t } = useTranslation("terminal")
   const create = useCreateFindingMutation(caseId)
   const del = useDeleteFindingMutation(caseId)
@@ -770,11 +1092,14 @@ function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapsh
       ) : (
         <ul className="space-y-2">
           {items.map((item) => (
-            <li key={item.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+            <li
+              key={item.id}
+              className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5"
+            >
               <div className="min-w-0 flex-1">
                 <p className="leading-5 text-foreground">{item.label}</p>
                 {item.notes === "AI" && (
-                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold">
+                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
                     <Sparkles className="h-3 w-3" aria-hidden="true" />
                     {t("aiGenerated")}
                   </span>
@@ -809,7 +1134,11 @@ function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapsh
           placeholder={t(FINDING_ADD_LABEL_KEYS[category])}
           className={`flex-1 ${fieldClass}`}
         />
-        <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+        <button
+          type="submit"
+          disabled={create.isPending}
+          className={primaryBtnClass}
+        >
           {t("add")}
         </button>
       </form>
@@ -817,7 +1146,13 @@ function CaseFindingPanel({ snapshot, caseId, category }: { snapshot: CaseSnapsh
   )
 }
 
-function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function WitnessPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const create = useCreateWitnessMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
@@ -831,11 +1166,22 @@ function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
       ) : (
         <ul className="space-y-2">
           {snapshot.witnesses.map((w) => (
-            <li key={w.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+            <li
+              key={w.id}
+              className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5"
+            >
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-foreground">{w.name}</p>
-                {w.role ? <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{w.role}</p> : null}
-                {w.contact ? <p className="mt-1 text-[12px] text-muted-foreground">{w.contact}</p> : null}
+                {w.role ? (
+                  <p className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                    {w.role}
+                  </p>
+                ) : null}
+                {w.contact ? (
+                  <p className="mt-1 text-[12px] text-muted-foreground">
+                    {w.contact}
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -861,7 +1207,12 @@ function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
           setRole("")
         }}
       >
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("witnessName")} className={fieldClass} />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("witnessName")}
+          className={fieldClass}
+        />
         <div className="flex gap-2">
           <input
             value={role}
@@ -869,7 +1220,11 @@ function WitnessPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: st
             placeholder={t("witnessRole")}
             className={`flex-1 ${fieldClass}`}
           />
-          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+          <button
+            type="submit"
+            disabled={create.isPending}
+            className={primaryBtnClass}
+          >
             {t("add")}
           </button>
         </div>
@@ -886,7 +1241,13 @@ const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
   OTHER: "damageOther",
 }
 
-function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function DamagePanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const create = useCreateDamageMutation(caseId)
   const del = useDeleteDamageMutation(caseId)
@@ -904,13 +1265,24 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
         <>
           <ul className="space-y-2">
             {snapshot.damages.map((d) => (
-              <li key={d.id} className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5">
+              <li
+                key={d.id}
+                className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5"
+              >
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">
+                  <p className="text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
                     {t(DAMAGE_CATEGORY_KEYS[d.category])}
                   </p>
-                  {d.description ? <p className="mt-0.5 leading-5 text-foreground">{d.description}</p> : null}
-                  {d.amount != null ? <p className="mt-1 font-mono text-[13px] text-foreground">{d.amount.toLocaleString()}</p> : null}
+                  {d.description ? (
+                    <p className="mt-0.5 leading-5 text-foreground">
+                      {d.description}
+                    </p>
+                  ) : null}
+                  {d.amount != null ? (
+                    <p className="mt-1 font-mono text-[13px] text-foreground">
+                      {d.amount.toLocaleString()}
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"
@@ -924,7 +1296,7 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
               </li>
             ))}
           </ul>
-          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold uppercase tracking-wider text-foreground">
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
             <span>{t("damageTotal")}</span>
             <span className="font-mono">{total.toLocaleString()}</span>
           </div>
@@ -935,12 +1307,20 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
         onSubmit={(e) => {
           e.preventDefault()
           const parsedAmount = amount.trim() ? Number(amount) : undefined
-          create.mutate({ category, description: description.trim() || undefined, amount: parsedAmount })
+          create.mutate({
+            category,
+            description: description.trim() || undefined,
+            amount: parsedAmount,
+          })
           setDescription("")
           setAmount("")
         }}
       >
-        <select value={category} onChange={(e) => setCategory(e.target.value as DamageCategory)} className={fieldClass}>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as DamageCategory)}
+          className={fieldClass}
+        >
           {(Object.keys(DAMAGE_CATEGORY_KEYS) as DamageCategory[]).map((c) => (
             <option key={c} value={c}>
               {t(DAMAGE_CATEGORY_KEYS[c])}
@@ -963,7 +1343,11 @@ function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: str
             placeholder={t("damageAmount")}
             className={`flex-1 ${fieldClass}`}
           />
-          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+          <button
+            type="submit"
+            disabled={create.isPending}
+            className={primaryBtnClass}
+          >
             {t("add")}
           </button>
         </div>
@@ -980,26 +1364,39 @@ const REGISTER_TAB_KEYS: Record<ReconstructionRegister, string> = {
   opposing: "registerOpposing",
 }
 
-function registerText(reconstruction: CaseSnapshot["reconstruction"], register: ReconstructionRegister): string {
+function registerText(
+  reconstruction: CaseSnapshot["reconstruction"],
+  register: ReconstructionRegister
+): string {
   if (!reconstruction) return ""
   if (register === "general") return reconstruction.narrative
   if (register === "court") return reconstruction.narrativeCourt ?? ""
   return reconstruction.narrativeOpposing ?? ""
 }
 
-function buildUpdatePayload(register: ReconstructionRegister, text: string): UpdateReconstructionPayload {
+function buildUpdatePayload(
+  register: ReconstructionRegister,
+  text: string
+): UpdateReconstructionPayload {
   if (register === "general") return { narrative: text }
   if (register === "court") return { narrativeCourt: text }
   return { narrativeOpposing: text }
 }
 
-function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+function CaseReconstructionPanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
   const { t } = useTranslation("terminal")
   const queryClient = useQueryClient()
   const reconstruction = snapshot.reconstruction
   const narrative = reconstruction?.narrative ?? ""
 
-  const [activeRegister, setActiveRegister] = useState<ReconstructionRegister>("general")
+  const [activeRegister, setActiveRegister] =
+    useState<ReconstructionRegister>("general")
   const [drafts, setDrafts] = useState<Record<ReconstructionRegister, string>>({
     general: registerText(reconstruction, "general"),
     court: registerText(reconstruction, "court"),
@@ -1026,7 +1423,9 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
         .then((result) => {
           if (result.status === "IN_PROGRESS") return
           setAudioPolling(false)
-          queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+          queryClient.invalidateQueries({
+            queryKey: terminalKeys.snapshot(caseId),
+          })
         })
         .catch(() => setAudioPolling(false))
     }, 3000)
@@ -1056,32 +1455,38 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
             })
           }
           disabled={generate.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
         >
           {generate.isPending ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
             <Sparkles className="h-3 w-3" aria-hidden="true" />
           )}
-          {generate.isPending ? t("generating") : narrative ? t("regenerate") : t("generate")}
+          {generate.isPending
+            ? t("generating")
+            : narrative
+              ? t("regenerate")
+              : t("generate")}
         </button>
       </div>
 
       <div className="flex gap-1 border-b border-border">
-        {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map((register) => (
-          <button
-            key={register}
-            type="button"
-            onClick={() => setActiveRegister(register)}
-            className={`px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-              activeRegister === register
-                ? "border-b-2 border-brand-gold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t(REGISTER_TAB_KEYS[register])}
-          </button>
-        ))}
+        {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map(
+          (register) => (
+            <button
+              key={register}
+              type="button"
+              onClick={() => setActiveRegister(register)}
+              className={`px-2.5 py-1.5 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                activeRegister === register
+                  ? "border-b-2 border-brand-gold text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(REGISTER_TAB_KEYS[register])}
+            </button>
+          )
+        )}
       </div>
 
       {!narrative && !generate.isPending ? (
@@ -1106,7 +1511,8 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           type="button"
           onClick={() =>
             update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
-              onSuccess: () => setDirty((prev) => ({ ...prev, [activeRegister]: false })),
+              onSuccess: () =>
+                setDirty((prev) => ({ ...prev, [activeRegister]: false })),
             })
           }
           disabled={update.isPending}
@@ -1142,12 +1548,14 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
                 generateAudio.mutate(undefined, {
                   onSuccess: () => {
                     setAudioPolling(true)
-                    queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+                    queryClient.invalidateQueries({
+                      queryKey: terminalKeys.snapshot(caseId),
+                    })
                   },
                 })
               }
               disabled={generateAudio.isPending || audioPolling}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
             >
               {generateAudio.isPending || audioPolling ? (
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -1163,10 +1571,16 @@ function CaseReconstructionPanel({ snapshot, caseId }: { snapshot: CaseSnapshot;
           </div>
 
           {reconstruction?.audioFile?.fileUrl && (
-            <audio controls src={reconstruction.audioFile.fileUrl} className="h-8 w-full" />
+            <audio
+              controls
+              src={reconstruction.audioFile.fileUrl}
+              className="h-8 w-full"
+            />
           )}
           {reconstruction?.audioStaleAt && (
-            <p className="text-[11px] text-muted-foreground">{t("audioOutOfDate")}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("audioOutOfDate")}
+            </p>
           )}
         </div>
       )}
@@ -1198,7 +1612,9 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
   if (!consultationId) {
     return (
       <PanelBody gap="4">
-        <EmptyNote>{t("case-portfolio:workspace.audioOverviewNoConsultation")}</EmptyNote>
+        <EmptyNote>
+          {t("case-portfolio:workspace.audioOverviewNoConsultation")}
+        </EmptyNote>
       </PanelBody>
     )
   }
@@ -1207,21 +1623,33 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
     return (
       <PanelBody gap="4">
         <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-          <Volume2 className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+          <Volume2
+            className="h-5 w-5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <p className="max-w-xs text-muted-foreground">
             {isGeneratingScript
               ? t("case-portfolio:workspace.audioOverviewGenerating")
               : t("case-portfolio:workspace.audioOverviewEmpty")}
           </p>
           {isGeneratingScript ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+            <Loader2
+              className="h-4 w-4 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
           ) : (
-            <button type="button" onClick={() => void generateScript()} className={primaryBtnClass}>
+            <button
+              type="button"
+              onClick={() => void generateScript()}
+              className={primaryBtnClass}
+            >
               {t("case-portfolio:workspace.audioOverviewGenerateCta")}
             </button>
           )}
           {generateScriptError && (
-            <p className="text-xs text-red-500">{t("case-portfolio:workspace.audioOverviewGenerateError")}</p>
+            <p className="text-xs text-red-500">
+              {t("case-portfolio:workspace.audioOverviewGenerateError")}
+            </p>
           )}
         </div>
       </PanelBody>
@@ -1233,20 +1661,30 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
   return (
     <PanelBody gap="4">
       {audioRenderError && (
-        <p className="text-center text-xs text-red-500">{t("case-portfolio:workspace.audioOverviewRenderError")}</p>
+        <p className="text-center text-xs text-red-500">
+          {t("case-portfolio:workspace.audioOverviewRenderError")}
+        </p>
       )}
       {renderedAudioUrl ? (
-        <audio controls src={renderedAudioUrl} className="h-8 w-full shrink-0" />
+        <audio
+          controls
+          src={renderedAudioUrl}
+          className="h-8 w-full shrink-0"
+        />
       ) : (
         <div className="flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
-          {rendering && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-          {rendering ? t("case-portfolio:workspace.audioOverviewRendering") : null}
+          {rendering && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          )}
+          {rendering
+            ? t("case-portfolio:workspace.audioOverviewRendering")
+            : null}
         </div>
       )}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
         {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
           <div key={i}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold">
+            <p className="text-[10px] font-semibold tracking-wider text-brand-gold uppercase">
               {turn.speaker === "HOST_A"
                 ? t("case-portfolio:workspace.audioOverviewHostA")
                 : t("case-portfolio:workspace.audioOverviewHostB")}
