@@ -8,8 +8,12 @@ import type {
   DamageClaim,
   DeadlineRule,
   FindingCategory,
+  HearsayCategory,
   PresetValue,
+  PrivilegeStatus,
   RedTeamAssessment,
+  SnapshotCustodyEvent,
+  SnapshotEvidenceMatrixItem,
   TerminalCatalog,
   TerminalWorkspace,
   Witness,
@@ -20,8 +24,10 @@ export const terminalKeys = {
   all: ["terminal"] as const,
   catalog: () => [...terminalKeys.all, "catalog"] as const,
   workspaces: () => [...terminalKeys.all, "workspaces"] as const,
-  snapshot: (caseId: string) => [...terminalKeys.all, "snapshot", caseId] as const,
-  timeline: (caseId: string) => [...terminalKeys.all, "timeline", caseId] as const,
+  snapshot: (caseId: string) =>
+    [...terminalKeys.all, "snapshot", caseId] as const,
+  timeline: (caseId: string) =>
+    [...terminalKeys.all, "timeline", caseId] as const,
   rules: () => [...terminalKeys.all, "procedure-rules"] as const,
 }
 
@@ -57,7 +63,11 @@ export function useProcedureRulesQuery() {
 export function useCreateWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; preset?: PresetValue; layoutJson?: WorkspaceLayout }) =>
+    mutationFn: (body: {
+      name: string
+      preset?: PresetValue
+      layoutJson?: WorkspaceLayout
+    }) =>
       apiFetch<TerminalWorkspace>("/api/terminal/workspaces", {
         method: "POST",
         body: JSON.stringify(body),
@@ -73,7 +83,15 @@ export function useCreateWorkspaceMutation() {
 export function useUpdateWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; name?: string; preset?: PresetValue; layoutJson?: WorkspaceLayout }) =>
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      name?: string
+      preset?: PresetValue
+      layoutJson?: WorkspaceLayout
+    }) =>
       apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -88,7 +106,9 @@ export function useApplyWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}/apply`, { method: "POST" }),
+      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}/apply`, {
+        method: "POST",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
     },
@@ -124,7 +144,10 @@ export function useDeleteWorkspaceMutation() {
 export function useRefreshSnapshotMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetch<CaseSnapshot>(`/api/my-cases/${caseId}/refresh`, { method: "POST" }),
+    mutationFn: () =>
+      apiFetch<CaseSnapshot>(`/api/my-cases/${caseId}/refresh`, {
+        method: "POST",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -144,7 +167,8 @@ export interface CaseTimelineEvent {
 export function useCaseTimelineQuery(caseId: string) {
   return useQuery({
     queryKey: terminalKeys.timeline(caseId),
-    queryFn: () => apiFetch<CaseTimelineEvent[]>(`/api/my-cases/${caseId}/timeline`),
+    queryFn: () =>
+      apiFetch<CaseTimelineEvent[]>(`/api/my-cases/${caseId}/timeline`),
     enabled: !!caseId,
   })
 }
@@ -152,7 +176,11 @@ export function useCaseTimelineQuery(caseId: string) {
 export function useCreateTimelineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title: string; occurredOn?: string; description?: string }) =>
+    mutationFn: (body: {
+      title: string
+      occurredOn?: string
+      description?: string
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/timeline`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -182,7 +210,15 @@ export function useUpdateTimelineMutation(caseId: string) {
 export function useCreateRiskMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { title: string; severity: "FATAL" | "MAJOR" | "UNVERIFIED" | "MISSING_EVIDENCE" | "DEADLINE" }) =>
+    mutationFn: (body: {
+      title: string
+      severity:
+        | "FATAL"
+        | "MAJOR"
+        | "UNVERIFIED"
+        | "MISSING_EVIDENCE"
+        | "DEADLINE"
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/risks`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -196,7 +232,89 @@ export function useCreateRiskMutation(caseId: string) {
 export function useScanContradictionsMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/scan`, { method: "POST" }),
+    mutationFn: () =>
+      apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export interface UpdateEvidenceMatrixPayload {
+  documentId: string
+  authenticity?: string
+  admissibility?: string
+  probative?: string
+  originalFile?: boolean
+  needsVerify?: boolean
+  notes?: string
+  privilegeStatus?: PrivilegeStatus
+  hearsayCategory?: HearsayCategory
+  sponsoringWitnessId?: string | null
+}
+
+export function useUpdateEvidenceMatrixMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ documentId, ...body }: UpdateEvidenceMatrixPayload) =>
+      apiFetch<SnapshotEvidenceMatrixItem>(
+        `/api/my-cases/${caseId}/evidence/matrix/${documentId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(body),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useAddCustodyEventMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      documentId,
+      ...body
+    }: {
+      documentId: string
+      custodianName: string
+      action: string
+      occurredAt: string
+      notes?: string
+    }) =>
+      apiFetch<SnapshotCustodyEvent>(
+        `/api/my-cases/${caseId}/evidence/matrix/${documentId}/custody`,
+        {
+          method: "POST",
+          body: JSON.stringify(body),
+        }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteCustodyEventMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      documentId,
+      eventId,
+    }: {
+      documentId: string
+      eventId: string
+    }) => {
+      await apiFetchRaw(
+        `/api/my-cases/${caseId}/evidence/matrix/${documentId}/custody/${eventId}`,
+        {
+          method: "DELETE",
+        }
+      )
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -220,7 +338,11 @@ export function useCheckCitationMutation(caseId: string) {
 export function useCreateDeadlineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { ruleCode: string; triggerDate: string; sourceTimelineEventId?: string }) =>
+    mutationFn: (body: {
+      ruleCode: string
+      triggerDate: string
+      sourceTimelineEventId?: string
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/deadlines`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -263,10 +385,13 @@ export function useConfirmDeadlineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (deadlineId: string) =>
-      apiFetch(`/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/confirm`, {
-        method: "POST",
-        body: JSON.stringify({ confirmed: true }),
-      }),
+      apiFetch(
+        `/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/confirm`,
+        {
+          method: "POST",
+          body: JSON.stringify({ confirmed: true }),
+        }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -277,9 +402,12 @@ export function useRecomputeDeadlineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (deadlineId: string) =>
-      apiFetch(`/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/recompute`, {
-        method: "POST",
-      }),
+      apiFetch(
+        `/api/my-cases/${caseId}/procedure/deadlines/${deadlineId}/recompute`,
+        {
+          method: "POST",
+        }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -306,7 +434,9 @@ export function useDeleteFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/findings/${id}`, { method: "DELETE" })
+      await apiFetchRaw(`/api/my-cases/${caseId}/findings/${id}`, {
+        method: "DELETE",
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
@@ -317,7 +447,12 @@ export function useDeleteFindingMutation(caseId: string) {
 export function useCreateWitnessMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; role?: string; contact?: string; notes?: string }) =>
+    mutationFn: (body: {
+      name: string
+      role?: string
+      contact?: string
+      notes?: string
+    }) =>
       apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -332,7 +467,9 @@ export function useDeleteWitnessMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/witnesses/${id}`, { method: "DELETE" })
+      await apiFetchRaw(`/api/my-cases/${caseId}/witnesses/${id}`, {
+        method: "DELETE",
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
@@ -343,7 +480,11 @@ export function useDeleteWitnessMutation(caseId: string) {
 export function useCreateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { category: DamageCategory; description?: string; amount?: number }) =>
+    mutationFn: (body: {
+      category: DamageCategory
+      description?: string
+      amount?: number
+    }) =>
       apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -358,7 +499,9 @@ export function useDeleteDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/damages/${id}`, { method: "DELETE" })
+      await apiFetchRaw(`/api/my-cases/${caseId}/damages/${id}`, {
+        method: "DELETE",
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
@@ -371,7 +514,11 @@ export function useDeleteDamageMutation(caseId: string) {
 export function useGenerateReconstructionMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetch<CaseReconstruction>(`/api/my-cases/${caseId}/reconstruction/generate`, { method: "POST" }),
+    mutationFn: () =>
+      apiFetch<CaseReconstruction>(
+        `/api/my-cases/${caseId}/reconstruction/generate`,
+        { method: "POST" }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -406,7 +553,10 @@ export function useUpdateReconstructionMutation(caseId: string) {
 export function useGenerateReconstructionAudioMutation(caseId: string) {
   return useMutation({
     mutationFn: () =>
-      apiFetch<{ jobName: string; status: string }>(`/api/my-cases/${caseId}/reconstruction/audio`, { method: "POST" }),
+      apiFetch<{ jobName: string; status: string }>(
+        `/api/my-cases/${caseId}/reconstruction/audio`,
+        { method: "POST" }
+      ),
   })
 }
 
@@ -417,7 +567,9 @@ export interface ReconstructionAudioPollResult {
 }
 
 export function pollReconstructionAudio(caseId: string) {
-  return apiFetch<ReconstructionAudioPollResult>(`/api/my-cases/${caseId}/reconstruction/audio/poll`)
+  return apiFetch<ReconstructionAudioPollResult>(
+    `/api/my-cases/${caseId}/reconstruction/audio/poll`
+  )
 }
 
 // Attacks the case's own structured findings (Legal Issues, Weaknesses, Contradictions,
@@ -427,7 +579,10 @@ export function pollReconstructionAudio(caseId: string) {
 export function useGenerateRedTeamMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => apiFetch<RedTeamAssessment>(`/api/my-cases/${caseId}/red-team/generate`, { method: "POST" }),
+    mutationFn: () =>
+      apiFetch<RedTeamAssessment>(`/api/my-cases/${caseId}/red-team/generate`, {
+        method: "POST",
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },

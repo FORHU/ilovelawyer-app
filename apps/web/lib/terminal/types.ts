@@ -116,6 +116,42 @@ export interface SnapshotContradiction {
   confidence: number
 }
 
+export type PrivilegeStatus = "NONE" | "ATTORNEY_CLIENT" | "WORK_PRODUCT"
+export type HearsayCategory =
+  | "DIRECT_EVIDENCE"
+  | "BUSINESS_RECORD"
+  | "PRESENT_SENSE_IMPRESSION"
+  | "EXCITED_UTTERANCE"
+  | "OTHER_EXCEPTION"
+  | "NOT_APPLICABLE"
+
+export interface SnapshotCustodyEvent {
+  id: string
+  custodianName: string
+  action: string
+  occurredAt: string
+  notes: string | null
+  createdAt: string
+}
+
+export interface SnapshotEvidenceMatrixItem {
+  id: string
+  caseId: string
+  documentId: string
+  authenticity: string
+  admissibility: string
+  probative: string
+  originalFile: boolean
+  needsVerify: boolean
+  notes: string | null
+  privilegeStatus: PrivilegeStatus
+  hearsayCategory: HearsayCategory
+  sponsoringWitnessId: string | null
+  custodyEvents: SnapshotCustodyEvent[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface SnapshotCitation {
   id: string
   quotedText: string
@@ -179,9 +215,16 @@ export interface CaseSnapshot {
   dates: SnapshotDate[]
   nextDate: SnapshotDate | SnapshotTimelineEvent | null
   fatalRisks: SnapshotRisk[]
-  evidence: { matrix: unknown[]; contradictions: SnapshotContradiction[] }
+  evidence: {
+    matrix: SnapshotEvidenceMatrixItem[]
+    contradictions: SnapshotContradiction[]
+  }
   law: { citations: SnapshotCitation[] }
-  procedure: { deadlines: SnapshotDeadline[]; items: SnapshotProcedureItem[]; requiredConfirmations: number }
+  procedure: {
+    deadlines: SnapshotDeadline[]
+    items: SnapshotProcedureItem[]
+    requiredConfirmations: number
+  }
   teamAudit: { accesses: unknown[]; audit: SnapshotAuditEvent[] }
   findings: CaseFinding[]
   witnesses: Witness[]
@@ -190,13 +233,26 @@ export interface CaseSnapshot {
   redTeamAssessment: RedTeamAssessment | null
   staleness: SnapshotStaleness[]
   riskAnalysis?: {
-    overall: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
-    liability: { score: number; level: "HIGH" | "MEDIUM" | "LOW"; drivers: { code: string; count: number }[] }
+    overall: {
+      score: number
+      level: "HIGH" | "MEDIUM" | "LOW"
+      drivers: { code: string; count: number }[]
+    }
+    liability: {
+      score: number
+      level: "HIGH" | "MEDIUM" | "LOW"
+      drivers: { code: string; count: number }[]
+    }
   }
   lastRefreshedAt: string | null
 }
 
-export type FindingCategory = "LEGAL_ISSUE" | "WEAKNESS" | "STRENGTH" | "ATTACK_STRATEGY" | "DEFENSE_STRATEGY"
+export type FindingCategory =
+  | "LEGAL_ISSUE"
+  | "WEAKNESS"
+  | "STRENGTH"
+  | "ATTACK_STRATEGY"
+  | "DEFENSE_STRATEGY"
 
 export interface CaseFinding {
   id: string
@@ -219,7 +275,12 @@ export interface Witness {
   updatedAt: string
 }
 
-export type DamageCategory = "ACTUAL" | "MORAL" | "EXEMPLARY" | "ATTORNEYS_FEES" | "OTHER"
+export type DamageCategory =
+  | "ACTUAL"
+  | "MORAL"
+  | "EXEMPLARY"
+  | "ATTORNEYS_FEES"
+  | "OTHER"
 
 export interface DamageClaim {
   id: string

@@ -66,8 +66,10 @@ function dotClass(index: number, total: number) {
 
 function toDateTimeLocalValue(date: string, time: string) {
   if (!date) return undefined
-  const clock = time || "00:00"
-  const parsed = new Date(`${date}T${clock}`)
+  // No time chosen means this is a date-only event — anchor it to UTC midnight (like the
+  // edit-date path already does) so isDateOnly() recognizes it and renders the date instead
+  // of a time. A real time picks the user's local clock, since it's an actual time-of-day.
+  const parsed = time ? new Date(`${date}T${time}`) : new Date(`${date}T00:00:00Z`)
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString()
 }
 
