@@ -19,7 +19,7 @@
   },
   "lawSearch": {
     "title": "Search jurisprudence & republic acts",
-    "subtitle": "Search Philippine jurisprudence and republic acts by case title, G.R. number, or R.A. number.",
+    "subtitle": "Browse Philippine jurisprudence and republic acts, or search by case title, G.R. number, or R.A. number.",
     "searchAriaLabel": "Search Philippine jurisprudence and republic acts",
     "searchPlaceholder": "Case title, G.R. No., or R.A. No…",
     "searchButton": "Search",
@@ -35,7 +35,16 @@
     "openInNewTab": "Open in a new tab",
     "error": "Couldn't run that search. Please try again.",
     "comingSoon": "Philippine jurisprudence and republic-act search is coming soon for your jurisdiction.",
-    "notAvailable": "Law search isn't available for your organization."
+    "notAvailable": "Law search isn't available for your organization.",
+    "filterCaseType": "Case type",
+    "filterTopics": "Topics",
+    "filterAll": "All",
+    "loadMore": "Load more",
+    "browseEmpty": "Nothing to show for these filters.",
+    "browseError": "Couldn't load. Please try again.",
+    "backToBrowse": "Back to browse",
+    "openRecord": "Open record",
+    "openAct": "Open act"
   },
   "documents": {
     "pageTitle": "Case Law Documents",
@@ -98,5 +107,28 @@
     "doctrineExtraction": "Doctrine Extraction",
     "exploreSupremeCourtReports": "Explore Supreme Court Reports",
     "recentDecisions": "Landmark Decisions"
+  },
+  "lawDoc": {
+    "back": "Back to library",
+    "loading": "Loading document…",
+    "error": "Couldn't load this document. Please try again.",
+    "viewSource": "View source",
+    "dateEnacted": "Date enacted",
+    "document": "Document",
+    "detailUnavailable": "The full detail for this document couldn't be loaded right now. Showing what we have.",
+    "summary": "Summary",
+    "purpose": "Purpose",
+    "affectedLaws": "Affected laws & amendments",
+    "sections": "Sections",
+    "keyProvisions": "Key provisions",
+    "facts": "Facts",
+    "proceduralHistory": "Procedural history",
+    "legalIssues": "Legal issues",
+    "courtReasoning": "Court reasoning",
+    "disposition": "Disposition",
+    "legalRulesCited": "Legal rules cited",
+    "relatedCases": "Related cases cited",
+    "citedNumbers": "Cited G.R. / R.A. numbers",
+    "keywords": "Keywords"
   }
 }

@@ -19,7 +19,7 @@
   },
   "lawSearch": {
     "title": "판례 및 공화국법 검색",
-    "subtitle": "사건명, G.R. 번호 또는 R.A. 번호로 필리핀 판례와 공화국법을 검색하세요.",
+    "subtitle": "필리핀 판례와 공화국법을 탐색하거나 사건명, G.R. 번호 또는 R.A. 번호로 검색하세요.",
     "searchAriaLabel": "필리핀 판례 및 공화국법 검색",
     "searchPlaceholder": "사건명, G.R. No. 또는 R.A. No…",
     "searchButton": "검색",
@@ -35,7 +35,16 @@
     "openInNewTab": "새 탭에서 열기",
     "error": "검색을 실행할 수 없습니다. 다시 시도해 주세요.",
     "comingSoon": "귀하의 관할권에서는 필리핀 판례 및 공화국법 검색이 곧 제공될 예정입니다.",
-    "notAvailable": "귀하의 조직에서는 법률 검색을 사용할 수 없습니다."
+    "notAvailable": "귀하의 조직에서는 법률 검색을 사용할 수 없습니다.",
+    "filterCaseType": "사건 유형",
+    "filterTopics": "주제",
+    "filterAll": "전체",
+    "loadMore": "더 보기",
+    "browseEmpty": "해당 필터에 표시할 항목이 없습니다.",
+    "browseError": "불러올 수 없습니다. 다시 시도해 주세요.",
+    "backToBrowse": "탐색으로 돌아가기",
+    "openRecord": "판례 열기",
+    "openAct": "법률 열기"
   },
   "documents": {
     "pageTitle": "판례 문서",
@@ -98,5 +107,28 @@
     "doctrineExtraction": "법리 추출",
     "exploreSupremeCourtReports": "대법원 판례집 살펴보기",
     "recentDecisions": "주요 판결"
+  },
+  "lawDoc": {
+    "back": "라이브러리로 돌아가기",
+    "loading": "문서 불러오는 중…",
+    "error": "이 문서를 불러올 수 없습니다. 다시 시도해 주세요.",
+    "viewSource": "출처 보기",
+    "dateEnacted": "제정일",
+    "document": "문서",
+    "detailUnavailable": "이 문서의 전체 세부 정보를 지금 불러올 수 없습니다. 확보된 내용만 표시합니다.",
+    "summary": "요약",
+    "purpose": "목적",
+    "affectedLaws": "영향받는 법률 및 개정",
+    "sections": "조문",
+    "keyProvisions": "주요 조항",
+    "facts": "사실관계",
+    "proceduralHistory": "소송 경과",
+    "legalIssues": "법적 쟁점",
+    "courtReasoning": "법원의 판단",
+    "disposition": "주문",
+    "legalRulesCited": "인용된 법리",
+    "relatedCases": "인용된 관련 판례",
+    "citedNumbers": "인용된 G.R. / R.A. 번호",
+    "keywords": "키워드"
   }
 }
