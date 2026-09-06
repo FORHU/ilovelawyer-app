@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
+import { citationMapKeys } from "@/lib/citation-map/mutations"
 import type {
   CaseFinding,
   CaseReconstruction,
@@ -29,6 +31,57 @@ export const terminalKeys = {
   timeline: (caseId: string) =>
     [...terminalKeys.all, "timeline", caseId] as const,
   rules: () => [...terminalKeys.all, "procedure-rules"] as const,
+  aiJob: (caseId: string, kind: AiGenerationKind) =>
+    [...terminalKeys.all, "ai-job", caseId, kind] as const,
+}
+
+/** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
+export type AiGenerationKind =
+  | "redTeam"
+  | "caseReconstruction"
+  | "caseRefresh"
+  | "contradictions"
+  | "caseStrategy"
+  | "caseFinding"
+  | "mindMap"
+  | "audioOverviewScript"
+  | "citationExpand"
+
+export interface AiJobStatus {
+  status: "IN_PROGRESS" | "DONE" | "FAILED"
+  startedAt: string
+  finishedAt: string | null
+  error: string | null
+}
+
+const AI_JOB_POLL_MS = 3000
+
+/** Polls whether a Generate/Refresh/Scan action is currently running for this case, regardless
+ * of who triggered it or when — a page refresh mid-generation otherwise looks idle even though
+ * the server-side call is still going (see AiGenerationJob). Always enabled while mounted, not
+ * just after a click, so a fresh page load immediately shows the real state. Invalidates the
+ * snapshot query the moment status flips to DONE, so a viewer who didn't click Generate
+ * themselves (a second tab, or one who refreshed mid-run) still sees the fresh content land
+ * without a manual refresh — every current caller wants this, so it's built in rather than left
+ * as an opt-in callback. */
+export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: terminalKeys.aiJob(caseId, kind),
+    queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
+    enabled: !!caseId,
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_POLL_MS : false),
+  })
+
+  const prevStatus = useRef(query.data?.status)
+  useEffect(() => {
+    if (prevStatus.current === "IN_PROGRESS" && query.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    }
+    prevStatus.current = query.data?.status
+  }, [query.data?.status, caseId, queryClient])
+
+  return query
 }
 
 export function useTerminalCatalogQuery() {
@@ -324,13 +377,16 @@ export function useDeleteCustodyEventMutation(caseId: string) {
 export function useCheckCitationMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { quotedText: string; officialText?: string }) =>
+    mutationFn: (body: { quotedText: string; citedReference?: string; officialText?: string; pinpoint?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/citations`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      // Citation Map's seed is built from citedReference — a fresh check should show up there
+      // without the user having to manually refresh that panel.
+      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
     },
   })
 }

@@ -5,6 +5,7 @@ export const PANEL_IDS = [
   "dates",
   "chat",
   "mindMap",
+  "citationMap",
   "redTeam",
   "procedure",
   "teamAudit",
@@ -158,6 +159,16 @@ export interface SnapshotCitation {
   citedReference: string | null
   status: "VALID" | "INVALID" | "UNVERIFIED" | "ADVERSE"
   notes: string | null
+  /** Separate from `status` (does the quote match the source): does the cited authority itself
+   * exist? Null means either no citedReference was given, or it didn't resolve — same engine
+   * Citation Map uses (LawSvc.search for PH, the UK Legal MCP for UK). */
+  resolvedAuthority: { lawId: string; title: string; jurisUrl: string } | null
+  /** Page/paragraph reference, e.g. "p. 15" or "para. 4". Lawyer-entered, or auto-detected for a
+   * resolved UK judgment by searching its actual text for the quote (never a guess). */
+  pinpoint: string | null
+  /** How quotedText relates to officialText. Null when there's no officialText to classify
+   * against, or classification failed. */
+  propositionType: "QUOTED" | "PARAPHRASED" | "INFERRED" | null
 }
 
 export interface SnapshotDeadlineConfirmation {
@@ -184,6 +195,9 @@ export interface SnapshotProcedureItem {
   label: string
   done: boolean
   notes: string | null
+  /** Which source document an AI-generated item is grounded in. Null for lawyer-entered items
+   * and for AI items the model didn't attribute to a specific document. */
+  sourceLabel: string | null
 }
 
 export interface SnapshotAuditEvent {
@@ -198,6 +212,11 @@ export interface SnapshotStaleness {
   refId: string
   staleReason: string
   staleAt: string
+}
+
+export interface SnapshotMindMapStatus {
+  lastGeneratedAt: string | null
+  isStale: boolean
 }
 
 export interface CaseSnapshot {
@@ -232,6 +251,7 @@ export interface CaseSnapshot {
   reconstruction: CaseReconstruction | null
   redTeamAssessment: RedTeamAssessment | null
   staleness: SnapshotStaleness[]
+  mindMap: SnapshotMindMapStatus
   riskAnalysis?: {
     overall: {
       score: number
@@ -260,6 +280,9 @@ export interface CaseFinding {
   category: FindingCategory
   label: string
   notes: string | null
+  /** Which source document an AI-generated finding is grounded in. Null for lawyer-entered
+   * findings and for AI findings the model didn't attribute to a specific document. */
+  sourceLabel: string | null
   createdAt: string
   updatedAt: string
 }
@@ -299,6 +322,11 @@ export interface CaseReconstruction {
   narrativeCourt: string | null
   narrativeOpposing: string | null
   gaps: string[]
+  /** Per-sentence source attribution for `narrative` only (not narrativeCourt/narrativeOpposing),
+   * matched onto it at render time — see components/shared/attributed-text.tsx. Null when the
+   * reconstruction predates this field, its [CLAIMS] block didn't parse, or narrative was
+   * hand-edited since generation (a stale claim is cleared rather than risking a wrong match). */
+  claims: AttributedClaim[] | null
   audioFileId: string | null
   audioFile: { id: string; fileUrl: string | null } | null
   audioStatus: string | null
@@ -307,10 +335,20 @@ export interface CaseReconstruction {
   updatedAt: string
 }
 
+export interface AttributedClaim {
+  text: string
+  category: "GROUNDED" | "INFERENCE" | "UNSUPPORTED"
+  sourceLabel: string | null
+}
+
 export interface RedTeamAssessment {
   id: string
   caseId: string
   content: string
+  /** Per-sentence source attribution, matched onto `content` at render time — see
+   * components/shared/attributed-text.tsx. Null/empty on assessments generated before this
+   * existed, or if the model's [CLAIMS] block didn't parse. */
+  claims: AttributedClaim[] | null
   createdAt: string
   updatedAt: string
 }

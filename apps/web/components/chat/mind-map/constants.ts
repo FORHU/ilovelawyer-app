@@ -39,6 +39,8 @@ export const MIND_MAP_CHROME = {
     'flex items-center gap-1.5 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all border border-brand-gold/30 bg-brand-gold text-brand-navy-950 font-bold hover:scale-105 active:scale-95 uppercase tracking-widest text-[10px]',
   fullBtn:
     'flex items-center gap-2 px-5 py-2 rounded-xl backdrop-blur-md shadow-lg transition-all border border-brand-gold/30 bg-brand-gold text-brand-navy-950 font-bold hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-[10px]',
+  staleBadge:
+    'flex items-center gap-1.5 px-3 py-1.5 md:px-3.5 md:py-2 rounded-full backdrop-blur-md shadow-lg transition-all border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold hover:bg-amber-500/20 active:scale-95 uppercase tracking-widest text-[9px] disabled:opacity-60 disabled:pointer-events-none',
   menu: 'absolute top-full left-0 mt-2 w-48 bg-popover border border-border rounded-xl shadow-2xl z-[210] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200',
   menuHeader: 'p-2 border-b border-border bg-muted/50 text-center',
   menuHeaderLabel: 'text-[8px] uppercase tracking-widest font-black text-muted-foreground',

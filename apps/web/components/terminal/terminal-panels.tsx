@@ -5,7 +5,13 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import {
   AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
   Info,
+  MapPin,
+  Pencil,
+  Quote,
   Search,
   Trash2,
   Sparkles,
@@ -14,9 +20,10 @@ import {
   Volume2,
 } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
+import { CitationMap } from "@/components/citation-map"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
-import LegalMarkdown from "@/components/library/legal-markdown"
+import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import { Badge } from "@workspace/ui/components/badge"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
@@ -42,6 +49,7 @@ import {
   useScanContradictionsMutation,
   useUpdateProcedureItemMutation,
   useUpdateReconstructionMutation,
+  useAiJobStatus,
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type {
@@ -293,6 +301,8 @@ export function TerminalPanelBody({
       return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} />
     case "mindMap":
       return <MindMapPanel caseId={caseId} />
+    case "citationMap":
+      return <CitationMapPanel caseId={caseId} />
     case "redTeam":
       return <RedTeamPanel snapshot={snapshot} caseId={caseId} />
     case "procedure":
@@ -378,6 +388,14 @@ function MindMapPanel({ caseId }: { caseId: string }) {
       basePath={`/homepage/terminal/${caseId}`}
       caseId={caseId}
     />
+  )
+}
+
+function CitationMapPanel({ caseId }: { caseId: string }) {
+  return (
+    <div className="flex-1 min-h-0 p-2">
+      <CitationMap caseId={caseId} />
+    </div>
   )
 }
 
@@ -610,6 +628,8 @@ function ContradictionsPanel({
 }) {
   const { t } = useTranslation("terminal")
   const scan = useScanContradictionsMutation(caseId)
+  const job = useAiJobStatus(caseId, "contradictions")
+  const isScanning = scan.isPending || job.data?.status === "IN_PROGRESS"
   const contradictions = snapshot.evidence.contradictions
 
   return (
@@ -617,11 +637,11 @@ function ContradictionsPanel({
       <button
         type="button"
         onClick={() => scan.mutate()}
-        disabled={scan.isPending}
+        disabled={isScanning}
         className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-brand-gold text-[11px] font-semibold tracking-[1.4px] text-brand-navy-950 uppercase transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
       >
         <Search className="h-3.5 w-3.5" aria-hidden="true" />
-        {scan.isPending ? t("scanning") : t("scan")}
+        {isScanning ? t("scanning") : t("scan")}
       </button>
 
       {contradictions.length === 0 ? (
@@ -667,7 +687,9 @@ function LawPanel({
   const { t } = useTranslation("terminal")
   const check = useCheckCitationMutation(caseId)
   const [quotedText, setQuotedText] = useState("")
+  const [citedReference, setCitedReference] = useState("")
   const [officialText, setOfficialText] = useState("")
+  const [pinpoint, setPinpoint] = useState("")
 
   return (
     <PanelBody gap="4">
@@ -684,9 +706,48 @@ function LawPanel({
               <p className="line-clamp-3 text-sm leading-5">
                 {citation.quotedText}
               </p>
-              <p className="mt-2 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-                {citation.status}
-              </p>
+              {citation.citedReference && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {citation.citedReference}
+                  {citation.pinpoint && `, ${citation.pinpoint}`}
+                </p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                  {citation.status}
+                </p>
+                {citation.propositionType && (
+                  <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                    <Quote size={10} />
+                    {t(`propositionType.${citation.propositionType}`)}
+                  </p>
+                )}
+                {citation.pinpoint && (
+                  <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                    <MapPin size={10} />
+                    {citation.pinpoint}
+                  </p>
+                )}
+              </div>
+              {citation.citedReference && (
+                citation.resolvedAuthority ? (
+                  <a
+                    href={citation.resolvedAuthority.jurisUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-emerald-600 hover:underline dark:text-emerald-400"
+                  >
+                    <CheckCircle2 size={11} />
+                    {t("authorityVerified")}
+                    <ExternalLink size={10} />
+                  </a>
+                ) : (
+                  <p className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-amber-600 dark:text-amber-400">
+                    <AlertTriangle size={11} />
+                    {t("authorityNotVerified")}
+                  </p>
+                )
+              )}
             </li>
           ))}
         </ul>
@@ -699,10 +760,14 @@ function LawPanel({
           if (!quote) return
           check.mutate({
             quotedText: quote,
+            citedReference: citedReference.trim() || undefined,
             officialText: officialText.trim() || undefined,
+            pinpoint: pinpoint.trim() || undefined,
           })
           setQuotedText("")
+          setCitedReference("")
           setOfficialText("")
+          setPinpoint("")
         }}
       >
         <textarea
@@ -711,6 +776,18 @@ function LawPanel({
           placeholder={t("quote")}
           rows={2}
           className="rounded-md border border-border bg-muted px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-foreground/30 focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
+        />
+        <input
+          value={citedReference}
+          onChange={(e) => setCitedReference(e.target.value)}
+          placeholder={t("citedReference")}
+          className={fieldClass}
+        />
+        <input
+          value={pinpoint}
+          onChange={(e) => setPinpoint(e.target.value)}
+          placeholder={t("pinpoint")}
+          className={fieldClass}
         />
         <input
           value={officialText}
@@ -742,7 +819,10 @@ function RedTeamPanel({
 }) {
   const { t } = useTranslation("terminal")
   const generate = useGenerateRedTeamMutation(caseId)
+  const job = useAiJobStatus(caseId, "redTeam")
+  const isGenerating = generate.isPending || job.data?.status === "IN_PROGRESS"
   const content = snapshot.redTeamAssessment?.content ?? ""
+  const claims = snapshot.redTeamAssessment?.claims ?? []
 
   return (
     <PanelBody gap="3">
@@ -751,15 +831,15 @@ function RedTeamPanel({
         <button
           type="button"
           onClick={() => generate.mutate()}
-          disabled={generate.isPending}
+          disabled={isGenerating}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
         >
-          {generate.isPending ? (
+          {isGenerating ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
             <Sparkles className="h-3 w-3" aria-hidden="true" />
           )}
-          {generate.isPending
+          {isGenerating
             ? t("generating")
             : content
               ? t("regenerate")
@@ -767,10 +847,13 @@ function RedTeamPanel({
         </button>
       </div>
 
-      {!content && !generate.isPending ? (
+      {!content && !isGenerating ? (
         <EmptyNote>{t("noRedTeam")}</EmptyNote>
       ) : content ? (
-        <LegalMarkdown content={content} />
+        <>
+          {claims.length > 0 && <AttributedTextLegend />}
+          <AttributedMarkdown content={content} claims={claims} />
+        </>
       ) : null}
     </PanelBody>
   )
@@ -820,7 +903,15 @@ function ProcedurePanel({
         {approachItems.length > 0 ? (
           <ul className="list-disc space-y-1.5 pl-4 text-[13px] leading-5 text-foreground">
             {approachItems.map((item) => (
-              <li key={item.id}>{item.label}</li>
+              <li key={item.id}>
+                {item.label}
+                {item.sourceLabel && (
+                  <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("groundedIn", { doc: item.sourceLabel })}</span>
+                  </span>
+                )}
+              </li>
             ))}
           </ul>
         ) : fallbackApproach.length > 0 ? (
@@ -851,10 +942,18 @@ function ProcedurePanel({
                     }
                     className="mt-0.5 h-3.5 w-3.5 rounded border-border bg-muted accent-brand-gold"
                   />
-                  <span
-                    className={`text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}
-                  >
-                    {item.label}
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={`block text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}
+                    >
+                      {item.label}
+                    </span>
+                    {item.sourceLabel && (
+                      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{t("groundedIn", { doc: item.sourceLabel })}</span>
+                      </span>
+                    )}
                   </span>
                 </label>
               </li>
@@ -1103,6 +1202,12 @@ function CaseFindingPanel({
                     <Sparkles className="h-3 w-3" aria-hidden="true" />
                     {t("aiGenerated")}
                   </span>
+                )}
+                {item.sourceLabel && (
+                  <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("groundedIn", { doc: item.sourceLabel })}</span>
+                  </p>
                 )}
               </div>
               <button
@@ -1397,6 +1502,11 @@ function CaseReconstructionPanel({
 
   const [activeRegister, setActiveRegister] =
     useState<ReconstructionRegister>("general")
+  // General-register-only: the narrative is claim-attributed (see backend's [CLAIMS] block), so
+  // it defaults to a read-only highlighted view; editing is a deliberate switch, same tradeoff
+  // Red Team avoids by not being editable at all. Court/Opposing have no claims and stay
+  // textarea-only, same as before this feature.
+  const [isEditingGeneral, setIsEditingGeneral] = useState(false)
   const [drafts, setDrafts] = useState<Record<ReconstructionRegister, string>>({
     general: registerText(reconstruction, "general"),
     court: registerText(reconstruction, "court"),
@@ -1412,6 +1522,8 @@ function CaseReconstructionPanel({
   const generate = useGenerateReconstructionMutation(caseId)
   const update = useUpdateReconstructionMutation(caseId)
   const generateAudio = useGenerateReconstructionAudioMutation(caseId)
+  const generateJob = useAiJobStatus(caseId, "caseReconstruction")
+  const isGenerating = generate.isPending || generateJob.data?.status === "IN_PROGRESS"
 
   // Polls a Polly async job while one is in flight — same "caller drives the loop" contract
   // as the Transcription feature's job polling, just scoped locally to this panel instead of
@@ -1451,18 +1563,19 @@ function CaseReconstructionPanel({
                   opposing: data.narrativeOpposing ?? "",
                 })
                 setDirty({ general: false, court: false, opposing: false })
+                setIsEditingGeneral(false)
               },
             })
           }
-          disabled={generate.isPending}
+          disabled={isGenerating}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
         >
-          {generate.isPending ? (
+          {isGenerating ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
             <Sparkles className="h-3 w-3" aria-hidden="true" />
           )}
-          {generate.isPending
+          {isGenerating
             ? t("generating")
             : narrative
               ? t("regenerate")
@@ -1493,6 +1606,23 @@ function CaseReconstructionPanel({
         <EmptyNote>{t("noReconstruction")}</EmptyNote>
       ) : activeRegister !== "general" && !activeText && !activeDirty ? (
         <EmptyNote>{t("registerNotGenerated")}</EmptyNote>
+      ) : activeRegister === "general" && !isEditingGeneral ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            {reconstruction?.claims?.length ? <AttributedTextLegend /> : <span />}
+            <button
+              type="button"
+              onClick={() => setIsEditingGeneral(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70"
+            >
+              <Pencil className="h-3 w-3" aria-hidden="true" />
+              {t("edit")}
+            </button>
+          </div>
+          <div className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5">
+            <AttributedMarkdown content={activeDraft} claims={reconstruction?.claims ?? []} />
+          </div>
+        </div>
       ) : (
         <textarea
           key={activeRegister}
@@ -1511,8 +1641,10 @@ function CaseReconstructionPanel({
           type="button"
           onClick={() =>
             update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
-              onSuccess: () =>
-                setDirty((prev) => ({ ...prev, [activeRegister]: false })),
+              onSuccess: () => {
+                setDirty((prev) => ({ ...prev, [activeRegister]: false }))
+                if (activeRegister === "general") setIsEditingGeneral(false)
+              },
             })
           }
           disabled={update.isPending}

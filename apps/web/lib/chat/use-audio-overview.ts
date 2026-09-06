@@ -10,6 +10,7 @@ import {
   type ChatMessage,
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
+import { useAiJobStatus } from "@/lib/terminal/mutations";
 
 /** Script generation → Polly render polling → playable URL, shared by every surface that offers
  * Audio Overview (Case Workspace's Studio panel, the Legal Terminal's Audio Overview panel).
@@ -27,8 +28,13 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
     }
     return undefined;
   }, [history]);
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [isGeneratingScriptLocal, setIsGeneratingScript] = useState(false);
   const [generateScriptError, setGenerateScriptError] = useState(false);
+  const scriptJob = useAiJobStatus(caseId ?? "", "audioOverviewScript");
+  // Combines this tab's own in-flight request with the persisted job status, so a script
+  // generation kicked off from another tab (or this one, before a refresh) still shows as
+  // generating here too, rather than looking idle.
+  const isGeneratingScript = isGeneratingScriptLocal || scriptJob.data?.status === "IN_PROGRESS";
 
   const generateAudio = useGenerateAudioOverviewAudioMutation(consultationId ?? "");
   const [audioRendering, setAudioRendering] = useState(false);

@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
 import {
+  useAiJobStatus,
   useApplyWorkspaceMutation,
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
@@ -31,6 +32,7 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   dates: "Timeline",
   chat: "AI Legal Assistant",
   mindMap: "Visual Strategy Map",
+  citationMap: "Citation Map",
   redTeam: "Red Team",
   procedure: "Case Strategy",
   teamAudit: "Team & Audit",
@@ -92,6 +94,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const applyWorkspace = useApplyWorkspaceMutation()
   const resetWorkspace = useResetWorkspaceMutation()
   const refresh = useRefreshSnapshotMutation(caseId)
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  const isRefreshing = refresh.isPending || refreshJob.data?.status === "IN_PROGRESS"
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [workspaceName, setWorkspaceName] = useState("")
@@ -434,11 +438,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <button
             type="button"
             onClick={() => refresh.mutate()}
-            disabled={refresh.isPending}
+            disabled={isRefreshing}
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refresh.isPending ? "animate-spin" : ""}`} aria-hidden="true" />
-            {refresh.isPending ? t("refreshing") : t("refresh")}
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+            {isRefreshing ? t("refreshing") : t("refresh")}
           </button>
         </div>
       </div>

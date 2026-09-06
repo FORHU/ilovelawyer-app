@@ -17,11 +17,12 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor } from 'lucide-react';
+import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2 } from 'lucide-react';
 import { MindMapProps } from './types';
 import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
+import { reconcileCollapsedIds, countDescendants } from './collapse';
 import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
 
 const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), {
@@ -53,7 +54,7 @@ const getInitialNodes = (): Node[] => {
   ];
 };
 
-function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: MindMapProps) {
+function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, regenerating, onRegenerate }: MindMapProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,6 +84,30 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
   const [slots, setSlots] = useState<({ nodes: Node[], edges: Edge[] } | null)[]>(Array(3).fill(null));
 
   const localStorageKey = `mind_map:${consultationId ?? 'unscoped'}`;
+
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+
+  // Re-seeds from the *new* key's cache whenever localStorageKey changes — not just on mount —
+  // since this component isn't remounted when the caller swaps consultationId (e.g. Studio's
+  // thread switch), so a lazy useState initializer alone would leave stale collapse state
+  // hanging around from the previous consultation.
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(localStorageKey);
+      const parsed = cached ? JSON.parse(cached) : null;
+      setCollapsedIds(new Set(Array.isArray(parsed?.collapsedIds) ? parsed.collapsedIds : []));
+    } catch {
+      setCollapsedIds(new Set());
+    }
+  }, [localStorageKey]);
+
+  const handleToggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   const toggleFullScreen = () => {
     if (!containerRef.current) return;
@@ -116,13 +141,15 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
     return item.children || item.items || item.nodes || item.subnodes || item.branches || item.subitems || [];
   };
 
-  const treeToGraph = useCallback((root: any, currentLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual') => {
+  const treeToGraph = useCallback((root: any, currentLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual', collapsed: Set<string>) => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
     const subtreeSizes = new Map<any, number>();
-    const calcSize = (item: any): number => {
-      const children = getChildren(item);
+    const calcSize = (item: any, isRootItem = false): number => {
+      // A collapsed node reserves only its own footprint — its hidden descendants shouldn't
+      // push siblings apart. Root is never collapsible, so it always sizes by its real children.
+      const children = !isRootItem && item.id && collapsed.has(item.id) ? [] : getChildren(item);
       if (children.length === 0) {
         return currentLayout === 'vertical' ? 260 : 130;
       }
@@ -135,7 +162,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       return sizeWithPadding;
     };
 
-    calcSize(root);
+    calcSize(root, true);
 
     const traverse = (item: any, parentId: string | null = null, x = 0, y = 0, angleRange: [number, number] = [0, 360], depth = 0, side: 'left' | 'right' | 'top' | 'bottom' = 'right') => {
       const id = item.id || `node-${Math.random().toString(36).substr(2, 9)}`;
@@ -151,6 +178,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
         label = rootTitle;
       }
 
+      const isCollapsible = !isRoot && getChildren(item).length > 0;
+      const isCollapsed = isCollapsible && collapsed.has(id);
+
       nodes.push({
         id,
         type: 'custom',
@@ -162,7 +192,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
           color: hexColor,
           className,
           layout: currentLayout,
-          side // Pass the calculated side to the node
+          side, // Pass the calculated side to the node
+          isCollapsible,
+          isCollapsed,
+          collapsedCount: isCollapsed ? countDescendants(item) : 0,
         },
         position: { x, y },
       });
@@ -187,7 +220,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       }
 
       const children = getChildren(item);
-      if (children.length > 0) {
+      if (!isCollapsed && children.length > 0) {
         if (currentLayout === 'radial') {
           // Calculate a dynamic global radius from the center (0,0) instead of the parent
           // This creates concentric circles and prevents messy overlapping
@@ -269,15 +302,27 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
     return { nodes, edges };
   }, [rootTitle]);
 
+  // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
+  // their collapsed/expanded state, ids no longer present (including brand-new ones from a
+  // regenerate) drop out and default to expanded. Deliberately scoped to `data` alone — must
+  // not re-run on a layout switch or a collapse toggle, only on an actual new/regenerated tree.
+  useEffect(() => {
+    if (!data) return;
+    setCollapsedIds((prev) => reconcileCollapsedIds(prev, data));
+  }, [data]);
+
   useEffect(() => {
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout);
+      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout, collapsedIds);
       setNodes(newNodes);
       setEdges(newEdges);
 
       // Persist the state to survive refreshes
       try {
-        localStorage.setItem(localStorageKey, JSON.stringify({ nodes: newNodes, edges: newEdges, data }));
+        localStorage.setItem(
+          localStorageKey,
+          JSON.stringify({ nodes: newNodes, edges: newEdges, data, collapsedIds: [...collapsedIds] }),
+        );
       } catch (e) {
         console.error('Failed to persist map data:', e);
       }
@@ -296,7 +341,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
         console.error('Failed to recover map data:', e);
       }
     }
-  }, [data, layout, treeToGraph, setNodes, setEdges, localStorageKey]);
+  }, [data, layout, collapsedIds, treeToGraph, setNodes, setEdges, localStorageKey]);
 
   const handleLayoutChange = (newLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual') => {
     setLayout(newLayout);
@@ -310,12 +355,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       return;
     }
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout);
+      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout, collapsedIds);
       setNodes(newNodes);
       setEdges(newEdges);
       setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
     }
-  }, [data, layout, treeToGraph, setNodes, setEdges, fitView, is3D]);
+  }, [data, layout, collapsedIds, treeToGraph, setNodes, setEdges, fitView, is3D]);
 
   const saveToSlot = (idx: number) => {
     setSlots(prev => {
@@ -432,9 +477,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map(node => ({
       ...node,
-      data: { ...node.data, id: node.id, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode, isSelected: node.id === selectedNodeId }
+      data: { ...node.data, id: node.id, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode, onToggleCollapse: handleToggleCollapse, isSelected: node.id === selectedNodeId }
     }));
-  }, [nodes, handleEditNode, handleAddNode, handleDeleteNode, selectedNodeId]);
+  }, [nodes, handleEditNode, handleAddNode, handleDeleteNode, handleToggleCollapse, selectedNodeId]);
 
   // In 3D mode, use the data stored from the 3D click; in 2D use React Flow
   const selectedNodeData = useMemo(() => {
@@ -591,6 +636,18 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId }: Min
       </div>
 
       <div className="absolute top-4 right-4 z-[100000] pointer-events-auto flex items-center gap-2">
+        {isStale && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={regenerating}
+            title="Case has new activity since this map was generated"
+            className={MIND_MAP_CHROME.staleBadge}
+          >
+            {regenerating ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
+            <span>{regenerating ? 'Regenerating…' : 'Stale · Regenerate'}</span>
+          </button>
+        )}
         <button
           onClick={toggleFullScreen}
           className={MIND_MAP_CHROME.fullBtn}

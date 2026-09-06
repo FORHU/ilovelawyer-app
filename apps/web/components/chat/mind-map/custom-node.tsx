@@ -81,6 +81,20 @@ export const CustomNode = memo(({ data }: any) => {
           {data.label}
         </div>
 
+        {/* Expand/collapse toggle — hides/reveals this node's subtree on the canvas.
+            Separate from the side detail drawer, which node-body clicks still open. */}
+        {data.isCollapsible && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); data.onToggleCollapse?.(data.id); }}
+            className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white shadow-md hover:bg-black/90 z-10"
+            title={data.isCollapsed ? 'Expand' : 'Collapse'}
+          >
+            <span>{data.isCollapsed ? '+' : '–'}</span>
+            {data.isCollapsed && data.collapsedCount > 0 && <span>{data.collapsedCount}</span>}
+          </button>
+        )}
+
         {/* Rich Media Embedding directly ON the Node for Lawyers */}
         {data.media && data.media.length > 0 && (
           <div className="mt-2 flex flex-col gap-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>

@@ -10,7 +10,7 @@ import { AUTO_MINDMAP_PROMPT } from "@/components/chat/consultation-chat";
 import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useCaseQuery } from "@/lib/cases/mutations";
-import { useCaseSnapshotQuery, useCaseTimelineQuery } from "@/lib/terminal/mutations";
+import { useCaseSnapshotQuery, useCaseTimelineQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
@@ -76,8 +76,12 @@ interface StudioPanelProps {
 export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  const mindMapJob = useAiJobStatus(caseId, "mindMap");
+  // Combines this tab's own in-flight request with the persisted job status, so a job kicked
+  // off from another tab (or this one, before a refresh) still shows as generating here too.
+  const isGenerating = isGeneratingLocal || mindMapJob.data?.status === "IN_PROGRESS";
 
   const { data: caseRecord } = useCaseQuery(caseId);
   const { data: session } = useChatSessionQuery();
@@ -507,7 +511,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     </p>
                   )}
                   <div className="min-h-0 flex-1">
-                    <MindMap rootTitle={caseRecord?.caseName} data={activeMindMap} consultationId={consultationId} />
+                    <MindMap
+                      rootTitle={caseRecord?.caseName}
+                      data={activeMindMap}
+                      consultationId={consultationId}
+                      isStale={snapshotQuery.data?.mindMap.isStale}
+                      regenerating={isGenerating}
+                      onRegenerate={() => void handleGenerateMindMap()}
+                    />
                   </div>
                 </div>
               ) : (
