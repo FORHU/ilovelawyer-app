@@ -9,7 +9,7 @@ import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/que
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { PageTransition } from "@/components/page-transition"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
-import { hostForTenantCode, isAppHost } from "@/lib/tenant-code/resolve-host"
+import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
@@ -121,15 +121,13 @@ function CurrentUserSync({
 
   // Domain/tenant mismatch: the organization's persisted Tenant is authoritative and
   // never changes because of which subdomain the browser happens to be on — if they disagree
-  // (including an unresolved/apex host), redirect to the organization's correct subdomain
-  // rather than silently rendering under the wrong one. This is a UX redirect only; it does
-  // not and cannot change which tenant's legal engine/prompts the backend uses for this
-  // organization — that's resolved server-side from Organization.tenantId regardless of
-  // hostname. app.ilovelawyer.com is exempt: it's a standalone entry point parallel to the
-  // ph./uk. subdomains, not a mismatched one, so it's never a redirect target or source.
+  // (including an unresolved host: the bare apex, app.ilovelawyer.com, or anything else that
+  // isn't ph./uk.), redirect to the organization's correct subdomain rather than silently
+  // rendering under the wrong one. This is a UX redirect only; it does not and cannot change
+  // which tenant's legal engine/prompts the backend uses for this organization — that's
+  // resolved server-side from Organization.tenantId regardless of hostname.
   useEffect(() => {
     if (!organization || typeof window === "undefined") return
-    if (isAppHost(window.location.host)) return
     if (hostTenantCode === organization.tenantCode) return
     const targetHost = hostForTenantCode(organization.tenantCode, window.location.host)
     if (targetHost === window.location.host) return

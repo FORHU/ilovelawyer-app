@@ -26,19 +26,6 @@ const HOST_TENANT_CODE_MAP: Record<string, TenantCode> = {
   "uk.localhost": "UK",
 }
 
-/** `app.ilovelawyer.com` (and its local-dev equivalents) is a jurisdiction-neutral entry point —
- * it runs standalone, parallel to `ph.ilovelawyer.com`/`uk.ilovelawyer.com`, not a fallback of
- * them. Listed explicitly so the domain-mismatch redirect (app/(protected)/layout.tsx) can
- * recognize it and skip redirecting away from it, instead of treating it as an unresolved host
- * and bouncing users onto a `ph.`/`uk.` subdomain. */
-const APP_HOSTS = new Set(["app.ilovelawyer.com", "app.ilovelawyer.local", "app.ilovelawyer", "app.localhost"])
-
-export function isAppHost(hostname: string | undefined | null): boolean {
-  if (!hostname) return false
-  const host = (hostname.split(":")[0] ?? "").trim().toLowerCase()
-  return APP_HOSTS.has(host)
-}
-
 /** Strips a trailing `:port` (present on `Host` in local dev, e.g. `ph.ilovelawyer.local:3002`)
  * before the exact-match lookup. This is presentation/routing context only — it is never the
  * authority for an authenticated organization's Tenant (see app/(protected)/layout.tsx, which
@@ -53,9 +40,11 @@ export function resolveTenantCodeFromHost(hostname: string | undefined | null): 
 /** The target host for a given Tenant code, used by the tenant switcher and the
  * domain-mismatch redirect. Preserves whichever convention `currentHost` is already using
  * (`.com`, `.local:port`, or the bare `.ilovelawyer:port` dev form) by swapping only the
- * `ph`/`uk` prefix, rather than assuming one fixed shape — so it works regardless of which of
- * the three recognized host conventions the browser is currently on. */
+ * `ph`/`uk`/`app` prefix, rather than assuming one fixed shape — so it works regardless of which
+ * of the recognized host conventions the browser is currently on, including the bare apex
+ * (no prefix to strip) and `app.` (no longer exempt from the mismatch redirect — see
+ * app/(protected)/layout.tsx). */
 export function hostForTenantCode(tenantCode: TenantCode, currentHost: string): string {
-  const suffix = currentHost.replace(/^(ph|uk)\./i, "")
+  const suffix = currentHost.replace(/^(ph|uk|app)\./i, "")
   return `${tenantCode.toLowerCase()}.${suffix}`
 }

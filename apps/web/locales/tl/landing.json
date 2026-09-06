@@ -32,7 +32,8 @@
     "getStartedArrow": "Magsimula →",
     "aiChat": {
       "title": "AI Research Chat",
-      "description": "Real-time na interpretasyon ng batas at pananaliksik sa jurisprudence sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng Korte Suprema."
+      "description": "Real-time na interpretasyon ng batas at pananaliksik sa jurisprudence sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng Korte Suprema.",
+      "description_UK": "Real-time na interpretasyon ng batas at pananaliksik sa case law sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng England & Wales."
     },
     "caseManager": {
       "title": "Case Manager",
@@ -65,15 +66,24 @@
         "firm": "Bautista & Partners"
       }
     ],
+    "items_UK": [
+      {
+        "text": "TODO: replace with a real UK client testimonial before launch.",
+        "author": "TODO",
+        "firm": "TODO — UK client testimonial pending"
+      }
+    ],
     "quoteLabel": "Quote {{number}}"
   },
   "footer": {
     "tagline": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng Pilipinas. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
+    "tagline_UK": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng UK. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
     "company": {
       "heading": "Kompanya",
       "aboutUs": "Tungkol sa Amin",
       "contactSupport": "Makipag-ugnayan at Suporta",
-      "compliance": "RA 10173 Compliance"
+      "compliance": "RA 10173 Compliance",
+      "compliance_UK": "UK GDPR Compliance"
     },
     "legal": {
       "heading": "Legal",

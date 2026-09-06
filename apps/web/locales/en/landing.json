@@ -32,7 +32,8 @@
     "getStartedArrow": "Get Started →",
     "aiChat": {
       "title": "AI Research Chat",
-      "description": "Real-time statutory interpretation and jurisprudence research via a natural language interface trained on current Supreme Court rulings."
+      "description": "Real-time statutory interpretation and jurisprudence research via a natural language interface trained on current Supreme Court rulings.",
+      "description_UK": "Real-time statutory interpretation and case law research via a natural language interface trained on current England & Wales court rulings."
     },
     "caseManager": {
       "title": "Case Manager",
@@ -65,15 +66,24 @@
         "firm": "Bautista & Partners"
       }
     ],
+    "items_UK": [
+      {
+        "text": "TODO: replace with a real UK client testimonial before launch.",
+        "author": "TODO",
+        "firm": "TODO — UK client testimonial pending"
+      }
+    ],
     "quoteLabel": "Quote {{number}}"
   },
   "footer": {
     "tagline": "Premium AI Legal Operations for the Philippine market. We integrate centuries of legal tradition with modern technological innovation.",
+    "tagline_UK": "Premium AI Legal Operations for the UK market. We integrate centuries of legal tradition with modern technological innovation.",
     "company": {
       "heading": "Company",
       "aboutUs": "About Us",
       "contactSupport": "Contact & Support",
-      "compliance": "RA 10173 Compliance"
+      "compliance": "RA 10173 Compliance",
+      "compliance_UK": "UK GDPR Compliance"
     },
     "legal": {
       "heading": "Legal",
