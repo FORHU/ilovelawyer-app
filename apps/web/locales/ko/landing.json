@@ -32,7 +32,8 @@
     "getStartedArrow": "시작하기 →",
     "aiChat": {
       "title": "AI 리서치 채팅",
-      "description": "현재 대법원 판례로 훈련된 자연어 인터페이스를 통한 실시간 법령 해석 및 판례 조사."
+      "description": "현재 대법원 판례로 훈련된 자연어 인터페이스를 통한 실시간 법령 해석 및 판례 조사.",
+      "description_UK": "현재 잉글랜드 및 웨일스 법원 판례로 훈련된 자연어 인터페이스를 통한 실시간 법령 해석 및 판례 조사."
     },
     "caseManager": {
       "title": "사건 관리자",
@@ -65,15 +66,24 @@
         "firm": "Bautista & Partners"
       }
     ],
+    "items_UK": [
+      {
+        "text": "TODO: replace with a real UK client testimonial before launch.",
+        "author": "TODO",
+        "firm": "TODO — UK client testimonial pending"
+      }
+    ],
     "quoteLabel": "인용 {{number}}"
   },
   "footer": {
     "tagline": "필리핀 시장을 위한 프리미엄 AI 법률 운영. 오랜 법률 전통과 현대 기술 혁신을 통합합니다.",
+    "tagline_UK": "영국 시장을 위한 프리미엄 AI 법률 운영. 오랜 법률 전통과 현대 기술 혁신을 통합합니다.",
     "company": {
       "heading": "회사",
       "aboutUs": "회사 소개",
       "contactSupport": "문의 및 지원",
-      "compliance": "RA 10173 준수"
+      "compliance": "RA 10173 준수",
+      "compliance_UK": "영국 GDPR 준수"
     },
     "legal": {
       "heading": "법률",
