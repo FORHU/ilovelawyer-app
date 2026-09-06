@@ -19,7 +19,7 @@
   },
   "lawSearch": {
     "title": "Maghanap sa jurisprudence at republic acts",
-    "subtitle": "Maghanap sa Philippine jurisprudence at republic acts ayon sa pamagat ng kaso, G.R. number, o R.A. number.",
+    "subtitle": "Mag-browse sa Philippine jurisprudence at republic acts, o maghanap ayon sa pamagat ng kaso, G.R. number, o R.A. number.",
     "searchAriaLabel": "Maghanap sa Philippine jurisprudence at republic acts",
     "searchPlaceholder": "Pamagat ng kaso, G.R. No., o R.A. No…",
     "searchButton": "Hanapin",
@@ -35,7 +35,16 @@
     "openInNewTab": "Buksan sa bagong tab",
     "error": "Hindi maisagawa ang paghahanap. Pakisubukang muli.",
     "comingSoon": "Malapit nang available ang paghahanap ng Philippine jurisprudence at republic acts para sa inyong hurisdiksyon.",
-    "notAvailable": "Hindi available ang law search para sa inyong organisasyon."
+    "notAvailable": "Hindi available ang law search para sa inyong organisasyon.",
+    "filterCaseType": "Uri ng kaso",
+    "filterTopics": "Mga paksa",
+    "filterAll": "Lahat",
+    "loadMore": "Magpakita pa",
+    "browseEmpty": "Walang maipakita para sa mga filter na ito.",
+    "browseError": "Hindi ma-load. Pakisubukang muli.",
+    "backToBrowse": "Bumalik sa browse",
+    "openRecord": "Buksan ang record",
+    "openAct": "Buksan ang batas"
   },
   "documents": {
     "pageTitle": "Mga Case Law Document",
@@ -98,5 +107,28 @@
     "doctrineExtraction": "Pagkuha ng Doctrine",
     "exploreSupremeCourtReports": "Galugarin ang Supreme Court Reports",
     "recentDecisions": "Mga Makasaysayang Desisyon"
+  },
+  "lawDoc": {
+    "back": "Bumalik sa library",
+    "loading": "Naglo-load ng dokumento…",
+    "error": "Hindi ma-load ang dokumentong ito. Pakisubukang muli.",
+    "viewSource": "Tingnan ang source",
+    "dateEnacted": "Petsa ng pagkakabatas",
+    "document": "Dokumento",
+    "detailUnavailable": "Hindi ma-load ngayon ang buong detalye ng dokumentong ito. Ipinapakita ang mayroon kami.",
+    "summary": "Buod",
+    "purpose": "Layunin",
+    "affectedLaws": "Mga batas na apektado at susog",
+    "sections": "Mga seksyon",
+    "keyProvisions": "Mga pangunahing probisyon",
+    "facts": "Mga pangyayari",
+    "proceduralHistory": "Kasaysayang procedural",
+    "legalIssues": "Mga legal na isyu",
+    "courtReasoning": "Pangangatwiran ng korte",
+    "disposition": "Disposisyon",
+    "legalRulesCited": "Mga legal na tuntuning sinipi",
+    "relatedCases": "Mga kaugnay na kasong sinipi",
+    "citedNumbers": "Mga siniping G.R. / R.A. number",
+    "keywords": "Mga keyword"
   }
 }
