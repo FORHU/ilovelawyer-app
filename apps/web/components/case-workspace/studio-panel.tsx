@@ -10,7 +10,8 @@ import { AUTO_MINDMAP_PROMPT } from "@/components/chat/consultation-chat";
 import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useCaseQuery } from "@/lib/cases/mutations";
-import { useCaseSnapshotQuery, useCaseTimelineQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
@@ -94,7 +95,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
   // call) so the Timeline tile's click can trigger a refetch directly, the same way the Mind
   // Map tile triggers a (re)generation, instead of the tile just opening the view.
-  const timelineQuery = useCaseTimelineQuery(caseId);
+  const timelineQuery = useGraphViewQuery(caseId, "timeline");
+  const timelineEventCount = useMemo(
+    () => (timelineQuery.data?.nodes ?? []).filter((node) => node.type === "TIMELINE_EVENT").length,
+    [timelineQuery.data],
+  );
   // Case Workspace didn't fetch the full snapshot before — Sources/Mind Map/Timeline each pull
   // their own narrower query. Data Table combines four of its already-structured sections
   // (Witnesses, Damages, Deadlines, Findings) that otherwise only have dedicated views in the
@@ -438,7 +443,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
            * re-opening the tile grid. */}
           {expanded &&
             ((consultationId && (isGenerating || activeMindMap)) ||
-              (timelineQuery.data && timelineQuery.data.length > 0) ||
+              timelineEventCount > 0 ||
               timelineQuery.isFetching ||
               dataTableRows.length > 0 ||
               snapshotQuery.isFetching ||
@@ -453,7 +458,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("mindmap")}
                   />
                 )}
-                {((timelineQuery.data && timelineQuery.data.length > 0) || timelineQuery.isFetching) && (
+                {(timelineEventCount > 0 || timelineQuery.isFetching) && (
                   <ResultRow
                     icon={timelineQuery.isFetching ? Loader2 : Clock}
                     iconSpinning={timelineQuery.isFetching}
@@ -461,7 +466,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     subtitle={
                       timelineQuery.isFetching
                         ? t("workspace.timelineRefreshing")
-                        : t("workspace.timelineEventCount", { count: timelineQuery.data?.length ?? 0 })
+                        : t("workspace.timelineEventCount", { count: timelineEventCount })
                     }
                     onClick={() => openStudioTile("timeline")}
                   />

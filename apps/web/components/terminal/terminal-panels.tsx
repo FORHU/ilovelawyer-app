@@ -52,6 +52,7 @@ import {
   useAiJobStatus,
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
+import { useGraphViewQuery } from "@/lib/graph-view/mutations"
 import type {
   CaseSnapshot,
   DamageCategory,
@@ -59,7 +60,6 @@ import type {
   HearsayCategory,
   PanelId,
   PrivilegeStatus,
-  SnapshotContradiction,
   SnapshotEvidenceMatrixItem,
   SnapshotRisk,
   Witness,
@@ -82,7 +82,7 @@ function formatContradictionValue(kind: string, value: string) {
   return value
 }
 
-function contradictionHeadline(item: SnapshotContradiction) {
+function contradictionHeadline(item: { kind: string; factKey: string; leftValue: string; rightValue: string }) {
   const left = formatContradictionValue(item.kind, item.leftValue)
   const right = formatContradictionValue(item.kind, item.rightValue)
   const label =
@@ -310,15 +310,9 @@ export function TerminalPanelBody({
     case "teamAudit":
       return <TeamAuditPanel snapshot={snapshot} />
     case "contradictions":
-      return <ContradictionsPanel snapshot={snapshot} caseId={caseId} />
+      return <ContradictionsPanel caseId={caseId} />
     case "legalIssues":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="LEGAL_ISSUE"
-        />
-      )
+      return <LegalIssuesPanel caseId={caseId} />
     case "weaknesses":
       return (
         <CaseFindingPanel
@@ -352,7 +346,7 @@ export function TerminalPanelBody({
         />
       )
     case "witnesses":
-      return <WitnessPanel snapshot={snapshot} caseId={caseId} />
+      return <WitnessPanel caseId={caseId} />
     case "damages":
       return <DamagePanel snapshot={snapshot} caseId={caseId} />
     case "caseReconstruction":
@@ -619,18 +613,15 @@ function EvidencePanel({
 // Split out of EvidencePanel into its own pane — the underlying data (EvidenceContradiction
 // rows, scanned via regex + an LLM pass through chat-wonder-v2-api) already existed; this is
 // purely giving it dedicated screen space instead of competing with Documents/Timeline for it.
-function ContradictionsPanel({
-  snapshot,
-  caseId,
-}: {
-  snapshot: CaseSnapshot
-  caseId: string
-}) {
+// Reads the graph-view projection (view_type=contradictions) instead of slicing CaseSnapshot,
+// so a scan triggered from any mounted panel refreshes this one via the shared query cache.
+function ContradictionsPanel({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const scan = useScanContradictionsMutation(caseId)
   const job = useAiJobStatus(caseId, "contradictions")
+  const graphView = useGraphViewQuery(caseId, "contradictions")
   const isScanning = scan.isPending || job.data?.status === "IN_PROGRESS"
-  const contradictions = snapshot.evidence.contradictions
+  const contradictions = graphView.data?.edges ?? []
 
   return (
     <PanelBody gap="4">
@@ -650,26 +641,36 @@ function ContradictionsPanel({
         <div>
           <SectionLabel>{t("contradictions")}</SectionLabel>
           <ul className="space-y-3">
-            {contradictions.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5"
-              >
-                <p className="font-mono text-[12px] text-orange-400">
-                  {contradictionHeadline(item)}
-                </p>
-                {item.leftExcerpt ? (
-                  <p className="mt-2 text-[12px] leading-5 text-foreground/80">
-                    “{item.leftExcerpt}”
+            {contradictions.map((edge) => {
+              const metadata = edge.metadata as {
+                kind: string
+                factKey: string
+                leftValue: string
+                rightValue: string
+                leftExcerpt: string
+                rightExcerpt: string
+              }
+              return (
+                <li
+                  key={edge.id}
+                  className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5"
+                >
+                  <p className="font-mono text-[12px] text-orange-400">
+                    {contradictionHeadline(metadata)}
                   </p>
-                ) : null}
-                {item.rightExcerpt ? (
-                  <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
-                    “{item.rightExcerpt}”
-                  </p>
-                ) : null}
-              </li>
-            ))}
+                  {metadata.leftExcerpt ? (
+                    <p className="mt-2 text-[12px] leading-5 text-foreground/80">
+                      “{metadata.leftExcerpt}”
+                    </p>
+                  ) : null}
+                  {metadata.rightExcerpt ? (
+                    <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                      “{metadata.rightExcerpt}”
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
@@ -1169,6 +1170,83 @@ const FINDING_ADD_LABEL_KEYS: Record<FindingCategory, string> = {
   DEFENSE_STRATEGY: "addDefenseStrategy",
 }
 
+// Legal Issues is the one CaseFinding category the case graph tracks as its own node type
+// (view_type=issues also carries CLAIM nodes) — reads the graph-view projection instead of
+// slicing CaseSnapshot, unlike the other four category panels below which stay snapshot-driven.
+function LegalIssuesPanel({ caseId }: { caseId: string }) {
+  const { t } = useTranslation("terminal")
+  const create = useCreateFindingMutation(caseId)
+  const del = useDeleteFindingMutation(caseId)
+  const [label, setLabel] = useState("")
+  const graphView = useGraphViewQuery(caseId, "issues")
+  const items = (graphView.data?.nodes ?? []).filter((node) => node.type === "FINDING")
+
+  return (
+    <PanelBody gap="4">
+      {items.length === 0 ? (
+        <EmptyNote>{t("noFindings")}</EmptyNote>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((node) => {
+            const item = node.data as { label: string; notes?: string | null; sourceLabel?: string | null }
+            return (
+              <li
+                key={node.id}
+                className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="leading-5 text-foreground">{item.label}</p>
+                  {item.notes === "AI" && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
+                      <Sparkles className="h-3 w-3" aria-hidden="true" />
+                      {t("aiGenerated")}
+                    </span>
+                  )}
+                  {item.sourceLabel && (
+                    <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{t("groundedIn", { doc: item.sourceLabel })}</span>
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => del.mutate(node.refId)}
+                  disabled={del.isPending}
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                  aria-label={t("delete")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <form
+        className="mt-auto flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const value = label.trim()
+          if (!value) return
+          create.mutate({ category: "LEGAL_ISSUE", label: value })
+          setLabel("")
+        }}
+      >
+        <input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder={t(FINDING_ADD_LABEL_KEYS.LEGAL_ISSUE)}
+          className={`flex-1 ${fieldClass}`}
+        />
+        <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+          {t("add")}
+        </button>
+      </form>
+    </PanelBody>
+  )
+}
+
 function CaseFindingPanel({
   snapshot,
   caseId,
@@ -1251,28 +1329,28 @@ function CaseFindingPanel({
   )
 }
 
-function WitnessPanel({
-  snapshot,
-  caseId,
-}: {
-  snapshot: CaseSnapshot
-  caseId: string
-}) {
+// Reads the graph-view projection (view_type=witnesses) instead of slicing CaseSnapshot, so a
+// witness added/removed from any mounted panel refreshes this one via the shared query cache.
+function WitnessPanel({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const create = useCreateWitnessMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
   const [name, setName] = useState("")
   const [role, setRole] = useState("")
+  const graphView = useGraphViewQuery(caseId, "witnesses")
+  const witnesses = graphView.data?.nodes ?? []
 
   return (
     <PanelBody gap="4">
-      {snapshot.witnesses.length === 0 ? (
+      {witnesses.length === 0 ? (
         <EmptyNote>{t("noWitnesses")}</EmptyNote>
       ) : (
         <ul className="space-y-2">
-          {snapshot.witnesses.map((w) => (
+          {witnesses.map((node) => {
+            const w = node.data as { name: string; role?: string | null; contact?: string | null }
+            return (
             <li
-              key={w.id}
+              key={node.id}
               className="flex items-start justify-between gap-2 rounded-md border border-border px-3 py-2.5"
             >
               <div className="min-w-0 flex-1">
@@ -1290,7 +1368,7 @@ function WitnessPanel({
               </div>
               <button
                 type="button"
-                onClick={() => del.mutate(w.id)}
+                onClick={() => del.mutate(node.refId)}
                 disabled={del.isPending}
                 className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
                 aria-label={t("delete")}
@@ -1298,7 +1376,8 @@ function WitnessPanel({
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </li>
-          ))}
+            )
+          })}
         </ul>
       )}
       <form
