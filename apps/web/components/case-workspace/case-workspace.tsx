@@ -20,7 +20,15 @@ const SOURCES_MIN_WIDTH = 220;
 const SOURCES_MAX_WIDTH = 420;
 const STUDIO_DEFAULT_WIDTH = 340;
 const STUDIO_MIN_WIDTH = 260;
-const STUDIO_MAX_WIDTH = 460;
+// Raised from 460 so Mind Map's node canvas has real room to breathe once opened (see
+// STUDIO_MINDMAP_WIDTH below) — still just a ceiling, so Timeline/Data Table/Audio Overview
+// stay at whatever width the user actually left the panel at.
+const STUDIO_MAX_WIDTH = 760;
+// Auto-widens Studio to this width the moment Mind Map is opened (only grows it — never
+// shrinks a width the user already dragged past this), so the map is legible without the user
+// having to discover the divider first. It stays a normal, user-draggable width afterwards:
+// this only sets a floor for the one moment it opens.
+const STUDIO_MINDMAP_WIDTH = 620;
 // The center chat column's hard floor — both panels' dynamic max clamps to this so dragging
 // either sidebar can never crush the reading area into overflow.
 const CENTER_MIN_WIDTH = 400;
@@ -153,6 +161,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         onExpandedChange={setStudioExpanded}
         width={studioRenderWidth}
         isResizing={studio.isDragging}
+        onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
       />
     </div>
   );
