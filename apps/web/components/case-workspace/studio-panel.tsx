@@ -63,6 +63,11 @@ interface StudioPanelProps {
    * instead of easing behind it, while collapse/expand and tile open/close keep their
    * animation. */
   isResizing: boolean;
+  /** Lets case-workspace.tsx auto-widen the panel (up to a point) the moment Mind Map opens —
+   * its node canvas needs more room than the other three tiles do. Only ever grows the width
+   * (never shrinks one the user already dragged past it), and the result stays a normal
+   * user-draggable width afterwards. */
+  onOpenMindMap?: () => void;
 }
 
 /** Case Workspace's right panel. Deliberately only 4 tiles — Mind Map (per-consultation),
@@ -73,7 +78,7 @@ interface StudioPanelProps {
  * the view *inline* (not a modal) with a breadcrumb back control, within the panel's existing
  * resizable width rather than growing past it — the user can still drag it wider first if a
  * tile's content (e.g. Mind Map's node canvas) needs more room. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -154,6 +159,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const openStudioTile = (kind: StudioTileKind) => {
     setOpenTile(kind);
     if (!expanded) onExpandedChange(true);
+    if (kind === "mindmap") onOpenMindMap?.();
   };
 
   // Sends the same system-driven prompt ConsultationChat's own Mind Map tab uses to trigger

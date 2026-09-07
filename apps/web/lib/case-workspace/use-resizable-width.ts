@@ -106,5 +106,10 @@ export function useResizableWidth({ storageKey, defaultWidth, min, max, directio
     }
   }, [hydrated, isDragging, width, storageKey]);
 
-  return { width, isDragging, handlePointerDown };
+  // Programmatic resize (e.g. Studio widening itself when Mind Map opens) — clamped the same
+  // way a drag is, and persists through the effect above like any other width change, so the
+  // panel is still freely draggable (narrower or wider) afterwards rather than getting stuck.
+  const requestWidth = useCallback((value: number) => setWidth((prev) => Math.max(prev, clamp(value))), [clamp]);
+
+  return { width, isDragging, handlePointerDown, requestWidth };
 }

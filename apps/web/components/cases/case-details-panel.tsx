@@ -11,6 +11,8 @@ import {
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { RagStatusBadge } from "@/components/cases/rag-status-badge";
+import FilePreviewModal from "@/components/chat/file-preview-modal";
+import type { MessageAttachment } from "@/components/chat/message-attachments";
 
 interface CaseDetailsPanelProps {
   caseId: string;
@@ -215,6 +217,10 @@ export function CaseDocumentList({
   const { t } = useTranslation("case-portfolio");
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation();
+  // Opened in-app via FilePreviewModal (same as chat's attachment chips) instead of a bare
+  // `target="_blank"` link — the fileUrl is a short-lived presigned S3 GET, so navigating the
+  // whole tab to it also loses the case workspace behind it for no reason.
+  const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>;
@@ -229,44 +235,46 @@ export function CaseDocumentList({
   }
 
   return (
-    <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>
-      {documents.map((doc) => (
-        <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {doc.fileUrl ? (
-            <a
-              href={doc.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-w-0 flex-1 truncate text-sm text-foreground hover:text-brand-gold hover:underline"
-            >
-              {doc.name}
-            </a>
-          ) : (
-            <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
-          )}
-          <RagStatusBadge status={doc.ragStatus} />
-          <Tooltip>
-            <TooltipTrigger asChild>
+    <>
+      <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>
+        {documents.map((doc) => (
+          <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {doc.fileUrl ? (
               <button
                 type="button"
-                disabled={isDeleting && deletingVars?.documentId === doc.id}
-                onClick={() => deleteDocument({ documentId: doc.id, caseId })}
-                aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                onClick={() => setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })}
+                className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:text-brand-gold hover:underline"
               >
-                {isDeleting && deletingVars?.documentId === doc.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
+                {doc.name}
               </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
-          </Tooltip>
-        </li>
-      ))}
-    </ul>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
+            )}
+            <RagStatusBadge status={doc.ragStatus} />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isDeleting && deletingVars?.documentId === doc.id}
+                  onClick={() => deleteDocument({ documentId: doc.id, caseId })}
+                  aria-label={t("detail.removeDocument", { documentName: doc.name })}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  {isDeleting && deletingVars?.documentId === doc.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
+            </Tooltip>
+          </li>
+        ))}
+      </ul>
+      {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
+    </>
   );
 }
 
