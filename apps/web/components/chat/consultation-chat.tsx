@@ -21,7 +21,8 @@ import {
   useMessagesQuery,
   sendChatMessage,
 } from "@/lib/chat/mutations";
-import { extractMindMap, stripStructuredBlocks, getActiveMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
+import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
+import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 
@@ -39,6 +40,9 @@ interface DisplayMessage {
    * this is recomputed from the raw accumulated text on every chunk (see doSend); once the
    * message is persisted it comes straight from the backend (see baseMessages below). */
   mindMap?: MindMapItem;
+  /** Live research steps extracted from `[TRACE]...[/TRACE]` frames while this message is
+   * streaming — see doSend. Never persisted; gone once the turn finishes. */
+  researchSteps?: TraceStep[];
 }
 
 const MAX_TEXTAREA_HEIGHT = 200;
@@ -624,13 +628,14 @@ export default function ConsultationChat({
           rawAccumulated += chunk;
           const displayContent = stripStructuredBlocks(rawAccumulated);
           const mindMap = extractMindMap(rawAccumulated);
+          const researchSteps = extractTraceSteps(rawAccumulated);
           setPendingTurn((prev) => {
             if (!prev) return prev;
             const lastIndex = prev.messages.length - 1;
             const last = prev.messages[lastIndex];
             if (!last) return prev;
             const nextMessages = [...prev.messages];
-            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap };
+            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
             return { ...prev, messages: nextMessages };
           });
         },
@@ -1194,7 +1199,11 @@ export default function ConsultationChat({
                   return (
                     <div key={i} className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"}`}>
                       {isStreamingThis && !m.content ? (
-                        <ThinkingIndicator label={t("thinking")} />
+                        m.researchSteps && m.researchSteps.length > 0 ? (
+                          <ResearchTraceList steps={m.researchSteps} />
+                        ) : (
+                          <ThinkingIndicator label={t("thinking")} />
+                        )
                       ) : (
                         <AssistantMessage
                           content={m.content || "…"}
