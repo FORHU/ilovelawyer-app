@@ -40,6 +40,8 @@
   "addSuggestedCount": "{{count}} ready to add",
   "addSuggestedEmpty": "Nothing new to suggest right now.",
   "hidePane": "Hide pane",
+  "maximizePane": "Expand pane",
+  "restorePane": "Restore pane",
   "dragHint": "Drag the title bar to move this pane. Drag any edge or corner to resize. Other panes stay put.",
   "fatalBanner": "Fatal risks are open on this case.",
   "loading": "Loading terminal…",
