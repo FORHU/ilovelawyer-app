@@ -1,6 +1,8 @@
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
+import { MermaidDiagram } from "./mermaid-diagram";
 
 // TODO: links currently open in a new tab. Revisit once it's decided whether
 // citations should navigate externally or open in an in-app sidebar instead.
@@ -28,10 +30,47 @@ const components: Components = {
       {children}
     </a>
   ),
-  code: ({ children }) => (
-    <code className="bg-muted rounded px-1 py-0.5 text-[14px] font-mono">{children}</code>
-  ),
+  code: ({ className, children }) => {
+    if (className?.includes("language-mermaid")) {
+      return <MermaidDiagram chart={String(children)} />;
+    }
+    return <code className="bg-muted rounded px-1 py-0.5 text-[14px] font-mono">{children}</code>;
+  },
+  // Fenced code blocks come wrapped in a `<pre>` by default; unwrap it for mermaid
+  // fences so the diagram isn't nested inside a `<pre>` with its own monospace/box styling.
+  // Everything else (plain code, or ASCII-art diagrams the model draws instead of using
+  // mermaid/the mind-map tag) gets a proper scrollable code card instead of a cramped,
+  // unbounded wall of monospace text — the `[&>code]:*` resets cancel the inline chip
+  // styling on the `code` component below so it doesn't double up inside this box.
+  pre: ({ children }) => {
+    const child = Array.isArray(children) ? children[0] : children;
+    const isMermaid =
+      React.isValidElement<{ className?: string }>(child) && child.props.className?.includes("language-mermaid");
+    if (isMermaid) return <>{children}</>;
+    return (
+      <pre className="my-3 rounded-xl border border-border bg-muted/60 p-3 overflow-x-auto text-[13px] leading-relaxed [&>code]:bg-transparent [&>code]:p-0 [&>code]:rounded-none">
+        {children}
+      </pre>
+    );
+  },
   hr: () => <hr className="my-3 border-border" />,
+  // remark-gfm parses tables but react-markdown otherwise emits bare <table>/<td> with no
+  // borders, padding, or header styling — without this it renders as loosely stacked text.
+  table: ({ children }) => (
+    <div className="my-3 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full border-collapse text-[14px]">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
+  tr: ({ children }) => (
+    <tr className="border-b border-border last:border-b-0 [&:nth-child(even)]:bg-muted/30">{children}</tr>
+  ),
+  th: ({ children }) => (
+    <th className="px-3 py-2 text-left font-bold border-r border-border last:border-r-0">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="px-3 py-2 align-top border-r border-border last:border-r-0">{children}</td>
+  ),
 };
 
 // The backend appends a `[RELATED_QUERIES][...][/RELATED_QUERIES]` suffix intended
