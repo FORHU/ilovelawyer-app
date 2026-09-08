@@ -63,23 +63,23 @@
     --brand-navy-800: #1d2a47;
     --brand-gold: #f6c445;
 
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
+    --background: #ffffff;
+    --foreground: #252525;
+    --card: #ffffff;
+    --card-foreground: #252525;
+    --popover: #ffffff;
+    --popover-foreground: #252525;
     --primary: oklch(0.205 0 0);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
+    --secondary: #f7f7f7;
     --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
+    --muted: #f7f7f7;
+    --muted-foreground: #8e8e8e;
+    --accent: #f7f7f7;
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
+    --border: #e8e8e8;
+    --input: #e8e8e8;
     --ring: oklch(0.708 0 0);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
@@ -101,11 +101,11 @@
     /* Navy elevation scale instead of neutral gray, so dark mode reads as
        the same brand rather than a generic gray theme. See docs/adr/0002. */
     --background: var(--brand-navy-950);
-    --foreground: oklch(0.985 0 0);
+    --foreground: #fafafa;
     --card: var(--brand-navy-900);
-    --card-foreground: oklch(0.985 0 0);
+    --card-foreground: #fafafa;
     --popover: var(--brand-navy-900);
-    --popover-foreground: oklch(0.985 0 0);
+    --popover-foreground: #fafafa;
     --primary: oklch(0.985 0 0);
     --primary-foreground: var(--brand-navy-950);
     --secondary: var(--brand-navy-800);
@@ -131,6 +131,34 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 12%);
     --sidebar-ring: #5c7cb0;
+}
+
+/* Landing marketing pages intentionally diverge from the app's navy/gold brand system
+   (docs/adr/0002) to match the ilovelawyer marketing-site handoff pixel-for-pixel — scoped
+   to .landing-theme so bg-brand-navy-950/text-brand-gold usage elsewhere (protected app UI,
+   terminal, chat) is unaffected. */
+.landing-theme {
+    --brand-navy-950: #0b0b0b;
+    --brand-navy-900: #1a1a1a;
+    /* No third near-black is documented in the handoff — reuse the 900 shade rather than
+       invent an unsourced value, so nothing on the landing page still reads as blue-navy. */
+    --brand-navy-800: #1a1a1a;
+    --brand-gold: #c9a44c;
+}
+
+/* .dark declares --background/--card/--muted etc. as var(--brand-navy-*) chains, and that
+   var() substitution resolves where .dark is applied (<html>) — not lazily wherever
+   bg-background/bg-card/bg-muted are later consumed. So the --brand-navy-* override above
+   never reaches those utilities; redeclare the same landing values directly here so
+   dark-mode landing sections (capabilities, terminal showcase, consultation, firms) stop
+   showing the app's navy instead of the handoff's near-black. */
+.dark .landing-theme {
+    --background: #0b0b0b;
+    --card: #1a1a1a;
+    --popover: #1a1a1a;
+    --secondary: #1a1a1a;
+    --muted: #1a1a1a;
+    --accent: #1a1a1a;
 }
 
 @layer base {

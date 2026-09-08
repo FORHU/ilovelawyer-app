@@ -27,10 +27,7 @@ const COLUMNS = [
   },
   {
     columnKey: "jurisdictions",
-    links: [
-      { key: "philippines", href: "#business" },
-      { key: "unitedKingdom", href: "#business" },
-    ],
+    links: [{ key: "philippines", href: "#business" }],
   },
   {
     columnKey: "resources",
@@ -58,7 +55,7 @@ export function LandingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer id="footer" className="bg-brand-navy-950 text-white py-16 px-6 md:px-16">
+    <footer id="footer" className="bg-brand-navy-900 text-white py-16 px-6 md:px-16">
       <div className="max-w-[1440px] mx-auto">
         <Link
           href="/"

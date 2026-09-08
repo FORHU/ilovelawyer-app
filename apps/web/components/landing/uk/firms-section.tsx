@@ -33,7 +33,7 @@ export function UkFirmsSection() {
       <div ref={ref} className="max-w-[1160px] mx-auto grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-16 items-center">
         <motion.div
           style={{ y }}
-          className="justify-self-center w-[280px] rounded-xl bg-brand-navy-950 border border-white/10 shadow-2xl overflow-hidden text-white flex flex-col"
+          className="justify-self-center w-[296px] h-[418px] rounded-xl bg-brand-navy-950 border border-white/10 shadow-2xl overflow-hidden text-white flex flex-col"
         >
           <div className="p-4 border-b border-white/10">
             <p className="font-['Libre_Caslon_Text'] text-[18px]">{t("firms.membersCard.title")}</p>

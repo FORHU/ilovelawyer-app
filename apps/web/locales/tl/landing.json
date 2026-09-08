@@ -224,6 +224,7 @@
         }
       }
     },
-    "jurisdictionLine": "Pilipinas at United Kingdom"
+    "jurisdictionLine": "Pilipinas",
+    "jurisdictionLine_UK": "United Kingdom"
   }
 }

@@ -224,6 +224,7 @@
         }
       }
     },
-    "jurisdictionLine": "필리핀 및 영국"
+    "jurisdictionLine": "필리핀",
+    "jurisdictionLine_UK": "영국"
   }
 }

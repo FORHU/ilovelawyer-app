@@ -24,7 +24,7 @@ export function HeroSection() {
   }, [reduce]);
 
   return (
-    <section id="hero" className="relative min-h-[100dvh] flex items-end overflow-hidden bg-brand-navy-950">
+    <section id="hero" className="relative h-[92vh] min-h-[620px] flex items-end overflow-hidden bg-brand-navy-950">
       {slideImages.map((src, i) => (
         <motion.div
           key={src}

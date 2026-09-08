@@ -46,7 +46,7 @@ export function UkConsultationSection() {
 
         <motion.div
           style={{ y }}
-          className="justify-self-center w-[320px] rounded-xl bg-card border border-border shadow-xl overflow-hidden flex flex-col"
+          className="justify-self-center w-[320px] h-[400px] rounded-xl bg-card border border-border shadow-xl overflow-hidden flex flex-col"
         >
           <div className="p-4 border-b border-border flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-brand-gold shrink-0" />

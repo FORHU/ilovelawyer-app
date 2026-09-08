@@ -42,7 +42,7 @@ export function TerminalShowcaseSection() {
             <TooltipTrigger asChild>
               <Link
                 href="/signup"
-                className="group flex-1 min-w-0 min-h-[420px] rounded-3xl overflow-hidden relative bg-card transition-[flex-grow] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] hover:flex-[2.4]"
+                className="group flex-1 min-w-0 min-h-[480px] rounded-3xl overflow-hidden relative bg-card transition-[flex-grow] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] hover:flex-[2.4]"
               >
                 <div
                   className="absolute inset-0 bg-cover bg-center p-7 flex flex-col"

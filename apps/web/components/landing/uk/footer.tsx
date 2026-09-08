@@ -30,10 +30,7 @@ const COLUMNS = [
   },
   {
     columnKey: "jurisdictions",
-    links: [
-      { key: "philippines", href: "#business" },
-      { key: "unitedKingdom", href: "#business" },
-    ],
+    links: [{ key: "unitedKingdom", href: "#business" }],
   },
   {
     columnKey: "resources",
@@ -63,7 +60,7 @@ export function UkLandingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer id="footer" className="bg-brand-navy-950 text-white py-16 px-6 md:px-16">
+    <footer id="footer" className="bg-brand-navy-900 text-white py-16 px-6 md:px-16">
       <div className="max-w-[1440px] mx-auto">
         <Link
           href="/"
@@ -93,7 +90,7 @@ export function UkLandingFooter() {
 
         <div className="pt-5 border-t border-white/15 flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
           <LanguageSwitcher />
-          <span>{t("footer.jurisdictionLine")}</span>
+          <span>{t("footer.jurisdictionLine", tCtx)}</span>
           <span>&copy; {year} ilovelawyer</span>
         </div>
       </div>
