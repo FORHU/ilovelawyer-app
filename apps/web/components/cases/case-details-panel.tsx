@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, AlertCircle, Network, Clock, FileText, Plus,
 import {
   useCaseQuery,
   useCaseDocumentsQuery,
-  useUploadCaseDocumentMutation,
+  useUploadCaseDocumentsMutation,
   useDeleteCaseDocumentMutation,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -165,13 +165,14 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
   );
 }
 
-/** Small trigger + hidden file input that uploads straight into this case — same upload
- * mutation the chat's "Add Document" quick action uses, so a file shows up here regardless
- * of which entry point it was uploaded from. */
+/** Small trigger + hidden file input that uploads straight into this case — same batch
+ * upload path (presign in chunks, S3 PUT pool, chunked confirm) the Create Case intake form
+ * uses, so selecting several files here behaves the same as attaching them at intake. */
 export function DocumentUploadButton({ caseId }: { caseId: string }) {
   const { t } = useTranslation("case-portfolio");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { mutate: uploadDocument, isPending, isError } = useUploadCaseDocumentMutation();
+  const { mutate: uploadDocuments, isPending, data } = useUploadCaseDocumentsMutation();
+  const hasFailures = (data?.failed.length ?? 0) > 0;
 
   return (
     <>
@@ -187,18 +188,19 @@ export function DocumentUploadButton({ caseId }: { caseId: string }) {
             {isPending ? t("detail.uploading") : t("detail.addDocument")}
           </button>
         </TooltipTrigger>
-        <TooltipContent>Upload a document to this case</TooltipContent>
+        <TooltipContent>Upload one or more documents to this case</TooltipContent>
       </Tooltip>
-      {isError && <span className="block text-right text-[11px] text-red-600 dark:text-red-400">{t("detail.uploadError")}</span>}
+      {hasFailures && <span className="block text-right text-[11px] text-red-600 dark:text-red-400">{t("detail.uploadError")}</span>}
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
+          const files = Array.from(e.target.files ?? []);
           e.target.value = "";
-          if (file) uploadDocument({ file, caseId });
+          if (files.length > 0) uploadDocuments({ files, caseId });
         }}
       />
     </>

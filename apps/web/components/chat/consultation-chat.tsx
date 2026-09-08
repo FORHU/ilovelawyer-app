@@ -7,6 +7,10 @@ import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircl
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
+import TopicNavigator from "@/components/chat/topic-navigator";
+import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
+import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
+import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { CaseHubWidget } from "@/components/chat/case-hub-widget";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
@@ -43,18 +47,14 @@ interface DisplayMessage {
   /** Live research steps extracted from `[TRACE]...[/TRACE]` frames while this message is
    * streaming — see doSend. Never persisted; gone once the turn finishes. */
   researchSteps?: TraceStep[];
+  /** Set only when this reply is one topic of a split, multi-topic answer (see
+   * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, shown above its
+   * bubble. Never set while a message is still streaming; splits only appear once persisted. */
+  groupId?: string | null;
+  groupTitle?: string | null;
 }
 
 const MAX_TEXTAREA_HEIGHT = 200;
-
-// Sent verbatim (both by the auto-trigger and the manual retry button) so the Chat tab can
-// recognize and hide this system-driven turn instead of showing it as a bubble the user
-// never actually typed — see the `visibleMessages` filter below.
-export const AUTO_MINDMAP_PROMPT = "Please generate a visual strategy map for this case.";
-// Must contain the exact phrase "audio overview" — the_server.py's _wants_audio_overview and
-// ilovelawyer-api's chat.service.ts wantsAudioOverview both gate on that substring, case-
-// insensitively, to decide whether to run the (expensive) script-generation call at all.
-export const AUTO_AUDIO_OVERVIEW_PROMPT = "Please generate an audio overview discussing this case.";
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -129,6 +129,10 @@ export default function ConsultationChat({
   // page's left edge — on the case page that's the back link/case chip header row, which
   // the expanded rail would otherwise cover.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  // Mirrors sidebarExpanded's reserve-room pattern below, but for TopicNavigator on the
+  // right — defaults open since the panel only ever mounts for a split reply already on
+  // screen (a rare, deliberate moment), unlike the always-present left sidebar.
+  const [topicPanelExpanded, setTopicPanelExpanded] = useState(true);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -159,6 +163,8 @@ export default function ConsultationChat({
   }, []);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
+  const startSending = useSendingConsultationsStore((s) => s.startSending);
+  const stopSending = useSendingConsultationsStore((s) => s.stopSending);
   const uploadDocuments = useUploadDocumentsMutation();
 
   const [isRecording, setIsRecording] = useState(false);
@@ -260,20 +266,30 @@ export default function ConsultationChat({
   // The transcript for the consultation currently on screen comes straight from the
   // React Query cache — keyed by consultationId, so switching consultations just means a
   // different query result, with no manual copy-into-local-state step to keep in sync.
-  const baseMessages: DisplayMessage[] = consultationId
-    ? (history ?? [])
-        .filter((m) => m.role !== "system")
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          // Empty on messages sent before the backend shipped message-scoped attachments
-          // (handoff doc §5) — falls back to no chips for those, same as today.
-          attachments: enableFileChips
-            ? (m.documents ?? []).map((d) => ({ id: d.id, name: d.name, url: d.fileUrl, mimeType: d.mimeType }))
-            : undefined,
-          mindMap: m.mindMap?.data,
-        }))
-    : [];
+  // Memoized: without this, every render (e.g. toggling either sidebar's expand/collapse,
+  // or TopicNavigator's scroll-spy updating activeTopicIndex) rebuilt a brand-new array
+  // here, which the scroll-to-bottom effect below (keyed on `messages`) mistook for new
+  // chat content and jumped the transcript to the bottom on every single click.
+  const baseMessages: DisplayMessage[] = useMemo(
+    () =>
+      consultationId
+        ? (history ?? [])
+            .filter((m) => m.role !== "system")
+            .map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              // Empty on messages sent before the backend shipped message-scoped attachments
+              // (handoff doc §5) — falls back to no chips for those, same as today.
+              attachments: enableFileChips
+                ? (m.documents ?? []).map((d) => ({ id: d.id, name: d.name, url: d.fileUrl, mimeType: d.mimeType }))
+                : undefined,
+              mindMap: m.mindMap?.data,
+              groupId: m.groupId,
+              groupTitle: m.groupTitle,
+            }))
+        : [],
+    [consultationId, history, enableFileChips],
+  );
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
@@ -322,6 +338,17 @@ export default function ConsultationChat({
     });
     return hidden.size > 0 ? messages.filter((_, i) => !hidden.has(i)) : messages;
   }, [messages]);
+
+  // TopicNavigator's contents — the topic bubbles of the most recently split AI reply only
+  // (see ilovelawyer-api's MessageGroup). Shared with the Case Workspace's own left-panel
+  // TopicNavigator (which isn't inside this component's tree) via use-topic-navigator.ts,
+  // so both derive identical topics/indices from the same persisted history independently.
+  const {
+    topics: latestSplitTopics,
+    activeIndex: activeTopicIndex,
+    scrollToTopic,
+    isGenerating: isGeneratingTopics,
+  } = useTopicNavigator(consultationId);
 
   // For a case's chat, arriving with no `?c=` param (e.g. leaving and coming back to the
   // case, rather than clicking "New Chat" from within it) shouldn't dump you on the blank
@@ -593,6 +620,10 @@ export default function ConsultationChat({
       ],
     });
 
+    // Set once activeConsultationId resolves below; read back in `finally` (which is outside
+    // that `try` block's own scope) so stopSending always targets the right id.
+    let startedConsultationId: string | null = null;
+
     try {
       let activeConsultationId = consultationId;
       if (!activeConsultationId) {
@@ -605,6 +636,11 @@ export default function ConsultationChat({
         // matching `consultationKey` instead of going invisible for a beat.
         setPendingTurn((prev) => (prev && prev.key === turnKey ? { ...prev, key: activeConsultationId! } : prev));
       }
+      startedConsultationId = activeConsultationId;
+      // A topic breakdown (see TopicNavigator/SourcesPanel) can only exist once this turn is
+      // persisted — this flag lets those panels show a "generating" state immediately instead
+      // of looking empty for however long the turn takes.
+      startSending(activeConsultationId);
 
       // Kept separate from the displayed bubble text: the stream can carry a trailing
       // [MINDMAP]...[/MINDMAP] block that must never render as raw JSON mid-stream (the API
@@ -666,6 +702,7 @@ export default function ConsultationChat({
         });
       }
     } finally {
+      if (startedConsultationId) stopSending(startedConsultationId);
       if (sendTokenRef.current === myToken) {
         setIsSending(false);
         setPendingUrlConsultationId(null);
@@ -1014,9 +1051,9 @@ export default function ConsultationChat({
       className={
         embedded
           ? "relative flex h-full min-h-0 flex-1 flex-col px-2"
-          : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left] duration-200 ${
-              sidebarExpanded ? "md:pl-80 md:pr-32" : "md:px-32"
-            }`
+          : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left,padding-right] duration-200 ${
+              sidebarExpanded ? "md:pl-80" : "md:pl-32"
+            } ${(latestSplitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
       }
     >
       {!embedded && (
@@ -1027,6 +1064,19 @@ export default function ConsultationChat({
           caseId={caseId}
           expanded={sidebarExpanded}
           onExpandedChange={setSidebarExpanded}
+        />
+      )}
+
+      {!embedded && (latestSplitTopics.length > 0 || isGeneratingTopics) && (
+        <TopicNavigator
+          topics={latestSplitTopics}
+          activeIndex={activeTopicIndex}
+          expanded={topicPanelExpanded}
+          onExpandedChange={setTopicPanelExpanded}
+          onJump={scrollToTopic}
+          label={t("topicNavigator.label")}
+          isGenerating={isGeneratingTopics}
+          generatingLabel={t("topicNavigator.generating")}
         />
       )}
 
@@ -1196,8 +1246,21 @@ export default function ConsultationChat({
                   // time, before any chunk streams in — that's the window "thinking" covers.
                   const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
 
+                  // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
+                  // to each other in visibleMessages — pull the continuation ones up closer than
+                  // the parent's gap-4 so they read as one answer broken into cards, not
+                  // unrelated replies.
+                  const isGroupContinuation = Boolean(m.groupId) && visibleMessages[i - 1]?.groupId === m.groupId;
+
                   return (
-                    <div key={i} className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"}`}>
+                    <div
+                      key={i}
+                      id={`chat-msg-${i}`}
+                      className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
+                    >
+                      {m.groupTitle && (
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">{m.groupTitle}</p>
+                      )}
                       {isStreamingThis && !m.content ? (
                         m.researchSteps && m.researchSteps.length > 0 ? (
                           <ResearchTraceList steps={m.researchSteps} />

@@ -57,6 +57,12 @@ export interface ChatMessage {
    * same way mindMap is. Rendering the script to actual speech is a separate, explicit action
    * (see useGenerateAudioOverviewAudioMutation) — audioFileId/audioStatus start null. */
   audioOverview?: MessageAudioOverview | null
+  /** Set only when this reply is one topic of a split, multi-topic answer — see
+   * ilovelawyer-api's MessageGroup. `groupTitle` is the topic heading; `groupOrder` its
+   * position within the group. All three are null/undefined on an ordinary message. */
+  groupId?: string | null
+  groupOrder?: number | null
+  groupTitle?: string | null
 }
 
 export function useChatSessionQuery() {

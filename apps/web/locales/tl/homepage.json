@@ -69,6 +69,10 @@
     "generating": "Ginagawa ang iyong case strategy map",
     "generateCta": "Bumuo ng visual na strategy map"
   },
+  "topicNavigator": {
+    "label": "Mga Paksa",
+    "generating": "Ginagawa ang breakdown ng paksa…"
+  },
   "timeline": {
     "emptyState": "Wala pang event sa kasong ito. Magdagdag sa ibaba, o i-refresh ang analysis para kunin ang mga petsa mula sa mga dokumento.",
     "loading": "Nilo-load ang timeline…",

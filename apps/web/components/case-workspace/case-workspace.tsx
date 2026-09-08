@@ -128,7 +128,6 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   return (
     <div ref={containerRef} className="flex h-full min-h-0 flex-1 overflow-hidden">
       <SourcesPanel
-        caseId={caseId}
         expanded={sourcesExpanded}
         onExpandedChange={setSourcesExpanded}
         activeConsultationId={activeConsultationId}

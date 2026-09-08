@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
+import { graphViewKeys } from "@/lib/graph-view/mutations"
 import type {
   CaseFinding,
   CaseReconstruction,
@@ -241,6 +242,7 @@ export function useCreateTimelineMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -256,6 +258,7 @@ export function useUpdateTimelineMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -291,6 +294,7 @@ export function useScanContradictionsMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -482,6 +486,7 @@ export function useCreateFindingMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -496,6 +501,7 @@ export function useDeleteFindingMutation(caseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -515,6 +521,7 @@ export function useCreateWitnessMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -529,6 +536,7 @@ export function useDeleteWitnessMutation(caseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }

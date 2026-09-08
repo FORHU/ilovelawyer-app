@@ -2,19 +2,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Play, Pause, RotateCcw, RotateCw, X } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Play, Pause, RotateCcw, RotateCw, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
-import { AUTO_MINDMAP_PROMPT } from "@/components/chat/consultation-chat";
+import { DocumentUploadButton, CaseDocumentList } from "@/components/cases/case-details-panel";
+import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useCaseQuery } from "@/lib/cases/mutations";
-import { useCaseSnapshotQuery, useCaseTimelineQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
-export type StudioTileKind = "mindmap" | "timeline" | "dataTable" | "audioOverview";
+export type StudioTileKind = "documents" | "mindmap" | "timeline" | "dataTable" | "audioOverview";
 
 interface DataTableRow {
   type: string;
@@ -70,14 +72,19 @@ interface StudioPanelProps {
   onOpenMindMap?: () => void;
 }
 
-/** Case Workspace's right panel. Deliberately only 4 tiles — Mind Map (per-consultation),
- * Timeline and Data Table (both existing case data, just not previously surfaced here) — plus
- * a disabled Audio Overview placeholder — not the reference design's full generative toolset
- * (see docs/adr/0012). A live tile's click triggers its action (generate/refresh) in place; the
- * result row that appears below the grid once there's something to show is what actually opens
- * the view *inline* (not a modal) with a breadcrumb back control, within the panel's existing
- * resizable width rather than growing past it — the user can still drag it wider first if a
- * tile's content (e.g. Mind Map's node canvas) needs more room. */
+/** Case Workspace's right panel. Documents, Mind Map (per-consultation), Timeline and Data
+ * Table (both existing case data, just not previously surfaced here) — plus a disabled Audio
+ * Overview placeholder — not the reference design's full generative toolset (see docs/adr/0012).
+ * A live tile's click triggers its action (generate/refresh) in place; the result row that
+ * appears below the grid once there's something to show is what actually opens the view
+ * *inline* (not a modal) with a breadcrumb back control, within the panel's existing resizable
+ * width rather than growing past it — the user can still drag it wider first if a tile's content
+ * (e.g. Mind Map's node canvas) needs more room. Documents is the one exception to that
+ * trigger-then-result-row shape: it's already-there data (this case's Case Documents), not
+ * something to generate/refresh, so its tile opens the detail view directly — the same
+ * DocumentUploadButton/CaseDocumentList this used to render in the (now Related-Cases-only)
+ * Sources panel, reused as-is; only where it's surfaced moved, not how documents are stored or
+ * uploaded. */
 export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
@@ -94,7 +101,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
   // call) so the Timeline tile's click can trigger a refetch directly, the same way the Mind
   // Map tile triggers a (re)generation, instead of the tile just opening the view.
-  const timelineQuery = useCaseTimelineQuery(caseId);
+  const timelineQuery = useGraphViewQuery(caseId, "timeline");
+  const timelineEventCount = useMemo(
+    () => (timelineQuery.data?.nodes ?? []).filter((node) => node.type === "TIMELINE_EVENT").length,
+    [timelineQuery.data],
+  );
   // Case Workspace didn't fetch the full snapshot before — Sources/Mind Map/Timeline each pull
   // their own narrower query. Data Table combines four of its already-structured sections
   // (Witnesses, Damages, Deadlines, Findings) that otherwise only have dedicated views in the
@@ -295,15 +306,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   };
 
   const tileLabel =
-    openTile === "mindmap"
-      ? t("workspace.mindMapTile")
-      : openTile === "timeline"
-        ? t("workspace.timelineTile")
-        : openTile === "dataTable"
-          ? t("workspace.dataTableTile")
-          : openTile === "audioOverview"
-            ? t("workspace.audioOverviewTile")
-            : null;
+    openTile === "documents"
+      ? t("workspace.documentsTab")
+      : openTile === "mindmap"
+        ? t("workspace.mindMapTile")
+        : openTile === "timeline"
+          ? t("workspace.timelineTile")
+          : openTile === "dataTable"
+            ? t("workspace.dataTableTile")
+            : openTile === "audioOverview"
+              ? t("workspace.audioOverviewTile")
+              : null;
 
   return (
     <aside
@@ -388,6 +401,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
       {(!expanded || !openTile) && (
         <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3 ${expanded ? "" : "items-center"}`}>
+          {/* Documents is already-there data (this case's Case Documents), not something to
+           * generate/refresh — so unlike the three tiles below, this one opens the detail view
+           * directly instead of triggering an action first. */}
+          <StudioTile
+            icon={Files}
+            label={t("workspace.documentsTab")}
+            expanded={expanded}
+            onClick={() => openStudioTile("documents")}
+          />
           {/* Triggers a (re)generation in place — it does not open the detail view. Once
            * something exists (or is generating), the result row below is what opens it; this
            * tile is purely the "make/remake one" action, same as the header's regenerate
@@ -438,7 +460,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
            * re-opening the tile grid. */}
           {expanded &&
             ((consultationId && (isGenerating || activeMindMap)) ||
-              (timelineQuery.data && timelineQuery.data.length > 0) ||
+              timelineEventCount > 0 ||
               timelineQuery.isFetching ||
               dataTableRows.length > 0 ||
               snapshotQuery.isFetching ||
@@ -453,7 +475,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("mindmap")}
                   />
                 )}
-                {((timelineQuery.data && timelineQuery.data.length > 0) || timelineQuery.isFetching) && (
+                {(timelineEventCount > 0 || timelineQuery.isFetching) && (
                   <ResultRow
                     icon={timelineQuery.isFetching ? Loader2 : Clock}
                     iconSpinning={timelineQuery.isFetching}
@@ -461,7 +483,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     subtitle={
                       timelineQuery.isFetching
                         ? t("workspace.timelineRefreshing")
-                        : t("workspace.timelineEventCount", { count: timelineQuery.data?.length ?? 0 })
+                        : t("workspace.timelineEventCount", { count: timelineEventCount })
                     }
                     onClick={() => openStudioTile("timeline")}
                   />
@@ -507,7 +529,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
       {expanded && openTile && (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {openTile === "mindmap" ? (
+          {openTile === "documents" ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                  {t("detail.documents")}
+                </span>
+                <DocumentUploadButton caseId={caseId} />
+              </div>
+              <CaseDocumentList caseId={caseId} />
+            </div>
+          ) : openTile === "mindmap" ? (
             consultationId ? (
               activeMindMap ? (
                 <div className="flex h-full flex-col gap-2">

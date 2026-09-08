@@ -4,12 +4,8 @@ import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import {
-  useCreateTimelineMutation,
-  useUpdateTimelineMutation,
-  useCaseTimelineQuery,
-  type CaseTimelineEvent,
-} from "@/lib/terminal/mutations"
+import { useCreateTimelineMutation, useUpdateTimelineMutation } from "@/lib/terminal/mutations"
+import { useGraphViewQuery } from "@/lib/graph-view/mutations"
 
 interface CalendarEvent {
   id: string
@@ -75,7 +71,7 @@ function toDateTimeLocalValue(date: string, time: string) {
 
 export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill?: boolean }) {
   const { t } = useTranslation("homepage")
-  const timeline = useCaseTimelineQuery(caseId)
+  const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
     queryKey: ["events", "case", caseId],
     queryFn: () => apiFetch<{ events: CalendarEvent[] }>(`/api/events?caseId=${caseId}`),
@@ -92,13 +88,21 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
   const [editDate, setEditDate] = useState("")
 
   const items = useMemo<TimelineRow[]>(() => {
-    const fromCase: TimelineRow[] = (timeline.data ?? []).map((event: CaseTimelineEvent) => ({
-      id: `tl-${event.id}`,
-      rawId: event.id,
-      at: event.occurredOn ? new Date(event.occurredOn) : null,
-      title: event.title,
-      description: event.description,
-    }))
+    // Graph-view's timeline view also carries PROCEDURAL_DEADLINE nodes (for the
+    // TRIGGERS_DEADLINE dependency edge) — this view only ever rendered case events, so those
+    // are filtered out rather than shown as a differently-shaped row.
+    const fromCase: TimelineRow[] = (timeline.data?.nodes ?? [])
+      .filter((node) => node.type === "TIMELINE_EVENT")
+      .map((node) => {
+        const event = node.data as { occurredOn: string | null; title: string; description: string | null }
+        return {
+          id: `tl-${node.refId}`,
+          rawId: node.refId,
+          at: event.occurredOn ? new Date(event.occurredOn) : null,
+          title: event.title,
+          description: event.description,
+        }
+      })
     const fromCalendar: TimelineRow[] = (calendar.data?.events ?? []).map((event) => ({
       id: `cal-${event.id}`,
       rawId: null,

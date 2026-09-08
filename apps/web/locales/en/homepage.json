@@ -69,6 +69,10 @@
     "generating": "Generating your case strategy map",
     "generateCta": "Generate visual strategy map"
   },
+  "topicNavigator": {
+    "label": "Topics",
+    "generating": "Generating topic breakdown…"
+  },
   "timeline": {
     "emptyState": "No events on this case yet. Add one below, or refresh analysis to extract dates from documents.",
     "loading": "Loading timeline…",
