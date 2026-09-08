@@ -1,13 +1,18 @@
 import { headers } from "next/headers";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { NeutralLandingSplash } from "@/components/landing/neutral-splash";
+import { CapabilitiesSection } from "@/components/landing/capabilities-section";
 import { HeroSection } from "@/components/landing/ph/hero-section";
-import { FeaturesSection } from "@/components/landing/ph/features-section";
-import { QuoteSection } from "@/components/landing/ph/quote-section";
+import { FirmQuoteSection } from "@/components/landing/ph/firm-quote-section";
+import { TerminalShowcaseSection } from "@/components/landing/ph/terminal-showcase-section";
+import { ConsultationSection } from "@/components/landing/ph/consultation-section";
+import { FirmsSection } from "@/components/landing/ph/firms-section";
 import { LandingFooter } from "@/components/landing/ph/footer";
 import { UkHeroSection } from "@/components/landing/uk/hero-section";
-import { UkFeaturesSection } from "@/components/landing/uk/features-section";
-import { UkQuoteSection } from "@/components/landing/uk/quote-section";
+import { UkFirmQuoteSection } from "@/components/landing/uk/firm-quote-section";
+import { UkTerminalShowcaseSection } from "@/components/landing/uk/terminal-showcase-section";
+import { UkConsultationSection } from "@/components/landing/uk/consultation-section";
+import { UkFirmsSection } from "@/components/landing/uk/firms-section";
 import { UkLandingFooter } from "@/components/landing/uk/footer";
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint";
 
@@ -22,24 +27,42 @@ export default async function LandingPage() {
     const headersList = await headers();
     const host = headersList.get("host") ?? "";
     return (
-      <div className="flex flex-col min-h-screen w-full bg-[#f7fafc] dark:bg-background">
+      <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
         <LandingNavbar />
         <NeutralLandingSplash currentHost={host} />
       </div>
     );
   }
 
-  const isUk = tenantCode === "UK";
+  if (tenantCode === "UK") {
+    return (
+      <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
+        <LandingNavbar />
+        <main className="flex-1">
+          <UkHeroSection />
+          <CapabilitiesSection />
+          <UkFirmQuoteSection />
+          <UkTerminalShowcaseSection />
+          <UkConsultationSection />
+          <UkFirmsSection />
+        </main>
+        <UkLandingFooter />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-[#f7fafc] dark:bg-background">
+    <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
       <LandingNavbar />
       <main className="flex-1">
-        {isUk ? <UkHeroSection /> : <HeroSection />}
-        {isUk ? <UkFeaturesSection /> : <FeaturesSection />}
-        {isUk ? <UkQuoteSection /> : <QuoteSection />}
+        <HeroSection />
+        <CapabilitiesSection />
+        <FirmQuoteSection />
+        <TerminalShowcaseSection />
+        <ConsultationSection />
+        <FirmsSection />
       </main>
-      {isUk ? <UkLandingFooter /> : <LandingFooter />}
+      <LandingFooter />
     </div>
   );
 }

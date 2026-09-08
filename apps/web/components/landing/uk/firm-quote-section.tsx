@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
+
+// UK-only design — see uk/hero-section.tsx for why the context is hardcoded.
+const tCtx = { context: "UK" };
 
 interface Quote {
   text: string;
@@ -10,16 +16,16 @@ interface Quote {
   firm: string;
 }
 
-// UK-only design — see uk/hero-section.tsx for why the context is hardcoded. `quotes.items_UK`
-// currently holds a placeholder entry only (see locales/en/landing.json) — replace it with real
-// UK client testimonials before launch.
-const tCtx = { context: "UK" };
+const AUTOPLAY_MS = 6000;
+const firmWorkspaceImage = getTenantCodeConfig("UK").landingAssets.firmWorkspace;
 
-export function UkQuoteSection() {
+export function UkFirmQuoteSection() {
   const { t } = useTranslation("landing");
   const quotes = t("quotes.items", { ...tCtx, returnObjects: true }) as Quote[];
   const [displayed, setDisplayed] = useState(0);
   const [fading, setFading] = useState(false);
+
+  const [sectionRef, backgroundPositionY] = useScrollDrift<HTMLElement, string>(["-12%", "12%"]);
 
   const changeQuote = (index: number) => {
     if (index === displayed) return;
@@ -37,50 +43,47 @@ export function UkQuoteSection() {
         setDisplayed((prev) => (prev + 1) % quotes.length);
         setFading(false);
       }, 200);
-    }, 6000);
+    }, AUTOPLAY_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [quotes.length]);
 
   const quote = quotes[displayed] ?? quotes[0]!;
 
   return (
-    <section id="testimonials" className="py-24 px-8 md:px-16 bg-[#f7fafc] dark:bg-background">
-      <div className="max-w-180 mx-auto flex flex-col gap-10 items-center">
-        <div className="bg-[#cca830] dark:bg-brand-gold h-0.5 w-12" />
+    <section ref={sectionRef} id="testimonials" className="relative w-full h-[82vh] min-h-[560px] overflow-hidden">
+      <motion.div
+        className="absolute inset-0 bg-cover"
+        style={{ backgroundImage: `url('${firmWorkspaceImage}')`, backgroundPositionX: "50%", backgroundPositionY }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/15 to-black/85" />
 
+      <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 pb-12 gap-8">
         <div
-          className="flex flex-col items-center gap-6 transition-opacity duration-200"
+          className="flex flex-col gap-3 max-w-[760px] transition-opacity duration-200"
           style={{ opacity: fading ? 0 : 1 }}
         >
-          <p
-            className="text-black dark:text-foreground text-[22px] text-center leading-[1.7] italic"
-            style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
-          >
+          <p className="font-['Libre_Caslon_Text'] text-white text-[clamp(22px,2.4vw,32px)] font-light leading-[1.25] line-clamp-3">
             &ldquo;{quote.text}&rdquo;
           </p>
-
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-black dark:text-foreground text-sm font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
-              {quote.author}
-            </p>
-            <p className="text-[#45464d] dark:text-muted-foreground text-xs tracking-[1px]" style={{ fontFamily: "Inter, sans-serif" }}>
-              {quote.firm}
-            </p>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-white text-base font-medium">{quote.author}</span>
+            <span className="text-white/70 text-sm">{quote.firm}</span>
           </div>
         </div>
 
-        <div className="flex gap-3 items-center justify-center">
+        <div className="flex gap-3 items-center">
           {quotes.map((_, i) => (
             <Tooltip key={i}>
               <TooltipTrigger asChild>
                 <button
+                  type="button"
                   onClick={() => changeQuote(i)}
                   aria-label={t("quotes.quoteLabel", { number: i + 1 })}
                   className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
                 >
-                  <div
+                  <span
                     className={`rounded-full transition-all duration-300 ${
-                      i === displayed ? "size-2.5 bg-black dark:bg-foreground" : "size-2 bg-[#c6c6ce] hover:bg-[#888] dark:bg-muted-foreground/40 dark:hover:bg-muted-foreground/70"
+                      i === displayed ? "size-2.5 bg-brand-gold" : "size-2 bg-white/35 hover:bg-white/60"
                     }`}
                   />
                 </button>

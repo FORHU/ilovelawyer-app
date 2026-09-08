@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
+const NAV_LINKS = [
+  { key: "capabilities", href: "#capabilities", tooltip: "See every feature the platform ships" },
+  { key: "legalTerminal", href: "#control", tooltip: "Preview the Legal Terminal workspace" },
+  { key: "firms", href: "#business", tooltip: "How firms and teams work in ilovelawyer" },
+  { key: "resources", href: "#footer", tooltip: "Help centre, support and legal resources" },
+] as const;
 
 export function LandingNavbar() {
   const { t } = useTranslation("landing");
@@ -14,24 +22,40 @@ export function LandingNavbar() {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
 
   return (
-    <header className="backdrop-blur-md bg-[rgba(247,250,252,0.85)] dark:bg-background/85 w-full border-b border-[rgba(198,198,206,0.3)] dark:border-border sticky top-0 z-50">
-      <div className="max-w-360 mx-auto flex items-center justify-between px-8 md:px-16 py-5">
-        <Link href="/" className="cursor-pointer">
-          <span className="text-[28px] text-black dark:text-foreground tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif" }}>
-            ilovelawyer
-          </span>
+    <header className="sticky top-0 z-50 w-full bg-brand-navy-950 border-b border-white/10">
+      <div className="max-w-360 mx-auto flex items-center justify-between gap-6 px-6 md:px-16 h-16">
+        <Link
+          href="/"
+          className="shrink-0 font-['Libre_Caslon_Text'] text-white text-[22px] tracking-[-0.6px] rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          ilovelawyer
         </Link>
 
-        <div className="hidden lg:flex items-center gap-6">
-          <ThemeToggle />
+        <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
+          {NAV_LINKS.map((link) => (
+            <Tooltip key={link.key}>
+              <TooltipTrigger asChild>
+                <a
+                  href={link.href}
+                  className="uppercase text-white opacity-60 hover:opacity-100 transition-opacity duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                >
+                  {t(`navbar.links.${link.key}`)}
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>{link.tooltip}</TooltipContent>
+            </Tooltip>
+          ))}
+        </nav>
+
+        <div className="hidden lg:flex items-center gap-5 text-white shrink-0">
           <LanguageSwitcher />
+          <ThemeToggle />
           {isAuthenticated ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
                   href="/homepage"
-                  className="bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs tracking-[1.2px] uppercase px-6 py-2.5 hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
-                  style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                  className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
                 >
                   {t("navbar.goToDashboard")}
                 </Link>
@@ -44,8 +68,7 @@ export function LandingNavbar() {
                 <TooltipTrigger asChild>
                   <Link
                     href="/login"
-                    className="text-[#45464d] dark:text-muted-foreground text-base hover:text-black dark:hover:text-foreground transition-colors duration-200"
-                    style={{ fontFamily: "Inter, sans-serif" }}
+                    className="text-xs tracking-[1.2px] uppercase border border-white/40 rounded-full px-5 py-2.5 hover:border-white transition-colors duration-200"
                   >
                     {t("navbar.signIn")}
                   </Link>
@@ -56,8 +79,7 @@ export function LandingNavbar() {
                 <TooltipTrigger asChild>
                   <Link
                     href="/signup"
-                    className="bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs tracking-[1.2px] uppercase px-6 py-2.5 hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
-                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                    className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
                   >
                     {t("navbar.requestDemo")}
                   </Link>
@@ -71,21 +93,13 @@ export function LandingNavbar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              className="lg:hidden p-2 cursor-pointer bg-transparent border-0"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              type="button"
+              className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              onClick={() => setMobileOpen((v) => !v)}
               aria-label={mobileOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}
+              aria-expanded={mobileOpen}
             >
-              {mobileOpen ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l8 8M6 14L14 6" />
-                </svg>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  <div className="w-5 h-0.5 bg-black dark:bg-foreground" />
-                  <div className="w-5 h-0.5 bg-black dark:bg-foreground" />
-                  <div className="w-5 h-0.5 bg-black dark:bg-foreground" />
-                </div>
-              )}
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </TooltipTrigger>
           <TooltipContent>{mobileOpen ? t("navbar.closeMenu") : t("navbar.openMenu")}</TooltipContent>
@@ -93,54 +107,48 @@ export function LandingNavbar() {
       </div>
 
       {mobileOpen && (
-        <div className="lg:hidden bg-[#f7fafc] dark:bg-background border-t border-[rgba(198,198,206,0.3)] dark:border-border px-8 py-6 flex flex-col gap-4">
-          <div className="pt-1 flex items-center gap-3">
-            <ThemeToggle />
+        <div className="lg:hidden border-t border-white/10 bg-brand-navy-950 px-6 py-6 flex flex-col gap-5">
+          <nav className="flex flex-col gap-4">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.key}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className="text-xs tracking-[1px] uppercase text-white/70 hover:text-white transition-colors duration-200"
+              >
+                {t(`navbar.links.${link.key}`)}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-4 text-white">
             <LanguageSwitcher />
+            <ThemeToggle />
           </div>
-          <div className="flex gap-3 mt-2">
+          <div className="flex gap-3">
             {isAuthenticated ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/homepage"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex-1 bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs px-4 py-3 text-center hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
-                    style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-                  >
-                    {t("navbar.goToDashboard")}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent>Return to your homepage dashboard</TooltipContent>
-              </Tooltip>
+              <Link
+                href="/homepage"
+                onClick={() => setMobileOpen(false)}
+                className="flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+              >
+                {t("navbar.goToDashboard")}
+              </Link>
             ) : (
               <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 border border-black text-black dark:border-foreground dark:text-foreground text-xs px-4 py-3 text-center hover:bg-black/5 dark:hover:bg-foreground/5 transition-colors duration-200"
-                      style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-                    >
-                      {t("navbar.signIn")}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>Log in to your existing account</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href="/signup"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 bg-black text-white dark:bg-primary dark:text-primary-foreground text-xs px-4 py-3 text-center hover:bg-[#1a1a1a] dark:hover:bg-primary/90 transition-colors duration-200"
-                      style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-                    >
-                      {t("navbar.getStarted")}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>Create your free account</TooltipContent>
-                </Tooltip>
+                <Link
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex-1 border border-white/40 text-white text-xs px-4 py-3 text-center rounded-full hover:border-white transition-colors duration-200"
+                >
+                  {t("navbar.signIn")}
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+                >
+                  {t("navbar.getStarted")}
+                </Link>
               </>
             )}
           </div>

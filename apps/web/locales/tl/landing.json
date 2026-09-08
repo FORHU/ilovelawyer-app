@@ -1,10 +1,10 @@
 {
   "navbar": {
     "links": {
-      "platform": "Platform",
-      "solutions": "Mga Solusyon",
-      "legalLibrary": "Legal Library",
-      "pricing": "Pagpepresyo"
+      "capabilities": "Mga Kakayahan",
+      "legalTerminal": "Legal Terminal",
+      "firms": "Mga Law Firm",
+      "resources": "Mga Resource"
     },
     "signIn": "Mag-sign In",
     "requestDemo": "Humiling ng Demo",
@@ -14,44 +14,56 @@
     "closeMenu": "Isara ang menu"
   },
   "hero": {
-    "eyebrow": "Ang Kinabukasan ng Jurisprudence",
-    "titleLine1": "Nagpapalaganap ng Access sa",
-    "titleEmphasis": "Legal na Impormasyon",
-    "titleLine3": "ng Pilipinas",
-    "titleLine3_UK": "ng UK",
-    "description": "Gumagamit ng espesyalisadong artificial intelligence upang tahakin ang mga kumplikasyon ng Philippine jurisprudence. Mula sa litigation support hanggang document synthesis, nagbibigay kami sa mga legal professional at sa publiko ng walang katulad na analytical precision.",
-    "description_UK": "Gumagamit ng espesyalisadong artificial intelligence upang tahakin ang mga kumplikasyon ng jurisprudence ng England & Wales. Mula sa litigation support hanggang document synthesis, nagbibigay kami sa mga legal professional at sa publiko ng walang katulad na analytical precision.",
     "ctaPrimary": "Simulan ang Libreng Konsultasyon",
-    "ctaSecondary": "Tingnan ang Mga Case Study"
+    "ctaExplore": "Galugarin ang Platform",
+    "slideOne": {
+      "line1": "Kung saan",
+      "line2": "nililinaw ang mga kaso",
+      "subtext": "Dumadaloy ang AI consultation habang isinusulat ito, kasama ang mga sinipi na precedent.",
+      "subtext_UK": "Dumadaloy ang AI consultation habang isinusulat ito, kasama ang mga sinipi na UK precedent."
+    },
+    "slideTwo": {
+      "line1": "Ang iyong mga kaso,",
+      "line2": "nasa ilalim ng kontrol",
+      "subtext": "Inaayos ng Legal Terminal ang labinsiyam na pane ng case intelligence sa paraang gusto mo."
+    },
+    "slideThree": {
+      "line1": "Kung saan nagtatagpo",
+      "line2": "ang abogado at AI",
+      "subtext": "Pinapanatili ng Case Workspace ang mga source, chat, at work product sa iisang screen."
+    },
+    "slideLabel": "Slide {{number}}",
+    "nextSlide": "Susunod na slide"
   },
-  "features": {
-    "heading": "Operational Intelligence",
-    "subheading": "Ang aming espesyalisadong legal technology stack ay nag-a-automate ng mga manual na proseso gamit ang high-fidelity AI processing.",
+  "capabilities": {
+    "heading": "Bawat feature na dala ng ilovelawyer",
+    "subheading": "Walang mockup, walang roadmap item. Labinwalong kakayahan na live sa produkto ngayon.",
     "explorePlatform": "Galugarin ang Platform",
-    "getStarted": "Magsimula",
-    "getStartedArrow": "Magsimula →",
-    "aiChat": {
-      "title": "AI Research Chat",
-      "description": "Real-time na interpretasyon ng batas at pananaliksik sa jurisprudence sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng Korte Suprema.",
-      "description_UK": "Real-time na interpretasyon ng batas at pananaliksik sa case law sa pamamagitan ng natural language interface na sinanay gamit ang kasalukuyang mga desisyon ng England & Wales."
-    },
-    "caseManager": {
-      "title": "Case Manager",
-      "description": "Isang sentralisadong ecosystem para sa docketing, pamamahala ng kalendaryo, at strategic planning para sa kumplikadong litigation workflow."
-    },
-    "documentAnalysis": {
-      "title": "Pagsusuri ng Dokumento",
-      "description": "Automated na contract review at risk assessment. Matukoy ang mga hindi pagkakatugma sa multi-volume discovery sets sa loob ng segundo."
-    },
-    "voiceTranscription": {
-      "title": "Voice Transcription",
-      "description": "Enterprise-grade na transkripsyon para sa mga paglilitis sa hukuman at deposisyon na may mataas na semantic accuracy para sa legal terminology."
-    }
+    "items": [
+      "Account at pag-sign in",
+      "Mga law firm at team",
+      "Dalawang jurisdiction",
+      "AI legal consultation",
+      "Mga case file",
+      "Case Workspace",
+      "Legal Terminal",
+      "Research library",
+      "Transcription",
+      "Pag-upload ng dokumento",
+      "Kalendaryo",
+      "Visual Strategy Map",
+      "Case Reconstruction",
+      "Red Team",
+      "Audio Overview",
+      "Pagsuri ng citation",
+      "Pagsuri ng kontradiksyon",
+      "3 wika"
+    ]
   },
   "quotes": {
     "items": [
       {
-        "text": "Ang agility na dala ng ilovelawyer sa aming research process ay walang katulad. Hindi lamang ito tungkol sa bilis; ito ay tungkol sa lalim ng insight na maibibigay na namin sa aming mga kliyente sa mas maikling panahon.",
+        "text": "Ang agility na dala ng ilovelawyer sa aming research process ay walang katulad, at mas malalim na ngayon ang insight na naibibigay namin sa aming mga kliyente kaysa dati.",
         "author": "Senior Partner",
         "firm": "Cruz & Associates Law Offices"
       },
@@ -75,21 +87,144 @@
     ],
     "quoteLabel": "Quote {{number}}"
   },
+  "terminal": {
+    "heading": "Isang workspace, ayon sa gusto mo",
+    "body": "Ang Legal Terminal ay isang litigation cockpit na inaayos mo mismo. Magsimula sa isa, dalawa, apat, o anim na pane, pagkatapos ay i-save ang sarili mong layout at buksan ito sa kahit anong device.",
+    "cta": "Buksan ang Terminal",
+    "panels": {
+      "caseWorkspace": {
+        "title": "Case Workspace",
+        "subtitle": "Sources, Studio, Chat, sa iisang screen",
+        "lines": ["Sources · Studio · Chat", "Iligal na pagtanggal — mga remedyo"],
+        "lines_UK": ["Sources · Studio · Chat", "Contested trust variation — remedies"]
+      },
+      "redTeam": {
+        "title": "Red Team",
+        "subtitle": "Ang argumento na gagamitin ng kabilang panig",
+        "lines": ["Pagtataya ng banta", "Pag-abandona. Timing. Pagkakalantad ng testigo."],
+        "lines_UK": ["Threat assessment", "Undue influence. Capacity. Disclosure gaps."]
+      },
+      "audioOverview": {
+        "title": "Audio Overview",
+        "subtitle": "Dalawang AI host ang tatalakay sa kaso",
+        "lines": ["Dalawang AI host ang tatalakay sa kaso", "1:24 / 3:41"]
+      },
+      "caseReconstruction": {
+        "title": "Case Reconstruction",
+        "subtitle": "Salaysay ng kliyente, korte, at kabilang panig",
+        "lines": ["Salaysay ng kliyente, korte, at kabilang panig", "Pangkalahatan · Para sa Korte · Mula sa Kabilang Panig"]
+      }
+    }
+  },
+  "consultation": {
+    "heading": "Magtanong nang isang beses. Makuha ang batas sa likod nito.",
+    "body": "Dumadaloy ang bawat consultation habang isinusulat ito, kasama ang kaugnay na case law sa tabi nito: pamagat, sipi, link ng pinagmulan, at excerpt, na may markang beripikadong citation. Mag-attach ng dokumento at hahanapin ito ng assistant kapag natapos na ang pag-index.",
+    "cta": "Simulan ang Konsultasyon",
+    "caseName": "Reyes v. Northbridge Logistics",
+    "caseName_UK": "Fairholme v. Sterling Trustees Ltd",
+    "relatedCases": "Mga Kaugnay na Kaso",
+    "relatedCasesItems": [
+      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "vetted": true },
+      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "vetted": false }
+    ],
+    "relatedCasesItems_UK": [
+      { "title": "Ilott v The Blue Cross", "citation": "[2017] UKSC 17", "vetted": true },
+      { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
+    ],
+    "vetted": "Beripikado",
+    "indexing": "Ina-index para sa chat...",
+    "mockFilename": "termination-letter.pdf",
+    "mockFilename_UK": "family-trust-deed.pdf"
+  },
+  "firms": {
+    "heading": "Ginawa ayon sa aktwal na paraan ng paggawa ng mga law firm",
+    "teamsHeading": "Mga law firm at team",
+    "teamsBody": "Mag-praktis nang mag-isa, o gumawa ng law firm sa isa sa tatlong plano: Solo, Professional, Enterprise. Anyayahan ang mga kasamahan sa pamamagitan ng email na may role na Owner, Admin, o Member. Laging humihingi ng kumpirmasyon muna ang bawat hakbang na hindi na maibabalik.",
+    "teamsCta": "Anyayahan ang Iyong Team",
+    "jurisdictionsHeading": "Dalawang jurisdiction, iisang produkto",
+    "jurisdictionsBody": "May sariling address at bokabularyo ang bawat praktis sa Pilipinas at United Kingdom, at ang mga tool lamang na talagang angkop dito ang ipinapakita. Gumagana sa pareho ang mga kaso, dokumento, AI consultation, at pagsuri ng citation.",
+    "roster": [
+      { "initials": "AC", "name": "Atty. Ana Cruz", "email": "ana@cruzpartners.ph", "role": "owner", "you": true },
+      { "initials": "RS", "name": "Ramon Santos", "email": "ramon@cruzpartners.ph", "role": "admin", "you": false },
+      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false }
+    ],
+    "roster_UK": [
+      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
+      { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false }
+    ],
+    "membersCard": {
+      "title": "Mga Miyembro",
+      "subtitle": "Ang mga taong may access sa organisasyong ito.",
+      "organization": "Organisasyon",
+      "orgName": "Cruz & Partners",
+      "orgName_UK": "Sinclair & Wycombe LLP",
+      "plan": "Plano",
+      "planName": "Professional",
+      "planName_UK": "Enterprise",
+      "you": "IKAW",
+      "invite": "Mag-imbita ng miyembro",
+      "invitePlaceholder": "colleague@lawfirm.ph",
+      "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
+      "sendInvite": "Ipadala ang Imbitasyon",
+      "roles": {
+        "owner": "OWNER",
+        "admin": "ADMIN",
+        "member": "MEMBER"
+      }
+    }
+  },
   "footer": {
     "tagline": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng Pilipinas. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
     "tagline_UK": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng UK. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
-    "company": {
-      "heading": "Kompanya",
-      "aboutUs": "Tungkol sa Amin",
-      "contactSupport": "Makipag-ugnayan at Suporta",
-      "compliance": "RA 10173 Compliance",
-      "compliance_UK": "UK GDPR Compliance"
+    "columns": {
+      "product": {
+        "heading": "Produkto",
+        "links": {
+          "aiConsultation": "AI Legal Consultation",
+          "caseFiles": "Mga Case File",
+          "caseWorkspace": "Case Workspace",
+          "legalTerminal": "Legal Terminal",
+          "researchLibrary": "Research Library"
+        }
+      },
+      "firms": {
+        "heading": "Mga Law Firm",
+        "links": {
+          "plansAndPricing": "Mga Plano at Presyo",
+          "rolesAndPermissions": "Mga Role at Pahintulot",
+          "inviteYourTeam": "Anyayahan ang Iyong Team",
+          "firmSettings": "Firm Settings"
+        }
+      },
+      "jurisdictions": {
+        "heading": "Mga Jurisdiction",
+        "links": {
+          "philippines": "Pilipinas",
+          "unitedKingdom": "United Kingdom"
+        }
+      },
+      "resources": {
+        "heading": "Mga Resource",
+        "links": {
+          "helpCentre": "Help Centre at FAQ",
+          "transcription": "Transcription",
+          "documentUpload": "Pag-upload ng Dokumento",
+          "calendar": "Kalendaryo"
+        }
+      },
+      "company": {
+        "heading": "Kompanya",
+        "links": {
+          "aboutUs": "Tungkol sa Amin",
+          "careers": "Mga Trabaho",
+          "termsOfService": "Mga Tuntunin sa Paggamit",
+          "privacyPolicy": "Patakaran sa Privacy",
+          "accessibility": "Accessibility"
+        }
+      }
     },
-    "legal": {
-      "heading": "Legal",
-      "privacyPolicy": "Patakaran sa Privacy",
-      "termsOfService": "Mga Tuntunin sa Paggamit",
-      "securityDataSovereignty": "Seguridad at Data Sovereignty"
-    }
+    "jurisdictionLine": "Pilipinas",
+    "jurisdictionLine_UK": "United Kingdom"
   }
 }

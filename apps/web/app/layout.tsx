@@ -1,4 +1,4 @@
-import { Geist_Mono, Inter } from "next/font/google"
+import { Geist_Mono, Inter, Libre_Caslon_Text } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
@@ -12,6 +12,12 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+const libreCaslonText = Libre_Caslon_Text({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-serif",
+})
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -23,7 +29,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, libreCaslonText.variable)}
     >
       <body suppressHydrationWarning>
         <Providers tenantCodeHint={tenantCodeHint}>{children}</Providers>
