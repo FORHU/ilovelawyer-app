@@ -11,11 +11,14 @@ export interface TopicNavigatorItem {
   title: string;
 }
 
-/** Derives "topics in the latest split AI reply" for a consultation straight from persisted
+/** Derives "topics across every split AI reply" for a consultation straight from persisted
  * history — usable from anywhere on the page, not just inside ConsultationChat's own render
- * tree, since a split reply is always already-persisted data (see MessageGroup). Replicates
- * ConsultationChat's own visibleMessages filter (dropping the hidden system-driven mind-map/
- * audio-overview turns) so index numbering lines up with the bubble ids it renders. */
+ * tree, since a split reply is always already-persisted data (see MessageGroup). Each turn's
+ * topics are appended in chronological order rather than replacing the previous turn's, so
+ * the panel builds up into a running table of contents for the whole thread instead of only
+ * ever showing the most recent reply. Replicates ConsultationChat's own visibleMessages filter
+ * (dropping the hidden system-driven mind-map/audio-overview turns) so index numbering lines
+ * up with the bubble ids it renders. */
 export function useTopicNavigator(consultationId: string | null | undefined) {
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -39,15 +42,19 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
   }, [history]);
 
   const topics = useMemo<TopicNavigatorItem[]>(() => {
-    for (let i = visibleMessages.length - 1; i >= 0; i--) {
-      const groupId = visibleMessages[i]?.groupId;
-      if (!groupId) continue;
-      return visibleMessages
-        .map((m, index) => ({ index, groupId: m.groupId, title: m.groupTitle }))
-        .filter((m) => m.groupId === groupId)
-        .map((m, j) => ({ index: m.index, title: m.title || `Topic ${j + 1}` }));
-    }
-    return [];
+    const items: TopicNavigatorItem[] = [];
+    let currentGroupId: string | undefined;
+    let positionInGroup = 0;
+    visibleMessages.forEach((m, index) => {
+      if (!m.groupId) return;
+      if (m.groupId !== currentGroupId) {
+        currentGroupId = m.groupId;
+        positionInGroup = 0;
+      }
+      items.push({ index, title: m.groupTitle || `Topic ${positionInGroup + 1}` });
+      positionInGroup++;
+    });
+    return items;
   }, [visibleMessages]);
 
   const scrollToTopic = useCallback((index: number) => {
