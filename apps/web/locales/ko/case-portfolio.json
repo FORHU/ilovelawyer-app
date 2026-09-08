@@ -47,11 +47,14 @@
     "emptySubheading": "이 사건의 세부 정보가 이미 반영된 AI와 상담하세요 — 전략, 초안 작성, 다음 단계에 대해 물어보세요."
   },
   "workspace": {
-    "sources": "소스",
+    "sources": "이 상담에서 다룬 주제",
     "studio": "스튜디오",
-    "collapseSources": "소스 패널 접기",
-    "expandSources": "소스 패널 펼치기",
-    "resizeSources": "소스 패널 크기 조절",
+    "collapseSources": "주제 패널 접기",
+    "expandSources": "주제 패널 펼치기",
+    "resizeSources": "주제 패널 크기 조절",
+    "topicsEmpty": "이 채팅에 대한 주제 구분이 아직 없습니다.",
+    "topicsNoConsultation": "채팅을 시작하면 주제 구분이 여기에 표시됩니다.",
+    "topicsGenerating": "주제 구분 생성 중…",
     "collapseStudio": "스튜디오 패널 접기",
     "expandStudio": "스튜디오 패널 펼치기",
     "resizeStudio": "스튜디오 패널 크기 조절",

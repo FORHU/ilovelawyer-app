@@ -1,21 +1,16 @@
 "use client";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Files, Link2, PanelLeft, PanelLeftClose } from "lucide-react";
-import { DocumentUploadButton, CaseDocumentList } from "@/components/cases/case-details-panel";
-import { HubRelatedCases } from "@/components/chat/case-hub-widget";
-import { useRelatedCasesQuery } from "@/lib/chat/mutations";
+import { ListTree, PanelLeft, PanelLeftClose } from "lucide-react";
+import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
+import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-type SourcesTab = "documents" | "related";
-
 interface SourcesPanelProps {
-  caseId: string;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  /** Related Cases is per-consultation (legal-precedent citations the AI surfaced for that
-   * thread's latest reply), not per-case — so it follows whichever thread ThreadPicker has
-   * active, not a document selection of its own. */
+  /** Topics come from the latest split (MessageGroup) AI reply in this thread — so, like
+   * Related Cases before it, this follows whichever thread ThreadPicker has active, not a
+   * document selection of its own. */
   activeConsultationId: string | null;
   /** Expanded-state width in px, owned by case-workspace.tsx's useResizableWidth — ignored
    * while collapsed (a fixed slim rail regardless of the last dragged width). */
@@ -25,15 +20,16 @@ interface SourcesPanelProps {
   isResizing: boolean;
 }
 
-/** Case Workspace's left panel — Documents (this case's Case Documents, upload/list/delete
- * reused as-is from case-details-panel.tsx) and Related Cases (this consultation's AI-surfaced
- * legal-precedent citations, reused from case-hub-widget.tsx). Collapses to a slim rail. */
-export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsultationId, width, isResizing }: SourcesPanelProps) {
+/** Case Workspace's left panel — a table of contents for the active thread's latest split AI
+ * reply (see ilovelawyer-api's MessageGroup / lib/chat/use-topic-navigator.ts), letting the
+ * user jump straight to a topic's bubble in the embedded Chat pane next door. Collapses to a
+ * slim rail. Related Cases and Documents (this case's Case Documents) used to live here; Related
+ * Cases is being relocated elsewhere (not this panel) and Documents now lives in the Studio
+ * panel instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move,
+ * only where it's surfaced. */
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
-  const [tab, setTab] = useState<SourcesTab>("documents");
-  const { data: relatedData, isLoading: isLoadingRelated } = useRelatedCasesQuery(
-    tab === "related" && activeConsultationId ? activeConsultationId : undefined,
-  );
+  const { topics, activeIndex, scrollToTopic, isGenerating } = useTopicNavigator(activeConsultationId);
 
   return (
     <aside
@@ -48,7 +44,10 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
         }`}
       >
         {expanded && (
-          <span className="text-[13px] font-semibold text-foreground">{t("workspace.sources")}</span>
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
+            <ListTree className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden="true" />
+            <span className="truncate">{t("workspace.sources")}</span>
+          </span>
         )}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -56,7 +55,7 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
               type="button"
               onClick={() => onExpandedChange(!expanded)}
               aria-label={expanded ? t("workspace.collapseSources") : t("workspace.expandSources")}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {expanded ? (
                 <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
@@ -72,59 +71,30 @@ export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsult
       </div>
 
       {!expanded && (
-        <div className="flex flex-1 flex-col items-center gap-3 pt-3">
-          <Files className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto pt-3">
+          {topics.length > 0 ? (
+            <TopicNavigatorList topics={topics} activeIndex={activeIndex} onJump={scrollToTopic} compact />
+          ) : isGenerating ? (
+            <TopicNavigatorLoading label={t("workspace.topicsGenerating")} compact />
+          ) : (
+            <ListTree className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          )}
         </div>
       )}
 
       {expanded && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex items-center gap-1 px-3 pt-3">
-            <button
-              type="button"
-              onClick={() => setTab("documents")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                tab === "documents" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Files className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("workspace.documentsTab")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("related")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                tab === "related" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("workspace.relatedTab")}
-            </button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {tab === "documents" ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                    {t("detail.documents")}
-                  </span>
-                  <DocumentUploadButton caseId={caseId} />
-                </div>
-                <CaseDocumentList caseId={caseId} listClassName="max-h-[70vh]" />
-              </div>
-            ) : activeConsultationId ? (
-              <HubRelatedCases
-                entries={relatedData?.relatedCases ?? []}
-                isLoading={isLoadingRelated}
-                emptyLabel={t("workspace.relatedEmpty")}
-              />
-            ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {t("workspace.relatedNoConsultation")}
-              </p>
-            )}
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          {topics.length > 0 ? (
+            <TopicNavigatorList topics={topics} activeIndex={activeIndex} onJump={scrollToTopic} />
+          ) : isGenerating ? (
+            <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
+          ) : !activeConsultationId ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t("workspace.topicsNoConsultation")}
+            </p>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("workspace.topicsEmpty")}</p>
+          )}
         </div>
       )}
     </aside>

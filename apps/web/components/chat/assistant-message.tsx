@@ -41,6 +41,15 @@ function stripRelatedQueries(content: string): string {
   return content.replace(/\[RELATED_QUERIES\][\s\S]*?\[\/RELATED_QUERIES\]/gi, "").trimEnd();
 }
 
+// Defense-in-depth for messages persisted before ilovelawyer-api's response-parser.ts
+// started stripping [TRACE]...[/TRACE] glass-box research-step frames (chat-wonder-v2-api's
+// streaming_run_function_chain) from Message.content — those older rows still carry raw
+// trace JSON at the front of their saved text. New messages come back already clean; this
+// is a no-op for them.
+function stripTraceBlocks(content: string): string {
+  return content.replace(/\[TRACE\][\s\S]*?\[\/TRACE\]/gi, "").trimStart();
+}
+
 // Chat Wonder sometimes cites controlling authorities as literal `<a href="...">text</a>`
 // HTML anchors rather than markdown link syntax. react-markdown doesn't render embedded
 // raw HTML (by design, to avoid piping untrusted LLM output straight into the DOM), so
@@ -51,7 +60,7 @@ function convertHtmlAnchors(content: string): string {
 }
 
 export default function AssistantMessage({ content, className }: { content: string; className?: string }) {
-  const cleaned = convertHtmlAnchors(stripRelatedQueries(content));
+  const cleaned = convertHtmlAnchors(stripRelatedQueries(stripTraceBlocks(content)));
   return (
     <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>

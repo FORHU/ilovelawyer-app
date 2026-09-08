@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AUTO_AUDIO_OVERVIEW_PROMPT } from "@/components/chat/consultation-chat";
+import { AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import {
   useMessagesQuery,
   useChatSessionQuery,

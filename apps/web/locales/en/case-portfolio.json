@@ -65,11 +65,14 @@
     "emptySubheading": "Consult the AI with this case's details already in context — ask about strategy, drafting, or next steps."
   },
   "workspace": {
-    "sources": "Sources",
+    "sources": "Topics",
     "studio": "Studio",
-    "collapseSources": "Collapse Sources",
-    "expandSources": "Expand Sources",
-    "resizeSources": "Resize Sources panel",
+    "collapseSources": "Collapse Topics",
+    "expandSources": "Expand Topics",
+    "resizeSources": "Resize Topics panel",
+    "topicsEmpty": "No topic breakdown for this chat yet.",
+    "topicsNoConsultation": "Start a chat to see its topic breakdown here.",
+    "topicsGenerating": "Generating topic breakdown…",
     "collapseStudio": "Collapse Studio",
     "expandStudio": "Expand Studio",
     "resizeStudio": "Resize Studio panel",
