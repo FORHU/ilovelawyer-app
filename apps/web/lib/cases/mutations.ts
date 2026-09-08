@@ -106,6 +106,9 @@ export interface UserDocument {
   fileUrl: string | null
   s3Key?: string | null
   documentType?: string | null
+  /** AI-assigned (Chat Wonder), free-form — distinct from the user-supplied `documentType`.
+   * Null while extraction/categorization hasn't finished yet. */
+  category?: string | null
   fileSize?: number | null
   mimeType?: string | null
   aiSummary: string | null

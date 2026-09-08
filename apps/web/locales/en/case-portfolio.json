@@ -48,6 +48,7 @@
     "timeline": "View timeline",
     "documents": "Documents",
     "noDocuments": "No documents attached.",
+    "uncategorized": "Uncategorized",
     "addDocument": "Add",
     "uploading": "Uploading…",
     "uploadError": "Couldn't upload this file.",

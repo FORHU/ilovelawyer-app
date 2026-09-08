@@ -537,7 +537,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 </span>
                 <DocumentUploadButton caseId={caseId} />
               </div>
-              <CaseDocumentList caseId={caseId} />
+              <CaseDocumentList caseId={caseId} grouped />
             </div>
           ) : openTile === "mindmap" ? (
             consultationId ? (

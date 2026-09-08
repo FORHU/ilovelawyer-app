@@ -210,11 +210,15 @@ export function DocumentUploadButton({ caseId }: { caseId: string }) {
 export function CaseDocumentList({
   caseId,
   listClassName = "max-h-48",
+  grouped = false,
 }: {
   caseId: string;
   /** Overrides the list's height constraint — the default `max-h-48` fits this component's
    * original popover home; Case Workspace's Sources panel passes a taller one instead. */
   listClassName?: string;
+  /** Folder view, grouped by the AI-assigned `category` (Chat Wonder) instead of a flat
+   * list — opt-in so the compact popover keeps its original flat layout. */
+  grouped?: boolean;
 }) {
   const { t } = useTranslation("case-portfolio");
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
@@ -223,6 +227,9 @@ export function CaseDocumentList({
   // `target="_blank"` link — the fileUrl is a short-lived presigned S3 GET, so navigating the
   // whole tab to it also loses the case workspace behind it for no reason.
   const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null);
+  // Folders start expanded — collapsing is something the user opts into per folder, not a
+  // default that hides documents on first render.
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>;
@@ -236,45 +243,100 @@ export function CaseDocumentList({
     return <p className="text-sm text-muted-foreground">{t("detail.noDocuments")}</p>;
   }
 
+  const renderDocRow = (doc: NonNullable<typeof documents>[number]) => (
+    <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
+      <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      {doc.fileUrl ? (
+        <button
+          type="button"
+          onClick={() => setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })}
+          className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:text-brand-gold hover:underline"
+        >
+          {doc.name}
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
+      )}
+      <RagStatusBadge status={doc.ragStatus} />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            disabled={isDeleting && deletingVars?.documentId === doc.id}
+            onClick={() => deleteDocument({ documentId: doc.id, caseId })}
+            aria-label={t("detail.removeDocument", { documentName: doc.name })}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            {isDeleting && deletingVars?.documentId === doc.id ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
+      </Tooltip>
+    </li>
+  );
+
+  if (!grouped) {
+    return (
+      <>
+        <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>{documents.map(renderDocRow)}</ul>
+        {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
+      </>
+    );
+  }
+
+  const folders = new Map<string, typeof documents>();
+  for (const doc of documents) {
+    const key = doc.category?.trim() || t("detail.uncategorized");
+    const bucket = folders.get(key);
+    if (bucket) bucket.push(doc);
+    else folders.set(key, [doc]);
+  }
+  // Uncategorized last regardless of alpha order — it's a fallback bucket, not a real category.
+  const sortedFolders = [...folders.entries()].sort(([a], [b]) => {
+    const uncategorized = t("detail.uncategorized");
+    if (a === uncategorized) return 1;
+    if (b === uncategorized) return -1;
+    return a.localeCompare(b);
+  });
+
+  const toggleFolder = (category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
+
   return (
     <>
-      <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>
-        {documents.map((doc) => (
-          <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {doc.fileUrl ? (
+      <div className={`flex flex-col gap-2 overflow-y-auto ${listClassName}`}>
+        {sortedFolders.map(([category, docs]) => {
+          const isCollapsed = collapsedCategories.has(category);
+          return (
+            <div key={category} className="flex flex-col gap-1.5">
               <button
                 type="button"
-                onClick={() => setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })}
-                className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:text-brand-gold hover:underline"
+                onClick={() => toggleFolder(category)}
+                className="flex items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-foreground"
               >
-                {doc.name}
+                {isCollapsed ? (
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="truncate">{category}</span>
+                <span className="text-muted-foreground/70 normal-case">({docs.length})</span>
               </button>
-            ) : (
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
-            )}
-            <RagStatusBadge status={doc.ragStatus} />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isDeleting && deletingVars?.documentId === doc.id}
-                  onClick={() => deleteDocument({ documentId: doc.id, caseId })}
-                  aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  {isDeleting && deletingVars?.documentId === doc.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
-            </Tooltip>
-          </li>
-        ))}
-      </ul>
+              {!isCollapsed && <ul className="flex flex-col gap-1.5 pl-4">{docs.map(renderDocRow)}</ul>}
+            </div>
+          );
+        })}
+      </div>
       {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
     </>
   );
