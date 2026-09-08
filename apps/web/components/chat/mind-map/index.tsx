@@ -795,7 +795,16 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                 </div>
                 <div className="space-y-4">
                   {(() => {
-                    const desc = selectedNodeData.description || "N/A";
+                    const desc = selectedNodeData.description || "";
+
+                    if (!desc.trim()) {
+                      return (
+                        <p className={`${MIND_MAP_CHROME.detailBody} text-muted-foreground italic`}>
+                          No additional details for this node.
+                        </p>
+                      );
+                    }
+
                     const isList = desc.includes('\n-') || desc.includes('\n*') || desc.startsWith('-') || desc.startsWith('*');
                     const isShort = desc.length < 50 && !desc.includes('.');
 
