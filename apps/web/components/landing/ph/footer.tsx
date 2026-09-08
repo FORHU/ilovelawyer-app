@@ -2,78 +2,95 @@
 
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-const companyLinks = [
-  { key: "aboutUs", href: "#", tooltip: "Learn about the ilovelawyer team" },
-  { key: "contactSupport", href: "mailto:support@ilovelawyer.ph", tooltip: "Email our support team" },
-  { key: "compliance", href: "#", tooltip: "Read our regulatory compliance statement" },
-] as const;
-
-const legalLinks = [
-  { key: "privacyPolicy", href: "#", tooltip: "Read how we handle your data" },
-  { key: "termsOfService", href: "#", tooltip: "Read the terms governing your use of the platform" },
-  { key: "securityDataSovereignty", href: "#", tooltip: "Read our data security and residency commitments" },
+const COLUMNS = [
+  {
+    columnKey: "product",
+    links: [
+      { key: "aiConsultation", href: "#capabilities" },
+      { key: "caseFiles", href: "#capabilities" },
+      { key: "caseWorkspace", href: "#control" },
+      { key: "legalTerminal", href: "#control" },
+      { key: "researchLibrary", href: "#capabilities" },
+    ],
+  },
+  {
+    columnKey: "firms",
+    links: [
+      { key: "plansAndPricing", href: "#business" },
+      { key: "rolesAndPermissions", href: "#business" },
+      { key: "inviteYourTeam", href: "#business" },
+      { key: "firmSettings", href: "#business" },
+    ],
+  },
+  {
+    columnKey: "jurisdictions",
+    links: [
+      { key: "philippines", href: "#business" },
+      { key: "unitedKingdom", href: "#business" },
+    ],
+  },
+  {
+    columnKey: "resources",
+    links: [
+      { key: "helpCentre", href: "mailto:support@ilovelawyer.ph" },
+      { key: "transcription", href: "#capabilities" },
+      { key: "documentUpload", href: "#capabilities" },
+      { key: "calendar", href: "#capabilities" },
+    ],
+  },
+  {
+    columnKey: "company",
+    links: [
+      { key: "aboutUs", href: "#" },
+      { key: "careers", href: "#" },
+      { key: "termsOfService", href: "#" },
+      { key: "privacyPolicy", href: "#" },
+      { key: "accessibility", href: "#" },
+    ],
+  },
 ] as const;
 
 export function LandingFooter() {
   const { t } = useTranslation("landing");
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-[#f1f4f6] dark:bg-muted border-t border-[#c6c6ce] dark:border-border py-12 px-8 md:px-16">
-      <div className="max-w-360 mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-8">
-          <div className="md:col-span-4 flex flex-col gap-5">
-            <Link href="/" className="cursor-pointer w-fit">
-              <span className="text-[28px] text-black dark:text-foreground hover:opacity-70 transition-opacity duration-200" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-                ilovelawyer
-              </span>
-            </Link>
-            <p className="text-[#45464d] dark:text-muted-foreground text-base leading-[1.6] pr-8" style={{ fontFamily: "Inter, sans-serif" }}>
-              {t("footer.tagline")}
-            </p>
-          </div>
+    <footer id="footer" className="bg-brand-navy-950 text-white py-16 px-6 md:px-16">
+      <div className="max-w-[1440px] mx-auto">
+        <Link
+          href="/"
+          className="inline-block font-['Libre_Caslon_Text'] text-[24px] mb-4 hover:opacity-70 transition-opacity duration-200"
+        >
+          ilovelawyer
+        </Link>
+        <p className="text-white/60 text-sm max-w-[420px] mb-12">{t("footer.tagline")}</p>
 
-          <div className="md:col-span-2 flex flex-col gap-6">
-            <h4 className="text-black dark:text-foreground text-xs tracking-[1.2px] uppercase" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>{t("footer.company.heading")}</h4>
-            <div className="flex flex-col gap-4">
-              {companyLinks.map(({ key, href, tooltip }) => (
-                <Tooltip key={key}>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+          {COLUMNS.map((col) => (
+            <div key={col.columnKey} className="flex flex-col gap-3 text-sm">
+              <span className="text-[13px] text-white/50">{t(`footer.columns.${col.columnKey}.heading`)}</span>
+              {col.links.map((link) => (
+                <Tooltip key={link.key}>
                   <TooltipTrigger asChild>
-                    <Link
-                      href={href}
-                      className="text-[#45464d] dark:text-muted-foreground text-base text-left hover:text-black dark:hover:text-foreground transition-colors duration-200 leading-6"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {t(`footer.company.${key}`)}
+                    <Link href={link.href} className="text-white/80 hover:text-white transition-colors duration-200">
+                      {t(`footer.columns.${col.columnKey}.links.${link.key}`)}
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent>{tooltip}</TooltipContent>
+                  <TooltipContent>{t(`footer.columns.${col.columnKey}.links.${link.key}`)}</TooltipContent>
                 </Tooltip>
               ))}
             </div>
-          </div>
-
-          <div className="md:col-span-4 flex flex-col gap-6">
-            <h4 className="text-black dark:text-foreground text-xs tracking-[1.2px] uppercase" style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}>{t("footer.legal.heading")}</h4>
-            <div className="flex flex-col gap-4">
-              {legalLinks.map(({ key, href, tooltip }) => (
-                <Tooltip key={key}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={href}
-                      className="text-[#45464d] dark:text-muted-foreground text-base text-left hover:text-black dark:hover:text-foreground underline decoration-[#c6c6ce] dark:decoration-border hover:decoration-black dark:hover:decoration-foreground transition-colors duration-200 leading-6"
-                      style={{ fontFamily: "Inter, sans-serif" }}
-                    >
-                      {t(`footer.legal.${key}`)}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>{tooltip}</TooltipContent>
-                </Tooltip>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
 
+        <div className="pt-5 border-t border-white/15 flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
+          <LanguageSwitcher />
+          <span>{t("footer.jurisdictionLine")}</span>
+          <span>&copy; {year} ilovelawyer</span>
+        </div>
       </div>
     </footer>
   );

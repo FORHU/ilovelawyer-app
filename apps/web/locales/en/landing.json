@@ -1,10 +1,10 @@
 {
   "navbar": {
     "links": {
-      "platform": "Platform",
-      "solutions": "Solutions",
-      "legalLibrary": "Legal Library",
-      "pricing": "Pricing"
+      "capabilities": "Capabilities",
+      "legalTerminal": "Legal Terminal",
+      "firms": "Firms",
+      "resources": "Resources"
     },
     "signIn": "Sign In",
     "requestDemo": "Request Demo",
@@ -14,44 +14,56 @@
     "closeMenu": "Close menu"
   },
   "hero": {
-    "eyebrow": "The Future of Jurisprudence",
-    "titleLine1": "Democratizing Access to",
-    "titleEmphasis": "Philippine Legal",
-    "titleEmphasis_UK": "UK Legal",
-    "titleLine3": "Information",
-    "description": "Leveraging specialized artificial intelligence to navigate the intricacies of Philippine jurisprudence. From litigation support to document synthesis, we provide legal professionals and the public with unparalleled analytical precision.",
-    "description_UK": "Leveraging specialized artificial intelligence to navigate the intricacies of England & Wales jurisprudence. From litigation support to document synthesis, we provide legal professionals and the public with unparalleled analytical precision.",
     "ctaPrimary": "Start Free Consultation",
-    "ctaSecondary": "View Case Studies"
+    "ctaExplore": "Explore the Platform",
+    "slideOne": {
+      "line1": "Where cases",
+      "line2": "get clarity",
+      "subtext": "AI consultation streams in as it's written, with cited precedent alongside.",
+      "subtext_UK": "AI consultation streams in as it's written, with cited UK precedent alongside."
+    },
+    "slideTwo": {
+      "line1": "Your caseload,",
+      "line2": "under control",
+      "subtext": "The Legal Terminal arranges nineteen panes of case intelligence your way."
+    },
+    "slideThree": {
+      "line1": "Where counsel",
+      "line2": "meets AI",
+      "subtext": "Case Workspace keeps sources, chat, and work product on one screen."
+    },
+    "slideLabel": "Slide {{number}}",
+    "nextSlide": "Next slide"
   },
-  "features": {
-    "heading": "Operational Intelligence",
-    "subheading": "Our specialized legal technology stack automates manual processes with high-fidelity AI processing.",
+  "capabilities": {
+    "heading": "Every feature ilovelawyer ships",
+    "subheading": "No mockups, no roadmap items. Eighteen capabilities live in the product today.",
     "explorePlatform": "Explore Platform",
-    "getStarted": "Get Started",
-    "getStartedArrow": "Get Started →",
-    "aiChat": {
-      "title": "AI Research Chat",
-      "description": "Real-time statutory interpretation and jurisprudence research via a natural language interface trained on current Supreme Court rulings.",
-      "description_UK": "Real-time statutory interpretation and case law research via a natural language interface trained on current England & Wales court rulings."
-    },
-    "caseManager": {
-      "title": "Case Manager",
-      "description": "A centralized ecosystem for docketing, calendar management, and strategic planning for complex litigation workflows."
-    },
-    "documentAnalysis": {
-      "title": "Document Analysis",
-      "description": "Automated contract review and risk assessment. Detect inconsistencies across multi-volume discovery sets in seconds."
-    },
-    "voiceTranscription": {
-      "title": "Voice Transcription",
-      "description": "Enterprise-grade transcription for courtroom proceedings and depositions with high semantic accuracy for legal terminology."
-    }
+    "items": [
+      "Accounts & sign-in",
+      "Firms & teams",
+      "Two jurisdictions",
+      "AI legal consultation",
+      "Case files",
+      "Case Workspace",
+      "Legal Terminal",
+      "Research library",
+      "Transcription",
+      "Document upload",
+      "Calendar",
+      "Visual Strategy Map",
+      "Case Reconstruction",
+      "Red Team",
+      "Audio Overview",
+      "Citation checking",
+      "Contradiction scan",
+      "3 languages"
+    ]
   },
   "quotes": {
     "items": [
       {
-        "text": "The agility ilovelawyer brings to our research process is unprecedented. It isn't just about speed; it's about the depth of insight we can now provide our clients in a fraction of the time.",
+        "text": "The agility ilovelawyer brings to our research process is unprecedented, and the depth of insight we now give clients has never been greater.",
         "author": "Senior Partner",
         "firm": "Cruz & Associates Law Offices"
       },
@@ -75,21 +87,143 @@
     ],
     "quoteLabel": "Quote {{number}}"
   },
+  "terminal": {
+    "heading": "One workspace, arranged your way",
+    "body": "The Legal Terminal is a litigation cockpit you arrange yourself. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
+    "cta": "Open the Terminal",
+    "panels": {
+      "caseWorkspace": {
+        "title": "Case Workspace",
+        "subtitle": "Sources, Studio, Chat, one screen",
+        "lines": ["Sources · Studio · Chat", "Illegal dismissal — remedies"],
+        "lines_UK": ["Sources · Studio · Chat", "Contested trust variation — remedies"]
+      },
+      "redTeam": {
+        "title": "Red Team",
+        "subtitle": "The argument the other side will make",
+        "lines": ["Threat assessment", "Abandonment. Timing. Witness exposure."],
+        "lines_UK": ["Threat assessment", "Undue influence. Capacity. Disclosure gaps."]
+      },
+      "audioOverview": {
+        "title": "Audio Overview",
+        "subtitle": "Two AI hosts discuss the case",
+        "lines": ["Two AI hosts discuss the case", "1:24 / 3:41"]
+      },
+      "caseReconstruction": {
+        "title": "Case Reconstruction",
+        "subtitle": "Client, court, and opposing narratives",
+        "lines": ["Client, court, opposing narratives", "General · For the Court · From the Other Side"]
+      }
+    }
+  },
+  "consultation": {
+    "heading": "Ask once. Get the law behind it.",
+    "body": "Every consultation streams in as it's written, with related case law listed beside it: title, citation, source link, and an excerpt, with vetted citations marked. Attach a document and the assistant searches inside it once indexing finishes.",
+    "cta": "Start a Consultation",
+    "caseName": "Reyes v. Northbridge Logistics",
+    "caseName_UK": "Fairholme v. Sterling Trustees Ltd",
+    "relatedCases": "Related Cases",
+    "relatedCasesItems": [
+      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "vetted": true },
+      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "vetted": false }
+    ],
+    "relatedCasesItems_UK": [
+      { "title": "Ilott v The Blue Cross", "citation": "[2017] UKSC 17", "vetted": true },
+      { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
+    ],
+    "vetted": "Vetted",
+    "indexing": "Indexing for chat...",
+    "mockFilename": "termination-letter.pdf",
+    "mockFilename_UK": "family-trust-deed.pdf"
+  },
+  "firms": {
+    "heading": "Built for how firms actually work",
+    "teamsHeading": "Firms and teams",
+    "teamsBody": "Practise solo, or create a firm on one of three plans: Solo, Professional, Enterprise. Invite colleagues by email with a role of Owner, Admin, or Member. Every destructive step asks for confirmation first.",
+    "teamsCta": "Invite Your Team",
+    "jurisdictionsHeading": "Two jurisdictions, one product",
+    "jurisdictionsBody": "Philippine and United Kingdom practices each get their own address, their own vocabulary, and only the tools that genuinely apply. Cases, documents, AI consultation, and citation checking work in both.",
+    "roster": [
+      { "initials": "AC", "name": "Atty. Ana Cruz", "email": "ana@cruzpartners.ph", "role": "owner", "you": true },
+      { "initials": "RS", "name": "Ramon Santos", "email": "ramon@cruzpartners.ph", "role": "admin", "you": false },
+      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false }
+    ],
+    "roster_UK": [
+      { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
+      { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false }
+    ],
+    "membersCard": {
+      "title": "Members",
+      "subtitle": "People with access to this organization.",
+      "organization": "Organization",
+      "orgName": "Cruz & Partners",
+      "orgName_UK": "Sinclair & Wycombe LLP",
+      "plan": "Plan",
+      "planName": "Professional",
+      "planName_UK": "Enterprise",
+      "you": "YOU",
+      "invite": "Invite a member",
+      "invitePlaceholder": "colleague@lawfirm.ph",
+      "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
+      "sendInvite": "Send Invite",
+      "roles": {
+        "owner": "OWNER",
+        "admin": "ADMIN",
+        "member": "MEMBER"
+      }
+    }
+  },
   "footer": {
     "tagline": "Premium AI Legal Operations for the Philippine market. We integrate centuries of legal tradition with modern technological innovation.",
     "tagline_UK": "Premium AI Legal Operations for the UK market. We integrate centuries of legal tradition with modern technological innovation.",
-    "company": {
-      "heading": "Company",
-      "aboutUs": "About Us",
-      "contactSupport": "Contact & Support",
-      "compliance": "RA 10173 Compliance",
-      "compliance_UK": "UK GDPR Compliance"
+    "columns": {
+      "product": {
+        "heading": "Product",
+        "links": {
+          "aiConsultation": "AI Legal Consultation",
+          "caseFiles": "Case Files",
+          "caseWorkspace": "Case Workspace",
+          "legalTerminal": "Legal Terminal",
+          "researchLibrary": "Research Library"
+        }
+      },
+      "firms": {
+        "heading": "Firms",
+        "links": {
+          "plansAndPricing": "Plans and Pricing",
+          "rolesAndPermissions": "Roles and Permissions",
+          "inviteYourTeam": "Invite Your Team",
+          "firmSettings": "Firm Settings"
+        }
+      },
+      "jurisdictions": {
+        "heading": "Jurisdictions",
+        "links": {
+          "philippines": "Philippines",
+          "unitedKingdom": "United Kingdom"
+        }
+      },
+      "resources": {
+        "heading": "Resources",
+        "links": {
+          "helpCentre": "Help Centre and FAQ",
+          "transcription": "Transcription",
+          "documentUpload": "Document Upload",
+          "calendar": "Calendar"
+        }
+      },
+      "company": {
+        "heading": "Company",
+        "links": {
+          "aboutUs": "About Us",
+          "careers": "Careers",
+          "termsOfService": "Terms of Service",
+          "privacyPolicy": "Privacy Policy",
+          "accessibility": "Accessibility"
+        }
+      }
     },
-    "legal": {
-      "heading": "Legal",
-      "privacyPolicy": "Privacy Policy",
-      "termsOfService": "Terms of Service",
-      "securityDataSovereignty": "Security & Data Sovereignty"
-    }
+    "jurisdictionLine": "Philippines and United Kingdom"
   }
 }

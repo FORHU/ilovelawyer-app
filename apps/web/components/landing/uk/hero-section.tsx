@@ -1,101 +1,132 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@workspace/ui/components/tooltip"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 
 // UK-only design: rendered exclusively when the request resolved to the UK tenant (see
 // app/page.tsx), so the i18next `context` is hardcoded rather than read from the hint —
 // this component has no PH code path to fall back to.
-const tCtx = { context: "UK" }
+const tCtx = { context: "UK" };
+
+const SLIDE_KEYS = ["slideOne", "slideTwo", "slideThree"] as const;
+const AUTOPLAY_MS = 6200;
+const slideImages = getTenantCodeConfig("UK").landingAssets.heroSlides;
 
 export function UkHeroSection() {
-  const { t } = useTranslation("landing")
-  return (
-    <section
-      id="hero"
-      className="relative flex min-h-[85vh] items-center overflow-hidden bg-[#f7fafc] dark:bg-background"
-    >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#e8e0d0]/30 via-[#f0ebe0]/20 to-transparent dark:from-brand-gold/10 dark:via-brand-navy-800/30 dark:to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#f7fafc] via-[rgba(247,250,252,0.8)] to-[rgba(247,250,252,0)] dark:from-background dark:via-background/80 dark:to-transparent" />
-      </div>
+  const { t } = useTranslation("landing");
+  const reduce = useReducedMotion();
+  const [index, setIndex] = useState(0);
 
-      <div className="relative z-10 mx-auto grid w-full max-w-360 grid-cols-12 gap-8 px-8 py-24 md:px-16">
-        <div className="col-span-12 flex flex-col gap-6 lg:col-span-8 lg:col-start-2">
-          <p
-            className="text-xs tracking-[2.4px] text-[#735c00] uppercase dark:text-brand-gold"
-            style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
-          >
-            {t("hero.eyebrow")}
-          </p>
-          <h1
-            className="text-[clamp(40px,5.5vw,64px)] leading-[1.1] tracking-[-1.28px] text-black dark:text-foreground"
-            style={{
-              fontFamily: "'Libre Caslon Text', serif",
-              fontWeight: 400,
-            }}
-          >
-            {t("hero.titleLine1", tCtx)}
-            <br />
-            <em style={{ fontStyle: "italic" }}>
-              {t("hero.titleEmphasis", tCtx)}
-            </em>
-            <br />
-            {t("hero.titleLine3", tCtx)}
-          </h1>
-          <p
-            className="max-w-[576px] text-lg leading-[1.6] text-[#45464d] dark:text-muted-foreground"
-            style={{ fontFamily: "Inter, sans-serif" }}
-          >
-            {t("hero.description", tCtx)}
-          </p>
-          <div className="flex flex-wrap gap-6 pt-2">
+  useEffect(() => {
+    if (reduce) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % SLIDE_KEYS.length), AUTOPLAY_MS);
+    return () => clearInterval(id);
+  }, [reduce]);
+
+  return (
+    <section id="hero" className="relative min-h-[100dvh] flex items-end overflow-hidden bg-brand-navy-950">
+      {slideImages.map((src, i) => (
+        <motion.div
+          key={src}
+          className="absolute inset-0 bg-center bg-cover"
+          style={{ backgroundImage: `url('${src}')` }}
+          animate={{ opacity: index === i ? 1 : 0 }}
+          transition={{ duration: reduce ? 0 : 0.9, ease: "easeInOut" }}
+        />
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-950 via-brand-navy-950/20 to-black/30" />
+
+      <div className="relative z-10 max-w-360 mx-auto w-full px-6 md:px-16 pb-16 pt-24 grid grid-cols-12 gap-8">
+        <div className="col-span-12 lg:col-span-9 flex flex-col gap-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={index}
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -16 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col gap-5"
+            >
+              <h1
+                className="font-['Libre_Caslon_Text'] text-white text-[clamp(44px,7vw,104px)] font-normal leading-[0.95] tracking-[-0.02em]"
+              >
+                {t(`hero.${SLIDE_KEYS[index]}.line1`)}
+                <br />
+                {t(`hero.${SLIDE_KEYS[index]}.line2`)}
+              </h1>
+              <p className="text-white/75 text-base leading-[1.6] max-w-[540px]">
+                {t(`hero.${SLIDE_KEYS[index]}.subtext`, tCtx)}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="flex flex-wrap items-center gap-6 pt-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
                   href="/signup"
-                  className="flex items-center gap-3 bg-black px-8 py-4 text-xs tracking-[1.2px] text-white uppercase transition-colors duration-200 hover:bg-[#1a1a1a] dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                  style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                  className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-brand-gold/85 transition-colors duration-200"
                 >
                   {t("hero.ctaPrimary")}
-                  <ArrowUpRight
-                    size={14}
-                    className="text-white dark:text-primary-foreground"
-                  />
+                  <ArrowUpRight size={14} />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent>
-                Create your free ilovelawyer account
-              </TooltipContent>
+              <TooltipContent>Create your free ilovelawyer account</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link
-                  href="#features"
-                  className="inline-flex items-center border border-black px-8 py-4 text-xs tracking-[1.2px] text-black uppercase transition-colors duration-200 hover:bg-black/5 dark:border-foreground dark:text-foreground dark:hover:bg-foreground/5"
-                  style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
+                <a
+                  href="#capabilities"
+                  className="text-white border border-white/40 text-xs tracking-[1.2px] uppercase px-8 py-4 rounded-full hover:border-white transition-colors duration-200 inline-flex items-center"
                 >
-                  {t("hero.ctaSecondary")}
-                </Link>
+                  {t("hero.ctaExplore")}
+                </a>
               </TooltipTrigger>
-              <TooltipContent>
-                Jump down to see what the platform can do
-              </TooltipContent>
+              <TooltipContent>Jump down to see what the platform can do</TooltipContent>
             </Tooltip>
+
+            <div className="flex items-center gap-2 ml-auto">
+              {SLIDE_KEYS.map((key, i) => (
+                <Tooltip key={key}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIndex(i)}
+                      aria-label={t("hero.slideLabel", { number: i + 1 })}
+                      className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
+                    >
+                      <span
+                        className={`rounded-full transition-all duration-300 ${
+                          i === index ? "size-2.5 bg-brand-gold" : "size-2 bg-white/30 hover:bg-white/60"
+                        }`}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("hero.slideLabel", { number: i + 1 })}</TooltipContent>
+                </Tooltip>
+              ))}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setIndex((i) => (i + 1) % SLIDE_KEYS.length)}
+                    aria-label={t("hero.nextSlide")}
+                    className="ml-1 size-8 flex items-center justify-center rounded-full border border-white/30 text-white hover:border-white transition-colors duration-200 cursor-pointer bg-transparent"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("hero.nextSlide")}</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-10 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 opacity-40">
-        <div className="h-12 w-px animate-pulse bg-black dark:bg-foreground" />
-      </div>
     </section>
-  )
+  );
 }
