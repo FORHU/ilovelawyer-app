@@ -104,16 +104,57 @@ export function extractMindMap(text: string): MindMapItem | undefined {
   return normalizeMindMap(parsed);
 }
 
+export interface TraceStep {
+  id: string;
+  tool: string;
+  label: string;
+  count?: number;
+  status: "active" | "done";
+}
+
 /**
- * Strips [TIMELINE]...[/TIMELINE] and [MINDMAP]...[/MINDMAP] blocks (closed or
- * left open by a streaming cutoff) from AI response text before it's displayed.
+ * Extracts live research-step events from Chat Wonder's `[TRACE]{...}[/TRACE]`
+ * frames (see chat-wonder-v2-api's the_server.py/legal_responses_chain.py,
+ * the '[TRACE]' yields alongside broadcast_trace calls). Each tool call emits a
+ * 'start' frame (carries the label) and a 'result' frame (carries the count) sharing
+ * one `id` — merged here into a single row so the UI updates it in place rather than
+ * appending a second line, matching how the source list fills in during research.
+ */
+export function extractTraceSteps(text: string): TraceStep[] {
+  const steps = new Map<string, TraceStep>();
+  const traceRegex = /\[TRACE\]([\s\S]*?)\[\/TRACE\]/g;
+  let match: RegExpExecArray | null;
+  while ((match = traceRegex.exec(text)) !== null) {
+    const parsed = safeJsonParse(match[1]!.trim());
+    if (!parsed || typeof parsed !== "object" || !parsed.id) continue;
+    const existing = steps.get(parsed.id);
+    if (parsed.phase === "start") {
+      steps.set(parsed.id, {
+        id: parsed.id,
+        tool: parsed.tool ?? existing?.tool ?? "",
+        label: parsed.label ?? existing?.label ?? "",
+        count: existing?.count,
+        status: "active",
+      });
+    } else if (parsed.phase === "result" && existing) {
+      steps.set(parsed.id, { ...existing, count: parsed.count ?? undefined, status: "done" });
+    }
+  }
+  return Array.from(steps.values());
+}
+
+/**
+ * Strips [TIMELINE]...[/TIMELINE], [MINDMAP]...[/MINDMAP], and [TRACE]...[/TRACE]
+ * blocks (closed or left open by a streaming cutoff) from AI response text before
+ * it's displayed.
  */
 export function stripStructuredBlocks(text: string): string {
   let cleaned = text
     .replace(/\[TIMELINE\][\s\S]*?\[\/TIMELINE\]/gi, "")
-    .replace(/\[MINDMAP\][\s\S]*?\[\/MINDMAP\]/gi, "");
+    .replace(/\[MINDMAP\][\s\S]*?\[\/MINDMAP\]/gi, "")
+    .replace(/\[TRACE\][\s\S]*?\[\/TRACE\]/gi, "");
 
-  const startTags = [/\[TIMELINE\]/i, /\[MINDMAP\]/i];
+  const startTags = [/\[TIMELINE\]/i, /\[MINDMAP\]/i, /\[TRACE\]/i];
   let firstTagIdx = -1;
   for (const tag of startTags) {
     const idx = cleaned.search(tag);
