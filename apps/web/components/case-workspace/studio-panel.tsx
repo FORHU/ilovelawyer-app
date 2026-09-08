@@ -6,7 +6,7 @@ import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, Pan
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
-import { DocumentUploadButton, CaseDocumentList } from "@/components/cases/case-details-panel";
+import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
@@ -82,9 +82,8 @@ interface StudioPanelProps {
  * (e.g. Mind Map's node canvas) needs more room. Documents is the one exception to that
  * trigger-then-result-row shape: it's already-there data (this case's Case Documents), not
  * something to generate/refresh, so its tile opens the detail view directly — the same
- * DocumentUploadButton/CaseDocumentList this used to render in the (now Related-Cases-only)
- * Sources panel, reused as-is; only where it's surfaced moved, not how documents are stored or
- * uploaded. */
+ * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
+ * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
 export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
@@ -530,15 +529,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       {expanded && openTile && (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {openTile === "documents" ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                  {t("detail.documents")}
-                </span>
-                <DocumentUploadButton caseId={caseId} />
-              </div>
-              <CaseDocumentList caseId={caseId} grouped />
-            </div>
+            <DocumentFolderBrowser caseId={caseId} variant="full" />
           ) : openTile === "mindmap" ? (
             consultationId ? (
               activeMindMap ? (
