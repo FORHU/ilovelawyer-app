@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef } from "react";
 import Link from "next/link";
 import { CheckCircle2, ExternalLink } from "lucide-react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 
 // UK-only design — see uk/hero-section.tsx for why the context is hardcoded.
 const tCtx = { context: "UK" };
@@ -19,9 +19,7 @@ interface RelatedCase {
 export function UkConsultationSection() {
   const { t } = useTranslation("landing");
   const relatedCases = t("consultation.relatedCasesItems", { ...tCtx, returnObjects: true }) as RelatedCase[];
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [-16, 16]);
+  const [ref, y] = useScrollDrift([-16, 16]);
 
   return (
     <section className="bg-background py-24 px-6 md:px-16">

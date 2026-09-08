@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 
 interface Member {
   initials: string;
@@ -17,9 +17,7 @@ interface Member {
 export function FirmsSection() {
   const { t } = useTranslation("landing");
   const members = t("firms.roster", { returnObjects: true }) as Member[];
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [-20, 20]);
+  const [ref, y] = useScrollDrift([-20, 20]);
 
   return (
     <section id="business" className="bg-background py-24 px-6 md:px-16">

@@ -1,15 +1,14 @@
 import { headers } from "next/headers";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { NeutralLandingSplash } from "@/components/landing/neutral-splash";
+import { CapabilitiesSection } from "@/components/landing/capabilities-section";
 import { HeroSection } from "@/components/landing/ph/hero-section";
-import { CapabilitiesSection } from "@/components/landing/ph/capabilities-section";
 import { FirmQuoteSection } from "@/components/landing/ph/firm-quote-section";
 import { TerminalShowcaseSection } from "@/components/landing/ph/terminal-showcase-section";
 import { ConsultationSection } from "@/components/landing/ph/consultation-section";
 import { FirmsSection } from "@/components/landing/ph/firms-section";
 import { LandingFooter } from "@/components/landing/ph/footer";
 import { UkHeroSection } from "@/components/landing/uk/hero-section";
-import { UkCapabilitiesSection } from "@/components/landing/uk/capabilities-section";
 import { UkFirmQuoteSection } from "@/components/landing/uk/firm-quote-section";
 import { UkTerminalShowcaseSection } from "@/components/landing/uk/terminal-showcase-section";
 import { UkConsultationSection } from "@/components/landing/uk/consultation-section";
@@ -41,7 +40,7 @@ export default async function LandingPage() {
         <LandingNavbar />
         <main className="flex-1">
           <UkHeroSection />
-          <UkCapabilitiesSection />
+          <CapabilitiesSection />
           <UkFirmQuoteSection />
           <UkTerminalShowcaseSection />
           <UkConsultationSection />

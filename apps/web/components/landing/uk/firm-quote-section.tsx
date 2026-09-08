@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
+import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 
 // UK-only design — see uk/hero-section.tsx for why the context is hardcoded.
 const tCtx = { context: "UK" };
@@ -24,9 +25,7 @@ export function UkFirmQuoteSection() {
   const [displayed, setDisplayed] = useState(0);
   const [fading, setFading] = useState(false);
 
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start end", "end start"] });
-  const backgroundPositionY = useTransform(scrollYProgress, [0, 1], ["-12%", "12%"]);
+  const [sectionRef, backgroundPositionY] = useScrollDrift<HTMLElement, string>(["-12%", "12%"]);
 
   const changeQuote = (index: number) => {
     if (index === displayed) return;
