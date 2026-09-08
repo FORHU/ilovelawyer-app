@@ -64,7 +64,7 @@ export function UkConsultationSection() {
                 <p className="text-[10.5px] text-muted-foreground mt-0.5">{c.citation}</p>
                 {c.vetted && (
                   <div className="mt-2 inline-flex items-center gap-1 border border-border rounded-md px-2 py-1">
-                    <CheckCircle2 size={10} className="text-brand-gold" />
+                    <CheckCircle2 size={10} className="text-brand-status-green" />
                     <span className="text-[9.5px] tracking-[0.04em] uppercase text-muted-foreground">
                       {t("consultation.vetted")}
                     </span>

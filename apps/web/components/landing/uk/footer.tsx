@@ -88,7 +88,7 @@ export function UkLandingFooter() {
           ))}
         </div>
 
-        <div className="pt-5 border-t border-white/15 flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
+        <div className="pt-5 border-t border-brand-oxblood/60 flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
           <LanguageSwitcher />
           <span>{t("footer.jurisdictionLine", tCtx)}</span>
           <span>&copy; {year} ilovelawyer</span>
