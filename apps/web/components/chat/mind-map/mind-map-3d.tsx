@@ -4,7 +4,7 @@ import React, { useRef, useMemo, useEffect, useCallback, forwardRef, useImperati
 import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
 import { MindMapItem } from './types';
-import { MIND_MAP_HEX_COLORS, mindMapLink3dColor } from './constants';
+import { MIND_MAP_HEX_COLORS, mindMapLink3dColor, fixedNodeDescription } from './constants';
 
 export interface MindMap3DProps {
   root: MindMapItem | null;
@@ -141,7 +141,9 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
       nodes.push({
         id: nodeId,
         label,
-        description: getDescription(item),
+        // Root + the five fixed first-level nodes get a static description; deeper nodes keep
+        // the model's. See MIND_MAP_FIXED_NODE_DESCRIPTIONS.
+        description: fixedNodeDescription({ id: nodeId, label: getLabel(item), isRoot }) ?? getDescription(item),
         media: getMedia(item),
         isRoot,
         fx: x, fy: y, fz: z,
