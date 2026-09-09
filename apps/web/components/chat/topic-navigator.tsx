@@ -49,7 +49,7 @@ export function TopicNavigatorList({
                 )}
               </button>
             </TooltipTrigger>
-            {compact && <TooltipContent side="left">{topic.title}</TooltipContent>}
+            <TooltipContent side="left">{topic.title}</TooltipContent>
           </Tooltip>
         );
       })}

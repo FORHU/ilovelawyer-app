@@ -24,6 +24,7 @@ import {
   useCreateConsultationMutation,
   useMessagesQuery,
   sendChatMessage,
+  type ChatMessage,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
@@ -609,6 +610,9 @@ export default function ConsultationChat({
     // The consultation this send belongs to, fixed at send time (before the id might
     // change under us, e.g. a brand-new consultation getting its real id).
     const turnKey = consultationKey;
+    // Snapshot of how many persisted messages existed before this turn — used below to
+    // sanity-check the post-send refetch before trusting it over pendingTurn (see there).
+    const messagesBeforeSend = baseMessages.length;
 
     setIsSending(true);
     setPendingTurn({
@@ -690,7 +694,28 @@ export default function ConsultationChat({
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
-      if (sendTokenRef.current === myToken) setPendingTurn(null);
+
+      // Only hand the transcript back to the persisted (baseMessages) view once the refetch
+      // above actually landed this turn — expect at least the prior message count plus the
+      // user message and one assistant reply (a split, multi-topic reply persists as more
+      // than one assistant row, so this is a floor, not an exact count). A refetch that
+      // settles short of that (e.g. a request dedup/race against another in-flight fetch for
+      // a brand-new consultation's just-enabled query) must not clear pendingTurn — doing so
+      // would swap the fully-streamed, correct reply for whatever incomplete/stale data the
+      // cache landed on, which reads to the user as their response vanishing.
+      const refreshedHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(activeConsultationId));
+      const turnPersisted = (refreshedHistory?.length ?? 0) >= messagesBeforeSend + 2;
+      if (sendTokenRef.current === myToken) {
+        if (turnPersisted) {
+          setPendingTurn(null);
+        } else {
+          console.error("Chat history refetch looked incomplete after send — keeping the in-memory reply visible instead of the persisted view", {
+            consultationId: activeConsultationId,
+            expectedAtLeast: messagesBeforeSend + 2,
+            got: refreshedHistory?.length ?? 0,
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to send message:", error);
       if (sendTokenRef.current === myToken) {

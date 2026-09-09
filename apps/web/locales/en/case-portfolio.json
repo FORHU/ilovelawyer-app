@@ -9,6 +9,8 @@
   "noMatchingCases": "No matching cases",
   "noMatchingCasesHint": "Try a different search term.",
   "noPartyListed": "No party listed",
+  "openCase": "Open Case",
+  "openTerminal": "Legal Terminal",
   "tools": {
     "mindMap": "Mind Map",
     "timeline": "Timeline"
