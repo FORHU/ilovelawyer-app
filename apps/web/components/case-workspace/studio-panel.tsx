@@ -10,7 +10,7 @@ import { DocumentFolderBrowser } from "@/components/cases/document-folder-browse
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
-import { useCaseQuery } from "@/lib/cases/mutations";
+import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
@@ -95,6 +95,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const isGenerating = isGeneratingLocal || mindMapJob.data?.status === "IN_PROGRESS";
 
   const { data: caseRecord } = useCaseQuery(caseId);
+  // Same PENDING-polling query DocumentFolderBrowser's own indexing badge uses — reused here
+  // rather than duplicated, so the Documents tile and the detail view it opens always agree.
+  const caseDocumentsQuery = useCaseDocumentsQuery(caseId);
+  const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
   const { data: session } = useChatSessionQuery();
   const queryClient = useQueryClient();
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
@@ -392,10 +396,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3 ${expanded ? "" : "items-center"}`}>
           {/* Documents is already-there data (this case's Case Documents), not something to
            * generate/refresh — so unlike the three tiles below, this one opens the detail view
-           * directly instead of triggering an action first. */}
+           * directly instead of triggering an action first. The spinner here is purely a status
+           * signal (any row still PENDING indexing), not a disable-while-busy state like the
+           * other tiles' — the tile stays clickable so the lawyer can open Documents and watch
+           * individual rows flip to ready, same as Mind Map's own generating indicator. */}
           <StudioTile
-            icon={Files}
-            label={t("workspace.documentsTab")}
+            icon={isIndexingDocuments ? Loader2 : Files}
+            iconSpinning={isIndexingDocuments}
+            label={isIndexingDocuments ? t("workspace.documentsIndexing") : t("workspace.documentsTab")}
             expanded={expanded}
             onClick={() => openStudioTile("documents")}
           />
