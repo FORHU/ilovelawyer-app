@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import {
@@ -1604,6 +1604,32 @@ function CaseReconstructionPanel({
   const generateJob = useAiJobStatus(caseId, "caseReconstruction")
   const isGenerating = generate.isPending || generateJob.data?.status === "IN_PROGRESS"
 
+  // Generate is queued server-side (AiGenerationQueue / SQS) — the mutation's response is just
+  // the AiGenerationJob row, not the finished narrative, so drafts can no longer be set from its
+  // onSuccess. Instead: note the IN_PROGRESS -> DONE transition, then resync drafts once
+  // `reconstruction` itself reflects the refetched snapshot — which may land a render or two
+  // after the transition, once useAiJobStatus's own invalidate resolves — hence the two effects
+  // rather than reading `reconstruction` directly in the one that watches job status.
+  const prevGenerateJobStatus = useRef(generateJob.data?.status)
+  const pendingDraftSyncRef = useRef(false)
+  useEffect(() => {
+    if (prevGenerateJobStatus.current === "IN_PROGRESS" && generateJob.data?.status === "DONE") {
+      pendingDraftSyncRef.current = true
+    }
+    prevGenerateJobStatus.current = generateJob.data?.status
+  }, [generateJob.data?.status])
+  useEffect(() => {
+    if (!pendingDraftSyncRef.current) return
+    pendingDraftSyncRef.current = false
+    setDrafts({
+      general: registerText(reconstruction, "general"),
+      court: registerText(reconstruction, "court"),
+      opposing: registerText(reconstruction, "opposing"),
+    })
+    setDirty({ general: false, court: false, opposing: false })
+    setIsEditingGeneral(false)
+  }, [reconstruction])
+
   // Polls a Polly async job while one is in flight — same "caller drives the loop" contract
   // as the Transcription feature's job polling, just scoped locally to this panel instead of
   // a cross-page store, since there's only ever one audio job per reconstruction.
@@ -1633,19 +1659,7 @@ function CaseReconstructionPanel({
         <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
         <button
           type="button"
-          onClick={() =>
-            generate.mutate(undefined, {
-              onSuccess: (data) => {
-                setDrafts({
-                  general: data.narrative,
-                  court: data.narrativeCourt ?? "",
-                  opposing: data.narrativeOpposing ?? "",
-                })
-                setDirty({ general: false, court: false, opposing: false })
-                setIsEditingGeneral(false)
-              },
-            })
-          }
+          onClick={() => generate.mutate()}
           disabled={isGenerating}
           className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
         >
