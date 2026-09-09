@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
-import { Search, Plus, Briefcase, Loader2, AlertCircle, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Briefcase, FolderOpen, Loader2, AlertCircle, Pencil, Trash2, Scale } from "lucide-react";
 import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -160,35 +160,54 @@ export default function CaseManagerDashboard() {
                   </Tooltip>
                 </div>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={`/homepage/v2/case-portfolio/${c.id}`}
-                      className="h-full bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                    >
-                      <div>
-                        <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
-                          {c.caseName}
-                        </h3>
-                        <p className="text-muted-foreground text-[14px] font-['Inter']">
-                          {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("noPartyListed")}
-                        </p>
-                      </div>
+                <div className="h-full bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200">
+                  <div>
+                    <h3 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground font-normal leading-tight mb-2 pr-16">
+                      {c.caseName}
+                    </h3>
+                    <p className="text-muted-foreground text-[14px] font-['Inter']">
+                      {c.parties.length > 0 ? c.parties.map((p) => p.name).join(", ") : t("noPartyListed")}
+                    </p>
+                  </div>
 
-                      <div className="border-t border-border pt-5 mt-8 flex items-end justify-between">
-                        <div>
-                          <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
-                            {t("lastUpdated")}
-                          </span>
-                          <span className="text-foreground text-[14px] font-semibold">
-                            {new Date(c.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>Open {c.caseName}&rsquo;s full case record</TooltipContent>
-                </Tooltip>
+                  <div className="border-t border-border pt-5 mt-8 flex items-end justify-between gap-3">
+                    <div>
+                      <span className="block text-muted-foreground text-[10px] uppercase font-semibold tracking-wider mb-1">
+                        {t("lastUpdated")}
+                      </span>
+                      <span className="text-foreground text-[14px] font-semibold">
+                        {new Date(c.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={`/homepage/v2/case-portfolio/${c.id}`}
+                            className="flex items-center gap-1.5 rounded-full border border-border bg-transparent px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />
+                            {t("openCase")}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent>Open {c.caseName}&rsquo;s full case record</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={`/homepage/terminal/${c.id}`}
+                            className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                            {t("openTerminal")}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
 
