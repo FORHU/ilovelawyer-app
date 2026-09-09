@@ -8,7 +8,7 @@ import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
-import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
+import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
@@ -70,6 +70,12 @@ interface StudioPanelProps {
    * (never shrinks one the user already dragged past it), and the result stays a normal
    * user-draggable width afterwards. */
   onOpenMindMap?: () => void;
+  /** Mind Map needs a consultation to send its generation prompt into. When none is active yet,
+   * handleGenerateMindMap creates one on demand (same pattern as ConsultationChat's own
+   * ensureConsultationId) and reports the new id back up here so case-workspace.tsx can put it
+   * in the URL — the single place activeConsultationId is read from, shared by every sibling
+   * (ThreadPicker, ConsultationChat) that needs to agree on which consultation is active. */
+  onConsultationCreated?: (consultationId: string) => void;
 }
 
 /** Case Workspace's right panel. Documents, Mind Map (per-consultation), Timeline and Data
@@ -84,7 +90,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -176,30 +182,44 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     if (kind === "mindmap") onOpenMindMap?.();
   };
 
+  const createConsultation = useCreateConsultationMutation();
+
   // Sends the same system-driven prompt ConsultationChat's own Mind Map tab uses to trigger
   // generation (consultation-chat.tsx) — sent directly rather than routed through the embedded
   // Chat panel next door, since Studio has no way to reach into a sibling component's state.
   // ConsultationChat's `visibleMessages` filter matches on this exact string, so the turn still
   // stays hidden from the transcript regardless of which panel sent it.
+  // Mind Map's generation lock and grounding are already case-scoped (AiGenerationLockSvc.run
+  // keyed on caseId, not consultationId — see ilovelawyer-api's chat.service.ts), so the only
+  // reason this needs a consultationId at all is that the prompt has to travel through the
+  // per-consultation messages endpoint. When one isn't active yet, create it here first — same
+  // pattern as ConsultationChat's own ensureConsultationId — instead of requiring the lawyer to
+  // go start a chat manually before Mind Map does anything.
   const handleGenerateMindMap = useCallback(async () => {
-    if (!consultationId || !session || isGenerating) return;
+    if (!session || isGenerating) return;
     setIsGenerating(true);
     setGenerateError(false);
     try {
+      let targetConsultationId = consultationId;
+      if (!targetConsultationId) {
+        const consultation = await createConsultation.mutateAsync({ caseId });
+        targetConsultationId = consultation.id;
+        onConsultationCreated?.(consultation.id);
+      }
       await sendChatMessage({
-        consultationId,
+        consultationId: targetConsultationId,
         sessionId: session.session_id,
         message: AUTO_MINDMAP_PROMPT,
         caseId,
         onChunk: () => {},
       });
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(targetConsultationId) });
     } catch {
       setGenerateError(true);
     } finally {
       setIsGenerating(false);
     }
-  }, [consultationId, session, isGenerating, caseId, queryClient]);
+  }, [consultationId, session, isGenerating, caseId, queryClient, createConsultation, onConsultationCreated]);
 
   // Mind Map generation is request-only — no auto-fire on mount (see the matching removal in
   // consultation-chat.tsx for why: every case was showing the same generic strategy outline

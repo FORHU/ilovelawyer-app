@@ -334,7 +334,15 @@ export default function ConsultationChat({
     messages.forEach((m, i) => {
       if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
         hidden.add(i);
-        if (messages[i + 1]?.role === "assistant") hidden.add(i + 1);
+        // A mind-map/audio-overview reply can come back long enough to get split into several
+        // sibling topic messages (see ilovelawyer-api's MessageGroup) — every one of them
+        // belongs to this hidden turn, not just the first, so keep hiding the whole run of
+        // consecutive assistant messages rather than stopping after one.
+        let j = i + 1;
+        while (messages[j]?.role === "assistant") {
+          hidden.add(j);
+          j++;
+        }
       }
     });
     return hidden.size > 0 ? messages.filter((_, i) => !hidden.has(i)) : messages;

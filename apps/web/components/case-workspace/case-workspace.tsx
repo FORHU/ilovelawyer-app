@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import ConsultationChat from "@/components/chat/consultation-chat";
 import { SourcesPanel } from "@/components/case-workspace/sources-panel";
@@ -46,8 +46,16 @@ const RESIZE_HANDLE_WIDTH = 6;
 export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const { t } = useTranslation("case-portfolio");
   const basePath = `/homepage/v2/case-portfolio/${caseId}`;
+  const router = useRouter();
   const searchParams = useSearchParams();
   const activeConsultationId = searchParams.get("c");
+  // Studio tiles (Mind Map) that need a consultation but don't have one yet create one
+  // on demand and report the new id back here, so the URL (and every sibling reading
+  // activeConsultationId off it — ThreadPicker, ConsultationChat) picks it up the same
+  // way a first chat message already does via ConsultationChat's own navigateToConsultation.
+  const handleConsultationCreated = (id: string) => {
+    router.replace(`${basePath}?c=${id}`);
+  };
 
   const [sourcesExpanded, setSourcesExpanded] = useState(true);
   const [studioExpanded, setStudioExpanded] = useState(true);
@@ -161,6 +169,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         width={studioRenderWidth}
         isResizing={studio.isDragging}
         onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
+        onConsultationCreated={handleConsultationCreated}
       />
     </div>
   );
