@@ -106,6 +106,9 @@ export interface UserDocument {
   fileUrl: string | null
   s3Key?: string | null
   documentType?: string | null
+  /** AI-assigned (Chat Wonder), free-form — distinct from the user-supplied `documentType`.
+   * Null while extraction/categorization hasn't finished yet. */
+  category?: string | null
   fileSize?: number | null
   mimeType?: string | null
   aiSummary: string | null
@@ -168,6 +171,9 @@ interface DocumentDataEntry {
     documentType?: string
     fileSize: number
     mimeType: string
+    /** Client-chosen (e.g. dropped into a folder) — when set, the backend skips its
+     * chat-wonder auto-categorization call and uses this value as-is. */
+    category?: string
   }
 }
 
@@ -188,7 +194,16 @@ export interface BulkUploadResult {
 export function useUploadCaseDocumentsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ files, caseId }: { files: File[]; caseId: string }): Promise<BulkUploadResult> => {
+    mutationFn: async ({
+      files,
+      caseId,
+      category,
+    }: {
+      files: File[]
+      caseId: string
+      /** Uploading straight into a folder card — see `DocumentDataEntry.metaData.category`. */
+      category?: string
+    }): Promise<BulkUploadResult> => {
       const confirmed: UserDocument[] = []
       const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
@@ -233,7 +248,7 @@ export function useUploadCaseDocumentsMutation() {
           const documentData: DocumentDataEntry[] = succeeded.map(({ file, key }) => ({
             filename: file.name,
             s3Key: key,
-            metaData: { fileSize: file.size, mimeType: file.type },
+            metaData: { fileSize: file.size, mimeType: file.type, ...(category ? { category } : {}) },
           }))
 
           const docs = await apiFetch<UserDocument[]>(`/api/my-cases/${caseId}/documents`, {

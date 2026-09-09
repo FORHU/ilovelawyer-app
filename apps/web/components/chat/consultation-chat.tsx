@@ -340,12 +340,13 @@ export default function ConsultationChat({
     return hidden.size > 0 ? messages.filter((_, i) => !hidden.has(i)) : messages;
   }, [messages]);
 
-  // TopicNavigator's contents — the topic bubbles of the most recently split AI reply only
-  // (see ilovelawyer-api's MessageGroup). Shared with the Case Workspace's own left-panel
-  // TopicNavigator (which isn't inside this component's tree) via use-topic-navigator.ts,
-  // so both derive identical topics/indices from the same persisted history independently.
+  // TopicNavigator's contents — the topic bubbles of every split AI reply in the thread so
+  // far (see ilovelawyer-api's MessageGroup), appended turn over turn. Shared with the Case
+  // Workspace's own left-panel TopicNavigator (which isn't inside this component's tree) via
+  // use-topic-navigator.ts, so both derive identical topics/indices from the same persisted
+  // history independently.
   const {
-    topics: latestSplitTopics,
+    topics: splitTopics,
     activeIndex: activeTopicIndex,
     scrollToTopic,
     isGenerating: isGeneratingTopics,
@@ -1078,7 +1079,7 @@ export default function ConsultationChat({
           ? "relative flex h-full min-h-0 flex-1 flex-col px-2"
           : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left,padding-right] duration-200 ${
               sidebarExpanded ? "md:pl-80" : "md:pl-32"
-            } ${(latestSplitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
+            } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
       }
     >
       {!embedded && (
@@ -1092,9 +1093,9 @@ export default function ConsultationChat({
         />
       )}
 
-      {!embedded && (latestSplitTopics.length > 0 || isGeneratingTopics) && (
+      {!embedded && (splitTopics.length > 0 || isGeneratingTopics) && (
         <TopicNavigator
-          topics={latestSplitTopics}
+          topics={splitTopics}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
           onExpandedChange={setTopicPanelExpanded}

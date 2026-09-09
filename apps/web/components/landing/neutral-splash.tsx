@@ -18,16 +18,16 @@ export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
   const phHref = `${protocol}://${hostForTenantCode("PH", currentHost)}`;
 
   return (
-    <section className="flex-1 flex flex-col items-center justify-center gap-12 px-8 py-24 text-center bg-[#f7fafc] dark:bg-background">
+    <section className="flex-1 flex flex-col items-center justify-center gap-12 px-8 py-24 text-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <span
-          className="text-[32px] text-black dark:text-foreground tracking-[-0.7px]"
+          className="text-[32px] text-foreground tracking-[-0.7px]"
           style={{ fontFamily: "'Libre Caslon Text', serif" }}
         >
           ilovelawyer
         </span>
         <p
-          className="text-[#45464d] dark:text-muted-foreground text-base max-w-md"
+          className="text-muted-foreground text-base max-w-md"
           style={{ fontFamily: "Inter, sans-serif" }}
         >
           Choose your jurisdiction to continue.
@@ -37,14 +37,14 @@ export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
       <div className="flex flex-col sm:flex-row gap-6">
         <a
           href={ukHref}
-          className="flex items-center justify-center gap-3 border border-black dark:border-foreground text-black dark:text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-black/5 dark:hover:bg-foreground/5 transition-colors duration-200"
+          className="flex items-center justify-center gap-3 border border-foreground text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-foreground/5 transition-colors duration-200"
           style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
         >
           🇬🇧 United Kingdom
         </a>
         <a
           href={phHref}
-          className="flex items-center justify-center gap-3 border border-black dark:border-foreground text-black dark:text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-black/5 dark:hover:bg-foreground/5 transition-colors duration-200"
+          className="flex items-center justify-center gap-3 border border-foreground text-foreground px-10 py-6 text-xs tracking-[1.2px] uppercase hover:bg-foreground/5 transition-colors duration-200"
           style={{ fontFamily: "Inter, sans-serif", fontWeight: 600 }}
         >
           🇵🇭 Philippines

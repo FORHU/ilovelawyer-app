@@ -14,7 +14,6 @@ import type {
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
-  RedTeamAssessment,
   SnapshotCustodyEvent,
   SnapshotEvidenceMatrixItem,
   TerminalCatalog,
@@ -195,15 +194,21 @@ export function useDeleteWorkspaceMutation() {
   })
 }
 
+// Refresh is queued server-side (AiGenerationQueue / SQS) rather than run inline — this POST
+// returns as soon as the job is claimed (AiGenerationJob, status IN_PROGRESS), not once the
+// refresh has actually finished. Invalidating the aiJob query here (rather than waiting for its
+// own next poll) is what makes useAiJobStatus's refetchInterval kick in immediately instead of
+// only after its next incidental refetch; that hook is what invalidates the snapshot once the
+// job flips to DONE, same as any other case-scoped Generate/Refresh action.
 export function useRefreshSnapshotMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      apiFetch<CaseSnapshot>(`/api/my-cases/${caseId}/refresh`, {
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/refresh`, {
         method: "POST",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseRefresh") })
     },
   })
 }
@@ -574,17 +579,22 @@ export function useDeleteDamageMutation(caseId: string) {
 }
 
 // A dedicated action (not part of useRefreshSnapshotMutation) — narrative generation is a
-// heavier, slower single-shot AI call the lawyer triggers deliberately.
+// heavier, slower single-shot AI call the lawyer triggers deliberately. Queued server-side
+// (AiGenerationQueue / SQS): this POST returns once the job is claimed (AiJobStatus,
+// IN_PROGRESS), not once the narrative is actually written — see useRefreshSnapshotMutation's
+// comment for why invalidating the aiJob query (not the snapshot) here is what matters.
+// CaseReconstructionPanel resyncs its edit drafts off the job's IN_PROGRESS -> DONE transition
+// rather than off this mutation's return value, since that value is no longer the finished row.
 export function useGenerateReconstructionMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      apiFetch<CaseReconstruction>(
+      apiFetch<AiJobStatus>(
         `/api/my-cases/${caseId}/reconstruction/generate`,
         { method: "POST" }
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstruction") })
     },
   })
 }
@@ -639,16 +649,18 @@ export function pollReconstructionAudio(caseId: string) {
 // Attacks the case's own structured findings (Legal Issues, Weaknesses, Contradictions,
 // Witnesses, Damages) rather than raw documents — see RedTeamSvc.generate on the backend.
 // No manual-edit counterpart to useUpdateReconstructionMutation: this is opposing counsel's
-// own commentary, not something the lawyer rewrites in their own voice.
+// own commentary, not something the lawyer rewrites in their own voice. Queued server-side
+// (AiGenerationQueue / SQS) — see useRefreshSnapshotMutation's comment for why invalidating
+// the aiJob query (not the snapshot) here is what matters.
 export function useGenerateRedTeamMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      apiFetch<RedTeamAssessment>(`/api/my-cases/${caseId}/red-team/generate`, {
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/red-team/generate`, {
         method: "POST",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "redTeam") })
     },
   })
 }

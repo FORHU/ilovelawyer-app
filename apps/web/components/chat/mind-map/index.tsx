@@ -19,7 +19,7 @@ import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2 } from 'lucide-react';
 import { MindMapProps } from './types';
-import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor } from './constants';
+import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor, fixedNodeDescription } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
 import { reconcileCollapsedIds, countDescendants } from './collapse';
@@ -45,6 +45,7 @@ const getInitialNodes = (): Node[] => {
       type: 'custom',
       data: {
         label: 'Case Analysis',
+        description: fixedNodeDescription({ isRoot: true }),
         isRoot: true,
         color: '#722f37',
         className: MIND_MAP_THEME.rootClass,
@@ -172,7 +173,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       const className = isRoot ? MIND_MAP_THEME.rootClass : MIND_MAP_THEME.nodeClass(Math.max(0, depth - 1));
 
       let label = item.label || item.text || 'Untitled';
-      const description = item.description || item.details || item.summary || '';
+      // Root + the five fixed first-level nodes get a static description; everything deeper
+      // keeps the model's. See MIND_MAP_FIXED_NODE_DESCRIPTIONS.
+      const description =
+        fixedNodeDescription({ id, label, isRoot }) ?? (item.description || item.details || item.summary || '');
 
       if (isRoot && (label === 'Case Analysis' || label === 'Legal Strategy Map')) {
         label = rootTitle;
@@ -791,7 +795,16 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                 </div>
                 <div className="space-y-4">
                   {(() => {
-                    const desc = selectedNodeData.description || "N/A";
+                    const desc = selectedNodeData.description || "";
+
+                    if (!desc.trim()) {
+                      return (
+                        <p className={`${MIND_MAP_CHROME.detailBody} text-muted-foreground italic`}>
+                          No additional details for this node.
+                        </p>
+                      );
+                    }
+
                     const isList = desc.includes('\n-') || desc.includes('\n*') || desc.startsWith('-') || desc.startsWith('*');
                     const isShort = desc.length < 50 && !desc.includes('.');
 

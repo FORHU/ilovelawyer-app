@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw } from "lucide-react"
+import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw, Maximize2, Minimize2 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
 import {
   useAiJobStatus,
@@ -101,6 +101,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [workspaceName, setWorkspaceName] = useState("")
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
+  // A maximized pane fills the whole grid on top of the others; its committed rect in
+  // `layout` is left untouched, so clearing this snaps it straight back to where it was.
+  const [maximizedId, setMaximizedId] = useState<PanelId | null>(null)
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const gridSnapping = useTerminalDisplayStore((state) => state.gridSnapping)
@@ -211,6 +214,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   }
 
   const setPreset = (preset: PresetValue) => {
+    setMaximizedId(null)
     setLayout((prev) => {
       if (!prev || !catalog.data) return prev
       return applyPreset(prev, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
@@ -218,10 +222,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   }
 
   const hidePanel = (id: PanelId) => {
+    setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => {
       if (!prev) return prev
       return { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
     })
+  }
+
+  const toggleMaximize = (id: PanelId) => {
+    setMaximizedId((cur) => (cur === id ? null : id))
+    bringToFront(id)
   }
 
   // rect is explicit for a drag-and-drop drop position; omitted for the Panel Library's
@@ -294,6 +304,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
+    if (maximizedId === panel.id) return
     event.currentTarget.setPointerCapture(event.pointerId)
     bringToFront(panel.id)
     moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
@@ -373,6 +384,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         selectedWorkspaceId={selectedWorkspaceId}
         onSelectWorkspace={(id) => {
           setSelectedWorkspaceId(id)
+          setMaximizedId(null)
           const workspace = workspaces.data?.find((w) => w.id === id)
           if (!workspace) return
           setLayout(
@@ -397,6 +409,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         }}
         saveDisabled={!workspaceName.trim() || createWorkspace.isPending}
         onResetWorkspace={() => {
+          setMaximizedId(null)
           resetWorkspace.mutate(layout.preset, {
             onSuccess: (workspace) => {
               setLayout(
@@ -480,7 +493,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </div>
         )}
         {visiblePanels.map((panel) => {
-          const rect = panelRect(panel)
+          const isMaximized = maximizedId === panel.id
+          const rect = isMaximized ? { x: 0, y: 0, width: 1, height: 1 } : panelRect(panel)
           const label = PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
           const isDragging = draggingId === panel.id
           return (
@@ -490,13 +504,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               data-panel-labels={panelLabels ? "on" : "off"}
               className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card ${
                 isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""
-              }`}
+              } ${isMaximized ? "shadow-2xl ring-1 ring-brand-gold/40" : ""}`}
               style={{
                 left: `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`,
                 top: `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`,
                 width: `calc(${rect.width * 100}% - ${PANE_GAP_PX * 2}px)`,
                 height: `calc(${rect.height * 100}% - ${PANE_GAP_PX * 2}px)`,
-                zIndex: isDragging ? 80 : panel.order + 1,
+                zIndex: isMaximized ? 90 : isDragging ? 80 : panel.order + 1,
               }}
               onPointerDown={() => bringToFront(panel.id)}
             >
@@ -505,13 +519,33 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 onPointerMove={onHeaderPointerMove}
                 onPointerUp={onHeaderPointerUp}
                 onPointerCancel={onHeaderPointerUp}
-                className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
-                title={t("dragHint")}
+                className={`terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 ${
+                  isMaximized ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                }`}
+                title={isMaximized ? undefined : t("dragHint")}
               >
                 <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {label}
                 </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => toggleMaximize(panel.id)}
+                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={isMaximized ? t("restorePane") : t("maximizePane")}
+                    >
+                      {isMaximized ? (
+                        <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isMaximized ? t("restorePane") : t("maximizePane")}</TooltipContent>
+                </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -530,23 +564,27 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                 <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
               </div>
-              <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-              <ResizeHandle
-                edge={{ s: true, e: true }}
-                className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
-                panel={panel}
-                onDown={onResizePointerDown}
-                onMove={onResizePointerMove}
-                onUp={onResizePointerUp}
-              >
-                <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
-              </ResizeHandle>
+              {!isMaximized && (
+                <>
+                  <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                  <ResizeHandle
+                    edge={{ s: true, e: true }}
+                    className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
+                    panel={panel}
+                    onDown={onResizePointerDown}
+                    onMove={onResizePointerMove}
+                    onUp={onResizePointerUp}
+                  >
+                    <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
+                  </ResizeHandle>
+                </>
+              )}
             </div>
           )
         })}

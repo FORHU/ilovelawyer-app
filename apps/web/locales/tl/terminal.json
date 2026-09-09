@@ -40,6 +40,8 @@
   "addSuggestedCount": "{{count}} handa nang idagdag",
   "addSuggestedEmpty": "Wala pang bagong iminumungkahi sa ngayon.",
   "hidePane": "Itago ang pane",
+  "maximizePane": "Palakihin ang pane",
+  "restorePane": "Ibalik ang pane",
   "dragHint": "I-drag ang title bar para ilipat ang pane. I-drag ang gilid o kanto para i-resize. Hindi magbabago ang ibang panes.",
   "fatalBanner": "May bukas na fatal risks sa kasong ito.",
   "loading": "Niloload ang terminal…",

@@ -83,12 +83,12 @@ export function TopicNavigatorLoading({ label, compact = false }: { label: strin
   );
 }
 
-/** Mini table-of-contents for the most recent split (MessageGroup) AI reply — lets the user
- * jump straight to a topic's bubble instead of scrolling the transcript. Mirrors
+/** Running table-of-contents across every split (MessageGroup) AI reply in the thread — lets
+ * the user jump straight to a topic's bubble instead of scrolling the transcript. Mirrors
  * consultation-sidebar.tsx's absolute two-state rail (collapsed icon strip / expanded list),
  * mirrored to the right edge, since this page has no real flex row to add a column to (see
- * that file's left-sidebar layout). Only ever rendered for the latest split reply — see
- * consultation-chat.tsx's `latestSplitTopics`. Case Workspace uses TopicNavigatorList directly
+ * that file's left-sidebar layout). Only ever rendered once at least one split reply exists —
+ * see consultation-chat.tsx's `splitTopics`. Case Workspace uses TopicNavigatorList directly
  * instead of this wrapper — see sources-panel.tsx — since it already has its own resizable
  * panel chrome (header, collapse toggle, width) this would otherwise duplicate. */
 export default function TopicNavigator({

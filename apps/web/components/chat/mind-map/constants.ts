@@ -21,6 +21,47 @@ export function mindMapGridColor(isDark: boolean) {
   return isDark ? '#1d2a47' : '#E2E2E2';
 }
 
+// chat-wonder-v2-api's `_generate_structured_data` (the_server.py) fixes the mind map's first
+// level to these five nodes and tells the model `description` is "required on every non-root
+// node", so it emits one for each, but they're filler restatements of the label ("Identified
+// risks that could impact the case outcome") that also vary run to run and are frequently
+// dropped entirely. These five plus the root are structural headers, not case content, so we
+// render a fixed description for them and ignore whatever the model sent. Everything below the
+// first level still uses the model's description, which is where a real description belongs.
+export const MIND_MAP_FIXED_NODE_DESCRIPTIONS: Record<string, string> = {
+  root: 'Strategic overview of the case, organised into its legal basis, key facts, remedies sought, risks, and next steps.',
+  legalBasis:
+    'The legal grounds the case rests on, covering the causes of action, statutes, and authorities that must be established for the claim to succeed.',
+  keyFacts:
+    'The facts that drive the analysis, including the events, dates, sums, and documents the legal arguments are built on.',
+  remedies:
+    'What the client is asking the court for, together with the alternative outcomes available if the primary remedy is not granted.',
+  risks:
+    'The main threats to a successful outcome, such as evidential gaps, procedural hurdles, and the adverse arguments the other side can run.',
+  nextSteps: 'The immediate actions needed to move the matter forward, listed in the order they should happen.',
+};
+
+// The model isn't told to use a fixed `id` for the five nodes (only a fixed label), so match
+// on a normalised label too when the id doesn't line up with the keys above.
+const MIND_MAP_FIXED_LABEL_TO_ID: Record<string, string> = {
+  'legal basis': 'legalBasis',
+  'key facts': 'keyFacts',
+  remedies: 'remedies',
+  risks: 'risks',
+  'next steps': 'nextSteps',
+};
+
+/**
+ * Static description for the root and the five fixed first-level nodes, or `undefined` for
+ * any other node (the caller then falls back to the model-supplied description).
+ */
+export function fixedNodeDescription(opts: { id?: string; label?: string; isRoot?: boolean }): string | undefined {
+  if (opts.isRoot) return MIND_MAP_FIXED_NODE_DESCRIPTIONS.root;
+  if (opts.id && MIND_MAP_FIXED_NODE_DESCRIPTIONS[opts.id]) return MIND_MAP_FIXED_NODE_DESCRIPTIONS[opts.id];
+  const mappedId = MIND_MAP_FIXED_LABEL_TO_ID[(opts.label ?? '').trim().toLowerCase()];
+  return mappedId ? MIND_MAP_FIXED_NODE_DESCRIPTIONS[mappedId] : undefined;
+}
+
 export function mindMapLink3dColor(isDark: boolean) {
   return isDark ? '#3a4a6c' : '#c5c9d4';
 }

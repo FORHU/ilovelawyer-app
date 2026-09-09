@@ -2,17 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronRight, AlertCircle, Network, Clock, FileText, Plus, Loader2, Trash2 } from "lucide-react";
-import {
-  useCaseQuery,
-  useCaseDocumentsQuery,
-  useUploadCaseDocumentsMutation,
-  useDeleteCaseDocumentMutation,
-} from "@/lib/cases/mutations";
+import { ChevronDown, ChevronRight, AlertCircle, Network, Clock } from "lucide-react";
+import { useCaseQuery } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { RagStatusBadge } from "@/components/cases/rag-status-badge";
-import FilePreviewModal from "@/components/chat/file-preview-modal";
-import type { MessageAttachment } from "@/components/chat/message-attachments";
+import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 
 interface CaseDetailsPanelProps {
   caseId: string;
@@ -151,132 +144,11 @@ export default function CaseDetailsPanel({ caseId }: CaseDetailsPanelProps) {
           </div>
 
           <div className="flex flex-col gap-2 border-t border-border pt-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                {t("detail.documents")}
-              </span>
-              <DocumentUploadButton caseId={caseId} />
-            </div>
-            <CaseDocumentList caseId={caseId} />
+            <DocumentFolderBrowser caseId={caseId} variant="compact" />
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-/** Small trigger + hidden file input that uploads straight into this case — same batch
- * upload path (presign in chunks, S3 PUT pool, chunked confirm) the Create Case intake form
- * uses, so selecting several files here behaves the same as attaching them at intake. */
-export function DocumentUploadButton({ caseId }: { caseId: string }) {
-  const { t } = useTranslation("case-portfolio");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { mutate: uploadDocuments, isPending, data } = useUploadCaseDocumentsMutation();
-  const hasFailures = (data?.failed.length ?? 0) > 0;
-
-  return (
-    <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] font-semibold text-foreground cursor-pointer transition-colors hover:border-brand-gold/40 disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-          >
-            {isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
-            {isPending ? t("detail.uploading") : t("detail.addDocument")}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Upload one or more documents to this case</TooltipContent>
-      </Tooltip>
-      {hasFailures && <span className="block text-right text-[11px] text-red-600 dark:text-red-400">{t("detail.uploadError")}</span>}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
-        className="hidden"
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          e.target.value = "";
-          if (files.length > 0) uploadDocuments({ files, caseId });
-        }}
-      />
-    </>
-  );
-}
-
-export function CaseDocumentList({
-  caseId,
-  listClassName = "max-h-48",
-}: {
-  caseId: string;
-  /** Overrides the list's height constraint — the default `max-h-48` fits this component's
-   * original popover home; Case Workspace's Sources panel passes a taller one instead. */
-  listClassName?: string;
-}) {
-  const { t } = useTranslation("case-portfolio");
-  const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId);
-  const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation();
-  // Opened in-app via FilePreviewModal (same as chat's attachment chips) instead of a bare
-  // `target="_blank"` link — the fileUrl is a short-lived presigned S3 GET, so navigating the
-  // whole tab to it also loses the case workspace behind it for no reason.
-  const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null);
-
-  if (isLoading) {
-    return <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>;
-  }
-
-  if (isError) {
-    return <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>;
-  }
-
-  if (!documents || documents.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("detail.noDocuments")}</p>;
-  }
-
-  return (
-    <>
-      <ul className={`flex flex-col gap-1.5 overflow-y-auto ${listClassName}`}>
-        {documents.map((doc) => (
-          <li key={doc.id} className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {doc.fileUrl ? (
-              <button
-                type="button"
-                onClick={() => setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })}
-                className="min-w-0 flex-1 truncate text-left text-sm text-foreground hover:text-brand-gold hover:underline"
-              >
-                {doc.name}
-              </button>
-            ) : (
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{doc.name}</span>
-            )}
-            <RagStatusBadge status={doc.ragStatus} />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isDeleting && deletingVars?.documentId === doc.id}
-                  onClick={() => deleteDocument({ documentId: doc.id, caseId })}
-                  aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  {isDeleting && deletingVars?.documentId === doc.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
-            </Tooltip>
-          </li>
-        ))}
-      </ul>
-      {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
-    </>
   );
 }
 
