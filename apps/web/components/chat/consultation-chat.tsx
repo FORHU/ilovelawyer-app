@@ -32,11 +32,27 @@ import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMind
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import {
+  useUploadAudioMutation,
+  useCreateTranscriptionMutation,
+  useStartTranscriptionJobMutation,
+  pollTranscriptionJobUntilDone,
+  chunkTranscription,
+} from "@/lib/transcription/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
 import { generateId } from "@/lib/id";
-import { useMediaQueueStore } from "@/lib/store/media-queue.store";
+import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
+// Copy for the composer's transcribing indicator, keyed off the same media-queue
+// TranscriptionStatus values transcribeAndSend already writes via updateTranscript — no
+// separate status vocabulary to keep in sync. Only the in-flight stages need copy here.
+const TRANSCRIBE_STAGE_COPY: Partial<Record<TranscriptionStatus, { key: string; defaultValue: string }>> = {
+  uploading: { key: "input.transcribeUploading", defaultValue: "Uploading recording…" },
+  starting: { key: "input.transcribeStarting", defaultValue: "Starting transcription…" },
+  in_progress: { key: "input.transcribing", defaultValue: "Transcribing…" },
+};
 
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -58,6 +74,13 @@ interface DisplayMessage {
 }
 
 const MAX_TEXTAREA_HEIGHT = 200;
+// No backend-imposed ceiling on message length (ilovelawyer-api's sendMessageSchema has no
+// .max() — only the global 1MB JSON body limit, ~1M characters away) — this is a UI-only
+// guard against pasting a whole document into the box instead of attaching it as a file.
+const MAX_MESSAGE_LENGTH = 8000;
+// Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
+// the attachment-chip row or upload/indexing time getting unwieldy.
+const MAX_ATTACHED_FILES = 10;
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -154,6 +177,9 @@ export default function ConsultationChat({
     }>
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  // Set when a select/drop/paste got clipped by MAX_ATTACHED_FILES — cleared on the next
+  // add attempt so it doesn't linger once the user's back under the cap.
+  const [fileLimitHit, setFileLimitHit] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
@@ -169,13 +195,24 @@ export default function ConsultationChat({
   }, []);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
+  const updateTranscript = useMediaQueueStore((s) => s.updateTranscript);
   const startSending = useSendingConsultationsStore((s) => s.startSending);
   const stopSending = useSendingConsultationsStore((s) => s.stopSending);
   const uploadDocuments = useUploadDocumentsMutation();
+  const uploadAudio = useUploadAudioMutation();
+  const createTranscription = useCreateTranscriptionMutation();
+  const startTranscriptionJob = useStartTranscriptionJobMutation();
 
   // Owned by VoiceDictate itself (mic/AudioContext/MediaRecorder) — this just mirrors its
   // recording state so the rest of the composer (+/textarea/Send) can hide while dictating.
   const [isRecording, setIsRecording] = useState(false);
+  // Id of the media-queue row a just-stopped recording is running through the real AWS
+  // Transcribe pipeline as (see transcribeAndSend below) — separate from isRecording, since
+  // VoiceDictate itself has already settled back to idle by the time this resolves. The
+  // *stage* shown in the composer is read straight off that row's own `status` below
+  // (transcribeStatus) rather than tracked a second time here.
+  const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const transcribeStatus = useMediaQueueStore((s) => s.transcripts.find((t) => t.id === transcribingId)?.status);
   const searchParams = useSearchParams();
   // See isolateConsultation's doc comment above — only set for panes that can be mounted
   // alongside another ConsultationChat sharing the same page URL.
@@ -456,11 +493,15 @@ export default function ConsultationChat({
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
     if (list.length === 0) return;
+    const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
+    const accepted = list.slice(0, remaining);
+    setFileLimitHit(accepted.length < list.length);
+    if (accepted.length === 0) return;
     setQueuedFiles((prev) => [
       ...prev,
-      ...list.map((file) => ({ id: generateId(), file, status: "pending" as const })),
+      ...accepted.map((file) => ({ id: generateId(), file, status: "pending" as const })),
     ]);
-    list.forEach(queueDocument);
+    accepted.forEach(queueDocument);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -474,6 +515,7 @@ export default function ConsultationChat({
 
   const handleRemoveFile = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
+    setFileLimitHit(false);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
@@ -665,8 +707,14 @@ export default function ConsultationChat({
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
-      // drop the local buffer in favor of the (now up to date) query cache.
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId) });
+      // drop the local buffer in favor of the (now up to date) query cache. `refetchType:
+      // "all"` (not the default "active") matters specifically for a brand-new consultation:
+      // useMessagesQuery is still `enabled` on the *old* (pre-create) consultationId at this
+      // point — React hasn't re-rendered with the new id yet — so there's no active observer
+      // for chatKeys.messages(activeConsultationId) and a default invalidate would just mark
+      // it stale without fetching, leaving the read below empty and always hitting the
+      // "looked incomplete" fallback for every first message in a new consultation.
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId), refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
 
@@ -707,6 +755,59 @@ export default function ConsultationChat({
         setIsSending(false);
         setPendingUrlConsultationId(null);
       }
+    }
+  };
+
+  // AWS Transcribe's raw output is tagged per segment, e.g. "[TS:1.19] [Speaker 0]: Mic
+  // check." — meaningful on the Transcription page's own diarized view, but not something a
+  // chat message should read as. Strips the tags for the chat send only; the stored
+  // transcript (and the Transcription page) keep the raw, tagged text untouched.
+  const stripTranscriptTags = (text: string) =>
+    text.replace(/\[TS:[\d.]+\]\s*\[Speaker\s*\d+\]:\s*/gi, " ").replace(/\s+/g, " ").trim();
+
+  // Drives a just-recorded voice clip through the same real pipeline the Transcription
+  // page's own "Transcribe" button uses (upload → create record → start AWS Transcribe job
+  // → poll to completion — see handleTranscribe in transcription/page.tsx), then sends the
+  // resulting text as a chat message. `id` is the local queue row (already created via
+  // queueTranscript before this runs) — updated through the same status progression so the
+  // Transcription page shows real progress for it, exactly as if submitted from there.
+  const transcribeAndSend = async (id: string, blob: Blob, durationSeconds: number) => {
+    setTranscribingId(id);
+    try {
+      updateTranscript(id, { status: "uploading" });
+      const uploaded = await uploadAudio.mutateAsync({
+        blob,
+        filename: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
+      });
+      updateTranscript(id, { status: "starting" });
+      const created = await createTranscription.mutateAsync({
+        title: t("input.voiceMessageTitle", { defaultValue: "Voice message" }),
+        audioFileId: uploaded.id,
+        duration: durationSeconds,
+        caseId: linkedCaseId || caseId || undefined,
+      });
+      updateTranscript(id, { backendId: created.id, status: "in_progress" });
+      await startTranscriptionJob.mutateAsync(created.id);
+      const result = await pollTranscriptionJobUntilDone(created.id);
+      if (result.status === "COMPLETED" && result.transcript?.trim()) {
+        updateTranscript(id, { status: "completed", transcript: result.transcript });
+        chunkTranscription(created.id).catch((err) => {
+          console.error("Failed to chunk transcription for RAG retrieval:", err);
+        });
+        void doSend(stripTranscriptTags(result.transcript));
+      } else {
+        updateTranscript(id, {
+          status: "failed",
+          errorMessage: result.failureReason ?? "AWS Transcribe reported the job as failed.",
+        });
+        alert(t("input.transcriptionFailed", { defaultValue: "Couldn't transcribe that recording. It's still saved on the Transcription page." }));
+      }
+    } catch (error) {
+      console.error("Voice transcription failed:", error);
+      updateTranscript(id, { status: "failed", errorMessage: (error as Error).message });
+      alert(t("input.transcriptionFailed", { defaultValue: "Couldn't transcribe that recording. It's still saved on the Transcription page." }));
+    } finally {
+      setTranscribingId(null);
     }
   };
 
@@ -882,6 +983,11 @@ export default function ConsultationChat({
                 </span>
               ))}
             </div>
+            {fileLimitHit && (
+              <span className="text-[10.5px] text-amber-500 pl-1">
+                {t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })}
+              </span>
+            )}
             {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
@@ -900,16 +1006,18 @@ export default function ConsultationChat({
          * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
          * out of alignment whenever the real rendered height differed even slightly. */}
         <div className={embedded ? "flex items-center gap-1.5" : "flex items-end gap-1.5"}>
-          {/* Hidden while dictating, same as the textarea/Send below — VoiceDictate takes
-              over the whole row (see its `flex-1` recording state further down). */}
-          {!embedded && !isRecording && (
+          {/* Hidden while dictating or transcribing, same as the textarea/Send below —
+              VoiceDictate (recording state) or the transcribing row (further down) takes
+              over the whole row instead. */}
+          {!embedded && !isRecording && !transcribingId && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={handleClipClick}
+                  disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                   aria-label={t("input.attachFile")}
-                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <Plus className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -918,27 +1026,61 @@ export default function ConsultationChat({
             </Tooltip>
           )}
 
-          {!isRecording && (
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
-                // Embedded shares this row with the send button (see the wrapping div above),
-                // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
-                // styling, where this is the row's only child) forced it to claim the full row
-                // width regardless of the button, pushing the button out past the pane's
-                // clipped edge (or spilling past the rounded border where nothing clips it).
-                embedded
-                  ? "min-w-0 flex-1 px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
-                  : "min-w-0 flex-1 text-[15px] text-foreground placeholder-muted-foreground px-1 py-1.5"
-              }`}
-              placeholder={inputPlaceholder ?? t("input.placeholder")}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              disabled={isSending}
-            />
+          {!isRecording && !transcribingId && (
+            <div className="relative min-w-0 flex-1">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+                  // Embedded shares this row with the send button (see the wrapping div above),
+                  // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
+                  // styling, where this is the row's only child) forced it to claim the full row
+                  // width regardless of the button, pushing the button out past the pane's
+                  // clipped edge (or spilling past the rounded border where nothing clips it).
+                  embedded
+                    ? "px-2 py-1.5 pr-12 text-[13px] text-foreground placeholder-muted-foreground"
+                    : "px-1 py-1.5 pr-12 text-[15px] text-foreground placeholder-muted-foreground"
+                }`}
+                placeholder={inputPlaceholder ?? t("input.placeholder")}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                disabled={isSending}
+                maxLength={MAX_MESSAGE_LENGTH}
+              />
+              {/* Only shows up once you're actually approaching the ceiling — the limit
+                  exists to catch someone pasting a whole document in, not to nag over
+                  ordinary typing. */}
+              {inputMessage.length >= MAX_MESSAGE_LENGTH - 500 && (
+                <span
+                  className={`pointer-events-none absolute top-1.5 right-2 text-[10.5px] tabular-nums ${
+                    inputMessage.length >= MAX_MESSAGE_LENGTH ? "text-red-500" : "text-muted-foreground"
+                  }`}
+                >
+                  {inputMessage.length}/{MAX_MESSAGE_LENGTH}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Bouncing-dots status row while a just-recorded clip runs through the real
+              transcription pipeline — same three-dot markup as ThinkingIndicator (assistant-message.tsx),
+              reused inline here rather than extracted since this is the only other place it
+              appears with composer-specific sizing. Takes the textarea's slot, same idea as
+              VoiceDictate's own recording row. */}
+          {!embedded && !isRecording && transcribingId && (
+            <div className="min-w-0 flex-1 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
+              <span className="flex items-center gap-0.5" aria-hidden="true">
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none" />
+              </span>
+              {(() => {
+                const stageCopy = TRANSCRIBE_STAGE_COPY[transcribeStatus ?? "uploading"] ?? TRANSCRIBE_STAGE_COPY.uploading!;
+                return t(stageCopy.key, { defaultValue: stageCopy.defaultValue });
+              })()}
+            </div>
           )}
 
           {embedded ? (
@@ -948,8 +1090,9 @@ export default function ConsultationChat({
                   <button
                     type="button"
                     onClick={handleClipClick}
+                    disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                     aria-label={t("input.attachFile")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <Paperclip className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -972,17 +1115,25 @@ export default function ConsultationChat({
             </>
           ) : (
             <>
-              <VoiceDictate
-                disabled={isSending}
-                onRecordingChange={setIsRecording}
-                onComplete={(blob, durationSeconds) => queueTranscript(blob, durationSeconds)}
-                onError={() => alert(t("microphoneError"))}
-                voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
-                stopLabel={t("input.stopRecording")}
-                cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
-              />
+              {!transcribingId && (
+                <VoiceDictate
+                  disabled={isSending}
+                  onRecordingChange={setIsRecording}
+                  onComplete={(blob, durationSeconds) => {
+                    // Queued immediately so it shows up on the Transcription page right away —
+                    // transcribeAndSend below drives this same row through upload/start-job/poll
+                    // rather than creating a second, disconnected backend record for it.
+                    const id = queueTranscript(blob, durationSeconds);
+                    void transcribeAndSend(id, blob, durationSeconds);
+                  }}
+                  onError={() => alert(t("microphoneError"))}
+                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                  stopLabel={t("input.stopRecording")}
+                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                />
+              )}
 
-              {!isRecording && (
+              {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button

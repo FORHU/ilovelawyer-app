@@ -5,7 +5,9 @@ import { Mic, Square, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface VoiceDictateProps {
-  /** Fired once a recording is stopped (not cancelled) — the finished clip. */
+  /** Fired once a recording is stopped (not cancelled) — the finished clip. Transcribing it
+   * to text is the caller's job (this component only records — see consultation-chat.tsx's
+   * real AWS Transcribe pipeline). */
   onComplete: (blob: Blob, durationSeconds: number) => void;
   /** Lets the parent hide/show the rest of the composer while dictating. */
   onRecordingChange?: (isRecording: boolean) => void;

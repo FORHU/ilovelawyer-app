@@ -32,7 +32,9 @@ interface MediaQueueState {
   transcripts: QueuedTranscript[]
   queueDocument: (file: File) => void
   removeDocument: (id: string) => void
-  queueTranscript: (blob: Blob, durationSeconds: number, text?: string) => void
+  /** Returns the new local queue id — callers that go on to drive it through the real
+   * transcription pipeline (upload → create → start-job → poll) need it for updateTranscript. */
+  queueTranscript: (blob: Blob, durationSeconds: number, text?: string) => string
   removeTranscript: (id: string) => void
   updateTranscript: (id: string, patch: Partial<QueuedTranscript>) => void
 }
@@ -122,6 +124,7 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
     }
     set((state) => ({ transcripts: [transcript, ...state.transcripts] }))
     dbPut(TRANSCRIPTS_STORE, transcript).catch((err) => console.error("Failed to persist queued transcript:", err))
+    return transcript.id
   },
 
   removeTranscript: (id) => {
