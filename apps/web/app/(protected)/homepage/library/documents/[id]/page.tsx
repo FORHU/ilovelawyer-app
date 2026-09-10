@@ -27,7 +27,7 @@ export default function LegalDocumentDetailPage() {
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="library" />
 
-      <main className="w-full flex flex-col flex-1 pt-14">
+      <main className="w-full flex flex-col flex-1 pt-16">
         <section className="bg-card border-b border-border">
           <div className="max-w-[900px] mx-auto px-6 md:px-10 py-8 flex flex-col gap-3">
             <Tooltip>

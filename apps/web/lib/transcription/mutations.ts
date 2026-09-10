@@ -82,6 +82,26 @@ export function pollTranscriptionJob(id: string): Promise<PollJobResult> {
   return apiFetch<PollJobResult>(`/api/transcriptions/${id}/poll-job`)
 }
 
+const POLL_INTERVAL_MS = 4000
+const MAX_POLL_ATTEMPTS = 150 // ~10 minutes ceiling for a single batch job
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Polls a started job to completion — resolves once AWS Transcribe reports COMPLETED or
+ * FAILED, or resolves as FAILED after MAX_POLL_ATTEMPTS so callers always get a result to
+ * branch on instead of hanging forever. A network/API error from pollTranscriptionJob
+ * itself still rejects — callers decide how to handle that (see useTranscriptionPolling). */
+export async function pollTranscriptionJobUntilDone(id: string): Promise<PollJobResult> {
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    await sleep(POLL_INTERVAL_MS)
+    const result = await pollTranscriptionJob(id)
+    if (result.status === "COMPLETED" || result.status === "FAILED") return result
+  }
+  return { status: "FAILED", failureReason: "Timed out waiting for the transcription job." }
+}
+
 export interface ChunkTranscriptionResult {
   ragStatus: string
   chunkCount: number
