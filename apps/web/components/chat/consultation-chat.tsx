@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Send, Clock, Grid2x2 } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Send, Clock, Grid2x2, PanelLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -167,6 +167,10 @@ export default function ConsultationChat({
   // page's left edge — on the case page that's the back link/case chip header row, which
   // the expanded rail would otherwise cover.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  // Mobile drawer open state, also lifted up (same reason as sidebarExpanded) — lets a
+  // trigger button render inline with page content (the conversation title / empty-state
+  // heading) instead of ConsultationSidebar's own floating circle being the only way in.
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   // Mirrors sidebarExpanded's reserve-room pattern below, but for TopicNavigator on the
   // right — defaults open since the panel only ever mounts for a split reply already on
   // screen (a rare, deliberate moment), unlike the always-present left sidebar.
@@ -1030,39 +1034,32 @@ export default function ConsultationChat({
          * items-center (not items-end) so the send button stays vertically centered against
          * whatever height the textarea actually renders at — items-end previously relied on a
          * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
-         * out of alignment whenever the real rendered height differed even slightly. */}
-        <div className={embedded ? "flex items-center gap-1.5" : "flex items-end gap-1.5"}>
-          {/* Hidden while dictating or transcribing, same as the textarea/Send below —
-              VoiceDictate (recording state) or the transcribing row (further down) takes
-              over the whole row instead. */}
-          {!embedded && !isRecording && !transcribingId && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleClipClick}
-                  disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
-                  aria-label={t("input.attachFile")}
-                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  <Plus className="w-4 h-4" aria-hidden="true" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("input.attachFile")}</TooltipContent>
-            </Tooltip>
-          )}
-
+         * out of alignment whenever the real rendered height differed even slightly.
+         *
+         * Below `sm`, this stacks into two rows instead: the textarea full-width on top, and
+         * the attach/voice/send controls in a compact row directly beneath it (no dead space
+         * between them, unlike sharing one row where a tall auto-grown textarea pushes the
+         * controls down to the bottom-aligned position with empty space above them). The
+         * controls wrapper uses `sm:contents` to unwrap back into this row's direct flex
+         * children at `sm` and up, where `sm:order-*` restores the original single-row
+         * sequence (attach, textarea, voice, send) — see the wrapper below. */}
+        <div className={embedded ? "flex items-center gap-1.5" : "flex flex-col sm:flex-row sm:items-end gap-1.5"}>
           {!isRecording && !transcribingId && (
-            <div className="relative min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1 sm:order-2">
               <textarea
                 ref={textareaRef}
                 rows={1}
-                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate ${
                   // Embedded shares this row with the send button (see the wrapping div above),
                   // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
                   // styling, where this is the row's only child) forced it to claim the full row
                   // width regardless of the button, pushing the button out past the pane's
                   // clipped edge (or spilling past the rounded border where nothing clips it).
+                  // placeholder:truncate keeps a long placeholder (e.g. the default
+                  // "Draft your legal inquiry or case particulars here...") on one line instead
+                  // of wrapping — a wrapped placeholder still inflates the textarea's own
+                  // scrollHeight (see the auto-grow effect below), visibly expanding an empty
+                  // box to 2+ lines on a narrow phone width before anything's even typed.
                   embedded
                     ? "px-2 py-1.5 pr-12 text-[13px] text-foreground placeholder-muted-foreground"
                     : "px-1 py-1.5 pr-12 text-[15px] text-foreground placeholder-muted-foreground"
@@ -1096,7 +1093,7 @@ export default function ConsultationChat({
               appears with composer-specific sizing. Takes the textarea's slot, same idea as
               VoiceDictate's own recording row. */}
           {!embedded && !isRecording && transcribingId && (
-            <div className="min-w-0 flex-1 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
+            <div className="min-w-0 flex-1 sm:order-2 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
               <span className="flex items-center gap-0.5" aria-hidden="true">
                 <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
                 <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
@@ -1140,42 +1137,70 @@ export default function ConsultationChat({
               </Tooltip>
             </>
           ) : (
-            <>
-              {!transcribingId && (
-                <VoiceDictate
-                  disabled={isSending}
-                  onRecordingChange={setIsRecording}
-                  onComplete={(blob, durationSeconds) => {
-                    // Queued immediately so it shows up on the Transcription page right away —
-                    // transcribeAndSend below drives this same row through upload/start-job/poll
-                    // rather than creating a second, disconnected backend record for it.
-                    const id = queueTranscript(blob, durationSeconds);
-                    void transcribeAndSend(id, blob, durationSeconds);
-                  }}
-                  onError={() => alert(t("microphoneError"))}
-                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
-                  stopLabel={t("input.stopRecording")}
-                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
-                />
-              )}
-
+            // Mobile row 2 (attach / voice / send together, below the textarea) — sm:contents
+            // unwraps this back into the outer row's direct flex children at `sm` and up, where
+            // each control's own sm:order-* restores the original single-row sequence.
+            <div className="flex items-center justify-between gap-1.5 sm:contents">
+              {/* Hidden while dictating or transcribing — VoiceDictate (recording state) or
+                  the transcribing row above takes over the composer instead. */}
               {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      type="submit"
-                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                      aria-label={t("input.sendMessage")}
-                      className="h-9 shrink-0 flex items-center gap-2.5 rounded-full bg-brand-gold text-background px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                      type="button"
+                      onClick={handleClipClick}
+                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
+                      aria-label={t("input.attachFile")}
+                      className="sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
-                      {t("input.sendLabel", { defaultValue: "Send" })}
-                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      <Plus className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                  <TooltipContent>{t("input.attachFile")}</TooltipContent>
                 </Tooltip>
               )}
-            </>
+
+              <div className="flex items-center gap-1.5 sm:contents">
+                {!transcribingId && (
+                  <VoiceDictate
+                    disabled={isSending}
+                    onRecordingChange={setIsRecording}
+                    onComplete={(blob, durationSeconds) => {
+                      // Queued immediately so it shows up on the Transcription page right away —
+                      // transcribeAndSend below drives this same row through upload/start-job/poll
+                      // rather than creating a second, disconnected backend record for it.
+                      const id = queueTranscript(blob, durationSeconds);
+                      void transcribeAndSend(id, blob, durationSeconds);
+                    }}
+                    onError={() => alert(t("microphoneError"))}
+                    voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                    stopLabel={t("input.stopRecording")}
+                    cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                    className="sm:order-3"
+                  />
+                )}
+
+                {!isRecording && !transcribingId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="submit"
+                        disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                        aria-label={t("input.sendMessage")}
+                        // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
+                        // and would otherwise dominate a narrow composer row alongside the
+                        // attach button and textarea.
+                        className="sm:order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                      >
+                        <span className="hidden sm:inline">{t("input.sendLabel", { defaultValue: "Send" })}</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </form>
@@ -1191,8 +1216,8 @@ export default function ConsultationChat({
         embedded
           ? "relative flex h-full min-h-0 flex-1 flex-col px-2"
           : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left,padding-right] duration-200 ${
-              sidebarExpanded ? "md:pl-80" : "md:pl-32"
-            } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
+              sidebarExpanded ? "lg:pl-80" : "lg:pl-32"
+            } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "lg:pr-72" : "lg:pr-32"}`
       }
     >
       {/* Full-bleed backdrop behind the whole Consultation workspace (landing, conversation,
@@ -1221,6 +1246,8 @@ export default function ConsultationChat({
           caseId={caseId}
           expanded={sidebarExpanded}
           onExpandedChange={setSidebarExpanded}
+          isMobileOpen={sidebarMobileOpen}
+          onMobileOpenChange={setSidebarMobileOpen}
         />
       )}
 
@@ -1267,11 +1294,15 @@ export default function ConsultationChat({
           return (
           <>
             {!mindMapOnly && !embedded && caseId && (
-              <div className="flex items-center gap-1 pt-4 shrink-0">
+              // overflow-x-auto rather than shrinking/wrapping the pills — a 3-tab row with
+              // full labels doesn't reliably fit a 375px viewport, and horizontal scroll on a
+              // short tab row is a well-understood mobile pattern that keeps every label
+              // fully readable instead of truncating it.
+              <div className="flex items-center gap-1 pt-4 shrink-0 overflow-x-auto scrollbar-none [-ms-overflow-style:none]">
                 <button
                   type="button"
                   onClick={() => handleTabChange("chat")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "chat" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1281,7 +1312,7 @@ export default function ConsultationChat({
                 <button
                   type="button"
                   onClick={() => handleTabChange("mindmap")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "mindmap" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1291,7 +1322,7 @@ export default function ConsultationChat({
                 <button
                   type="button"
                   onClick={() => handleTabChange("timeline")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1352,8 +1383,25 @@ export default function ConsultationChat({
                * The hero backdrop itself now lives once at the <main> level (see above), so every
                * state — including this one — sits over it. */
               <div className="flex-1 flex flex-col min-h-0">
+                {/* Top-left sidebar trigger, pinned at the same position as the active-chat
+                    sticky header's own inline button (same px-4 sm:px-16 gutter) — deliberately
+                    NOT part of the centered heading block below, which is vertically centered
+                    on the page and would otherwise drag the button down to the middle of the
+                    screen with it. */}
+                {!embedded && (
+                  <div className="lg:hidden flex-shrink-0 px-4 sm:px-16 py-3.5">
+                    <button
+                      type="button"
+                      onClick={() => setSidebarMobileOpen(true)}
+                      aria-label={t("sidebar.openConsultations")}
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
                 <div className={`relative flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-5 pb-24"}`}>
-                  <div className="text-center max-w-3xl mx-auto px-2">
+                  <div className="max-w-3xl mx-auto px-2 w-full text-center">
                     <h1
                       className={
                         embedded
@@ -1372,7 +1420,10 @@ export default function ConsultationChat({
                           key={prompt}
                           type="button"
                           onClick={() => void doSend(prompt)}
-                          className="rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
+                          // max-w-full + normal wrapping — these are free-form caller-provided
+                          // strings (emptyStatePrompts), so a long one must wrap inside the pill
+                          // instead of forcing it wider than the viewport.
+                          className="max-w-full whitespace-normal break-words rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
                         >
                           {prompt}
                         </button>
@@ -1389,6 +1440,16 @@ export default function ConsultationChat({
               {!embedded && (
                 <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 sm:px-16 py-3.5 border-b border-border">
                   <div className="flex items-center gap-2.5 min-w-0">
+                    {/* Inline with the title instead of ConsultationSidebar's own floating
+                        trigger — see sidebarMobileOpen above. */}
+                    <button
+                      type="button"
+                      onClick={() => setSidebarMobileOpen(true)}
+                      aria-label={t("sidebar.openConsultations")}
+                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
                     <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
                     <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
                       {consultationTitle ?? t("sidebar.untitledConsultation")}

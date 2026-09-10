@@ -17,6 +17,9 @@ interface VoiceDictateProps {
   voiceLabel: string;
   stopLabel: string;
   cancelLabel: string;
+  /** Merged onto the root element (idle pill or recording row) — e.g. an `sm:order-*` so a
+   * caller can reposition this within a flex row that reflows at a breakpoint. */
+  className?: string;
 }
 
 type Phase = "idle" | "recording" | "stopping";
@@ -45,6 +48,7 @@ export default function VoiceDictate({
   voiceLabel,
   stopLabel,
   cancelLabel,
+  className = "",
 }: VoiceDictateProps) {
   const [phase, setPhase] = useState<Phase>("idle");
 
@@ -187,7 +191,7 @@ export default function VoiceDictate({
             onClick={() => void start()}
             disabled={disabled}
             aria-label={voiceLabel}
-            className="h-9 shrink-0 flex items-center gap-2 rounded-full border border-white/25 pl-[10px] pr-3 text-[10px] font-semibold uppercase tracking-[1.2px] text-white transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+            className={`h-9 shrink-0 flex items-center gap-2 rounded-full border border-white/25 pl-[10px] pr-3 text-[10px] font-semibold uppercase tracking-[1.2px] text-white transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 ${className}`}
           >
             <Mic className="w-3.5 h-3.5" aria-hidden="true" />
             {voiceLabel}
@@ -202,7 +206,7 @@ export default function VoiceDictate({
     <div
       className={`min-w-0 flex-1 flex items-center gap-1.5 transition-all duration-[250ms] ease-out ${
         phase === "stopping" ? "opacity-0 scale-95" : "opacity-100 scale-100"
-      }`}
+      } ${className}`}
     >
       <Tooltip>
         <TooltipTrigger asChild>

@@ -22,6 +22,11 @@ interface ConsultationSidebarProps {
   onExpandedChange: (expanded: boolean) => void;
   /** Offset the rail from the global header. Terminal panes sit below their own chrome. */
   compact?: boolean;
+  /** Mobile drawer open state, lifted up (same reason as `expanded`) so the page can render
+   * its own trigger button inline with page content (e.g. next to the conversation title)
+   * instead of this component's own floating circle being the only way to open it. */
+  isMobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
 }
 
 export default function ConsultationSidebar({
@@ -32,9 +37,10 @@ export default function ConsultationSidebar({
   expanded,
   onExpandedChange,
   compact = false,
+  isMobileOpen,
+  onMobileOpenChange,
 }: ConsultationSidebarProps) {
   const { t } = useTranslation("homepage");
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { data: consultations } = useConsultationsQuery(caseId);
   const organization = useAuthStore((s) => s.organization);
   const renameConsultation = useRenameConsultationMutation();
@@ -83,15 +89,17 @@ export default function ConsultationSidebar({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [expanded, isMobileOpen, onExpandedChange]);
 
-  // Close the mobile drawer if the viewport grows past md (e.g. rotating a tablet).
+  // Close the mobile drawer if the viewport grows past lg (e.g. rotating a tablet) — matches
+  // GlobalHeader's own mobile-drawer breakpoint, so both switch together instead of leaving
+  // a tablet-portrait viewport with a mismatched half-mobile, half-desktop chrome.
   useEffect(() => {
     if (!isMobileOpen) return;
     const handleResize = () => {
-      if (window.innerWidth >= 768) setIsMobileOpen(false);
+      if (window.innerWidth >= 1024) onMobileOpenChange(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [isMobileOpen]);
+  }, [isMobileOpen, onMobileOpenChange]);
 
   const panelBody = (isMobile: boolean) => (
     <>
@@ -101,7 +109,7 @@ export default function ConsultationSidebar({
             onClick={() => {
               onNewChat();
               onExpandedChange(false);
-              setIsMobileOpen(false);
+              onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
             className={`h-10 flex items-center gap-3 rounded-full border border-white/40 hover:border-white shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
@@ -200,7 +208,7 @@ export default function ConsultationSidebar({
                         onClick={() => {
                           onSelectConsultation(c.id);
                           onExpandedChange(false);
-                          setIsMobileOpen(false);
+                          onMobileOpenChange(false);
                         }}
                         // Gemini-style pill: the consultation you're currently in gets its own
                         // rounded, bordered chip; a transparent border of the same width is kept
@@ -277,28 +285,12 @@ export default function ConsultationSidebar({
 
   return (
     <>
-      {/* Menu button that opens the mobile drawer — the collapsed w-16 rail below is
-          sized for desktop and has no comfortable place to sit on a ~375px screen. */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setIsMobileOpen(true)}
-            aria-label={t("sidebar.openConsultations")}
-            className={`md:hidden absolute left-2 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${compact ? "top-2" : "top-[72px]"}`}
-          >
-            <PanelLeft className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{t("sidebar.openConsultations")}</TooltipContent>
-      </Tooltip>
-
       {/* Desktop/tablet rail — collapsed-to-expanded width toggle. Solid background (not a
           floating frosted-glass overlay) per the redesign, so it reserves layout width
           instead of sitting on top of whatever's underneath it. */}
       <aside
         ref={asideRef}
-        className={`hidden md:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
           compact ? "top-0" : "top-16"
         } ${expanded ? "w-72" : "w-16"}`}
       >
@@ -331,8 +323,8 @@ export default function ConsultationSidebar({
 
       {/* Mobile full-screen overlay drawer */}
       {isMobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/40" onClick={() => onMobileOpenChange(false)} aria-hidden="true" />
           <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
               <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
@@ -340,7 +332,7 @@ export default function ConsultationSidebar({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => setIsMobileOpen(false)}
+                    onClick={() => onMobileOpenChange(false)}
                     aria-label={t("sidebar.closeConsultations")}
                     className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
