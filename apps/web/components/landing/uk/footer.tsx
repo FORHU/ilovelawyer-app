@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 // UK-only design — see uk/hero-section.tsx for why the context is hardcoded.
@@ -64,9 +65,10 @@ export function UkLandingFooter() {
       <div className="max-w-[1440px] mx-auto">
         <Link
           href="/"
-          className="inline-block font-['Libre_Caslon_Text'] text-[24px] mb-4 hover:opacity-70 transition-opacity duration-200"
+          className="mb-4 inline-block hover:opacity-70 transition-opacity duration-200"
+          aria-label="ilovelawyer"
         >
-          ilovelawyer
+          <Logo forBackground="dark" size={28} />
         </Link>
         <p className="text-white/60 text-sm max-w-[420px] mb-12">{t("footer.tagline", tCtx)}</p>
 

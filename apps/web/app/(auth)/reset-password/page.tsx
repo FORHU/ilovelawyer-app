@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 import { useResetPasswordMutation, useValidateResetTokenQuery } from "@/lib/auth/mutations";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const inputClass =
   "w-full border border-border rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-foreground placeholder-muted-foreground outline-none focus:border-brand-gold transition-colors";
@@ -49,9 +50,7 @@ function ResetPasswordContent() {
 
         {/* Logo */}
         <div className="absolute top-16 left-16 z-10">
-          <p className="text-[28px] text-white tracking-[-0.7px]" style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}>
-            ilovelawyer
-          </p>
+          <Logo forBackground="dark" size={40} />
         </div>
 
         {/* Center content */}

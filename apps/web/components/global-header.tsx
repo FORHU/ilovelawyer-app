@@ -8,6 +8,7 @@ import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -145,9 +146,10 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       >
         <Link
           href="/"
-          className="font-['Libre_Caslon_Text'] text-white text-[22px] tracking-[-0.6px] shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          aria-label={t("appName")}
         >
-          {t("appName")}
+          <Logo forBackground="dark" size={40} />
         </Link>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">

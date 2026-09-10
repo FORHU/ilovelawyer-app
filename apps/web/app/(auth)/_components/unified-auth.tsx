@@ -6,6 +6,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -252,12 +253,7 @@ function UnifiedAuthContent() {
         <div className="absolute inset-0 bg-[rgba(88,79,79,0.35)]" />
 
         <div className="absolute top-16 left-16 z-10">
-          <p
-            className="text-[28px] text-white tracking-[-0.7px]"
-            style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
-          >
-            ilovelawyer
-          </p>
+          <Logo forBackground="dark" size={40} />
         </div>
 
         <div className="absolute inset-0 flex flex-col items-start justify-center pl-16 pr-12 z-10">
