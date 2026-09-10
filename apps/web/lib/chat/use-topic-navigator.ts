@@ -35,7 +35,13 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
     list.forEach((m, i) => {
       if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
         hidden.add(i);
-        if (list[i + 1]?.role === "assistant") hidden.add(i + 1);
+        // Same run-of-consecutive-assistant-messages hiding as ConsultationChat's own copy of
+        // this filter — a split reply's sibling topics all belong to this hidden turn.
+        let j = i + 1;
+        while (list[j]?.role === "assistant") {
+          hidden.add(j);
+          j++;
+        }
       }
     });
     return hidden.size > 0 ? list.filter((_, i) => !hidden.has(i)) : list;

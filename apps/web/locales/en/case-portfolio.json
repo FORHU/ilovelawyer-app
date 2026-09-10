@@ -86,6 +86,7 @@
     "resizeStudio": "Resize Studio panel",
     "backToStudio": "Back to Studio",
     "documentsTab": "Documents",
+    "documentsIndexing": "Indexing documents…",
     "relatedTab": "Related Cases",
     "relatedEmpty": "No related cases surfaced yet for this chat.",
     "relatedNoConsultation": "Start a chat to see related cases here.",

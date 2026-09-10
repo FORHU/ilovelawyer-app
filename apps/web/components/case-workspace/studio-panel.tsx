@@ -8,9 +8,9 @@ import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
-import { useMessagesQuery, useChatSessionQuery, sendChatMessage } from "@/lib/chat/mutations";
+import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
-import { useCaseQuery } from "@/lib/cases/mutations";
+import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
@@ -70,6 +70,12 @@ interface StudioPanelProps {
    * (never shrinks one the user already dragged past it), and the result stays a normal
    * user-draggable width afterwards. */
   onOpenMindMap?: () => void;
+  /** Mind Map needs a consultation to send its generation prompt into. When none is active yet,
+   * handleGenerateMindMap creates one on demand (same pattern as ConsultationChat's own
+   * ensureConsultationId) and reports the new id back up here so case-workspace.tsx can put it
+   * in the URL — the single place activeConsultationId is read from, shared by every sibling
+   * (ThreadPicker, ConsultationChat) that needs to agree on which consultation is active. */
+  onConsultationCreated?: (consultationId: string) => void;
 }
 
 /** Case Workspace's right panel. Documents, Mind Map (per-consultation), Timeline and Data
@@ -84,7 +90,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -95,6 +101,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const isGenerating = isGeneratingLocal || mindMapJob.data?.status === "IN_PROGRESS";
 
   const { data: caseRecord } = useCaseQuery(caseId);
+  // Same PENDING-polling query DocumentFolderBrowser's own indexing badge uses — reused here
+  // rather than duplicated, so the Documents tile and the detail view it opens always agree.
+  const caseDocumentsQuery = useCaseDocumentsQuery(caseId);
+  const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
   const { data: session } = useChatSessionQuery();
   const queryClient = useQueryClient();
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
@@ -172,44 +182,48 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     if (kind === "mindmap") onOpenMindMap?.();
   };
 
+  const createConsultation = useCreateConsultationMutation();
+
   // Sends the same system-driven prompt ConsultationChat's own Mind Map tab uses to trigger
   // generation (consultation-chat.tsx) — sent directly rather than routed through the embedded
   // Chat panel next door, since Studio has no way to reach into a sibling component's state.
   // ConsultationChat's `visibleMessages` filter matches on this exact string, so the turn still
   // stays hidden from the transcript regardless of which panel sent it.
+  // Mind Map's generation lock and grounding are already case-scoped (AiGenerationLockSvc.run
+  // keyed on caseId, not consultationId — see ilovelawyer-api's chat.service.ts), so the only
+  // reason this needs a consultationId at all is that the prompt has to travel through the
+  // per-consultation messages endpoint. When one isn't active yet, create it here first — same
+  // pattern as ConsultationChat's own ensureConsultationId — instead of requiring the lawyer to
+  // go start a chat manually before Mind Map does anything.
   const handleGenerateMindMap = useCallback(async () => {
-    if (!consultationId || !session || isGenerating) return;
+    if (!session || isGenerating) return;
     setIsGenerating(true);
     setGenerateError(false);
     try {
+      let targetConsultationId = consultationId;
+      if (!targetConsultationId) {
+        const consultation = await createConsultation.mutateAsync({ caseId });
+        targetConsultationId = consultation.id;
+        onConsultationCreated?.(consultation.id);
+      }
       await sendChatMessage({
-        consultationId,
+        consultationId: targetConsultationId,
         sessionId: session.session_id,
         message: AUTO_MINDMAP_PROMPT,
         caseId,
         onChunk: () => {},
       });
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(targetConsultationId) });
     } catch {
       setGenerateError(true);
     } finally {
       setIsGenerating(false);
     }
-  }, [consultationId, session, isGenerating, caseId, queryClient]);
+  }, [consultationId, session, isGenerating, caseId, queryClient, createConsultation, onConsultationCreated]);
 
-  // Auto-triggers the same generation the manual CTA below fires — once per consultation, as
-  // soon as its message history has actually loaded (not on the very first render, where
-  // `history` is still undefined and we can't yet tell whether a map already exists) and only
-  // if it turns out there's no map yet. Keyed by consultationId (not a plain boolean) so
-  // switching to a different, still-map-less consultation retries instead of staying stuck on
-  // whichever one first triggered it.
-  const autoGeneratedForRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!consultationId || !session || history === undefined || activeMindMap) return;
-    if (autoGeneratedForRef.current === consultationId) return;
-    autoGeneratedForRef.current = consultationId;
-    void handleGenerateMindMap();
-  }, [consultationId, session, history, activeMindMap, handleGenerateMindMap]);
+  // Mind Map generation is request-only — no auto-fire on mount (see the matching removal in
+  // consultation-chat.tsx for why: every case was showing the same generic strategy outline
+  // without the lawyer having asked for it). The CTA buttons below are the only trigger now.
 
   // Script generation → Polly render polling → playable URL — shared with the Legal
   // Terminal's Audio Overview panel via useAudioOverview (lib/chat/use-audio-overview.ts).
@@ -402,10 +416,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3 ${expanded ? "" : "items-center"}`}>
           {/* Documents is already-there data (this case's Case Documents), not something to
            * generate/refresh — so unlike the three tiles below, this one opens the detail view
-           * directly instead of triggering an action first. */}
+           * directly instead of triggering an action first. The spinner here is purely a status
+           * signal (any row still PENDING indexing), not a disable-while-busy state like the
+           * other tiles' — the tile stays clickable so the lawyer can open Documents and watch
+           * individual rows flip to ready, same as Mind Map's own generating indicator. */}
           <StudioTile
-            icon={Files}
-            label={t("workspace.documentsTab")}
+            icon={isIndexingDocuments ? Loader2 : Files}
+            iconSpinning={isIndexingDocuments}
+            label={isIndexingDocuments ? t("workspace.documentsIndexing") : t("workspace.documentsTab")}
             expanded={expanded}
             onClick={() => openStudioTile("documents")}
           />

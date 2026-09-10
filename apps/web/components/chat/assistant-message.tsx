@@ -98,7 +98,12 @@ function convertHtmlAnchors(content: string): string {
   return content.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
 }
 
-export default function AssistantMessage({ content, className }: { content: string; className?: string }) {
+// Memoized: this re-parses `content` through ReactMarkdown on every render, which is real
+// CPU cost for a long reply. Without memo, typing in the chat input (a sibling state update
+// in the same parent, ConsultationChat) re-rendered every message bubble in the transcript on
+// every keystroke, including re-parsing markdown for messages that haven't changed at all —
+// the more/longer the conversation, the worse the input lag got.
+const AssistantMessage = React.memo(function AssistantMessage({ content, className }: { content: string; className?: string }) {
   const cleaned = convertHtmlAnchors(stripRelatedQueries(stripTraceBlocks(content)));
   return (
     <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
@@ -107,7 +112,8 @@ export default function AssistantMessage({ content, className }: { content: stri
       </ReactMarkdown>
     </div>
   );
-}
+});
+export default AssistantMessage;
 
 // Shown in place of the assistant bubble from the moment a send fires until the
 // first streamed chunk lands — mirrors the brand wordmark so the wait state still
