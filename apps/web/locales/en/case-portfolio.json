@@ -120,7 +120,11 @@
   },
   "chat": {
     "emptyHeading": "Ask about {{caseName}}",
-    "emptySubheading": "Consult the AI with this case's details already in context — ask about strategy, drafting, or next steps."
+    "emptySubheading": "Consult the AI with this case's details already in context — ask about strategy, drafting, or next steps.",
+    "emptyPromptSummarizeCase": "Summarize this case's key facts",
+    "emptyPromptNextSteps": "What are the next steps for this case?",
+    "emptyPromptRisks": "Identify potential risks in this case",
+    "emptyPromptStatusUpdate": "Draft a case status update"
   },
   "workspace": {
     "sources": "Topics",

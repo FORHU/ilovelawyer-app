@@ -152,10 +152,21 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         <ConsultationChat
           embedded
           centerContent
+          showSuggestedPrompts
           caseId={caseId}
           basePath={basePath}
           emptyStateHeading={caseRecord ? t("chat.emptyHeading", { caseName: caseRecord.caseName }) : undefined}
           emptyStateSubheading={t("chat.emptySubheading")}
+          // Fallback pool only — ConsultationChat prioritizes this case's own uploaded
+          // documents ("Summarize <file>") and its past consultation titles first, and
+          // only fills remaining pill slots from this generic case-shaped list when
+          // there's nothing case-specific yet to suggest (see its suggestedPrompts memo).
+          emptyStatePrompts={[
+            t("chat.emptyPromptSummarizeCase", { defaultValue: "Summarize this case's key facts" }),
+            t("chat.emptyPromptNextSteps", { defaultValue: "What are the next steps for this case?" }),
+            t("chat.emptyPromptRisks", { defaultValue: "Identify potential risks in this case" }),
+            t("chat.emptyPromptStatusUpdate", { defaultValue: "Draft a case status update" }),
+          ]}
         />
       </div>
     </div>

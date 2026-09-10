@@ -1,7 +1,8 @@
 {
   "emptyState": {
     "heading": "Expert Legal Consultation",
-    "subheading": "Secure, AI-powered legal analysis and case drafting for the modern practitioner."
+    "subheading": "Secure, AI-powered legal analysis and case drafting for the modern practitioner.",
+    "summarizeDocumentPrompt": "Summarize \"{{fileName}}\""
   },
   "input": {
     "placeholder": "Draft your legal inquiry or case particulars here...",

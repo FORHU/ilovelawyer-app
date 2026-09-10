@@ -44,7 +44,11 @@
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",
-    "emptySubheading": "Kumonsulta sa AI na may nakalagay nang detalye ng kasong ito — magtanong tungkol sa estratehiya, pagdadrap, o susunod na hakbang."
+    "emptySubheading": "Kumonsulta sa AI na may nakalagay nang detalye ng kasong ito — magtanong tungkol sa estratehiya, pagdadrap, o susunod na hakbang.",
+    "emptyPromptSummarizeCase": "Ibuod ang mga pangunahing detalye ng kasong ito",
+    "emptyPromptNextSteps": "Ano ang susunod na hakbang para sa kasong ito?",
+    "emptyPromptRisks": "Tukuyin ang mga posibleng panganib sa kasong ito",
+    "emptyPromptStatusUpdate": "Gumawa ng case status update"
   },
   "workspace": {
     "sources": "Mga Paksang Natalakay sa Konsultasyong Ito",
