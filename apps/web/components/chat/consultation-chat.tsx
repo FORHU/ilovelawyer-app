@@ -3,19 +3,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Clock } from "lucide-react";
+import Link from "next/link";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import TopicNavigator from "@/components/chat/topic-navigator";
+import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
-import { CaseHubWidget } from "@/components/chat/case-hub-widget";
+import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
-import EmailComposerModal from "@/components/chat/email-composer-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import {
@@ -23,6 +24,7 @@ import {
   useConsultationsQuery,
   useCreateConsultationMutation,
   useMessagesQuery,
+  useRelatedCasesQuery,
   sendChatMessage,
   type ChatMessage,
 } from "@/lib/chat/mutations";
@@ -30,11 +32,27 @@ import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMind
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import {
+  useUploadAudioMutation,
+  useCreateTranscriptionMutation,
+  useStartTranscriptionJobMutation,
+  pollTranscriptionJobUntilDone,
+  chunkTranscription,
+} from "@/lib/transcription/mutations";
 
 import { chatKeys } from "@/lib/query-keys";
 import { generateId } from "@/lib/id";
-import { useMediaQueueStore } from "@/lib/store/media-queue.store";
+import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
+// Copy for the composer's transcribing indicator, keyed off the same media-queue
+// TranscriptionStatus values transcribeAndSend already writes via updateTranscript — no
+// separate status vocabulary to keep in sync. Only the in-flight stages need copy here.
+const TRANSCRIBE_STAGE_COPY: Partial<Record<TranscriptionStatus, { key: string; defaultValue: string }>> = {
+  uploading: { key: "input.transcribeUploading", defaultValue: "Uploading recording…" },
+  starting: { key: "input.transcribeStarting", defaultValue: "Starting transcription…" },
+  in_progress: { key: "input.transcribing", defaultValue: "Transcribing…" },
+};
 
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -55,7 +73,15 @@ interface DisplayMessage {
   groupTitle?: string | null;
 }
 
-const MAX_TEXTAREA_HEIGHT = 200;
+// Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
+// the attachment-chip row or upload/indexing time getting unwieldy.
+const MAX_ATTACHED_FILES = 10;
+// No backend size cap on the presigned-S3 case-document upload path either (unlike the
+// /api/files/upload route the voice recorder uses, which multer caps at 25MB — see
+// ilovelawyer-api/src/routes/files.route.ts). Matching that existing number here rather
+// than inventing a new one: generous for a scanned legal PDF, but keeps a single attachment
+// from stalling the browser upload / RAG indexing for minutes.
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
@@ -78,6 +104,10 @@ interface ConsultationChatProps {
   /** Overrides for the empty-state copy shown before any consultation is picked/started. */
   emptyStateHeading?: string;
   emptyStateSubheading?: string;
+  /** Full-bleed background image behind the empty-state landing (Consultation redesign only). */
+  emptyStateHeroImage?: string;
+  /** Clickable example-prompt pills shown below the composer on the empty-state landing. */
+  emptyStatePrompts?: string[];
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
@@ -115,6 +145,8 @@ export default function ConsultationChat({
   caseId,
   emptyStateHeading,
   emptyStateSubheading,
+  emptyStateHeroImage,
+  emptyStatePrompts,
   headerSlot,
   embedded = false,
   centerContent = false,
@@ -130,6 +162,10 @@ export default function ConsultationChat({
   // page's left edge — on the case page that's the back link/case chip header row, which
   // the expanded rail would otherwise cover.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  // Mobile drawer open state, also lifted up (same reason as sidebarExpanded) — lets a
+  // trigger button render inline with page content (the conversation title / empty-state
+  // heading) instead of ConsultationSidebar's own floating circle being the only way in.
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   // Mirrors sidebarExpanded's reserve-room pattern below, but for TopicNavigator on the
   // right — defaults open since the panel only ever mounts for a split reply already on
   // screen (a rare, deliberate moment), unlike the always-present left sidebar.
@@ -146,12 +182,15 @@ export default function ConsultationChat({
     }>
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  // Set when a select/drop/paste got clipped by MAX_ATTACHED_FILES — cleared on the next
+  // add attempt so it doesn't linger once the user's back under the cap.
+  const [fileLimitHit, setFileLimitHit] = useState(false);
+  // Names of any files a select/drop/paste dropped for exceeding MAX_FILE_SIZE_BYTES —
+  // cleared on the next add attempt, same lifecycle as fileLimitHit.
+  const [oversizedFileNames, setOversizedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
-  // Whether the Email action (docs/adr/0013-case-consultation-email-action.md) is open — lives
-  // here (not per-page) since the toolbar button that opens it is shared by every consultation.
-  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
   // Blob URLs minted for just-sent attachments (see handleSendMessage) so this session's own
   // sends preview instantly without waiting on the backend's fileUrl (not live yet — ADR 0012).
   // Revoked on unmount only, not per-send, since a still-open preview modal or a message still
@@ -164,14 +203,24 @@ export default function ConsultationChat({
   }, []);
   const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
+  const updateTranscript = useMediaQueueStore((s) => s.updateTranscript);
   const startSending = useSendingConsultationsStore((s) => s.startSending);
   const stopSending = useSendingConsultationsStore((s) => s.stopSending);
   const uploadDocuments = useUploadDocumentsMutation();
+  const uploadAudio = useUploadAudioMutation();
+  const createTranscription = useCreateTranscriptionMutation();
+  const startTranscriptionJob = useStartTranscriptionJobMutation();
 
+  // Owned by VoiceDictate itself (mic/AudioContext/MediaRecorder) — this just mirrors its
+  // recording state so the rest of the composer (+/textarea/Send) can hide while dictating.
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingStartRef = useRef<number>(0);
+  // Id of the media-queue row a just-stopped recording is running through the real AWS
+  // Transcribe pipeline as (see transcribeAndSend below) — separate from isRecording, since
+  // VoiceDictate itself has already settled back to idle by the time this resolves. The
+  // *stage* shown in the composer is read straight off that row's own `status` below
+  // (transcribeStatus) rather than tracked a second time here.
+  const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const transcribeStatus = useMediaQueueStore((s) => s.transcripts.find((t) => t.id === transcribingId)?.status);
   const searchParams = useSearchParams();
   // See isolateConsultation's doc comment above — only set for panes that can be mounted
   // alongside another ConsultationChat sharing the same page URL.
@@ -237,13 +286,15 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
+    pollWhilePending: !!pendingTurn,
+  });
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
   const isGeneratingMindMap = isSending || mindMapJob.data?.status === "IN_PROGRESS";
 
-  // Explicit case linkage for CaseHubWidget's case-details panel. On a case's own chat
+  // Explicit case linkage for the sticky conversation header's linked-case chip. On a case's own chat
   // page the `caseId` prop already pins it; on the general /homepage chat, fall back to
   // whichever case the current consultation is tagged with, or a pending ?caseId= carried
   // over from a case's "Start Chat" action. Deliberately does NOT fall back further to
@@ -296,6 +347,20 @@ export default function ConsultationChat({
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
   const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
 
+  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
+  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
+  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
+  // above); once the persisted history is at least as long as the optimistic buffer, hand the
+  // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  useEffect(() => {
+    if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
+    const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
+    if (persistedCount >= pendingTurn.messages.length) {
+      setPendingTurn(null);
+      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
+    }
+  }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
+
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
   // below covers the same-instance case (already on this page, no remount happens when only
@@ -319,6 +384,12 @@ export default function ConsultationChat({
   };
 
   const { data: linkedCaseRecord } = useCaseQuery(linkedCaseId ?? "");
+  const consultationTitle = caseConsultations?.find((c) => c.id === consultationId)?.title?.trim() || null;
+  // Fetched once here so both the assistant byline's citation count and the
+  // inline Related Cases card (rendered under the latest reply, not trailing the whole
+  // transcript — see the message loop below) share one fetch instead of two.
+  const { data: relatedCasesData, isLoading: isLoadingRelatedCases } = useRelatedCasesQuery(consultationId ?? undefined);
+  const relatedCases = relatedCasesData?.relatedCases ?? [];
 
   // The mind map is a living document for the whole consultation, not any one message — so
   // this walks the transcript (including whatever's still streaming in) back-to-front and
@@ -383,25 +454,19 @@ export default function ConsultationChat({
     }
   }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
 
+  // CSS max-h-[50vh] on the textarea (below) is the actual visual cap — the browser clamps
+  // to it and shows a scrollbar regardless of what height gets set here, so this can just
+  // always request the content's full natural height rather than also clamping in JS.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Release the microphone if the user navigates away mid-recording.
-  useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -455,11 +520,22 @@ export default function ConsultationChat({
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
     if (list.length === 0) return;
+
+    const [withinSizeLimit, oversized] = [
+      list.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
+      list.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+    ];
+    setOversizedFileNames(oversized.map((f) => f.name));
+
+    const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
+    const accepted = withinSizeLimit.slice(0, remaining);
+    setFileLimitHit(accepted.length < withinSizeLimit.length);
+    if (accepted.length === 0) return;
     setQueuedFiles((prev) => [
       ...prev,
-      ...list.map((file) => ({ id: generateId(), file, status: "pending" as const })),
+      ...accepted.map((file) => ({ id: generateId(), file, status: "pending" as const })),
     ]);
-    list.forEach(queueDocument);
+    accepted.forEach(queueDocument);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -473,6 +549,8 @@ export default function ConsultationChat({
 
   const handleRemoveFile = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
+    setFileLimitHit(false);
+    setOversizedFileNames([]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
@@ -557,41 +635,6 @@ export default function ConsultationChat({
     // A prior attempt already resolved (or is resolving) a consultation id for this send —
     // reuse it rather than creating a second consultation on retry.
     if (entry) void uploadQueuedFiles([entry], consultationId ?? resolvedConsultationIdRef.current ?? undefined);
-  };
-
-  // Toggles in-place mic recording; the finished clip is queued for the Transcription page.
-  const handleMicClick = async () => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-      recordingStartRef.current = Date.now();
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-
-      recorder.onstop = () => {
-        const durationSeconds = (Date.now() - recordingStartRef.current) / 1000;
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        queueTranscript(blob, durationSeconds);
-        stream.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-        setIsRecording(false);
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Microphone access failed:", error);
-      alert(t("microphoneError"));
-    }
   };
 
   const doSend = async (
@@ -699,31 +742,21 @@ export default function ConsultationChat({
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
-      // drop the local buffer in favor of the (now up to date) query cache.
-      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId) });
+      // drop the local buffer in favor of the (now up to date) query cache. `refetchType:
+      // "all"` (not the default "active") matters specifically for a brand-new consultation:
+      // useMessagesQuery is still `enabled` on the *old* (pre-create) consultationId at this
+      // point — React hasn't re-rendered with the new id yet — so there's no active observer
+      // for chatKeys.messages(activeConsultationId) and a default invalidate would just mark
+      // it stale without fetching, leaving the read below empty and always hitting the
+      // "looked incomplete" fallback for every first message in a new consultation.
+      await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId), refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
-      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
 
-      // Only hand the transcript back to the persisted (baseMessages) view once the refetch
-      // above actually landed this turn — expect at least the prior message count plus the
-      // user message and one assistant reply (a split, multi-topic reply persists as more
-      // than one assistant row, so this is a floor, not an exact count). A refetch that
-      // settles short of that (e.g. a request dedup/race against another in-flight fetch for
-      // a brand-new consultation's just-enabled query) must not clear pendingTurn — doing so
-      // would swap the fully-streamed, correct reply for whatever incomplete/stale data the
-      // cache landed on, which reads to the user as their response vanishing.
       const refreshedHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(activeConsultationId));
       const turnPersisted = (refreshedHistory?.length ?? 0) >= messagesBeforeSend + 2;
-      if (sendTokenRef.current === myToken) {
-        if (turnPersisted) {
-          setPendingTurn(null);
-        } else {
-          console.error("Chat history refetch looked incomplete after send — keeping the in-memory reply visible instead of the persisted view", {
-            consultationId: activeConsultationId,
-            expectedAtLeast: messagesBeforeSend + 2,
-            got: refreshedHistory?.length ?? 0,
-          });
-        }
+      if (sendTokenRef.current === myToken && turnPersisted) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
+        setPendingTurn(null);
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -741,6 +774,59 @@ export default function ConsultationChat({
         setIsSending(false);
         setPendingUrlConsultationId(null);
       }
+    }
+  };
+
+  // AWS Transcribe's raw output is tagged per segment, e.g. "[TS:1.19] [Speaker 0]: Mic
+  // check." — meaningful on the Transcription page's own diarized view, but not something a
+  // chat message should read as. Strips the tags for the chat send only; the stored
+  // transcript (and the Transcription page) keep the raw, tagged text untouched.
+  const stripTranscriptTags = (text: string) =>
+    text.replace(/\[TS:[\d.]+\]\s*\[Speaker\s*\d+\]:\s*/gi, " ").replace(/\s+/g, " ").trim();
+
+  // Drives a just-recorded voice clip through the same real pipeline the Transcription
+  // page's own "Transcribe" button uses (upload → create record → start AWS Transcribe job
+  // → poll to completion — see handleTranscribe in transcription/page.tsx), then sends the
+  // resulting text as a chat message. `id` is the local queue row (already created via
+  // queueTranscript before this runs) — updated through the same status progression so the
+  // Transcription page shows real progress for it, exactly as if submitted from there.
+  const transcribeAndSend = async (id: string, blob: Blob, durationSeconds: number) => {
+    setTranscribingId(id);
+    try {
+      updateTranscript(id, { status: "uploading" });
+      const uploaded = await uploadAudio.mutateAsync({
+        blob,
+        filename: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
+      });
+      updateTranscript(id, { status: "starting" });
+      const created = await createTranscription.mutateAsync({
+        title: t("input.voiceMessageTitle", { defaultValue: "Voice message" }),
+        audioFileId: uploaded.id,
+        duration: durationSeconds,
+        caseId: linkedCaseId || caseId || undefined,
+      });
+      updateTranscript(id, { backendId: created.id, status: "in_progress" });
+      await startTranscriptionJob.mutateAsync(created.id);
+      const result = await pollTranscriptionJobUntilDone(created.id);
+      if (result.status === "COMPLETED" && result.transcript?.trim()) {
+        updateTranscript(id, { status: "completed", transcript: result.transcript });
+        chunkTranscription(created.id).catch((err) => {
+          console.error("Failed to chunk transcription for RAG retrieval:", err);
+        });
+        void doSend(stripTranscriptTags(result.transcript));
+      } else {
+        updateTranscript(id, {
+          status: "failed",
+          errorMessage: result.failureReason ?? "AWS Transcribe reported the job as failed.",
+        });
+        alert(t("input.transcriptionFailed", { defaultValue: "Couldn't transcribe that recording. It's still saved on the Transcription page." }));
+      }
+    } catch (error) {
+      console.error("Voice transcription failed:", error);
+      updateTranscript(id, { status: "failed", errorMessage: (error as Error).message });
+      alert(t("input.transcriptionFailed", { defaultValue: "Couldn't transcribe that recording. It's still saved on the Transcription page." }));
+    } finally {
+      setTranscribingId(null);
     }
   };
 
@@ -840,13 +926,17 @@ export default function ConsultationChat({
         className={`relative w-full flex flex-col gap-2 transition-colors ${
           embedded
             ? `rounded-3xl border bg-card p-3 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
-            : `backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl ${
+            : `bg-card p-2 rounded-[26px] border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] ${
                 isDraggingOver ? "border-primary border-dashed" : "border-border"
               }`
         }`}
       >
         {isDraggingOver && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-card/90 pointer-events-none">
+          <div
+            className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
+              embedded ? "rounded-3xl bg-card/90" : "rounded-[26px] bg-card/90"
+            }`}
+          >
             <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
           </div>
         )}
@@ -859,26 +949,26 @@ export default function ConsultationChat({
           onChange={handleFileChange}
         />
 
-        {queuedFiles.length > 0 && (
-          <div className="flex flex-col gap-1 px-2">
+        {(queuedFiles.length > 0 || oversizedFileNames.length > 0) && (
+          <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
               {queuedFiles.map((f) => (
                 <span
                   key={f.id}
-                  className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1 w-fit"
+                  className="flex items-center gap-2 max-w-full rounded-full border border-white/15 bg-background text-white/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
                 >
                   {f.status === "uploading" ? (
-                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "PENDING" ? (
-                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "FAILED" ? (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : f.status === "uploaded" ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+                    <CheckCircle2 className="w-3 h-3 shrink-0 text-green-500" aria-hidden="true" />
                   ) : f.status === "error" ? (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : (
-                    <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <Paperclip className="w-3 h-3 shrink-0 text-white/60" aria-hidden="true" />
                   )}
                   <span className="truncate max-w-[220px]">{f.file.name}</span>
                   {f.status === "error" && (
@@ -887,7 +977,7 @@ export default function ConsultationChat({
                         <button
                           type="button"
                           onClick={() => retryUpload(f.id)}
-                          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                           aria-label={t("input.retryUpload", { fileName: f.file.name })}
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -901,7 +991,7 @@ export default function ConsultationChat({
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(f.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         aria-label={t("input.removeFile", { fileName: f.file.name })}
                       >
                         <X className="w-3 h-3" />
@@ -912,154 +1002,220 @@ export default function ConsultationChat({
                 </span>
               ))}
             </div>
+            {fileLimitHit && (
+              <span className="text-[10.5px] text-amber-500 pl-1">
+                {t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })}
+              </span>
+            )}
+            {oversizedFileNames.length > 0 && (
+              <span className="text-[10.5px] text-amber-500 pl-1">
+                {t("input.attachmentTooLarge", {
+                  defaultValue: `${oversizedFileNames.join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+                  fileNames: oversizedFileNames.join(", "),
+                  maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+                })}
+              </span>
+            )}
             {queuedFiles.some((f) => f.status === "error") && (
-              <span className="text-xs text-red-600 dark:text-red-400">{t("input.attachmentUploadError")}</span>
+              <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "PENDING") && (
-              <span className="text-xs text-muted-foreground">{t("input.indexingHint")}</span>
+              <span className="text-[10.5px] text-white/50 pl-1">{t("input.indexingHint")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "FAILED") && (
-              <span className="text-xs text-red-600 dark:text-red-400">{t("input.indexingFailed")}</span>
+              <span className="text-[10.5px] text-red-500 pl-1">{t("input.indexingFailed")}</span>
             )}
           </div>
         )}
 
-        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input. Both
-         * embedded and non-embedded now stack the textarea above its own action row (rather than
-         * embedded sharing one row with the send button), so this wrapper is just "contents" —
-         * its children flow directly into the form's own flex-col. */}
-        <div className="contents">
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] w-full shrink-0 text-foreground placeholder-muted-foreground text-base ${
-              // text-base (16px) below sm avoids iOS Safari's auto-zoom-on-focus; the smaller
-              // desktop sizes return once that's no longer a risk.
-              embedded ? "px-1 py-1 sm:text-[14px]" : "px-2 py-1 sm:text-[15px]"
-            }`}
-            placeholder={inputPlaceholder ?? t("input.placeholder")}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            disabled={isSending}
-          />
+        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input.
+         * items-center (not items-end) so the round attach/voice/send buttons stay vertically
+         * centered against whatever height the textarea actually renders at, matching the
+         * pill-shaped card's own vertical center — items-end instead bottom-aligns them,
+         * which visibly drifts off-center against a single-line (or otherwise short) textarea.
+         *
+         * Below `sm`, this wraps into two rows instead — the textarea's basis-full forces it
+         * to claim the whole row width (so wrapped text actually uses the full row instead of
+         * stopping short with dead space before wherever the controls happen to sit), which
+         * pushes attach/voice/send onto a shared second line via ordinary flex-wrap (they're
+         * small enough to share that second line together rather than each getting their own).
+         * Each child's own order class (plain below `sm`, sm:order- above it) restores the
+         * original single-row sequence — attach, textarea, voice, send — at `sm` and up,
+         * where flex-nowrap keeps it one row again. */}
+        <div className={embedded ? "flex items-center gap-1.5" : "flex flex-wrap sm:flex-nowrap items-center gap-1.5"}>
+          {!isRecording && !transcribingId && (
+            <div className="min-w-0 basis-full sm:flex-1 order-1 sm:order-2">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate ${
+                  // embedded (Terminal's split panes) keeps the old, tighter 200px cap — there's
+                  // real risk of squeezing an already-small pane. The full-page composer has a
+                  // whole empty page below it a long paste can grow into, so it gets a much more
+                  // generous viewport-relative cap instead of clipping at an arbitrary 200px.
+                  embedded ? "max-h-50" : "max-h-[50vh]"
+                } ${
+                  // Embedded shares this row with the send button (see the wrapping div above),
+                  // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
+                  // styling, where this is the row's only child) forced it to claim the full row
+                  // width regardless of the button, pushing the button out past the pane's
+                  // clipped edge (or spilling past the rounded border where nothing clips it).
+                  // placeholder:truncate keeps a long placeholder (e.g. the default
+                  // "Draft your legal inquiry or case particulars here...") on one line instead
+                  // of wrapping — a wrapped placeholder still inflates the textarea's own
+                  // scrollHeight (see the auto-grow effect below), visibly expanding an empty
+                  // box to 2+ lines on a narrow phone width before anything's even typed.
+                  // text-base (16px) below sm avoids iOS Safari's auto-zoom-on-focus in embedded
+                  // panes (Case Workspace/Terminal) — the smaller desktop size returns once
+                  // that's no longer a risk.
+                  embedded
+                    ? "px-2 py-1.5 text-base sm:text-[13px] text-foreground placeholder-muted-foreground"
+                    : "px-1 py-1.5 text-[15px] text-foreground placeholder-muted-foreground"
+                }`}
+                placeholder={inputPlaceholder ?? t("input.placeholder")}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                disabled={isSending}
+              />
+            </div>
+          )}
+
+          {/* Bouncing-dots status row while a just-recorded clip runs through the real
+              transcription pipeline — same three-dot markup as ThinkingIndicator (assistant-message.tsx),
+              reused inline here rather than extracted since this is the only other place it
+              appears with composer-specific sizing. Takes the textarea's slot, same idea as
+              VoiceDictate's own recording row. */}
+          {!embedded && !isRecording && transcribingId && (
+            <div className="min-w-0 basis-full sm:flex-1 order-1 sm:order-2 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
+              <span className="flex items-center gap-0.5" aria-hidden="true">
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
+                <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none" />
+              </span>
+              {(() => {
+                const stageCopy = TRANSCRIBE_STAGE_COPY[transcribeStatus ?? "uploading"] ?? TRANSCRIBE_STAGE_COPY.uploading!;
+                return t(stageCopy.key, { defaultValue: stageCopy.defaultValue });
+              })()}
+            </div>
+          )}
 
           {embedded ? (
-            <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-1 text-muted-foreground">
+            <>
+              {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
                       onClick={handleClipClick}
+                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{t("input.attachFile")}</TooltipContent>
                 </Tooltip>
+              )}
+
+              {!transcribingId && (
+                <VoiceDictate
+                  disabled={isSending}
+                  onRecordingChange={setIsRecording}
+                  onComplete={(blob, durationSeconds) => {
+                    // Same queue-then-transcribe pipeline as the non-embedded composer below —
+                    // shows up on the Transcription page right away, then transcribeAndSend
+                    // drives this row through upload/start-job/poll.
+                    const id = queueTranscript(blob, durationSeconds);
+                    void transcribeAndSend(id, blob, durationSeconds);
+                  }}
+                  onError={() => alert(t("microphoneError"))}
+                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                  stopLabel={t("input.stopRecording")}
+                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                />
+              )}
+
+              {!isRecording && !transcribingId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      aria-label={t("input.sendMessage")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                    >
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                </Tooltip>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Hidden while dictating or transcribing — VoiceDictate (recording state) or
+                  the transcribing row above takes over the composer instead. Plain order
+                  below `sm` (row 2, after the textarea's basis-full row), sm:order-1
+                  (leftmost) once flex-nowrap makes it one row again. */}
+              {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      onClick={handleMicClick}
-                      aria-pressed={isRecording}
-                      aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                        isRecording
-                          ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
-                          : "hover:bg-muted hover:text-foreground"
-                      }`}
+                      onClick={handleClipClick}
+                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
+                      aria-label={t("input.attachFile")}
+                      className="order-2 sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
-                      {isRecording ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
+                      <Plus className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
+                  <TooltipContent>{t("input.attachFile")}</TooltipContent>
                 </Tooltip>
-              </div>
+              )}
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="submit"
-                    disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                    aria-label={t("input.sendMessage")}
-                    className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-brand-gold px-4 text-[10px] font-semibold uppercase tracking-[1.2px] text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
-                  >
-                    {t("input.send")}
-                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : (
-        <div className="flex items-center justify-between px-1">
-          <div className="flex gap-1 text-muted-foreground">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleClipClick}
-                  aria-label={t("input.attachFile")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("input.attachFile")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleMicClick}
-                  aria-pressed={isRecording}
-                  aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
-                  className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                    isRecording
-                      ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
-                      : "hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setEmailComposerOpen(true)}
-                  disabled={!consultationId}
-                  aria-label={t("email.action")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                >
-                  <Mail className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("email.action")}</TooltipContent>
-            </Tooltip>
-          </div>
+              {!transcribingId && (
+                <VoiceDictate
+                  disabled={isSending}
+                  onRecordingChange={setIsRecording}
+                  onComplete={(blob, durationSeconds) => {
+                    // Queued immediately so it shows up on the Transcription page right away —
+                    // transcribeAndSend below drives this same row through upload/start-job/poll
+                    // rather than creating a second, disconnected backend record for it.
+                    const id = queueTranscript(blob, durationSeconds);
+                    void transcribeAndSend(id, blob, durationSeconds);
+                  }}
+                  onError={() => alert(t("microphoneError"))}
+                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                  stopLabel={t("input.stopRecording")}
+                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                  className="order-3"
+                />
+              )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="submit"
-                disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                aria-label={t("input.sendMessage")}
-                className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
-              >
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-          </Tooltip>
-        </div>
+              {!isRecording && !transcribingId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      aria-label={t("input.sendMessage")}
+                      // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
+                      // and would otherwise dominate a narrow composer row alongside the
+                      // attach button and textarea.
+                      className="order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                    >
+                      <span className="hidden sm:inline">{t("input.sendLabel", { defaultValue: "Send" })}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                </Tooltip>
+              )}
+            </>
           )}
         </div>
       </form>
@@ -1075,10 +1231,28 @@ export default function ConsultationChat({
         embedded
           ? "relative flex h-full min-h-0 flex-1 flex-col px-2"
           : `relative flex-1 flex flex-col min-h-0 px-4 sm:px-8 transition-[padding-left,padding-right] duration-200 ${
-              sidebarExpanded ? "md:pl-80" : "md:pl-32"
-            } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
+              sidebarExpanded ? "lg:pl-80" : "lg:pl-32"
+            } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "lg:pr-72" : "lg:pr-32"}`
       }
     >
+      {/* Full-bleed backdrop behind the whole Consultation workspace (landing, conversation,
+          streaming) — not just the empty-state screen — per the redesign. Lives on this
+          outer, full-width container (not <main>, which is `max-w-5xl`-capped for reading
+          width) so it spans edge to edge instead of only behind that narrow centered column;
+          absolutely positioned + painted first so it sits behind the sidebar/main content
+          regardless of DOM/paint order rules for positioned siblings. */}
+      {!embedded && emptyStateHeroImage && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element -- decorative full-bleed background, no responsive srcset needed */}
+          <img
+            src={emptyStateHeroImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-[center_30%] opacity-[0.14]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,#0b0b0b_38%,rgba(11,11,11,0.55)_70%,rgba(11,11,11,0.35)_100%)]" />
+        </div>
+      )}
+
       {!embedded && (
         <ConsultationSidebar
           activeConsultationId={consultationId}
@@ -1087,6 +1261,8 @@ export default function ConsultationChat({
           caseId={caseId}
           expanded={sidebarExpanded}
           onExpandedChange={setSidebarExpanded}
+          isMobileOpen={sidebarMobileOpen}
+          onMobileOpenChange={setSidebarMobileOpen}
         />
       )}
 
@@ -1106,6 +1282,8 @@ export default function ConsultationChat({
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
          * !embedded above) and no external picker of its own (unlike Case Workspace, which
          * already renders its own ThreadPicker above this component — see case-workspace.tsx).
@@ -1131,11 +1309,15 @@ export default function ConsultationChat({
           return (
           <>
             {!mindMapOnly && !embedded && caseId && (
-              <div className="flex items-center gap-1 pt-4 shrink-0">
+              // overflow-x-auto rather than shrinking/wrapping the pills — a 3-tab row with
+              // full labels doesn't reliably fit a 375px viewport, and horizontal scroll on a
+              // short tab row is a well-understood mobile pattern that keeps every label
+              // fully readable instead of truncating it.
+              <div className="flex items-center gap-1 pt-4 shrink-0 overflow-x-auto scrollbar-none [-ms-overflow-style:none]">
                 <button
                   type="button"
                   onClick={() => handleTabChange("chat")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "chat" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1145,7 +1327,7 @@ export default function ConsultationChat({
                 <button
                   type="button"
                   onClick={() => handleTabChange("mindmap")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "mindmap" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1155,7 +1337,7 @@ export default function ConsultationChat({
                 <button
                   type="button"
                   onClick={() => handleTabChange("timeline")}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-[13px] font-['Inter'] font-medium transition-colors ${
                     activeTab === "timeline" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -1212,31 +1394,100 @@ export default function ConsultationChat({
                 <CaseTimelineView caseId={caseId} />
               </div>
             ) : isEmptyChatLanding ? (
-              /* No consultation yet — heading and input are centered together, like Gemini's landing state */
-              <div className={`flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-8 pb-24"}`}>
-                <div className="text-center max-w-2xl mx-auto px-2">
-                  <h1
-                    className={
-                      embedded
-                        ? "mb-2 font-['Inter'] text-lg font-medium tracking-[-0.3px] text-foreground"
-                        : "font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4"
-                    }
-                  >
-                    {emptyStateHeading ?? t("emptyState.heading")}
-                  </h1>
-                  <p
-                    className={`font-['Inter'] leading-6 ${
-                      embedded ? "text-[13px] text-muted-foreground" : "text-foreground text-[15px] md:text-[16px]"
-                    }`}
-                  >
-                    {emptyStateSubheading ?? t("emptyState.subheading")}
-                  </p>
+              /* No consultation yet — heading and input are centered together, like Gemini's landing state.
+               * The hero backdrop itself now lives once at the <main> level (see above), so every
+               * state — including this one — sits over it. */
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Top-left sidebar trigger, pinned at the same position as the active-chat
+                    sticky header's own inline button (same px-4 sm:px-16 gutter) — deliberately
+                    NOT part of the centered heading block below, which is vertically centered
+                    on the page and would otherwise drag the button down to the middle of the
+                    screen with it. */}
+                {!embedded && (
+                  <div className="lg:hidden flex-shrink-0 px-4 sm:px-16 py-3.5">
+                    <button
+                      type="button"
+                      onClick={() => setSidebarMobileOpen(true)}
+                      aria-label={t("sidebar.openConsultations")}
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+                <div className={`relative flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-5 pb-24"}`}>
+                  <div className="max-w-3xl mx-auto px-2 w-full text-center">
+                    <h1
+                      className={
+                        embedded
+                          ? "mb-2 font-['Inter'] text-lg font-medium tracking-[-0.3px] text-foreground"
+                          : "font-['Libre_Caslon_Text'] font-normal text-foreground text-[24px] sm:text-[28px] md:text-[32px] tracking-[-0.01em] mb-4"
+                      }
+                    >
+                      {emptyStateHeading ?? t("emptyState.heading")}
+                    </h1>
+                  </div>
+                  {chatInputBar}
+                  {!embedded && emptyStatePrompts && emptyStatePrompts.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                      {emptyStatePrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => void doSend(prompt)}
+                          // max-w-full + normal wrapping — these are free-form caller-provided
+                          // strings (emptyStatePrompts), so a long one must wrap inside the pill
+                          // instead of forcing it wider than the viewport.
+                          className="max-w-full whitespace-normal break-words rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {chatInputBar}
               </div>
             ) : (
-            /* Scrollable message pane — input bar below stays put regardless of scroll position */
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+            <>
+              {/* Sticky conversation header — sits above the scrollable pane below (not
+                  inside it), so it never scrolls away, matching the redesign's persistent
+                  title/case strip. */}
+              {!embedded && (
+                <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 sm:px-16 py-3.5 border-b border-border">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {/* Inline with the title instead of ConsultationSidebar's own floating
+                        trigger — see sidebarMobileOpen above. */}
+                    <button
+                      type="button"
+                      onClick={() => setSidebarMobileOpen(true)}
+                      aria-label={t("sidebar.openConsultations")}
+                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                    <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
+                      {consultationTitle ?? t("sidebar.untitledConsultation")}
+                    </span>
+                  </div>
+                  {linkedCaseId && linkedCaseRecord && (
+                    <div className="flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
+                      <span className="hidden sm:inline">
+                        {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
+                      </span>
+                      <Link
+                        href={`/homepage/v2/case-portfolio/${linkedCaseId}`}
+                        className="rounded-full border border-border px-3.5 py-1.5 text-foreground transition-colors hover:border-foreground/60"
+                      >
+                        {t("caseHub.openCase", { defaultValue: "Open case" })}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
@@ -1250,12 +1501,12 @@ export default function ConsultationChat({
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
-                      <div key={i} className="flex flex-col items-end gap-1.5">
+                      <div key={i} className="flex flex-col items-end gap-2">
                         {m.attachments && m.attachments.length > 0 && (
                           <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
                         )}
                         {m.content && (
-                          <div className={`max-w-[80%] rounded-2xl border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
+                          <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
                             embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
                           }`}>
                             {m.content}
@@ -1268,6 +1519,7 @@ export default function ConsultationChat({
                   // The last assistant message is a placeholder pushed synchronously at send
                   // time, before any chunk streams in — that's the window "thinking" covers.
                   const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
+                  const isLastMessage = i === visibleMessages.length - 1;
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
                   // to each other in visibleMessages — pull the continuation ones up closer than
@@ -1291,22 +1543,47 @@ export default function ConsultationChat({
                           <ThinkingIndicator label={t("thinking")} />
                         )
                       ) : (
-                        <AssistantMessage
-                          content={m.content || "…"}
-                          className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
-                        />
+                        <>
+                          {!embedded && (
+                            <div className="flex items-center gap-2 text-[10px] tracking-[1px] uppercase text-muted-foreground mb-3.5">
+                              <span className="font-['Libre_Caslon_Text'] text-[13px] tracking-normal normal-case text-foreground">
+                                {t("appName", { ns: "common" })}
+                              </span>
+                              {isLastMessage && !isLoadingRelatedCases && relatedCases.length > 0 && (
+                                <span>· {relatedCases.length} {t("caseHub.authoritiesCited", { defaultValue: "authorities cited" })}</span>
+                              )}
+                            </div>
+                          )}
+                          <AssistantMessage
+                            content={m.content || "…"}
+                            className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
+                          />
+                          {!embedded && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
+                            <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
+                              <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
+                                <Grid2x2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+                                <span className="font-semibold text-foreground">{t("caseHub.relatedCases")}</span>
+                                <span className="text-muted-foreground">· {relatedCases.length}</span>
+                              </div>
+                              <div className="p-3">
+                                <HubRelatedCases
+                                  entries={relatedCases}
+                                  isLoading={isLoadingRelatedCases}
+                                  emptyLabel={t("caseHub.relatedEmpty")}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
                 })}
 
-                {!embedded && !isSending && visibleMessages.length > 0 && visibleMessages.at(-1)?.role === "assistant" && visibleMessages.at(-1)?.content && (
-                  <CaseHubWidget caseId={linkedCaseId} consultationId={consultationId} />
-                )}
-
                 <div ref={messagesEndRef} />
               </div>
-            </div>
+              </div>
+            </>
             )}
             {!isEmptyChatLanding && activeTab === "chat" && (
               <div className={embedded ? "pt-2 pb-2" : "pt-4 pb-6"}>{chatInputBar}</div>
@@ -1314,19 +1591,11 @@ export default function ConsultationChat({
           </>
           );
         })()}
+        </div>
       </main>
 
       {previewAttachment && !embedded && (
         <FilePreviewModal attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
-      )}
-
-      {emailComposerOpen && !embedded && consultationId && (
-        <EmailComposerModal
-          consultationId={consultationId}
-          caseId={caseId}
-          messages={history ?? []}
-          onClose={() => setEmailComposerOpen(false)}
-        />
       )}
     </div>
   );

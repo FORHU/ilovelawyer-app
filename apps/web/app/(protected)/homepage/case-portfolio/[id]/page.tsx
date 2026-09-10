@@ -51,9 +51,10 @@ export default function CaseDetailPage() {
     <div className="landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
       <GlobalHeader activeTab="case-portfolio" mobileHeaderMerged />
 
-      {/* No pt-14 reservation below lg — GlobalHeader renders nothing there itself
-       * (mobileHeaderMerged), so there's no bar to clear until it reappears at lg. */}
-      <div className="lg:pt-14 flex flex-col min-h-0 flex-1">
+      {/* No pt reservation below lg — GlobalHeader renders nothing there itself
+       * (mobileHeaderMerged), so there's no bar to clear until it reappears at lg (now
+       * h-16, per GlobalHeader's own redesigned height). */}
+      <div className="lg:pt-16 flex flex-col min-h-0 flex-1">
         <div className="shrink-0 border-b border-border px-6 md:px-10 pt-4 flex flex-col gap-4">
           <Link
             href="/homepage/case-portfolio"

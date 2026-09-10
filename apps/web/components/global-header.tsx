@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Building2, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
+import { Building2, FileText, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -50,12 +50,11 @@ const USER_MENU_ITEMS = [
   { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText, tooltip: "Read the terms and conditions" },
 ] as const;
 
-// Flat list for the mobile drawer — the desktop CASE dropdown's two items are
-// inlined here directly since a nested toggle inside an already-open drawer
-// is an extra tap for no benefit at phone width.
+// Flat list for the mobile drawer, mirroring the flattened desktop nav — Cases now
+// links straight to the portfolio (Create Case lives inside that page), and Legal
+// Terminal is reached by drilling into a case rather than from top-level nav.
 const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat" },
-  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case", tooltip: "Start a new case filing" },
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library" },
   { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio" },
@@ -76,6 +75,13 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
+
+  const initials = (user?.name ?? user?.username ?? "?")
+    .split(/[.\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join("");
 
   // Close the dropdown on outside click, since it isn't a native <select>.
   useEffect(() => {
@@ -100,17 +106,20 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
     return () => window.removeEventListener("resize", handleResize);
   }, [isMobileMenuOpen, closeMobileMenu]);
 
-  // Helper to dynamically toggle active states for the sub-tier workspace links
+  // Helper to dynamically toggle active states for the sub-tier workspace links.
+  // Active items render bold + a small gold dot beneath the label (added inline where
+  // this class is used) instead of just a brightness change, per the redesign. The dot is
+  // absolutely positioned (not a flex-col sibling of the label) specifically so it never
+  // affects this item's height/centering — a flex-col layout made the label itself shift
+  // up whenever a dot appeared, so it no longer sat inline with the other labels.
   const getSubTabClass = (tabName: string) => {
     const baseClasses =
-      "text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
+      "relative inline-flex items-center text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
 
     if (activeTab === tabName) {
-      // Active Look: Full opacity, bold text
       return `${baseClasses} text-white font-bold opacity-100`;
     }
 
-    // Inactive Look: Dimmed opacity, brightens to white on hover
     return `${baseClasses} opacity-60 text-white hover:opacity-100`;
   };
 
@@ -130,13 +139,13 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       }`}
     >
       <div
-        className={`w-full max-w-[1440px] mx-auto h-14 items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8 ${
+        className={`w-full max-w-[1440px] mx-auto h-16 items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8 ${
           mobileHeaderMerged ? "hidden lg:flex" : "flex"
         }`}
       >
         <Link
           href="/"
-          className="shrink-0 font-['Libre_Caslon_Text'] text-white text-[17px] sm:text-[20px] tracking-[-0.6px] rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="font-['Libre_Caslon_Text'] text-white text-[22px] tracking-[-0.6px] shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
           {t("appName")}
         </Link>
@@ -144,25 +153,22 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage" className={getSubTabClass("consultation")}>{t("nav.consultation").toUpperCase()}</Link>
+              <Link href="/homepage" className={getSubTabClass("consultation")}>
+                {t("nav.consultation").toUpperCase()}
+                {activeTab === "consultation" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
             </TooltipTrigger>
             <TooltipContent>AI-powered legal consultation chat</TooltipContent>
           </Tooltip>
 
+          {/* Flattened per the redesign — Create Case now lives inside the Cases page
+              itself, and Legal Terminal is reached by drilling into a case rather than
+              from a top-level nav item. */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link
-                href="/homepage/case-portfolio"
-                className={`relative flex flex-col items-center rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                  isCaseTabActive
-                    ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
-                    : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
-                }`}
-              >
-                {t("nav.cases").toUpperCase()}
-                {isCaseTabActive && (
-                  <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-brand-gold" aria-hidden="true" />
-                )}
+              <Link href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>
+                {t("nav.cases", { defaultValue: "Cases" }).toUpperCase()}
+                {isCaseTabActive && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
             <TooltipContent>View and manage your case portfolio</TooltipContent>
@@ -170,32 +176,44 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/library" className={getSubTabClass("library")}>{t("nav.library").toUpperCase()}</Link>
+              <Link href="/homepage/library" className={getSubTabClass("library")}>
+                {t("nav.library").toUpperCase()}
+                {activeTab === "library" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
             </TooltipTrigger>
             <TooltipContent>Browse the legal research library</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>{t("nav.transcription").toUpperCase()}</Link>
+              <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>
+                {t("nav.transcription").toUpperCase()}
+                {activeTab === "transcription" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
             </TooltipTrigger>
             <TooltipContent>Record and transcribe audio</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>{t("nav.documents").toUpperCase()}</Link>
+              <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>
+                {t("nav.documents").toUpperCase()}
+                {activeTab === "document-analysis" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
             </TooltipTrigger>
             <TooltipContent>Upload and analyze legal documents</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>{t("nav.calendar").toUpperCase()}</Link>
+              <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>
+                {t("nav.calendar").toUpperCase()}
+                {activeTab === "calendar" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
             </TooltipTrigger>
             <TooltipContent>View and schedule appointments</TooltipContent>
           </Tooltip>
         </nav>
 
         {/* Icons are now inside the main flex row, styled white for visibility */}
-        <div className="hidden lg:flex items-center items-center gap-[24px] text-white">
+        <div className="hidden lg:flex items-center gap-5 text-white">
           <LanguageSwitcher />
 
           <ThemeToggle />
@@ -206,12 +224,12 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  className={`cursor-pointer rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "opacity-100" : ""}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-[10px] font-semibold tracking-[0.5px] cursor-pointer transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "border-white" : ""}`}
                   aria-haspopup="menu"
                   aria-expanded={isUserMenuOpen}
                   aria-label={t("userMenu.accountMenu")}
                 >
-                  <User className="w-5 h-5" />
+                  {initials}
                 </button>
               </TooltipTrigger>
               <TooltipContent>{t("userMenu.accountMenu")}</TooltipContent>

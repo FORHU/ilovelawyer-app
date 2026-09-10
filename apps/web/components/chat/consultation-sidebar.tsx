@@ -7,6 +7,7 @@ import {
   useRenameConsultationMutation,
   useDeleteConsultationMutation,
 } from "@/lib/chat/mutations";
+import { useAuthStore } from "@/lib/store/auth.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface ConsultationSidebarProps {
@@ -21,6 +22,11 @@ interface ConsultationSidebarProps {
   onExpandedChange: (expanded: boolean) => void;
   /** Offset the rail from the global header. Terminal panes sit below their own chrome. */
   compact?: boolean;
+  /** Mobile drawer open state, lifted up (same reason as `expanded`) so the page can render
+   * its own trigger button inline with page content (e.g. next to the conversation title)
+   * instead of this component's own floating circle being the only way to open it. */
+  isMobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
 }
 
 export default function ConsultationSidebar({
@@ -31,10 +37,12 @@ export default function ConsultationSidebar({
   expanded,
   onExpandedChange,
   compact = false,
+  isMobileOpen,
+  onMobileOpenChange,
 }: ConsultationSidebarProps) {
   const { t } = useTranslation("homepage");
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { data: consultations } = useConsultationsQuery(caseId);
+  const organization = useAuthStore((s) => s.organization);
   const renameConsultation = useRenameConsultationMutation();
   const deleteConsultation = useDeleteConsultationMutation();
   const asideRef = useRef<HTMLElement>(null);
@@ -81,15 +89,17 @@ export default function ConsultationSidebar({
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [expanded, isMobileOpen, onExpandedChange]);
 
-  // Close the mobile drawer if the viewport grows past md (e.g. rotating a tablet).
+  // Close the mobile drawer if the viewport grows past lg (e.g. rotating a tablet) — matches
+  // GlobalHeader's own mobile-drawer breakpoint, so both switch together instead of leaving
+  // a tablet-portrait viewport with a mismatched half-mobile, half-desktop chrome.
   useEffect(() => {
     if (!isMobileOpen) return;
     const handleResize = () => {
-      if (window.innerWidth >= 768) setIsMobileOpen(false);
+      if (window.innerWidth >= 1024) onMobileOpenChange(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [isMobileOpen]);
+  }, [isMobileOpen, onMobileOpenChange]);
 
   const panelBody = (isMobile: boolean) => (
     <>
@@ -99,35 +109,43 @@ export default function ConsultationSidebar({
             onClick={() => {
               onNewChat();
               onExpandedChange(false);
-              setIsMobileOpen(false);
+              onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
-            className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-              expanded || isMobile ? "" : "justify-center px-0"
+            className={`h-10 flex items-center gap-3 rounded-full border border-white/40 hover:border-white shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+              expanded || isMobile ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
             }`}
           >
-            <Plus className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
-            {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.newChat")}</span>}
+            <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
+            {(expanded || isMobile) && (
+              <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-white">
+                {t("sidebar.newConsultation", { defaultValue: "New consultation" })}
+              </span>
+            )}
           </button>
         </TooltipTrigger>
         <TooltipContent>{t("sidebar.newChat")}</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={() => !isMobile && onExpandedChange(!expanded)}
-            aria-label={t("sidebar.recentConsultationsTitle")}
-            className={`h-12 flex items-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-3 mt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-              expanded || isMobile ? "" : "justify-center px-0"
-            }`}
-          >
-            <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
-            {(expanded || isMobile) && <span className="text-[13px] font-['Inter'] text-foreground">{t("sidebar.recent")}</span>}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{t("sidebar.recentConsultationsTitle")}</TooltipContent>
-      </Tooltip>
+      {/* "Recent" is a plain section label once the rail is expanded/on mobile — it's only
+          ever a clickable icon in the collapsed desktop rail, where it doubles as a way to
+          re-expand (matching the redesign's separate collapsed/expanded rail markup). */}
+      {expanded || isMobile ? (
+        <span className="px-3 pb-2 text-[10px] tracking-[1px] uppercase text-muted-foreground">{t("sidebar.recent")}</span>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => onExpandedChange(true)}
+              aria-label={t("sidebar.recentConsultationsTitle")}
+              className="h-12 flex items-center justify-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("sidebar.recentConsultationsTitle")}</TooltipContent>
+        </Tooltip>
+      )}
 
       {(expanded || isMobile) && (
         <div className="relative flex-1 min-h-0 mt-2">
@@ -183,19 +201,20 @@ export default function ConsultationSidebar({
                     isActive ? "bg-muted border-border" : "border-transparent hover:bg-muted"
                   }`}
                 >
+                  {isActive && <span className="ml-3 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold" aria-hidden="true" />}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => {
                           onSelectConsultation(c.id);
                           onExpandedChange(false);
-                          setIsMobileOpen(false);
+                          onMobileOpenChange(false);
                         }}
                         // Gemini-style pill: the consultation you're currently in gets its own
                         // rounded, bordered chip; a transparent border of the same width is kept
                         // on inactive rows so hovering doesn't shift layout by 1px.
-                        className={`min-w-0 flex-1 text-left truncate pl-4 pr-1 py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
-                          isActive ? "text-primary font-semibold" : "text-foreground"
+                        className={`min-w-0 flex-1 text-left truncate py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
+                          isActive ? "pl-2.5 pr-1 text-white font-semibold" : "pl-7 pr-1 text-white/75 hover:text-white"
                         }`}
                       >
                         {label}
@@ -217,7 +236,7 @@ export default function ConsultationSidebar({
                           type="button"
                           onClick={() => startEditing(c.id, c.title?.trim() || "")}
                           aria-label={t("sidebar.renameConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -231,7 +250,7 @@ export default function ConsultationSidebar({
                           onClick={() => handleDelete(c.id)}
                           disabled={deleteConsultation.isPending && deleteConsultation.variables === c.id}
                           aria-label={t("sidebar.deleteConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
                         >
                           {deleteConsultation.isPending && deleteConsultation.variables === c.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -253,63 +272,59 @@ export default function ConsultationSidebar({
         </div>
       )}
 
+      {(expanded || isMobile) && organization && (
+        <div className="mt-auto shrink-0 border-t border-border px-3 pt-4 flex flex-col gap-1">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+            {t("sidebar.organization", { defaultValue: "Organization" })}
+          </p>
+          <p className="truncate text-[13px] text-white">{organization.name}</p>
+        </div>
+      )}
     </>
   );
 
   return (
     <>
-      {/* Menu button that opens the mobile drawer — the collapsed w-16 rail below is
-          sized for desktop and has no comfortable place to sit on a ~375px screen. */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setIsMobileOpen(true)}
-            aria-label={t("sidebar.openConsultations")}
-            className={`md:hidden absolute left-2 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${compact ? "top-2" : "top-[72px]"}`}
-          >
-            <PanelLeft className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{t("sidebar.openConsultations")}</TooltipContent>
-      </Tooltip>
-
-      {/* Desktop/tablet rail — collapsed-to-expanded width toggle, unchanged from before */}
+      {/* Desktop/tablet rail — collapsed-to-expanded width toggle. Solid background (not a
+          floating frosted-glass overlay) per the redesign, so it reserves layout width
+          instead of sitting on top of whatever's underneath it. */}
       <aside
         ref={asideRef}
-        className={`hidden md:flex absolute left-0 bottom-0 bg-card/90 backdrop-blur-md border-r border-y border-border rounded-r-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
           compact ? "top-0" : "top-16"
         } ${expanded ? "w-72" : "w-16"}`}
       >
         {/* One toggle, always in its own row above "New chat" — not floated over it — so
             open and close share a single, consistent, discoverable control instead of
-            relying on re-clicking the Recent icon to close. */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => onExpandedChange(!expanded)}
-              aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}
-              className={`h-10 flex items-center shrink-0 rounded-full hover:bg-muted mx-2 mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                expanded ? "justify-end px-3" : "justify-center px-0"
-              }`}
-            >
-              {expanded ? (
-                <PanelLeftClose className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              ) : (
-                <PanelLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}</TooltipContent>
-        </Tooltip>
+            relying on re-clicking the Recent icon to close. Expanded state also carries the
+            "Consultations" title, matching the redesign's header row. */}
+        <div className={`flex items-center shrink-0 mb-3 ${expanded ? "justify-between px-3" : "justify-center px-0"}`}>
+          {expanded && <span className="font-['Libre_Caslon_Text'] text-[18px] text-foreground">{t("sidebar.consultations")}</span>}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onExpandedChange(!expanded)}
+                aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}
+                className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full opacity-60 hover:opacity-100 hover:bg-card transition-[opacity,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                {expanded ? (
+                  <PanelLeftClose className="h-4 w-4 text-foreground" aria-hidden="true" />
+                ) : (
+                  <PanelLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}</TooltipContent>
+          </Tooltip>
+        </div>
         {panelBody(false)}
       </aside>
 
       {/* Mobile full-screen overlay drawer */}
       {isMobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/40" onClick={() => onMobileOpenChange(false)} aria-hidden="true" />
           <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
             <div className="flex items-center justify-between px-2 pb-2">
               <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
@@ -317,7 +332,7 @@ export default function ConsultationSidebar({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => setIsMobileOpen(false)}
+                    onClick={() => onMobileOpenChange(false)}
                     aria-label={t("sidebar.closeConsultations")}
                     className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
