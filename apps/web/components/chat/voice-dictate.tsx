@@ -191,10 +191,9 @@ export default function VoiceDictate({
             onClick={() => void start()}
             disabled={disabled}
             aria-label={voiceLabel}
-            className={`h-9 shrink-0 flex items-center gap-2 rounded-full border border-white/25 pl-[10px] pr-3 text-[10px] font-semibold uppercase tracking-[1.2px] text-white transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 ${className}`}
+            className={`h-9 w-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 ${className}`}
           >
-            <Mic className="w-3.5 h-3.5" aria-hidden="true" />
-            {voiceLabel}
+            <Mic className="w-4 h-4" aria-hidden="true" />
           </button>
         </TooltipTrigger>
         <TooltipContent>{voiceLabel}</TooltipContent>
@@ -214,7 +213,7 @@ export default function VoiceDictate({
             type="button"
             onClick={cancel}
             aria-label={cancelLabel}
-            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -229,7 +228,7 @@ export default function VoiceDictate({
             ref={(el) => {
               barRefs.current[i] = el;
             }}
-            className="w-1 h-6 rounded-full bg-white will-change-transform"
+            className="w-1 h-6 rounded-full bg-foreground will-change-transform"
             style={{ transform: `scaleY(${MIN_SCALE})`, opacity: 0.45 }}
           />
         ))}

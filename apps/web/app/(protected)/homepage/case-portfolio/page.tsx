@@ -6,27 +6,36 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
-import { Search, Briefcase, Scale, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight } from "lucide-react";
+import { Search, Briefcase, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
+const PAGE_SIZE = 20;
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
 
   // Debounce so we don't fire a request on every keystroke while searching across
-  // the user's full case set (not just the cases already loaded on this page).
+  // the user's full case set (not just the cases already loaded on this page). Resetting
+  // the page here too (rather than in a separate effect keyed off debouncedSearch) keeps
+  // both updates inside the same async callback instead of a synchronous effect body.
   React.useEffect(() => {
-    const handle = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery(1, 20, debouncedSearch);
+  const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch);
   const cases = data?.data ?? [];
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
   const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
@@ -210,10 +219,9 @@ export default function CaseManagerDashboard() {
                         <TooltipTrigger asChild>
                           <Link
                             href={`/homepage/terminal/${c.id}`}
-                            aria-label={t("openTerminal")}
-                            className="h-11 w-11 md:h-8 md:w-8 flex items-center justify-center rounded-full border border-border text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
+                            className="flex h-11 md:h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
                           >
-                            <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                            {t("Terminal")}
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
@@ -223,6 +231,44 @@ export default function CaseManagerDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {!isLoading && !isError && cases.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-between gap-4 pt-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                  {t("pagination.previous")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("pagination.previous")}</TooltipContent>
+            </Tooltip>
+
+            <span className="text-[12px] text-muted-foreground">
+              {t("pagination.pageOf", { page, total: totalPages })}
+            </span>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  {t("pagination.next")}
+                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("pagination.next")}</TooltipContent>
+            </Tooltip>
           </div>
         )}
 
