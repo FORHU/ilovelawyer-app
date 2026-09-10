@@ -63,6 +63,11 @@ export interface ChatMessage {
   groupId?: string | null
   groupOrder?: number | null
   groupTitle?: string | null
+  /** "PENDING" only while the API's MessagePersistenceQueue is still attaching this assistant
+   * turn's mind map / related cases / timeline after the reply streamed — then "COMPLETE", or
+   * "FAILED" if that job errored. Absent/undefined on rows from before the backend shipped
+   * this — treat as "COMPLETE". */
+  status?: "PENDING" | "COMPLETE" | "FAILED"
 }
 
 export function useChatSessionQuery() {
@@ -123,16 +128,17 @@ export function useDeleteConsultationMutation() {
   })
 }
 
-/** `pollWhilePending` keeps the history refetching on a short interval — used while a just-sent
- * turn's reply is still streaming / being persisted. The API persists the assistant reply
- * asynchronously after the stream ends (ilovelawyer-api's MessagePersistenceQueue), so a
- * one-shot refetch right after the stream can miss it by a beat. */
-export function useMessagesQuery(consultationId: string | undefined, opts?: { pollWhilePending?: boolean }) {
+/** Self-polls while any message reads `status: "PENDING"` — a just-sent assistant turn whose
+ * structured extras (mind map, related cases, timeline) are still being written by the API's
+ * MessagePersistenceQueue. The row's own content is already saved; polling picks up the
+ * extras and the COMPLETE/FAILED flip, then stops. */
+export function useMessagesQuery(consultationId: string | undefined) {
   return useQuery({
     queryKey: chatKeys.messages(consultationId ?? ""),
     queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
     enabled: !!consultationId,
-    refetchInterval: opts?.pollWhilePending ? 1500 : false,
+    refetchInterval: (query) =>
+      query.state.data?.some((m) => m.status === "PENDING") ? 1500 : false,
   })
 }
 

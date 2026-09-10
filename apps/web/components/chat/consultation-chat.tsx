@@ -286,9 +286,7 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn,
-  });
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -347,15 +345,18 @@ export default function ConsultationChat({
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
   const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
 
-  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
-  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
-  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
-  // above); once the persisted history is at least as long as the optimistic buffer, hand the
-  // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  // The assistant reply's Message row(s) are saved synchronously by the API before the stream
+  // response ends, but its structured extras (mind map, related cases, timeline) are written a
+  // beat later by MessagePersistenceQueue — the row reads `status: "PENDING"` until they land.
+  // Keep the optimistic `pendingTurn` on screen (it carries the client-parsed mind map) until
+  // the persisted row settles to COMPLETE/FAILED, then swap to the persisted view and pull the
+  // related-cases panel (its own query) up to date. useMessagesQuery self-polls while PENDING.
   useEffect(() => {
     if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
-    const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
-    if (persistedCount >= pendingTurn.messages.length) {
+    const rows = (history ?? []).filter((m) => m.role !== "system");
+    const turnRowsExist = rows.length >= pendingTurn.messages.length;
+    const anyPending = rows.some((m) => m.status === "PENDING");
+    if (turnRowsExist && !anyPending) {
       setPendingTurn(null);
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
     }
@@ -662,9 +663,6 @@ export default function ConsultationChat({
     // The consultation this send belongs to, fixed at send time (before the id might
     // change under us, e.g. a brand-new consultation getting its real id).
     const turnKey = consultationKey;
-    // Snapshot of how many persisted messages existed before this turn — used below to
-    // sanity-check the post-send refetch before trusting it over pendingTurn (see there).
-    const messagesBeforeSend = baseMessages.length;
 
     setIsSending(true);
     setPendingTurn({
@@ -751,13 +749,6 @@ export default function ConsultationChat({
       // "looked incomplete" fallback for every first message in a new consultation.
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId), refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
-
-      const refreshedHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(activeConsultationId));
-      const turnPersisted = (refreshedHistory?.length ?? 0) >= messagesBeforeSend + 2;
-      if (sendTokenRef.current === myToken && turnPersisted) {
-        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
-        setPendingTurn(null);
-      }
     } catch (error) {
       console.error("Failed to send message:", error);
       if (sendTokenRef.current === myToken) {

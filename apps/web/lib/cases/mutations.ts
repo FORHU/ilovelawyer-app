@@ -365,8 +365,18 @@ export function useUploadDocumentsMutation() {
   })
 }
 
-function refetchWhileIndexing(query: { state: { data?: UserDocument[] } }) {
-  return query.state.data?.some((doc) => doc.ragStatus === "PENDING") ? 4000 : false
+const INDEXING_POLL_MS = 4000
+// Client-side safety net (~10 min of polling) — a document can sit at ragStatus "PENDING"
+// indefinitely (a rate-limited embedding is only retried on the API's next restart / stale
+// sweep, or an extraction job never ran), which would otherwise poll /api/documents forever.
+// Generous because the extraction queue runs one doc at a time, so a doc behind a bulk upload
+// can legitimately stay PENDING a while before its turn. Mirrors useCitationEdgesQuery's guard.
+const MAX_INDEXING_POLLS = 150
+
+function refetchWhileIndexing(query: { state: { data?: UserDocument[]; dataUpdateCount: number } }) {
+  if (!query.state.data?.some((doc) => doc.ragStatus === "PENDING")) return false
+  if (query.state.dataUpdateCount >= MAX_INDEXING_POLLS) return false
+  return INDEXING_POLL_MS
 }
 
 /** Lists the documents attached to a case. Uploading (useUploadCaseDocumentMutation)
