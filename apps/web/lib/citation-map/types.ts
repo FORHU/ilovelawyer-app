@@ -30,6 +30,9 @@ export interface CitationEdgeToLaw {
   jurisUrl: string
   pdfUrl: string | null
   citationsExtractedAt: string | null
+  /** Present on the /api/law/:id/citations response (the full Law row is included). Lets the
+   * Library detail page link an edge to the right category tab. */
+  category?: "JURISPRUDENCE" | "REPUBLIC_ACT"
 }
 
 export interface CitationEdge {

@@ -26,7 +26,9 @@
     "searching": "Naghahanap…",
     "categories": {
       "jurisprudence": "Jurisprudence",
-      "republicActs": "Republic Acts"
+      "republicActs": "Republic Acts",
+      "ukCaseLaw": "Case law",
+      "ukLegislation": "Legislation"
     },
     "resultCount": "Mga resulta: {{count}}",
     "empty": "Walang resulta.",
@@ -44,7 +46,18 @@
     "browseError": "Hindi ma-load. Pakisubukang muli.",
     "backToBrowse": "Bumalik sa browse",
     "openRecord": "Buksan ang record",
-    "openAct": "Buksan ang batas"
+    "openAct": "Buksan ang batas",
+    "filterCourt": "Court",
+    "openJudgment": "Open judgment",
+    "openLegislation": "Open legislation",
+    "ponenteLabel": "Ponente",
+    "judgeLabel": "Judge",
+    "searchOnlyHint": "Search above to find a specific record.",
+    "ukLegislationSearchHint": "Search by title to find a UK Act or Statutory Instrument, e.g. \"Data Protection Act 2018\" or \"Equality Act\".",
+    "ukTitle": "Search UK case law & legislation",
+    "ukSubtitle": "Browse judgments from the UK courts and tribunals, or search UK Acts and Statutory Instruments by title or citation.",
+    "ukSearchAriaLabel": "Search UK case law and legislation",
+    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…"
   },
   "documents": {
     "pageTitle": "Mga Case Law Document",
@@ -129,6 +142,12 @@
     "legalRulesCited": "Mga legal na tuntuning sinipi",
     "relatedCases": "Mga kaugnay na kasong sinipi",
     "citedNumbers": "Mga siniping G.R. / R.A. number",
-    "keywords": "Mga keyword"
+    "keywords": "Mga keyword",
+    "citedAuthorities": "Cited authorities",
+    "citations": "Cited authorities",
+    "showCitations": "Show cited authorities",
+    "citationsLoading": "Finding cited authorities…",
+    "citationsEmpty": "No cited authorities found for this document.",
+    "citationsError": "Couldn’t load citations. Please try again."
   }
 }

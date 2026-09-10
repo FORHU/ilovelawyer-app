@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
+import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const PAGE_SIZE = 20;
@@ -32,6 +33,10 @@ function LegalDocumentsPageContent() {
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,
   });
+  // The indexed-corpus pages (/api/legal-rag/*) are still PH-only even where `legalSearch` is
+  // enabled — the live UK Library (LawSearchPanel) is a separate surface. Nothing links a UK
+  // org here, so this is direct-URL defense-in-depth.
+  const corpusGuard = usePhStatutoryContentGuard("library");
   const { t } = useTranslation("library");
   const searchParams = useSearchParams();
   const category = searchParams.get("category") || undefined;
@@ -57,6 +62,7 @@ function LegalDocumentsPageContent() {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   if (guard) return guard;
+  if (corpusGuard) return corpusGuard;
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">

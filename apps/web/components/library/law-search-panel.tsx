@@ -5,20 +5,15 @@ import { ArrowRight, Loader2, Search, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/lib/store/auth.store"
 import {
-  LAW_CASE_TYPES,
-  LAW_TOPICS,
-  type LawCaseType,
   type LawCategoryParam,
+  type LawCaseType,
   type LawSearchItem,
   type LawTopic,
+  type UkCourt,
   useLawBrowseInfiniteQuery,
   useLawSearchMutation,
 } from "@/lib/law/queries"
-
-const CATEGORIES: { value: LawCategoryParam; labelKey: string }[] = [
-  { value: "jurisprudence", labelKey: "lawSearch.categories.jurisprudence" },
-  { value: "republic-acts", labelKey: "lawSearch.categories.republicActs" },
-]
+import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
 
 function itemTitle(item: LawSearchItem): string {
   return item.case_title ?? item.title ?? ""
@@ -40,40 +35,53 @@ const chipClass = (selected: boolean) =>
   }`
 
 /**
- * juris.ph-backed Library view. Default state = facet browse (juris.ph scroll, 20 per page,
- * "Load more"); typing a query switches to local-first search. juris.ph is Philippine-law only,
- * so this renders three ways by the org's tenant: PH → the tool, UK → "coming soon", anything
- * else → "not available". Both API routes (/api/law/browse, /api/law/search) enforce PH-only.
+ * Live Library search + browse. Default state = faceted browse; typing a query switches to
+ * local-first search. Renders for a PH org (juris.ph) and a UK org (UK Legal MCP) — the
+ * category list, facet vocab, labels and detail layout come from `getLibraryConfig`. Any other
+ * tenant gets a "not available" notice. UK legislation is search-only (no query-less list
+ * upstream — see ilovelawyer-api docs/adr/0005).
  */
 export function LawSearchPanel() {
   const { t } = useTranslation("library")
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const cfg = getLibraryConfig(tenantCode)
 
-  const [category, setCategory] = useState<LawCategoryParam>("jurisprudence")
+  // Held loosely: the org (and therefore `cfg`) can resolve after mount, so a stored value from
+  // the wrong tenant is ignored in favour of that tenant's first category rather than reset via
+  // an effect. Stale facet state is already ignored by the facetKind guards below.
+  const [rawCategory, setRawCategory] = useState<LawCategoryParam | null>(null)
+  const category: LawCategoryParam =
+    rawCategory && cfg.categories.some((c) => c.value === rawCategory)
+      ? rawCategory
+      : cfg.categories[0]!.value
+
   const [query, setQuery] = useState("")
   const [caseType, setCaseType] = useState<LawCaseType | null>(null)
   const [topics, setTopics] = useState<LawTopic[]>([])
+  const [court, setCourt] = useState<UkCourt | null>(null)
 
   const search = useLawSearchMutation()
   const showingSearch = search.status !== "idle"
+  const supported = tenantCode === "PH" || tenantCode === "UK"
+  const facetKind = cfg.facetKind(category)
+  const canBrowse = cfg.browsable(category)
 
   const browse = useLawBrowseInfiniteQuery({
     category,
-    caseType: category === "jurisprudence" && caseType ? caseType : undefined,
+    caseType: facetKind === "ph-jurisprudence" && caseType ? caseType : undefined,
     topics,
-    enabled: tenantCode === "PH" && !showingSearch,
+    court: facetKind === "uk-court" && court ? court : undefined,
+    enabled: supported && !showingSearch && canBrowse,
   })
 
-  if (tenantCode !== "PH") {
-    const bodyKey =
-      tenantCode === "UK" ? "lawSearch.comingSoon" : "lawSearch.notAvailable"
+  if (!supported) {
     return (
       <section className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center">
         <h2 className="font-['Libre_Caslon_Text',serif] text-2xl text-foreground">
-          {t("lawSearch.title")}
+          {t(cfg.titleKey)}
         </h2>
         <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-          {t(bodyKey)}
+          {t("lawSearch.notAvailable")}
         </p>
       </section>
     )
@@ -86,17 +94,16 @@ export function LawSearchPanel() {
 
   const pickCategory = (next: LawCategoryParam) => {
     if (next === category) return
-    setCategory(next)
+    setRawCategory(next)
     setCaseType(null)
     setTopics([])
+    setCourt(null)
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
     backToBrowse()
   }
 
   const toggleTopic = (topic: LawTopic) =>
-    setTopics((cur) =>
-      cur.includes(topic) ? cur.filter((x) => x !== topic) : [...cur, topic]
-    )
+    setTopics((cur) => (cur.includes(topic) ? cur.filter((x) => x !== topic) : [...cur, topic]))
 
   const runSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -106,19 +113,13 @@ export function LawSearchPanel() {
   }
 
   const browseItems = browse.data?.pages.flatMap((p) => p.items) ?? []
-  const notice = showingSearch
-    ? search.data?.notice
-    : browse.data?.pages[0]?.notice
+  const notice = showingSearch ? search.data?.notice : browse.data?.pages[0]?.notice
 
   const renderCard = (item: LawSearchItem) => {
     const rowId = item.stored_id || item.id
     const title = itemTitle(item) || t("lawSearch.untitled")
     const reference = itemReference(item)
     const snippet = item.facts ?? item.summary
-    const openKey =
-      category === "republic-acts"
-        ? "lawSearch.openAct"
-        : "lawSearch.openRecord"
     return (
       <Link
         key={rowId}
@@ -139,9 +140,7 @@ export function LawSearchPanel() {
             )}
           </div>
           {item.year != null && (
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-              {item.year}
-            </span>
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{item.year}</span>
           )}
         </div>
 
@@ -157,7 +156,7 @@ export function LawSearchPanel() {
 
         {item.ponente && (
           <p className="text-[11px] text-muted-foreground">
-            Ponente: {item.ponente}
+            {t(cfg.leadActorLabelKey)}: {item.ponente}
           </p>
         )}
 
@@ -175,34 +174,30 @@ export function LawSearchPanel() {
         )}
 
         <span className="mt-auto inline-flex w-fit items-center gap-1 pt-1 text-xs font-medium text-blue-900 dark:text-blue-400">
-          {t(openKey)}
+          {t(cfg.openLabelKey(category))}
           <ArrowRight className="size-3" aria-hidden="true" />
         </span>
       </Link>
     )
   }
 
-  const cardGridClass =
-    "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+  const cardGridClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
 
   return (
     <section className="flex flex-1 flex-col bg-background">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-6 py-8 md:px-16">
         <div className="flex flex-col gap-1">
           <h2 className="font-['Libre_Caslon_Text',serif] text-2xl text-foreground">
-            {t("lawSearch.title")}
+            {t(cfg.titleKey)}
           </h2>
           <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-            {t("lawSearch.subtitle")}
+            {t(cfg.subtitleKey)}
           </p>
         </div>
 
-        <form
-          onSubmit={runSearch}
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
-        >
+        <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex gap-1">
-            {CATEGORIES.map((c) => (
+            {cfg.categories.map((c) => (
               <button
                 key={c.value}
                 type="button"
@@ -219,15 +214,12 @@ export function LawSearchPanel() {
           </div>
 
           <div className="flex min-w-0 flex-1 items-center rounded-lg border border-border bg-transparent p-1.5 transition-colors focus-within:border-primary sm:max-w-md">
-            <Search
-              className="ml-2 h-4 w-4 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
+            <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input
               type="text"
-              aria-label={t("lawSearch.searchAriaLabel")}
+              aria-label={t(cfg.searchAriaKey)}
               className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-foreground placeholder-muted-foreground outline-none"
-              placeholder={t("lawSearch.searchPlaceholder")}
+              placeholder={t(cfg.searchPlaceholderKey)}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -258,25 +250,21 @@ export function LawSearchPanel() {
         </form>
 
         {/* ── Filters (browse mode only) ───────────────────────────────── */}
-        {!showingSearch && (
+        {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
           <div className="flex flex-col gap-3 border-y border-border py-3">
-            {category === "jurisprudence" && (
+            {facetKind === "ph-jurisprudence" && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   {t("lawSearch.filterCaseType")}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setCaseType(null)}
-                  className={chipClass(caseType === null)}
-                >
+                <button type="button" onClick={() => setCaseType(null)} className={chipClass(caseType === null)}>
                   {t("lawSearch.filterAll")}
                 </button>
-                {LAW_CASE_TYPES.map((ct) => (
+                {cfg.caseTypes.map((ct) => (
                   <button
                     key={ct}
                     type="button"
-                    onClick={() => setCaseType(caseType === ct ? null : ct)}
+                    onClick={() => setCaseType(caseType === ct ? null : (ct as LawCaseType))}
                     className={chipClass(caseType === ct)}
                   >
                     {ct}
@@ -285,21 +273,44 @@ export function LawSearchPanel() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                {t("lawSearch.filterTopics")}
-              </span>
-              {LAW_TOPICS.map((topic) => (
-                <button
-                  key={topic}
-                  type="button"
-                  onClick={() => toggleTopic(topic)}
-                  className={chipClass(topics.includes(topic))}
-                >
-                  {topicLabel(topic)}
+            {(facetKind === "ph-jurisprudence" || facetKind === "ph-topics") && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {t("lawSearch.filterTopics")}
+                </span>
+                {cfg.topics.map((topic) => (
+                  <button
+                    key={topic}
+                    type="button"
+                    onClick={() => toggleTopic(topic as LawTopic)}
+                    className={chipClass(topics.includes(topic as LawTopic))}
+                  >
+                    {topicLabel(topic as LawTopic)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {facetKind === "uk-court" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {t("lawSearch.filterCourt")}
+                </span>
+                <button type="button" onClick={() => setCourt(null)} className={chipClass(court === null)}>
+                  {t("lawSearch.filterAll")}
                 </button>
-              ))}
-            </div>
+                {cfg.courts.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCourt(court === c ? null : (c as UkCourt))}
+                    className={chipClass(court === c)}
+                  >
+                    {ukCourtLabel(c)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -314,34 +325,33 @@ export function LawSearchPanel() {
             )}
 
             {search.isError && (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {t("lawSearch.error")}
-              </p>
+              <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.error")}</p>
             )}
 
             {search.data && (
               <>
                 <p className="text-xs text-muted-foreground">
-                  {t("lawSearch.resultCount", {
-                    count: search.data.meta.count,
-                  })}
+                  {t("lawSearch.resultCount", { count: search.data.meta.count })}
                 </p>
                 {search.data.items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("lawSearch.empty")}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("lawSearch.empty")}</p>
                 ) : (
-                  <div className={cardGridClass}>
-                    {search.data.items.map(renderCard)}
-                  </div>
+                  <div className={cardGridClass}>{search.data.items.map(renderCard)}</div>
                 )}
               </>
             )}
           </div>
         )}
 
+        {/* ── Search-only category (e.g. UK legislation): no browse grid ── */}
+        {!showingSearch && !canBrowse && (
+          <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+            {t(cfg.searchOnlyHintKey)}
+          </p>
+        )}
+
         {/* ── Browse list ─────────────────────────────────────────────── */}
-        {!showingSearch && (
+        {!showingSearch && canBrowse && (
           <div className="flex flex-col gap-3">
             {browse.isPending && (
               <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
@@ -351,21 +361,15 @@ export function LawSearchPanel() {
             )}
 
             {browse.isError && (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {t("lawSearch.browseError")}
-              </p>
+              <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.browseError")}</p>
             )}
 
             {browse.data && (
               <>
                 {browseItems.length === 0 ? (
-                  <p className="py-6 text-sm text-muted-foreground">
-                    {t("lawSearch.browseEmpty")}
-                  </p>
+                  <p className="py-6 text-sm text-muted-foreground">{t("lawSearch.browseEmpty")}</p>
                 ) : (
-                  <div className={cardGridClass}>
-                    {browseItems.map(renderCard)}
-                  </div>
+                  <div className={cardGridClass}>{browseItems.map(renderCard)}</div>
                 )}
 
                 {browse.hasNextPage && (
@@ -376,10 +380,7 @@ export function LawSearchPanel() {
                     className="mx-auto inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:border-foreground/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {browse.isFetchingNextPage && (
-                      <Loader2
-                        className="size-3.5 animate-spin"
-                        aria-hidden="true"
-                      />
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
                     )}
                     {t("lawSearch.loadMore")}
                   </button>

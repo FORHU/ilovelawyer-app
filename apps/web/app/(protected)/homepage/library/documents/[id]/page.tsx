@@ -7,6 +7,7 @@ import GlobalHeader from "@/components/global-header";
 import LegalMarkdown from "@/components/library/legal-markdown";
 import { useLegalDocumentQuery } from "@/lib/legal-rag/mutations";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
+import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function LegalDocumentDetailPage() {
@@ -15,6 +16,7 @@ export default function LegalDocumentDetailPage() {
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,
   });
+  const corpusGuard = usePhStatutoryContentGuard("library");
   const { t } = useTranslation("library");
   const params = useParams<{ id: string }>();
   const { data, isLoading, isError } = useLegalDocumentQuery(params.id);
@@ -22,6 +24,7 @@ export default function LegalDocumentDetailPage() {
   const content = data?.formatted_markdown?.trim() || data?.summary?.trim() || data?.concise_summary?.trim() || "";
 
   if (guard) return guard;
+  if (corpusGuard) return corpusGuard;
 
   return (
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">

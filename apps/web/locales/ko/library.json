@@ -26,7 +26,9 @@
     "searching": "검색 중…",
     "categories": {
       "jurisprudence": "판례",
-      "republicActs": "공화국법"
+      "republicActs": "공화국법",
+      "ukCaseLaw": "Case law",
+      "ukLegislation": "Legislation"
     },
     "resultCount": "결과: {{count}}",
     "empty": "결과가 없습니다.",
@@ -44,7 +46,18 @@
     "browseError": "불러올 수 없습니다. 다시 시도해 주세요.",
     "backToBrowse": "탐색으로 돌아가기",
     "openRecord": "판례 열기",
-    "openAct": "법률 열기"
+    "openAct": "법률 열기",
+    "filterCourt": "Court",
+    "openJudgment": "Open judgment",
+    "openLegislation": "Open legislation",
+    "ponenteLabel": "Ponente",
+    "judgeLabel": "Judge",
+    "searchOnlyHint": "Search above to find a specific record.",
+    "ukLegislationSearchHint": "Search by title to find a UK Act or Statutory Instrument, e.g. \"Data Protection Act 2018\" or \"Equality Act\".",
+    "ukTitle": "Search UK case law & legislation",
+    "ukSubtitle": "Browse judgments from the UK courts and tribunals, or search UK Acts and Statutory Instruments by title or citation.",
+    "ukSearchAriaLabel": "Search UK case law and legislation",
+    "ukSearchPlaceholder": "Case name, neutral citation, or Act title…"
   },
   "documents": {
     "pageTitle": "판례 문서",
@@ -129,6 +142,12 @@
     "legalRulesCited": "인용된 법리",
     "relatedCases": "인용된 관련 판례",
     "citedNumbers": "인용된 G.R. / R.A. 번호",
-    "keywords": "키워드"
+    "keywords": "키워드",
+    "citedAuthorities": "Cited authorities",
+    "citations": "Cited authorities",
+    "showCitations": "Show cited authorities",
+    "citationsLoading": "Finding cited authorities…",
+    "citationsEmpty": "No cited authorities found for this document.",
+    "citationsError": "Couldn’t load citations. Please try again."
   }
 }

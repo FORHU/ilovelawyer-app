@@ -29,9 +29,11 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
       aiChat: "available",
       cases: "available",
       documents: "available",
-      // No UK case-law/statute corpus yet — see ilovelawyer-api's
-      // docs/uk-legal-corpus-contract.md.
-      legalSearch: "coming-soon",
+      // Live UK Library — case law (TNA Find Case Law) + legislation (legislation.gov.uk),
+      // proxied through the UK Legal MCP. See ilovelawyer-api's legal/law-source/uk and
+      // docs/adr/0005-uk-library-source.md. (The separate pre-ingested `documents` corpus at
+      // /api/legal-rag/* is still PH-only — the library/documents route is guarded for UK.)
+      legalSearch: "available",
       // The citation-check UI only ever submits free-text quotedText/officialText — it never
       // exposes a legalRagId picker into the PH-only corpus, so it's already tenant-neutral
       // and fully available. (The backend still rejects a legalRagId-based check against a

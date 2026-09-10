@@ -6,11 +6,15 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import GlobalHeader from "@/components/global-header"
 import { LawPdfViewer } from "@/components/library/law-pdf-viewer"
+import { LawCitations } from "@/components/library/law-citations"
 import {
   type LawCategoryParam,
   type LawDocument,
   useLawDocumentQuery,
 } from "@/lib/law/queries"
+import { getLibraryConfig } from "@/lib/law/library-config"
+import { API_BASE_URL } from "@/lib/fetch"
+import { useAuthStore } from "@/lib/store/auth.store"
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard"
 
 export default function LawDocumentPage() {
@@ -77,9 +81,18 @@ function LawDocumentPageContent() {
 
 function DocumentBody({ doc }: { doc: LawDocument }) {
   const { t } = useTranslation("library")
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const cfg = getLibraryConfig(tenantCode)
   const { item, detail } = doc
-  const isRa = item.dataset === "republic-acts"
-  const hasPdf = !!item.pdf_url
+  const isRa = cfg.isLegislation(item.dataset)
+  const isUk = tenantCode === "UK"
+  // legislation.gov.uk and the TNA judgment site both send X-Frame-Options: DENY, so their PDFs
+  // can't be iframed directly — UK docs load through our same-origin `/api/law/:id/pdf` proxy.
+  // PH keeps using juris.ph's `pdf_url` (juris.ph allows framing). The proxy 502s (blank frame +
+  // "open in a new tab" link) if the upstream is unreachable.
+  const pdfSrc = isUk ? `${API_BASE_URL}/api/law/${item.stored_id}/pdf` : item.pdf_url
+  const pdfSourceLink = item.pdf_url || item.source_url || item.juris_url
+  const hasPdf = isUk || !!item.pdf_url
 
   const sections = isRa ? (
     <>
@@ -139,7 +152,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
         items={detail.related_cases_cited}
       />
       <ListBlock
-        label={t("lawDoc.citedNumbers")}
+        label={t(tenantCode === "UK" ? "lawDoc.citedAuthorities" : "lawDoc.citedNumbers")}
         items={[...detail.cited_gr_numbers, ...detail.cited_ra_numbers]}
       />
     </>
@@ -178,7 +191,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
 
         {item.ponente && (
           <p className="text-xs text-muted-foreground">
-            Ponente: {item.ponente}
+            {t(cfg.leadActorLabelKey)}: {item.ponente}
           </p>
         )}
         {detail.date_enacted && (
@@ -234,7 +247,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
                 {t("lawDoc.document")}
               </h2>
               <div className="min-h-0 flex-1">
-                <LawPdfViewer url={item.pdf_url!} />
+                <LawPdfViewer url={pdfSrc!} sourceUrl={pdfSourceLink} />
               </div>
             </section>
           </div>
@@ -244,6 +257,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
           className={`flex flex-col gap-4 ${hasPdf ? "" : "mx-auto w-full max-w-3xl"}`}
         >
           {sections}
+          {tenantCode === "UK" && <LawCitations lawId={item.stored_id} />}
           {detail.keywords.length > 0 && (
             <Card label={t("lawDoc.keywords")}>
               <div className="flex flex-wrap gap-1.5">
