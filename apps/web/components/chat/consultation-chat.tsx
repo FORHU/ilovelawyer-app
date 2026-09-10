@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
+import { Paperclip, Mic, Square, X, ArrowRight, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -839,18 +839,14 @@ export default function ConsultationChat({
         onDrop={handleDrop}
         className={`relative w-full flex flex-col gap-2 transition-colors ${
           embedded
-            ? `rounded-lg border bg-muted p-2 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
+            ? `rounded-3xl border bg-card p-3 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
             : `backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl ${
                 isDraggingOver ? "border-primary border-dashed" : "border-border"
               }`
         }`}
       >
         {isDraggingOver && (
-          <div
-            className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
-              embedded ? "rounded-lg bg-card/90" : "rounded-3xl bg-card/90"
-            }`}
-          >
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-card/90 pointer-events-none">
             <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
           </div>
         )}
@@ -928,24 +924,16 @@ export default function ConsultationChat({
           </div>
         )}
 
-        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input.
-         * items-center (not items-end) so the send button stays vertically centered against
-         * whatever height the textarea actually renders at — items-end previously relied on a
-         * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
-         * out of alignment whenever the real rendered height differed even slightly. */}
-        <div className={embedded ? "flex items-center gap-1.5" : "contents"}>
+        {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input. Both
+         * embedded and non-embedded now stack the textarea above its own action row (rather than
+         * embedded sharing one row with the send button), so this wrapper is just "contents" —
+         * its children flow directly into the form's own flex-col. */}
+        <div className="contents">
           <textarea
             ref={textareaRef}
             rows={1}
-            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
-              // Embedded shares this row with the send button (see the wrapping div above),
-              // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
-              // styling, where this is the row's only child) forced it to claim the full row
-              // width regardless of the button, pushing the button out past the pane's
-              // clipped edge (or spilling past the rounded border where nothing clips it).
-              embedded
-                ? "min-w-0 flex-1 px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
-                : "w-full shrink-0 text-[15px] text-foreground placeholder-muted-foreground px-2 py-1"
+            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] w-full shrink-0 text-foreground placeholder-muted-foreground ${
+              embedded ? "text-[14px] px-1 py-1" : "text-[15px] px-2 py-1"
             }`}
             placeholder={inputPlaceholder ?? t("input.placeholder")}
             value={inputMessage}
@@ -956,34 +944,56 @@ export default function ConsultationChat({
           />
 
           {embedded ? (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleClipClick}
-                    aria-label={t("input.attachFile")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    <Paperclip className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.attachFile")}</TooltipContent>
-              </Tooltip>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleClipClick}
+                      aria-label={t("input.attachFile")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <Paperclip className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.attachFile")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleMicClick}
+                      aria-pressed={isRecording}
+                      aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                        isRecording
+                          ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
+                          : "hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {isRecording ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
+                </Tooltip>
+              </div>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="submit"
                     disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
                     aria-label={t("input.sendMessage")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50"
+                    className="flex h-9 shrink-0 items-center gap-2 rounded-full bg-brand-gold px-4 text-[10px] font-semibold uppercase tracking-[1.2px] text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                   >
-                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("input.send")}
+                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{t("input.sendMessage")}</TooltipContent>
               </Tooltip>
-            </>
+            </div>
           ) : (
         <div className="flex items-center justify-between px-1">
           <div className="flex gap-1 text-muted-foreground">

@@ -11,6 +11,7 @@
     "startRecording": "Start recording",
     "stopRecording": "Stop recording",
     "sendMessage": "Send message",
+    "send": "Send",
     "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
     "attachmentUploadError": "Couldn't upload one or more files. Retry or remove them and try again.",

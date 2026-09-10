@@ -1,10 +1,14 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense } from "react";
+import React, { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
 import CustomSelect from "@/components/ui/custom-select";
-import { UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Scale, Users, Loader2 } from "lucide-react";
+import {
+  UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Loader2,
+  ArrowLeft, ArrowRight, ArrowUpRight, CircleCheck, PanelsTopLeft, Scale,
+} from "lucide-react";
 import {
   useCreateCaseMutation,
   useUploadCaseDocumentsMutation,
@@ -41,6 +45,7 @@ interface UploadedFile {
   error?: string;
 }
 
+type OpenTarget = "workspace" | "terminal";
 
 export default function CreateCasePage() {
   return (
@@ -71,6 +76,14 @@ function CreateCasePageContent() {
   // partial upload failure reuses the existing case instead of creating a duplicate.
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
   const nextPartyIdRef = useRef(2);
+
+  const [step, setStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
+  // Defaults to Terminal when arriving via ?next=terminal (e.g. from the Legal Terminal's own
+  // "new case" entry point) — otherwise the user can still flip it before filing.
+  const [openTarget, setOpenTarget] = useState<OpenTarget>(
+    searchParams.get("next") === "terminal" ? "terminal" : "workspace",
+  );
 
   const { mutateAsync: uploadDocuments } = useUploadCaseDocumentsMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
@@ -214,10 +227,31 @@ function CreateCasePageContent() {
   // the case (once created) is reused rather than duplicated.
   const hasFilesUploading = formData.uploadedFiles.some((f) => f.status === "uploading");
 
+  const goToStep = (n: number) => {
+    if (n <= maxStepReached) setStep(n);
+  };
+
+  const handleContinue = () => {
+    if (step === 1 && !formData.caseTitle.trim()) {
+      setCaseTitleError(true);
+      return;
+    }
+    const next = Math.min(3, step + 1);
+    setStep(next);
+    setMaxStepReached((m) => Math.max(m, next));
+  };
+
+  const handleStepBack = () => {
+    if (step > 1) setStep(step - 1);
+    else router.push("/homepage/case-portfolio");
+  };
+
   const handleSubmitFiling = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (step !== 3) return;
     setSubmitError(null);
     if (!formData.caseTitle.trim()) {
+      setStep(1);
       setCaseTitleError(true);
       return;
     }
@@ -253,303 +287,320 @@ function CreateCasePageContent() {
       }
 
       router.push(
-        searchParams.get("next") === "terminal"
+        openTarget === "terminal"
           ? `/homepage/terminal/${caseId}`
-          : `/homepage/v2/case-portfolio/${caseId}`,
+          : `/homepage/case-portfolio/${caseId}`,
       );
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
   };
 
-  return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
+  const steps = [
+    { n: 1, numeral: t("steps.identity.numeral"), title: t("steps.identity.title"), hint: t("steps.identity.hint") },
+    { n: 2, numeral: t("steps.parties.numeral"), title: t("steps.parties.title"), hint: t("steps.parties.hint") },
+    { n: 3, numeral: t("steps.documents.numeral"), title: t("steps.documents.title"), hint: t("steps.documents.hint") },
+  ];
 
+  return (
+    <div className="landing-theme min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="create-case" />
 
-      {/* CORE CANVAS WORKSPACE */}
-      <form onSubmit={handleSubmitFiling} className="w-full flex flex-col flex-1">
+      <form onSubmit={handleSubmitFiling} className="flex-1 flex flex-col">
+        <div className="max-w-[1080px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 flex flex-col gap-8">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/case-portfolio"
+                className="self-start flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                {t("backToCases")}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Return to your case portfolio list</TooltipContent>
+          </Tooltip>
 
-        {/* HERO BACKDROP */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 py-14 md:py-16">
-          <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#c9c9c9]/10 blur-3xl" aria-hidden="true" />
-          <div className="relative max-w-4xl w-full mx-auto px-6 md:px-12 flex flex-col gap-2">
-            <h1 className="font-['Libre_Caslon_Text'] text-3xl md:text-4xl text-white font-normal tracking-[-0.6px]">
-              {t("title")}
-            </h1>
-            <p className="text-white/70 text-sm max-w-md">
-              {t("subtitle")}
-            </p>
-          </div>
-        </section>
-
-        {/* INTAKE FORM CONTENT */}
-        <section className="max-w-4xl w-full mx-auto px-6 md:px-12 py-10 md:py-12 flex flex-col gap-8 font-['Inter']">
-          {submitError && (
-            <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
-              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <p className="text-sm">{submitError}</p>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setSubmitError(null)}
-                    className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
-                    aria-label={t("dismissError")}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("dismissError")}</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-
-          {/* SECTION I: IDENTITY */}
-          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                <Scale className="h-4 w-4" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionIdentity.heading")}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionIdentity.subheading")}</p>
-              </div>
-            </div>
-
-            <fieldset className="px-6 md:px-8 py-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="flex flex-col gap-3">
-                  <label htmlFor="caseTitle" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                    {t("sectionIdentity.caseTitleLabel")} <span className="text-muted-foreground normal-case font-normal">{t("sectionIdentity.required")}</span>
-                  </label>
-                  <input
-                    id="caseTitle"
-                    type="text"
-                    className={`w-full rounded-xl border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors focus:ring-2 ${
-                      caseTitleError
-                        ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
-                        : "border-border hover:border-foreground/30 focus:border-foreground focus:ring-foreground/5"
-                    }`}
-                    placeholder={t("sectionIdentity.caseTitlePlaceholder")}
-                    value={formData.caseTitle}
-                    onChange={(e) => handleInputChange("caseTitle", e.target.value)}
-                    aria-invalid={caseTitleError}
-                    aria-describedby={caseTitleError ? "caseTitle-error" : undefined}
-                  />
-                  {caseTitleError && (
-                    <p id="caseTitle-error" className="flex items-center gap-1.5 text-xs text-red-600">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                      {t("sectionIdentity.caseTitleError")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <label htmlFor="actionType" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                    {t("sectionIdentity.actionTypeLabel")}
-                  </label>
-                  <CustomSelect
-                    id="actionType"
-                    value={formData.actionType}
-                    onChange={(v) => handleInputChange("actionType", v)}
-                    options={ACTION_TYPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                    placeholder={t("sectionIdentity.selectAction")}
-                    triggerTooltip="Choose the type of legal action"
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex flex-col gap-3">
-                  <label htmlFor="jurisdiction" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                    {t("sectionIdentity.jurisdictionLabel")}
-                  </label>
-                  <input
-                    id="jurisdiction"
-                    type="text"
-                    className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
-                    placeholder={t("sectionIdentity.jurisdictionPlaceholder")}
-                    value={formData.jurisdiction}
-                    onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
-                  />
-                </div>
-
-                <p className="md:col-span-2 flex items-center gap-1.5 text-xs text-muted-foreground italic">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  {t("sectionIdentity.persistenceNotice")}
+          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-10 md:gap-12 items-start">
+            <div className="flex flex-col gap-7 md:sticky md:top-24">
+              <div className="flex flex-col gap-3">
+                <h1 className="font-['Libre_Caslon_Text'] text-[40px] font-light leading-none tracking-[-0.02em] text-foreground">
+                  {t("newCaseHeading")}
+                </h1>
+                <p className="text-muted-foreground text-[13px] leading-relaxed">
+                  {t("newCaseSubheading")}
                 </p>
               </div>
-            </fieldset>
-          </section>
 
-          {/* SECTION II: PARTY DETAILS */}
-          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                <Users className="h-4 w-4" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionParties.heading")}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionParties.subheading")}</p>
-              </div>
-            </div>
-
-            <fieldset className="px-6 md:px-8 py-6 flex flex-col gap-6">
-              <div className="relative">
-                {/* Bounded + scrollable instead of growing the page forever: 1-3 parties
-                    fit with no scrollbar at all, more than that scrolls within this box.
-                    Below md the bound is dropped entirely — a scroll box nested inside an
-                    already-scrolling page is a mobile friction point (see ADR 0007). */}
-                <div className="flex flex-col gap-4 md:max-h-105 md:overflow-y-auto pr-1 -mr-1">
-                  {formData.parties.map((party, index) => (
-                    <div key={party.id} className="border border-l-4 border-border border-l-primary/15 rounded-xl p-5 flex flex-col gap-5 transition-colors hover:border-l-primary/30">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
-                          {t("sectionParties.partyLabel", { number: index + 1 })}
-                        </span>
-                        {formData.parties.length > 1 && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => removeParty(party.id)}
-                                className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                                aria-label={t("sectionParties.removeParty", { number: index + 1 })}
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("sectionParties.removeParty", { number: index + 1 })}</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="flex flex-col gap-3">
-                          <label htmlFor={`party-name-${party.id}`} className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                            {t("sectionParties.fullNameLabel")}
-                          </label>
-                          <input
-                            id={`party-name-${party.id}`}
-                            type="text"
-                            className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
-                            placeholder={t("sectionParties.fullNamePlaceholder")}
-                            value={party.name}
-                            onChange={(e) => updateParty(party.id, "name", e.target.value)}
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                          <label htmlFor={`party-designation-${party.id}`} className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                            {t("sectionParties.designationLabel")}
-                          </label>
-                          <CustomSelect
-                            id={`party-designation-${party.id}`}
-                            value={party.designation}
-                            onChange={(v) => updateParty(party.id, "designation", v)}
-                            options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                            triggerTooltip="Choose the party's designation"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {formData.parties.length > 3 && (
-                  <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card to-transparent" />
-                )}
-              </div>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={addParty}
-                    className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                    {t("sectionParties.addParty")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Add another party to this case</TooltipContent>
-              </Tooltip>
-            </fieldset>
-          </section>
-
-          {/* SECTION III: EVIDENTIARY SUBMISSIONS */}
-          <section className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 md:px-8 py-5 border-b border-border bg-muted/60">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
-                <UploadCloud className="h-4 w-4" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("sectionEvidence.heading")}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{t("sectionEvidence.subheading")}</p>
-              </div>
-            </div>
-
-            <fieldset className="px-6 md:px-8 py-6">
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={triggerFileSelect}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && triggerFileSelect()}
-                className={`border border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-4 relative cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                  isDragActive ? "border-primary bg-muted" : "border-border bg-muted/40 hover:border-foreground/30"
-                }`}
-              >
-                <input
-                  type="file"
-                  multiple
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
-                  onChange={handleFileChange}
-                />
-
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card shadow-sm">
-                  <UploadCloud className="w-6 h-6 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
-                </div>
-
-                <div>
-                  <h4 className="font-['Libre_Caslon_Text'] text-lg text-foreground mb-1">
-                    {t("sectionEvidence.depositCaseFiles")}
-                  </h4>
-                  <p className="text-muted-foreground text-sm italic font-light">
-                    {t("sectionEvidence.dropHint")}
-                  </p>
-                </div>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerFileSelect();
-                      }}
-                      className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-3.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
+              <ol className="flex flex-col">
+                {steps.map((s) => {
+                  const done = s.n < step;
+                  const current = s.n === step;
+                  const enabled = s.n <= maxStepReached;
+                  return (
+                    <li
+                      key={s.n}
+                      onClick={() => goToStep(s.n)}
+                      className={`flex gap-3.5 py-3.5 border-t border-border ${enabled ? "cursor-pointer" : "cursor-default"}`}
                     >
-                      {t("sectionEvidence.selectDocuments")}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Choose PDF or DOCX files to upload as evidence</TooltipContent>
-                </Tooltip>
+                      {done ? (
+                        <span className="w-6.5 h-6.5 rounded-full bg-brand-gold text-brand-navy-950 flex items-center justify-center shrink-0">
+                          <CircleCheck className="w-3.5 h-3.5" aria-hidden="true" />
+                        </span>
+                      ) : (
+                        <span
+                          className={`w-6.5 h-6.5 rounded-full border flex items-center justify-center shrink-0 font-['Libre_Caslon_Text'] text-xs box-border ${
+                            current ? "border-brand-gold text-brand-gold" : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          {s.numeral}
+                        </span>
+                      )}
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[13px] font-medium ${done || current ? "text-foreground" : "text-muted-foreground"}`}>
+                          {s.title}
+                        </span>
+                        <span className="text-[11.5px] text-muted-foreground leading-relaxed">{s.hint}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
 
-                {formData.uploadedFiles.length > 0 && (
+            <div className="flex flex-col gap-5 min-w-0">
+              {submitError && (
+                <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <p className="text-sm">{submitError}</p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setSubmitError(null)}
+                        className="ml-auto rounded-full p-1 -m-1 text-red-700 hover:text-red-900 dark:text-red-400 dark:hover:text-red-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/30"
+                        aria-label={t("dismissError")}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("dismissError")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+
+              {step === 1 && (
+                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-7">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
+                      {t("steps.identity.numeral")}
+                    </span>
+                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionIdentity.heading")}</h2>
+                    <p className="text-[13px] text-muted-foreground">{t("sectionIdentity.subheading")}</p>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <label htmlFor="caseTitle" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      {t("sectionIdentity.caseTitleLabel")} <span className="text-brand-gold normal-case font-normal">{t("sectionIdentity.required")}</span>
+                    </label>
+                    <input
+                      id="caseTitle"
+                      type="text"
+                      className={`w-full rounded-xl border bg-background px-3.5 py-3 outline-none font-['Libre_Caslon_Text'] text-[17px] transition-colors focus:ring-2 ${
+                        caseTitleError
+                          ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
+                          : "border-border hover:border-foreground/30 focus:border-brand-gold focus:ring-brand-gold/10"
+                      }`}
+                      placeholder={t("sectionIdentity.caseTitlePlaceholder")}
+                      value={formData.caseTitle}
+                      onChange={(e) => handleInputChange("caseTitle", e.target.value)}
+                      aria-invalid={caseTitleError}
+                      aria-describedby={caseTitleError ? "caseTitle-error" : undefined}
+                    />
+                    {caseTitleError && (
+                      <p id="caseTitle-error" className="flex items-center gap-1.5 text-xs text-red-600">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        {t("sectionIdentity.caseTitleError")}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-3">
+                      <label htmlFor="actionType" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {t("sectionIdentity.actionTypeLabel")}
+                      </label>
+                      <CustomSelect
+                        id="actionType"
+                        value={formData.actionType}
+                        onChange={(v) => handleInputChange("actionType", v)}
+                        options={ACTION_TYPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                        placeholder={t("sectionIdentity.selectAction")}
+                        triggerTooltip="Choose the type of legal action"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <label htmlFor="jurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {t("sectionIdentity.jurisdictionLabel")}
+                      </label>
+                      <input
+                        id="jurisdiction"
+                        type="text"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        placeholder={t("sectionIdentity.jurisdictionPlaceholder")}
+                        value={formData.jurisdiction}
+                        onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    {t("sectionIdentity.persistenceNotice")}
+                  </p>
+                </section>
+              )}
+
+              {step === 2 && (
+                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-6">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
+                      {t("steps.parties.numeral")}
+                    </span>
+                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionParties.heading")}</h2>
+                    <p className="text-[13px] text-muted-foreground">{t("sectionParties.subheading")}</p>
+                  </div>
+
+                  <div className="relative">
+                    {/* Bounded + scrollable instead of growing the page forever: 1-3 parties
+                        fit with no scrollbar at all, more than that scrolls within this box.
+                        Below md the bound is dropped entirely — a scroll box nested inside an
+                        already-scrolling page is a mobile friction point (see ADR 0007). */}
+                    <div className="flex flex-col gap-3.5 md:max-h-105 md:overflow-y-auto pr-1 -mr-1">
+                      {formData.parties.map((party, index) => (
+                        <div key={party.id} className="border border-border rounded-xl p-4.5 flex flex-col gap-4 bg-background">
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                              {t("sectionParties.partyLabel", { number: index + 1 })}
+                            </span>
+                            {formData.parties.length > 1 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeParty(party.id)}
+                                    className="cursor-pointer rounded-full p-2 -m-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                                    aria-label={t("sectionParties.removeParty", { number: index + 1 })}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>{t("sectionParties.removeParty", { number: index + 1 })}</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="flex flex-col gap-2">
+                              <label htmlFor={`party-name-${party.id}`} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                                {t("sectionParties.fullNameLabel")}
+                              </label>
+                              <input
+                                id={`party-name-${party.id}`}
+                                type="text"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                                placeholder={t("sectionParties.fullNamePlaceholder")}
+                                value={party.name}
+                                onChange={(e) => updateParty(party.id, "name", e.target.value)}
+                              />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                              <label htmlFor={`party-designation-${party.id}`} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                                {t("sectionParties.designationLabel")}
+                              </label>
+                              <CustomSelect
+                                id={`party-designation-${party.id}`}
+                                value={party.designation}
+                                onChange={(v) => updateParty(party.id, "designation", v)}
+                                options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                                triggerTooltip="Choose the party's designation"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {formData.parties.length > 3 && (
+                      <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card to-transparent" />
+                    )}
+                  </div>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={addParty}
+                        className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground/40 border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      >
+                        <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                        {t("sectionParties.addParty")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add another party to this case</TooltipContent>
+                  </Tooltip>
+                </section>
+              )}
+
+              {step === 3 && (
+                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-6">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
+                      {t("steps.documents.numeral")}
+                    </span>
+                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionEvidence.heading")}</h2>
+                    <p className="text-[13px] text-muted-foreground">{t("sectionEvidence.subheading")}</p>
+                  </div>
+
                   <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-md mt-4 text-left bg-card border border-border rounded-xl p-4 text-xs text-foreground flex flex-col gap-2 max-h-40 overflow-y-auto"
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={triggerFileSelect}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && triggerFileSelect()}
+                    className={`border border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                      isDragActive ? "border-brand-gold bg-background" : "border-border bg-background hover:border-foreground/30"
+                    }`}
                   >
-                    <p className="font-bold border-b pb-1 mb-1 text-muted-foreground">{t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}</p>
-                    {formData.uploadedFiles.map((f) => (
-                      <div key={f.id} className="flex flex-col gap-1 py-0.5">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                          <span className="truncate flex-1">{f.file.name} ({(f.file.size / 1024).toFixed(1)} KB)</span>
+                    <input
+                      type="file"
+                      multiple
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+                      onChange={handleFileChange}
+                    />
+
+                    <UploadCloud className="w-6.5 h-6.5 text-muted-foreground" strokeWidth={1.5} aria-hidden="true" />
+                    <h4 className="font-['Libre_Caslon_Text'] text-lg text-foreground">
+                      {t("sectionEvidence.depositCaseFiles")}
+                    </h4>
+                    <p className="text-muted-foreground text-[12.5px]">
+                      {t("sectionEvidence.dropHint")}
+                    </p>
+                  </div>
+
+                  {formData.uploadedFiles.length > 0 && (
+                    <div className="flex flex-col border border-border rounded-xl overflow-hidden">
+                      {formData.uploadedFiles.map((f) => (
+                        <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px]">
+                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          <span className="flex-1 min-w-0 truncate">{f.file.name}</span>
+                          <span className="text-[11px] text-muted-foreground">{(f.file.size / 1024).toFixed(1)} KB</span>
                           {f.status === "uploading" && (
                             <Loader2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin" aria-hidden="true" />
                           )}
@@ -585,33 +636,89 @@ function CreateCasePageContent() {
                             <TooltipContent>{t("sectionEvidence.removeFile", { fileName: f.file.name })}</TooltipContent>
                           </Tooltip>
                         </div>
-                        {f.status === "error" && (
-                          <p className="text-red-600 dark:text-red-400">{f.error ?? t("sectionEvidence.uploadFailed")}</p>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-3 pt-2 border-t border-border">
+                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("openInLabel")}</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setOpenTarget("workspace")}
+                        className={`h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
+                          openTarget === "workspace"
+                            ? "bg-foreground text-background"
+                            : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                        }`}
+                      >
+                        <PanelsTopLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                        {t("openInWorkspace")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenTarget("terminal")}
+                        className={`h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
+                          openTarget === "terminal"
+                            ? "bg-foreground text-background"
+                            : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                        }`}
+                      >
+                        <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                        {t("openInTerminal")}
+                      </button>
+                    </div>
                   </div>
+                </section>
+              )}
+
+              <div className="flex items-center justify-between gap-4">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleStepBack}
+                      className="h-10 px-4.5 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                    >
+                      {t("back")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{step > 1 ? "Go back to the previous step" : "Discard and return to Cases"}</TooltipContent>
+                </Tooltip>
+
+                {step < 3 ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleContinue}
+                        className="flex items-center gap-2.5 h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
+                      >
+                        {t("continue")}
+                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Continue to the next step</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="submit"
+                        disabled={hasFilesUploading || isSubmitting}
+                        className="flex items-center gap-2.5 h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? t("submitting") : t("initiateFiling")}
+                        {!isSubmitting && <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Create the case with the details entered above</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
-            </fieldset>
-          </section>
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="submit"
-                  disabled={hasFilesUploading || isSubmitting}
-                  className="bg-brand-navy-900 text-white rounded-xl font-medium tracking-widest text-sm px-10 py-4 hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? t("submitting") : t("initiateFiling")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Create the case with the details entered above</TooltipContent>
-            </Tooltip>
-            <p className="text-xs text-muted-foreground">{t("editAnytimeNote")}</p>
+            </div>
           </div>
-        </section>
+        </div>
       </form>
     </div>
   );

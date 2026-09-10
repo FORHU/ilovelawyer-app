@@ -1,19 +1,18 @@
 "use client";
-import { useParams } from "next/navigation";
-import GlobalHeader from "@/components/global-header";
-import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
+import { useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-export default function CaseWorkspacePage() {
+/** This route was folded into the unified case-detail page (case-portfolio/[id], Workspace
+ * tab) — kept as a redirect only so existing bookmarks/links still land somewhere real. */
+export default function LegacyCaseWorkspaceRedirect() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  return (
-    <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      <GlobalHeader activeTab="case-portfolio" />
-      {/* pt-16 clears the header — GlobalHeader is `absolute`, so it reserves no flex-flow
-          height of its own (same compensation ConsultationChat's non-embedded mode applies). */}
-      <div className="min-h-0 flex-1 pt-16">
-        <CaseWorkspace caseId={id} />
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    const qs = searchParams.toString();
+    router.replace(`/homepage/case-portfolio/${id}${qs ? `?${qs}` : ""}`);
+  }, [id, router, searchParams]);
+
+  return null;
 }

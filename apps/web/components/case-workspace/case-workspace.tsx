@@ -45,7 +45,7 @@ const RESIZE_HANDLE_WIDTH = 6;
  * constrained after NotebookLM's own resizable Sources/Studio panels. */
 export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const { t } = useTranslation("case-portfolio");
-  const basePath = `/homepage/v2/case-portfolio/${caseId}`;
+  const basePath = `/homepage/case-portfolio/${caseId}`;
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeConsultationId = searchParams.get("c");

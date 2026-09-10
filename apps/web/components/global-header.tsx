@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Building2, ChevronDown, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
+import { Building2, FileText, LogOut, Menu, User, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -37,11 +37,6 @@ interface GlobalHeaderProps {
     | "judicial-issuances";
 }
 
-const CASE_MENU_ITEMS = [
-  { tab: "create-case", labelKey: "nav.createCase", href: "/homepage/create-case", tooltip: "Start a new case filing" },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
-] as const;
-
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
   { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
@@ -63,30 +58,25 @@ const MOBILE_NAV_ITEMS = [
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
-  const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const caseMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
 
-  // Close the dropdowns on outside click, since they aren't native <select>s.
+  // Close the dropdown on outside click, since it isn't a native <select>.
   useEffect(() => {
-    if (!isCaseMenuOpen && !isUserMenuOpen) return;
+    if (!isUserMenuOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (caseMenuRef.current && !caseMenuRef.current.contains(e.target as Node)) {
-        setIsCaseMenuOpen(false);
-      }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setIsUserMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isCaseMenuOpen, isUserMenuOpen]);
+  }, [isUserMenuOpen]);
 
   // Close the mobile drawer if the viewport grows past the lg breakpoint
   // (e.g. rotating a tablet, or resizing a browser window past 1024px).
@@ -140,55 +130,24 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             <TooltipContent>AI-powered legal consultation chat</TooltipContent>
           </Tooltip>
 
-          <div className="relative" ref={caseMenuRef}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setIsCaseMenuOpen((prev) => !prev)}
-                  className={`flex items-center gap-1 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                    isCaseTabActive
-                      ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
-                      : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
-                  }`}
-                  aria-haspopup="menu"
-                  aria-expanded={isCaseMenuOpen}
-                >
-                  {t("nav.case").toUpperCase()}
-                  <ChevronDown
-                    className={`w-3 h-3 transition-transform duration-200 ${isCaseMenuOpen ? "rotate-180" : ""}`}
-                    aria-hidden="true"
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Create or manage your cases</TooltipContent>
-            </Tooltip>
-
-            {isCaseMenuOpen && (
-              <div
-                role="menu"
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-44 bg-card border border-border rounded-xl shadow-xl py-1 overflow-hidden"
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/homepage/case-portfolio"
+                className={`relative flex flex-col items-center rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                  isCaseTabActive
+                    ? "text-[10px] tracking-[1px] uppercase transition-all duration-200 text-white font-bold opacity-100"
+                    : "text-[10px] tracking-[1px] uppercase transition-all duration-200 opacity-60 text-white hover:opacity-100"
+                }`}
               >
-                {CASE_MENU_ITEMS.map((item) => (
-                  <Tooltip key={item.tab}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        role="menuitem"
-                        onClick={() => setIsCaseMenuOpen(false)}
-                        className={`block px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30 ${
-                          activeTab === item.tab ? "text-foreground font-bold bg-foreground/5" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                        }`}
-                      >
-                        {t(item.labelKey)}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{item.tooltip}</TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-            )}
-          </div>
+                {t("nav.cases").toUpperCase()}
+                {isCaseTabActive && (
+                  <span className="absolute -bottom-2.5 h-1 w-1 rounded-full bg-brand-gold" aria-hidden="true" />
+                )}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>View and manage your case portfolio</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
