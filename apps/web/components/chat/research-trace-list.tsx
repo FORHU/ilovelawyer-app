@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import type { TraceStep } from "@/lib/chat/mind-map-parser";
 
 const MAX_VISIBLE_STEPS = 5;
@@ -20,14 +21,11 @@ export function ResearchTraceList({ steps }: { steps: TraceStep[] }) {
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="flex items-center gap-2 text-muted-foreground"
           >
-            <span
-              aria-hidden="true"
-              className={`size-1.5 rounded-full shrink-0 ${
-                step.status === "active"
-                  ? "bg-[#d4af37] animate-pulse motion-reduce:animate-none"
-                  : "bg-muted-foreground/50"
-              }`}
-            />
+            {step.status === "active" ? (
+              <Loader2 className="size-3 shrink-0 animate-spin text-[#d4af37]" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="size-3 shrink-0 text-green-600 dark:text-green-500" aria-hidden="true" />
+            )}
             <span className="truncate">
               {step.label}
               {typeof step.count === "number" && (

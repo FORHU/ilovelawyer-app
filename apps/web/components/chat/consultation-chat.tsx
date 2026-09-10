@@ -3,19 +3,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Mic, Square, X, ArrowRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Mail, Send, Clock } from "lucide-react";
+import Link from "next/link";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Send, Clock, Grid2x2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import TopicNavigator from "@/components/chat/topic-navigator";
+import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
-import { CaseHubWidget } from "@/components/chat/case-hub-widget";
+import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
-import EmailComposerModal from "@/components/chat/email-composer-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import {
@@ -23,6 +24,7 @@ import {
   useConsultationsQuery,
   useCreateConsultationMutation,
   useMessagesQuery,
+  useRelatedCasesQuery,
   sendChatMessage,
   type ChatMessage,
 } from "@/lib/chat/mutations";
@@ -78,6 +80,10 @@ interface ConsultationChatProps {
   /** Overrides for the empty-state copy shown before any consultation is picked/started. */
   emptyStateHeading?: string;
   emptyStateSubheading?: string;
+  /** Full-bleed background image behind the empty-state landing (Consultation redesign only). */
+  emptyStateHeroImage?: string;
+  /** Clickable example-prompt pills shown below the composer on the empty-state landing. */
+  emptyStatePrompts?: string[];
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
@@ -115,6 +121,8 @@ export default function ConsultationChat({
   caseId,
   emptyStateHeading,
   emptyStateSubheading,
+  emptyStateHeroImage,
+  emptyStatePrompts,
   headerSlot,
   embedded = false,
   centerContent = false,
@@ -149,9 +157,6 @@ export default function ConsultationChat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
-  // Whether the Email action (docs/adr/0013-case-consultation-email-action.md) is open — lives
-  // here (not per-page) since the toolbar button that opens it is shared by every consultation.
-  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
   // Blob URLs minted for just-sent attachments (see handleSendMessage) so this session's own
   // sends preview instantly without waiting on the backend's fileUrl (not live yet — ADR 0012).
   // Revoked on unmount only, not per-send, since a still-open preview modal or a message still
@@ -168,10 +173,9 @@ export default function ConsultationChat({
   const stopSending = useSendingConsultationsStore((s) => s.stopSending);
   const uploadDocuments = useUploadDocumentsMutation();
 
+  // Owned by VoiceDictate itself (mic/AudioContext/MediaRecorder) — this just mirrors its
+  // recording state so the rest of the composer (+/textarea/Send) can hide while dictating.
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingStartRef = useRef<number>(0);
   const searchParams = useSearchParams();
   // See isolateConsultation's doc comment above — only set for panes that can be mounted
   // alongside another ConsultationChat sharing the same page URL.
@@ -243,7 +247,7 @@ export default function ConsultationChat({
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
   const isGeneratingMindMap = isSending || mindMapJob.data?.status === "IN_PROGRESS";
 
-  // Explicit case linkage for CaseHubWidget's case-details panel. On a case's own chat
+  // Explicit case linkage for the sticky conversation header's linked-case chip. On a case's own chat
   // page the `caseId` prop already pins it; on the general /homepage chat, fall back to
   // whichever case the current consultation is tagged with, or a pending ?caseId= carried
   // over from a case's "Start Chat" action. Deliberately does NOT fall back further to
@@ -319,6 +323,12 @@ export default function ConsultationChat({
   };
 
   const { data: linkedCaseRecord } = useCaseQuery(linkedCaseId ?? "");
+  const consultationTitle = caseConsultations?.find((c) => c.id === consultationId)?.title?.trim() || null;
+  // Fetched once here so both the assistant byline's citation count and the
+  // inline Related Cases card (rendered under the latest reply, not trailing the whole
+  // transcript — see the message loop below) share one fetch instead of two.
+  const { data: relatedCasesData, isLoading: isLoadingRelatedCases } = useRelatedCasesQuery(consultationId ?? undefined);
+  const relatedCases = relatedCasesData?.relatedCases ?? [];
 
   // The mind map is a living document for the whole consultation, not any one message — so
   // this walks the transcript (including whatever's still streaming in) back-to-front and
@@ -393,15 +403,6 @@ export default function ConsultationChat({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Release the microphone if the user navigates away mid-recording.
-  useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current?.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -557,41 +558,6 @@ export default function ConsultationChat({
     // A prior attempt already resolved (or is resolving) a consultation id for this send —
     // reuse it rather than creating a second consultation on retry.
     if (entry) void uploadQueuedFiles([entry], consultationId ?? resolvedConsultationIdRef.current ?? undefined);
-  };
-
-  // Toggles in-place mic recording; the finished clip is queued for the Transcription page.
-  const handleMicClick = async () => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-      recordingStartRef.current = Date.now();
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-
-      recorder.onstop = () => {
-        const durationSeconds = (Date.now() - recordingStartRef.current) / 1000;
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        queueTranscript(blob, durationSeconds);
-        stream.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-        setIsRecording(false);
-      };
-
-      recorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Microphone access failed:", error);
-      alert(t("microphoneError"));
-    }
   };
 
   const doSend = async (
@@ -840,7 +806,7 @@ export default function ConsultationChat({
         className={`relative w-full flex flex-col gap-2 transition-colors ${
           embedded
             ? `rounded-lg border bg-muted p-2 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
-            : `backdrop-blur-md bg-card/80 p-3 rounded-3xl border shadow-xl ${
+            : `bg-card p-2 rounded-[26px] border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] ${
                 isDraggingOver ? "border-primary border-dashed" : "border-border"
               }`
         }`}
@@ -848,7 +814,7 @@ export default function ConsultationChat({
         {isDraggingOver && (
           <div
             className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
-              embedded ? "rounded-lg bg-card/90" : "rounded-3xl bg-card/90"
+              embedded ? "rounded-lg bg-card/90" : "rounded-[26px] bg-card/90"
             }`}
           >
             <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
@@ -864,25 +830,25 @@ export default function ConsultationChat({
         />
 
         {queuedFiles.length > 0 && (
-          <div className="flex flex-col gap-1 px-2">
+          <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
               {queuedFiles.map((f) => (
                 <span
                   key={f.id}
-                  className="flex items-center gap-1.5 max-w-full rounded-full bg-muted text-foreground text-[13px] font-['Inter'] pl-3 pr-1.5 py-1 w-fit"
+                  className="flex items-center gap-2 max-w-full rounded-full border border-white/15 bg-background text-white/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
                 >
                   {f.status === "uploading" ? (
-                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "PENDING" ? (
-                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "FAILED" ? (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : f.status === "uploaded" ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
+                    <CheckCircle2 className="w-3 h-3 shrink-0 text-green-500" aria-hidden="true" />
                   ) : f.status === "error" ? (
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : (
-                    <Paperclip className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <Paperclip className="w-3 h-3 shrink-0 text-white/60" aria-hidden="true" />
                   )}
                   <span className="truncate max-w-[220px]">{f.file.name}</span>
                   {f.status === "error" && (
@@ -891,7 +857,7 @@ export default function ConsultationChat({
                         <button
                           type="button"
                           onClick={() => retryUpload(f.id)}
-                          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                           aria-label={t("input.retryUpload", { fileName: f.file.name })}
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -905,7 +871,7 @@ export default function ConsultationChat({
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(f.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-foreground/10 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         aria-label={t("input.removeFile", { fileName: f.file.name })}
                       >
                         <X className="w-3 h-3" />
@@ -917,13 +883,13 @@ export default function ConsultationChat({
               ))}
             </div>
             {queuedFiles.some((f) => f.status === "error") && (
-              <span className="text-xs text-red-600 dark:text-red-400">{t("input.attachmentUploadError")}</span>
+              <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "PENDING") && (
-              <span className="text-xs text-muted-foreground">{t("input.indexingHint")}</span>
+              <span className="text-[10.5px] text-white/50 pl-1">{t("input.indexingHint")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "FAILED") && (
-              <span className="text-xs text-red-600 dark:text-red-400">{t("input.indexingFailed")}</span>
+              <span className="text-[10.5px] text-red-500 pl-1">{t("input.indexingFailed")}</span>
             )}
           </div>
         )}
@@ -933,27 +899,47 @@ export default function ConsultationChat({
          * whatever height the textarea actually renders at — items-end previously relied on a
          * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
          * out of alignment whenever the real rendered height differed even slightly. */}
-        <div className={embedded ? "flex items-center gap-1.5" : "contents"}>
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
-              // Embedded shares this row with the send button (see the wrapping div above),
-              // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
-              // styling, where this is the row's only child) forced it to claim the full row
-              // width regardless of the button, pushing the button out past the pane's
-              // clipped edge (or spilling past the rounded border where nothing clips it).
-              embedded
-                ? "min-w-0 flex-1 px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
-                : "w-full shrink-0 text-[15px] text-foreground placeholder-muted-foreground px-2 py-1"
-            }`}
-            placeholder={inputPlaceholder ?? t("input.placeholder")}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            disabled={isSending}
-          />
+        <div className={embedded ? "flex items-center gap-1.5" : "flex items-end gap-1.5"}>
+          {/* Hidden while dictating, same as the textarea/Send below — VoiceDictate takes
+              over the whole row (see its `flex-1` recording state further down). */}
+          {!embedded && !isRecording && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleClipClick}
+                  aria-label={t("input.attachFile")}
+                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Plus className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("input.attachFile")}</TooltipContent>
+            </Tooltip>
+          )}
+
+          {!isRecording && (
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${
+                // Embedded shares this row with the send button (see the wrapping div above),
+                // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
+                // styling, where this is the row's only child) forced it to claim the full row
+                // width regardless of the button, pushing the button out past the pane's
+                // clipped edge (or spilling past the rounded border where nothing clips it).
+                embedded
+                  ? "min-w-0 flex-1 px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
+                  : "min-w-0 flex-1 text-[15px] text-foreground placeholder-muted-foreground px-1 py-1.5"
+              }`}
+              placeholder={inputPlaceholder ?? t("input.placeholder")}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              disabled={isSending}
+            />
+          )}
 
           {embedded ? (
             <>
@@ -985,69 +971,34 @@ export default function ConsultationChat({
               </Tooltip>
             </>
           ) : (
-        <div className="flex items-center justify-between px-1">
-          <div className="flex gap-1 text-muted-foreground">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleClipClick}
-                  aria-label={t("input.attachFile")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("input.attachFile")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleMicClick}
-                  aria-pressed={isRecording}
-                  aria-label={isRecording ? t("input.stopRecording") : t("input.startRecording")}
-                  className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                    isRecording
-                      ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400 animate-pulse hover:bg-red-200 dark:hover:bg-red-500/25"
-                      : "hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Mic className="w-4 h-4" />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{isRecording ? t("input.stopRecording") : t("input.startRecording")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setEmailComposerOpen(true)}
-                  disabled={!consultationId}
-                  aria-label={t("email.action")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted hover:text-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                >
-                  <Mail className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("email.action")}</TooltipContent>
-            </Tooltip>
-          </div>
+            <>
+              <VoiceDictate
+                disabled={isSending}
+                onRecordingChange={setIsRecording}
+                onComplete={(blob, durationSeconds) => queueTranscript(blob, durationSeconds)}
+                onError={() => alert(t("microphoneError"))}
+                voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                stopLabel={t("input.stopRecording")}
+                cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+              />
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="submit"
-                disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                aria-label={t("input.sendMessage")}
-                className="bg-brand-navy-950 text-white w-9 h-9 rounded-full flex items-center justify-center shadow-md hover:bg-[#162244] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-950/40 focus-visible:ring-offset-2 disabled:opacity-50 shrink-0"
-              >
-                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-          </Tooltip>
-        </div>
+              {!isRecording && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      aria-label={t("input.sendMessage")}
+                      className="h-9 shrink-0 flex items-center gap-2.5 rounded-full bg-brand-gold text-background px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                    >
+                      {t("input.sendLabel", { defaultValue: "Send" })}
+                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                </Tooltip>
+              )}
+            </>
           )}
         </div>
       </form>
@@ -1067,6 +1018,24 @@ export default function ConsultationChat({
             } ${(splitTopics.length > 0 || isGeneratingTopics) && topicPanelExpanded ? "md:pr-72" : "md:pr-32"}`
       }
     >
+      {/* Full-bleed backdrop behind the whole Consultation workspace (landing, conversation,
+          streaming) — not just the empty-state screen — per the redesign. Lives on this
+          outer, full-width container (not <main>, which is `max-w-5xl`-capped for reading
+          width) so it spans edge to edge instead of only behind that narrow centered column;
+          absolutely positioned + painted first so it sits behind the sidebar/main content
+          regardless of DOM/paint order rules for positioned siblings. */}
+      {!embedded && emptyStateHeroImage && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* eslint-disable-next-line @next/next/no-img-element -- decorative full-bleed background, no responsive srcset needed */}
+          <img
+            src={emptyStateHeroImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-[center_30%] opacity-[0.14]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,#0b0b0b_38%,rgba(11,11,11,0.55)_70%,rgba(11,11,11,0.35)_100%)]" />
+        </div>
+      )}
+
       {!embedded && (
         <ConsultationSidebar
           activeConsultationId={consultationId}
@@ -1094,6 +1063,8 @@ export default function ConsultationChat({
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
       <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
          * !embedded above) and no external picker of its own (unlike Case Workspace, which
          * already renders its own ThreadPicker above this component — see case-workspace.tsx).
@@ -1200,31 +1171,70 @@ export default function ConsultationChat({
                 <CaseTimelineView caseId={caseId} />
               </div>
             ) : isEmptyChatLanding ? (
-              /* No consultation yet — heading and input are centered together, like Gemini's landing state */
-              <div className={`flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-8 pb-24"}`}>
-                <div className="text-center max-w-2xl mx-auto px-2">
-                  <h1
-                    className={
-                      embedded
-                        ? "mb-2 font-['Inter'] text-lg font-medium tracking-[-0.3px] text-foreground"
-                        : "font-['Libre_Caslon_Text'] font-normal text-primary text-[32px] sm:text-[40px] md:text-[48px] tracking-[-1.2px] mb-4"
-                    }
-                  >
-                    {emptyStateHeading ?? t("emptyState.heading")}
-                  </h1>
-                  <p
-                    className={`font-['Inter'] leading-6 ${
-                      embedded ? "text-[13px] text-muted-foreground" : "text-foreground text-[15px] md:text-[16px]"
-                    }`}
-                  >
-                    {emptyStateSubheading ?? t("emptyState.subheading")}
-                  </p>
+              /* No consultation yet — heading and input are centered together, like Gemini's landing state.
+               * The hero backdrop itself now lives once at the <main> level (see above), so every
+               * state — including this one — sits over it. */
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className={`relative flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-5 pb-24"}`}>
+                  <div className="text-center max-w-3xl mx-auto px-2">
+                    <h1
+                      className={
+                        embedded
+                          ? "mb-2 font-['Inter'] text-lg font-medium tracking-[-0.3px] text-foreground"
+                          : "font-['Libre_Caslon_Text'] font-normal text-foreground text-[24px] sm:text-[28px] md:text-[32px] tracking-[-0.01em] mb-4"
+                      }
+                    >
+                      {emptyStateHeading ?? t("emptyState.heading")}
+                    </h1>
+                  </div>
+                  {chatInputBar}
+                  {!embedded && emptyStatePrompts && emptyStatePrompts.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                      {emptyStatePrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => void doSend(prompt)}
+                          className="rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {chatInputBar}
               </div>
             ) : (
-            /* Scrollable message pane — input bar below stays put regardless of scroll position */
-            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+            <>
+              {/* Sticky conversation header — sits above the scrollable pane below (not
+                  inside it), so it never scrolls away, matching the redesign's persistent
+                  title/case strip. */}
+              {!embedded && (
+                <div className="flex-shrink-0 flex items-center justify-between gap-4 px-4 sm:px-16 py-3.5 border-b border-border">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                    <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
+                      {consultationTitle ?? t("sidebar.untitledConsultation")}
+                    </span>
+                  </div>
+                  {linkedCaseId && linkedCaseRecord && (
+                    <div className="flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
+                      <span className="hidden sm:inline">
+                        {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
+                      </span>
+                      <Link
+                        href={`/homepage/v2/case-portfolio/${linkedCaseId}`}
+                        className="rounded-full border border-border px-3.5 py-1.5 text-foreground transition-colors hover:border-foreground/60"
+                      >
+                        {t("caseHub.openCase", { defaultValue: "Open case" })}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
@@ -1238,12 +1248,12 @@ export default function ConsultationChat({
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
-                      <div key={i} className="flex flex-col items-end gap-1.5">
+                      <div key={i} className="flex flex-col items-end gap-2">
                         {m.attachments && m.attachments.length > 0 && (
                           <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
                         )}
                         {m.content && (
-                          <div className={`max-w-[80%] rounded-2xl border border-border bg-muted font-['Inter'] whitespace-pre-wrap text-foreground ${
+                          <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap text-foreground ${
                             embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
                           }`}>
                             {m.content}
@@ -1256,6 +1266,7 @@ export default function ConsultationChat({
                   // The last assistant message is a placeholder pushed synchronously at send
                   // time, before any chunk streams in — that's the window "thinking" covers.
                   const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
+                  const isLastMessage = i === visibleMessages.length - 1;
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
                   // to each other in visibleMessages — pull the continuation ones up closer than
@@ -1279,22 +1290,47 @@ export default function ConsultationChat({
                           <ThinkingIndicator label={t("thinking")} />
                         )
                       ) : (
-                        <AssistantMessage
-                          content={m.content || "…"}
-                          className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
-                        />
+                        <>
+                          {!embedded && (
+                            <div className="flex items-center gap-2 text-[10px] tracking-[1px] uppercase text-muted-foreground mb-3.5">
+                              <span className="font-['Libre_Caslon_Text'] text-[13px] tracking-normal normal-case text-foreground">
+                                {t("appName", { ns: "common" })}
+                              </span>
+                              {isLastMessage && !isLoadingRelatedCases && relatedCases.length > 0 && (
+                                <span>· {relatedCases.length} {t("caseHub.authoritiesCited", { defaultValue: "authorities cited" })}</span>
+                              )}
+                            </div>
+                          )}
+                          <AssistantMessage
+                            content={m.content || "…"}
+                            className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
+                          />
+                          {!embedded && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
+                            <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
+                              <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
+                                <Grid2x2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+                                <span className="font-semibold text-foreground">{t("caseHub.relatedCases")}</span>
+                                <span className="text-muted-foreground">· {relatedCases.length}</span>
+                              </div>
+                              <div className="p-3">
+                                <HubRelatedCases
+                                  entries={relatedCases}
+                                  isLoading={isLoadingRelatedCases}
+                                  emptyLabel={t("caseHub.relatedEmpty")}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
                 })}
 
-                {!embedded && !isSending && visibleMessages.length > 0 && visibleMessages.at(-1)?.role === "assistant" && visibleMessages.at(-1)?.content && (
-                  <CaseHubWidget caseId={linkedCaseId} consultationId={consultationId} />
-                )}
-
                 <div ref={messagesEndRef} />
               </div>
-            </div>
+              </div>
+            </>
             )}
             {!isEmptyChatLanding && activeTab === "chat" && (
               <div className={embedded ? "pt-2 pb-2" : "pt-4 pb-6"}>{chatInputBar}</div>
@@ -1302,19 +1338,11 @@ export default function ConsultationChat({
           </>
           );
         })()}
+        </div>
       </main>
 
       {previewAttachment && !embedded && (
         <FilePreviewModal attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
-      )}
-
-      {emailComposerOpen && !embedded && consultationId && (
-        <EmailComposerModal
-          consultationId={consultationId}
-          caseId={caseId}
-          messages={history ?? []}
-          onClose={() => setEmailComposerOpen(false)}
-        />
       )}
     </div>
   );
