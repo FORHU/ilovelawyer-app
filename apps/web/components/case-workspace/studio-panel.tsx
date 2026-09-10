@@ -76,6 +76,15 @@ interface StudioPanelProps {
    * in the URL — the single place activeConsultationId is read from, shared by every sibling
    * (ThreadPicker, ConsultationChat) that needs to agree on which consultation is active. */
   onConsultationCreated?: (consultationId: string) => void;
+  /** Below md, case-workspace.tsx renders this inside a narrow sliding drawer instead of a
+   * resizable docked sidebar — there's no room for three side-by-side columns on a phone.
+   * Ignores `width`/`isResizing` and fills its container instead. */
+  fullWidth?: boolean;
+  /** Extra classes merged onto the root `<aside>` — default "flex" carries all display
+   * responsibility (case-workspace.tsx overrides it per-instance: `hidden md:flex` for the
+   * docked/resizable copy, `flex md:hidden` for the always-collapsed mobile rail whose expand
+   * toggle opens the mobile drawer instead of growing in place). */
+  className?: string;
 }
 
 /** Case Workspace's right panel. Documents, Mind Map (per-consultation), Timeline and Data
@@ -90,7 +99,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -105,6 +114,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // rather than duplicated, so the Documents tile and the detail view it opens always agree.
   const caseDocumentsQuery = useCaseDocumentsQuery(caseId);
   const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
+  const documentCount = caseDocumentsQuery.data?.length ?? 0;
+  const indexingDocumentCount = caseDocumentsQuery.data?.filter((doc) => doc.ragStatus === "PENDING").length ?? 0;
+  const documentsNote =
+    documentCount === 0
+      ? undefined
+      : indexingDocumentCount > 0
+        ? t("workspace.documentsNoteIndexing", { count: documentCount, indexing: indexingDocumentCount })
+        : t("workspace.documentsNoteReady", { count: documentCount });
   const { data: session } = useChatSessionQuery();
   const queryClient = useQueryClient();
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
@@ -333,10 +350,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
-        isResizing ? "" : "transition-[width] duration-200"
-      } ${!expanded ? "w-14" : ""}`}
-      style={expanded ? { width } : undefined}
+      // `className` (default "flex") carries all display responsibility — see the prop's doc
+      // comment for why an unconditional `flex` can't live here directly.
+      className={`h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
+        fullWidth ? "w-full" : isResizing ? "" : "transition-[width] duration-200"
+      } ${!fullWidth && !expanded ? "w-14" : ""} ${className}`}
+      style={expanded && !fullWidth ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center gap-1 border-b border-border ${
@@ -413,64 +432,83 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       </div>
 
       {(!expanded || !openTile) && (
-        <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3 ${expanded ? "" : "items-center"}`}>
-          {/* Documents is already-there data (this case's Case Documents), not something to
-           * generate/refresh — so unlike the three tiles below, this one opens the detail view
-           * directly instead of triggering an action first. The spinner here is purely a status
-           * signal (any row still PENDING indexing), not a disable-while-busy state like the
-           * other tiles' — the tile stays clickable so the lawyer can open Documents and watch
-           * individual rows flip to ready, same as Mind Map's own generating indicator. */}
-          <StudioTile
-            icon={isIndexingDocuments ? Loader2 : Files}
-            iconSpinning={isIndexingDocuments}
-            label={isIndexingDocuments ? t("workspace.documentsIndexing") : t("workspace.documentsTab")}
-            expanded={expanded}
-            onClick={() => openStudioTile("documents")}
-          />
-          {/* Triggers a (re)generation in place — it does not open the detail view. Once
-           * something exists (or is generating), the result row below is what opens it; this
-           * tile is purely the "make/remake one" action, same as the header's regenerate
-           * button when the detail view happens to already be open. */}
-          <StudioTile
-            icon={isGenerating ? Loader2 : Workflow}
-            iconSpinning={isGenerating}
-            label={isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
-            expanded={expanded}
-            disabled={isGenerating}
-            onClick={() => void handleGenerateMindMap()}
-          />
-          {/* Same idea as the Mind Map tile above: triggers a refetch in place rather than
-           * opening the view. Timeline has no "generate" step (it's live case data, not an
-           * AI artifact), so "refresh" is this tile's equivalent action. */}
-          <StudioTile
-            icon={timelineQuery.isFetching ? Loader2 : Clock}
-            iconSpinning={timelineQuery.isFetching}
-            label={timelineQuery.isFetching ? t("workspace.timelineRefreshing") : t("workspace.timelineTile")}
-            expanded={expanded}
-            disabled={timelineQuery.isFetching}
-            onClick={() => void timelineQuery.refetch()}
-          />
-          {/* Same pattern again: Witnesses/Damages/Deadlines/Findings are lawyer-entered or
-           * Refresh-Analysis-populated data, not something to generate on click — so this tile
-           * refetches the case snapshot in place. */}
-          <StudioTile
-            icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
-            iconSpinning={snapshotQuery.isFetching}
-            label={snapshotQuery.isFetching ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
-            expanded={expanded}
-            disabled={snapshotQuery.isFetching}
-            onClick={() => void snapshotQuery.refetch()}
-          />
-          {/* Same tile/result-row split as Mind Map, but deliberately no auto-generate-on-mount
-           * effect — see activeAudioOverviewMessage's comment above for why. */}
-          <StudioTile
-            icon={isGeneratingAudioOverview ? Loader2 : AudioLines}
-            iconSpinning={isGeneratingAudioOverview}
-            label={isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewTile")}
-            expanded={expanded}
-            disabled={isGeneratingAudioOverview}
-            onClick={() => void handleGenerateAudioOverviewScript()}
-          />
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+          <div className={expanded ? "grid grid-cols-2 gap-2" : "flex flex-col items-center gap-2"}>
+            {/* Documents is already-there data (this case's Case Documents), not something to
+             * generate/refresh — so unlike the three tiles below, this one opens the detail view
+             * directly instead of triggering an action first. The spinner here is purely a status
+             * signal (any row still PENDING indexing), not a disable-while-busy state like the
+             * other tiles' — the tile stays clickable so the lawyer can open Documents and watch
+             * individual rows flip to ready, same as Mind Map's own generating indicator. */}
+            <StudioTile
+              icon={isIndexingDocuments ? Loader2 : Files}
+              iconSpinning={isIndexingDocuments}
+              label={isIndexingDocuments ? t("workspace.documentsIndexing") : t("workspace.documentsTab")}
+              note={documentsNote}
+              expanded={expanded}
+              onClick={() => openStudioTile("documents")}
+            />
+            {/* Triggers a (re)generation in place — it does not open the detail view. Once
+             * something exists (or is generating), the result row below is what opens it; this
+             * tile is purely the "make/remake one" action, same as the header's regenerate
+             * button when the detail view happens to already be open. */}
+            <StudioTile
+              icon={isGenerating ? Loader2 : Workflow}
+              iconSpinning={isGenerating}
+              label={isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
+              note={isGenerating ? undefined : mindMapStatusLabel || undefined}
+              expanded={expanded}
+              disabled={isGenerating}
+              onClick={() => void handleGenerateMindMap()}
+            />
+            {/* Same idea as the Mind Map tile above: triggers a refetch in place rather than
+             * opening the view. Timeline has no "generate" step (it's live case data, not an
+             * AI artifact), so "refresh" is this tile's equivalent action. */}
+            <StudioTile
+              icon={timelineQuery.isFetching ? Loader2 : Clock}
+              iconSpinning={timelineQuery.isFetching}
+              label={timelineQuery.isFetching ? t("workspace.timelineRefreshing") : t("workspace.timelineTile")}
+              note={
+                timelineQuery.isFetching
+                  ? undefined
+                  : timelineEventCount > 0
+                    ? t("workspace.timelineEventCount", { count: timelineEventCount })
+                    : undefined
+              }
+              expanded={expanded}
+              disabled={timelineQuery.isFetching}
+              onClick={() => void timelineQuery.refetch()}
+            />
+            {/* Same pattern again: Witnesses/Damages/Deadlines/Findings are lawyer-entered or
+             * Refresh-Analysis-populated data, not something to generate on click — so this tile
+             * refetches the case snapshot in place. */}
+            <StudioTile
+              icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
+              iconSpinning={snapshotQuery.isFetching}
+              label={snapshotQuery.isFetching ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
+              note={
+                snapshotQuery.isFetching
+                  ? undefined
+                  : dataTableRows.length > 0
+                    ? t("workspace.dataTableFactCount", { count: dataTableRows.length })
+                    : undefined
+              }
+              expanded={expanded}
+              disabled={snapshotQuery.isFetching}
+              onClick={() => void snapshotQuery.refetch()}
+            />
+            {/* Same tile/result-row split as Mind Map, but deliberately no auto-generate-on-mount
+             * effect — see activeAudioOverviewMessage's comment above for why. */}
+            <StudioTile
+              icon={isGeneratingAudioOverview ? Loader2 : AudioLines}
+              iconSpinning={isGeneratingAudioOverview}
+              label={isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewTile")}
+              note={isGeneratingAudioOverview ? undefined : audioOverviewStatusLabel || undefined}
+              expanded={expanded}
+              disabled={isGeneratingAudioOverview}
+              onClick={() => void handleGenerateAudioOverviewScript()}
+            />
+          </div>
 
           {/* Result of clicking a tile above — persists here once a tile actually has something
            * to show (generated/generating, or fetched data), so it stays reachable without
@@ -482,7 +520,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               dataTableRows.length > 0 ||
               snapshotQuery.isFetching ||
               (consultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
-              <div className="mt-1 flex flex-col gap-1.5 border-t border-border pt-2">
+              <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+                <span className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                  {t("workspace.results")}
+                </span>
                 {consultationId && (isGenerating || activeMindMap) && (
                   <ResultRow
                     icon={isGenerating ? Loader2 : Workflow}
@@ -939,6 +980,7 @@ function StudioTile({
   icon: Icon,
   iconSpinning = false,
   label,
+  note,
   expanded,
   onClick,
   disabled = false,
@@ -950,22 +992,36 @@ function StudioTile({
    * open (see the Mind Map tile's auto-generate effect above). */
   iconSpinning?: boolean;
   label: string;
+  /** Secondary status line under the label (e.g. "3 file(s)", "6 event(s)") — omitted when
+   * there's nothing real to report yet, rather than showing a placeholder. Collapsed rail has
+   * no room for it regardless. */
+  note?: string;
   expanded: boolean;
   onClick?: () => void;
   disabled?: boolean;
   disabledHint?: string;
 }) {
-  const tile = (
+  const tile = expanded ? (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-left transition-colors enabled:hover:bg-muted enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default ${
-        expanded ? "w-full" : "w-9 justify-center px-0"
-      }`}
+      className="flex flex-col items-start gap-2.5 rounded-xl border border-border p-3 text-left transition-colors enabled:hover:bg-muted enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
     >
       <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
-      {expanded && <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{label}</span>}
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-[13px] font-medium text-foreground">{label}</span>
+        {note && <span className="truncate text-[11px] text-muted-foreground">{note}</span>}
+      </span>
+    </button>
+  ) : (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex w-9 items-center justify-center rounded-xl border border-border px-0 py-2.5 transition-colors enabled:hover:bg-muted enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
+    >
+      <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
     </button>
   );
 

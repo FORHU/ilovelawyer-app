@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Send, Clock, Grid2x2, PanelLeft } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -925,7 +925,7 @@ export default function ConsultationChat({
         onDrop={handleDrop}
         className={`relative w-full flex flex-col gap-2 transition-colors ${
           embedded
-            ? `rounded-lg border bg-muted p-2 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
+            ? `rounded-3xl border bg-card p-3 ${isDraggingOver ? "border-blue-500 border-dashed" : "border-border"}`
             : `bg-card p-2 rounded-[26px] border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] ${
                 isDraggingOver ? "border-primary border-dashed" : "border-border"
               }`
@@ -934,7 +934,7 @@ export default function ConsultationChat({
         {isDraggingOver && (
           <div
             className={`absolute inset-0 z-10 flex items-center justify-center pointer-events-none ${
-              embedded ? "rounded-lg bg-card/90" : "rounded-[26px] bg-card/90"
+              embedded ? "rounded-3xl bg-card/90" : "rounded-[26px] bg-card/90"
             }`}
           >
             <span className="text-sm font-['Inter'] text-muted-foreground">{t("input.dropFilesHint")}</span>
@@ -1065,8 +1065,11 @@ export default function ConsultationChat({
                   // of wrapping — a wrapped placeholder still inflates the textarea's own
                   // scrollHeight (see the auto-grow effect below), visibly expanding an empty
                   // box to 2+ lines on a narrow phone width before anything's even typed.
+                  // text-base (16px) below sm avoids iOS Safari's auto-zoom-on-focus in embedded
+                  // panes (Case Workspace/Terminal) — the smaller desktop size returns once
+                  // that's no longer a risk.
                   embedded
-                    ? "px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
+                    ? "px-2 py-1.5 text-base sm:text-[13px] text-foreground placeholder-muted-foreground"
                     : "px-1 py-1.5 text-[15px] text-foreground placeholder-muted-foreground"
                 }`}
                 placeholder={inputPlaceholder ?? t("input.placeholder")}
@@ -1100,33 +1103,56 @@ export default function ConsultationChat({
 
           {embedded ? (
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleClipClick}
-                    disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
-                    aria-label={t("input.attachFile")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    <Paperclip className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.attachFile")}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="submit"
-                    disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                    aria-label={t("input.sendMessage")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white transition-colors hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50"
-                  >
-                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-              </Tooltip>
+              {!isRecording && !transcribingId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleClipClick}
+                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
+                      aria-label={t("input.attachFile")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                      <Paperclip className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.attachFile")}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {!transcribingId && (
+                <VoiceDictate
+                  disabled={isSending}
+                  onRecordingChange={setIsRecording}
+                  onComplete={(blob, durationSeconds) => {
+                    // Same queue-then-transcribe pipeline as the non-embedded composer below —
+                    // shows up on the Transcription page right away, then transcribeAndSend
+                    // drives this row through upload/start-job/poll.
+                    const id = queueTranscript(blob, durationSeconds);
+                    void transcribeAndSend(id, blob, durationSeconds);
+                  }}
+                  onError={() => alert(t("microphoneError"))}
+                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                  stopLabel={t("input.stopRecording")}
+                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                />
+              )}
+
+              {!isRecording && !transcribingId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      aria-label={t("input.sendMessage")}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                    >
+                      <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                </Tooltip>
+              )}
             </>
           ) : (
             <>
@@ -1480,7 +1506,7 @@ export default function ConsultationChat({
                           <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
                         )}
                         {m.content && (
-                          <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap text-foreground ${
+                          <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
                             embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
                           }`}>
                             {m.content}

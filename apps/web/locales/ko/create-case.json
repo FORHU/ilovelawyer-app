@@ -10,12 +10,12 @@
     "subheading": "이 사건의 표제와 관할.",
     "caseTitleLabel": "사건명 / 표제",
     "required": "(필수)",
-    "caseTitlePlaceholder": "예: Cruz vs. Santos",
+    "caseTitlePlaceholder": "예: {{example}}",
     "caseTitleError": "제출을 시작하기 전에 사건명을 입력해 주세요.",
     "actionTypeLabel": "소송 유형",
     "selectAction": "소송 유형 선택",
     "jurisdictionLabel": "법원 / 관할 지부",
-    "jurisdictionPlaceholder": "예: RTC Branch 12, Makati City"
+    "jurisdictionPlaceholder": "예: {{example}}"
   },
   "sectionParties": {
     "heading": "II. 당사자 정보",

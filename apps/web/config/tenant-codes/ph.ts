@@ -25,6 +25,10 @@ export const phTenantCodeConfig: TenantCodeConfig = {
     tenantCodeLabel: "Philippine jurisdiction",
     organizationLabel: "Organization",
     showPhilippineStatutoryLibrary: true,
+    caseIntake: {
+      caseTitleExample: "Cruz vs. Santos",
+      jurisdictionExample: "RTC Branch 12, Makati City",
+    },
     capabilities: {
       aiChat: "available",
       cases: "available",

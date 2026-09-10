@@ -5,17 +5,30 @@
   "dismissError": "Dismiss error",
   "filingInitialized": "Filing initialized for “{{title}}”.",
   "submitFailed": "Failed to submit case filing.",
+  "newCaseHeading": "New case",
+  "newCaseSubheading": "Name the matter, the parties, and attach the documents to index. Everything is editable after filing.",
+  "backToCases": "Cases",
+  "continue": "Continue",
+  "back": "Back",
+  "openInLabel": "After filing, open in",
+  "openInWorkspace": "Workspace",
+  "openInTerminal": "Legal Terminal",
+  "steps": {
+    "identity": { "numeral": "I", "title": "Case identity", "hint": "Caption, type of action, venue" },
+    "parties": { "numeral": "II", "title": "Parties", "hint": "Everyone named, on either side" },
+    "documents": { "numeral": "III", "title": "Documents", "hint": "Files to index for chat and analysis" }
+  },
   "sectionIdentity": {
     "heading": "I. Case Identity",
     "subheading": "The caption and venue for this matter.",
     "caseTitleLabel": "Case Title / Caption",
     "required": "(required)",
-    "caseTitlePlaceholder": "e.g. Cruz vs. Santos",
+    "caseTitlePlaceholder": "e.g. {{example}}",
     "caseTitleError": "Please specify a case title before initiating submission.",
     "actionTypeLabel": "Type of Action",
     "selectAction": "Select action",
     "jurisdictionLabel": "Court / Jurisdictional Branch",
-    "jurisdictionPlaceholder": "e.g. RTC Branch 12, Makati City",
+    "jurisdictionPlaceholder": "e.g. {{example}}",
     "persistenceNotice": "Type of Action and Jurisdiction aren't saved by the backend yet — support is in progress."
   },
   "sectionParties": {

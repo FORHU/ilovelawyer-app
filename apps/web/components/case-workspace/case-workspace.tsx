@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import ConsultationChat from "@/components/chat/consultation-chat";
@@ -8,6 +8,7 @@ import { StudioPanel } from "@/components/case-workspace/studio-panel";
 import { ResizeHandle } from "@/components/case-workspace/resize-handle";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { useResizableWidth } from "@/lib/case-workspace/use-resizable-width";
+import { useCaseQuery } from "@/lib/cases/mutations";
 
 interface CaseWorkspaceProps {
   caseId: string;
@@ -45,10 +46,11 @@ const RESIZE_HANDLE_WIDTH = 6;
  * constrained after NotebookLM's own resizable Sources/Studio panels. */
 export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const { t } = useTranslation("case-portfolio");
-  const basePath = `/homepage/v2/case-portfolio/${caseId}`;
+  const basePath = `/homepage/case-portfolio/${caseId}`;
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeConsultationId = searchParams.get("c");
+  const { data: caseRecord } = useCaseQuery(caseId);
   // Studio tiles (Mind Map) that need a consultation but don't have one yet create one
   // on demand and report the new id back here, so the URL (and every sibling reading
   // activeConsultationId off it — ThreadPicker, ConsultationChat) picks it up the same
@@ -59,6 +61,9 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
 
   const [sourcesExpanded, setSourcesExpanded] = useState(true);
   const [studioExpanded, setStudioExpanded] = useState(true);
+  // Desktop-only concern (the docked panels' own expand/collapse). Mobile uses a completely
+  // different layout below — a 3-way tab bar, not a resizable column — with its own state.
+  const [mobileTab, setMobileTab] = useState<"sources" | "chat" | "studio">("chat");
 
   const containerRef = useRef<HTMLDivElement>(null);
   // Tracked in state (not just read off the ref) so a *passive* container resize — the window
@@ -133,44 +138,117 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         )
     : COLLAPSED_RAIL_WIDTH;
 
-  return (
-    <div ref={containerRef} className="flex h-full min-h-0 flex-1 overflow-hidden">
-      <SourcesPanel
-        expanded={sourcesExpanded}
-        onExpandedChange={setSourcesExpanded}
-        activeConsultationId={activeConsultationId}
-        width={sourcesRenderWidth}
-        isResizing={sources.isDragging}
-      />
-      {sourcesExpanded && (
-        <ResizeHandle ariaLabel={t("workspace.resizeSources")} onPointerDown={sources.handlePointerDown} isDragging={sources.isDragging} />
-      )}
+  // Rendered twice below (once in the mobile tab body, once in the desktop 3-column row) — a
+  // plain JSX value, not a component, so this is just choosing which branch mounts it.
+  const chatColumn = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex h-11 md:h-14 shrink-0 items-center border-b border-border px-4 md:px-6">
+        {/* Same px-6 gutter as ConsultationChat's `centerContent` column below (uncapped —
+         * see its doc comment), so the thread title's left edge lines up with the transcript,
+         * input dock, and message bubbles beneath it at any sidebar width. */}
+        <ThreadPicker caseId={caseId} activeConsultationId={activeConsultationId} />
+      </div>
+      <div className="min-h-0 flex-1">
+        <ConsultationChat
+          embedded
+          centerContent
+          caseId={caseId}
+          basePath={basePath}
+          emptyStateHeading={caseRecord ? t("chat.emptyHeading", { caseName: caseRecord.caseName }) : undefined}
+          emptyStateSubheading={t("chat.emptySubheading")}
+        />
+      </div>
+    </div>
+  );
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex h-14 shrink-0 items-center border-b border-border px-6">
-          {/* Same px-6 gutter as ConsultationChat's `centerContent` column below (uncapped —
-           * see its doc comment), so the thread title's left edge lines up with the transcript,
-           * input dock, and message bubbles beneath it at any sidebar width. */}
-          <ThreadPicker caseId={caseId} activeConsultationId={activeConsultationId} />
-        </div>
-        <div className="min-h-0 flex-1">
-          <ConsultationChat embedded centerContent caseId={caseId} basePath={basePath} />
-        </div>
+  return (
+    <div ref={containerRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Mobile: a 3-way tab bar (Sources / Chat / Studio), exactly one panel mounted at a time
+       * — NotebookLM's own mobile pattern (the same product this workspace's desktop layout is
+       * modeled after), rather than trying to fit three columns, an icon rail, or a drawer into
+       * a phone-width screen. Desktop keeps the full 3-column resizable layout below, untouched. */}
+      <div className="flex h-11 shrink-0 border-b border-border md:hidden">
+        <MobileWorkspaceTab active={mobileTab === "sources"} onClick={() => setMobileTab("sources")}>
+          {t("workspace.sources")}
+        </MobileWorkspaceTab>
+        <MobileWorkspaceTab active={mobileTab === "chat"} onClick={() => setMobileTab("chat")}>
+          {t("workspace.chatTab")}
+        </MobileWorkspaceTab>
+        <MobileWorkspaceTab active={mobileTab === "studio"} onClick={() => setMobileTab("studio")}>
+          {t("workspace.studio")}
+        </MobileWorkspaceTab>
+      </div>
+      <div className="flex min-h-0 flex-1 md:hidden">
+        {mobileTab === "sources" && (
+          // Collapsing (the panel's own header toggle) returns to the Chat tab — there's no
+          // "rail" state to fall back to in a single-panel-at-a-time mobile layout.
+          <SourcesPanel
+            expanded
+            fullWidth
+            onExpandedChange={() => setMobileTab("chat")}
+            activeConsultationId={activeConsultationId}
+            width={0}
+            isResizing={false}
+          />
+        )}
+        {mobileTab === "chat" && chatColumn}
+        {mobileTab === "studio" && (
+          <StudioPanel
+            caseId={caseId}
+            consultationId={activeConsultationId}
+            expanded
+            fullWidth
+            onExpandedChange={() => setMobileTab("chat")}
+            width={0}
+            isResizing={false}
+            onConsultationCreated={handleConsultationCreated}
+          />
+        )}
       </div>
 
-      {studioExpanded && (
-        <ResizeHandle ariaLabel={t("workspace.resizeStudio")} onPointerDown={studio.handlePointerDown} isDragging={studio.isDragging} />
-      )}
-      <StudioPanel
-        caseId={caseId}
-        consultationId={activeConsultationId}
-        expanded={studioExpanded}
-        onExpandedChange={setStudioExpanded}
-        width={studioRenderWidth}
-        isResizing={studio.isDragging}
-        onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
-        onConsultationCreated={handleConsultationCreated}
-      />
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <SourcesPanel
+          expanded={sourcesExpanded}
+          onExpandedChange={setSourcesExpanded}
+          activeConsultationId={activeConsultationId}
+          width={sourcesRenderWidth}
+          isResizing={sources.isDragging}
+        />
+        {sourcesExpanded && (
+          <ResizeHandle ariaLabel={t("workspace.resizeSources")} onPointerDown={sources.handlePointerDown} isDragging={sources.isDragging} />
+        )}
+
+        {chatColumn}
+
+        {studioExpanded && (
+          <ResizeHandle ariaLabel={t("workspace.resizeStudio")} onPointerDown={studio.handlePointerDown} isDragging={studio.isDragging} />
+        )}
+        <StudioPanel
+          caseId={caseId}
+          consultationId={activeConsultationId}
+          expanded={studioExpanded}
+          onExpandedChange={setStudioExpanded}
+          width={studioRenderWidth}
+          isResizing={studio.isDragging}
+          onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
+          onConsultationCreated={handleConsultationCreated}
+        />
+      </div>
     </div>
+  );
+}
+
+function MobileWorkspaceTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex-1 text-[11.5px] font-semibold uppercase tracking-[0.5px] transition-colors cursor-pointer ${
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+      {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-gold" aria-hidden="true" />}
+    </button>
   );
 }
