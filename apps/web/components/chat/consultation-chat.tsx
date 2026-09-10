@@ -83,6 +83,25 @@ const MAX_ATTACHED_FILES = 10;
 // from stalling the browser upload / RAG indexing for minutes.
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
+// How many pills show under the empty-state composer, and how many of those slots (at
+// most) get pulled from the user's own consultation history rather than the predefined
+// pool — see `suggestedPrompts` below.
+const SUGGESTED_PROMPT_COUNT = 4;
+const MAX_HISTORY_SUGGESTIONS = 2;
+
+// Fisher-Yates — used to randomize which predefined prompts show, and their order,
+// instead of always showing the same static four (see `suggestedPrompts` below).
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = result[i]!;
+    result[i] = result[j]!;
+    result[j] = temp;
+  }
+  return result;
+}
+
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
 function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, caseId?: string): CaseChatTab {
@@ -430,6 +449,29 @@ export default function ConsultationChat({
     scrollToTopic,
     isGenerating: isGeneratingTopics,
   } = useTopicNavigator(consultationId);
+
+  // Empty-state composer pills: prefer the user's own past consultation titles (they're
+  // auto-generated from that consultation's first message, so they're already real legal
+  // prompts this user has asked before), topped up with a random draw from the caller's
+  // predefined pool. `caseConsultations` is scoped to `caseId` when set, or every one of
+  // the user's consultations on the general /homepage (see its useConsultationsQuery(caseId)
+  // call above) — either way it's "this surface's prompt history". Recomputes only when
+  // the consultation list or the pool actually changes, so the pills don't reshuffle on
+  // every keystroke/render while the empty state is showing.
+  const suggestedPrompts = useMemo(() => {
+    const pool = emptyStatePrompts ?? [];
+    const historyTitles = Array.from(
+      new Set(
+        (caseConsultations ?? [])
+          .map((c) => c.title?.trim())
+          .filter((title): title is string => !!title),
+      ),
+    );
+    const historyPicks = shuffle(historyTitles).slice(0, MAX_HISTORY_SUGGESTIONS);
+    const remainingSlots = Math.max(0, SUGGESTED_PROMPT_COUNT - historyPicks.length);
+    const poolPicks = shuffle(pool.filter((p) => !historyPicks.includes(p))).slice(0, remainingSlots);
+    return shuffle([...historyPicks, ...poolPicks]);
+  }, [caseConsultations, emptyStatePrompts]);
 
   // For a case's chat, arriving with no `?c=` param (e.g. leaving and coming back to the
   // case, rather than clicking "New Chat" from within it) shouldn't dump you on the blank
@@ -1428,16 +1470,17 @@ export default function ConsultationChat({
                     </h1>
                   </div>
                   {chatInputBar}
-                  {!embedded && emptyStatePrompts && emptyStatePrompts.length > 0 && (
+                  {!embedded && suggestedPrompts.length > 0 && (
                     <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
-                      {emptyStatePrompts.map((prompt) => (
+                      {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
                           type="button"
                           onClick={() => void doSend(prompt)}
-                          // max-w-full + normal wrapping — these are free-form caller-provided
-                          // strings (emptyStatePrompts), so a long one must wrap inside the pill
-                          // instead of forcing it wider than the viewport.
+                          // max-w-full + normal wrapping — these are free-form strings (either a
+                          // past consultation title or a caller-provided emptyStatePrompts entry),
+                          // so a long one must wrap inside the pill instead of forcing it wider
+                          // than the viewport.
                           className="max-w-full whitespace-normal break-words rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
                         >
                           {prompt}
