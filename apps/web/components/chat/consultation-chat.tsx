@@ -73,11 +73,6 @@ interface DisplayMessage {
   groupTitle?: string | null;
 }
 
-const MAX_TEXTAREA_HEIGHT = 200;
-// No backend-imposed ceiling on message length (ilovelawyer-api's sendMessageSchema has no
-// .max() — only the global 1MB JSON body limit, ~1M characters away) — this is a UI-only
-// guard against pasting a whole document into the box instead of attaching it as a file.
-const MAX_MESSAGE_LENGTH = 8000;
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
 // the attachment-chip row or upload/indexing time getting unwieldy.
 const MAX_ATTACHED_FILES = 10;
@@ -443,11 +438,14 @@ export default function ConsultationChat({
     }
   }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
 
+  // CSS max-h-[50vh] on the textarea (below) is the actual visual cap — the browser clamps
+  // to it and shows a scrollbar regardless of what height gets set here, so this can just
+  // always request the content's full natural height rather than also clamping in JS.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
   useEffect(() => {
@@ -1031,25 +1029,32 @@ export default function ConsultationChat({
         )}
 
         {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input.
-         * items-center (not items-end) so the send button stays vertically centered against
-         * whatever height the textarea actually renders at — items-end previously relied on a
-         * hand-tuned mb-0.5 offset matching one specific assumed textarea height, which drifted
-         * out of alignment whenever the real rendered height differed even slightly.
+         * items-center (not items-end) so the round attach/voice/send buttons stay vertically
+         * centered against whatever height the textarea actually renders at, matching the
+         * pill-shaped card's own vertical center — items-end instead bottom-aligns them,
+         * which visibly drifts off-center against a single-line (or otherwise short) textarea.
          *
-         * Below `sm`, this stacks into two rows instead: the textarea full-width on top, and
-         * the attach/voice/send controls in a compact row directly beneath it (no dead space
-         * between them, unlike sharing one row where a tall auto-grown textarea pushes the
-         * controls down to the bottom-aligned position with empty space above them). The
-         * controls wrapper uses `sm:contents` to unwrap back into this row's direct flex
-         * children at `sm` and up, where `sm:order-*` restores the original single-row
-         * sequence (attach, textarea, voice, send) — see the wrapper below. */}
-        <div className={embedded ? "flex items-center gap-1.5" : "flex flex-col sm:flex-row sm:items-end gap-1.5"}>
+         * Below `sm`, this wraps into two rows instead — the textarea's basis-full forces it
+         * to claim the whole row width (so wrapped text actually uses the full row instead of
+         * stopping short with dead space before wherever the controls happen to sit), which
+         * pushes attach/voice/send onto a shared second line via ordinary flex-wrap (they're
+         * small enough to share that second line together rather than each getting their own).
+         * Each child's own order class (plain below `sm`, sm:order- above it) restores the
+         * original single-row sequence — attach, textarea, voice, send — at `sm` and up,
+         * where flex-nowrap keeps it one row again. */}
+        <div className={embedded ? "flex items-center gap-1.5" : "flex flex-wrap sm:flex-nowrap items-center gap-1.5"}>
           {!isRecording && !transcribingId && (
-            <div className="relative min-w-0 flex-1 sm:order-2">
+            <div className="min-w-0 basis-full sm:flex-1 order-1 sm:order-2">
               <textarea
                 ref={textareaRef}
                 rows={1}
-                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate ${
+                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate ${
+                  // embedded (Terminal's split panes) keeps the old, tighter 200px cap — there's
+                  // real risk of squeezing an already-small pane. The full-page composer has a
+                  // whole empty page below it a long paste can grow into, so it gets a much more
+                  // generous viewport-relative cap instead of clipping at an arbitrary 200px.
+                  embedded ? "max-h-50" : "max-h-[50vh]"
+                } ${
                   // Embedded shares this row with the send button (see the wrapping div above),
                   // so the textarea needs to shrink for it — w-full + shrink-0 (the non-embedded
                   // styling, where this is the row's only child) forced it to claim the full row
@@ -1061,8 +1066,8 @@ export default function ConsultationChat({
                   // scrollHeight (see the auto-grow effect below), visibly expanding an empty
                   // box to 2+ lines on a narrow phone width before anything's even typed.
                   embedded
-                    ? "px-2 py-1.5 pr-12 text-[13px] text-foreground placeholder-muted-foreground"
-                    : "px-1 py-1.5 pr-12 text-[15px] text-foreground placeholder-muted-foreground"
+                    ? "px-2 py-1.5 text-[13px] text-foreground placeholder-muted-foreground"
+                    : "px-1 py-1.5 text-[15px] text-foreground placeholder-muted-foreground"
                 }`}
                 placeholder={inputPlaceholder ?? t("input.placeholder")}
                 value={inputMessage}
@@ -1070,20 +1075,7 @@ export default function ConsultationChat({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 disabled={isSending}
-                maxLength={MAX_MESSAGE_LENGTH}
               />
-              {/* Only shows up once you're actually approaching the ceiling — the limit
-                  exists to catch someone pasting a whole document in, not to nag over
-                  ordinary typing. */}
-              {inputMessage.length >= MAX_MESSAGE_LENGTH - 500 && (
-                <span
-                  className={`pointer-events-none absolute top-1.5 right-2 text-[10.5px] tabular-nums ${
-                    inputMessage.length >= MAX_MESSAGE_LENGTH ? "text-red-500" : "text-muted-foreground"
-                  }`}
-                >
-                  {inputMessage.length}/{MAX_MESSAGE_LENGTH}
-                </span>
-              )}
             </div>
           )}
 
@@ -1093,7 +1085,7 @@ export default function ConsultationChat({
               appears with composer-specific sizing. Takes the textarea's slot, same idea as
               VoiceDictate's own recording row. */}
           {!embedded && !isRecording && transcribingId && (
-            <div className="min-w-0 flex-1 sm:order-2 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
+            <div className="min-w-0 basis-full sm:flex-1 order-1 sm:order-2 flex items-center gap-2 px-1 py-1.5 text-[13px] text-muted-foreground">
               <span className="flex items-center gap-0.5" aria-hidden="true">
                 <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
                 <span className="size-1 rounded-full bg-muted-foreground/70 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
@@ -1137,12 +1129,11 @@ export default function ConsultationChat({
               </Tooltip>
             </>
           ) : (
-            // Mobile row 2 (attach / voice / send together, below the textarea) — sm:contents
-            // unwraps this back into the outer row's direct flex children at `sm` and up, where
-            // each control's own sm:order-* restores the original single-row sequence.
-            <div className="flex items-center justify-between gap-1.5 sm:contents">
+            <>
               {/* Hidden while dictating or transcribing — VoiceDictate (recording state) or
-                  the transcribing row above takes over the composer instead. */}
+                  the transcribing row above takes over the composer instead. Plain order
+                  below `sm` (row 2, after the textarea's basis-full row), sm:order-1
+                  (leftmost) once flex-nowrap makes it one row again. */}
               {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1151,7 +1142,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className="order-2 sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Plus className="w-4 h-4" aria-hidden="true" />
                     </button>
@@ -1160,47 +1151,45 @@ export default function ConsultationChat({
                 </Tooltip>
               )}
 
-              <div className="flex items-center gap-1.5 sm:contents">
-                {!transcribingId && (
-                  <VoiceDictate
-                    disabled={isSending}
-                    onRecordingChange={setIsRecording}
-                    onComplete={(blob, durationSeconds) => {
-                      // Queued immediately so it shows up on the Transcription page right away —
-                      // transcribeAndSend below drives this same row through upload/start-job/poll
-                      // rather than creating a second, disconnected backend record for it.
-                      const id = queueTranscript(blob, durationSeconds);
-                      void transcribeAndSend(id, blob, durationSeconds);
-                    }}
-                    onError={() => alert(t("microphoneError"))}
-                    voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
-                    stopLabel={t("input.stopRecording")}
-                    cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
-                    className="sm:order-3"
-                  />
-                )}
+              {!transcribingId && (
+                <VoiceDictate
+                  disabled={isSending}
+                  onRecordingChange={setIsRecording}
+                  onComplete={(blob, durationSeconds) => {
+                    // Queued immediately so it shows up on the Transcription page right away —
+                    // transcribeAndSend below drives this same row through upload/start-job/poll
+                    // rather than creating a second, disconnected backend record for it.
+                    const id = queueTranscript(blob, durationSeconds);
+                    void transcribeAndSend(id, blob, durationSeconds);
+                  }}
+                  onError={() => alert(t("microphoneError"))}
+                  voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
+                  stopLabel={t("input.stopRecording")}
+                  cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                  className="order-3"
+                />
+              )}
 
-                {!isRecording && !transcribingId && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="submit"
-                        disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
-                        aria-label={t("input.sendMessage")}
-                        // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
-                        // and would otherwise dominate a narrow composer row alongside the
-                        // attach button and textarea.
-                        className="sm:order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
-                      >
-                        <span className="hidden sm:inline">{t("input.sendLabel", { defaultValue: "Send" })}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("input.sendMessage")}</TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
+              {!isRecording && !transcribingId && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      aria-label={t("input.sendMessage")}
+                      // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
+                      // and would otherwise dominate a narrow composer row alongside the
+                      // attach button and textarea.
+                      className="order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                    >
+                      <span className="hidden sm:inline">{t("input.sendLabel", { defaultValue: "Send" })}</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.sendMessage")}</TooltipContent>
+                </Tooltip>
+              )}
+            </>
           )}
         </div>
       </form>
