@@ -167,6 +167,12 @@
     --secondary: #1a1a1a;
     --muted: #1a1a1a;
     --accent: #1a1a1a;
+    /* .dark's own --muted-foreground (#97a3c4) is tuned for the app's navy elevation scale —
+       a visibly blue-gray tint that reads wrong against this near-black/white handoff palette.
+       Every text-muted-foreground/placeholder-muted-foreground usage under .landing-theme
+       (captions, timestamps, citation snippets, thread titles, etc.) needs the same neutral
+       white-based muted tone the handoff uses throughout instead. */
+    --muted-foreground: rgba(255, 255, 255, 0.55);
 }
 
 @layer base {

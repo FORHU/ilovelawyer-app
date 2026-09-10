@@ -16,7 +16,7 @@ export default function LegalLibraryPage() {
     <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
       <GlobalHeader activeTab="library" />
 
-      <main className="w-full flex flex-col flex-1 pt-14">
+      <main className="w-full flex flex-col flex-1 pt-16">
         <LawSearchPanel />
       </main>
     </div>
