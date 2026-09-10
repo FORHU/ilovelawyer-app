@@ -76,6 +76,15 @@ interface StudioPanelProps {
    * in the URL — the single place activeConsultationId is read from, shared by every sibling
    * (ThreadPicker, ConsultationChat) that needs to agree on which consultation is active. */
   onConsultationCreated?: (consultationId: string) => void;
+  /** Below md, case-workspace.tsx renders this inside a narrow sliding drawer instead of a
+   * resizable docked sidebar — there's no room for three side-by-side columns on a phone.
+   * Ignores `width`/`isResizing` and fills its container instead. */
+  fullWidth?: boolean;
+  /** Extra classes merged onto the root `<aside>` — default "flex" carries all display
+   * responsibility (case-workspace.tsx overrides it per-instance: `hidden md:flex` for the
+   * docked/resizable copy, `flex md:hidden` for the always-collapsed mobile rail whose expand
+   * toggle opens the mobile drawer instead of growing in place). */
+  className?: string;
 }
 
 /** Case Workspace's right panel. Documents, Mind Map (per-consultation), Timeline and Data
@@ -90,7 +99,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -341,10 +350,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
-        isResizing ? "" : "transition-[width] duration-200"
-      } ${!expanded ? "w-14" : ""}`}
-      style={expanded ? { width } : undefined}
+      // `className` (default "flex") carries all display responsibility — see the prop's doc
+      // comment for why an unconditional `flex` can't live here directly.
+      className={`h-full min-h-0 shrink-0 flex-col border-l border-border bg-card ${
+        fullWidth ? "w-full" : isResizing ? "" : "transition-[width] duration-200"
+      } ${!fullWidth && !expanded ? "w-14" : ""} ${className}`}
+      style={expanded && !fullWidth ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center gap-1 border-b border-border ${

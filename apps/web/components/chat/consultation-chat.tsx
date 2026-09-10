@@ -932,8 +932,10 @@ export default function ConsultationChat({
           <textarea
             ref={textareaRef}
             rows={1}
-            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] w-full shrink-0 text-foreground placeholder-muted-foreground ${
-              embedded ? "text-[14px] px-1 py-1" : "text-[15px] px-2 py-1"
+            className={`resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 max-h-50 overflow-y-auto scrollbar-none [-ms-overflow-style:none] w-full shrink-0 text-foreground placeholder-muted-foreground text-base ${
+              // text-base (16px) below sm avoids iOS Safari's auto-zoom-on-focus; the smaller
+              // desktop sizes return once that's no longer a risk.
+              embedded ? "px-1 py-1 sm:text-[14px]" : "px-2 py-1 sm:text-[15px]"
             }`}
             placeholder={inputPlaceholder ?? t("input.placeholder")}
             value={inputMessage}
@@ -1253,7 +1255,7 @@ export default function ConsultationChat({
                           <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
                         )}
                         {m.content && (
-                          <div className={`max-w-[80%] rounded-2xl border border-border bg-muted font-['Inter'] whitespace-pre-wrap text-foreground ${
+                          <div className={`max-w-[80%] rounded-2xl border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
                             embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
                           }`}>
                             {m.content}

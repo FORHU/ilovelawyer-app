@@ -13,11 +13,20 @@ interface SourcesPanelProps {
    * document selection of its own. */
   activeConsultationId: string | null;
   /** Expanded-state width in px, owned by case-workspace.tsx's useResizableWidth — ignored
-   * while collapsed (a fixed slim rail regardless of the last dragged width). */
+   * while collapsed (a fixed slim rail regardless of the last dragged width), and while
+   * `fullWidth` is set (see below). */
   width: number;
   /** True mid-drag — suppresses the width transition so the panel tracks the pointer 1:1
    * instead of easing behind it, while collapse/expand keeps its smooth animation. */
   isResizing: boolean;
+  /** Below md, case-workspace.tsx renders this inside a narrow sliding drawer instead of a
+   * resizable docked sidebar — there's no room for three side-by-side columns on a phone.
+   * Ignores `width`/`isResizing` and fills its container instead. */
+  fullWidth?: boolean;
+  /** Extra classes merged onto the root `<aside>` — case-workspace.tsx uses this to show two
+   * instances (one `hidden md:flex` docked/resizable, one `md:hidden` always-collapsed rail
+   * whose expand toggle opens the mobile drawer instead of growing in place). */
+  className?: string;
 }
 
 /** Case Workspace's left panel — a table of contents for the active thread's latest split AI
@@ -27,16 +36,21 @@ interface SourcesPanelProps {
  * Cases is being relocated elsewhere (not this panel) and Documents now lives in the Studio
  * panel instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move,
  * only where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing }: SourcesPanelProps) {
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex" }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { topics, activeIndex, scrollToTopic, isGenerating } = useTopicNavigator(activeConsultationId);
 
   return (
     <aside
-      className={`flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card ${
-        isResizing ? "" : "transition-[width] duration-200"
-      } ${expanded ? "" : "w-14"}`}
-      style={expanded ? { width } : undefined}
+      // `className` (default "flex") carries all display responsibility, not a hardcoded
+      // `flex` here — case-workspace.tsx renders two instances of this component (one
+      // `hidden md:flex` docked/resizable, one `flex md:hidden` always-collapsed mobile rail),
+      // and an unprefixed `flex` baked in here would fight an unprefixed `hidden` passed in for
+      // the same element at the same breakpoint (undefined which wins).
+      className={`h-full min-h-0 shrink-0 flex-col border-r border-border bg-card ${
+        fullWidth ? "w-full" : isResizing ? "" : "transition-[width] duration-200"
+      } ${!fullWidth && !expanded ? "w-14" : ""} ${className}`}
+      style={expanded && !fullWidth ? { width } : undefined}
     >
       <div
         className={`flex h-14 shrink-0 items-center border-b border-border ${

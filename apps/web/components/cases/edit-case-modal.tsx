@@ -122,7 +122,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
             <input
               id="edit-case-name"
               type="text"
-              className={`w-full rounded-xl border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors focus:ring-2 ${
+              className={`w-full rounded-xl border bg-transparent px-3 py-2.5 outline-none text-base sm:text-sm transition-colors focus:ring-2 ${
                 nameError
                   ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                   : "border-border hover:border-foreground/30 focus:border-foreground focus:ring-foreground/5"
@@ -177,7 +177,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                       <input
                         id={`edit-party-name-${party.id}`}
                         type="text"
-                        className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+                        className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
                         placeholder={t("sectionParties.fullNamePlaceholder", { ns: "create-case" })}
                         value={party.name}
                         onChange={(e) => updateParty(party.id, "name", e.target.value)}
@@ -217,7 +217,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
             <textarea
               id="edit-case-notes"
               rows={4}
-              className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-sm transition-colors resize-none hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+              className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-base sm:text-sm transition-colors resize-none hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />

@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, AlertCircle, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu,
 } from "lucide-react";
 import GlobalHeader from "@/components/global-header";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -13,16 +13,18 @@ import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, type UserDo
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
 import { useConsultationsQuery, type Consultation } from "@/lib/chat/mutations";
+import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 type DetailTab = "overview" | "workspace";
 
 export default function CaseDetailPage() {
-  const { t } = useTranslation("case-portfolio");
+  const { t } = useTranslation(["case-portfolio", "common"]);
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = params.id;
+  const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
@@ -47,28 +49,57 @@ export default function CaseDetailPage() {
 
   return (
     <div className="landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      <GlobalHeader activeTab="case-portfolio" />
+      <GlobalHeader activeTab="case-portfolio" mobileHeaderMerged />
 
-      <div className="pt-14 flex flex-col min-h-0 flex-1">
+      {/* No pt-14 reservation below lg — GlobalHeader renders nothing there itself
+       * (mobileHeaderMerged), so there's no bar to clear until it reappears at lg. */}
+      <div className="lg:pt-14 flex flex-col min-h-0 flex-1">
         <div className="shrink-0 border-b border-border px-6 md:px-10 pt-4 flex flex-col gap-4">
           <Link
             href="/homepage/case-portfolio"
+            aria-label={t("detail.backToPortfolio")}
             className="self-start flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            {t("detail.backToPortfolio")}
+            <span className="hidden sm:inline">{t("detail.backToPortfolio")}</span>
           </Link>
 
-          <div className="flex items-end justify-between gap-6 flex-wrap pb-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6 pb-1">
+            {/* Dot + meta sits above the title as its own small line (same eyebrow pattern the
+             * list page uses above "Case Portfolio"), rather than inline beside it — a status
+             * dot glued to a large serif heading, with an edit icon crowding the other end,
+             * read as cluttered. This also gives the title its own full-width line to truncate
+             * or wrap against, and the edit icon proper room to sit next to it. */}
             <div className="flex flex-col gap-1.5 min-w-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+              {filedLine && (
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                  {filedLine}
+                </span>
+              )}
+              <div className="flex items-center justify-between gap-3">
                 <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
+                {/* Stands in for GlobalHeader's own hamburger (hidden here via
+                 * mobileHeaderMerged) — opens the exact same drawer. */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={toggleMobileMenu}
+                      className="lg:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      aria-label={t("mobileMenu.open", { ns: "common" })}
+                    >
+                      <Menu className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("mobileMenu.open", { ns: "common" })}</TooltipContent>
+                </Tooltip>
               </div>
-              {filedLine && <span className="text-xs text-muted-foreground pl-4">{filedLine}</span>}
             </div>
 
-            <nav className="flex gap-7 text-[10px] font-semibold tracking-[1.2px] uppercase">
+            {/* Horizontally scrollable (no visible scrollbar) instead of wrapping/shrinking —
+             * three tabs at their normal size don't fit a 320px viewport otherwise. */}
+            <nav className="flex gap-3.5 sm:gap-7 overflow-x-auto scrollbar-none text-[9.5px] sm:text-[10px] font-semibold tracking-[1px] sm:tracking-[1.2px] uppercase -mx-6 px-6 sm:mx-0 sm:px-0">
               <TabButton active={activeTab === "workspace"} onClick={() => switchTab("workspace")} icon={PanelsTopLeft}>
                 {t("overview.tabWorkspace")}
               </TabButton>
@@ -77,9 +108,9 @@ export default function CaseDetailPage() {
               </TabButton>
               <Link
                 href={`/homepage/terminal/${id}`}
-                className="pb-3 flex items-center gap-2 uppercase tracking-[1.2px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                className="pb-3 flex shrink-0 items-center gap-1.5 sm:gap-2 uppercase text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
                 {t("overview.tabTerminal")}
               </Link>
             </nav>
@@ -136,7 +167,7 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
           }
         }}
         aria-label={t("detail.editCaseTitle")}
-        className="min-w-0 flex-1 bg-transparent border-b border-brand-gold outline-none font-['Libre_Caslon_Text'] text-2xl font-normal tracking-[-0.01em] text-foreground"
+        className="min-w-0 flex-1 bg-transparent border-b border-brand-gold outline-none font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground"
       />
     );
   }
@@ -147,15 +178,14 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
         <button
           type="button"
           onClick={startEditing}
-          className="group/title flex min-w-0 items-center gap-2 text-left cursor-text"
+          className="group/title flex min-w-0 items-center gap-1 text-left cursor-text"
         >
-          <h1 className="font-['Libre_Caslon_Text'] text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
+          <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
             {caseName ?? "…"}
           </h1>
-          <Pencil
-            className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/title:opacity-100"
-            aria-hidden="true"
-          />
+          <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-foreground md:opacity-0 md:group-hover/title:opacity-100">
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </span>
         </button>
       </TooltipTrigger>
       <TooltipContent>{t("detail.editCaseTitle")}</TooltipContent>
@@ -178,11 +208,11 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative pb-3 flex items-center gap-2 uppercase tracking-[1.2px] font-semibold transition-colors cursor-pointer ${
+      className={`relative pb-3 flex shrink-0 items-center gap-1.5 sm:gap-2 uppercase font-semibold transition-colors cursor-pointer ${
         active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+      <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
       {children}
       {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-gold" aria-hidden="true" />}
     </button>
@@ -287,7 +317,7 @@ function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOp
               <button
                 type="button"
                 onClick={onOpenWorkspace}
-                className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 <Plus className="w-3 h-3" aria-hidden="true" />
                 {t("overview.manageDocuments")}
@@ -358,7 +388,7 @@ function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOp
               <button
                 type="button"
                 onClick={onOpenWorkspace}
-                className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 {t("overview.openWorkspace")}
               </button>

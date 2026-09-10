@@ -325,9 +325,9 @@ function CreateCasePageContent() {
             <TooltipContent>Return to your case portfolio list</TooltipContent>
           </Tooltip>
 
-          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-10 md:gap-12 items-start">
-            <div className="flex flex-col gap-7 md:sticky md:top-24">
-              <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-5 md:gap-12 items-start">
+            <div className="flex flex-col gap-4 md:gap-7 md:sticky md:top-24">
+              <div className="hidden md:flex flex-col gap-3">
                 <h1 className="font-['Libre_Caslon_Text'] text-[40px] font-light leading-none tracking-[-0.02em] text-foreground">
                   {t("newCaseHeading")}
                 </h1>
@@ -335,8 +335,16 @@ function CreateCasePageContent() {
                   {t("newCaseSubheading")}
                 </p>
               </div>
+              {/* Compact heading on mobile — the full-size version above plus a step list with
+               * hints would push the actual form off the first screen entirely. */}
+              <h1 className="md:hidden font-['Libre_Caslon_Text'] text-[20px] font-light leading-none tracking-[-0.02em] text-foreground">
+                {t("newCaseHeading")}
+              </h1>
 
-              <ol className="flex flex-col">
+              {/* Compact horizontal stepper on mobile (numeral + short title only, no hint
+               * text, no divider lines) — the full vertical list with hints returns at md+,
+               * where it sits beside the form instead of stacked above it. */}
+              <ol className="flex items-start justify-between gap-1 md:flex-col">
                 {steps.map((s) => {
                   const done = s.n < step;
                   const current = s.n === step;
@@ -345,26 +353,26 @@ function CreateCasePageContent() {
                     <li
                       key={s.n}
                       onClick={() => goToStep(s.n)}
-                      className={`flex gap-3.5 py-3.5 border-t border-border ${enabled ? "cursor-pointer" : "cursor-default"}`}
+                      className={`flex flex-1 flex-col items-center gap-1.5 text-center md:flex-none md:flex-row md:items-center md:gap-3.5 md:py-3.5 md:border-t md:border-border md:text-left ${enabled ? "cursor-pointer" : "cursor-default"}`}
                     >
                       {done ? (
-                        <span className="w-6.5 h-6.5 rounded-full bg-brand-gold text-brand-navy-950 flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 md:w-6.5 md:h-6.5 rounded-full bg-brand-gold text-brand-navy-950 flex items-center justify-center shrink-0">
                           <CircleCheck className="w-3.5 h-3.5" aria-hidden="true" />
                         </span>
                       ) : (
                         <span
-                          className={`w-6.5 h-6.5 rounded-full border flex items-center justify-center shrink-0 font-['Libre_Caslon_Text'] text-xs box-border ${
+                          className={`w-6 h-6 md:w-6.5 md:h-6.5 rounded-full border flex items-center justify-center shrink-0 font-['Libre_Caslon_Text'] text-xs box-border ${
                             current ? "border-brand-gold text-brand-gold" : "border-border text-muted-foreground"
                           }`}
                         >
                           {s.numeral}
                         </span>
                       )}
-                      <div className="flex flex-col gap-0.5">
-                        <span className={`text-[13px] font-medium ${done || current ? "text-foreground" : "text-muted-foreground"}`}>
+                      <div className="flex flex-col gap-0.5 md:contents">
+                        <span className={`text-[10.5px] md:text-[13px] leading-tight font-medium ${done || current ? "text-foreground" : "text-muted-foreground"}`}>
                           {s.title}
                         </span>
-                        <span className="text-[11.5px] text-muted-foreground leading-relaxed">{s.hint}</span>
+                        <span className="hidden md:block text-[11.5px] text-muted-foreground leading-relaxed">{s.hint}</span>
                       </div>
                     </li>
                   );
@@ -394,12 +402,12 @@ function CreateCasePageContent() {
               )}
 
               {step === 1 && (
-                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-7">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-7">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.identity.numeral")}
                     </span>
-                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionIdentity.heading")}</h2>
+                    <h2 className="font-['Libre_Caslon_Text'] text-lg sm:text-2xl font-normal text-foreground">{t("sectionIdentity.heading")}</h2>
                     <p className="text-[13px] text-muted-foreground">{t("sectionIdentity.subheading")}</p>
                   </div>
 
@@ -451,7 +459,7 @@ function CreateCasePageContent() {
                       <input
                         id="jurisdiction"
                         type="text"
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
                         placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
                         value={formData.jurisdiction}
                         onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
@@ -467,12 +475,12 @@ function CreateCasePageContent() {
               )}
 
               {step === 2 && (
-                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-6">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.parties.numeral")}
                     </span>
-                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionParties.heading")}</h2>
+                    <h2 className="font-['Libre_Caslon_Text'] text-lg sm:text-2xl font-normal text-foreground">{t("sectionParties.heading")}</h2>
                     <p className="text-[13px] text-muted-foreground">{t("sectionParties.subheading")}</p>
                   </div>
 
@@ -513,7 +521,7 @@ function CreateCasePageContent() {
                               <input
                                 id={`party-name-${party.id}`}
                                 type="text"
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
                                 placeholder={t("sectionParties.fullNamePlaceholder")}
                                 value={party.name}
                                 onChange={(e) => updateParty(party.id, "name", e.target.value)}
@@ -559,12 +567,12 @@ function CreateCasePageContent() {
               )}
 
               {step === 3 && (
-                <section className="bg-card rounded-2xl border border-border p-7 md:p-8 flex flex-col gap-6">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.documents.numeral")}
                     </span>
-                    <h2 className="font-['Libre_Caslon_Text'] text-2xl font-normal text-foreground">{t("sectionEvidence.heading")}</h2>
+                    <h2 className="font-['Libre_Caslon_Text'] text-lg sm:text-2xl font-normal text-foreground">{t("sectionEvidence.heading")}</h2>
                     <p className="text-[13px] text-muted-foreground">{t("sectionEvidence.subheading")}</p>
                   </div>
 
@@ -650,7 +658,7 @@ function CreateCasePageContent() {
                       <button
                         type="button"
                         onClick={() => setOpenTarget("workspace")}
-                        className={`h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
+                        className={`h-11 sm:h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
                           openTarget === "workspace"
                             ? "bg-foreground text-background"
                             : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
@@ -662,7 +670,7 @@ function CreateCasePageContent() {
                       <button
                         type="button"
                         onClick={() => setOpenTarget("terminal")}
-                        className={`h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
+                        className={`h-11 sm:h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
                           openTarget === "terminal"
                             ? "bg-foreground text-background"
                             : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
@@ -676,13 +684,18 @@ function CreateCasePageContent() {
                 </section>
               )}
 
-              <div className="flex items-center justify-between gap-4">
+              <div className={`flex items-center gap-4 ${step === 1 ? "justify-end sm:justify-between" : "justify-between"}`}>
+                {/* On step 1, this button and the "Cases" link at the top of the page do the
+                 * exact same thing (leave the wizard) — redundant on mobile, where the link
+                 * above is already on screen. Desktop keeps it for symmetry with steps 2/3. */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
                       onClick={handleStepBack}
-                      className="h-10 px-4.5 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                      className={`h-11 sm:h-10 px-4.5 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors cursor-pointer ${
+                        step === 1 ? "hidden sm:block" : ""
+                      }`}
                     >
                       {t("back")}
                     </button>
@@ -696,7 +709,7 @@ function CreateCasePageContent() {
                       <button
                         type="button"
                         onClick={handleContinue}
-                        className="flex items-center gap-2.5 h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
                       >
                         {t("continue")}
                         <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -710,7 +723,7 @@ function CreateCasePageContent() {
                       <button
                         type="submit"
                         disabled={hasFilesUploading || isSubmitting}
-                        className="flex items-center gap-2.5 h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? t("submitting") : t("initiateFiling")}
                         {!isSubmitting && <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />}

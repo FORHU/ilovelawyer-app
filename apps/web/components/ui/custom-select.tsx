@@ -97,7 +97,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
       type="button"
       id={id}
       onClick={handleTriggerClick}
-      className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-2 px-3 text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
+      className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-3 sm:py-2 px-3 text-base sm:text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
       aria-haspopup="listbox"
       aria-expanded={open}
     >
@@ -140,7 +140,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
                         onChange(opt.value);
                         setOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
                         isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50"
                       }`}
                     >

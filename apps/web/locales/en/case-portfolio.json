@@ -118,6 +118,7 @@
   },
   "workspace": {
     "sources": "Topics",
+    "chatTab": "Chat",
     "studio": "Studio",
     "collapseSources": "Collapse Topics",
     "expandSources": "Expand Topics",

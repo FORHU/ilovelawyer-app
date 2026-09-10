@@ -10,8 +10,6 @@ import { Search, Briefcase, Scale, Loader2, AlertCircle, Pencil, Trash2, ArrowUp
 import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-const TABLE_GRID_COLS = "grid-cols-[minmax(220px,2.2fr)_140px_176px]";
-
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
   const router = useRouter();
@@ -65,10 +63,10 @@ export default function CaseManagerDashboard() {
               <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />
               {t("caseCountBadge", { count: data?.total ?? cases.length })}
             </span>
-            <h1 className="font-['Libre_Caslon_Text'] text-[clamp(34px,3.6vw,48px)] font-light leading-none tracking-[-0.02em] text-foreground">
+            <h1 className="font-['Libre_Caslon_Text'] text-[23px] sm:text-[clamp(34px,3.6vw,48px)] font-light leading-none tracking-[-0.02em] text-foreground">
               {t("title")}
             </h1>
-            <p className="text-muted-foreground text-[15px] leading-relaxed max-w-[520px]">
+            <p className="text-muted-foreground text-[13px] sm:text-[15px] leading-relaxed max-w-[520px]">
               {t("listSubtitle")}
             </p>
           </div>
@@ -88,13 +86,15 @@ export default function CaseManagerDashboard() {
           </Tooltip>
         </div>
 
-        <div className="relative w-full max-w-80 flex items-center">
+        <div className="relative w-full sm:max-w-80 flex items-center">
           <span className="absolute left-4 text-muted-foreground">
             <Search className="w-4 h-4" />
           </span>
+          {/* text-base (16px) on mobile avoids iOS Safari's auto-zoom-on-focus; sm:text-[13px]
+           * restores the original compact desktop size once that's no longer a risk. */}
           <input
             type="text"
-            className="w-full bg-card border border-border rounded-full h-10 pl-11 pr-4 outline-none font-['Inter'] text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
+            className="w-full bg-card border border-border rounded-full h-11 sm:h-10 pl-11 pr-4 outline-none font-['Inter'] text-base sm:text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
             placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -128,20 +128,22 @@ export default function CaseManagerDashboard() {
         )}
 
         {!isLoading && !isError && cases.length > 0 && (
-          <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
-            <div className={`grid ${TABLE_GRID_COLS} gap-4 min-w-[640px] px-4 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground`}>
+          <div className="md:overflow-x-auto lg:overflow-visible">
+            {/* Column header only makes sense once the row below is actually a grid (md+) —
+             * the stacked mobile card has no columns to label. */}
+            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_176px] gap-4 md:min-w-[640px] px-4 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
               <span>{t("tableCaseHeader")}</span>
               <span>{t("tableUpdatedHeader")}</span>
               <span className="text-right">{t("tableOpenInHeader")}</span>
             </div>
-            <div className="min-w-[640px]">
+            <div className="md:min-w-[640px]">
               {cases.map((c) => (
                 <div
                   key={c.id}
-                  className={`group/row grid ${TABLE_GRID_COLS} gap-4 items-center px-4 py-4 border-b border-border rounded-lg transition-colors hover:bg-card`}
+                  className="group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_176px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card"
                 >
                   <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
-                    <span className="font-['Libre_Caslon_Text'] text-[16px] leading-tight text-foreground truncate">
+                    <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
                       {c.caseName}
                     </span>
                     <span className="text-muted-foreground text-[12px] truncate">
@@ -149,62 +151,74 @@ export default function CaseManagerDashboard() {
                     </span>
                   </Link>
 
-                  <span className="text-[13px] text-foreground">
-                    {new Date(c.updatedAt).toLocaleDateString()}
-                  </span>
+                  {/* Below md this becomes the card's second row (date + actions on one line);
+                   * at md+ `contents` drops the wrapper so date and actions resume being their
+                   * own grid columns, matching the header row above. */}
+                  <div className="flex items-center justify-between gap-3 md:contents">
+                    <span className="text-[13px] text-foreground">
+                      {new Date(c.updatedAt).toLocaleDateString()}
+                    </span>
 
-                  <div className="flex items-center justify-end gap-1.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1.5 md:justify-end">
+                      {/* Edit/delete are always visible on mobile (no hover to reveal them on
+                       * touch) and only fade in on hover from md+, where a pointer exists. */}
+                      <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover/row:opacity-100 md:focus-within:opacity-100 transition-opacity">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCase(c)}
+                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                              aria-label={t("editCase", { caseName: c.caseName })}
+                            >
+                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCase(c)}
+                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-red-600 hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                              aria-label={t("deleteCase", { caseName: c.caseName })}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {/* Hidden below md — the case name/party block above is already a link
+                       * to this same Workspace route, so on mobile (where every button is
+                       * competing for the same ~300px row) this would just be a second,
+                       * redundant way to do what tapping the row already does. Desktop keeps
+                       * it for parity with the "Open in" column header. */}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => setEditingCase(c)}
-                            className="rounded-full p-2 text-muted-foreground hover:text-primary hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                            aria-label={t("editCase", { caseName: c.caseName })}
+                          <Link
+                            href={`/homepage/case-portfolio/${c.id}`}
+                            className="hidden md:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
                           >
-                            <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
+                            {t("overview.tabWorkspace")}
+                          </Link>
                         </TooltipTrigger>
-                        <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
+                        <TooltipContent>Open {c.caseName}&rsquo;s Workspace</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingCase(c)}
-                            className="rounded-full p-2 text-muted-foreground hover:text-red-600 hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                            aria-label={t("deleteCase", { caseName: c.caseName })}
+                          <Link
+                            href={`/homepage/terminal/${c.id}`}
+                            aria-label={t("openTerminal")}
+                            className="h-11 w-11 md:h-8 md:w-8 flex items-center justify-center rounded-full border border-border text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
+                            <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                          </Link>
                         </TooltipTrigger>
-                        <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
+                        <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
                       </Tooltip>
                     </div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={`/homepage/case-portfolio/${c.id}`}
-                          className="h-8 flex items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
-                        >
-                          {t("overview.tabWorkspace")}
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>Open {c.caseName}&rsquo;s Workspace</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={`/homepage/terminal/${c.id}`}
-                          aria-label={t("openTerminal")}
-                          className="h-8 w-8 flex items-center justify-center rounded-full border border-border text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
-                        >
-                          <Scale className="w-3.5 h-3.5" aria-hidden="true" />
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
-                    </Tooltip>
                   </div>
                 </div>
               ))}
