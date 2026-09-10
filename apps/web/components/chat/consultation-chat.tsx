@@ -237,7 +237,9 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
+    pollWhilePending: !!pendingTurn,
+  });
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -295,6 +297,20 @@ export default function ConsultationChat({
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
   const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
+
+  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
+  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
+  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
+  // above); once the persisted history is at least as long as the optimistic buffer, hand the
+  // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  useEffect(() => {
+    if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
+    const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
+    if (persistedCount >= pendingTurn.messages.length) {
+      setPendingTurn(null);
+      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
+    }
+  }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
 
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
@@ -697,33 +713,21 @@ export default function ConsultationChat({
         queryClient.setQueryData(chatKeys.session(), { session_id: newSessionId });
       }
 
-      // The backend has now persisted both messages (and may have generated a title) —
-      // refresh both queries so the transcript and sidebar reflect the saved state, then
-      // drop the local buffer in favor of the (now up to date) query cache.
+      // The stream has finished, but the backend now persists the assistant reply
+      // asynchronously (ilovelawyer-api's MessagePersistenceQueue) — it usually lands within a
+      // second, not before res.end() as it used to. Kick a refetch; if it already shows the
+      // turn, swap straight back to the persisted view, otherwise leave pendingTurn up (the
+      // fully-streamed reply stays on screen) and let the poll-driven effect above clear it
+      // once the rows land. A split, multi-topic reply persists as more than one assistant
+      // row, so `+ 2` is a floor, not an exact count.
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeConsultationId) });
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
-      queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
 
-      // Only hand the transcript back to the persisted (baseMessages) view once the refetch
-      // above actually landed this turn — expect at least the prior message count plus the
-      // user message and one assistant reply (a split, multi-topic reply persists as more
-      // than one assistant row, so this is a floor, not an exact count). A refetch that
-      // settles short of that (e.g. a request dedup/race against another in-flight fetch for
-      // a brand-new consultation's just-enabled query) must not clear pendingTurn — doing so
-      // would swap the fully-streamed, correct reply for whatever incomplete/stale data the
-      // cache landed on, which reads to the user as their response vanishing.
       const refreshedHistory = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(activeConsultationId));
       const turnPersisted = (refreshedHistory?.length ?? 0) >= messagesBeforeSend + 2;
-      if (sendTokenRef.current === myToken) {
-        if (turnPersisted) {
-          setPendingTurn(null);
-        } else {
-          console.error("Chat history refetch looked incomplete after send — keeping the in-memory reply visible instead of the persisted view", {
-            consultationId: activeConsultationId,
-            expectedAtLeast: messagesBeforeSend + 2,
-            got: refreshedHistory?.length ?? 0,
-          });
-        }
+      if (sendTokenRef.current === myToken && turnPersisted) {
+        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(activeConsultationId) });
+        setPendingTurn(null);
       }
     } catch (error) {
       console.error("Failed to send message:", error);

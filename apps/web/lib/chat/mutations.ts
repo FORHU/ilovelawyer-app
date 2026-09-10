@@ -123,11 +123,16 @@ export function useDeleteConsultationMutation() {
   })
 }
 
-export function useMessagesQuery(consultationId: string | undefined) {
+/** `pollWhilePending` keeps the history refetching on a short interval — used while a just-sent
+ * turn's reply is still streaming / being persisted. The API persists the assistant reply
+ * asynchronously after the stream ends (ilovelawyer-api's MessagePersistenceQueue), so a
+ * one-shot refetch right after the stream can miss it by a beat. */
+export function useMessagesQuery(consultationId: string | undefined, opts?: { pollWhilePending?: boolean }) {
   return useQuery({
     queryKey: chatKeys.messages(consultationId ?? ""),
     queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
     enabled: !!consultationId,
+    refetchInterval: opts?.pollWhilePending ? 1500 : false,
   })
 }
 
