@@ -10,12 +10,12 @@
     "subheading": "Ang caption at venue para sa usaping ito.",
     "caseTitleLabel": "Pamagat ng Kaso / Caption",
     "required": "(kinakailangan)",
-    "caseTitlePlaceholder": "hal. Cruz vs. Santos",
+    "caseTitlePlaceholder": "hal. {{example}}",
     "caseTitleError": "Pakitukoy ang pamagat ng kaso bago simulan ang pagsusumite.",
     "actionTypeLabel": "Uri ng Aksyon",
     "selectAction": "Pumili ng aksyon",
     "jurisdictionLabel": "Hukuman / Sangay ng Hurisdiksyon",
-    "jurisdictionPlaceholder": "hal. RTC Branch 12, Makati City"
+    "jurisdictionPlaceholder": "hal. {{example}}"
   },
   "sectionParties": {
     "heading": "II. Detalye ng mga Partido",

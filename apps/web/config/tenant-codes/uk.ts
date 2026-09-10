@@ -22,6 +22,10 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
     tenantCodeLabel: "UK jurisdiction",
     organizationLabel: "Organisation",
     showPhilippineStatutoryLibrary: false,
+    caseIntake: {
+      caseTitleExample: "Smith v Jones",
+      jurisdictionExample: "County Court at Central London",
+    },
     capabilities: {
       // chat-wonder-v2-api routes UK requests to its own `legal_uk` persona (UK tool
       // whitelist + prompt) — see ilovelawyer-api's chatWonder.ts and

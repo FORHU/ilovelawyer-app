@@ -15,6 +15,8 @@ import {
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 
 const ACTION_TYPE_OPTIONS = [
   { value: "Civil Litigation", labelKey: "actionTypes.civilLitigation" },
@@ -59,6 +61,8 @@ function CreateCasePageContent() {
   const { t } = useTranslation("create-case");
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
+  const tenantConfig = getTenantCodeConfig(tenantCode);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Seeded party keeps a stable id (safe for the initial server/client render);
   // parties added afterward only ever happen client-side, via addParty below.
@@ -411,7 +415,7 @@ function CreateCasePageContent() {
                           ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                           : "border-border hover:border-foreground/30 focus:border-brand-gold focus:ring-brand-gold/10"
                       }`}
-                      placeholder={t("sectionIdentity.caseTitlePlaceholder")}
+                      placeholder={t("sectionIdentity.caseTitlePlaceholder", { example: tenantConfig.ui.caseIntake.caseTitleExample })}
                       value={formData.caseTitle}
                       onChange={(e) => handleInputChange("caseTitle", e.target.value)}
                       aria-invalid={caseTitleError}
@@ -448,7 +452,7 @@ function CreateCasePageContent() {
                         id="jurisdiction"
                         type="text"
                         className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
-                        placeholder={t("sectionIdentity.jurisdictionPlaceholder")}
+                        placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
                         value={formData.jurisdiction}
                         onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
                       />

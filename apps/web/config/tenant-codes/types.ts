@@ -59,5 +59,13 @@ export interface TenantCodeConfig {
      * navigation — there is no UK equivalent content yet, so this stays false for UK. */
     showPhilippineStatutoryLibrary: boolean
     capabilities: TenantCapabilities
+    caseIntake: {
+      /** Placeholder example for the "Case Title / Caption" field on case creation —
+       * interpolated into create-case's `sectionIdentity.caseTitlePlaceholder` i18n key. */
+      caseTitleExample: string
+      /** Placeholder example for the "Court / jurisdictional branch" field on case creation —
+       * interpolated into create-case's `sectionIdentity.jurisdictionPlaceholder` i18n key. */
+      jurisdictionExample: string
+    }
   }
 }
