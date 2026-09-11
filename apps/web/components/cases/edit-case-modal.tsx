@@ -1,10 +1,11 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Plus, X } from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
 import type { CaseRecord, UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 
 const DESIGNATION_OPTIONS = [
   { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
@@ -37,14 +38,6 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
   const [notes, setNotes] = useState(caseRecord.notes ?? "");
   const [nameError, setNameError] = useState(false);
   const nextPartyIdRef = useRef(parties.length + 1);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const updateParty = (id: string, field: "name" | "designation", value: string) => {
     setParties((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
@@ -82,23 +75,18 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
-      onClick={onClose}
-      role="presentation"
-    >
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent showCloseButton={false} className="flex max-h-[calc(100vh-4rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
       <form
         onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[calc(100vh-4rem)] bg-card rounded-2xl border border-border shadow-lg overflow-hidden flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-case-title"
+        className="flex min-h-0 flex-1 flex-col"
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/60 shrink-0">
-          <h2 id="edit-case-title" className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
-            {t("Edit Case")}
-          </h2>
+          <DialogTitle asChild>
+            <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
+              {t("Edit Case")}
+            </h2>
+          </DialogTitle>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -230,7 +218,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+                className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-full transition-colors cursor-pointer"
               >
                 {t("Cancel")}
               </button>
@@ -242,7 +230,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-xl hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="bg-brand-navy-900 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-navy-800 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? t("editModal.saving") : t("Save Changes")}
               </button>
@@ -251,6 +239,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
           </Tooltip>
         </div>
       </form>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
