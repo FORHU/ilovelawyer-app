@@ -1,3 +1,4 @@
+import { Logo } from "@/components/logo";
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host";
 
 // Local dev hosts (`ph.localhost:3002`, `ph.ilovelawyer.local:3002`, bare `ph.ilovelawyer:3002`)
@@ -20,12 +21,7 @@ export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
   return (
     <section className="flex-1 flex flex-col items-center justify-center gap-12 px-8 py-24 text-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <span
-          className="text-[32px] text-foreground tracking-[-0.7px]"
-          style={{ fontFamily: "'Libre Caslon Text', serif" }}
-        >
-          ilovelawyer
-        </span>
+        <Logo forBackground="auto" size={40} />
         <p
           className="text-muted-foreground text-base max-w-md"
           style={{ fontFamily: "Inter, sans-serif" }}

@@ -86,6 +86,28 @@ const MAX_ATTACHED_FILES = 10;
 // from stalling the browser upload / RAG indexing for minutes.
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
+// How many pills show under the empty-state composer, and how many of those slots (at
+// most) get pulled from the case's own uploaded documents / the user's consultation
+// history rather than the predefined pool — see `suggestedPrompts` below. Document-backed
+// pills take priority (most concretely actionable — "Summarize <the file just uploaded>"),
+// then history, then the pool fills whatever's left.
+const SUGGESTED_PROMPT_COUNT = 4;
+const MAX_DOCUMENT_SUGGESTIONS = 2;
+const MAX_HISTORY_SUGGESTIONS = 2;
+
+// Fisher-Yates — used to randomize which predefined prompts show, and their order,
+// instead of always showing the same static four (see `suggestedPrompts` below).
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = result[i]!;
+    result[i] = result[j]!;
+    result[j] = temp;
+  }
+  return result;
+}
+
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
 function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, caseId?: string): CaseChatTab {
@@ -109,8 +131,16 @@ interface ConsultationChatProps {
   emptyStateSubheading?: string;
   /** Full-bleed background image behind the empty-state landing (Consultation redesign only). */
   emptyStateHeroImage?: string;
-  /** Clickable example-prompt pills shown below the composer on the empty-state landing. */
+  /** Fallback pool for the clickable example-prompt pills shown below the composer on the
+   * empty-state landing — used to fill out slots `suggestedPrompts` can't cover from the
+   * case's own documents or the user's consultation history (see there). */
   emptyStatePrompts?: string[];
+  /** Shows the suggested-prompt pills on the empty-state landing. Defaults to `!embedded`
+   * (the general /homepage chat) — Case Workspace opts back in explicitly despite being
+   * `embedded` (it has the width for pills and, unlike a cramped Terminal split pane,
+   * benefits from case-aware suggestions once a document's been uploaded); Terminal's
+   * chat/mind-map panes stay opted out. */
+  showSuggestedPrompts?: boolean;
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
@@ -150,6 +180,7 @@ export default function ConsultationChat({
   emptyStateSubheading,
   emptyStateHeroImage,
   emptyStatePrompts,
+  showSuggestedPrompts,
   headerSlot,
   embedded = false,
   centerContent = false,
@@ -318,6 +349,10 @@ export default function ConsultationChat({
   const resolvedRagStatus = (entry: (typeof queuedFiles)[number]) =>
     (entry.doc?.id ? ragStatusById.get(entry.doc.id) : undefined) ?? entry.doc?.ragStatus;
 
+  // See showSuggestedPrompts' doc comment — Case Workspace opts back in explicitly despite
+  // being `embedded`; Terminal's cramped split panes don't.
+  const shouldShowSuggestedPrompts = showSuggestedPrompts ?? !embedded;
+
   // The transcript for the consultation currently on screen comes straight from the
   // React Query cache — keyed by consultationId, so switching consultations just means a
   // different query result, with no manual copy-into-local-state step to keep in sync.
@@ -434,6 +469,42 @@ export default function ConsultationChat({
     scrollToTopic,
     isGenerating: isGeneratingTopics,
   } = useTopicNavigator(consultationId);
+
+  // Empty-state composer pills, most relevant first: (1) the case's own uploaded documents
+  // — the clearest signal of what this chat is actually for, so a fresh case with a file
+  // already on it gets "Summarize <that file>" instead of a generic prompt; (2) the user's
+  // own past consultation titles (auto-generated from that consultation's first message, so
+  // they're already real legal prompts this user has asked before) — `caseConsultations` is
+  // scoped to `caseId` when set, or every one of the user's consultations on the general
+  // /homepage (see its useConsultationsQuery(caseId) call above); (3) a random draw from the
+  // caller's predefined pool to fill whatever's left. Recomputes only when documents,
+  // consultations, or the pool actually change, so pills don't reshuffle on every keystroke
+  // while the empty state is showing.
+  const suggestedPrompts = useMemo(() => {
+    const pool = emptyStatePrompts ?? [];
+    const documentPrompts = Array.from(
+      new Set(
+        (caseDocuments ?? [])
+          .filter((d) => d.ragStatus !== "FAILED")
+          .map((d) => t("emptyState.summarizeDocumentPrompt", { defaultValue: `Summarize "${d.name}"`, fileName: d.name })),
+      ),
+    );
+    const historyTitles = Array.from(
+      new Set(
+        (caseConsultations ?? [])
+          .map((c) => c.title?.trim())
+          .filter((title): title is string => !!title),
+      ),
+    );
+
+    const documentPicks = shuffle(documentPrompts).slice(0, MAX_DOCUMENT_SUGGESTIONS);
+    const historySlots = Math.max(0, Math.min(MAX_HISTORY_SUGGESTIONS, SUGGESTED_PROMPT_COUNT - documentPicks.length));
+    const historyPicks = shuffle(historyTitles.filter((h) => !documentPicks.includes(h))).slice(0, historySlots);
+    const poolSlots = Math.max(0, SUGGESTED_PROMPT_COUNT - documentPicks.length - historyPicks.length);
+    const taken = new Set([...documentPicks, ...historyPicks]);
+    const poolPicks = shuffle(pool.filter((p) => !taken.has(p))).slice(0, poolSlots);
+    return shuffle([...documentPicks, ...historyPicks, ...poolPicks]);
+  }, [caseDocuments, caseConsultations, emptyStatePrompts, t]);
 
   // For a case's chat, arriving with no `?c=` param (e.g. leaving and coming back to the
   // case, rather than clicking "New Chat" from within it) shouldn't dump you on the blank
@@ -1433,16 +1504,17 @@ export default function ConsultationChat({
                     </h1>
                   </div>
                   {chatInputBar}
-                  {!embedded && emptyStatePrompts && emptyStatePrompts.length > 0 && (
+                  {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
                     <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
-                      {emptyStatePrompts.map((prompt) => (
+                      {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
                           type="button"
                           onClick={() => void doSend(prompt)}
-                          // max-w-full + normal wrapping — these are free-form caller-provided
-                          // strings (emptyStatePrompts), so a long one must wrap inside the pill
-                          // instead of forcing it wider than the viewport.
+                          // max-w-full + normal wrapping — these are free-form strings (either a
+                          // past consultation title or a caller-provided emptyStatePrompts entry),
+                          // so a long one must wrap inside the pill instead of forcing it wider
+                          // than the viewport.
                           className="max-w-full whitespace-normal break-words rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
                         >
                           {prompt}

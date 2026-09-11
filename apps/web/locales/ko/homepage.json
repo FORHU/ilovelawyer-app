@@ -1,7 +1,8 @@
 {
   "emptyState": {
     "heading": "전문 법률 상담",
-    "subheading": "현대 법률 실무자를 위한 안전한 AI 기반 법률 분석 및 사건 초안 작성."
+    "subheading": "현대 법률 실무자를 위한 안전한 AI 기반 법률 분석 및 사건 초안 작성.",
+    "summarizeDocumentPrompt": "\"{{fileName}}\" 요약하기"
   },
   "input": {
     "placeholder": "법률 문의 사항이나 사건 세부 내용을 작성하세요...",

@@ -11,7 +11,7 @@ export function SharedFooter({ compact = false }: { compact?: boolean }) {
   return (
     <footer className="bg-[#0a192f] w-full">
       <div className={`flex flex-col items-center ${compact ? "px-8 py-12" : "px-16 py-16"}`}>
-        <Logo textColor="white" size={compact ? 20 : 28} />
+        <Logo forBackground="dark" size={compact ? 20 : 28} />
         <div className={`flex flex-wrap gap-6 justify-center ${compact ? "mt-6" : "mt-8"}`}>
           {LINK_KEYS.map((key) => (
             <button

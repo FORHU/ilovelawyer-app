@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { Logo } from "@/components/logo";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -26,9 +27,10 @@ export function LandingNavbar() {
       <div className="max-w-360 mx-auto flex items-center justify-between gap-6 px-6 md:px-16 h-16">
         <Link
           href="/"
-          className="shrink-0 font-['Libre_Caslon_Text'] text-white text-[22px] tracking-[-0.6px] rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          aria-label="ilovelawyer"
         >
-          ilovelawyer
+          <Logo forBackground="dark" size={40} />
         </Link>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">

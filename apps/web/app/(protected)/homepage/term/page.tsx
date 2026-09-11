@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import GlobalHeader from "@/components/global-header";
+import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface Section {
@@ -89,7 +90,7 @@ export default function TermsPage() {
 
           <div className="flex flex-col gap-4 border-t border-border px-10 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-14">
             <div>
-              <p className="font-['Libre_Caslon_Text'] text-lg text-primary">ilovelawyer</p>
+              <Logo forBackground="auto" size={24} />
               <p className="text-[10px] uppercase tracking-[1.5px] text-muted-foreground">{t("verifiedJurisExcellence")}</p>
             </div>
 
@@ -114,7 +115,7 @@ export default function TermsPage() {
       <footer className="border-t border-white/10 bg-[#0b132b]/95">
         <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="font-['Libre_Caslon_Text'] text-lg text-white">ilovelawyer</p>
+            <Logo forBackground="dark" size={24} />
             <p className="mt-1 max-w-xs text-xs leading-relaxed text-white/50">
               {t("footerTagline")}
             </p>

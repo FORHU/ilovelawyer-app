@@ -44,7 +44,11 @@
   },
   "chat": {
     "emptyHeading": "{{caseName}}에 대해 질문하기",
-    "emptySubheading": "이 사건의 세부 정보가 이미 반영된 AI와 상담하세요 — 전략, 초안 작성, 다음 단계에 대해 물어보세요."
+    "emptySubheading": "이 사건의 세부 정보가 이미 반영된 AI와 상담하세요 — 전략, 초안 작성, 다음 단계에 대해 물어보세요.",
+    "emptyPromptSummarizeCase": "이 사건의 핵심 사실 요약하기",
+    "emptyPromptNextSteps": "이 사건의 다음 단계는 무엇인가요?",
+    "emptyPromptRisks": "이 사건의 잠재적 위험 파악하기",
+    "emptyPromptStatusUpdate": "사건 현황 업데이트 작성하기"
   },
   "workspace": {
     "sources": "이 상담에서 다룬 주제",

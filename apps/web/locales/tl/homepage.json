@@ -1,7 +1,8 @@
 {
   "emptyState": {
     "heading": "Dalubhasang Konsultasyon Legal",
-    "subheading": "Secure, AI-powered na legal analysis at case drafting para sa modernong practitioner."
+    "subheading": "Secure, AI-powered na legal analysis at case drafting para sa modernong practitioner.",
+    "summarizeDocumentPrompt": "Ibuod ang \"{{fileName}}\""
   },
   "input": {
     "placeholder": "I-draft ang iyong legal na katanungan o mga detalye ng kaso dito...",
