@@ -58,12 +58,15 @@
 
 :root {
     /* Brand navy family — fixed across light/dark, since the header and hero
-       banners are intentionally always-navy regardless of theme. Saturated
-       enough to read as navy blue rather than charcoal/black, per docs/adr/0002. */
-    --brand-navy-950: #0b1220;
-    --brand-navy-900: #131c33;
-    --brand-navy-800: #1d2a47;
-    --brand-gold: #f6c445;
+       banners are intentionally always this near-black/gold pairing regardless of theme.
+       This is the app's one brand palette (the former "landing-theme" near-black/gold
+       override is now the default everywhere, not a separate opt-in class — see DESIGN.md). */
+    --brand-navy-950: #0b0b0b;
+    --brand-navy-900: #1a1a1a;
+    /* No third near-black shade is sourced separately — reuse the 900 shade rather than
+       invent an unsourced value. */
+    --brand-navy-800: #1a1a1a;
+    --brand-gold: #c9a44c;
     /* Semantic status/verification accent (e.g. "Vetted" citation badges) — kept separate
        from --brand-gold so gold stays reserved for confirming actions, not status states. */
     --brand-status-green: #2e8b57;
@@ -73,17 +76,20 @@
 
     --background: #ffffff;
     --foreground: #252525;
-    --card: #ffffff;
+    /* A barely-there warm off-white, distinct from --background, so anything relying on
+       bg-card for elevation (hover states, modals, composer chips) is visible in light mode —
+       plain white-on-white here would erase that contrast. */
+    --card: #fafaf8;
     --card-foreground: #252525;
-    --popover: #ffffff;
+    --popover: #fafaf8;
     --popover-foreground: #252525;
     --primary: oklch(0.205 0 0);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: #f7f7f7;
+    --secondary: #f2f1ec;
     --secondary-foreground: oklch(0.205 0 0);
     --muted: #f7f7f7;
     --muted-foreground: #8e8e8e;
-    --accent: #f7f7f7;
+    --accent: #f2f1ec;
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --border: #e8e8e8;
@@ -106,8 +112,8 @@
 }
 
 .dark {
-    /* Navy elevation scale instead of neutral gray, so dark mode reads as
-       the same brand rather than a generic gray theme. See docs/adr/0002. */
+    /* Near-black elevation scale (the brand's one palette, see :root) instead of neutral
+       gray, so dark mode reads as the same brand rather than a generic gray theme. */
     --background: var(--brand-navy-950);
     --foreground: #fafafa;
     --card: var(--brand-navy-900);
@@ -119,7 +125,9 @@
     --secondary: var(--brand-navy-800);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: var(--brand-navy-800);
-    --muted-foreground: #97a3c4;
+    /* Neutral white-based muted tone (not blue-tinted) to match the near-black/white palette —
+       a blue-gray tint here would read wrong against near-black rather than saturated navy. */
+    --muted-foreground: rgba(255, 255, 255, 0.55);
     --accent: var(--brand-navy-800);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
@@ -141,48 +149,16 @@
     --sidebar-ring: #5c7cb0;
 }
 
-/* Landing marketing pages intentionally diverge from the app's navy/gold brand system
-   (docs/adr/0002) to match the ilovelawyer marketing-site handoff pixel-for-pixel — scoped
-   to .landing-theme so bg-brand-navy-950/text-brand-gold usage elsewhere (protected app UI,
-   terminal, chat) is unaffected. */
-.landing-theme {
-    --brand-navy-950: #0b0b0b;
-    --brand-navy-900: #1a1a1a;
-    /* No third near-black is documented in the handoff — reuse the 900 shade rather than
-       invent an unsourced value, so nothing on the landing page still reads as blue-navy. */
-    --brand-navy-800: #1a1a1a;
-    --brand-gold: #c9a44c;
-    /* Light mode's counterpart to `.dark .landing-theme` below: plain :root has --card equal
-       to --background (#ffffff both), so anything relying on bg-card for elevation (hover
-       states, modals, composer chips) was invisible in light mode. A barely-there warm
-       off-white gives it the same background/elevated-surface contrast the dark near-black/
-       #1a1a1a pairing has, at light-mode brightness. Lower specificity than `.dark
-       .landing-theme`, so dark mode still wins there regardless of source order. */
-    --card: #fafaf8;
-    --popover: #fafaf8;
-    --secondary: #f2f1ec;
-    --accent: #f2f1ec;
-}
-
-/* .dark declares --background/--card/--muted etc. as var(--brand-navy-*) chains, and that
-   var() substitution resolves where .dark is applied (<html>) — not lazily wherever
-   bg-background/bg-card/bg-muted are later consumed. So the --brand-navy-* override above
-   never reaches those utilities; redeclare the same landing values directly here so
-   dark-mode landing sections (capabilities, terminal showcase, consultation, firms) stop
-   showing the app's navy instead of the handoff's near-black. */
-.dark .landing-theme {
-    --background: #0b0b0b;
-    --card: #1a1a1a;
-    --popover: #1a1a1a;
-    --secondary: #1a1a1a;
-    --muted: #1a1a1a;
-    --accent: #1a1a1a;
-    /* .dark's own --muted-foreground (#97a3c4) is tuned for the app's navy elevation scale —
-       a visibly blue-gray tint that reads wrong against this near-black/white handoff palette.
-       Every text-muted-foreground/placeholder-muted-foreground usage under .landing-theme
-       (captions, timestamps, citation snippets, thread titles, etc.) needs the same neutral
-       white-based muted tone the handoff uses throughout instead. */
-    --muted-foreground: rgba(255, 255, 255, 0.55);
+/* Documented z-index scale — pick from these instead of a freehand number. Sidebars/rails sit
+   under modals, which sit under the global header's own mobile drawer (the one thing that must
+   always be reachable). --z-canvas-overlay is for controls layered above a self-contained
+   canvas (e.g. mind-map) that only need to clear that canvas's own local stacking, not the
+   whole app — it is not "higher than everything," just higher than the canvas under it. */
+:root {
+  --z-sidebar: 40;
+  --z-modal: 50;
+  --z-header-drawer: 60;
+  --z-canvas-overlay: 9999;
 }
 
 @layer base {

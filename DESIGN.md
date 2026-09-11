@@ -4,30 +4,30 @@ Source of truth: the Consultation page (`/homepage`) and Cases page (`/homepage/
 
 ## Color
 
-All tokens live in `packages/ui/src/styles/globals.css`. Never hardcode hex values in a component — use the Tailwind utilities below.
+All tokens live in `packages/ui/src/styles/globals.css`. Never hardcode hex values in a component — use the Tailwind utilities below. There is one brand palette, defined once at `:root`/`.dark` — no page-level class needed to opt into it, and no saturated-navy fallback to accidentally fall back to.
 
-| Token | Utility | Default (`:root`) | `.landing-theme` |
-|---|---|---|---|
-| `--brand-navy-950` | `bg-brand-navy-950` | `#0b1220` (saturated navy) | `#0b0b0b` (near-black) |
-| `--brand-navy-900` | `bg-brand-navy-900` | `#131c33` | `#1a1a1a` |
-| `--brand-navy-800` | `bg-brand-navy-800` | `#1d2a47` | `#1a1a1a` |
-| `--brand-gold` | `text-brand-gold` / `bg-brand-gold` | `#f6c445` | `#c9a44c` |
-| `--brand-status-green` | `text-brand-status-green` | `#2e8b57` | same | 
-| `--brand-oxblood` | `text-brand-oxblood` | `#5c1f28` | same |
+| Token | Utility | Value |
+|---|---|---|
+| `--brand-navy-950` | `bg-brand-navy-950` | `#0b0b0b` (near-black) |
+| `--brand-navy-900` | `bg-brand-navy-900` | `#1a1a1a` |
+| `--brand-navy-800` | `bg-brand-navy-800` | `#1a1a1a` |
+| `--brand-gold` | `text-brand-gold` / `bg-brand-gold` | `#c9a44c` |
+| `--brand-status-green` | `text-brand-status-green` | `#2e8b57` |
+| `--brand-oxblood` | `text-brand-oxblood` | `#5c1f28` |
 
 `--brand-gold` is reserved for confirming/primary actions (CTAs, active-tab dots). `--brand-status-green` is only for verification/status badges (e.g. "Vetted" citations) — never reuse gold for status. `--brand-oxblood` is a sparing decorative accent (footer dividers only), not a second broad accent.
 
-**`.landing-theme` is the redesign switch.** Any page wrapper that has this class gets the noir/gold palette; without it, the page (and the shared header, since it hardcodes `bg-brand-navy-950`) renders the old saturated-navy look. This is why `GlobalHeader` looked inconsistent across pages — the header itself never changed, only the ambient class did. Every page in this app should carry `.landing-theme` going forward; there is no reason for a page to opt out.
+**There used to be two brand palettes** — a saturated-blue navy default and a near-black override that only applied under a `.landing-theme` class — and `GlobalHeader` (which hardcodes `bg-brand-navy-950`) looked inconsistent across pages purely based on whether the ambient wrapper happened to carry that class. The saturated-navy family has been retired; the near-black/gold look is simply the default now, everywhere, with nothing to opt into and nothing to forget.
 
-Dark mode (`.dark`) recolors `--background`/`--card`/etc. to the navy elevation scale. Combined with `.landing-theme`, `.dark .landing-theme` redeclares `--background`/`--card`/`--muted`/etc. directly to near-black — this is a deliberate workaround because Tailwind v4 resolves `var()` chains where `.dark` is applied (usually `<html>`), not lazily at the point of use, so `.landing-theme`'s override of `--brand-navy-*` alone can't reach `.dark`'s already-resolved `--background`. If you add a new `.dark`-aware token that should follow the landing palette, it needs the same direct redeclaration in `.dark .landing-theme`, not just a `--brand-navy-*` override.
+Dark mode (`.dark`) recolors `--background`/`--card`/etc. to the near-black elevation scale via `var(--brand-navy-*)`. There's no second override layer to keep in sync anymore — if you add a new `.dark`-aware token, just declare it once in the `.dark` block like everything else there.
 
 Use `bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border` for everything else — never a raw gray.
 
 ### Light mode is not an afterthought
 
-**No page forces a theme.** Every page uses plain `.landing-theme` and respects the user's light/dark toggle (`ThemeToggle` in `GlobalHeader`, backed by `next-themes`). If you're tempted to hardcode `dark` on a page wrapper "because this page looks better dark," don't — fix the light-mode styling instead (see below), the way Consultation's forced-`dark` was removed once its light-mode bugs were fixed.
+**No page forces a theme.** Every page respects the user's light/dark toggle (`ThemeToggle` in `GlobalHeader`, backed by `next-themes`). If you're tempted to hardcode `dark` on a page wrapper "because this page looks better dark," don't — fix the light-mode styling instead (see below), the way Consultation's forced-`dark` was removed once its light-mode bugs were fixed.
 
-Light `.landing-theme` gets its own elevation tokens (`--card`/`--popover`/`--secondary`/`--accent`: `#fafaf8`/`#f2f1ec`), because plain `:root` has `--card` equal to `--background` (`#ffffff` both) — anything relying on `bg-card` for contrast (hover states, composer chips, modals) was invisible against a white page. This is the light-mode counterpart to `.dark .landing-theme`'s near-black/`#1a1a1a` pairing — same structure, light brightness.
+Light mode's `--card`/`--popover`/`--secondary`/`--accent` (`#fafaf8`/`#f2f1ec`) are distinct from `--background` (`#ffffff`) — plain white-on-white would make anything relying on `bg-card` for contrast (hover states, composer chips, modals) invisible against the page. This is the light-mode counterpart to `.dark`'s near-black/`#1a1a1a` pairing — same structure, light brightness.
 
 **Never hardcode a dark-only color in a component.** The most common mistake: `text-white`, `border-white/20`, `bg-white/5` on an element that sits on a themed surface (`bg-background`, `bg-card`). These assume an always-dark canvas and go invisible (white-on-white) in light mode. Use the semantic token instead: `text-foreground`, `border-border`, `bg-foreground/5`, `text-muted-foreground`. The one exception is a deliberately dark "island" that's explicitly dark-styled regardless of page theme (the gold-gradient AI-CTA banners' `bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 text-white`, modal/drawer backdrops like `bg-black/40`, or the mind-map canvas's self-contained dark surface) — those are fine as-is because their own background is also hardcoded, not themed.
 
@@ -51,13 +51,23 @@ Base primitive: `@workspace/ui`'s `Button` (`packages/ui/src/components/button.t
 - Every interactive control gets a `Tooltip`/`TooltipContent` wrapper (`@workspace/ui/components/tooltip`) with a short description — this is used consistently, not occasionally.
 - Corner radius is always `rounded-full` for anything clickable (buttons, pills, search input, icon buttons). Cards/containers use `rounded-lg`/`rounded-2xl`. Don't mix a square button into this system.
 
+## Forms
+
+Use `@workspace/ui`'s `Input`/`TextField` (`packages/ui/src/components/input.tsx`) instead of hand-rolling a text field — `TextField` gives you the label-above/error-below layout for free; use bare `Input` only when you need a bespoke label layout (e.g. a repeating row where the label sits differently). Label above the input, helper text (if any) between label and input, error text below the input with the red-icon-plus-message pattern — never placeholder-as-label.
+
+## Status / Badges
+
+Use `@workspace/ui`'s `Badge` (`packages/ui/src/components/badge.tsx`) for any status/tag/pill element instead of hand-rolling one. It has two `shape`s: `rounded` (default — `font-mono`, tight tracking, for dense/terminal contexts) and `pill` (`rounded-full`, the shape used by the rest of the app, e.g. RAG status). Pick a `tone` (`neutral`/`success`/`warning`/`danger`) rather than reaching for a raw color utility.
+
 ## Layout
 
-- Page wrapper: `<div className="landing-theme min-h-screen w-full ... bg-background text-foreground font-['Inter',sans-serif]">`, with `<GlobalHeader activeTab="..." />` as the first child. `GlobalHeader` is `absolute`-positioned, so the wrapper needs `relative` if content below it needs correct stacking.
+- Page wrapper: `<div className="min-h-screen w-full ... bg-background text-foreground font-['Inter',sans-serif]">`, with `<GlobalHeader activeTab="..." />` as the first child. `GlobalHeader` is `absolute`-positioned, so the wrapper needs `relative` if content below it needs correct stacking. Use the shared `PageShell` component (`apps/web/components/page-shell.tsx`) instead of hand-writing this.
 - Main content: `<main className="max-w-[1280px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 ...">` — `pt-24` clears the absolutely-positioned header.
+- **Content width**: pick one of the three named tiers from `apps/web/lib/layout-constants.ts` (`CONTENT_WIDTH_SM` 1000px for legal/reference pages and forms, `CONTENT_WIDTH_MD` 1280px for case list/detail, `CONTENT_WIDTH_LG` 1440px for calendar/terminal/transcription/the header) instead of picking a new pixel value by eye.
 - Section header pattern (title + CTA): flex row, `items-end justify-between gap-6 flex-wrap`, title block on the left (eyebrow dot + title + subtitle stacked), action button on the right.
 - List rows: a single `div` that is `flex flex-col` on mobile and `md:grid md:grid-cols-[...]` on desktop — not two separate mobile/desktop markups. Row actions fade in on `group-hover` at `md:` and up, always-visible below `md:` (no hover on touch).
 - Empty states: icon in a circular `bg-card` badge, Libre Caslon heading, muted-foreground body, one CTA. Never just a bare "No results" string.
+- **Z-index**: pick from the documented scale in `globals.css` (`z-(--z-sidebar)` 40, `z-(--z-modal)` 50, `z-(--z-header-drawer)` 60, `z-(--z-canvas-overlay)` 9999 for controls layered above a self-contained canvas like mind-map) instead of a freehand number.
 
 ## Navigation (`GlobalHeader`, `apps/web/components/global-header.tsx`)
 
@@ -67,8 +77,6 @@ This is the one global nav — every page renders it with an `activeTab` prop, t
 - Inactive tab: `opacity-60 text-white hover:opacity-100`.
 - `mobileHeaderMerged` prop: set when a page renders its own mobile title row and wants the header to suppress its own mobile border/hamburger (see `case-portfolio/[id]/page.tsx`).
 
-If the header looks "wrong" (old navy blue instead of near-black/gold) on some page, the header component is not the bug — check whether that page's wrapper div has `.landing-theme`.
-
 ## Known gap
 
-`docs/adr/0002` is cited throughout `global-header.tsx` and `globals.css` as the source of the navy/gold brand decision, but that ADR file doesn't exist in `docs/adr/` (only 0008-0013 are present). Worth reconstructing as a real ADR at some point — not blocking day-to-day use of this doc.
+`docs/adr/0002` was cited in older comments in `global-header.tsx`/`globals.css` as the source of the navy/gold brand decision, but that ADR file doesn't exist in `docs/adr/` (only 0008-0013 are present) — worth reconstructing as a real ADR documenting the near-black/gold palette decision at some point.
