@@ -8,6 +8,7 @@ import {
   useDeleteConsultationMutation,
 } from "@/lib/chat/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface ConsultationSidebarProps {
@@ -290,7 +291,7 @@ export default function ConsultationSidebar({
           instead of sitting on top of whatever's underneath it. */}
       <aside
         ref={asideRef}
-        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
           compact ? "top-0" : "top-16"
         } ${expanded ? "w-72" : "w-16"}`}
       >
@@ -322,30 +323,30 @@ export default function ConsultationSidebar({
       </aside>
 
       {/* Mobile full-screen overlay drawer */}
-      {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => onMobileOpenChange(false)} aria-hidden="true" />
-          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
-            <div className="flex items-center justify-between px-2 pb-2">
-              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onMobileOpenChange(false)}
-                    aria-label={t("sidebar.closeConsultations")}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("sidebar.closeConsultations")}</TooltipContent>
-              </Tooltip>
-            </div>
-            {panelBody(true)}
-          </div>
+      <MobileDrawer
+        open={isMobileOpen}
+        onClose={() => onMobileOpenChange(false)}
+        closeLabel={t("sidebar.closeConsultations")}
+        side="left"
+      >
+        <div className="flex items-center justify-between px-2 pb-2">
+          <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onMobileOpenChange(false)}
+                aria-label={t("sidebar.closeConsultations")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("sidebar.closeConsultations")}</TooltipContent>
+          </Tooltip>
         </div>
-      )}
+        {panelBody(true)}
+      </MobileDrawer>
     </>
   );
 }

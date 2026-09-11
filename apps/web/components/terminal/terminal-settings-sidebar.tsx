@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { PanelLeft, PanelLeftClose, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import { MobileDrawer } from "@/components/mobile-drawer"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { PANEL_TITLES, PRESET_LABELS } from "@/components/terminal/legal-terminal"
 import type { PanelCatalogEntry, PanelId, PresetValue, TerminalWorkspace } from "@/lib/terminal/types"
@@ -211,7 +212,7 @@ export default function TerminalSettingsSidebar({
             type="button"
             onClick={() => setIsMobileOpen(true)}
             aria-label={t("sidebarOpen")}
-            className="absolute left-2 top-2 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-lg backdrop-blur-md hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 md:hidden"
+            className="absolute left-2 top-2 z-(--z-sidebar) flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-lg backdrop-blur-md hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 lg:hidden"
           >
             <PanelLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -221,7 +222,7 @@ export default function TerminalSettingsSidebar({
 
       <aside
         ref={asideRef}
-        className={`absolute inset-y-0 left-0 z-40 hidden flex-col overflow-hidden border-r border-border bg-sidebar py-3 shadow-lg transition-[width] duration-200 md:flex ${
+        className={`absolute inset-y-0 left-0 z-(--z-sidebar) hidden flex-col overflow-hidden border-r border-border bg-sidebar py-3 shadow-lg transition-[width] duration-200 lg:flex ${
           expanded ? "w-72" : "w-16"
         }`}
       >
@@ -266,27 +267,28 @@ export default function TerminalSettingsSidebar({
         </div>
       </aside>
 
-      {isMobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
-          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-sidebar py-3 shadow-xl">
-            <div className="flex items-center justify-between px-3 pb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
-                {t("sidebarWorkspaceSettings")}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsMobileOpen(false)}
-                aria-label={t("sidebarClose")}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-            {panelBody(true)}
-          </div>
+      <MobileDrawer
+        open={isMobileOpen}
+        onClose={() => setIsMobileOpen(false)}
+        closeLabel={t("sidebarClose")}
+        side="left"
+        panelClassName="w-[85vw] max-w-80 bg-sidebar py-3"
+      >
+        <div className="flex items-center justify-between px-3 pb-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+            {t("sidebarWorkspaceSettings")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen(false)}
+            aria-label={t("sidebarClose")}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
-      )}
+        {panelBody(true)}
+      </MobileDrawer>
     </>
   )
 }

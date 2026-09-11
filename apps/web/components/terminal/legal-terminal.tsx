@@ -423,8 +423,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         }}
       />
       <div
-        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground transition-[padding-left] duration-200 md:pl-16 ${
-          sidebarExpanded ? "md:pl-72" : ""
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground transition-[padding-left] duration-200 lg:pl-16 ${
+          sidebarExpanded ? "lg:pl-72" : ""
         }`}
       >
       <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
