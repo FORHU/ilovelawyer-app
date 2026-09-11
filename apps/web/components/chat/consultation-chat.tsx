@@ -67,8 +67,11 @@ interface DisplayMessage {
    * streaming — see doSend. Never persisted; gone once the turn finishes. */
   researchSteps?: TraceStep[];
   /** Set only when this reply is one topic of a split, multi-topic answer (see
-   * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, shown above its
-   * bubble. Never set while a message is still streaming; splits only appear once persisted. */
+   * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, used as the
+   * TopicNavigator label (see use-topic-navigator.ts). Not rendered inside the bubble itself:
+   * the reply's own markdown heading already carries the same title, so showing `groupTitle`
+   * again above it just duplicated it. Never set while a message is still streaming; splits
+   * only appear once persisted. */
   groupId?: string | null;
   groupTitle?: string | null;
 }
@@ -461,6 +464,7 @@ export default function ConsultationChat({
   // history independently.
   const {
     topics: splitTopics,
+    groups: splitTopicGroups,
     activeIndex: activeTopicIndex,
     scrollToTopic,
     isGenerating: isGeneratingTopics,
@@ -1341,7 +1345,7 @@ export default function ConsultationChat({
 
       {!embedded && (splitTopics.length > 0 || isGeneratingTopics) && (
         <TopicNavigator
-          topics={splitTopics}
+          groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
           onExpandedChange={setTopicPanelExpanded}
@@ -1607,9 +1611,6 @@ export default function ConsultationChat({
                       id={`chat-msg-${i}`}
                       className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
                     >
-                      {m.groupTitle && (
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">{m.groupTitle}</p>
-                      )}
                       {isStreamingThis && !m.content ? (
                         m.researchSteps && m.researchSteps.length > 0 ? (
                           <ResearchTraceList steps={m.researchSteps} />

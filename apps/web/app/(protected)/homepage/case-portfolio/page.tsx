@@ -138,16 +138,16 @@ export default function CaseManagerDashboard() {
           <div className="md:overflow-x-auto lg:overflow-visible">
             {/* Column header only makes sense once the row below is actually a grid (md+) —
              * the stacked mobile card has no columns to label. */}
-            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_176px] gap-4 md:min-w-[640px] px-4 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_296px] gap-4 md:min-w-[760px] px-4 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
               <span>{t("tableCaseHeader")}</span>
               <span>{t("tableUpdatedHeader")}</span>
-              <span className="text-right">{t("tableOpenInHeader")}</span>
+              <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
             </div>
-            <div className="md:min-w-[640px]">
+            <div className="md:min-w-[760px]">
               {cases.map((c) => (
                 <div
                   key={c.id}
-                  className="group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_176px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card"
+                  className="group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_296px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card"
                 >
                   <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
                     <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
@@ -166,37 +166,7 @@ export default function CaseManagerDashboard() {
                       {new Date(c.updatedAt).toLocaleDateString()}
                     </span>
 
-                    <div className="flex items-center gap-1.5 md:justify-end">
-                      {/* Edit/delete are always visible on mobile (no hover to reveal them on
-                       * touch) and only fade in on hover from md+, where a pointer exists. */}
-                      <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover/row:opacity-100 md:focus-within:opacity-100 transition-opacity">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => setEditingCase(c)}
-                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                              aria-label={t("editCase", { caseName: c.caseName })}
-                            >
-                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => setDeletingCase(c)}
-                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-red-600 hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                              aria-label={t("deleteCase", { caseName: c.caseName })}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
-                        </Tooltip>
-                      </div>
+                    <div className="flex items-center gap-2">
                       {/* Hidden below md — the case name/party block above is already a link
                        * to this same Workspace route, so on mobile (where every button is
                        * competing for the same ~300px row) this would just be a second,
@@ -224,6 +194,36 @@ export default function CaseManagerDashboard() {
                         </TooltipTrigger>
                         <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
                       </Tooltip>
+                      {/* Edit/delete are always visible on mobile (no hover to reveal them on
+                       * touch) and only fade in on hover from md+, where a pointer exists. */}
+                      <div className="flex items-center gap-1 md:opacity-0 md:group-hover/row:opacity-100 md:focus-within:opacity-100 transition-opacity">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCase(c)}
+                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                              aria-label={t("editCase", { caseName: c.caseName })}
+                            >
+                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCase(c)}
+                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-red-600 hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                              aria-label={t("deleteCase", { caseName: c.caseName })}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -234,20 +234,23 @@ export default function CaseManagerDashboard() {
 
         {!isLoading && !isError && cases.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between gap-4 pt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-                  {t("pagination.previous")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("pagination.previous")}</TooltipContent>
-            </Tooltip>
+            {page > 1 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                    {t("pagination.previous")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("pagination.previous")}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <span aria-hidden="true" />
+            )}
 
             <span className="text-[12px] text-muted-foreground">
               {t("pagination.pageOf", { page, total: totalPages })}

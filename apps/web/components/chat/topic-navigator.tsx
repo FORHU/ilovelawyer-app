@@ -11,50 +11,126 @@ export interface TopicNavigatorItem {
   title: string;
 }
 
-/** The actual topic rows — no aside/header chrome of its own, so it can sit inside whatever
- * shell the caller already has (the homepage's absolute rail below, or Case Workspace's
- * resizable Sources panel — see sources-panel.tsx). `compact` mirrors a collapsed rail: icon
- * dot only, label in a tooltip instead of inline. */
+export interface TopicNavigatorGroup {
+  /** visibleMessages index of the user turn that produced this group's topics — stable across
+   * re-renders (unlike array position), so it doubles as the group's React key and the
+   * "currently expanded" identifier below. */
+  promptIndex: number;
+  promptTitle: string;
+  topics: TopicNavigatorItem[];
+}
+
+/** One topic's row — a dot, its title, and a tooltip carrying the full title when truncated
+ * (or always, in `compact`, since there's no room for inline text at all). Shared by the
+ * flat compact dot-list and each prompt's expanded topic list below. */
+function TopicRow({
+  topic,
+  isActive,
+  onJump,
+  compact,
+}: {
+  topic: TopicNavigatorItem;
+  isActive: boolean;
+  onJump: (index: number) => void;
+  compact: boolean;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onJump(topic.index)}
+          className={`w-full flex items-center gap-2 rounded-full text-left transition-colors ${
+            compact ? "justify-center px-0 py-2" : "px-3 py-1.5"
+          } ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+        >
+          <span
+            className={`shrink-0 rounded-full ${compact ? "w-2 h-2" : "w-1.5 h-1.5"} ${
+              isActive ? "bg-brand-gold" : "bg-border"
+            }`}
+            aria-hidden="true"
+          />
+          {compact ? (
+            <span className="sr-only">{topic.title}</span>
+          ) : (
+            <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="left">{topic.title}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** The actual topic rows, grouped under a dropdown per prompt (the user turn whose split reply
+ * produced them) — no aside/header chrome of its own, so it can sit inside whatever shell the
+ * caller already has (the homepage's absolute rail below, or Case Workspace's resizable Sources
+ * panel — see sources-panel.tsx). `compact` mirrors a collapsed rail: prompt grouping is dropped
+ * in favor of one flat dot list (no room for prompt labels at that width), each dot still a
+ * tooltip-only target as before. */
 export function TopicNavigatorList({
-  topics,
+  groups,
   activeIndex,
   onJump,
   compact = false,
 }: {
-  topics: TopicNavigatorItem[];
+  groups: TopicNavigatorGroup[];
   activeIndex: number | null;
   onJump: (index: number) => void;
   compact?: boolean;
 }) {
+  // Newest prompt's topics open by default (mirrors the old flat list's "everything visible"
+  // behavior for the common single-turn case); older prompts collapse so a many-turn thread
+  // doesn't read as one long wall of topics. Only a prompt's explicit user toggle is stored —
+  // "open by default" is derived from `latestPromptIndex` on every render instead of synced via
+  // effect, so a new turn arriving auto-opens its own topics without fighting a toggle the user
+  // already made on an older prompt.
+  const [overrides, setOverrides] = useState<Map<number, boolean>>(() => new Map());
+  const latestPromptIndex = groups[groups.length - 1]?.promptIndex ?? null;
+  const isPromptOpen = (promptIndex: number) => overrides.get(promptIndex) ?? promptIndex === latestPromptIndex;
+  const togglePrompt = (promptIndex: number) =>
+    setOverrides((prev) => new Map(prev).set(promptIndex, !isPromptOpen(promptIndex)));
+
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        {groups.flatMap((group) =>
+          group.topics.map((topic) => (
+            <TopicRow key={topic.index} topic={topic} isActive={topic.index === activeIndex} onJump={onJump} compact />
+          )),
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={compact ? "flex flex-col items-center gap-1" : "space-y-0.5"}>
-      {topics.map((topic) => {
-        const isActive = topic.index === activeIndex;
+    <div className="space-y-1">
+      {groups.map((group) => {
+        const isOpen = isPromptOpen(group.promptIndex);
         return (
-          <Tooltip key={topic.index}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onJump(topic.index)}
-                className={`w-full flex items-center gap-2 rounded-full text-left transition-colors ${
-                  compact ? "justify-center px-0 py-2" : "px-3 py-1.5"
-                } ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
-              >
-                <span
-                  className={`shrink-0 rounded-full ${compact ? "w-2 h-2" : "w-1.5 h-1.5"} ${
-                    isActive ? "bg-brand-gold" : "bg-border"
-                  }`}
-                  aria-hidden="true"
-                />
-                {compact ? (
-                  <span className="sr-only">{topic.title}</span>
-                ) : (
-                  <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">{topic.title}</TooltipContent>
-          </Tooltip>
+          <div key={group.promptIndex}>
+            <button
+              type="button"
+              onClick={() => togglePrompt(group.promptIndex)}
+              aria-expanded={isOpen}
+              className="w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <ChevronDown
+                className={`w-3 h-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`}
+                aria-hidden="true"
+              />
+              <span className="text-[12px] font-semibold font-['Inter'] truncate">
+                {group.promptTitle || "Untitled prompt"}
+              </span>
+            </button>
+            {isOpen && (
+              <div className="pl-4 space-y-0.5">
+                {group.topics.map((topic) => (
+                  <TopicRow key={topic.index} topic={topic} isActive={topic.index === activeIndex} onJump={onJump} compact={false} />
+                ))}
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
@@ -96,7 +172,7 @@ export function TopicNavigatorLoading({ label, compact = false }: { label: strin
  * instead of this wrapper — see sources-panel.tsx — since it already has its own resizable
  * panel chrome (header, collapse toggle, width) this would otherwise duplicate. */
 export default function TopicNavigator({
-  topics,
+  groups,
   activeIndex,
   expanded,
   onExpandedChange,
@@ -105,7 +181,7 @@ export default function TopicNavigator({
   isGenerating = false,
   generatingLabel,
 }: {
-  topics: TopicNavigatorItem[];
+  groups: TopicNavigatorGroup[];
   activeIndex: number | null;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
@@ -134,10 +210,10 @@ export default function TopicNavigator({
   }, [isMobileOpen]);
 
   const body = (compact: boolean, onJumpOverride: (index: number) => void = onJump) =>
-    topics.length === 0 && isGenerating ? (
+    groups.length === 0 && isGenerating ? (
       <TopicNavigatorLoading label={generatingLabel ?? label} compact={compact} />
     ) : (
-      <TopicNavigatorList topics={topics} activeIndex={activeIndex} onJump={onJumpOverride} compact={compact} />
+      <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={onJumpOverride} compact={compact} />
     );
 
   return (

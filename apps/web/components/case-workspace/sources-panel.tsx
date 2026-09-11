@@ -38,7 +38,7 @@ interface SourcesPanelProps {
  * only where it's surfaced. */
 export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex" }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
-  const { topics, activeIndex, scrollToTopic, isGenerating } = useTopicNavigator(activeConsultationId);
+  const { groups, topics, activeIndex, scrollToTopic, isGenerating } = useTopicNavigator(activeConsultationId);
 
   return (
     <aside
@@ -87,7 +87,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {!expanded && (
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto pt-3">
           {topics.length > 0 ? (
-            <TopicNavigatorList topics={topics} activeIndex={activeIndex} onJump={scrollToTopic} compact />
+            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={scrollToTopic} compact />
           ) : isGenerating ? (
             <TopicNavigatorLoading label={t("workspace.topicsGenerating")} compact />
           ) : (
@@ -99,7 +99,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {expanded && (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {topics.length > 0 ? (
-            <TopicNavigatorList topics={topics} activeIndex={activeIndex} onJump={scrollToTopic} />
+            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={scrollToTopic} />
           ) : isGenerating ? (
             <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
           ) : !activeConsultationId ? (
