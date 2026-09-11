@@ -9,10 +9,10 @@ export default function AiConsultationPage() {
   const firstName = user?.name?.split(" ")[0] ?? user?.username;
 
   return (
-    // "dark landing-theme" forces the redesign's noir/gold palette regardless of the
-    // app's light/dark toggle — same tokens the marketing landing page already uses
-    // (see packages/ui/src/styles/globals.css), reused here for the Consultation redesign.
-    <div className="dark landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
+    // "landing-theme" applies the redesign's noir/gold palette; it now respects the app's
+    // light/dark toggle (ThemeToggle in GlobalHeader) instead of forcing dark unconditionally —
+    // see DESIGN.md for the light-mode equivalent tokens (packages/ui/src/styles/globals.css).
+    <div className="landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
       <GlobalHeader activeTab="consultation" />
       <ConsultationChat
         basePath="/homepage"

@@ -23,6 +23,16 @@ Dark mode (`.dark`) recolors `--background`/`--card`/etc. to the navy elevation 
 
 Use `bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border` for everything else — never a raw gray.
 
+### Light mode is not an afterthought
+
+**No page forces a theme.** Every page uses plain `.landing-theme` and respects the user's light/dark toggle (`ThemeToggle` in `GlobalHeader`, backed by `next-themes`). If you're tempted to hardcode `dark` on a page wrapper "because this page looks better dark," don't — fix the light-mode styling instead (see below), the way Consultation's forced-`dark` was removed once its light-mode bugs were fixed.
+
+Light `.landing-theme` gets its own elevation tokens (`--card`/`--popover`/`--secondary`/`--accent`: `#fafaf8`/`#f2f1ec`), because plain `:root` has `--card` equal to `--background` (`#ffffff` both) — anything relying on `bg-card` for contrast (hover states, composer chips, modals) was invisible against a white page. This is the light-mode counterpart to `.dark .landing-theme`'s near-black/`#1a1a1a` pairing — same structure, light brightness.
+
+**Never hardcode a dark-only color in a component.** The most common mistake: `text-white`, `border-white/20`, `bg-white/5` on an element that sits on a themed surface (`bg-background`, `bg-card`). These assume an always-dark canvas and go invisible (white-on-white) in light mode. Use the semantic token instead: `text-foreground`, `border-border`, `bg-foreground/5`, `text-muted-foreground`. The one exception is a deliberately dark "island" that's explicitly dark-styled regardless of page theme (the gold-gradient AI-CTA banners' `bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 text-white`, modal/drawer backdrops like `bg-black/40`, or the mind-map canvas's self-contained dark surface) — those are fine as-is because their own background is also hardcoded, not themed.
+
+A decorative image/gradient that fades into the page background must fade into `var(--background)` (e.g. Tailwind's `from-background`/`via-background/55`/`to-background/35` gradient utilities), never a hardcoded hex like `#0b0b0b` — otherwise it only looks right in the one mode it was designed against.
+
 ## Typography
 
 - **Display/heading font:** `font-['Libre_Caslon_Text']`, always `font-light`, tight tracking (`tracking-[-0.02em]`). Used for page titles and empty-state headings only — never for body text or UI labels.

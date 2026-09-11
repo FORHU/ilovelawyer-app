@@ -112,13 +112,13 @@ export default function ConsultationSidebar({
               onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
-            className={`h-10 flex items-center gap-3 rounded-full border border-white/40 hover:border-white shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+            className={`h-10 flex items-center gap-3 rounded-full border border-border hover:border-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
               expanded || isMobile ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
             }`}
           >
-            <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
+            <Plus className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden="true" />
             {(expanded || isMobile) && (
-              <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-white">
+              <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-foreground">
                 {t("sidebar.newConsultation", { defaultValue: "New consultation" })}
               </span>
             )}
@@ -214,7 +214,7 @@ export default function ConsultationSidebar({
                         // rounded, bordered chip; a transparent border of the same width is kept
                         // on inactive rows so hovering doesn't shift layout by 1px.
                         className={`min-w-0 flex-1 text-left truncate py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
-                          isActive ? "pl-2.5 pr-1 text-white font-semibold" : "pl-7 pr-1 text-white/75 hover:text-white"
+                          isActive ? "pl-2.5 pr-1 text-foreground font-semibold" : "pl-7 pr-1 text-foreground/75 hover:text-foreground"
                         }`}
                       >
                         {label}
@@ -236,7 +236,7 @@ export default function ConsultationSidebar({
                           type="button"
                           onClick={() => startEditing(c.id, c.title?.trim() || "")}
                           aria-label={t("sidebar.renameConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -250,7 +250,7 @@ export default function ConsultationSidebar({
                           onClick={() => handleDelete(c.id)}
                           disabled={deleteConsultation.isPending && deleteConsultation.variables === c.id}
                           aria-label={t("sidebar.deleteConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
                         >
                           {deleteConsultation.isPending && deleteConsultation.variables === c.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -277,7 +277,7 @@ export default function ConsultationSidebar({
           <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
             {t("sidebar.organization", { defaultValue: "Organization" })}
           </p>
-          <p className="truncate text-[13px] text-white">{organization.name}</p>
+          <p className="truncate text-[13px] text-foreground">{organization.name}</p>
         </div>
       )}
     </>

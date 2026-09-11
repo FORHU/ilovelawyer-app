@@ -6,9 +6,6 @@ type GlobalHeaderProps = ComponentProps<typeof GlobalHeader>;
 interface PageShellProps {
   activeTab: GlobalHeaderProps["activeTab"];
   mobileHeaderMerged?: boolean;
-  /** Forces dark mode regardless of the user's theme toggle (Consultation-style full-bleed
-   * surfaces). Most pages should leave this unset and respect the toggle (Cases-style). */
-  forceDark?: boolean;
   className?: string;
   children: React.ReactNode;
 }
@@ -17,11 +14,12 @@ interface PageShellProps {
  * The `.landing-theme` wrapper + GlobalHeader pairing every page needs — see DESIGN.md.
  * Replaces the hand-copied `<div className="landing-theme ... bg-background text-foreground">`
  * that used to get duplicated (and sometimes dropped, causing the old-navy header bug) per page.
+ * Every page respects the light/dark toggle — none of them should force a theme.
  */
-export function PageShell({ activeTab, mobileHeaderMerged, forceDark, className = "", children }: PageShellProps) {
+export function PageShell({ activeTab, mobileHeaderMerged, className = "", children }: PageShellProps) {
   return (
     <div
-      className={`landing-theme ${forceDark ? "dark " : ""}min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif] ${className}`}
+      className={`landing-theme min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif] ${className}`}
     >
       <GlobalHeader activeTab={activeTab} mobileHeaderMerged={mobileHeaderMerged} />
       {children}

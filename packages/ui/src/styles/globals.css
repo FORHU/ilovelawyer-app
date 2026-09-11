@@ -152,6 +152,16 @@
        invent an unsourced value, so nothing on the landing page still reads as blue-navy. */
     --brand-navy-800: #1a1a1a;
     --brand-gold: #c9a44c;
+    /* Light mode's counterpart to `.dark .landing-theme` below: plain :root has --card equal
+       to --background (#ffffff both), so anything relying on bg-card for elevation (hover
+       states, modals, composer chips) was invisible in light mode. A barely-there warm
+       off-white gives it the same background/elevated-surface contrast the dark near-black/
+       #1a1a1a pairing has, at light-mode brightness. Lower specificity than `.dark
+       .landing-theme`, so dark mode still wins there regardless of source order. */
+    --card: #fafaf8;
+    --popover: #fafaf8;
+    --secondary: #f2f1ec;
+    --accent: #f2f1ec;
 }
 
 /* .dark declares --background/--card/--muted etc. as var(--brand-navy-*) chains, and that
