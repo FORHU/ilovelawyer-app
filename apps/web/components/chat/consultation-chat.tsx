@@ -1550,7 +1550,7 @@ export default function ConsultationChat({
                         {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
                       </span>
                       <Link
-                        href={`/homepage/v2/case-portfolio/${linkedCaseId}`}
+                        href={`/homepage/case-portfolio/${linkedCaseId}`}
                         className="rounded-full border border-border px-3.5 py-1.5 text-foreground transition-colors hover:border-foreground/60"
                       >
                         {t("caseHub.openCase", { defaultValue: "Open case" })}
