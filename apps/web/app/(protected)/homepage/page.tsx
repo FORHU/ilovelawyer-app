@@ -1,6 +1,6 @@
 "use client";
 
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import ConsultationChat from "@/components/chat/consultation-chat";
 import { useAuthStore } from "@/lib/store/auth.store";
 
@@ -9,11 +9,7 @@ export default function AiConsultationPage() {
   const firstName = user?.name?.split(" ")[0] ?? user?.username;
 
   return (
-    // "landing-theme" applies the redesign's noir/gold palette; it now respects the app's
-    // light/dark toggle (ThemeToggle in GlobalHeader) instead of forcing dark unconditionally —
-    // see DESIGN.md for the light-mode equivalent tokens (packages/ui/src/styles/globals.css).
-    <div className="landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      <GlobalHeader activeTab="consultation" />
+    <PageShell activeTab="consultation" className="h-screen overflow-hidden">
       <ConsultationChat
         basePath="/homepage"
         enableFileChips
@@ -38,6 +34,6 @@ export default function AiConsultationPage() {
           "Summarize a court decision",
         ]}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import { Search, Briefcase, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
@@ -62,9 +62,7 @@ export default function CaseManagerDashboard() {
   const isSearchEmpty = !isLoading && !isError && debouncedSearch !== "" && cases.length === 0;
 
   return (
-    <div className="landing-theme min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="case-portfolio" />
-
+    <PageShell activeTab="case-portfolio">
       <main className="max-w-[1280px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 relative z-10 flex flex-col gap-8">
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="flex flex-col gap-3.5">
@@ -348,6 +346,6 @@ export default function CaseManagerDashboard() {
           onClose={() => setDeletingCase(null)}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

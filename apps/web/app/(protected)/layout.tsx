@@ -157,13 +157,5 @@ function CurrentUserSync({
   if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown)
     return <LoadingScreen />
 
-  // landing-theme lives here (not inside PageTransition) specifically so it's never
-  // unmounted on navigation — PageTransition remounts its child on every route change to
-  // replay the animation, and during that gap the bare body background would otherwise
-  // show through as the plain (non-landing-theme) navy, flashing on every tab switch.
-  return (
-    <div className="landing-theme min-h-screen w-full bg-background">
-      <PageTransition>{children}</PageTransition>
-    </div>
-  )
+  return <PageTransition>{children}</PageTransition>
 }

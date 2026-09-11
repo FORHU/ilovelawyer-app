@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { Search, Plus, Briefcase, Loader2, AlertCircle } from "lucide-react";
 import { useCasesQuery } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -23,9 +23,7 @@ export default function TerminalLandingPage() {
   const cases = data?.data ?? [];
 
   return (
-    <div className="landing-theme min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="terminal" />
-
+    <PageShell activeTab="terminal">
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 py-14 md:py-16">
         <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
         <div className="relative max-w-[1440px] w-full mx-auto px-6 md:px-16 flex flex-col gap-2">
@@ -142,6 +140,6 @@ export default function TerminalLandingPage() {
           </div>
         )}
       </main>
-    </div>
+    </PageShell>
   );
 }
