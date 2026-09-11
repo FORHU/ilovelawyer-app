@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { ChevronDown, ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
