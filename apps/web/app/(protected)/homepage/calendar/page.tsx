@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
@@ -441,9 +441,7 @@ export default function CalendarPage() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <GlobalHeader activeTab="calendar" />
-
+    <PageShell activeTab="calendar">
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
         <div className="mb-8 flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
@@ -554,6 +552,6 @@ export default function CalendarPage() {
           </Card>
         </div>
       </main>
-    </div>
+    </PageShell>
   );
 }

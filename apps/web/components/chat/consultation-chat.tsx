@@ -1030,12 +1030,12 @@ export default function ConsultationChat({
               {queuedFiles.map((f) => (
                 <span
                   key={f.id}
-                  className="flex items-center gap-2 max-w-full rounded-full border border-white/15 bg-background text-white/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
+                  className="flex items-center gap-2 max-w-full rounded-full border border-border bg-background text-foreground/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
                 >
                   {f.status === "uploading" ? (
-                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "PENDING" ? (
-                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-white/60" aria-hidden="true" />
+                    <Loader2 className="w-3 h-3 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "FAILED" ? (
                     <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : f.status === "uploaded" ? (
@@ -1043,7 +1043,7 @@ export default function ConsultationChat({
                   ) : f.status === "error" ? (
                     <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
                   ) : (
-                    <Paperclip className="w-3 h-3 shrink-0 text-white/60" aria-hidden="true" />
+                    <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                   )}
                   <span className="truncate max-w-[220px]">{f.file.name}</span>
                   {f.status === "error" && (
@@ -1052,7 +1052,7 @@ export default function ConsultationChat({
                         <button
                           type="button"
                           onClick={() => retryUpload(f.id)}
-                          className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                           aria-label={t("input.retryUpload", { fileName: f.file.name })}
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -1066,7 +1066,7 @@ export default function ConsultationChat({
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(f.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         aria-label={t("input.removeFile", { fileName: f.file.name })}
                       >
                         <X className="w-3 h-3" />
@@ -1095,7 +1095,7 @@ export default function ConsultationChat({
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "PENDING") && (
-              <span className="text-[10.5px] text-white/50 pl-1">{t("input.indexingHint")}</span>
+              <span className="text-[10.5px] text-muted-foreground pl-1">{t("input.indexingHint")}</span>
             )}
             {queuedFiles.some((f) => f.status === "uploaded" && resolvedRagStatus(f) === "FAILED") && (
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.indexingFailed")}</span>
@@ -1243,7 +1243,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="order-2 sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-white/25 text-white/70 transition-colors hover:border-white hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className="order-2 sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Plus className="w-4 h-4" aria-hidden="true" />
                     </button>
@@ -1324,7 +1324,9 @@ export default function ConsultationChat({
             alt=""
             className="absolute inset-0 h-full w-full object-cover object-[center_30%] opacity-[0.14]"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(to_top,#0b0b0b_38%,rgba(11,11,11,0.55)_70%,rgba(11,11,11,0.35)_100%)]" />
+          {/* Fades the image into the page's own --background (not a hardcoded dark hex) so this
+              reads correctly in both light and dark mode instead of always fading to near-black. */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background from-38% via-background/55 via-70% to-background/35" />
         </div>
       )}
 
@@ -1514,7 +1516,7 @@ export default function ConsultationChat({
                           // past consultation title or a caller-provided emptyStatePrompts entry),
                           // so a long one must wrap inside the pill instead of forcing it wider
                           // than the viewport.
-                          className="max-w-full whitespace-normal break-words rounded-full border border-white/25 px-4 py-2.5 text-[13px] text-white/80 transition-colors hover:border-white hover:text-white"
+                          className="max-w-full whitespace-normal break-words rounded-full border border-border px-4 py-2.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground hover:text-foreground"
                         >
                           {prompt}
                         </button>
@@ -1552,7 +1554,7 @@ export default function ConsultationChat({
                         {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
                       </span>
                       <Link
-                        href={`/homepage/v2/case-portfolio/${linkedCaseId}`}
+                        href={`/homepage/case-portfolio/${linkedCaseId}`}
                         className="rounded-full border border-border px-3.5 py-1.5 text-foreground transition-colors hover:border-foreground/60"
                       >
                         {t("caseHub.openCase", { defaultValue: "Open case" })}

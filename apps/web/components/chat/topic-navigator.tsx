@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
+import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export interface TopicNavigatorItem {
@@ -226,7 +227,7 @@ export default function TopicNavigator({
             // right-3/top-20 mirrors ConsultationSidebar's own clearance fix — this now
             // covers 768-1023px tablet widths too, with zero padding reserved for it below
             // `lg`, so it needs real breathing room from the header and page content.
-            className="lg:hidden absolute right-3 top-20 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="lg:hidden absolute right-3 top-20 z-(--z-sidebar) flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             <ListTree className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -235,7 +236,7 @@ export default function TopicNavigator({
       </Tooltip>
 
       <aside
-        className={`hidden lg:flex absolute right-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-l border-y border-border rounded-l-[8px] shadow-lg flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute right-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-l border-y border-border rounded-l-[8px] shadow-lg flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
           expanded ? "w-64" : "w-12"
         }`}
       >
@@ -267,38 +268,38 @@ export default function TopicNavigator({
         <div className="flex-1 min-h-0 overflow-y-auto px-2">{body(!expanded)}</div>
       </aside>
 
-      {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileOpen(false)} aria-hidden="true" />
-          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
-            <div className="flex items-center justify-between px-4 pb-2">
-              <span className="flex items-center gap-1.5 text-[13px] font-['Inter'] font-semibold text-foreground">
-                <ListTree className="w-3.5 h-3.5 text-brand-gold" aria-hidden="true" />
-                {label}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileOpen(false)}
-                    aria-label={label}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{label}</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-2">
-              {body(false, (index) => {
-                onJump(index);
-                setIsMobileOpen(false);
-              })}
-            </div>
-          </div>
+      <MobileDrawer
+        open={isMobileOpen}
+        onClose={() => setIsMobileOpen(false)}
+        closeLabel={label}
+        side="right"
+      >
+        <div className="flex items-center justify-between px-4 pb-2">
+          <span className="flex items-center gap-1.5 text-[13px] font-['Inter'] font-semibold text-foreground">
+            <ListTree className="w-3.5 h-3.5 text-brand-gold" aria-hidden="true" />
+            {label}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setIsMobileOpen(false)}
+                aria-label={label}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
         </div>
-      )}
+        <div className="flex-1 min-h-0 overflow-y-auto px-2">
+          {body(false, (index) => {
+            onJump(index);
+            setIsMobileOpen(false);
+          })}
+        </div>
+      </MobileDrawer>
     </>
   );
 }

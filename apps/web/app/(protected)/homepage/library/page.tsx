@@ -1,5 +1,5 @@
 "use client";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { LawSearchPanel } from "@/components/library/law-search-panel";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
 
@@ -13,12 +13,10 @@ export default function LegalLibraryPage() {
   if (guard) return guard;
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="library" />
-
+    <PageShell activeTab="library">
       <main className="w-full flex flex-col flex-1 pt-16">
         <LawSearchPanel />
       </main>
-    </div>
+    </PageShell>
   );
 }

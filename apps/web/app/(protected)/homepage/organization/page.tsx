@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
@@ -355,9 +355,7 @@ export default function OrganizationPage() {
   }
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="organization" />
-
+    <PageShell activeTab="organization">
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         <div className="w-full flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">{t("title")}</h1>
@@ -391,7 +389,7 @@ export default function OrganizationPage() {
                     type="button"
                     onClick={handleAcceptInvite}
                     disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
-                    className="cursor-pointer rounded-lg bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {acceptInviteMutation.isPending ? t("invite.accepting") : t("invite.accept")}
                   </button>
@@ -399,7 +397,7 @@ export default function OrganizationPage() {
                     type="button"
                     onClick={handleDeclineInvite}
                     disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
-                    className="cursor-pointer rounded-lg border border-border px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded-full border border-border px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {declineInviteMutation.isPending ? t("invite.declining") : t("invite.decline")}
                   </button>
@@ -495,7 +493,7 @@ export default function OrganizationPage() {
                   <button
                     type="submit"
                     disabled={createOrgMutation.isPending || leaveMutation.isPending}
-                    className="cursor-pointer w-full sm:w-auto rounded-lg bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {createOrgMutation.isPending || leaveMutation.isPending ? t("create.creating") : t("create.submit")}
                   </button>
@@ -547,7 +545,7 @@ export default function OrganizationPage() {
                             onClick={handleSaveName}
                             disabled={updateOrgMutation.isPending}
                             aria-label={t("overview.saveName")}
-                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-amber-600 dark:text-brand-gold transition-colors hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-amber-600 dark:text-brand-gold transition-colors hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {updateOrgMutation.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -560,7 +558,7 @@ export default function OrganizationPage() {
                             onClick={handleCancelEditName}
                             disabled={updateOrgMutation.isPending}
                             aria-label={t("overview.cancelName")}
-                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="cursor-pointer flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <X className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -575,7 +573,7 @@ export default function OrganizationPage() {
                             type="button"
                             onClick={handleStartEditName}
                             aria-label={t("overview.editName")}
-                            className="cursor-pointer flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+                            className="cursor-pointer flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
                           >
                             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
@@ -616,7 +614,7 @@ export default function OrganizationPage() {
                     type="button"
                     onClick={handleLeaveClick}
                     disabled={leaveMutation.isPending}
-                    className="cursor-pointer self-start rounded-lg border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 transition-colors hover:bg-red-600/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer self-start rounded-full border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 transition-colors hover:bg-red-600/5 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {leaveMutation.isPending ? t("overview.leaving") : t("overview.leaveButton")}
                   </button>
@@ -642,7 +640,7 @@ export default function OrganizationPage() {
                         type="button"
                         onClick={handleConfirmTransferAndLeave}
                         disabled={!successorId || isTransferring}
-                        className="cursor-pointer rounded-lg bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isTransferring ? t("overview.leaving") : t("overview.transferConfirm")}
                       </button>
@@ -654,7 +652,7 @@ export default function OrganizationPage() {
                           setLeaveError(null);
                         }}
                         disabled={isTransferring}
-                        className="cursor-pointer rounded-lg border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full border border-border px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {t("overview.transferCancel")}
                       </button>
@@ -839,7 +837,7 @@ export default function OrganizationPage() {
                       <button
                         type="submit"
                         disabled={inviteMutation.isPending}
-                        className="cursor-pointer rounded-lg bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {inviteMutation.isPending ? t("invite.sending") : t("invite.submit")}
                       </button>
@@ -860,7 +858,7 @@ export default function OrganizationPage() {
 
       {pendingRoleChange && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          className="fixed inset-0 z-(--z-modal) flex items-center justify-center bg-black/50 px-4 py-8"
           onClick={() => setPendingRoleChange(null)}
           role="presentation"
         >
@@ -936,7 +934,7 @@ export default function OrganizationPage() {
 
       {pendingRemoval && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          className="fixed inset-0 z-(--z-modal) flex items-center justify-center bg-black/50 px-4 py-8"
           onClick={() => setPendingRemoval(null)}
           role="presentation"
         >
@@ -1008,7 +1006,7 @@ export default function OrganizationPage() {
 
       {showLeaveConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
+          className="fixed inset-0 z-(--z-modal) flex items-center justify-center bg-black/50 px-4 py-8"
           onClick={() => setShowLeaveConfirm(false)}
           role="presentation"
         >
@@ -1078,6 +1076,6 @@ export default function OrganizationPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
