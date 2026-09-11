@@ -40,5 +40,20 @@
     "signOutDescription": "현재 세션을 종료하고 로그인 화면으로 돌아갑니다.",
     "logout": "로그아웃",
     "loggingOut": "로그아웃 중…"
+  },
+  "dangerZone": {
+    "heading": "위험 구역",
+    "subheading": "이 계정에 대한 되돌릴 수 없는 파괴적 작업입니다.",
+    "cancel": "취소",
+    "closeModal": "닫기",
+    "deleteAccount": {
+      "title": "계정 삭제",
+      "description": "계정과 관련된 모든 데이터를 영구적으로 삭제합니다. 이 작업은 취소할 수 없습니다.",
+      "button": "계정 삭제",
+      "deleting": "삭제 중…",
+      "confirmTitle": "계정을 삭제하시겠습니까?",
+      "confirmDescription": "계정과 관련된 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+      "confirmButton": "계정 삭제"
+    }
   }
 }
