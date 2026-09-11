@@ -83,6 +83,11 @@ function CreateCasePageContent() {
 
   const [step, setStep] = useState(1);
   const [maxStepReached, setMaxStepReached] = useState(1);
+  // Continue (steps 1-2) and File (step 3) occupy the same spot in the button row, so a fast
+  // double-click on Continue can land its second click on File the instant step 3 mounts,
+  // submitting with zero files before the user ever sees the dropzone. Guards handleSubmitFiling
+  // against firing within this window of a step change landing on 3.
+  const stepEnteredAtRef = useRef(Date.now());
   // Defaults to Terminal when arriving via ?next=terminal (e.g. from the Legal Terminal's own
   // "new case" entry point) — otherwise the user can still flip it before filing.
   const [openTarget, setOpenTarget] = useState<OpenTarget>(
@@ -243,6 +248,7 @@ function CreateCasePageContent() {
     const next = Math.min(3, step + 1);
     setStep(next);
     setMaxStepReached((m) => Math.max(m, next));
+    stepEnteredAtRef.current = Date.now();
   };
 
   const handleStepBack = () => {
@@ -253,6 +259,10 @@ function CreateCasePageContent() {
   const handleSubmitFiling = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (step !== 3) return;
+    // See stepEnteredAtRef above — ignore a submit that fires immediately after arriving on
+    // step 3, since that's a stray second click from advancing off step 2, not an intentional
+    // file/submit click.
+    if (Date.now() - stepEnteredAtRef.current < 400) return;
     setSubmitError(null);
     if (!formData.caseTitle.trim()) {
       setStep(1);

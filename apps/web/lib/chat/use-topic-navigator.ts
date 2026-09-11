@@ -11,6 +11,15 @@ export interface TopicNavigatorItem {
   title: string;
 }
 
+export interface TopicNavigatorGroup {
+  /** visibleMessages index of the user turn that produced this group's topics — stable across
+   * re-renders (unlike array position), so it doubles as the group's React key and the
+   * "currently expanded" identifier in TopicNavigatorList. */
+  promptIndex: number;
+  promptTitle: string;
+  topics: TopicNavigatorItem[];
+}
+
 /** Derives "topics across every split AI reply" for a consultation straight from persisted
  * history — usable from anywhere on the page, not just inside ConsultationChat's own render
  * tree, since a split reply is always already-persisted data (see MessageGroup). Each turn's
@@ -47,21 +56,25 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
     return hidden.size > 0 ? list.filter((_, i) => !hidden.has(i)) : list;
   }, [history]);
 
-  const topics = useMemo<TopicNavigatorItem[]>(() => {
-    const items: TopicNavigatorItem[] = [];
-    let currentGroupId: string | undefined;
-    let positionInGroup = 0;
+  // Groups every split reply's topics under the user prompt that asked for it, so a thread with
+  // several turns behind it reads as "prompt -> its topics" (TopicNavigatorList's per-prompt
+  // dropdown) instead of one flat list where later turns' topics run together with earlier ones.
+  const groups = useMemo<TopicNavigatorGroup[]>(() => {
+    const result: TopicNavigatorGroup[] = [];
+    let current: TopicNavigatorGroup | null = null;
     visibleMessages.forEach((m, index) => {
-      if (!m.groupId) return;
-      if (m.groupId !== currentGroupId) {
-        currentGroupId = m.groupId;
-        positionInGroup = 0;
+      if (m.role === "user") {
+        current = { promptIndex: index, promptTitle: m.content.trim(), topics: [] };
+        result.push(current);
+        return;
       }
-      items.push({ index, title: m.groupTitle || `Topic ${positionInGroup + 1}` });
-      positionInGroup++;
+      if (!m.groupId || !current) return;
+      current.topics.push({ index, title: m.groupTitle || `Topic ${current.topics.length + 1}` });
     });
-    return items;
+    return result.filter((g) => g.topics.length > 0);
   }, [visibleMessages]);
+
+  const topics = useMemo<TopicNavigatorItem[]>(() => groups.flatMap((g) => g.topics), [groups]);
 
   const scrollToTopic = useCallback((index: number) => {
     document.getElementById(`chat-msg-${index}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -95,5 +108,5 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
     return () => observer.disconnect();
   }, [topics]);
 
-  return { topics, activeIndex, scrollToTopic, isGenerating };
+  return { topics, groups, activeIndex, scrollToTopic, isGenerating };
 }
