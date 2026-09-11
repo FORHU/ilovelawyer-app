@@ -440,7 +440,7 @@ export default function IlovelawyerTranscriptionDashboard() {
 
   return (
     <PageShell activeTab="transcription">
-      <main className="max-w-[1440px] mx-auto px-6 md:px-16 py-14 md:py-16 grid grid-cols-12 gap-8">
+      <main className="max-w-[1440px] mx-auto px-6 md:px-16 pt-16 pb-14 md:pb-16 grid grid-cols-12 gap-8">
         {/* Banner Section Info */}
         <div className="col-span-12 flex flex-col gap-3 mb-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
