@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, FileStack, Loader2, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -59,9 +59,7 @@ function LegalDocumentsPageContent() {
   if (guard) return guard;
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="library" />
-
+    <PageShell activeTab="library">
       <main className="w-full flex flex-col flex-1 pt-16">
         <section className="bg-card border-b border-border">
           <div className="max-w-[1000px] mx-auto px-6 md:px-10 py-10 flex flex-col gap-4">
@@ -191,6 +189,6 @@ function LegalDocumentsPageContent() {
           </div>
         </section>
       </main>
-    </div>
+    </PageShell>
   );
 }

@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
@@ -355,9 +355,7 @@ export default function OrganizationPage() {
   }
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="organization" />
-
+    <PageShell activeTab="organization">
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         <div className="w-full flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">{t("title")}</h1>
@@ -1078,6 +1076,6 @@ export default function OrganizationPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

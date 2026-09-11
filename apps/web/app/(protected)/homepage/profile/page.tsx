@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { AtSign, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
@@ -152,9 +152,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="profile" />
-
+    <PageShell activeTab="profile">
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2">
@@ -491,6 +489,6 @@ export default function ProfilePage() {
           onClose={() => setIsDeleteModalOpen(false)}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

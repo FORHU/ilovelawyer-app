@@ -22,7 +22,7 @@ export default function TermsPage() {
   const SECTIONS = t("sections", { returnObjects: true }) as Section[];
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
+    <div className="landing-theme min-h-screen w-full bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
       <GlobalHeader activeTab="term" />
 
       <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
