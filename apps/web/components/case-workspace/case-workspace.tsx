@@ -126,6 +126,17 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
           ),
         )
     : COLLAPSED_RAIL_WIDTH;
+  // Which of the two structural layouts below is mounted — a real conditional, not just a
+  // Tailwind `md:hidden` pair. Both branches render `chatColumn`, and mounting it twice at once
+  // (previously: the mobile tab body whenever mobileTab==="chat" — the default — *and* the
+  // desktop row unconditionally, merely CSS-hidden below `md`) put two elements with the same
+  // `chat-msg-{i}` id in the DOM; TopicNavigator's `getElementById` always found the hidden
+  // mobile copy first, so "jump to topic" silently scrolled an invisible pane instead of the
+  // one on screen. Threshold matches Tailwind's default `md` breakpoint (768px), measured off
+  // the same ResizeObserver as the panel-width clamping above rather than viewport width, since
+  // that's the space this layout actually has to work with. Defaults to desktop before the
+  // first measurement lands (containerWidth === 0) to match that same clamping's own fallback.
+  const isDesktop = containerWidth === 0 || containerWidth >= 768;
   const studioRenderWidth = studioExpanded
     ? containerWidth === 0
       ? studio.width
@@ -163,77 +174,81 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
 
   return (
     <div ref={containerRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Mobile: a 3-way tab bar (Sources / Chat / Studio), exactly one panel mounted at a time
-       * — NotebookLM's own mobile pattern (the same product this workspace's desktop layout is
-       * modeled after), rather than trying to fit three columns, an icon rail, or a drawer into
-       * a phone-width screen. Desktop keeps the full 3-column resizable layout below, untouched. */}
-      <div className="flex h-11 shrink-0 border-b border-border md:hidden">
-        <MobileWorkspaceTab active={mobileTab === "sources"} onClick={() => setMobileTab("sources")}>
-          {t("workspace.sources")}
-        </MobileWorkspaceTab>
-        <MobileWorkspaceTab active={mobileTab === "chat"} onClick={() => setMobileTab("chat")}>
-          {t("workspace.chatTab")}
-        </MobileWorkspaceTab>
-        <MobileWorkspaceTab active={mobileTab === "studio"} onClick={() => setMobileTab("studio")}>
-          {t("workspace.studio")}
-        </MobileWorkspaceTab>
-      </div>
-      <div className="flex min-h-0 flex-1 md:hidden">
-        {mobileTab === "sources" && (
-          // Collapsing (the panel's own header toggle) returns to the Chat tab — there's no
-          // "rail" state to fall back to in a single-panel-at-a-time mobile layout.
+      {isDesktop ? (
+        <div className="flex min-h-0 flex-1">
           <SourcesPanel
-            expanded
-            fullWidth
-            onExpandedChange={() => setMobileTab("chat")}
+            expanded={sourcesExpanded}
+            onExpandedChange={setSourcesExpanded}
             activeConsultationId={activeConsultationId}
-            width={0}
-            isResizing={false}
+            width={sourcesRenderWidth}
+            isResizing={sources.isDragging}
           />
-        )}
-        {mobileTab === "chat" && chatColumn}
-        {mobileTab === "studio" && (
+          {sourcesExpanded && (
+            <ResizeHandle ariaLabel={t("workspace.resizeSources")} onPointerDown={sources.handlePointerDown} isDragging={sources.isDragging} />
+          )}
+
+          {chatColumn}
+
+          {studioExpanded && (
+            <ResizeHandle ariaLabel={t("workspace.resizeStudio")} onPointerDown={studio.handlePointerDown} isDragging={studio.isDragging} />
+          )}
           <StudioPanel
             caseId={caseId}
             consultationId={activeConsultationId}
-            expanded
-            fullWidth
-            onExpandedChange={() => setMobileTab("chat")}
-            width={0}
-            isResizing={false}
+            expanded={studioExpanded}
+            onExpandedChange={setStudioExpanded}
+            width={studioRenderWidth}
+            isResizing={studio.isDragging}
+            onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
             onConsultationCreated={handleConsultationCreated}
           />
-        )}
-      </div>
-
-      <div className="hidden min-h-0 flex-1 md:flex">
-        <SourcesPanel
-          expanded={sourcesExpanded}
-          onExpandedChange={setSourcesExpanded}
-          activeConsultationId={activeConsultationId}
-          width={sourcesRenderWidth}
-          isResizing={sources.isDragging}
-        />
-        {sourcesExpanded && (
-          <ResizeHandle ariaLabel={t("workspace.resizeSources")} onPointerDown={sources.handlePointerDown} isDragging={sources.isDragging} />
-        )}
-
-        {chatColumn}
-
-        {studioExpanded && (
-          <ResizeHandle ariaLabel={t("workspace.resizeStudio")} onPointerDown={studio.handlePointerDown} isDragging={studio.isDragging} />
-        )}
-        <StudioPanel
-          caseId={caseId}
-          consultationId={activeConsultationId}
-          expanded={studioExpanded}
-          onExpandedChange={setStudioExpanded}
-          width={studioRenderWidth}
-          isResizing={studio.isDragging}
-          onOpenMindMap={() => studio.requestWidth(STUDIO_MINDMAP_WIDTH)}
-          onConsultationCreated={handleConsultationCreated}
-        />
-      </div>
+        </div>
+      ) : (
+        // Mobile: a 3-way tab bar (Sources / Chat / Studio), exactly one panel mounted at a time
+        // — NotebookLM's own mobile pattern (the same product this workspace's desktop layout is
+        // modeled after), rather than trying to fit three columns, an icon rail, or a drawer into
+        // a phone-width screen.
+        <>
+          <div className="flex h-11 shrink-0 border-b border-border">
+            <MobileWorkspaceTab active={mobileTab === "sources"} onClick={() => setMobileTab("sources")}>
+              {t("workspace.sources")}
+            </MobileWorkspaceTab>
+            <MobileWorkspaceTab active={mobileTab === "chat"} onClick={() => setMobileTab("chat")}>
+              {t("workspace.chatTab")}
+            </MobileWorkspaceTab>
+            <MobileWorkspaceTab active={mobileTab === "studio"} onClick={() => setMobileTab("studio")}>
+              {t("workspace.studio")}
+            </MobileWorkspaceTab>
+          </div>
+          <div className="flex min-h-0 flex-1">
+            {mobileTab === "sources" && (
+              // Collapsing (the panel's own header toggle) returns to the Chat tab — there's no
+              // "rail" state to fall back to in a single-panel-at-a-time mobile layout.
+              <SourcesPanel
+                expanded
+                fullWidth
+                onExpandedChange={() => setMobileTab("chat")}
+                activeConsultationId={activeConsultationId}
+                width={0}
+                isResizing={false}
+              />
+            )}
+            {mobileTab === "chat" && chatColumn}
+            {mobileTab === "studio" && (
+              <StudioPanel
+                caseId={caseId}
+                consultationId={activeConsultationId}
+                expanded
+                fullWidth
+                onExpandedChange={() => setMobileTab("chat")}
+                width={0}
+                isResizing={false}
+                onConsultationCreated={handleConsultationCreated}
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

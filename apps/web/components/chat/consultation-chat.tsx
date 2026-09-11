@@ -426,6 +426,7 @@ export default function ConsultationChat({
   // history independently.
   const {
     topics: splitTopics,
+    groups: splitTopicGroups,
     activeIndex: activeTopicIndex,
     scrollToTopic,
     isGenerating: isGeneratingTopics,
@@ -1268,7 +1269,7 @@ export default function ConsultationChat({
 
       {!embedded && (splitTopics.length > 0 || isGeneratingTopics) && (
         <TopicNavigator
-          topics={splitTopics}
+          groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
           onExpandedChange={setTopicPanelExpanded}
