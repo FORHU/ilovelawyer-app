@@ -23,7 +23,7 @@ export function LandingNavbar() {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-brand-navy-950 border-b border-white/10">
+    <header className="sticky top-0 z-(--z-modal) w-full bg-brand-navy-950 border-b border-white/10">
       <div className="max-w-360 mx-auto flex items-center justify-between gap-6 px-6 md:px-16 h-16">
         <Link
           href="/"

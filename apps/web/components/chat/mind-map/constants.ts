@@ -89,7 +89,7 @@ export const MIND_MAP_CHROME = {
     'w-full px-4 py-3 flex items-center justify-between rounded-xl hover:bg-muted transition-all text-[10px] font-bold uppercase tracking-widest text-muted-foreground',
   menuItemActive:
     'w-full px-4 py-3 flex items-center justify-between rounded-xl bg-muted border border-border transition-all text-[10px] font-bold uppercase tracking-widest text-foreground',
-  hub: 'absolute bottom-6 left-4 md:left-6 z-[100000] flex flex-col items-center gap-1 p-1 rounded-full bg-card/95 backdrop-blur-3xl border border-border shadow-lg w-max pointer-events-auto transition-all scale-90 md:scale-100 origin-bottom-left',
+  hub: 'absolute bottom-6 left-4 md:left-6 z-(--z-canvas-overlay) flex flex-col items-center gap-1 p-1 rounded-full bg-card/95 backdrop-blur-3xl border border-border shadow-lg w-max pointer-events-auto transition-all scale-90 md:scale-100 origin-bottom-left',
   hubGroup: 'flex flex-col items-center gap-0.5 pb-1 border-b border-border',
   hubBtn:
     'p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition-all active:scale-95 border border-transparent hover:border-border',
