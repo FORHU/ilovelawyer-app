@@ -1186,7 +1186,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1210,6 +1210,7 @@ export default function ConsultationChat({
                   voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
                   stopLabel={t("input.stopRecording")}
                   cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
+                  className="order-3"
                 />
               )}
 
@@ -1220,7 +1221,7 @@ export default function ConsultationChat({
                       type="submit"
                       disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
                       aria-label={t("input.sendMessage")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
