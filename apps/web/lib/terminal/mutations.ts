@@ -4,12 +4,17 @@ import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import type {
+  Annotation,
+  AnnotationKind,
+  AnnotationTargetType,
   CaseFinding,
   CaseReconstruction,
   CaseSnapshot,
+  CaseTheory,
   DamageCategory,
   DamageClaim,
   DeadlineRule,
+  DecisionRecord,
   FindingCategory,
   HearsayCategory,
   PresetValue,
@@ -18,6 +23,8 @@ import type {
   SnapshotEvidenceMatrixItem,
   TerminalCatalog,
   TerminalWorkspace,
+  TheoryDiff,
+  TheoryStance,
   Witness,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
@@ -33,6 +40,10 @@ export const terminalKeys = {
   rules: () => [...terminalKeys.all, "procedure-rules"] as const,
   aiJob: (caseId: string, kind: AiGenerationKind) =>
     [...terminalKeys.all, "ai-job", caseId, kind] as const,
+  theoryDiff: (caseId: string, theoryAId: string, theoryBId: string) =>
+    [...terminalKeys.all, "theory-diff", caseId, ...[theoryAId, theoryBId].sort()] as const,
+  annotations: (caseId: string, targetType: string, targetId: string) =>
+    [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -46,6 +57,10 @@ export type AiGenerationKind =
   | "mindMap"
   | "audioOverviewScript"
   | "citationExpand"
+  | "caseTheoryPropose"
+  | "theoryDiff"
+  | "caseReconstructionScenes"
+  | "caseReconstructionTableRead"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -622,6 +637,33 @@ export function useUpdateReconstructionMutation(caseId: string) {
   })
 }
 
+// Grounded Reconstruction Rung 1 (differentiation program, Phase 3) — a scene-by-scene break
+// of the case's most consequential episode, built from the timeline + evidence, each element
+// individually sourced. Queued the same way as useGenerateReconstructionMutation above.
+export function useGenerateReconstructionScenesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/scenes`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionScenes") })
+    },
+  })
+}
+
+// Rung 2 — multi-voice audio rendered from the scene script (one Polly voice per actor, a
+// narrator for action lines). Requires scenes to exist first; the backend 422s otherwise.
+export function useGenerateTableReadMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/table-read`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionTableRead") })
+    },
+  })
+}
+
 // Audio narrates the General register only (see CaseReconstructionAudioSvc on the backend) —
 // this kicks off an async Polly job; the panel itself owns the poll loop while it's mounted.
 export function useGenerateReconstructionAudioMutation(caseId: string) {
@@ -661,6 +703,192 @@ export function useGenerateRedTeamMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "redTeam") })
+    },
+  })
+}
+
+// ── Case Theories (differentiation program, Phase 2) ──────────────────────────────────────
+// Theories/claims/assumptions/openQuestions themselves come straight off the case snapshot
+// (snapshot.theories), the same way findings/witnesses/damages do — no separate list query.
+
+export function useCreateTheoryMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { title: string; thesis: string }) =>
+      apiFetch<CaseTheory>(`/api/my-cases/${caseId}/theories`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useUpdateTheoryMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; title?: string; thesis?: string }) =>
+      apiFetch<CaseTheory>(`/api/my-cases/${caseId}/theories/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+function useTheoryLifecycleMutation(caseId: string, action: "publish" | "retire" | "fork") {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<CaseTheory>(`/api/my-cases/${caseId}/theories/${id}/${action}`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export const usePublishTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "publish")
+export const useRetireTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "retire")
+// Copies an AI-proposed (or another lawyer's) theory into a new DRAFT owned by the caller —
+// the only way to turn it into something editable/publishable (CaseTheorySvc.fork).
+export const useForkTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "fork")
+
+export function useAddTheoryClaimMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, ...body }: { theoryId: string; statement: string; stance: TheoryStance; graphNodeId?: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/claims`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useAddTheoryAssumptionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, statement }: { theoryId: string; statement: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/assumptions`, { method: "POST", body: JSON.stringify({ statement }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useAddTheoryOpenQuestionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, question }: { theoryId: string; question: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/open-questions`, { method: "POST", body: JSON.stringify({ question }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Queued server-side (AiGenerationQueue/SQS), same as useGenerateRedTeamMutation — seeds a
+// DRAFT theory (authorUserId: null) from the case's own findings/strategy.
+export function useProposeTheoryMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/theories/propose`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseTheoryPropose") })
+    },
+  })
+}
+
+/** Cached reconciler output for one pair of theories — `null` while no diff has been generated
+ * yet for that pair (or the pair supplied is empty). Not part of the case snapshot: a diff is
+ * generated per pair on demand, not eagerly for every combination. */
+export function useTheoryDiffQuery(caseId: string, theoryAId: string, theoryBId: string) {
+  return useQuery({
+    queryKey: terminalKeys.theoryDiff(caseId, theoryAId, theoryBId),
+    queryFn: () =>
+      apiFetch<TheoryDiff | null>(
+        `/api/my-cases/${caseId}/theories/diff?theoryAId=${theoryAId}&theoryBId=${theoryBId}`,
+      ),
+    enabled: !!caseId && !!theoryAId && !!theoryBId && theoryAId !== theoryBId,
+  })
+}
+
+// Queued server-side, same pattern as useProposeTheoryMutation — the caller is responsible for
+// invalidating terminalKeys.theoryDiff once useAiJobStatus(caseId, "theoryDiff") flips to DONE
+// (see TheoriesPanel), since which pair just finished isn't encoded in the job status itself.
+export function useGenerateTheoryDiffMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { theoryAId: string; theoryBId: string }) =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/theories/diff`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "theoryDiff") })
+    },
+  })
+}
+
+// ── Annotations (differentiation program, Phase 2) ────────────────────────────────────────
+// Comments/disputes/alternative-readings on any case element — a decision, a graph node, an
+// edge, a document chunk. Scoped per-target (not read off the snapshot, unlike theories) since
+// most targets have many annotations and a panel only ever needs the ones for what it's showing.
+
+export function useAnnotationsQuery(caseId: string, targetType: AnnotationTargetType, targetId: string) {
+  return useQuery({
+    queryKey: terminalKeys.annotations(caseId, targetType, targetId),
+    queryFn: () =>
+      apiFetch<Annotation[]>(`/api/my-cases/${caseId}/annotations?targetType=${targetType}&targetId=${targetId}`),
+    enabled: !!caseId && !!targetId,
+  })
+}
+
+export function useCreateAnnotationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { targetType: AnnotationTargetType; targetId: string; kind?: AnnotationKind; body: string }) =>
+      apiFetch<Annotation>(`/api/my-cases/${caseId}/annotations`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.annotations(caseId, variables.targetType, variables.targetId) })
+    },
+  })
+}
+
+function useAnnotationStatusMutation(caseId: string, action: "resolve" | "reopen") {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; targetType: AnnotationTargetType; targetId: string }) =>
+      apiFetch<Annotation>(`/api/my-cases/${caseId}/annotations/${id}/${action}`, { method: "POST" }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.annotations(caseId, variables.targetType, variables.targetId) })
+    },
+  })
+}
+
+export const useResolveAnnotationMutation = (caseId: string) => useAnnotationStatusMutation(caseId, "resolve")
+export const useReopenAnnotationMutation = (caseId: string) => useAnnotationStatusMutation(caseId, "reopen")
+
+// Decision Records are never generated on demand (see useGenerateRedTeamMutation above for the
+// contrast) — they're produced automatically per legal chat turn. A lawyer can only dispute one
+// (register disagreement, keep the record) or reactivate it; editing/reassigning authorship isn't
+// offered, matching how CaseFinding's AI-authored rows are handled elsewhere in this file.
+export function useDisputeDecisionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      apiFetch<DecisionRecord>(`/api/my-cases/${caseId}/decisions/${id}/dispute`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useReactivateDecisionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) =>
+      apiFetch<DecisionRecord>(`/api/my-cases/${caseId}/decisions/${id}/reactivate`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }

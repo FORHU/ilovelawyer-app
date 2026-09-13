@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 import type { MindMapItem } from "@/lib/chat/mind-map-parser"
+import type { DecisionRecordPayload } from "@/lib/terminal/types"
 
 export interface ChatSession {
   session_id: string
@@ -63,6 +64,10 @@ export interface ChatMessage {
   groupId?: string | null
   groupOrder?: number | null
   groupTitle?: string | null
+  /** This turn's audited Decision Records (chat-wonder-v2-api's legal_decisions.py), persisted
+   * on MessageDecisionRecord — see docs/plans/differentiation-program.md Workstream A. Absent on
+   * non-legal-persona messages, or a message sent before this shipped. */
+  decisionRecords?: { records: DecisionRecordPayload[] } | null
 }
 
 export function useChatSessionQuery() {

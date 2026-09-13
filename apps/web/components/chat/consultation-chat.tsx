@@ -7,6 +7,8 @@ import Link from "next/link";
 import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
+import { DecisionDrawer } from "@/components/chat/decision-drawer";
+import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import TopicNavigator from "@/components/chat/topic-navigator";
 import VoiceDictate from "@/components/chat/voice-dictate";
@@ -74,6 +76,10 @@ interface DisplayMessage {
    * only appear once persisted. */
   groupId?: string | null;
   groupTitle?: string | null;
+  /** This message's audited Decision Records (legal_decisions.py), for the "Why?" anchor
+   * highlight in AssistantMessage — always empty while the turn is still streaming, since
+   * decisions only exist once the persisted message loads (see baseMessages below). */
+  decisions?: DecisionRecordPayload[];
 }
 
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
@@ -285,6 +291,10 @@ export default function ConsultationChat({
 
   const [inputMessage, setInputMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // The Decision Record whose "Why?" detail is currently open, clicked from a highlighted
+  // anchor in an AssistantMessage bubble below — see components/chat/decision-drawer.tsx.
+  const [openDecision, setOpenDecision] = useState<DecisionRecordPayload | null>(null);
+  const handleOpenDecision = useCallback((decision: DecisionRecordPayload) => setOpenDecision(decision), []);
   // Holds the user message + streaming assistant reply for a send that hasn't landed in
   // the consultation's saved history yet, keyed to the consultation it belongs to. The
   // rendered `messages` below only use it while `key` matches the consultation on screen,
@@ -376,6 +386,7 @@ export default function ConsultationChat({
               mindMap: m.mindMap?.data,
               groupId: m.groupId,
               groupTitle: m.groupTitle,
+              decisions: m.decisionRecords?.records,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -1632,6 +1643,8 @@ export default function ConsultationChat({
                           <AssistantMessage
                             content={m.content || "…"}
                             className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
+                            decisions={m.decisions}
+                            onOpenDecision={handleOpenDecision}
                           />
                           {!embedded && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
@@ -1672,6 +1685,8 @@ export default function ConsultationChat({
       {previewAttachment && !embedded && (
         <FilePreviewModal attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} />
       )}
+
+      <DecisionDrawer decision={openDecision} onOpenChange={(open) => !open && setOpenDecision(null)} />
     </div>
   );
 }

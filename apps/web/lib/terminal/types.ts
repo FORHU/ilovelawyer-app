@@ -19,6 +19,8 @@ export const PANEL_IDS = [
   "damages",
   "caseReconstruction",
   "audioOverview",
+  "decisions",
+  "theories",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
@@ -250,6 +252,9 @@ export interface CaseSnapshot {
   damages: DamageClaim[]
   reconstruction: CaseReconstruction | null
   redTeamAssessment: RedTeamAssessment | null
+  decisions: DecisionRecord[]
+  theories: CaseTheory[]
+  annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
   riskAnalysis?: {
@@ -331,8 +336,46 @@ export interface CaseReconstruction {
   audioFile: { id: string; fileUrl: string | null } | null
   audioStatus: string | null
   audioStaleAt: string | null
+  // Grounded Reconstruction Rungs 1-2 (differentiation program, Phase 3) — see SceneDetail
+  // below. `scenes` is null until CaseReconstructionSvc.generateScenes has run once.
+  scenes: SceneDetail[] | null
+  tableReadFileId: string | null
+  tableReadFile: { id: string; fileUrl: string | null } | null
+  tableReadStatus: string | null
+  tableReadStaleAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+// One beat of the reconstructed episode — time, place, who's there, what happens, any recorded
+// dialogue, and where each element comes from. Every `sourceRefs` entry was already verified
+// server-side (docId resolves to a real case document; a given quote actually appears in that
+// document's sampled text — see case-reconstruction-scenes-parse.ts) before this ever reaches
+// the app, so `verified` here is read-only, same contract as DecisionRecordPayload. A scene
+// with no verified sources isn't dropped — it shows up in `unresolved` instead, and that same
+// text is promoted server-side into a Weakness finding so the gap becomes investigation work.
+export interface SceneDialogueLine {
+  actor: string
+  line: string
+}
+
+export interface SceneSourceRef {
+  docId: string
+  page: number | null
+  quote: string | null
+  verified: boolean
+}
+
+export interface SceneDetail {
+  index: number
+  time: string
+  location: string
+  actors: string[]
+  action: string
+  dialogue: SceneDialogueLine[]
+  sourceRefs: SceneSourceRef[]
+  confidence: "high" | "medium" | "low"
+  unresolved: string[]
 }
 
 export interface AttributedClaim {
@@ -349,6 +392,144 @@ export interface RedTeamAssessment {
    * components/shared/attributed-text.tsx. Null/empty on assessments generated before this
    * existed, or if the model's [CLAIMS] block didn't parse. */
   claims: AttributedClaim[] | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Decision Records (differentiation program, Phase 1) — the "Why?" behind one conclusion in a
+// legal answer, already verified by chat-wonder-v2-api before it reaches this app: every
+// `rule[].url` was checked against the sources actually retrieved that turn, every
+// `evidence*[].docId` against the case's attached exhibits. This app never re-derives
+// `verified` — see docs/plans/differentiation-program.md Workstream A.
+export type DecisionStatus = "ACTIVE" | "DISPUTED" | "SUPERSEDED"
+
+export interface DecisionRule {
+  title: string
+  url: string | null
+  verified: boolean
+}
+
+export interface DecisionEvidence {
+  doc: string
+  docId: string | null
+  pinpoint: string
+  quote: string | null
+  verified: boolean
+}
+
+export interface DecisionAlternative {
+  position: string
+  whyRejected: string
+  evidenceRef: string | null
+}
+
+/** The audited record itself, exactly as chat-wonder produced it — stored verbatim in
+ * DecisionRecord.payload and duplicated onto the row's `anchor` column for indexing/display. */
+export interface DecisionRecordPayload {
+  anchor: string
+  conclusion: string
+  rule: DecisionRule[]
+  evidenceFor: DecisionEvidence[]
+  evidenceAgainst: DecisionEvidence[]
+  alternatives: DecisionAlternative[]
+  weighting: string
+  confidence: "high" | "medium" | "low"
+  wouldChangeIf: string[]
+}
+
+export interface DecisionRecord {
+  id: string
+  caseId: string
+  sourceMessageId: string | null
+  anchor: string
+  payload: DecisionRecordPayload
+  status: DecisionStatus
+  authorUserId: string | null
+  disputeNote: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Case Theories & Annotations (differentiation program, Phase 2) — several lawyers can hold
+// different theories of the same case side by side; the system never merges them. An
+// `authorUserId` of null marks an AI-proposed starting point (CaseTheorySvc.propose) — adopted
+// by forking it into your own copy, never by editing it in place. See
+// docs/plans/differentiation-program.md Workstream B.
+export type TheoryStatus = "DRAFT" | "ACTIVE" | "RETIRED"
+export type TheoryStance = "ASSERTS" | "DENIES"
+
+export interface TheoryClaim {
+  id: string
+  theoryId: string
+  statement: string
+  stance: TheoryStance
+  graphNodeId: string | null
+  createdAt: string
+}
+
+export interface TheoryAssumption {
+  id: string
+  theoryId: string
+  statement: string
+  createdAt: string
+}
+
+export interface TheoryOpenQuestion {
+  id: string
+  theoryId: string
+  question: string
+  createdAt: string
+}
+
+export interface CaseTheory {
+  id: string
+  caseId: string
+  authorUserId: string | null
+  title: string
+  thesis: string
+  status: TheoryStatus
+  forkedFromId: string | null
+  claims: TheoryClaim[]
+  assumptions: TheoryAssumption[]
+  openQuestions: TheoryOpenQuestion[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TheoryDiffDivergence {
+  claimA: string
+  claimB: string
+  decidingEvidence: string
+  missing: string
+}
+
+export interface TheoryDiffResult {
+  sharedClaims: string[]
+  divergentClaims: TheoryDiffDivergence[]
+}
+
+export interface TheoryDiff {
+  id: string
+  caseId: string
+  theoryAId: string
+  theoryBId: string
+  result: TheoryDiffResult
+  createdAt: string
+  updatedAt: string
+}
+
+export type AnnotationTargetType = "NODE" | "EDGE" | "DECISION" | "CHUNK"
+export type AnnotationKind = "NOTE" | "DISPUTE" | "ALTERNATIVE_READING"
+
+export interface Annotation {
+  id: string
+  caseId: string
+  authorUserId: string | null
+  targetType: AnnotationTargetType
+  targetId: string
+  kind: AnnotationKind
+  body: string
+  resolvedAt: string | null
   createdAt: string
   updatedAt: string
 }
