@@ -17,6 +17,7 @@ import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
+import { ReasoningPanel } from "@/components/chat/reasoning-panel";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
@@ -29,6 +30,7 @@ import {
   useRelatedCasesQuery,
   sendChatMessage,
   type ChatMessage,
+  type MessageReasoning,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
@@ -80,6 +82,9 @@ interface DisplayMessage {
    * highlight in AssistantMessage — always empty while the turn is still streaming, since
    * decisions only exist once the persisted message loads (see baseMessages below). */
   decisions?: DecisionRecordPayload[];
+  /** This turn's "why this answer" explanation — see ReasoningPanel. Same timing caveat as
+   * `decisions`: empty while still streaming, only present once the persisted message loads. */
+  reasoning?: MessageReasoning;
 }
 
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
@@ -387,6 +392,7 @@ export default function ConsultationChat({
               groupId: m.groupId,
               groupTitle: m.groupTitle,
               decisions: m.decisionRecords?.records,
+              reasoning: m.reasoning ?? undefined,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -1647,6 +1653,7 @@ export default function ConsultationChat({
                             decisions={m.decisions}
                             onOpenDecision={handleOpenDecision}
                           />
+                          <ReasoningPanel reasoning={m.reasoning} />
                           {!embedded && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">

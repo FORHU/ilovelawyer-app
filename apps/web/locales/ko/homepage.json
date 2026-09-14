@@ -38,6 +38,7 @@
     "createCase": "사건 만들기",
     "openCase": "사건 열기",
     "relatedCases": "관련 사건",
+    "reasoning": "이렇게 답을 찾았어요",
     "loadingCase": "불러오는 중…",
     "relatedEmpty": "아직 관련 사건이 없습니다.",
     "loadingRelated": "관련 사건 불러오는 중…",
