@@ -7,6 +7,7 @@
   "input": {
     "placeholder": "Draft your legal inquiry or case particulars here...",
     "attachFile": "Attach file",
+    "viewCaseFiles": "View case files",
     "removeAttachedFile": "Remove attached file",
     "removeFile": "Remove {{fileName}}",
     "startRecording": "Start recording",

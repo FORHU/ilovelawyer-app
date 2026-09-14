@@ -7,6 +7,7 @@
   "input": {
     "placeholder": "법률 문의 사항이나 사건 세부 내용을 작성하세요...",
     "attachFile": "파일 첨부",
+    "viewCaseFiles": "View case files",
     "removeAttachedFile": "첨부 파일 제거",
     "removeFile": "{{fileName}} 제거",
     "startRecording": "녹음 시작",

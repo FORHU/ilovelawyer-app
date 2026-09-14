@@ -29,8 +29,8 @@ import {
   useApplyWorkspaceMutation,
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
+  useDeleteWorkspaceMutation,
   useRefreshSnapshotMutation,
-  useResetWorkspaceMutation,
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
@@ -123,7 +123,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
-  const resetWorkspace = useResetWorkspaceMutation()
+  const deleteWorkspace = useDeleteWorkspaceMutation()
   const refresh = useRefreshSnapshotMutation(caseId)
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
   const isRefreshing = refresh.isPending || refreshJob.data?.status === "IN_PROGRESS"
@@ -244,6 +244,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     }
     return badges
   }, [snapshot.data, t])
+
+  // Richer, still real-data-only summaries for Focus mode's stack cards — composites of 2-3
+  // facts per pane (vs panelBadges' single metric), for the handful of pane types the redesign
+  // mock shows worked examples for. Every other pane type falls back to its plain panelBadges
+  // entry in FocusArrangement below, rather than inventing a composite the mock never specified.
+  // Not memoized — it reads Date.now() (relative "updated Xm ago" text), same as
+  // studio-panel.tsx's formatUpdatedAt: recomputing on every render is fine for something this
+  // cheap, and keeps it honestly "live" instead of caching a timestamp that goes stale.
+  const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}
 
   const hidePanel = (id: PanelId) => {
     setMaximizedId((cur) => (cur === id ? null : cur))
@@ -383,15 +392,39 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     updateWorkspace.mutate({ id: selectedWorkspaceId, preset: layout.preset, layoutJson: layout })
   }
 
+  // Resets the CURRENT tab's contents back to the default arrangement, in place — previously
+  // this called the backend's /workspaces/reset endpoint, which always *creates* a new
+  // "Default {preset}" row, so every click piled up another duplicate tab instead of resetting
+  // the one you were looking at.
   const resetCurrentWorkspace = () => {
-    if (!layout) return
+    if (!catalog.data || !selectedWorkspaceId) return
     setMaximizedId(null)
-    resetWorkspace.mutate(layout.preset, {
-      onSuccess: (workspace) => {
-        setLayout(
-          hydrateFreeform(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? [])),
-        )
-        setSelectedWorkspaceId(workspace.id)
+    const preset = catalog.data.defaultPreset
+    const fallback: WorkspaceLayout = {
+      preset,
+      arrangement: "columns",
+      panels: catalog.data.panels.map((panel, index) => ({
+        id: panel.id,
+        visible: false,
+        order: index,
+        width: 1,
+        height: 1,
+      })),
+    }
+    const defaultLayout = applyPreset(fallback, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
+    setLayout(defaultLayout)
+    updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
+  }
+
+  // Deleting the active tab needs somewhere else to land — falls back to whichever tab is
+  // first in the (now stable, createdAt-ordered) remaining list. Blocked entirely when it's the
+  // only tab left; the terminal always needs at least one layout to show.
+  const closeWorkspaceTab = (id: string) => {
+    const [fallback] = (workspaces.data ?? []).filter((w) => w.id !== id)
+    if (!fallback) return
+    deleteWorkspace.mutate(id, {
+      onSuccess: () => {
+        if (id === selectedWorkspaceId) selectWorkspace(fallback.id)
       },
     })
   }
@@ -435,22 +468,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     // global-header.tsx's always-black chrome, but scoped here via Tailwind's `dark` class
     // instead of hardcoding every one of the many bg-background/bg-card/border-border tokens
     // already used across this file, terminal-panels.tsx, and the sidebar.
-    <div ref={rootRef} className="dark relative flex min-h-0 flex-1 overflow-hidden">
-      <TerminalSettingsSidebar
-        expanded={sidebarExpanded}
-        onExpandedChange={setSidebarExpanded}
-        isMobileOpen={mobileLibraryOpen}
-        onMobileOpenChange={setMobileLibraryOpen}
-        allPanels={availablePanels}
-        visiblePanelIds={visiblePanels.map((p) => p.id)}
-        panelBadges={panelBadges}
-        onAddPanel={(id) => showPanelAt(id)}
-      />
-      <div
-        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground transition-[padding-left] duration-200 lg:pl-16 ${
-          sidebarExpanded ? "lg:pl-72" : ""
-        }`}
-      >
+    <div ref={rootRef} className="dark relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
         {/* Case row */}
         <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
           {/* Inline with the row instead of TerminalSettingsSidebar's own floating trigger —
@@ -505,17 +523,29 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <div className="flex min-w-0 flex-1 items-stretch gap-5 overflow-x-auto">
             {(workspaces.data ?? []).map((workspace) => {
               const active = workspace.id === selectedWorkspaceId
+              const canClose = (workspaces.data?.length ?? 0) > 1
               return (
-                <button
-                  key={workspace.id}
-                  type="button"
-                  onClick={() => selectWorkspace(workspace.id)}
-                  className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
-                    active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {workspace.name}
-                </button>
+                <span key={workspace.id} className="group/tab flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => selectWorkspace(workspace.id)}
+                    className={`whitespace-nowrap border-b-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
+                      active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {workspace.name}
+                  </button>
+                  {canClose && (
+                    <button
+                      type="button"
+                      onClick={() => closeWorkspaceTab(workspace.id)}
+                      aria-label={t("closeLayout")}
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 dark:hover:bg-overlay-hover"
+                    >
+                      <X className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  )}
+                </span>
               )
             })}
             {creatingLayout ? (
@@ -639,6 +669,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </div>
         </div>
 
+      {/* Pane Library sits below the Case Row/Terminal Bar, not beside them — it only spans the
+          stage's height, not the full pane height up to the case title. */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <TerminalSettingsSidebar
+          expanded={sidebarExpanded}
+          onExpandedChange={setSidebarExpanded}
+          isMobileOpen={mobileLibraryOpen}
+          onMobileOpenChange={setMobileLibraryOpen}
+          allPanels={availablePanels}
+          visiblePanelIds={visiblePanels.map((p) => p.id)}
+          panelBadges={panelBadges}
+          onAddPanel={(id) => showPanelAt(id)}
+        />
+        <div
+          className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding-left] duration-200 lg:pl-16 ${
+            sidebarExpanded ? "lg:pl-72" : ""
+          }`}
+        >
         {snapshot.data.fatalRisks.length > 0 && (
           <div className="px-3 pt-3">
             <FatalRiskBanner risks={snapshot.data.fatalRisks} />
@@ -758,6 +806,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               caseId={caseId}
               snapshot={snapshot.data}
               labelFor={labelFor}
+              stackSummaries={focusStackSummaries}
+              panelBadges={panelBadges}
               focusedId={focusedId}
               onFocus={setFocusedId}
               onToggleMaximize={toggleMaximize}
@@ -801,6 +851,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
@@ -993,13 +1044,16 @@ function TabsArrangement({
 }
 
 // One large focused pane plus a clickable stack of the rest — clicking a stack card swaps
-// which pane is focused. No fabricated per-pane summary text (see docs/adr/0013): the stack
-// just shows the pane's title, not an invented description of its contents.
+// which pane is focused. Stack summaries are real data composites (stackSummaries, falling
+// back to the single-metric panelBadges) — never an invented description of a pane's contents,
+// same anti-fabrication stance as docs/adr/0013.
 function FocusArrangement({
   panels,
   caseId,
   snapshot,
   labelFor,
+  stackSummaries,
+  panelBadges,
   focusedId,
   onFocus,
   onToggleMaximize,
@@ -1007,6 +1061,8 @@ function FocusArrangement({
   t,
   onDrop,
 }: ArrangementBodyProps & {
+  stackSummaries: Partial<Record<PanelId, string>>
+  panelBadges: Partial<Record<PanelId, string>>
   focusedId: PanelId | null
   onFocus: (id: PanelId) => void
 }) {
@@ -1036,16 +1092,20 @@ function FocusArrangement({
         )}
       </div>
       <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-        {stackRest.map((panel) => (
-          <button
-            key={panel.id}
-            type="button"
-            onClick={() => onFocus(panel.id)}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground transition-colors hover:border-brand-gold/40"
-          >
-            <span className="min-w-0 flex-1 truncate">{labelFor(panel)}</span>
-          </button>
-        ))}
+        {stackRest.map((panel) => {
+          const summary = stackSummaries[panel.id] ?? panelBadges[panel.id]
+          return (
+            <button
+              key={panel.id}
+              type="button"
+              onClick={() => onFocus(panel.id)}
+              className="flex flex-col gap-1 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40"
+            >
+              <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground">{labelFor(panel)}</span>
+              {summary && <span className="line-clamp-2 text-[11px] leading-4 text-muted-foreground">{summary}</span>}
+            </button>
+          )
+        })}
       </div>
       {chatPanel && (
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-brand-gold/35 bg-card">
@@ -1231,6 +1291,67 @@ function applyPreset(layout: WorkspaceLayout, preset: PresetValue, availableIds:
       }
     }),
   })
+}
+
+// See focusStackSummaries' call site for why this isn't a useMemo.
+function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, opts?: Record<string, unknown>) => string): Partial<Record<PanelId, string>> {
+  const relativeUpdate = (iso: string | null): string | null => {
+    if (!iso) return null
+    const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+    if (minutes < 1) return t("updatedJustNow")
+    if (minutes < 60) return t("updatedMinutesAgo", { count: minutes })
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return t("updatedHoursAgo", { count: hours })
+    return t("updatedDaysAgo", { count: Math.floor(hours / 24) })
+  }
+  const nextDateLabel = ((): string | null => {
+    const next = data.nextDate
+    if (next && "dateTime" in next) return t("focusNext", { date: new Date(next.dateTime).toLocaleDateString() })
+    if (next && "occurredOn" in next && next.occurredOn) return t("focusNext", { date: new Date(next.occurredOn).toLocaleDateString() })
+    return null
+  })()
+
+  const summaries: Partial<Record<PanelId, string>> = {}
+
+  const commandParts = [
+    data.case.parties.length > 0 ? t("badgeParties", { count: data.case.parties.length }) : null,
+    data.case.actionType || null,
+    nextDateLabel,
+  ].filter((part): part is string => Boolean(part))
+  if (commandParts.length > 0) summaries.command = commandParts.join(" · ")
+
+  const indexingCount = data.documents.filter((d) => d.ragStatus === "PENDING").length
+  const evidenceParts = [
+    data.documents.length > 0 ? t("badgeDocs", { count: data.documents.length }) : null,
+    data.timeline.length > 0 ? t("focusDatedEvents", { count: data.timeline.length }) : null,
+    indexingCount > 0 ? t("focusIndexing", { count: indexingCount }) : null,
+  ].filter((part): part is string => Boolean(part))
+  if (evidenceParts.length > 0) summaries.evidence = evidenceParts.join(" · ")
+
+  const approachCount = data.procedure.items.filter((i) => i.kind.toUpperCase() === "STRATEGY").length
+  const openTodoCount = data.procedure.items.filter((i) => i.kind.toUpperCase() !== "STRATEGY" && !i.done).length
+  const procedureParts = [
+    approachCount > 0 ? t("focusApproachPoints", { count: approachCount }) : null,
+    openTodoCount > 0 ? t("badgeToDos", { count: openTodoCount }) : null,
+  ].filter((part): part is string => Boolean(part))
+  if (procedureParts.length > 0) summaries.procedure = procedureParts.join(" · ")
+
+  if (data.mindMap.lastGeneratedAt) {
+    const parts = [data.mindMap.isStale ? t("badgeStale") : t("badgeReady"), relativeUpdate(data.mindMap.lastGeneratedAt)].filter(
+      (part): part is string => Boolean(part),
+    )
+    summaries.mindMap = parts.join(" · ")
+  }
+
+  // No structured "threat count"/"weak point" exists on RedTeamAssessment (content is free
+  // text) — "Ready · updated ..." is the honest equivalent instead of guessing a figure out of
+  // prose, same anti-fabrication stance as panelBadges above.
+  if (data.redTeamAssessment) {
+    const parts = [t("badgeReady"), relativeUpdate(data.redTeamAssessment.updatedAt)].filter((part): part is string => Boolean(part))
+    summaries.redTeam = parts.join(" · ")
+  }
+
+  return summaries
 }
 
 function ResizeHandle({

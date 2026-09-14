@@ -7,6 +7,7 @@
   "input": {
     "placeholder": "I-draft ang iyong legal na katanungan o mga detalye ng kaso dito...",
     "attachFile": "Maglakip ng file",
+    "viewCaseFiles": "View case files",
     "removeAttachedFile": "Alisin ang nakalakip na file",
     "removeFile": "Alisin ang {{fileName}}",
     "startRecording": "Simulan ang pagre-record",

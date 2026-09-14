@@ -396,6 +396,12 @@ function ChatPanel({ caseId, caseName }: { caseId: string; caseName: string }) {
       emptyStateHeading={t("chatEmptyHeading", { caseName })}
       emptyStateSubheading={t("chatEmptySubheading")}
       inputPlaceholder={t("askQuestion")}
+      showSuggestedPrompts
+      showRelatedCases
+      showTopicNavigator
+      // enableFileChips deliberately stays off (see its own doc comment) — Case Documents
+      // has its own dedicated surface; this links out to it instead of duplicating chip UI.
+      filesLinkHref={`/homepage/case-portfolio/${caseId}`}
     />
   )
 }
