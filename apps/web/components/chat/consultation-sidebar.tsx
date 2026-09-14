@@ -8,6 +8,7 @@ import {
   useDeleteConsultationMutation,
 } from "@/lib/chat/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface ConsultationSidebarProps {
@@ -112,13 +113,13 @@ export default function ConsultationSidebar({
               onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
-            className={`h-10 flex items-center gap-3 rounded-full border border-white/40 hover:border-white shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+            className={`h-10 flex items-center gap-3 rounded-full border border-border hover:border-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
               expanded || isMobile ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
             }`}
           >
-            <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden="true" />
+            <Plus className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden="true" />
             {(expanded || isMobile) && (
-              <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-white">
+              <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-foreground">
                 {t("sidebar.newConsultation", { defaultValue: "New consultation" })}
               </span>
             )}
@@ -214,7 +215,7 @@ export default function ConsultationSidebar({
                         // rounded, bordered chip; a transparent border of the same width is kept
                         // on inactive rows so hovering doesn't shift layout by 1px.
                         className={`min-w-0 flex-1 text-left truncate py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
-                          isActive ? "pl-2.5 pr-1 text-white font-semibold" : "pl-7 pr-1 text-white/75 hover:text-white"
+                          isActive ? "pl-2.5 pr-1 text-foreground font-semibold" : "pl-7 pr-1 text-foreground/75 hover:text-foreground"
                         }`}
                       >
                         {label}
@@ -236,7 +237,7 @@ export default function ConsultationSidebar({
                           type="button"
                           onClick={() => startEditing(c.id, c.title?.trim() || "")}
                           aria-label={t("sidebar.renameConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -250,7 +251,7 @@ export default function ConsultationSidebar({
                           onClick={() => handleDelete(c.id)}
                           disabled={deleteConsultation.isPending && deleteConsultation.variables === c.id}
                           aria-label={t("sidebar.deleteConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-white/50 hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
                         >
                           {deleteConsultation.isPending && deleteConsultation.variables === c.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -277,7 +278,7 @@ export default function ConsultationSidebar({
           <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
             {t("sidebar.organization", { defaultValue: "Organization" })}
           </p>
-          <p className="truncate text-[13px] text-white">{organization.name}</p>
+          <p className="truncate text-[13px] text-foreground">{organization.name}</p>
         </div>
       )}
     </>
@@ -290,7 +291,7 @@ export default function ConsultationSidebar({
           instead of sitting on top of whatever's underneath it. */}
       <aside
         ref={asideRef}
-        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-40 overflow-hidden transition-[width] duration-200 ${
+        className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
           compact ? "top-0" : "top-16"
         } ${expanded ? "w-72" : "w-16"}`}
       >
@@ -322,30 +323,30 @@ export default function ConsultationSidebar({
       </aside>
 
       {/* Mobile full-screen overlay drawer */}
-      {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => onMobileOpenChange(false)} aria-hidden="true" />
-          <div className="relative flex h-full w-[85vw] max-w-80 flex-col bg-card py-4 shadow-xl">
-            <div className="flex items-center justify-between px-2 pb-2">
-              <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onMobileOpenChange(false)}
-                    aria-label={t("sidebar.closeConsultations")}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("sidebar.closeConsultations")}</TooltipContent>
-              </Tooltip>
-            </div>
-            {panelBody(true)}
-          </div>
+      <MobileDrawer
+        open={isMobileOpen}
+        onClose={() => onMobileOpenChange(false)}
+        closeLabel={t("sidebar.closeConsultations")}
+        side="left"
+      >
+        <div className="flex items-center justify-between px-2 pb-2">
+          <span className="pl-2 text-[13px] font-['Inter'] font-semibold text-foreground">{t("sidebar.consultations")}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onMobileOpenChange(false)}
+                aria-label={t("sidebar.closeConsultations")}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("sidebar.closeConsultations")}</TooltipContent>
+          </Tooltip>
         </div>
-      )}
+        {panelBody(true)}
+      </MobileDrawer>
     </>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import GlobalHeader from "@/components/global-header"
+import { PageShell } from "@/components/page-shell"
 import { LawPdfViewer } from "@/components/library/law-pdf-viewer"
 import {
   type LawCategoryParam,
@@ -42,9 +42,7 @@ function LawDocumentPageContent() {
   if (guard) return guard
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-background font-['Inter',sans-serif] text-foreground">
-      <GlobalHeader activeTab="library" />
-
+    <PageShell activeTab="library">
       <main className="flex w-full flex-1 flex-col pt-16">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-6 py-8 md:px-10">
           <Link
@@ -71,7 +69,7 @@ function LawDocumentPageContent() {
           {data && <DocumentBody doc={data} />}
         </div>
       </main>
-    </div>
+    </PageShell>
   )
 }
 

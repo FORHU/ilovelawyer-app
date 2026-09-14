@@ -54,7 +54,7 @@ export function LanguageSwitcher() {
       {isOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 mt-3 w-32 bg-white border border-black/10 rounded-sm shadow-xl py-1 z-50"
+          className="absolute top-full right-0 mt-3 w-32 bg-white border border-black/10 rounded-sm shadow-xl py-1 z-(--z-modal)"
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
             <button

@@ -1,15 +1,17 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Play, Pause, RotateCcw, RotateCw, X } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
+import { AudioOverviewMiniPlayer, AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessage } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
+import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
@@ -263,77 +265,20 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         : t("workspace.audioOverviewRendering")
       : formatUpdatedAt(t, activeAudioOverviewMessage?.createdAt ?? null);
 
-  // One <audio> element for the whole panel (not one per player UI) so the compact row's mini
-  // player and the detail view's player control the same actual playback instead of each
-  // starting their own — see the hidden <audio> mounted near the bottom of the JSX below.
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackTime, setPlaybackTime] = useState(0);
-  const [playbackDuration, setPlaybackDuration] = useState(0);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  // Dismissing the bottom player bar (X button) only hides it — the underlying <audio> and its
-  // position aren't touched, so switching back to the Audio Overview tile brings it right back.
-  const [playerBarDismissed, setPlayerBarDismissed] = useState(false);
-  const toggleAudioOverviewPlayback = () => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (el.paused) void el.play();
-    else el.pause();
-  };
-  const seekAudioOverview = (seconds: number) => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.currentTime = Math.max(0, Math.min(seconds, playbackDuration || seconds));
-  };
-  const skipAudioOverview = (deltaSeconds: number) => {
-    const el = audioRef.current;
-    if (!el) return;
-    seekAudioOverview(el.currentTime + deltaSeconds);
-  };
-  const cycleAudioOverviewRate = () => {
-    const el = audioRef.current;
-    const next = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
-    setPlaybackRate(next);
-    if (el) el.playbackRate = next;
-  };
-  function formatDuration(seconds: number): string {
-    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${String(s).padStart(2, "0")}`;
-  }
-  useEffect(() => {
-    setIsPlaying(false);
-    setPlaybackTime(0);
-    setPlaybackDuration(0);
-    setPlaybackRate(1);
-    setPlayerBarDismissed(false);
-    // Not resetting lastSavedPositionRef here — onPause/onEnded on the <audio> element below
-    // always save the exact position immediately regardless of this ref's throttle state, so a
-    // stale threshold carried over from a previous track only delays the periodic autosave for
-    // the new one, never loses the position entirely.
-  }, [renderedAudioUrl]);
-
-  // Resume position — per-browser (localStorage, same pattern this app already uses for
-  // Display Preferences/Language Preference), not per-account: it survives a refresh or a
-  // logout/login in the same browser, which is what was actually asked for, without needing a
-  // backend column just to remember a scrub position. Keyed by messageId, not audioFileId, so
-  // it still resolves correctly across a "Regenerate audio" that reuses the same script.
-  const lastSavedPositionRef = useRef(0);
-  const savePlaybackPosition = (messageId: string, seconds: number) => {
-    try {
-      localStorage.setItem(`audio-overview-position:${messageId}`, String(Math.floor(seconds)));
-    } catch {
-      // localStorage unavailable (private browsing, storage disabled) — resume just won't work
-    }
-  };
-  const readPlaybackPosition = (messageId: string): number => {
-    try {
-      return Number(localStorage.getItem(`audio-overview-position:${messageId}`)) || 0;
-    } catch {
-      return 0;
-    }
-  };
+  const {
+    audioElement,
+    isPlaying,
+    playbackTime,
+    playbackDuration,
+    playbackRate,
+    playerBarDismissed,
+    setPlayerBarDismissed,
+    togglePlayback: toggleAudioOverviewPlayback,
+    seek: seekAudioOverview,
+    skip: skipAudioOverview,
+    cycleRate: cycleAudioOverviewRate,
+    formatDuration,
+  } = useAudioOverviewPlayer(renderedAudioUrl, audioOverviewMessageId);
 
   const tileLabel =
     openTile === "documents"
@@ -752,198 +697,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       )}
 
       {/* One <audio> for the whole panel — not rendered with the native `controls` UI; the
-       * mini player row and the detail view (both below) drive it via audioRef and read its
-       * play/pause/time state back out through these event handlers, so playback started from
-       * one keeps going (and stays reflected) if you open/close the detail view mid-play. */}
-      {renderedAudioUrl && audioOverviewMessageId && (
-        <audio
-          ref={audioRef}
-          src={renderedAudioUrl}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => {
-            setIsPlaying(false);
-            // Captured immediately on pause (not just the throttled interval below) so
-            // stopping right after seeking, before the next timeupdate tick, isn't lost.
-            savePlaybackPosition(audioOverviewMessageId, audioRef.current?.currentTime ?? 0);
-          }}
-          onEnded={() => {
-            setIsPlaying(false);
-            // Finished — resume-from-here no longer makes sense; next play starts over.
-            savePlaybackPosition(audioOverviewMessageId, 0);
-          }}
-          onTimeUpdate={(e) => {
-            const seconds = e.currentTarget.currentTime;
-            setPlaybackTime(seconds);
-            // Throttled to ~every 5s of playback (timeupdate fires several times a second) —
-            // frequent enough that a crash/tab-close never loses more than a few seconds,
-            // without hammering localStorage on every tick.
-            if (seconds - lastSavedPositionRef.current >= 5) {
-              lastSavedPositionRef.current = seconds;
-              savePlaybackPosition(audioOverviewMessageId, seconds);
-            }
-          }}
-          onLoadedMetadata={(e) => {
-            setPlaybackDuration(e.currentTarget.duration);
-            const resumeAt = readPlaybackPosition(audioOverviewMessageId);
-            if (resumeAt > 0 && resumeAt < e.currentTarget.duration) {
-              e.currentTarget.currentTime = resumeAt;
-              setPlaybackTime(resumeAt);
-              lastSavedPositionRef.current = resumeAt;
-            }
-          }}
-          className="hidden"
-        />
-      )}
+       * mini player row and the detail view (both below) drive it via the shared player hook, so
+       * playback started from one keeps going (and stays reflected) if you open/close the detail
+       * view mid-play. */}
+      {audioElement}
     </aside>
-  );
-}
-
-// The reference (NotebookLM's Studio list) shows a play button and progress bar directly on
-// the collapsed row, playable without opening the item — this is that, for Audio Overview
-// specifically. Not folded into ResultRow (used by the other three tiles too) since a
-// play/pause button with its own click target inside a row that also opens on click needs
-// event.stopPropagation() precision the generic component has no reason to carry.
-// The reference's persistent bottom "now playing" bar — richer than AudioOverviewMiniPlayer
-// (scrub, ±10s skip, speed), docked to the bottom of the panel itself (not the whole browser
-// window — Studio is a side panel, not a full page) whenever audio is loaded and hasn't been
-// dismissed. Deliberately omits the reference's thumbs up/down and history/queue icons — no
-// feedback or playback-history feature exists behind them, and a button that does nothing on
-// click doesn't belong here just to match a screenshot.
-function AudioOverviewPlayerBar({
-  title,
-  isPlaying,
-  currentTime,
-  duration,
-  playbackRate,
-  onTogglePlay,
-  onSeek,
-  onSkip,
-  onCycleRate,
-  onClose,
-  formatDuration,
-}: {
-  title: string;
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  playbackRate: number;
-  onTogglePlay: () => void;
-  onSeek: (seconds: number) => void;
-  onSkip: (deltaSeconds: number) => void;
-  onCycleRate: () => void;
-  onClose: () => void;
-  formatDuration: (seconds: number) => string;
-}) {
-  return (
-    <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card px-3 py-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-[12px] font-medium text-foreground">{title}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close player"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      </div>
-      <div className="flex flex-col gap-1">
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.1}
-          value={Math.min(currentTime, duration || currentTime)}
-          onChange={(e) => onSeek(Number(e.target.value))}
-          className="w-full accent-brand-gold"
-          aria-label="Seek"
-        />
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>{formatDuration(currentTime)}</span>
-          <span>{formatDuration(duration)}</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-center gap-4">
-        <button
-          type="button"
-          onClick={onCycleRate}
-          className="w-9 shrink-0 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {playbackRate}x
-        </button>
-        <button
-          type="button"
-          onClick={() => onSkip(-10)}
-          aria-label="Back 10 seconds"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          aria-label={isPlaying ? "Pause" : "Play"}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
-        >
-          {isPlaying ? <Pause className="h-4 w-4 fill-current" aria-hidden="true" /> : <Play className="h-4 w-4 fill-current" aria-hidden="true" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => onSkip(10)}
-          aria-label="Forward 10 seconds"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <RotateCw className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div className="w-9 shrink-0" aria-hidden="true" />
-      </div>
-    </div>
-  );
-}
-
-function AudioOverviewMiniPlayer({
-  title,
-  isPlaying,
-  currentTime,
-  duration,
-  onTogglePlay,
-  onOpen,
-  formatDuration,
-}: {
-  title: string;
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  onTogglePlay: () => void;
-  onOpen: () => void;
-  formatDuration: (seconds: number) => string;
-}) {
-  return (
-    <div className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 transition-colors hover:border-brand-gold/40 hover:bg-muted">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTogglePlay();
-        }}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
-      >
-        {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> : <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
-      </button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
-        <span className="mt-1 flex items-center gap-2">
-          <span className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-            <span
-              className="block h-full rounded-full bg-brand-gold"
-              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-            />
-          </span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{formatDuration(duration)}</span>
-        </span>
-      </button>
-    </div>
   );
 }
 

@@ -24,9 +24,11 @@ import { CitationMap } from "@/components/citation-map"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
+import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
 import { Badge } from "@workspace/ui/components/badge"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
+import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
 import {
   pollReconstructionAudio,
   terminalKeys,
@@ -1817,8 +1819,9 @@ function CaseReconstructionPanel({
 // OutputUri directly) — this is the two-host podcast-style script from useAudioOverview (shared
 // with Case Workspace's Studio panel), driven off whichever consultation is most recently
 // active for this case, the same "isolated" resolution ConsultationChat does internally for
-// ChatPanel/MindMapPanel above. No docked player bar here (that's Studio-specific chrome) — a
-// plain native <audio controls>, same as CaseReconstructionPanel's, is enough for a Terminal pane.
+// ChatPanel/MindMapPanel above. Uses the same docked AudioOverviewPlayerBar as Studio (see
+// use-audio-overview-player.tsx) instead of a plain native <audio controls> — the two surfaces
+// used to ship two different player UIs for the same data.
 function AudioOverviewPanel({ caseId }: { caseId: string }) {
   const { t } = useTranslation(["terminal", "case-portfolio"])
   const { data: caseConsultations } = useConsultationsQuery(caseId)
@@ -1833,6 +1836,21 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
     renderedAudioUrl,
     isGeneratingAudio,
   } = useAudioOverview(consultationId, caseId)
+  const audioOverviewMessageId = activeAudioOverviewMessage?.id
+  const {
+    audioElement,
+    isPlaying,
+    playbackTime,
+    playbackDuration,
+    playbackRate,
+    playerBarDismissed,
+    setPlayerBarDismissed,
+    togglePlayback,
+    seek,
+    skip,
+    cycleRate,
+    formatDuration,
+  } = useAudioOverviewPlayer(renderedAudioUrl, audioOverviewMessageId)
 
   if (!consultationId) {
     return (
@@ -1890,13 +1908,7 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
           {t("case-portfolio:workspace.audioOverviewRenderError")}
         </p>
       )}
-      {renderedAudioUrl ? (
-        <audio
-          controls
-          src={renderedAudioUrl}
-          className="h-8 w-full shrink-0"
-        />
-      ) : (
+      {!renderedAudioUrl && (
         <div className="flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
           {rendering && (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -1918,6 +1930,22 @@ function AudioOverviewPanel({ caseId }: { caseId: string }) {
           </div>
         ))}
       </div>
+      {renderedAudioUrl && !playerBarDismissed && (
+        <AudioOverviewPlayerBar
+          title={t("case-portfolio:workspace.audioOverviewTile")}
+          isPlaying={isPlaying}
+          currentTime={playbackTime}
+          duration={playbackDuration}
+          playbackRate={playbackRate}
+          onTogglePlay={togglePlayback}
+          onSeek={seek}
+          onSkip={skip}
+          onCycleRate={cycleRate}
+          onClose={() => setPlayerBarDismissed(true)}
+          formatDuration={formatDuration}
+        />
+      )}
+      {audioElement}
     </PanelBody>
   )
 }

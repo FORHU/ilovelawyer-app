@@ -41,7 +41,7 @@ export function MessageAttachments({ attachments, onSelect }: MessageAttachments
           onClick={() => onSelect(attachment)}
           disabled={!attachment.url}
           aria-label={t("attachment.viewFile", { fileName: attachment.name })}
-          className="flex max-w-[240px] items-center gap-2 rounded-full border border-white/15 bg-card px-3 py-[5px] text-left text-[12px] text-white/85 transition-colors hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-default disabled:opacity-60"
+          className="flex max-w-[240px] items-center gap-2 rounded-full border border-border bg-card px-3 py-[5px] text-left text-[12px] text-foreground/85 transition-colors hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-default disabled:opacity-60"
         >
           <Paperclip className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
           <span className="truncate font-['Inter']">{attachment.name}</span>

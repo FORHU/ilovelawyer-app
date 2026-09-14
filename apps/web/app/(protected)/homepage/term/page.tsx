@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -22,9 +22,7 @@ export default function TermsPage() {
   const SECTIONS = t("sections", { returnObjects: true }) as Section[];
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
-      <GlobalHeader activeTab="term" />
-
+    <PageShell activeTab="term" className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
       <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border">
           <div className="px-10 pb-4 pt-12 sm:px-14">
@@ -160,6 +158,6 @@ export default function TermsPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </PageShell>
   );
 }

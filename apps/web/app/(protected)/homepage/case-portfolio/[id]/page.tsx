@@ -7,7 +7,7 @@ import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, AlertCircle, Loader2,
   FileText, Plus, Clock, MessageSquare, Pencil, Menu,
 } from "lucide-react";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
 import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, type UserDocument } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
@@ -48,8 +48,7 @@ export default function CaseDetailPage() {
     .join(" · ");
 
   return (
-    <div className="landing-theme h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      <GlobalHeader activeTab="case-portfolio" mobileHeaderMerged />
+    <PageShell activeTab="case-portfolio" mobileHeaderMerged className="h-screen overflow-hidden">
 
       {/* No pt reservation below lg — GlobalHeader renders nothing there itself
        * (mobileHeaderMerged), so there's no bar to clear until it reappears at lg (now
@@ -126,7 +125,7 @@ export default function CaseDetailPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

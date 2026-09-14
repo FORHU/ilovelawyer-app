@@ -27,7 +27,7 @@ export default async function LandingPage() {
     const headersList = await headers();
     const host = headersList.get("host") ?? "";
     return (
-      <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
+      <div className="flex flex-col min-h-screen w-full bg-background">
         <LandingNavbar />
         <NeutralLandingSplash currentHost={host} />
       </div>
@@ -36,7 +36,7 @@ export default async function LandingPage() {
 
   if (tenantCode === "UK") {
     return (
-      <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
+      <div className="flex flex-col min-h-screen w-full bg-background">
         <LandingNavbar />
         <main className="flex-1">
           <UkHeroSection />
@@ -52,7 +52,7 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="landing-theme flex flex-col min-h-screen w-full bg-background">
+    <div className="flex flex-col min-h-screen w-full bg-background">
       <LandingNavbar />
       <main className="flex-1">
         <HeroSection />

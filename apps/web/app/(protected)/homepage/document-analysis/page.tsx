@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import { useMediaQueueStore, type QueuedDocument } from "@/lib/store/media-queue.store";
 import { useCasesQuery, useUploadCaseDocumentMutation } from "@/lib/cases/mutations";
@@ -78,11 +78,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif] flex flex-col justify-between">
-
-      {/* Top Banner Branding Row */}
-      <GlobalHeader activeTab="document-analysis" />
-
+    <PageShell activeTab="document-analysis" className="flex flex-col justify-between">
       {/* Main Grid Base Canvas Layout */}
       <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-[48px] py-12 md:py-[85px] flex flex-col gap-8 md:gap-[40px]">
 
@@ -237,7 +233,6 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
           </div>
         </section>
       </main>
-
-    </div>
+    </PageShell>
   );
 }

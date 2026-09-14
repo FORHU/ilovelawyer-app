@@ -126,7 +126,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
         <ul
           role="listbox"
           style={menuPosition as CSSProperties}
-          className="fixed z-50 max-h-56 overflow-y-auto rounded-xl border border-border bg-card shadow-lg py-1 text-sm"
+          className="fixed z-(--z-modal) max-h-56 overflow-y-auto rounded-xl border border-border bg-card shadow-lg py-1 text-sm"
         >
           {options.map((opt) => {
             const isSelected = opt.value === value;

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw, FileText, Headphones } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import { useMediaQueueStore, type QueuedTranscript } from "@/lib/store/media-queue.store";
 import {
@@ -439,10 +439,8 @@ export default function IlovelawyerTranscriptionDashboard() {
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="transcription" />
-
-      <main className="max-w-[1440px] mx-auto px-6 md:px-16 py-14 md:py-16 grid grid-cols-12 gap-8">
+    <PageShell activeTab="transcription">
+      <main className="max-w-[1440px] mx-auto px-6 md:px-16 pt-16 pb-14 md:pb-16 grid grid-cols-12 gap-8">
         {/* Banner Section Info */}
         <div className="col-span-12 flex flex-col gap-3 mb-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
@@ -638,7 +636,6 @@ export default function IlovelawyerTranscriptionDashboard() {
           </Tooltip>
         </div>
       </main>
-
-    </div>
+    </PageShell>
   );
 }

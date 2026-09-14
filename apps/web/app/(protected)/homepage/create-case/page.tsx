@@ -3,7 +3,7 @@ import React, { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import {
   UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Loader2,
@@ -317,11 +317,9 @@ function CreateCasePageContent() {
   ];
 
   return (
-    <div className="landing-theme min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="create-case" />
-
+    <PageShell activeTab="create-case">
       <form onSubmit={handleSubmitFiling} className="flex-1 flex flex-col">
-        <div className="max-w-[1080px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 flex flex-col gap-8">
+        <div className="max-w-[1000px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 flex flex-col gap-8">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
@@ -747,6 +745,6 @@ function CreateCasePageContent() {
           </div>
         </div>
       </form>
-    </div>
+    </PageShell>
   );
 }

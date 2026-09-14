@@ -243,14 +243,13 @@ function UnifiedAuthContent() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* LEFT — fixed navy brand panel, unaffected by theme */}
+      {/* LEFT — fixed navy brand panel, unaffected by theme (see reset-password/page.tsx) */}
       <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
-        <div className="absolute inset-0 bg-[#1a1f23]" />
+        <div className="absolute inset-0 bg-brand-navy-950" />
         <div
-          className="absolute inset-0 opacity-30"
-          style={{ background: "radial-gradient(ellipse at 30% 60%, #1c61a5 0%, transparent 70%)" }}
+          className="absolute inset-0 opacity-70"
+          style={{ background: "radial-gradient(ellipse at 40% 50%, var(--brand-navy-800) 0%, var(--brand-navy-950) 65%)" }}
         />
-        <div className="absolute inset-0 bg-[rgba(88,79,79,0.35)]" />
 
         <div className="absolute top-16 left-16 z-10">
           <Logo forBackground="dark" size={40} />
@@ -258,10 +257,7 @@ function UnifiedAuthContent() {
 
         <div className="absolute inset-0 flex flex-col items-start justify-center pl-16 pr-12 z-10">
           <div className="bg-brand-gold h-0.5 w-12 mb-8" />
-          <blockquote
-            className="text-white text-[24px] leading-9.5 max-w-100 mb-5"
-            style={{ fontFamily: "'Libre Caslon Text', serif", fontStyle: "italic" }}
-          >
+          <blockquote className="font-['Libre_Caslon_Text'] italic text-white text-[24px] leading-9.5 max-w-100 mb-5">
             &ldquo;{t("login.quote")}&rdquo;
           </blockquote>
           <p
@@ -301,8 +297,7 @@ function UnifiedAuthContent() {
             <>
               <div className="flex flex-col gap-1">
                 <h1
-                  className="text-[40px] text-foreground leading-12"
-                  style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
+                  className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12"
                 >
                   {t("otp.heading")}
                 </h1>
@@ -390,8 +385,7 @@ function UnifiedAuthContent() {
             <>
               <div className="flex flex-col gap-1">
                 <h1
-                  className="text-[40px] text-foreground leading-12"
-                  style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
+                  className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12"
                 >
                   {tab === "signup" ? t("signup.heading") : tab === "recover" ? (recoverSent ? t("forgotPassword.headingSent") : t("forgotPassword.headingDefault")) : t("login.heading")}
                 </h1>

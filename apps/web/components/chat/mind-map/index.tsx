@@ -589,7 +589,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       </div>
 
       {/* Perspective Toggle - Top Left (2D/3D Switch) */}
-      <div className="absolute top-4 left-4 z-[100000] flex items-center gap-2">
+      <div className="absolute top-4 left-4 z-(--z-canvas-overlay) flex items-center gap-2">
         <button
           onClick={() => setIs3D(!is3D)}
           className={is3D ? MIND_MAP_CHROME.toggleOn : MIND_MAP_CHROME.toggleOff}
@@ -639,7 +639,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         </div>
       </div>
 
-      <div className="absolute top-4 right-4 z-[100000] pointer-events-auto flex items-center gap-2">
+      <div className="absolute top-4 right-4 z-(--z-canvas-overlay) pointer-events-auto flex items-center gap-2">
         {isStale && (
           <button
             type="button"

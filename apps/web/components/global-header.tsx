@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
+import { MobileDrawer } from "@/components/mobile-drawer";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -135,7 +136,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
   return (
     <header
-      className={`absolute top-0 left-0 w-full bg-brand-navy-950 z-50 ${
+      className={`absolute top-0 left-0 w-full bg-brand-navy-950 z-(--z-modal) ${
         mobileHeaderMerged ? "lg:border-b lg:border-white/10" : "border-b border-white/10"
       }`}
     >
@@ -313,15 +314,13 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       {/* Mobile drawer — a narrow panel sliding in from the right (not a full-width dropdown),
        * same proportions as the Case Workspace's Topics/Studio drawers: ~80% width capped at
        * 300px, with a tap-to-close dimmed backdrop behind it. */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-[60]">
-          <button
-            type="button"
-            aria-label={t("mobileMenu.close")}
-            onClick={closeMobileMenu}
-            className="absolute inset-0 bg-black/50"
-          />
-          <div className="absolute inset-y-0 right-0 w-[80%] max-w-[300px] overflow-y-auto border-l border-white/10 bg-brand-navy-950 px-4 py-4 shadow-2xl">
+      <MobileDrawer
+        open={isMobileMenuOpen}
+        onClose={closeMobileMenu}
+        closeLabel={t("mobileMenu.close")}
+        side="right"
+        panelClassName="w-[80%] max-w-[300px] overflow-y-auto border-l border-white/10 bg-brand-navy-950 px-4 py-4 shadow-2xl"
+      >
             <nav className="flex flex-col gap-0.5">
               {MOBILE_NAV_ITEMS.map((item) => (
                 <Tooltip key={item.tab}>
@@ -389,9 +388,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                 <TooltipContent side="left">Sign out of your account</TooltipContent>
               </Tooltip>
             </div>
-          </div>
-        </div>
-      )}
+      </MobileDrawer>
     </header>
   );
 }

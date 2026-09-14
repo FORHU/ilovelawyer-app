@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { AtSign, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
@@ -152,9 +152,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="profile" />
-
+    <PageShell activeTab="profile">
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2">
@@ -452,7 +450,7 @@ export default function ProfilePage() {
         {/* Danger Zone */}
         <section className="bg-card rounded-xl border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">
           <div className="px-6 md:px-8 py-5 border-b border-red-200 dark:border-red-500/30">
-            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("Delete Account")}</h2>
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("dangerZone.heading")}</h2>
           </div>
 
           <div className="flex flex-col divide-y divide-border">
@@ -462,7 +460,7 @@ export default function ProfilePage() {
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground text-[16px]">{t("Delete Account")}</p>
+                  <p className="font-medium text-foreground text-[16px]">{t("dangerZone.deleteAccount.title")}</p>
                 </div>
               </div>
               <Tooltip>
@@ -473,7 +471,7 @@ export default function ProfilePage() {
                     className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    {t("Delete")}
+                    {t("dangerZone.deleteAccount.button")}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Open the account-deletion confirmation dialog</TooltipContent>
@@ -491,6 +489,6 @@ export default function ProfilePage() {
           onClose={() => setIsDeleteModalOpen(false)}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

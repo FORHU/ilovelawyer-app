@@ -19,6 +19,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // Consultation/Cases redesign's one confirming-action color — see DESIGN.md. Always
+        // rounded-full regardless of size, since this variant never appears as a square button.
+        accent:
+          "rounded-full bg-brand-gold text-brand-navy-950 font-semibold text-[11px] tracking-[1.2px] uppercase hover:opacity-85",
       },
       size: {
         default:

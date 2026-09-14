@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, FileAudio, Copy, Check, ChevronDown, Trash2, Loader2, AlertCircle } from "lucide-react";
-import GlobalHeader from "@/components/global-header";
+import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import {
   useTranscriptionsQuery,
@@ -163,9 +163,7 @@ export default function TranscriptionLibraryPage() {
   const cases = casesQuery.data?.data ?? [];
 
   return (
-    <div className="relative w-full min-h-screen bg-background text-foreground font-['Inter',sans-serif]">
-      <GlobalHeader activeTab="transcription" />
-
+    <PageShell activeTab="transcription">
       <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-12 pt-16 pb-12 md:pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-3">
           <Tooltip>
@@ -209,7 +207,6 @@ export default function TranscriptionLibraryPage() {
           {data?.map((item) => <LibraryRow key={item.id} item={item} cases={cases} />)}
         </div>
       </main>
-
-    </div>
+    </PageShell>
   );
 }
