@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -549,7 +548,7 @@ function UnifiedAuthContent() {
                         type="button"
                         disabled={isPending}
                         onClick={() => googleLogin()}
-                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover dark:hover:bg-overlay-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span
                           className="text-foreground text-base tracking-[3.2px] uppercase"
@@ -577,7 +576,7 @@ function UnifiedAuthContent() {
                         type="button"
                         disabled={isPending}
                         onClick={() => googleLogin()}
-                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover dark:hover:bg-overlay-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="text-foreground text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
                           {googleMutation.isPending ? t("signup.connecting") : t("signup.continueWithGoogle")}

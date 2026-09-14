@@ -190,7 +190,7 @@ export function EvidenceDetailDrawer({
                         })
                       }
                       disabled={deleteCustody.isPending}
-                      className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                      className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
                       aria-label={t("delete")}
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />

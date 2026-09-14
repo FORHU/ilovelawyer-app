@@ -951,7 +951,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                   </div>
                   <button
                     onClick={handleCloseDetails}
-                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full transition-all"
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover rounded-full transition-all"
                   >
                     <X size={20} />
                   </button>

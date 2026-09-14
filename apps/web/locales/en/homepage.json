@@ -7,6 +7,7 @@
   "input": {
     "placeholder": "Draft your legal inquiry or case particulars here...",
     "attachFile": "Attach file",
+    "viewCaseFiles": "View case files",
     "removeAttachedFile": "Remove attached file",
     "removeFile": "Remove {{fileName}}",
     "startRecording": "Start recording",
@@ -39,6 +40,7 @@
     "createCase": "Create a case",
     "openCase": "Open case",
     "relatedCases": "Related Cases",
+    "reasoning": "How I got this",
     "loadingCase": "Loading…",
     "relatedEmpty": "No related cases found yet.",
     "loadingRelated": "Loading related cases…",

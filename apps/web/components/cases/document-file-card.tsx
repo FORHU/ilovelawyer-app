@@ -26,7 +26,7 @@ export function DocumentFileCard({
   const { t } = useTranslation("case-portfolio")
 
   return (
-    <div className="group flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-3 transition-colors hover:border-border hover:bg-muted/50">
+    <div className="group flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-3 transition-colors hover:border-border hover:bg-muted/50 dark:hover:bg-overlay-hover">
       <div className="flex items-start justify-between gap-1">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           <FileText className="h-4 w-4" aria-hidden="true" />

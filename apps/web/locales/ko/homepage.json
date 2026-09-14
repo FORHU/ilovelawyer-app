@@ -7,6 +7,7 @@
   "input": {
     "placeholder": "법률 문의 사항이나 사건 세부 내용을 작성하세요...",
     "attachFile": "파일 첨부",
+    "viewCaseFiles": "View case files",
     "removeAttachedFile": "첨부 파일 제거",
     "removeFile": "{{fileName}} 제거",
     "startRecording": "녹음 시작",
@@ -38,6 +39,7 @@
     "createCase": "사건 만들기",
     "openCase": "사건 열기",
     "relatedCases": "관련 사건",
+    "reasoning": "이렇게 답을 찾았어요",
     "loadingCase": "불러오는 중…",
     "relatedEmpty": "아직 관련 사건이 없습니다.",
     "loadingRelated": "관련 사건 불러오는 중…",

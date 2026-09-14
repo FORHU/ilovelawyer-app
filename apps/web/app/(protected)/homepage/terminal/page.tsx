@@ -115,7 +115,7 @@ export default function TerminalLandingPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/homepage/create-case?next=terminal")}
-                  className="group min-h-75 border-2 border-dashed border-border bg-transparent hover:bg-card hover:border-primary/30 rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="group min-h-75 border-2 border-dashed border-border bg-transparent hover:bg-card dark:hover:bg-overlay-hover hover:border-primary/30 rounded-2xl flex flex-col items-center justify-center p-8 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground group-hover:bg-primary/5 group-hover:text-primary transition-colors mb-3">
                     <Plus className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />

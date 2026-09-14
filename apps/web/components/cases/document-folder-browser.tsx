@@ -294,7 +294,7 @@ function NewFolderCard({
     <button
       type="button"
       onClick={onStart}
-      className="group flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-4 text-center transition-colors hover:border-primary/30 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      className="group flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-4 text-center transition-colors hover:border-primary/30 hover:bg-card dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-primary/5 group-hover:text-primary">
         <FolderPlus className="h-4.5 w-4.5" aria-hidden="true" />

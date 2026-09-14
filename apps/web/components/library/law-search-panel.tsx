@@ -228,7 +228,7 @@ export function LawSearchPanel() {
                 type="button"
                 onClick={backToBrowse}
                 aria-label={t("lawSearch.backToBrowse")}
-                className="mr-0.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
+                className="mr-0.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
               >
                 <X className="size-4" aria-hidden="true" />
               </button>

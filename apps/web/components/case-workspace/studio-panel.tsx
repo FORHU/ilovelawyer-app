@@ -318,7 +318,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     type="button"
                     onClick={() => setOpenTile(null)}
                     aria-label={t("workspace.backToStudio")}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -345,7 +345,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 onClick={() => void handleGenerateMindMap()}
                 disabled={!session || isGenerating}
                 aria-label={t("workspace.mindMapRegenerateCta")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
               >
                 {isGenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -378,7 +378,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               type="button"
               onClick={() => onExpandedChange(!expanded)}
               aria-label={expanded ? t("workspace.collapseStudio") : t("workspace.expandStudio")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {expanded ? (
                 <PanelRightClose className="h-4 w-4" aria-hidden="true" />
@@ -740,7 +740,7 @@ function ResultRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+      className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40 hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
     >
       <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
       <span className="min-w-0 flex-1">
@@ -782,7 +782,7 @@ function StudioTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex flex-col items-start gap-2.5 rounded-xl border border-border p-3 text-left transition-colors enabled:hover:bg-muted enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
+      className="flex flex-col items-start gap-2.5 rounded-xl border border-border p-3 text-left transition-colors enabled:hover:bg-muted dark:enabled:hover:bg-overlay-hover enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
     >
       <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
       <span className="flex min-w-0 flex-col gap-0.5">
@@ -795,7 +795,7 @@ function StudioTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-9 items-center justify-center rounded-xl border border-border px-0 py-2.5 transition-colors enabled:hover:bg-muted enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
+      className="flex w-9 items-center justify-center rounded-xl border border-border px-0 py-2.5 transition-colors enabled:hover:bg-muted dark:enabled:hover:bg-overlay-hover enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
     >
       <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
     </button>

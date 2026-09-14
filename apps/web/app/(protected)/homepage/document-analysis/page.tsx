@@ -157,7 +157,7 @@ export default function IlovelawyerDocumentAnalysisDashboard() {
               const sendState = getSendState(record.id);
               const selectedCase = caseOptions.find((c) => c.value === sendState.caseId);
               return (
-                <div key={record.id} className="flex flex-col gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-border last:border-0 hover:bg-muted transition-colors">
+                <div key={record.id} className="flex flex-col gap-3 px-4 sm:px-[32px] py-3 sm:py-[16px] border-b border-border last:border-0 hover:bg-muted dark:hover:bg-overlay-hover transition-colors">
                   <div className="flex justify-between items-center gap-3">
                     <div className="flex gap-4 items-center min-w-0">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">

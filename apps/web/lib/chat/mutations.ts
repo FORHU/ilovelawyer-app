@@ -41,6 +41,16 @@ export interface MessageAudioOverview {
   audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
 }
 
+export interface CitationReason {
+  title: string
+  why_cited: string
+}
+
+export interface MessageReasoning {
+  reasoning: string
+  citationReasons: CitationReason[]
+}
+
 export interface ChatMessage {
   id: string
   consultationId: string
@@ -68,6 +78,10 @@ export interface ChatMessage {
    * on MessageDecisionRecord — see docs/plans/differentiation-program.md Workstream A. Absent on
    * non-legal-persona messages, or a message sent before this shipped. */
   decisionRecords?: { records: DecisionRecordPayload[] } | null
+  /** The "why this answer" explanation for this turn (legal/legal_uk personas only),
+   * generated server-side when the turn actually used tool calls or retrieved sources —
+   * absent/null is normal for direct-answer turns or on generation failure, not an error. */
+  reasoning?: MessageReasoning | null
 }
 
 export function useChatSessionQuery() {
