@@ -35,6 +35,8 @@ export type LawCaseType = (typeof LAW_CASE_TYPES)[number]
 export type LawTopic = (typeof LAW_TOPICS)[number]
 
 // UK case-law browse facet — court slugs the API's UkLawSourceProvider accepts on `?court=`.
+// Keep in sync with ilovelawyer-api's legal/law-source/uk/uk-law-vocab.ts (NI courts excluded —
+// TNA's atom feed rejects them).
 export const UK_COURTS = [
   "uksc",
   "ukpc",
@@ -48,6 +50,8 @@ export const UK_COURTS = [
   "ewhc/tcc",
   "ewhc/ipec",
   "ewhc/pat",
+  "ewhc/scco",
+  "ewhc/admlty",
   "ewcop",
   "ewfc",
   "eat",
@@ -57,8 +61,7 @@ export const UK_COURTS = [
   "ukut/lc",
   "ukftt/tc",
   "ukftt/grc",
-  "nica",
-  "niqb",
+  "ukist",
 ] as const
 export type UkCourt = (typeof UK_COURTS)[number]
 

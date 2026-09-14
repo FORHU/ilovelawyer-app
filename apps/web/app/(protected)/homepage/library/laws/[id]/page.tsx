@@ -6,7 +6,6 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import GlobalHeader from "@/components/global-header"
 import { LawPdfViewer } from "@/components/library/law-pdf-viewer"
-import { LawCitations } from "@/components/library/law-citations"
 import {
   type LawCategoryParam,
   type LawDocument,
@@ -23,6 +22,21 @@ export default function LawDocumentPage() {
       <LawDocumentPageContent />
     </Suspense>
   )
+}
+
+/** Collapses near-duplicate citation strings — citations_network sometimes returns both a
+ * zero-padded and an unpadded form, e.g. "[2026] UKFTT 01281 (GRC)" and "[2026] UKFTT 1281 (GRC)". */
+function dedupeCitations(items: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of items) {
+    const key = raw.toLowerCase().replace(/\s+/g, " ").replace(/\b0+(\d)/g, "$1").trim()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      out.push(raw)
+    }
+  }
+  return out
 }
 
 function LawDocumentPageContent() {
@@ -149,12 +163,15 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
       />
       <ListBlock
         label={t("lawDoc.relatedCases")}
-        items={detail.related_cases_cited}
+        items={dedupeCitations(detail.related_cases_cited)}
       />
-      <ListBlock
-        label={t(tenantCode === "UK" ? "lawDoc.citedAuthorities" : "lawDoc.citedNumbers")}
-        items={[...detail.cited_gr_numbers, ...detail.cited_ra_numbers]}
-      />
+      {/* PH only — for UK these are the same citations as "Related cases cited" above. */}
+      {!isUk && (
+        <ListBlock
+          label={t("lawDoc.citedNumbers")}
+          items={[...detail.cited_gr_numbers, ...detail.cited_ra_numbers]}
+        />
+      )}
     </>
   )
 
@@ -257,7 +274,6 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
           className={`flex flex-col gap-4 ${hasPdf ? "" : "mx-auto w-full max-w-3xl"}`}
         >
           {sections}
-          {tenantCode === "UK" && <LawCitations lawId={item.stored_id} />}
           {detail.keywords.length > 0 && (
             <Card label={t("lawDoc.keywords")}>
               <div className="flex flex-wrap gap-1.5">

@@ -142,12 +142,6 @@
     "legalRulesCited": "Mga legal na tuntuning sinipi",
     "relatedCases": "Mga kaugnay na kasong sinipi",
     "citedNumbers": "Mga siniping G.R. / R.A. number",
-    "keywords": "Mga keyword",
-    "citedAuthorities": "Cited authorities",
-    "citations": "Cited authorities",
-    "showCitations": "Show cited authorities",
-    "citationsLoading": "Finding cited authorities…",
-    "citationsEmpty": "No cited authorities found for this document.",
-    "citationsError": "Couldn’t load citations. Please try again."
+    "keywords": "Mga keyword"
   }
 }

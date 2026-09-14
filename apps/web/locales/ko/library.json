@@ -142,12 +142,6 @@
     "legalRulesCited": "인용된 법리",
     "relatedCases": "인용된 관련 판례",
     "citedNumbers": "인용된 G.R. / R.A. 번호",
-    "keywords": "키워드",
-    "citedAuthorities": "Cited authorities",
-    "citations": "Cited authorities",
-    "showCitations": "Show cited authorities",
-    "citationsLoading": "Finding cited authorities…",
-    "citationsEmpty": "No cited authorities found for this document.",
-    "citationsError": "Couldn’t load citations. Please try again."
+    "keywords": "키워드"
   }
 }

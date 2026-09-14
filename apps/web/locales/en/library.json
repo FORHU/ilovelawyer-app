@@ -142,12 +142,6 @@
     "legalRulesCited": "Legal rules cited",
     "relatedCases": "Related cases cited",
     "citedNumbers": "Cited G.R. / R.A. numbers",
-    "citedAuthorities": "Cited authorities",
-    "keywords": "Keywords",
-    "citations": "Cited authorities",
-    "showCitations": "Show cited authorities",
-    "citationsLoading": "Finding cited authorities…",
-    "citationsEmpty": "No cited authorities found for this document.",
-    "citationsError": "Couldn't load citations. Please try again."
+    "keywords": "Keywords"
   }
 }
