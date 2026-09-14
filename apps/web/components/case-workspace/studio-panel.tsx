@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Download } from "lucide-react";
+import { CaseBriefPreviewModal } from "@/components/case-brief/case-brief-preview-modal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
@@ -106,6 +107,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false);
   const mindMapJob = useAiJobStatus(caseId, "mindMap");
   // Combines this tab's own in-flight request with the persisted job status, so a job kicked
   // off from another tab (or this one, before a refresh) still shows as generating here too.
@@ -355,6 +357,21 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <TooltipContent side="left">{t("workspace.mindMapRegenerateCta")}</TooltipContent>
           </Tooltip>
         )}
+        {expanded && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setBriefPreviewOpen(true)}
+                aria-label={t("workspace.downloadCaseBrief")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t("workspace.downloadCaseBrief")}</TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -375,6 +392,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           </TooltipContent>
         </Tooltip>
       </div>
+      <CaseBriefPreviewModal caseId={caseId} open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen} />
 
       {(!expanded || !openTile) && (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">

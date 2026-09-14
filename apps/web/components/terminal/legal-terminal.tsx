@@ -3,27 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
-import {
-  AppWindow,
-  ArrowLeft,
-  Columns2,
-  Columns3,
-  Grip,
-  LayoutPanelLeft,
-  Loader2,
-  AlertCircle,
-  Pin,
-  Plus,
-  PanelLeft,
-  PanelTop,
-  RefreshCw,
-  Maximize2,
-  Minimize2,
-  Settings,
-  X,
-  type LucideIcon,
-} from "lucide-react"
+import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw, Maximize2, Minimize2 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
+import { CaseBriefPreviewModal } from "@/components/case-brief/case-brief-preview-modal"
 import {
   useAiJobStatus,
   useApplyWorkspaceMutation,
@@ -135,18 +117,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // committed rect/grouping is left untouched, so clearing this just removes the overlay.
   const [maximizedId, setMaximizedId] = useState<PanelId | null>(null)
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
-  // Lifted out of TerminalSettingsSidebar (mirrors ConsultationSidebar's sidebarMobileOpen) so
-  // the mobile trigger can render inline in the Case Row instead of as a floating circle that
-  // overlapped the "Back to Case" link below `lg`.
-  const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
-  // Tabs/Focus "which one is showing" state is intentionally ephemeral (not saved with the
-  // workspace) — it resets to the first pane in each group/stack on reload, same spirit as
-  // the freeform canvas not remembering scroll position.
-  const [activeTabA, setActiveTabA] = useState<PanelId | null>(null)
-  const [activeTabB, setActiveTabB] = useState<PanelId | null>(null)
-  const [focusedId, setFocusedId] = useState<PanelId | null>(null)
-  const [creatingLayout, setCreatingLayout] = useState(false)
-  const [newLayoutName, setNewLayoutName] = useState("")
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
   const highDensity = useTerminalDisplayStore((state) => state.highDensity)
@@ -463,60 +433,96 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const maximizedPanel = maximizedId ? layout.panels.find((p) => p.id === maximizedId) : undefined
 
   return (
-    // The Legal Terminal is always the brand's near-black/gold palette (matching the redesign
-    // screenshots), regardless of the user's light/dark theme preference — same intent as
-    // global-header.tsx's always-black chrome, but scoped here via Tailwind's `dark` class
-    // instead of hardcoding every one of the many bg-background/bg-card/border-border tokens
-    // already used across this file, terminal-panels.tsx, and the sidebar.
-    <div ref={rootRef} className="dark relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
-        {/* Case row */}
-        <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
-          {/* Inline with the row instead of TerminalSettingsSidebar's own floating trigger —
-              see mobileLibraryOpen above. */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setMobileLibraryOpen(true)}
-                aria-label={t("sidebarOpen")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover lg:hidden"
-              >
-                <PanelLeft className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("sidebarOpen")}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href={`/homepage/case-portfolio/${caseId}`}
-                className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                {t("backToCases")}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>{t("backToCases")}</TooltipContent>
-          </Tooltip>
-          <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
-          <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
-            {snapshot.data.case.caseName}
-          </h1>
-          <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
-            {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
-          </span>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => refresh.mutate()}
-              disabled={isRefreshing}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+    <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <TerminalSettingsSidebar
+        expanded={sidebarExpanded}
+        onExpandedChange={setSidebarExpanded}
+        hiddenPanels={hiddenPanels}
+        onAddPanel={(id) => showPanelAt(id)}
+        suggestedPanels={suggestedPanels}
+        onAddSuggested={addAllSuggested}
+        presets={catalog.data?.presets ?? []}
+        currentPreset={layout.preset}
+        onSelectPreset={setPreset}
+        workspaces={workspaces.data ?? []}
+        selectedWorkspaceId={selectedWorkspaceId}
+        onSelectWorkspace={(id) => {
+          setSelectedWorkspaceId(id)
+          setMaximizedId(null)
+          const workspace = workspaces.data?.find((w) => w.id === id)
+          if (!workspace) return
+          setLayout(
+            hydrateFreeform(
+              mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+            ),
+          )
+          applyWorkspace.mutate(id)
+        }}
+        onUpdateWorkspace={() => {
+          if (!selectedWorkspaceId || !layout) return
+          updateWorkspace.mutate({ id: selectedWorkspaceId, preset: layout.preset, layoutJson: layout })
+        }}
+        updateDisabled={!selectedWorkspaceId || updateWorkspace.isPending}
+        workspaceName={workspaceName}
+        onWorkspaceNameChange={setWorkspaceName}
+        onSaveWorkspace={() => {
+          const name = workspaceName.trim()
+          if (!name || !layout) return
+          createWorkspace.mutate({ name, preset: layout.preset, layoutJson: layout })
+          setWorkspaceName("")
+        }}
+        saveDisabled={!workspaceName.trim() || createWorkspace.isPending}
+        onResetWorkspace={() => {
+          setMaximizedId(null)
+          resetWorkspace.mutate(layout.preset, {
+            onSuccess: (workspace) => {
+              setLayout(
+                hydrateFreeform(
+                  mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []),
+                ),
+              )
+              setSelectedWorkspaceId(workspace.id)
+            },
+          })
+        }}
+      />
+      <div
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground transition-[padding-left] duration-200 lg:pl-16 ${
+          sidebarExpanded ? "lg:pl-72" : ""
+        }`}
+      >
+      <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={`/homepage/case-portfolio/${caseId}`}
+              className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
-              {isRefreshing ? t("refreshing") : t("refresh")}
-            </button>
-          </div>
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("backToCases")}
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>{t("backToCases")}</TooltipContent>
+        </Tooltip>
+        <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
+        <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
+          {snapshot.data.case.caseName}
+        </h1>
+        <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
+          {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
+        </span>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => refresh.mutate()}
+            disabled={isRefreshing}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
+            {isRefreshing ? t("refreshing") : t("refresh")}
+          </button>
         </div>
+      </div>
 
         {/* Terminal bar: layout tabs · arrangement switch · pane count · add pane */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">
