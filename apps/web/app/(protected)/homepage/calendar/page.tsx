@@ -10,9 +10,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { AlertCircle, CalendarOff, ChevronLeft, ChevronRight, Clock, RotateCw, X } from "lucide-react";
+import { AlertCircle, CalendarOff, ChevronLeft, ChevronRight, Clock, RotateCw, StickyNote, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAppointmentsQuery, useCreateAppointmentMutation } from "@/lib/calendar/mutations";
+import { useAppointmentsQuery, useCreateAppointmentMutation, useNotesQuery, useCreateNoteMutation } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
 
 const MAX_VISIBLE_PER_DAY = 2;
@@ -32,7 +32,7 @@ function formatTime12h(time: string): string {
 /* ==========================================
    MONTH GRID DAY CELL (appointments)
    ========================================== */
-type DayItem = { id: string; label: string; sortKey: string };
+type DayItem = { id: string; label: string; sortKey: string; kind: "appointment" | "note" };
 type DayItems = { visible: DayItem[]; overflowCount: number };
 
 const CalendarItemsContext = React.createContext<{
@@ -80,9 +80,18 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
             {dayItems?.visible.map((item) => (
               <span
                 key={item.id}
-                className="flex items-center gap-1 truncate rounded bg-blue-100 px-1 py-0.5 text-[10px] leading-tight text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+                className={cn(
+                  "flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight",
+                  item.kind === "note"
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                    : "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+                )}
               >
-                <Clock className="size-2.5 shrink-0" aria-hidden="true" />
+                {item.kind === "note" ? (
+                  <StickyNote className="size-2.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Clock className="size-2.5 shrink-0" aria-hidden="true" />
+                )}
                 <span className="truncate">{item.label}</span>
               </span>
             ))}
@@ -101,7 +110,8 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
    AGENDA VIEW (mobile replacement for the 7-column grid below md)
    ========================================== */
 type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null };
-type AgendaDay = { date: Date; appointments: AgendaAppointment[] };
+type AgendaNote = { id: string; date: string; body: string };
+type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
 
 function AgendaView({
   agendaDays,
@@ -145,6 +155,15 @@ function AgendaView({
                       {formatTime12h(appt.startTime)} · {appt.title}
                     </span>
                   ))}
+                  {day.notes.map((note) => (
+                    <span
+                      key={note.id}
+                      className="flex items-center gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
+                    >
+                      <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{note.body}</span>
+                    </span>
+                  ))}
                 </div>
               </button>
             </TooltipTrigger>
@@ -186,6 +205,7 @@ function PlannerPanel({
   onSelectDay,
   onMonthChange,
   selectedAppointments,
+  selectedNotes,
   initialCaseId,
 }: {
   selectedDate: Date | undefined;
@@ -193,19 +213,23 @@ function PlannerPanel({
   onSelectDay: (date: Date) => void;
   onMonthChange: (month: Date) => void;
   selectedAppointments: { id: string; title: string; startTime: string; endTime: string | null; description: string | null }[];
+  selectedNotes: { id: string; body: string }[];
   initialCaseId: string | null;
 }) {
+  const [entryType, setEntryType] = React.useState<"appointment" | "note">("appointment");
   const [title, setTitle] = React.useState("");
   const [startTime, setStartTime] = React.useState("");
   const [endTime, setEndTime] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [notifyEmail, setNotifyEmail] = React.useState("");
   const [caseId, setCaseId] = React.useState(initialCaseId ?? "");
+  const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
-  const isSubmitting = createAppointment.isPending;
+  const createNote = useCreateNoteMutation();
+  const isSubmitting = createAppointment.isPending || createNote.isPending;
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
@@ -215,6 +239,17 @@ function PlannerPanel({
     setFormError(null);
     if (!selectedDate || isPastSelected) return;
     const date = toDateKey(selectedDate);
+
+    if (entryType === "note") {
+      if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
+      try {
+        await createNote.mutateAsync({ date, body: noteBody.trim() });
+        setNoteBody("");
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : t("errors.noteSaveFailed"));
+      }
+      return;
+    }
 
     if (!title.trim()) return setFormError(t("errors.titleRequired"));
     if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
@@ -279,61 +314,102 @@ function PlannerPanel({
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
-              <input
-                type="text"
-                placeholder={t("titlePlaceholder")}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
+              <div className="flex gap-1 rounded-md border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setEntryType("appointment")}
+                  className={cn(
+                    "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                    entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {t("appointment")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryType("note")}
+                  className={cn(
+                    "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                    entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                  )}
+                >
+                  {t("note")}
+                </button>
               </div>
-              <input
-                type="email"
-                placeholder={t("Email")}
-                value={notifyEmail}
-                onChange={(e) => setNotifyEmail(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-              <select
-                value={caseId}
-                onChange={(e) => setCaseId(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary"
-              >
-                <option value="">{t("noCase")}</option>
-                {cases.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.caseName}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                placeholder={t("descriptionPlaceholder")}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-                className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
+
+              {entryType === "note" ? (
+                <textarea
+                  placeholder={t("notePlaceholder")}
+                  aria-label={t("notePlaceholder")}
+                  value={noteBody}
+                  onChange={(e) => setNoteBody(e.target.value)}
+                  rows={4}
+                  className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder={t("titlePlaceholder")}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                    />
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                    />
+                  </div>
+                  <input
+                    type="email"
+                    placeholder={t("notifyEmailPlaceholder")}
+                    aria-label={t("notifyEmailPlaceholder")}
+                    value={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.value)}
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  />
+                  <select
+                    value={caseId}
+                    onChange={(e) => setCaseId(e.target.value)}
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
+                  >
+                    <option value="" className="text-black">
+                      {t("noCase")}
+                    </option>
+                    {cases.map((c) => (
+                      <option key={c.id} value={c.id} className="text-black">
+                        {c.caseName}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    placeholder={t("descriptionPlaceholder")}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  />
+                </>
+              )}
 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-                    {isSubmitting ? t("saving") : t("addAppointment")}
+                    {isSubmitting ? t("saving") : entryType === "note" ? t("addNote") : t("addAppointment")}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Save this appointment to the selected day</TooltipContent>
+                <TooltipContent>
+                  {entryType === "note" ? "Save this note to the selected day" : "Save this appointment to the selected day"}
+                </TooltipContent>
               </Tooltip>
             </form>
           )}
@@ -344,8 +420,8 @@ function PlannerPanel({
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
         </p>
-        {selectedAppointments.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nothing scheduled for this day yet.</p>
+        {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("nothingScheduledDay")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {selectedAppointments.map((appt) => (
@@ -360,6 +436,12 @@ function PlannerPanel({
                   </p>
                   {appt.description && <p className="mt-0.5 text-blue-700 dark:text-blue-300">{appt.description}</p>}
                 </div>
+              </li>
+            ))}
+            {selectedNotes.map((note) => (
+              <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
+                <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                <p>{note.body}</p>
               </li>
             ))}
           </ul>
@@ -384,6 +466,8 @@ export default function CalendarPage() {
 
   const appointmentsQuery = useAppointmentsQuery(from, to);
   const appointments = appointmentsQuery.data ?? [];
+  const notesQuery = useNotesQuery(from, to);
+  const notes = notesQuery.data ?? [];
 
   const handleSelectDay = React.useCallback(
     (date: Date) => {
@@ -404,8 +488,21 @@ export default function CalendarPage() {
         id: appt.id,
         label: `${formatTime12h(appt.startTime)} ${appt.title}`,
         sortKey: appt.startTime,
+        kind: "appointment",
       });
       grouped.set(appt.date, list);
+    }
+
+    for (const note of notes) {
+      const list = grouped.get(note.date) ?? [];
+      list.push({
+        id: note.id,
+        label: note.body,
+        // Notes have no time, so they always sort after the day's appointments.
+        sortKey: "24:00",
+        kind: "note",
+      });
+      grouped.set(note.date, list);
     }
 
     const result = new Map<string, DayItems>();
@@ -417,19 +514,24 @@ export default function CalendarPage() {
       });
     }
     return result;
-  }, [appointments]);
+  }, [appointments, notes]);
 
   const agendaDays = React.useMemo(() => {
     const grouped = new Map<string, AgendaDay>();
     for (const appt of appointments) {
-      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [] };
+      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
       entry.appointments.push(appt);
       grouped.set(appt.date, entry);
+    }
+    for (const note of notes) {
+      const entry = grouped.get(note.date) ?? { date: parse(note.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
+      entry.notes.push(note);
+      grouped.set(note.date, entry);
     }
     return Array.from(grouped.values())
       .map((day) => ({ ...day, appointments: [...day.appointments].sort((a, b) => a.startTime.localeCompare(b.startTime)) }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [appointments]);
+  }, [appointments, notes]);
 
   const selectedDateKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedAppointments = React.useMemo(
@@ -438,6 +540,10 @@ export default function CalendarPage() {
         .filter((a) => a.date === selectedDateKey)
         .sort((a, b) => a.startTime.localeCompare(b.startTime)),
     [appointments, selectedDateKey]
+  );
+  const selectedNotes = React.useMemo(
+    () => notes.filter((n) => n.date === selectedDateKey),
+    [notes, selectedDateKey]
   );
 
   return (
@@ -455,6 +561,7 @@ export default function CalendarPage() {
             onSelectDay={handleSelectDay}
             onMonthChange={setCurrentMonth}
             selectedAppointments={selectedAppointments}
+            selectedNotes={selectedNotes}
             initialCaseId={initialCaseId}
           />
 
@@ -496,7 +603,7 @@ export default function CalendarPage() {
                 <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
               </div>
 
-              {appointmentsQuery.isError && (
+              {(appointmentsQuery.isError || notesQuery.isError) && (
                 <div
                   role="alert"
                   className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 py-1 pl-3 pr-1 text-xs text-red-700 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300"
@@ -507,14 +614,17 @@ export default function CalendarPage() {
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => appointmentsQuery.refetch()}
+                        onClick={() => {
+                          appointmentsQuery.refetch();
+                          notesQuery.refetch();
+                        }}
                         className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-red-700 transition-colors hover:bg-red-100 hover:text-red-900 dark:text-red-200 dark:hover:bg-red-500/20 dark:hover:text-white"
                       >
                         <RotateCw className="size-3" aria-hidden="true" />
                         {t("retry")}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Retry loading this month&rsquo;s appointments</TooltipContent>
+                    <TooltipContent>Retry loading this month&rsquo;s schedule</TooltipContent>
                   </Tooltip>
                 </div>
               )}

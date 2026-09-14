@@ -777,11 +777,7 @@ function UnifiedAuthContent() {
                         forgotPasswordMutation.mutate(
                           { email: recoverEmail },
                           {
-                            onSuccess: (data) => {
-                              // resetLink is dev-only (see useForgotPasswordMutation) — no Ethereal inbox needed locally.
-                              if (data.resetLink) {
-                                console.log("[dev] password reset link:", data.resetLink);
-                              }
+                            onSuccess: () => {
                               setRecoverSent(true);
                             },
                             onError: (err) => setError((err as Error).message),

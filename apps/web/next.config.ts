@@ -17,6 +17,13 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").rep
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@workspace/ui"],
+  // Belt-and-suspenders: strip console.log/info/debug from production builds at the
+  // SWC compiler level (next build only, never next dev) so a future stray console.log
+  // of sensitive data can't reach the shipped bundle even if a dev-only `if` guard
+  // around it is missing or wrong. console.error/warn are kept for prod diagnostics.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
   allowedDevOrigins: ["192.168.1.29", "ph.ilovelawyer", "uk.ilovelawyer", "ph.ilovelawyer.local", "uk.ilovelawyer.local", "ph.localhost", "uk.localhost"],
   // Pin the workspace root to this pnpm workspace so Turbopack doesn't infer it
   // from the unrelated package-lock.json at the parent forhu-project/ directory.
