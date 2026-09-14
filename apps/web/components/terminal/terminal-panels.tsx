@@ -598,7 +598,7 @@ function EvidencePanel({
                   <button
                     type="button"
                     onClick={() => setOpenDocumentId(doc.id)}
-                    className="flex w-full flex-col items-start gap-1 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-muted"
+                    className="flex w-full flex-col items-start gap-1 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-muted dark:hover:bg-overlay-hover"
                   >
                     <div className="flex w-full items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
@@ -859,7 +859,7 @@ function RedTeamPanel({
           type="button"
           onClick={() => generate.mutate()}
           disabled={isGenerating}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
         >
           {isGenerating ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -1424,7 +1424,7 @@ function LegalIssuesPanel({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={() => del.mutate(node.refId)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1509,7 +1509,7 @@ function CaseFindingPanel({
                 type="button"
                 onClick={() => del.mutate(item.id)}
                 disabled={del.isPending}
-                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
                 aria-label={t("delete")}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1591,7 +1591,7 @@ function WitnessPanel({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={() => del.mutate(node.refId)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1693,7 +1693,7 @@ function DamagePanel({
                   type="button"
                   onClick={() => del.mutate(d.id)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-red-500 disabled:opacity-50"
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1889,7 +1889,7 @@ function CaseReconstructionPanel({
           type="button"
           onClick={() => generate.mutate()}
           disabled={isGenerating}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
         >
           {isGenerating ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -1967,7 +1967,7 @@ function CaseReconstructionPanel({
                 <button
                   type="button"
                   onClick={() => setIsEditingGeneral(true)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
                 >
                   <Pencil className="h-3 w-3" aria-hidden="true" />
                   {t("edit")}
@@ -2047,7 +2047,7 @@ function CaseReconstructionPanel({
                     })
                   }
                   disabled={generateAudio.isPending || audioPolling}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
                 >
                   {generateAudio.isPending || audioPolling ? (
                     <Loader2
@@ -2146,7 +2146,7 @@ function ScenesView({
           type="button"
           onClick={() => generateScenes.mutate()}
           disabled={isGeneratingScenes}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
         >
           {isGeneratingScenes ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -2236,7 +2236,7 @@ function ScenesView({
                 type="button"
                 onClick={() => generateTableRead.mutate()}
                 disabled={isGeneratingTableRead}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
               >
                 {isGeneratingTableRead ? (
                   <Loader2

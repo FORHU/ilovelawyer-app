@@ -69,7 +69,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
               type="button"
               onClick={() => onExpandedChange(!expanded)}
               aria-label={expanded ? t("workspace.collapseSources") : t("workspace.expandSources")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {expanded ? (
                 <PanelLeftClose className="h-4 w-4" aria-hidden="true" />

@@ -879,7 +879,7 @@ export default function OrganizationPage() {
                   <button
                     type="button"
                     onClick={() => setPendingRoleChange(null)}
-                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     aria-label={t("members.roleDowngradeCancel")}
                   >
                     <X className="w-4 h-4" />
@@ -955,7 +955,7 @@ export default function OrganizationPage() {
                   <button
                     type="button"
                     onClick={() => setPendingRemoval(null)}
-                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     aria-label={t("members.removeConfirmCancel")}
                   >
                     <X className="w-4 h-4" />
@@ -1027,7 +1027,7 @@ export default function OrganizationPage() {
                   <button
                     type="button"
                     onClick={() => setShowLeaveConfirm(false)}
-                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     aria-label={t("overview.leaveCancel")}
                   >
                     <X className="w-4 h-4" />

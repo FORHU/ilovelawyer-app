@@ -17,10 +17,18 @@ function PopoverContent({
   className,
   align = "end",
   sideOffset = 8,
+  // Radix portals to document.body by default, which escapes any DOM-scoped theme override
+  // (e.g. a `dark` class wrapping a specific subtree rather than the document root) — CSS
+  // custom properties follow the DOM tree, not the React tree, so a portalled node outside
+  // that wrapper falls back to the page's actual theme instead of the override. Pass the
+  // wrapper's own node here to keep the popover inside it.
+  container,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  container?: React.ComponentProps<typeof PopoverPrimitive.Portal>["container"]
+}) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}

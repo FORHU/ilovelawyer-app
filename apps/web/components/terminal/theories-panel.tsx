@@ -55,7 +55,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
             type="button"
             onClick={() => propose.mutate()}
             disabled={isProposing}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
           >
             {isProposing ? (
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -361,7 +361,7 @@ function TheoryDiffSection({ caseId, theoryAId, theoryBId }: { caseId: string; t
         type="button"
         onClick={() => generate.mutate({ theoryAId, theoryBId })}
         disabled={isDiffing}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
       >
         {isDiffing ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Send className="h-3 w-3" aria-hidden="true" />}
         {diff ? t("regenerateDiff") : t("generateDiff")}

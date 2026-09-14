@@ -120,7 +120,7 @@ export default function TerminalSettingsSidebar({
                         className={`flex w-full items-center gap-2 rounded-md border border-transparent px-2.5 py-2 text-left text-[13px] transition-colors ${
                           onScreen
                             ? "cursor-default text-foreground"
-                            : "cursor-grab text-foreground hover:border-border hover:bg-muted active:cursor-grabbing"
+                            : "cursor-grab text-foreground hover:border-border hover:bg-muted dark:hover:bg-overlay-hover active:cursor-grabbing"
                         }`}
                       >
                         <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
@@ -161,7 +161,7 @@ export default function TerminalSettingsSidebar({
               type="button"
               onClick={() => onExpandedChange(!expanded)}
               aria-label={expanded ? t("sidebarCollapse") : t("sidebarOpen")}
-              className={`mx-2 mb-2 flex h-9 shrink-0 items-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 ${
+              className={`mx-2 mb-2 flex h-9 shrink-0 items-center rounded-md hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 ${
                 expanded ? "justify-between px-2.5" : "justify-center px-0"
               }`}
             >
@@ -193,7 +193,7 @@ export default function TerminalSettingsSidebar({
                       type="button"
                       onClick={() => onExpandedChange(true)}
                       aria-label={t(meta.labelKey)}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -238,7 +238,7 @@ export default function TerminalSettingsSidebar({
             type="button"
             onClick={() => onMobileOpenChange(false)}
             aria-label={t("sidebarClose")}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

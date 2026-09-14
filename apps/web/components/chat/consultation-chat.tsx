@@ -1063,7 +1063,7 @@ export default function ConsultationChat({
                         <button
                           type="button"
                           onClick={() => retryUpload(f.id)}
-                          className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card dark:hover:bg-overlay-hover shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                           aria-label={t("input.retryUpload", { fileName: f.file.name })}
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -1077,7 +1077,7 @@ export default function ConsultationChat({
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(f.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card dark:hover:bg-overlay-hover shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         aria-label={t("input.removeFile", { fileName: f.file.name })}
                       >
                         <X className="w-3 h-3" />
@@ -1197,7 +1197,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1498,7 +1498,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={() => setSidebarMobileOpen(true)}
                       aria-label={t("sidebar.openConsultations")}
-                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1551,7 +1551,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={() => setSidebarMobileOpen(true)}
                       aria-label={t("sidebar.openConsultations")}
-                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>

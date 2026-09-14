@@ -86,7 +86,7 @@ export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps
                 commitEdit();
               }}
               aria-label={t("sidebar.saveTitle")}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-card dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <Check className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -111,7 +111,7 @@ export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps
             }
           }}
           aria-label={t("sidebar.renameConsultationNamed", { name: activeLabel })}
-          className={`${boxClassName} cursor-text border-transparent transition-colors hover:border-border hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+          className={`${boxClassName} cursor-text border-transparent transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
         >
           {activeLabel}
         </h1>

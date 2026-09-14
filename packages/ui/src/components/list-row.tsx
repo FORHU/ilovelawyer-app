@@ -15,7 +15,7 @@ function ListRow({
     <div
       style={{ "--list-row-columns": columns } as React.CSSProperties}
       className={cn(
-        "group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:[grid-template-columns:var(--list-row-columns)] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card",
+        "group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:[grid-template-columns:var(--list-row-columns)] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover",
         className
       )}
       {...props}

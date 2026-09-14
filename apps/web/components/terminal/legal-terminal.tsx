@@ -151,6 +151,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
   const highDensity = useTerminalDisplayStore((state) => state.highDensity)
   const setHighDensity = useTerminalDisplayStore((state) => state.setHighDensity)
+  // Popover content portals outside this component's DOM subtree by default — keeping it
+  // inside `rootRef` (the `dark`-scoped root below) is what makes it pick up the terminal's
+  // forced near-black palette instead of the page's actual light/dark theme.
+  const rootRef = useRef<HTMLDivElement>(null)
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
   // Drag/resize used to call setLayout() (a full state update, re-rendering every visible
@@ -394,7 +398,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   if (snapshot.isLoading || catalog.isLoading) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-background font-['Inter'] text-sm text-muted-foreground">
+      <div className="dark flex flex-1 flex-col items-center justify-center gap-2 bg-background font-['Inter'] text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         {t("loading")}
       </div>
@@ -403,7 +407,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   if (snapshot.isError || !snapshot.data || !layout) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
+      <div className="dark flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
         <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
         <p className="text-red-400">{t("loadError")}</p>
         <button type="button" onClick={() => snapshot.refetch()} className="text-xs font-semibold uppercase tracking-wider text-brand-gold hover:underline">
@@ -426,7 +430,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const maximizedPanel = maximizedId ? layout.panels.find((p) => p.id === maximizedId) : undefined
 
   return (
-    <div className="relative flex min-h-0 flex-1 overflow-hidden">
+    // The Legal Terminal is always the brand's near-black/gold palette (matching the redesign
+    // screenshots), regardless of the user's light/dark theme preference — same intent as
+    // global-header.tsx's always-black chrome, but scoped here via Tailwind's `dark` class
+    // instead of hardcoding every one of the many bg-background/bg-card/border-border tokens
+    // already used across this file, terminal-panels.tsx, and the sidebar.
+    <div ref={rootRef} className="dark relative flex min-h-0 flex-1 overflow-hidden">
       <TerminalSettingsSidebar
         expanded={sidebarExpanded}
         onExpandedChange={setSidebarExpanded}
@@ -452,7 +461,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 type="button"
                 onClick={() => setMobileLibraryOpen(true)}
                 aria-label={t("sidebarOpen")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted lg:hidden"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover lg:hidden"
               >
                 <PanelLeft className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -483,7 +492,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               type="button"
               onClick={() => refresh.mutate()}
               disabled={isRefreshing}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
               {isRefreshing ? t("refreshing") : t("refresh")}
@@ -549,7 +558,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         aria-label={t(labelKey)}
                         aria-pressed={active}
                         className={`flex h-7 w-8 items-center justify-center rounded-full transition-colors ${
-                          active ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          active ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                         }`}
                       >
                         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -583,7 +592,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     <button
                       type="button"
                       aria-label={t("settingsTab")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                     >
                       <Settings className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -591,7 +600,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 </TooltipTrigger>
                 <TooltipContent>{t("settingsTab")}</TooltipContent>
               </Tooltip>
-              <PopoverContent>
+              <PopoverContent container={rootRef.current}>
                 <div className="flex flex-col gap-5">
                   <div>
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">
@@ -808,7 +817,7 @@ function PreferenceToggle({
   onChange: (value: boolean) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-muted">
+    <label className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-muted dark:hover:bg-overlay-hover">
       <span className="text-[13px] text-foreground">{label}</span>
       <span
         role="switch"
@@ -867,7 +876,7 @@ function PaneHeaderActions({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={onToggleMaximize}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
             aria-label={isMaximized ? t("restorePane") : t("maximizePane")}
           >
             {isMaximized ? <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -881,7 +890,7 @@ function PaneHeaderActions({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={onHide}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
             aria-label={t("hidePane")}
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />

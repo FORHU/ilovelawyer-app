@@ -194,7 +194,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         <button
           type="button"
           onClick={() => zoomByStep(1 / 1.3)}
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover rounded-md transition-colors"
           title="Zoom out"
         >
           <Minus size={14} />
@@ -202,7 +202,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         <button
           type="button"
           onClick={fitToView}
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover rounded-md transition-colors"
           title="Fit to view"
         >
           <Target size={14} />
@@ -210,7 +210,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
         <button
           type="button"
           onClick={() => zoomByStep(1.3)}
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover rounded-md transition-colors"
           title="Zoom in"
         >
           <Plus size={14} />
