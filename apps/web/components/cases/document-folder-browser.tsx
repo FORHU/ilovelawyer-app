@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import {
   useCaseDocumentsQuery,
   useDeleteCaseDocumentMutation,
+  useUpdateCaseDocumentMutation,
   useUploadCaseDocumentsMutation,
   type UserDocument,
 } from "@/lib/cases/mutations"
@@ -35,6 +36,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const { t } = useTranslation("case-portfolio")
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId)
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
+  const { mutate: updateDocument, isPending: isUpdating, variables: updatingVars } = useUpdateCaseDocumentMutation()
   const { mutate: uploadDocuments, isPending: isUploading, data: uploadResult } = useUploadCaseDocumentsMutation()
   const hasUploadFailures = (uploadResult?.failed.length ?? 0) > 0
 
@@ -163,6 +165,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               onPreview={() => openPreview(doc)}
               onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
               isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+              onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
+              isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
             />
           ))}
         </div>
@@ -207,6 +211,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             onPreview={() => openPreview(doc)}
             onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
             isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+            onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
+            isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
           />
         ))}
         {newFolderCard}

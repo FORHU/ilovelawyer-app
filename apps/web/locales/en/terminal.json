@@ -262,5 +262,11 @@
   "regenerateTableRead": "Regenerate table read",
   "noTableRead": "No table read yet — generate scenes first, then render a multi-voice reading of them.",
   "tableReadOutOfDate": "Scenes changed since this table read was generated.",
-  "noExhibitsForScene": "No verified exhibits for this scene."
+  "noExhibitsForScene": "No verified exhibits for this scene.",
+  "downloadCaseBrief": "Download case brief",
+  "caseBriefPreviewTitle": "Case Brief preview",
+  "caseBriefGenerating": "Generating preview…",
+  "caseBriefPreviewError": "Couldn't generate the preview.",
+  "downloadWord": "Download Word",
+  "downloadPdf": "Download PDF"
 }

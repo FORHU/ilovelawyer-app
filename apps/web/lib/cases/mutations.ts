@@ -114,6 +114,9 @@ export interface UserDocument {
   aiSummary: string | null
   /** Background text-extraction/embedding status for chat retrieval. */
   ragStatus: "PENDING" | "READY" | "FAILED"
+  /** Lawyer-curated subset shown in the Case Brief export's Exhibit list — not every uploaded
+   * document is an Exhibit just by being uploaded. Defaults false. */
+  isExhibit: boolean
   createdAt: string
 }
 
@@ -387,6 +390,26 @@ export function useConsultationDocumentsQuery(consultationId: string | undefined
     queryFn: () => apiFetch<UserDocument[]>(`/api/documents?consultationId=${consultationId}`),
     enabled: !!consultationId,
     refetchInterval: refetchWhileIndexing,
+  })
+}
+
+/** Toggles a Case Document's Mark-as-Exhibit flag — the only editable field on a document today.
+ * PATCH /api/documents/:id is organization-scoped (no per-case access check), matching how
+ * delete already works for this same endpoint family. */
+export function useUpdateCaseDocumentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ documentId, isExhibit }: { documentId: string; caseId: string; isExhibit: boolean }) => {
+      await apiFetchRaw(`/api/documents/${documentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isExhibit }),
+      })
+    },
+    onSuccess: (_data, { documentId, caseId, isExhibit }) => {
+      queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
+        old ? old.map((d) => (d.id === documentId ? { ...d, isExhibit } : d)) : old,
+      )
+    },
   })
 }
 

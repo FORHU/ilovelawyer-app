@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
-import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw, Maximize2, Minimize2 } from "lucide-react"
+import { ArrowLeft, Grip, Loader2, AlertCircle, X, RefreshCw, Maximize2, Minimize2, Download } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
+import { CaseBriefPreviewModal } from "@/components/case-brief/case-brief-preview-modal"
 import {
   useAiJobStatus,
   useApplyWorkspaceMutation,
@@ -107,6 +108,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // `layout` is left untouched, so clearing this snaps it straight back to where it was.
   const [maximizedId, setMaximizedId] = useState<PanelId | null>(null)
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
+  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const gridSnapping = useTerminalDisplayStore((state) => state.gridSnapping)
   const resizeRef = useRef<ResizeDrag | null>(null)
@@ -452,6 +454,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
+            onClick={() => setBriefPreviewOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("downloadCaseBrief")}
+          </button>
+          <button
+            type="button"
             onClick={() => refresh.mutate()}
             disabled={isRefreshing}
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
@@ -461,6 +471,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </button>
         </div>
       </div>
+      <CaseBriefPreviewModal caseId={caseId} open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen} />
 
       {snapshot.data.fatalRisks.length > 0 && (
         <div className="px-3 pt-3">
