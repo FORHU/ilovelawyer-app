@@ -86,7 +86,7 @@ export default function CaseDetailPage() {
                     <button
                       type="button"
                       onClick={toggleMobileMenu}
-                      className="lg:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="lg:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                       aria-label={t("mobileMenu.open", { ns: "common" })}
                     >
                       <Menu className="h-5 w-5" aria-hidden="true" />
@@ -183,7 +183,7 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
           <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
             {caseName ?? "…"}
           </h1>
-          <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:text-foreground md:opacity-0 md:group-hover/title:opacity-100">
+          <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 transition-opacity hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground md:opacity-0 md:group-hover/title:opacity-100">
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
         </button>

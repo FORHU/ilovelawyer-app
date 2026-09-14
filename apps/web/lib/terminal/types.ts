@@ -25,6 +25,8 @@ export const PANEL_IDS = [
 
 export type PanelId = (typeof PANEL_IDS)[number]
 export type PresetValue = "PANE_1" | "PANE_2" | "PANE_4" | "PANE_6"
+export const ARRANGEMENT_VALUES = ["columns", "tabs", "focus", "split"] as const
+export type ArrangementValue = (typeof ARRANGEMENT_VALUES)[number]
 
 export interface PanelLayout {
   id: PanelId
@@ -38,6 +40,8 @@ export interface PanelLayout {
 
 export interface WorkspaceLayout {
   preset: PresetValue
+  /** Optional — absent on workspaces saved before arrangement modes existed, treated as "columns". */
+  arrangement?: ArrangementValue
   panels: PanelLayout[]
 }
 

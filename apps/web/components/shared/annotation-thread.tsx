@@ -45,7 +45,7 @@ function AnnotationRow({
         <button
           type="button"
           onClick={onToggleResolved}
-          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
           aria-label={t(resolved ? "reopen" : "resolveAnnotation")}
         >
           {resolved ? (

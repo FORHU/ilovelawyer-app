@@ -141,7 +141,7 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
                         setOpen(false);
                       }}
                       className={`w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
-                        isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50"
+                        isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50 dark:hover:bg-overlay-hover"
                       }`}
                     >
                       {opt.label}

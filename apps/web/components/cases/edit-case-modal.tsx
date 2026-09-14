@@ -92,7 +92,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 aria-label={t("Close")}
               >
                 <X className="w-4 h-4" />
@@ -191,7 +191,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
             <button
               type="button"
               onClick={addParty}
-              className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="self-start flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-muted dark:hover:bg-overlay-hover border border-dashed border-border rounded-full px-4 py-2.5 uppercase transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               {t("sectionParties.addParty", { ns: "create-case" })}
