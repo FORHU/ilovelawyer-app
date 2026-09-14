@@ -36,10 +36,8 @@ const COLUMNS = [
   {
     columnKey: "resources",
     links: [
-      // TODO: confirm the real UK support mailbox before launch — mirrors the
-      // uk.ilovelawyer.com subdomain convention as a placeholder.
       { key: "helpCentre", href: "mailto:support@uk.ilovelawyer.com" },
-      { key: "transcription", href: "#capabilities" },
+      { key: "transcription", href: "/homepage/transcription" },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
