@@ -1,8 +1,13 @@
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 
-// Wire values the API accepts for `category` (juris.ph dataset names).
-export type LawCategoryParam = "jurisprudence" | "republic-acts"
+// Wire values the API accepts for `category`. PH = juris.ph dataset names; UK = the
+// LawSourceProvider wire categories (ilovelawyer-api's legal/law-source/uk).
+export type LawCategoryParam =
+  | "jurisprudence"
+  | "republic-acts"
+  | "uk-case-law"
+  | "uk-legislation"
 
 // Facet vocabularies the API accepts for /api/law/browse — mirror the juris.ph browse pages.
 // `caseType` is jurisprudence-only.
@@ -28,6 +33,37 @@ export const LAW_TOPICS = [
 ] as const
 export type LawCaseType = (typeof LAW_CASE_TYPES)[number]
 export type LawTopic = (typeof LAW_TOPICS)[number]
+
+// UK case-law browse facet — court slugs the API's UkLawSourceProvider accepts on `?court=`.
+// Keep in sync with ilovelawyer-api's legal/law-source/uk/uk-law-vocab.ts (NI courts excluded —
+// TNA's atom feed rejects them).
+export const UK_COURTS = [
+  "uksc",
+  "ukpc",
+  "ewca/civ",
+  "ewca/crim",
+  "ewhc/admin",
+  "ewhc/kb",
+  "ewhc/ch",
+  "ewhc/comm",
+  "ewhc/fam",
+  "ewhc/tcc",
+  "ewhc/ipec",
+  "ewhc/pat",
+  "ewhc/scco",
+  "ewhc/admlty",
+  "ewcop",
+  "ewfc",
+  "eat",
+  "ukut/iac",
+  "ukut/aac",
+  "ukut/tcc",
+  "ukut/lc",
+  "ukftt/tc",
+  "ukftt/grc",
+  "ukist",
+] as const
+export type UkCourt = (typeof UK_COURTS)[number]
 
 // ── A hit from GET /api/law/search (juris.ph item shape + our annotations) ────
 // Same payload the admin panel consumes — the app route (law.route.ts) is just a
@@ -67,7 +103,7 @@ export interface LawSearchResult {
     limit: number
     count: number
     /** "cache" — served from our own stored rows; "juris.ph" — fetched live and written through. */
-    source: "juris.ph" | "cache"
+    source: "juris.ph" | "cache" | "uk-legal-mcp" | string
   }
   notice: string
 }
@@ -94,23 +130,25 @@ export function useLawBrowseInfiniteQuery(params: {
   category: LawCategoryParam
   caseType?: LawCaseType
   topics: LawTopic[]
+  court?: UkCourt
   year?: number
   enabled: boolean
 }) {
-  const { category, caseType, topics, year, enabled } = params
+  const { category, caseType, topics, court, year, enabled } = params
   const sortedTopics = [...topics].sort()
 
   return useInfiniteQuery({
     queryKey: [
       "law",
       "browse",
-      { category, caseType, topics: sortedTopics, year },
+      { category, caseType, topics: sortedTopics, court, year },
     ],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const p = new URLSearchParams({ category })
       if (caseType) p.set("caseType", caseType)
       if (sortedTopics.length) p.set("topics", sortedTopics.join(","))
+      if (court) p.set("court", court)
       if (year) p.set("year", String(year))
       if (pageParam) p.set("cursor", pageParam)
       return apiFetch<LawBrowseResult>(`/api/law/browse?${p.toString()}`)
@@ -168,7 +206,7 @@ export interface LawDocument {
     cited_gr_numbers: string[]
     cited_ra_numbers: string[]
   }
-  source: "juris.ph" | "cache"
+  source: "juris.ph" | "cache" | "uk-legal-mcp" | string
   notice: string
 }
 

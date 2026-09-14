@@ -3,6 +3,10 @@ import { AUTH_PATHS, versioned } from "@/lib/api-version"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
 
+/** Absolute API origin, for the few places that need a real URL rather than an `apiFetch` call
+ * — e.g. an <iframe src> the browser loads directly (no Authorization header possible). */
+export const API_BASE_URL = API_URL
+
 // These read or set the refreshToken httpOnly cookie, so they're proxied
 // same-origin via next.config.ts's rewrites() (see that file for why). Without
 // this, the cookie set by a direct cross-origin call to the API would be

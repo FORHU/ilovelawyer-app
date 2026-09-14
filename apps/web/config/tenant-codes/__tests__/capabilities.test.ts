@@ -16,9 +16,9 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     }
   })
 
-  it("UK gates legalSearch as coming-soon (no ingested UK corpus yet)", () => {
-    expect(getStatus("UK", "legalSearch")).toBe("coming-soon")
-    expect(isFeatureEnabled("UK", "legalSearch")).toBe(false)
+  it("UK legalSearch is available (live UK Library via the UK Legal MCP)", () => {
+    expect(getStatus("UK", "legalSearch")).toBe("available")
+    expect(isFeatureEnabled("UK", "legalSearch")).toBe(true)
   })
 
   it("UK citation checking is available (tenant-neutral free-text verification)", () => {

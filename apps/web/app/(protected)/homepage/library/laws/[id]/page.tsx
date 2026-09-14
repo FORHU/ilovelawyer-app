@@ -11,6 +11,9 @@ import {
   type LawDocument,
   useLawDocumentQuery,
 } from "@/lib/law/queries"
+import { getLibraryConfig } from "@/lib/law/library-config"
+import { API_BASE_URL } from "@/lib/fetch"
+import { useAuthStore } from "@/lib/store/auth.store"
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard"
 
 export default function LawDocumentPage() {
@@ -19,6 +22,21 @@ export default function LawDocumentPage() {
       <LawDocumentPageContent />
     </Suspense>
   )
+}
+
+/** Collapses near-duplicate citation strings — citations_network sometimes returns both a
+ * zero-padded and an unpadded form, e.g. "[2026] UKFTT 01281 (GRC)" and "[2026] UKFTT 1281 (GRC)". */
+function dedupeCitations(items: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of items) {
+    const key = raw.toLowerCase().replace(/\s+/g, " ").replace(/\b0+(\d)/g, "$1").trim()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      out.push(raw)
+    }
+  }
+  return out
 }
 
 function LawDocumentPageContent() {
@@ -75,9 +93,18 @@ function LawDocumentPageContent() {
 
 function DocumentBody({ doc }: { doc: LawDocument }) {
   const { t } = useTranslation("library")
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
+  const cfg = getLibraryConfig(tenantCode)
   const { item, detail } = doc
-  const isRa = item.dataset === "republic-acts"
-  const hasPdf = !!item.pdf_url
+  const isRa = cfg.isLegislation(item.dataset)
+  const isUk = tenantCode === "UK"
+  // legislation.gov.uk and the TNA judgment site both send X-Frame-Options: DENY, so their PDFs
+  // can't be iframed directly — UK docs load through our same-origin `/api/law/:id/pdf` proxy.
+  // PH keeps using juris.ph's `pdf_url` (juris.ph allows framing). The proxy 502s (blank frame +
+  // "open in a new tab" link) if the upstream is unreachable.
+  const pdfSrc = isUk ? `${API_BASE_URL}/api/law/${item.stored_id}/pdf` : item.pdf_url
+  const pdfSourceLink = item.pdf_url || item.source_url || item.juris_url
+  const hasPdf = isUk || !!item.pdf_url
 
   const sections = isRa ? (
     <>
@@ -134,12 +161,15 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
       />
       <ListBlock
         label={t("lawDoc.relatedCases")}
-        items={detail.related_cases_cited}
+        items={dedupeCitations(detail.related_cases_cited)}
       />
-      <ListBlock
-        label={t("lawDoc.citedNumbers")}
-        items={[...detail.cited_gr_numbers, ...detail.cited_ra_numbers]}
-      />
+      {/* PH only — for UK these are the same citations as "Related cases cited" above. */}
+      {!isUk && (
+        <ListBlock
+          label={t("lawDoc.citedNumbers")}
+          items={[...detail.cited_gr_numbers, ...detail.cited_ra_numbers]}
+        />
+      )}
     </>
   )
 
@@ -176,7 +206,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
 
         {item.ponente && (
           <p className="text-xs text-muted-foreground">
-            Ponente: {item.ponente}
+            {t(cfg.leadActorLabelKey)}: {item.ponente}
           </p>
         )}
         {detail.date_enacted && (
@@ -232,7 +262,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
                 {t("lawDoc.document")}
               </h2>
               <div className="min-h-0 flex-1">
-                <LawPdfViewer url={item.pdf_url!} />
+                <LawPdfViewer url={pdfSrc!} sourceUrl={pdfSourceLink} />
               </div>
             </section>
           </div>
