@@ -48,7 +48,11 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     uploadDocuments({ files, caseId, category })
   }
 
-  const { isDragOver, dragHandlers } = useFileDrop((files) => upload(files, view.kind === "folder" ? view.name : undefined))
+  // Root-level (and empty-state) drops have no open folder to target, so the payload goes to the
+  // case's root directory (category undefined); an open folder targets itself unless the drop
+  // resolves to a more specific folder card via `data-drop-target` (see useFileDrop).
+  const defaultDropTarget = view.kind === "folder" ? view.name : undefined
+  const { isDragOver, hoverTarget, dragHandlers } = useFileDrop(upload, defaultDropTarget)
 
   const openPreview = (doc: UserDocument) =>
     setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })
@@ -113,68 +117,6 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
       : "grid grid-cols-2 gap-2 overflow-y-auto max-h-64"
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>
-      </div>
-    )
-  }
-
-  // Checked after isLoading, and only when there's no cached data at all — while a document is
-  // indexing, this query polls every few seconds (refetchWhileIndexing), and a single transient
-  // poll failure otherwise flips isError true even though `documents` still holds the last good
-  // result. Blanking the whole folder view on every such blip made files intermittently "vanish"
-  // during indexing despite nothing actually changing server-side.
-  if (isError && !documents) {
-    return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>
-      </div>
-    )
-  }
-
-  if (view.kind === "folder") {
-    const folderDocs = (documents ?? []).filter((doc) => (doc.category?.trim() || null) === view.name)
-    return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <div
-          {...dragHandlers}
-          className={`relative rounded-xl border transition-colors ${
-            isDragOver ? "border-primary border-dashed bg-primary/5" : "border-transparent"
-          }`}
-        >
-          {folderDocs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-8 text-center">
-              <span className="text-sm text-muted-foreground">{t("detail.dropToUpload")}</span>
-            </div>
-          ) : (
-            <div className={gridClass}>
-              {folderDocs.map((doc) => (
-                <DocumentFileCard
-                  key={doc.id}
-                  doc={doc}
-                  onPreview={() => openPreview(doc)}
-                  onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
-                  isDeleting={isDeleting && deletingVars?.documentId === doc.id}
-                />
-              ))}
-            </div>
-          )}
-          {isDragOver && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-card/90">
-              <span className="text-sm font-semibold text-primary">{t("detail.dropToUpload")}</span>
-            </div>
-          )}
-        </div>
-        {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
-      </div>
-    )
-  }
-
   const newFolderCard = (
     <NewFolderCard
       naming={namingFolder}
@@ -195,33 +137,59 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     />
   )
 
-  if (!documents || documents.length === 0) {
-    return (
-      <div className="flex flex-col gap-3">
-        {header}
-        <p className="text-sm text-muted-foreground">{t("detail.noDocuments")}</p>
+  let body: React.ReactNode
+  if (isLoading) {
+    body = <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>
+  } else if (isError && !documents) {
+    // Checked after isLoading, and only when there's no cached data at all — while a document is
+    // indexing, this query polls every few seconds (refetchWhileIndexing), and a single transient
+    // poll failure otherwise flips isError true even though `documents` still holds the last good
+    // result. Blanking the whole folder view on every such blip made files intermittently "vanish"
+    // during indexing despite nothing actually changing server-side.
+    body = <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>
+  } else if (view.kind === "folder") {
+    const folderDocs = (documents ?? []).filter((doc) => (doc.category?.trim() || null) === view.name)
+    body =
+      folderDocs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-8 text-center">
+          <span className="text-sm text-muted-foreground">{t("detail.dropToUpload")}</span>
+        </div>
+      ) : (
+        <div className={gridClass}>
+          {folderDocs.map((doc) => (
+            <DocumentFileCard
+              key={doc.id}
+              doc={doc}
+              onPreview={() => openPreview(doc)}
+              onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
+              isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+            />
+          ))}
+        </div>
+      )
+  } else if (!documents || documents.length === 0) {
+    body = (
+      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center">
+        <span className="text-sm text-muted-foreground">{t("detail.noDocuments")}</span>
         {newFolderCard}
       </div>
     )
-  }
-
-  const folders = new Map<string, UserDocument[]>()
-  const looseFiles: UserDocument[] = []
-  for (const doc of documents) {
-    const category = doc.category?.trim()
-    if (category) {
-      const bucket = folders.get(category)
-      if (bucket) bucket.push(doc)
-      else folders.set(category, [doc])
-    } else {
-      looseFiles.push(doc)
+  } else {
+    const folders = new Map<string, UserDocument[]>()
+    const looseFiles: UserDocument[] = []
+    for (const doc of documents) {
+      const category = doc.category?.trim()
+      if (category) {
+        const bucket = folders.get(category)
+        if (bucket) bucket.push(doc)
+        else folders.set(category, [doc])
+      } else {
+        looseFiles.push(doc)
+      }
     }
-  }
-  const sortedFolders = [...folders.entries()].sort(([a], [b]) => a.localeCompare(b))
+    const sortedFolders = [...folders.entries()].sort(([a], [b]) => a.localeCompare(b))
 
-  return (
-    <div className="flex flex-col gap-3">
-      {header}
+    body = (
       <div className={gridClass}>
         {sortedFolders.map(([name, docs]) => (
           <DocumentFolderCard
@@ -229,7 +197,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             name={name}
             count={docs.length}
             onOpen={() => setView({ kind: "folder", name })}
-            onDropFiles={(files) => upload(files, name)}
+            isDragOver={hoverTarget === name}
           />
         ))}
         {looseFiles.map((doc) => (
@@ -242,6 +210,30 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
           />
         ))}
         {newFolderCard}
+      </div>
+    )
+  }
+
+  // Drag listeners live on this single top-level wrapper so the whole Documents view — root grid,
+  // empty state, and an open folder alike — is one drop target; useFileDrop resolves the actual
+  // destination per-drop (a specific folder card vs. this view's `defaultDropTarget`). The
+  // dashed-border wash covers the whole area, but the big centered "drop to upload" overlay only
+  // shows when no specific folder card is being targeted, so it doesn't cover that card's own
+  // highlighted state.
+  return (
+    <div className="flex flex-col gap-3" {...dragHandlers}>
+      {header}
+      <div
+        className={`relative rounded-xl border transition-colors ${
+          isDragOver ? "border-primary border-dashed bg-primary/5" : "border-transparent"
+        }`}
+      >
+        {body}
+        {isDragOver && !hoverTarget && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-card/90">
+            <span className="text-sm font-semibold text-primary">{t("detail.dropToUpload")}</span>
+          </div>
+        )}
       </div>
       {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
     </div>
