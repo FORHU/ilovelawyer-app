@@ -40,6 +40,7 @@
     "createCase": "Create a case",
     "openCase": "Open case",
     "relatedCases": "Related Cases",
+    "reasoning": "How I got this",
     "loadingCase": "Loading…",
     "relatedEmpty": "No related cases found yet.",
     "loadingRelated": "Loading related cases…",
