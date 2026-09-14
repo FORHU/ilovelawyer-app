@@ -2,30 +2,29 @@
 
 import { Folder } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { useFileDrop } from "@/hooks/use-file-drop"
 
-/** A category folder in the document grid — dragging files onto it (or clicking it open) uploads
- * straight into this category, bypassing the AI auto-categorization step (see
- * useUploadCaseDocumentsMutation's `category` param). */
+/** A category folder in the document grid. Its own drag-and-drop is not handled here — the
+ * enclosing `DocumentFolderBrowser` container owns a single set of drag listeners for the whole
+ * grid and resolves the actual drop target itself; this card only marks itself as a resolvable
+ * target via `data-drop-target` and renders whatever `isDragOver` the container computed for it. */
 export function DocumentFolderCard({
   name,
   count,
   onOpen,
-  onDropFiles,
+  isDragOver,
 }: {
   name: string
   count: number
   onOpen: () => void
-  onDropFiles: (files: File[]) => void
+  isDragOver: boolean
 }) {
   const { t } = useTranslation("case-portfolio")
-  const { isDragOver, dragHandlers } = useFileDrop(onDropFiles)
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      {...dragHandlers}
+      data-drop-target={name}
       className={`group relative flex flex-col items-start gap-2 rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
         isDragOver ? "border-primary border-dashed bg-primary/5" : "border-border"
       }`}
