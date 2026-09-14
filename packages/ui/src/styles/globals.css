@@ -183,27 +183,18 @@
 
 /* Legal Terminal — docs/adr/0013-legal-terminal-redesign.md */
 
-/* Subtle background texture for the terminal canvas, always on. `opacity` on the
-   grid-line pattern must live on a ::before, not on .terminal-grid-texture itself —
-   that class is applied to #terminal-grid, which every Pane mounts into as a real DOM
-   child, and CSS opacity composites an element's entire subtree, not just its own
-   background. Putting it on the element directly was dimming every Pane's content
+/* Background grid for the terminal canvas, matching the 24-column/row snap increments that
+   drag/resize always snaps to (not just cosmetic — see clampResize/onHeaderPointerMove in
+   legal-terminal.tsx). `opacity` on the grid-line pattern must live on a ::before, not on
+   .terminal-grid-texture itself — that class is applied to #terminal-grid, which every Pane
+   mounts into as a real DOM child, and CSS opacity composites an element's entire subtree, not
+   just its own background. Putting it on the element directly was dimming every Pane's content
    (text, buttons, everything) along with the decorative grid lines. */
 .terminal-grid-texture::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(to right, var(--border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.35;
-}
-
-/* Denser overlay shown only while Grid Snapping is on, so the snap increments
-   are visible while dragging/resizing. */
-.terminal-grid-texture[data-grid-snapping="on"]::before {
   background-image:
     linear-gradient(to right, var(--sidebar-accent) 1px, transparent 1px),
     linear-gradient(to bottom, var(--sidebar-accent) 1px, transparent 1px);

@@ -5,7 +5,6 @@ import { getStoredTerminalDisplayPrefs, useTerminalDisplayStore } from "@/lib/st
 
 export function TerminalDisplayProvider({ children }: { children: React.ReactNode }) {
   const setHighDensity = useTerminalDisplayStore((state) => state.setHighDensity)
-  const setGridSnapping = useTerminalDisplayStore((state) => state.setGridSnapping)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
 
   // Reconciles against the persisted Display Preferences once, client-only, after
@@ -16,7 +15,6 @@ export function TerminalDisplayProvider({ children }: { children: React.ReactNod
     const stored = getStoredTerminalDisplayPrefs()
     if (!stored) return
     setHighDensity(stored.highDensity)
-    setGridSnapping(stored.gridSnapping)
     setPanelLabels(stored.panelLabels)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
