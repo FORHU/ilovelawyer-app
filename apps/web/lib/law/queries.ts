@@ -130,25 +130,26 @@ export function useLawBrowseInfiniteQuery(params: {
   category: LawCategoryParam
   caseType?: LawCaseType
   topics: LawTopic[]
-  court?: UkCourt
+  courts: UkCourt[]
   year?: number
   enabled: boolean
 }) {
-  const { category, caseType, topics, court, year, enabled } = params
+  const { category, caseType, topics, courts, year, enabled } = params
   const sortedTopics = [...topics].sort()
+  const sortedCourts = [...courts].sort()
 
   return useInfiniteQuery({
     queryKey: [
       "law",
       "browse",
-      { category, caseType, topics: sortedTopics, court, year },
+      { category, caseType, topics: sortedTopics, courts: sortedCourts, year },
     ],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const p = new URLSearchParams({ category })
       if (caseType) p.set("caseType", caseType)
       if (sortedTopics.length) p.set("topics", sortedTopics.join(","))
-      if (court) p.set("court", court)
+      if (sortedCourts.length) p.set("court", sortedCourts.join(","))
       if (year) p.set("year", String(year))
       if (pageParam) p.set("cursor", pageParam)
       return apiFetch<LawBrowseResult>(`/api/law/browse?${p.toString()}`)
