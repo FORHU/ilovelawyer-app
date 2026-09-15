@@ -91,32 +91,23 @@
     "heading": "하나의 워크스페이스, 원하는 대로 배치하세요",
     "body": "리걸 터미널은 스스로 배치하는 소송 조종석입니다. 하나, 둘, 넷, 여섯 개의 패널 중 원하는 구성으로 시작한 뒤, 나만의 레이아웃을 저장하고 어떤 기기에서든 불러오세요.",
     "cta": "터미널 열기",
+    "comingSoon": "출시 예정",
     "panels": {
       "chat": {
         "title": "AI Legal Assistant",
-        "subtitle": "한 번 질문하면, 출처가 표시된 답변이 스트리밍됩니다",
-        "question": "제 의뢰인의 해고가 무효라고 주장할 수 있을까요?",
-        "answer": "네 — 이중 통지 원칙상 해고 전 두 건의 서면 통지가 필요한데, 이 파일에는 한 건만 있습니다.",
-        "question_UK": "제 의뢰인이 유언장에서 제외된 것에 이의를 제기할 수 있을까요?",
-        "answer_UK": "1975년 상속법에 따라 제외된 부양가족은 합리적인 재정적 지원을 청구할 수 있습니다."
+        "subtitle": "한 번 질문하면, 출처가 표시된 답변이 스트리밍됩니다"
       },
       "redTeam": {
         "title": "레드팀 분석",
-        "subtitle": "상대측이 제기할 주장",
-        "lines": ["위협 평가", "무단 결근. 시점. 증인 노출."],
-        "lines_UK": ["Threat assessment", "Undue influence. Capacity. Disclosure gaps."]
+        "subtitle": "상대측이 제기할 주장"
       },
       "audioOverview": {
         "title": "오디오 요약",
-        "subtitle": "두 명의 AI 진행자가 사건을 논의합니다",
-        "lines": ["두 명의 AI 진행자가 사건을 논의합니다", "1:24 / 3:41"]
+        "subtitle": "두 명의 AI 진행자가 사건을 논의합니다"
       },
       "caseReconstruction": {
         "title": "사건 재구성",
-        "subtitle": "의뢰인, 법원, 상대측의 서사",
-        "lines": ["의뢰인, 법원, 상대측의 서사", "일반 · 법원용 · 상대측 관점"],
-        "narrativeSnippet": "3월 14일 — 청문 없이 즉시 효력이 발생한 메모로 해고됨.",
-        "narrativeSnippet_UK": "3월 14일 — 유언장에서 청구인이 완전히 제외됨."
+        "subtitle": "의뢰인, 법원, 상대측의 서사"
       }
     }
   },

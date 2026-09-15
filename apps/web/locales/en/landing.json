@@ -91,32 +91,23 @@
     "heading": "One workspace, arranged your way",
     "body": "The Legal Terminal is a litigation cockpit you arrange yourself. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
     "cta": "Open the Terminal",
+    "comingSoon": "Coming Soon",
     "panels": {
       "chat": {
         "title": "AI Legal Assistant",
-        "subtitle": "Ask once, cited answers stream in",
-        "question": "Can I argue my client's dismissal was invalid?",
-        "answer": "Yes — the twin-notice rule requires two written notices before dismissal; this file only shows one.",
-        "question_UK": "Can my client contest her exclusion from the will?",
-        "answer_UK": "Under the Inheritance Act 1975, an excluded dependant may claim reasonable financial provision."
+        "subtitle": "Ask once, cited answers stream in"
       },
       "redTeam": {
         "title": "Red Team",
-        "subtitle": "The argument the other side will make",
-        "lines": ["Threat assessment", "Abandonment. Timing. Witness exposure."],
-        "lines_UK": ["Threat assessment", "Undue influence. Capacity. Disclosure gaps."]
+        "subtitle": "The argument the other side will make"
       },
       "audioOverview": {
         "title": "Audio Overview",
-        "subtitle": "Two AI hosts discuss the case",
-        "lines": ["Two AI hosts discuss the case", "1:24 / 3:41"]
+        "subtitle": "Two AI hosts discuss the case"
       },
       "caseReconstruction": {
         "title": "Case Reconstruction",
-        "subtitle": "Client, court, and opposing narratives",
-        "lines": ["Client, court, opposing narratives", "General · For the Court · From the Other Side"],
-        "narrativeSnippet": "March 14 — terminated by memo, effective immediately, no hearing held.",
-        "narrativeSnippet_UK": "14 March — the will excludes the claimant from the estate entirely."
+        "subtitle": "Client, court, and opposing narratives"
       }
     }
   },

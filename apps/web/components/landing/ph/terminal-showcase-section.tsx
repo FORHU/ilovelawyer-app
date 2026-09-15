@@ -14,14 +14,8 @@ const ACCENTS: Record<PanelKey, string> = {
   caseReconstruction: "from-brand-gold/25",
 };
 
-const RECONSTRUCTION_TABS = ["Narrative", "Scenes", "Storyboard"] as const;
-const WAVEFORM_HEIGHTS = [30, 55, 80, 45, 100, 65, 40, 90, 50, 70, 35, 60];
-
-type RelatedCase = { title: string; citation: string; vetted: boolean };
-
 export function TerminalShowcaseSection() {
   const { t } = useTranslation("landing");
-  const topCitation = (t("consultation.relatedCasesItems", { returnObjects: true }) as RelatedCase[])[0];
 
   return (
     <section id="control" className="relative w-full bg-background py-24 px-6 md:px-16">
@@ -45,11 +39,6 @@ export function TerminalShowcaseSection() {
 
       <div className="max-w-360 mx-auto flex flex-col lg:flex-row gap-4 items-stretch">
         {PANEL_KEYS.map((key) => {
-          const lines =
-            key === "redTeam" || key === "audioOverview" || key === "caseReconstruction"
-              ? (t(`terminal.panels.${key}.lines`, { returnObjects: true }) as [string, string])
-              : undefined;
-
           return (
             <Tooltip key={key}>
               <TooltipTrigger asChild>
@@ -69,98 +58,10 @@ export function TerminalShowcaseSection() {
                       <div className="h-7 shrink-0 bg-brand-navy-950 flex items-center gap-2 px-3">
                         <span className="font-['Libre_Caslon_Text'] text-white text-[11px]">ilovelawyer</span>
                       </div>
-                      <div className="flex-1 min-h-0 flex flex-col p-3">
-                        {key === "chat" && (
-                          <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5">
-                            <p className="self-end max-w-[85%] rounded-lg rounded-br-sm bg-white/15 text-white text-[11px] px-2.5 py-1.5 leading-snug">
-                              {t("terminal.panels.chat.question")}
-                            </p>
-                            <p className="self-start max-w-[92%] rounded-lg rounded-bl-sm bg-white/[0.06] text-white/80 text-[11px] px-2.5 py-1.5 leading-snug">
-                              {t("terminal.panels.chat.answer")}
-                            </p>
-                            {topCitation && (
-                              <div className="self-start flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[10px] text-white/70">
-                                {topCitation.vetted && <span className="text-emerald-300">✓</span>}
-                                <span className="truncate max-w-[140px]">{topCitation.title}</span>
-                                <span className="text-white/40">·</span>
-                                <span>{topCitation.citation}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {key === "redTeam" && lines && (
-                          <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5">
-                            <span className="text-[10px] uppercase tracking-wide text-red-300/90 font-semibold">
-                              {lines[0]}
-                            </span>
-                            {lines[1]
-                              .split(". ")
-                              .map((clause) => clause.replace(/\.$/, "").trim())
-                              .filter(Boolean)
-                              .map((clause) => (
-                                <div key={clause} className="flex items-start gap-2 border-l-2 border-red-400/70 pl-2.5">
-                                  <span className="text-[11px] text-white/80 leading-snug">{clause}</span>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-
-                        {key === "audioOverview" && lines && (
-                          <div className="flex-1 min-h-0 flex flex-col justify-center gap-2">
-                            <span className="text-[11px] text-white/70 leading-snug">{lines[0]}</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="flex items-center gap-1 text-[9px] pl-0.5 pr-1.5 py-0.5 rounded-full bg-teal-400/20 text-teal-200">
-                                <span className="size-3.5 rounded-full bg-teal-400/40 flex items-center justify-center text-[8px]">
-                                  A
-                                </span>
-                                Host A
-                              </span>
-                              <span className="flex items-center gap-1 text-[9px] pl-0.5 pr-1.5 py-0.5 rounded-full bg-teal-400/20 text-teal-200">
-                                <span className="size-3.5 rounded-full bg-teal-400/40 flex items-center justify-center text-[8px]">
-                                  B
-                                </span>
-                                Host B
-                              </span>
-                            </div>
-                            <div className="flex items-end gap-[3px] h-6">
-                              {WAVEFORM_HEIGHTS.map((h, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-[3px] rounded-full ${i < 4 ? "bg-teal-300" : "bg-white/20"}`}
-                                  style={{ height: `${h}%` }}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-[10px] text-white/60 tabular-nums">{lines[1]}</span>
-                          </div>
-                        )}
-
-                        {key === "caseReconstruction" && lines && (
-                          <div className="flex-1 min-h-0 flex flex-col gap-3">
-                            <div className="flex gap-1">
-                              {RECONSTRUCTION_TABS.map((tab) => (
-                                <span
-                                  key={tab}
-                                  className={`text-[9px] px-2 py-1 rounded-full ${
-                                    tab === "Storyboard" ? "bg-brand-gold/90 text-brand-navy-950" : "bg-white/10 text-white/60"
-                                  }`}
-                                >
-                                  {tab}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex gap-1.5">
-                              {[0, 1, 2].map((i) => (
-                                <div key={i} className="h-14 flex-1 rounded-md bg-gradient-to-br from-white/15 to-white/5" />
-                              ))}
-                            </div>
-                            <p className="text-[11px] text-white/80 italic leading-snug">
-                              {t("terminal.panels.caseReconstruction.narrativeSnippet")}
-                            </p>
-                            <span className="text-[10px] text-white/60 leading-snug mt-auto">{lines[1]}</span>
-                          </div>
-                        )}
+                      <div className="flex-1 min-h-0 flex items-center justify-center p-3">
+                        <span className="text-[11px] uppercase tracking-[1.5px] text-white/50 font-semibold">
+                          {t("terminal.comingSoon")}
+                        </span>
                       </div>
                     </div>
                   </div>
