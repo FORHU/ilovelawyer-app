@@ -37,12 +37,13 @@
   },
   "capabilities": {
     "heading": "Bawat feature na dala ng ilovelawyer",
-    "subheading": "Walang mockup, walang roadmap item. Labinwalong kakayahan na live sa produkto ngayon.",
+    "subheading": "Walang mockup, walang roadmap item. Labing-anim na kakayahan na live sa produkto ngayon.",
     "explorePlatform": "Galugarin ang Platform",
+    "exploreTooltip": "Mag-sign up para tuklasin ang platform",
+    "tileTooltip": "Buksan ito sa produkto",
     "items": [
       "Account at pag-sign in",
       "Mga law firm at team",
-      "Dalawang jurisdiction",
       "AI legal consultation",
       "Mga case file",
       "Case Workspace",
@@ -56,8 +57,7 @@
       "Red Team",
       "Audio Overview",
       "Pagsuri ng citation",
-      "Pagsuri ng kontradiksyon",
-      "3 wika"
+      "Pagsuri ng kontradiksyon"
     ]
   },
   "quotes": {
@@ -91,28 +91,23 @@
     "heading": "Isang workspace, ayon sa gusto mo",
     "body": "Ang Legal Terminal ay isang litigation cockpit na inaayos mo mismo. Magsimula sa isa, dalawa, apat, o anim na pane, pagkatapos ay i-save ang sarili mong layout at buksan ito sa kahit anong device.",
     "cta": "Buksan ang Terminal",
+    "comingSoon": "Paparating Na",
     "panels": {
-      "caseWorkspace": {
-        "title": "Case Workspace",
-        "subtitle": "Sources, Studio, Chat, sa iisang screen",
-        "lines": ["Sources · Studio · Chat", "Iligal na pagtanggal — mga remedyo"],
-        "lines_UK": ["Sources · Studio · Chat", "Contested trust variation — remedies"]
+      "chat": {
+        "title": "AI Legal Assistant",
+        "subtitle": "Magtanong nang isang beses, may sitas ang sagot"
       },
       "redTeam": {
         "title": "Red Team",
-        "subtitle": "Ang argumento na gagamitin ng kabilang panig",
-        "lines": ["Pagtataya ng banta", "Pag-abandona. Timing. Pagkakalantad ng testigo."],
-        "lines_UK": ["Threat assessment", "Undue influence. Capacity. Disclosure gaps."]
+        "subtitle": "Ang argumento na gagamitin ng kabilang panig"
       },
       "audioOverview": {
         "title": "Audio Overview",
-        "subtitle": "Dalawang AI host ang tatalakay sa kaso",
-        "lines": ["Dalawang AI host ang tatalakay sa kaso", "1:24 / 3:41"]
+        "subtitle": "Dalawang AI host ang tatalakay sa kaso"
       },
       "caseReconstruction": {
         "title": "Case Reconstruction",
-        "subtitle": "Salaysay ng kliyente, korte, at kabilang panig",
-        "lines": ["Salaysay ng kliyente, korte, at kabilang panig", "Pangkalahatan · Para sa Korte · Mula sa Kabilang Panig"]
+        "subtitle": "Salaysay ng kliyente, korte, at kabilang panig"
       }
     }
   },
@@ -132,9 +127,11 @@
       { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
     ],
     "vetted": "Beripikado",
-    "indexing": "Ina-index para sa chat...",
-    "mockFilename": "termination-letter.pdf",
-    "mockFilename_UK": "family-trust-deed.pdf"
+    "question": "Puwede ko bang argumentuhan na hindi wasto ang pagtanggal sa aking kliyente dahil walang unang nakasulat na abiso?",
+    "answer": "Oo. Sa ilalim ng twin-notice rule, kailangang magbigay ang employer ng dalawang nakasulat na abiso bago ang pagtanggal. Kinumpirma ng *Agabon v. NLRC* na ang pagkaligtaan ng unang abiso ay sapat na para sa illegal dismissal, kahit may just cause.",
+    "question_UK": "Puwede bang hamunin ng aking kliyente ang pagkakatanggal niya sa testamento ng kanyang ama?",
+    "answer_UK": "Oo. Sa ilalim ng Inheritance Act 1975, maaaring humingi ng makatwirang tustos-pananalapi ang isang umaasang hindi isinama sa testamento. Itinakda ng *Ilott v The Blue Cross* ang pangunahing pagsusulit na gagamitin dito ng korte.",
+    "composerPlaceholder": "Magtanong pa..."
   },
   "firms": {
     "heading": "Ginawa ayon sa aktwal na paraan ng paggawa ng mga law firm",

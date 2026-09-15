@@ -14,6 +14,7 @@ import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup } from "./workspace-setup";
 
 import {
+  sanitizeNextPath,
   useForgotPasswordMutation,
   useGoogleAuthMutation,
   useLoginMutation,
@@ -291,7 +292,7 @@ function UnifiedAuthContent() {
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
           {workspaceStep ? (
-            <WorkspaceSetup defaultOrgName={name} onDone={() => router.push("/homepage")} />
+            <WorkspaceSetup defaultOrgName={name} onDone={() => router.push(sanitizeNextPath(searchParams.get("next")))} />
           ) : otpStep ? (
             <>
               <div className="flex flex-col gap-1">

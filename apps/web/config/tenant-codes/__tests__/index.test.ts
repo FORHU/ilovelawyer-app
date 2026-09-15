@@ -32,7 +32,7 @@ describe("getTenantCodeConfig", () => {
   it("PH and UK landing assets resolve to valid /landing paths", () => {
     const ph = getTenantCodeConfig("PH")
     const uk = getTenantCodeConfig("UK")
-    expect(uk.landingAssets.heroSlides.every((p) => p.startsWith("/landing/uk/"))).toBe(true)
+    expect(uk.landingAssets.heroVideos.every((p) => p.startsWith("/landing/videos/"))).toBe(true)
     // PH temporarily reuses UK's photography until real PH photos are sourced (see ph.ts TODO).
     expect(ph.landingAssets.firmWorkspace).toBe(uk.landingAssets.firmWorkspace)
   })
