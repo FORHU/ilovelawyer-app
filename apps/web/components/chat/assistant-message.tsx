@@ -165,6 +165,13 @@ function convertHtmlAnchors(content: string): string {
   return content.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
 }
 
+// Same cleanup the component applies before handing text to ReactMarkdown — exported so
+// callers that need the plain text of a reply (e.g. a "copy response" action) copy what the
+// user actually sees rather than raw trace/related-queries markup.
+export function cleanAssistantContent(content: string): string {
+  return convertHtmlAnchors(stripRelatedQueries(stripTraceBlocks(content)));
+}
+
 // Memoized: this re-parses `content` through ReactMarkdown on every render, which is real
 // CPU cost for a long reply. Without memo, typing in the chat input (a sibling state update
 // in the same parent, ConsultationChat) re-rendered every message bubble in the transcript on
@@ -186,7 +193,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
   decisions?: DecisionRecordPayload[];
   onOpenDecision?: (decision: DecisionRecordPayload) => void;
 }) {
-  const cleaned = convertHtmlAnchors(stripRelatedQueries(stripTraceBlocks(content)));
+  const cleaned = cleanAssistantContent(content);
   const components = React.useMemo(
     () => buildComponents(decisions, onOpenDecision ?? (() => {})),
     [decisions, onOpenDecision],
