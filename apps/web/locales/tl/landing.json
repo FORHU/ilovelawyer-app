@@ -92,11 +92,13 @@
     "body": "Ang Legal Terminal ay isang litigation cockpit na inaayos mo mismo. Magsimula sa isa, dalawa, apat, o anim na pane, pagkatapos ay i-save ang sarili mong layout at buksan ito sa kahit anong device.",
     "cta": "Buksan ang Terminal",
     "panels": {
-      "caseWorkspace": {
-        "title": "Case Workspace",
-        "subtitle": "Sources, Studio, Chat, sa iisang screen",
-        "lines": ["Sources · Studio · Chat", "Iligal na pagtanggal — mga remedyo"],
-        "lines_UK": ["Sources · Studio · Chat", "Contested trust variation — remedies"]
+      "chat": {
+        "title": "AI Legal Assistant",
+        "subtitle": "Magtanong nang isang beses, may sitas ang sagot",
+        "question": "Puwede ko bang argumentuhan na hindi wasto ang pagtanggal sa aking kliyente?",
+        "answer": "Oo — kailangan ng twin-notice rule ng dalawang nakasulat na abiso bago ang pagtanggal; isa lang ang makikita sa file na ito.",
+        "question_UK": "Puwede bang kontestahin ng aking kliyente ang pagkakatanggal niya sa testamento?",
+        "answer_UK": "Sa ilalim ng Inheritance Act 1975, maaaring humingi ng makatwirang tustos-pananalapi ang isang umaasang hindi isinama."
       },
       "redTeam": {
         "title": "Red Team",
@@ -112,7 +114,9 @@
       "caseReconstruction": {
         "title": "Case Reconstruction",
         "subtitle": "Salaysay ng kliyente, korte, at kabilang panig",
-        "lines": ["Salaysay ng kliyente, korte, at kabilang panig", "Pangkalahatan · Para sa Korte · Mula sa Kabilang Panig"]
+        "lines": ["Salaysay ng kliyente, korte, at kabilang panig", "Pangkalahatan · Para sa Korte · Mula sa Kabilang Panig"],
+        "narrativeSnippet": "Marso 14 — tinanggal sa pamamagitan ng memo, epektibo kaagad, walang hearing na ginanap.",
+        "narrativeSnippet_UK": "14 Marso — buo siyang hindi isinama sa testamento."
       }
     }
   },

@@ -92,11 +92,13 @@
     "body": "The Legal Terminal is a litigation cockpit you arrange yourself. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
     "cta": "Open the Terminal",
     "panels": {
-      "caseWorkspace": {
-        "title": "Case Workspace",
-        "subtitle": "Sources, Studio, Chat, one screen",
-        "lines": ["Sources · Studio · Chat", "Illegal dismissal — remedies"],
-        "lines_UK": ["Sources · Studio · Chat", "Contested trust variation — remedies"]
+      "chat": {
+        "title": "AI Legal Assistant",
+        "subtitle": "Ask once, cited answers stream in",
+        "question": "Can I argue my client's dismissal was invalid?",
+        "answer": "Yes — the twin-notice rule requires two written notices before dismissal; this file only shows one.",
+        "question_UK": "Can my client contest her exclusion from the will?",
+        "answer_UK": "Under the Inheritance Act 1975, an excluded dependant may claim reasonable financial provision."
       },
       "redTeam": {
         "title": "Red Team",
@@ -112,7 +114,9 @@
       "caseReconstruction": {
         "title": "Case Reconstruction",
         "subtitle": "Client, court, and opposing narratives",
-        "lines": ["Client, court, opposing narratives", "General · For the Court · From the Other Side"]
+        "lines": ["Client, court, opposing narratives", "General · For the Court · From the Other Side"],
+        "narrativeSnippet": "March 14 — terminated by memo, effective immediately, no hearing held.",
+        "narrativeSnippet_UK": "14 March — the will excludes the claimant from the estate entirely."
       }
     }
   },

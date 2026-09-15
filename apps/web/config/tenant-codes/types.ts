@@ -46,12 +46,6 @@ export interface TenantCodeConfig {
   landingAssets: {
     heroVideos: [string, string, string]
     firmWorkspace: string
-    terminalPanels: {
-      caseWorkspace: string
-      redTeam: string
-      audioOverview: string
-      caseReconstruction: string
-    }
   }
   ui: {
     tenantCodeLabel: string
