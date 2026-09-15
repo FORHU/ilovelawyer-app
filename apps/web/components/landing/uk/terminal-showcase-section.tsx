@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
+
+const TERMINAL_ROUTE = "/homepage/terminal";
+const loginHref = `/login?next=${encodeURIComponent(TERMINAL_ROUTE)}`;
 
 const PANEL_KEYS = ["chat", "redTeam", "audioOverview", "caseReconstruction"] as const;
 type PanelKey = (typeof PANEL_KEYS)[number];
@@ -16,6 +21,21 @@ const ACCENTS: Record<PanelKey, string> = {
 
 export function UkTerminalShowcaseSection() {
   const { t } = useTranslation("landing");
+  const router = useRouter();
+
+  const handleCtaClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (hasSessionHint()) {
+      try {
+        await refreshAccessToken();
+        router.push(TERMINAL_ROUTE);
+        return;
+      } catch {
+        // fall through — hint was stale, visitor isn't actually logged in
+      }
+    }
+    router.push(loginHref);
+  };
 
   return (
     <section id="control" className="relative w-full bg-background py-24 px-6 md:px-16">
@@ -27,13 +47,14 @@ export function UkTerminalShowcaseSection() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              href="/signup"
+              href={loginHref}
+              onClick={(e) => void handleCtaClick(e)}
               className="text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-foreground text-background hover:opacity-85 transition-opacity duration-200"
             >
               {t("terminal.cta")}
             </Link>
           </TooltipTrigger>
-          <TooltipContent>Sign up to open the Legal Terminal</TooltipContent>
+          <TooltipContent>{t("capabilities.tileTooltip")}</TooltipContent>
         </Tooltip>
       </div>
 

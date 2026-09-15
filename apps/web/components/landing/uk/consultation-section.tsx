@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Grid2x2, Mic, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
+import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import AssistantMessage from "@/components/chat/assistant-message";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import type { RelatedCase } from "@/lib/chat/mutations";
 
 // UK-only design — see uk/hero-section.tsx for why the context is hardcoded.
 const tCtx = { context: "UK" };
+
+const CONSULTATION_ROUTE = "/homepage";
+const loginHref = `/login?next=${encodeURIComponent(CONSULTATION_ROUTE)}`;
 
 interface MockCitation {
   title: string;
@@ -34,6 +39,21 @@ export function UkConsultationSection() {
     vetted: c.vetted,
   }));
   const [ref, y] = useScrollDrift([-16, 16]);
+  const router = useRouter();
+
+  const handleCtaClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (hasSessionHint()) {
+      try {
+        await refreshAccessToken();
+        router.push(CONSULTATION_ROUTE);
+        return;
+      } catch {
+        // fall through — hint was stale, visitor isn't actually logged in
+      }
+    }
+    router.push(loginHref);
+  };
 
   return (
     <section className="bg-background py-24 px-6 md:px-16">
@@ -46,13 +66,14 @@ export function UkConsultationSection() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                href="/signup"
+                href={loginHref}
+                onClick={(e) => void handleCtaClick(e)}
                 className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-brand-gold text-brand-navy-950 hover:bg-brand-gold/85 transition-colors duration-200"
               >
                 {t("consultation.cta")}
               </Link>
             </TooltipTrigger>
-            <TooltipContent>Sign up to start an AI-assisted consultation</TooltipContent>
+            <TooltipContent>{t("capabilities.tileTooltip")}</TooltipContent>
           </Tooltip>
         </div>
 
