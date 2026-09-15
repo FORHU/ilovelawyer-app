@@ -907,3 +907,20 @@ export function useReactivateDecisionMutation(caseId: string) {
     },
   })
 }
+
+export type CaseBriefFormat = "docx" | "pdf"
+
+export interface CaseBriefExportResult {
+  file: { id: string; fileUrl: string }
+}
+
+// Generates the Case Brief fresh from the live snapshot on every call — not cached, since the
+// export is meant to reflect the case as it stands right now. Called with format=pdf for the
+// CaseBriefPreviewModal's inline preview, and separately with format=docx/pdf for the modal's
+// two download actions (see CaseBriefExportSvc on the backend).
+export function useExportCaseBriefMutation(caseId: string) {
+  return useMutation({
+    mutationFn: (format: CaseBriefFormat) =>
+      apiFetch<CaseBriefExportResult>(`/api/my-cases/${caseId}/export?format=${format}`),
+  })
+}

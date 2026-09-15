@@ -27,7 +27,7 @@ const primaryButtonClass =
   "w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed";
 
 const secondaryButtonClass =
-  "w-full bg-background border border-border rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:bg-accent transition-colors border disabled:opacity-50 disabled:cursor-not-allowed";
+  "w-full bg-background border border-border rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover transition-colors border disabled:opacity-50 disabled:cursor-not-allowed";
 
 /** Shown right after a new signup verifies their email — lets them declare intent
  * (solo / create a firm org / accept a pending invite) before landing in the app.

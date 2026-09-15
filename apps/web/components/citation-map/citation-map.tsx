@@ -355,7 +355,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
         <button
           type="button"
           onClick={toggleFullScreen}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 backdrop-blur-xl px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground shadow-lg hover:bg-muted transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/95 backdrop-blur-xl px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground shadow-lg hover:bg-muted dark:hover:bg-overlay-hover transition-colors"
         >
           <Maximize size={12} />
           <span className="hidden sm:inline">{isFullScreen ? 'Exit' : 'Full'}</span>
@@ -367,7 +367,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
           type="button"
           onClick={zoomIn}
           title="Zoom In"
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-b border-border"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors border-b border-border"
         >
           <Plus size={14} />
         </button>
@@ -375,7 +375,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
           type="button"
           onClick={zoomOut}
           title="Zoom Out"
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-b border-border"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors border-b border-border"
         >
           <Minus size={14} />
         </button>
@@ -383,7 +383,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
           type="button"
           onClick={recenter}
           title="Recenter"
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors"
         >
           <Target size={14} />
         </button>
@@ -425,7 +425,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
               <button
                 onClick={() => handleExpand(selectedNode)}
                 disabled={isExpandingSelected}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors disabled:opacity-60"
               >
                 {isExpandingSelected ? <Loader2 size={12} className="animate-spin" /> : <Workflow size={12} />}
                 {isExpandingSelected ? 'Extracting…' : 'Expand Citations'}

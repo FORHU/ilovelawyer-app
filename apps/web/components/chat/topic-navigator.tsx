@@ -42,7 +42,7 @@ function TopicRow({
           onClick={() => onJump(topic.index)}
           className={`w-full flex items-center gap-2 rounded-full text-left transition-colors ${
             compact ? "justify-center px-0 py-2" : "px-3 py-1.5"
-          } ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+          } ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-overlay-hover"}`}
         >
           <span
             className={`shrink-0 rounded-full ${compact ? "w-2 h-2" : "w-1.5 h-1.5"} ${
@@ -113,7 +113,7 @@ export function TopicNavigatorList({
               type="button"
               onClick={() => togglePrompt(group.promptIndex)}
               aria-expanded={isOpen}
-              className="w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              className="w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-overlay-hover transition-colors"
             >
               <ChevronDown
                 className={`w-3 h-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`}
@@ -227,7 +227,7 @@ export default function TopicNavigator({
             // right-3/top-20 mirrors ConsultationSidebar's own clearance fix — this now
             // covers 768-1023px tablet widths too, with zero padding reserved for it below
             // `lg`, so it needs real breathing room from the header and page content.
-            className="lg:hidden absolute right-3 top-20 z-(--z-sidebar) flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="lg:hidden absolute right-3 top-20 z-(--z-sidebar) flex h-10 w-10 items-center justify-center rounded-full bg-card/90 backdrop-blur-md border border-border shadow-lg text-foreground hover:bg-card dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             <ListTree className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -252,7 +252,7 @@ export default function TopicNavigator({
               <button
                 type="button"
                 onClick={() => onExpandedChange(!expanded)}
-                className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors"
               >
                 {expanded ? (
                   <PanelRightClose className="w-3.5 h-3.5" aria-hidden="true" />
@@ -285,7 +285,7 @@ export default function TopicNavigator({
                 type="button"
                 onClick={() => setIsMobileOpen(false)}
                 aria-label={label}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

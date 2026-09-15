@@ -56,7 +56,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
                     href={attachment.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     aria-label={t("attachment.openInNewTab")}
                   >
                     <ExternalLink className="h-4 w-4" />
@@ -70,7 +70,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   aria-label={t("attachment.closePreview")}
                 >
                   <X className="h-4 w-4" />

@@ -60,7 +60,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
           onClick={() => onSelectDay(day.date)}
           disabled={props.disabled}
           className={cn(
-            "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40",
+            "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent dark:hover:bg-overlay-hover disabled:pointer-events-none disabled:opacity-40",
             modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
             isPast && !modifiers.outside && "bg-muted/30",
             isSelected && "border-primary bg-primary/10",
@@ -138,7 +138,7 @@ function AgendaView({
                 type="button"
                 onClick={() => onSelectDay(day.date)}
                 className={cn(
-                  "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent",
+                  "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent dark:hover:bg-overlay-hover",
                   isSelected && "bg-primary/10"
                 )}
               >
@@ -320,7 +320,7 @@ function PlannerPanel({
                   onClick={() => setEntryType("appointment")}
                   className={cn(
                     "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                    entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                    entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
                   )}
                 >
                   {t("appointment")}
@@ -330,7 +330,7 @@ function PlannerPanel({
                   onClick={() => setEntryType("note")}
                   className={cn(
                     "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                    entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                    entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
                   )}
                 >
                   {t("note")}
@@ -575,7 +575,7 @@ export default function CalendarPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        className="size-11 text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover hover:text-foreground"
                         onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
                         aria-label={t("previousMonth")}
                       >
@@ -590,7 +590,7 @@ export default function CalendarPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-11 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        className="size-11 text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover hover:text-foreground"
                         onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
                         aria-label={t("nextMonth")}
                       >

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
@@ -17,6 +17,7 @@ import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
+import { ReasoningPanel } from "@/components/chat/reasoning-panel";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
@@ -29,6 +30,7 @@ import {
   useRelatedCasesQuery,
   sendChatMessage,
   type ChatMessage,
+  type MessageReasoning,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
@@ -80,6 +82,9 @@ interface DisplayMessage {
    * highlight in AssistantMessage — always empty while the turn is still streaming, since
    * decisions only exist once the persisted message loads (see baseMessages below). */
   decisions?: DecisionRecordPayload[];
+  /** This turn's "why this answer" explanation — see ReasoningPanel. Same timing caveat as
+   * `decisions`: empty while still streaming, only present once the persisted message loads. */
+  reasoning?: MessageReasoning;
 }
 
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
@@ -147,6 +152,20 @@ interface ConsultationChatProps {
    * benefits from case-aware suggestions once a document's been uploaded); Terminal's
    * chat/mind-map panes stay opted out. */
   showSuggestedPrompts?: boolean;
+  /** Shows the related-cases card under the last reply. Defaults to `!embedded`, same reasoning
+   * as `showSuggestedPrompts` — Terminal's Legal Assistant pane opts back in explicitly. */
+  showRelatedCases?: boolean;
+  /** Shows Topic Navigator (jump between topics of a multi-topic split answer). Defaults to
+   * `!embedded` — it's a side-rail component with no compact variant, so opting in inside a
+   * narrow Terminal pane is a deliberate tradeoff, not the default. */
+  showTopicNavigator?: boolean;
+  /** When set, shows a small "view case files" link in the composer pointing here — the
+   * alternative to `enableFileChips` for a case-scoped chat: Case Documents already has its own
+   * dedicated surface (case-details-panel.tsx), so this links out to it instead of duplicating
+   * chip/preview UI here. Terminal's Legal Assistant pane sets this to the case's Case Workspace
+   * route; unset everywhere else (Case Workspace's own chat sits right next to that surface
+   * already and doesn't need a link to itself). */
+  filesLinkHref?: string;
   /** Rendered above the transcript, inside the centered chat column — e.g. a case details panel. */
   headerSlot?: React.ReactNode;
   /** Compact layout for a terminal pane. Case Portfolio does not pass this. */
@@ -187,6 +206,9 @@ export default function ConsultationChat({
   emptyStateHeroImage,
   emptyStatePrompts,
   showSuggestedPrompts,
+  showRelatedCases,
+  showTopicNavigator,
+  filesLinkHref,
   headerSlot,
   embedded = false,
   centerContent = false,
@@ -387,6 +409,7 @@ export default function ConsultationChat({
               groupId: m.groupId,
               groupTitle: m.groupTitle,
               decisions: m.decisionRecords?.records,
+              reasoning: m.reasoning ?? undefined,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -1063,7 +1086,7 @@ export default function ConsultationChat({
                         <button
                           type="button"
                           onClick={() => retryUpload(f.id)}
-                          className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card dark:hover:bg-overlay-hover shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                           aria-label={t("input.retryUpload", { fileName: f.file.name })}
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -1077,7 +1100,7 @@ export default function ConsultationChat({
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(f.id)}
-                        className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        className="w-5 h-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-card dark:hover:bg-overlay-hover shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         aria-label={t("input.removeFile", { fileName: f.file.name })}
                       >
                         <X className="w-3 h-3" />
@@ -1197,12 +1220,27 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{t("input.attachFile")}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {filesLinkHref && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={filesLinkHref}
+                      aria-label={t("input.viewCaseFiles")}
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <FolderOpen className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.viewCaseFiles")}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -1355,7 +1393,7 @@ export default function ConsultationChat({
         />
       )}
 
-      {!embedded && (splitTopics.length > 0 || isGeneratingTopics) && (
+      {(showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics) && (
         <TopicNavigator
           groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
@@ -1386,7 +1424,13 @@ export default function ConsultationChat({
           </div>
         )}
         {(() => {
-          const isEmptyChatLanding = !mindMapOnly && activeTab === "chat" && !consultationId && visibleMessages.length === 0;
+          // `embedded` excluded deliberately: the centered "Gemini landing" treatment (heading +
+          // composer vertically centered together) makes sense as a real landing page, but reads
+          // as a bug — "why is the composer floating in the middle?" — inside a small, persistent
+          // Terminal pane. Embedded panes always use the normal bottom-pinned composer, even
+          // before a consultation exists; the plain empty-message placeholder below covers that
+          // case instead.
+          const isEmptyChatLanding = !embedded && !mindMapOnly && activeTab === "chat" && !consultationId && visibleMessages.length === 0;
           const showMindMapPane = Boolean(caseId && (mindMapOnly || (!embedded && activeTab === "mindmap")));
           const showTimelinePane = Boolean(caseId && !embedded && !mindMapOnly && activeTab === "timeline");
           // Mind Map is Case-only (see CONTEXT.md) — the tab switcher itself only exists inside
@@ -1498,7 +1542,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={() => setSidebarMobileOpen(true)}
                       aria-label={t("sidebar.openConsultations")}
-                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1551,7 +1595,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={() => setSidebarMobileOpen(true)}
                       aria-label={t("sidebar.openConsultations")}
-                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="lg:hidden shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -1582,11 +1626,17 @@ export default function ConsultationChat({
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
                  * filtered out of visibleMessages above) — without this, that renders as a bare
-                 * pane with no explanation once the history query has actually settled. */}
+                 * pane with no explanation once the history query has actually settled. Also
+                 * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
+                 * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
+                 * instead of in the (non-embedded-only) centered landing above. */}
                 {visibleMessages.length === 0 && !historyLoading && !isSending && (
-                  <p className="rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground font-['Inter']">
-                    {emptyStateSubheading ?? t("emptyState.subheading")}
-                  </p>
+                  <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
+                    {embedded && emptyStateHeading && (
+                      <p className="mb-1 text-sm font-medium text-foreground">{emptyStateHeading}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">{emptyStateSubheading ?? t("emptyState.subheading")}</p>
+                  </div>
                 )}
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
@@ -1647,7 +1697,8 @@ export default function ConsultationChat({
                             decisions={m.decisions}
                             onOpenDecision={handleOpenDecision}
                           />
-                          {!embedded && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
+                          <ReasoningPanel reasoning={m.reasoning} />
+                          {(showRelatedCases ?? !embedded) && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
                                 <Grid2x2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />

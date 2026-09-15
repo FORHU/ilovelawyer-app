@@ -139,7 +139,7 @@ export default function ConsultationSidebar({
             <button
               onClick={() => onExpandedChange(true)}
               aria-label={t("sidebar.recentConsultationsTitle")}
-              className="h-12 flex items-center justify-center gap-3 rounded-full hover:bg-muted shrink-0 mx-2 px-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="h-12 flex items-center justify-center gap-3 rounded-full hover:bg-muted dark:hover:bg-overlay-hover shrink-0 mx-2 px-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <History className="h-5 w-5 shrink-0 text-foreground" aria-hidden="true" />
             </button>
@@ -184,7 +184,7 @@ export default function ConsultationSidebar({
                             commitEdit();
                           }}
                           aria-label={t("sidebar.saveTitle")}
-                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         >
                           <Check className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
@@ -199,7 +199,7 @@ export default function ConsultationSidebar({
                 <div
                   key={c.id}
                   className={`group/row relative flex items-center rounded-full border transition-colors shrink-0 ${
-                    isActive ? "bg-muted border-border" : "border-transparent hover:bg-muted"
+                    isActive ? "bg-muted border-border" : "border-transparent hover:bg-muted dark:hover:bg-overlay-hover"
                   }`}
                 >
                   {isActive && <span className="ml-3 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold" aria-hidden="true" />}
@@ -307,7 +307,7 @@ export default function ConsultationSidebar({
                 type="button"
                 onClick={() => onExpandedChange(!expanded)}
                 aria-label={expanded ? t("sidebar.collapseSidebar") : t("sidebar.openConsultations")}
-                className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full opacity-60 hover:opacity-100 hover:bg-card transition-[opacity,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="h-8 w-8 flex items-center justify-center shrink-0 rounded-full opacity-60 hover:opacity-100 hover:bg-card dark:hover:bg-overlay-hover transition-[opacity,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 {expanded ? (
                   <PanelLeftClose className="h-4 w-4 text-foreground" aria-hidden="true" />
@@ -337,7 +337,7 @@ export default function ConsultationSidebar({
                 type="button"
                 onClick={() => onMobileOpenChange(false)}
                 aria-label={t("sidebar.closeConsultations")}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

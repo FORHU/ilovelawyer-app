@@ -46,7 +46,7 @@ export function AudioOverviewPlayerBar({
           type="button"
           onClick={onClose}
           aria-label="Close player"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
         >
           <X className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
@@ -79,7 +79,7 @@ export function AudioOverviewPlayerBar({
           type="button"
           onClick={() => onSkip(-10)}
           aria-label="Back 10 seconds"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
         >
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -95,7 +95,7 @@ export function AudioOverviewPlayerBar({
           type="button"
           onClick={() => onSkip(10)}
           aria-label="Forward 10 seconds"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
         >
           <RotateCw className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -123,7 +123,7 @@ export function AudioOverviewMiniPlayer({
   formatDuration: (seconds: number) => string;
 }) {
   return (
-    <div className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 transition-colors hover:border-brand-gold/40 hover:bg-muted">
+    <div className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 transition-colors hover:border-brand-gold/40 hover:bg-muted dark:hover:bg-overlay-hover">
       <button
         type="button"
         onClick={(e) => {

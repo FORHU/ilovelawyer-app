@@ -94,7 +94,7 @@ function TranscriptRow({
   };
 
   return (
-    <div className="group flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:border-foreground/30 hover:bg-muted">
+    <div className="group flex flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:border-foreground/30 hover:bg-muted dark:hover:bg-overlay-hover">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
