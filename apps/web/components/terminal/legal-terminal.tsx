@@ -17,6 +17,7 @@ import {
   useUpdateWorkspaceMutation,
 } from "@/lib/terminal/mutations"
 import type { PanelId, PanelLayout, PresetValue, WorkspaceLayout } from "@/lib/terminal/types"
+import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -449,6 +450,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
           {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
         </span>
+        {shouldShowUpdatingAnalysis(refresh.isPending, refreshJob.data?.status) && (
+          <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            {t("updatingAnalysis")}
+          </span>
+        )}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"

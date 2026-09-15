@@ -25,6 +25,7 @@
   "reset": "레이아웃 초기화",
   "refresh": "분석 새로고침",
   "refreshing": "새로고침 중…",
+  "updatingAnalysis": "분석 업데이트 중…",
   "preset": "프리셋",
   "preset1": "1개 패널",
   "preset2": "2개 패널",

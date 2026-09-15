@@ -78,13 +78,21 @@ const AI_JOB_POLL_MS = 3000
  * snapshot query the moment status flips to DONE, so a viewer who didn't click Generate
  * themselves (a second tab, or one who refreshed mid-run) still sees the fresh content land
  * without a manual refresh — every current caller wants this, so it's built in rather than left
- * as an opt-in callback. */
+ * as an opt-in callback.
+ *
+ * staleTime 0 deliberately opts out of the app's 5-minute default (see providers.tsx): this
+ * hook unmounts entirely while the lawyer is off on another page (e.g. uploading/deleting a
+ * document in the Workspace), so an automatic caseRefresh that starts and finishes during that
+ * gap leaves no live poll to notice it. Without staleTime 0, remounting here on return to the
+ * Terminal would serve the stale pre-navigation cache — "IN_PROGRESS" never shown, snapshot
+ * never invalidated — until the 5-minute window happened to lapse or the page was hard-refreshed. */
 export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   const queryClient = useQueryClient()
   const query = useQuery({
     queryKey: terminalKeys.aiJob(caseId, kind),
     queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
     enabled: !!caseId,
+    staleTime: 0,
     refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_POLL_MS : false),
   })
 
@@ -113,11 +121,18 @@ export function useTerminalWorkspacesQuery() {
   })
 }
 
+/** staleTime 0 for the same reason as useAiJobStatus above, and for a second one specific to
+ * this query: a corpus change made from the Workspace (upload/delete) can trigger an automatic
+ * caseRefresh entirely while the Terminal isn't mounted at all, so there's no live
+ * useAiJobStatus DONE-transition around to invalidate this on the way back in either. Without
+ * its own staleTime 0, landing on the Terminal after such a change would show the pre-change
+ * snapshot for up to 5 minutes regardless of what useAiJobStatus does. */
 export function useCaseSnapshotQuery(caseId: string) {
   return useQuery({
     queryKey: terminalKeys.snapshot(caseId),
     queryFn: () => apiFetch<CaseSnapshot>(`/api/my-cases/${caseId}/snapshot`),
     enabled: !!caseId,
+    staleTime: 0,
   })
 }
 
