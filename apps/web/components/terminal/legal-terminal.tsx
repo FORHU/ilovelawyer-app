@@ -17,7 +17,6 @@ import {
   Plus,
   PanelLeft,
   PanelTop,
-  RefreshCw,
   Maximize2,
   Minimize2,
   Settings,
@@ -32,7 +31,6 @@ import {
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
   useDeleteWorkspaceMutation,
-  useRefreshSnapshotMutation,
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
@@ -46,6 +44,7 @@ import type {
   PresetValue,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
+import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -126,9 +125,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const updateWorkspace = useUpdateWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const deleteWorkspace = useDeleteWorkspaceMutation()
-  const refresh = useRefreshSnapshotMutation(caseId)
+  // No manual "Refresh analysis" trigger — the Legal Terminal relies entirely on the automatic
+  // caseRefresh pipeline (corpus-change triggered) now. This poll is what drives the
+  // "Updating analysis…" indicator below while that background job is running.
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
-  const isRefreshing = refresh.isPending || refreshJob.data?.status === "IN_PROGRESS"
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
@@ -137,7 +137,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // committed rect/grouping is left untouched, so clearing this just removes the overlay.
   const [maximizedId, setMaximizedId] = useState<PanelId | null>(null)
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
-  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   // Lifted out of TerminalSettingsSidebar (mirrors ConsultationSidebar's sidebarMobileOpen) so
   // the mobile trigger can render inline in the Case Row instead of as a floating circle that
   // overlapped the "Back to Case" link below `lg`.
@@ -150,6 +149,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [focusedId, setFocusedId] = useState<PanelId | null>(null)
   const [creatingLayout, setCreatingLayout] = useState(false)
   const [newLayoutName, setNewLayoutName] = useState("")
+  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
   const highDensity = useTerminalDisplayStore((state) => state.highDensity)
@@ -508,23 +508,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
             {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
           </span>
+          {shouldShowUpdatingAnalysis(refreshJob.data?.status) && (
+            <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              {t("updatingAnalysis")}
+            </span>
+          )}
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setBriefPreviewOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               {t("downloadCaseBrief")}
-            </button>
-            <button
-              type="button"
-              onClick={() => refresh.mutate()}
-              disabled={isRefreshing}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
-              {isRefreshing ? t("refreshing") : t("refresh")}
             </button>
           </div>
         </div>

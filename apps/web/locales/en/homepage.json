@@ -83,7 +83,7 @@
     "generating": "Generating topic breakdown…"
   },
   "timeline": {
-    "emptyState": "No events on this case yet. Add one below, or refresh analysis to extract dates from documents.",
+    "emptyState": "No events on this case yet. Add one below — dates extracted from documents appear here automatically.",
     "loading": "Loading timeline…",
     "loadError": "Couldn't load this timeline.",
     "nextSteps": "Next steps",
