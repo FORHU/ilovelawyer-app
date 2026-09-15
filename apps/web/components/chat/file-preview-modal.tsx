@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { isPdfAttachment, type MessageAttachment } from "@/components/chat/message-attachments";
+import { isImageAttachment, isPdfAttachment, type MessageAttachment } from "@/components/chat/message-attachments";
 
 interface FilePreviewModalProps {
   attachment: MessageAttachment;
@@ -12,9 +12,10 @@ interface FilePreviewModalProps {
 }
 
 /** In-app preview for a Message Attachment (ADR 0012). PDFs render inline via the browser's
- * native viewer; DOCX (and any PDF that fails to render) falls back to filename + "open in a
- * new tab" instead — deliberately not a third-party embed viewer (Office/Google), which would
- * send a potentially confidential document's URL to that third party. */
+ * native viewer, images via a plain `<img>`; DOCX (and any PDF/image that fails to render)
+ * falls back to filename + "open in a new tab" instead — deliberately not a third-party embed
+ * viewer (Office/Google), which would send a potentially confidential document's URL to that
+ * third party. */
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const { t } = useTranslation("homepage");
   const [inlineFailed, setInlineFailed] = useState(false);
@@ -28,7 +29,8 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
   }, [onClose]);
 
   const isPdf = isPdfAttachment(attachment);
-  const canInlinePreview = isPdf && !!attachment.url && !inlineFailed;
+  const isImage = isImageAttachment(attachment);
+  const canInlinePreview = (isPdf || isImage) && !!attachment.url && !inlineFailed;
 
   return (
     <div
@@ -82,7 +84,16 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
         </div>
 
         <div className="min-h-0 flex-1 bg-muted/30">
-          {canInlinePreview ? (
+          {canInlinePreview && isImage ? (
+            <div className="flex h-full items-center justify-center p-4">
+              <img
+                src={attachment.url!}
+                alt={attachment.name}
+                className="max-h-full max-w-full object-contain"
+                onError={() => setInlineFailed(true)}
+              />
+            </div>
+          ) : canInlinePreview ? (
             <iframe
               src={attachment.url!}
               title={attachment.name}
@@ -93,7 +104,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
             <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
               <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
               <p className="text-sm text-muted-foreground">
-                {t(isPdf ? "attachment.previewFailed" : "attachment.previewUnavailable")}
+                {t(isPdf || isImage ? "attachment.previewFailed" : "attachment.previewUnavailable")}
               </p>
               {attachment.url && (
                 <a

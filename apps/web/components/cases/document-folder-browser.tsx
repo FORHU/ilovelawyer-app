@@ -14,6 +14,7 @@ import {
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
+import DeleteDocumentModal from "@/components/cases/delete-document-modal"
 import FilePreviewModal from "@/components/chat/file-preview-modal"
 import type { MessageAttachment } from "@/components/chat/message-attachments"
 
@@ -44,6 +45,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [namingFolder, setNamingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
   const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null)
+  const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const upload = (files: File[], category?: string) => {
@@ -163,7 +165,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               key={doc.id}
               doc={doc}
               onPreview={() => openPreview(doc)}
-              onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
+              onDelete={() => setDeletingDoc(doc)}
               isDeleting={isDeleting && deletingVars?.documentId === doc.id}
               onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
               isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
@@ -209,7 +211,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             key={doc.id}
             doc={doc}
             onPreview={() => openPreview(doc)}
-            onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
+            onDelete={() => setDeletingDoc(doc)}
             isDeleting={isDeleting && deletingVars?.documentId === doc.id}
             onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
             isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
@@ -242,6 +244,18 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
         )}
       </div>
       {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
+      {deletingDoc && (
+        <DeleteDocumentModal
+          key={deletingDoc.id}
+          doc={deletingDoc}
+          isDeleting={isDeleting && deletingVars?.documentId === deletingDoc.id}
+          onConfirm={() => {
+            deleteDocument({ documentId: deletingDoc.id, caseId })
+            setDeletingDoc(null)
+          }}
+          onClose={() => setDeletingDoc(null)}
+        />
+      )}
     </div>
   )
 }
