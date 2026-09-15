@@ -6,8 +6,25 @@ import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
-import { Search, Briefcase, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCasesQuery, useUpdateCaseMutation, useDeleteCaseMutation, type CaseRecord, type UpdateCasePayload } from "@/lib/cases/mutations";
+import ArchiveCaseModal from "@/components/cases/archive-case-modal";
+import { Search, Briefcase, Archive, ArchiveRestore, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@workspace/ui/components/dropdown-menu";
+import {
+  useCasesQuery,
+  useUpdateCaseMutation,
+  useDeleteCaseMutation,
+  useArchiveCaseMutation,
+  useUnarchiveCaseMutation,
+  type CaseRecord,
+  type CaseStatus,
+  type UpdateCasePayload,
+} from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 const PAGE_SIZE = 20;
@@ -18,8 +35,15 @@ export default function CaseManagerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<CaseStatus>("ACTIVE");
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
+  const [archivingCase, setArchivingCase] = useState<CaseRecord | null>(null);
+
+  const switchStatusFilter = (next: CaseStatus) => {
+    setStatusFilter(next);
+    setPage(1);
+  };
 
   // Debounce so we don't fire a request on every keystroke while searching across
   // the user's full case set (not just the cases already loaded on this page). Resetting
@@ -33,12 +57,14 @@ export default function CaseManagerDashboard() {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch);
+  const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
   const cases = data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
   const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
+  const { mutateAsync: archiveCase, isPending: isArchiving } = useArchiveCaseMutation();
+  const { mutate: unarchiveCase } = useUnarchiveCaseMutation();
 
   const handleSaveEdit = async (payload: UpdateCasePayload) => {
     if (!editingCase) return;
@@ -52,13 +78,22 @@ export default function CaseManagerDashboard() {
     setDeletingCase(null);
   };
 
+  const handleConfirmArchive = async () => {
+    if (!archivingCase) return;
+    await archiveCase(archivingCase.id);
+    setArchivingCase(null);
+  };
+
   const handleNewFiling = () => {
     router.push("/homepage/create-case");
   };
 
   // A truly empty portfolio (no cases at all, no search in progress) gets the richer
   // onboarding empty state; a search that simply came up empty gets the plainer one below.
-  const isPortfolioEmpty = !isLoading && !isError && debouncedSearch === "" && data?.total === 0;
+  // The onboarding state only makes sense for the Active tab — the Archived tab gets its
+  // own empty state further below instead.
+  const isPortfolioEmpty = !isLoading && !isError && statusFilter === "ACTIVE" && debouncedSearch === "" && data?.total === 0;
+  const isArchivedEmpty = !isLoading && !isError && statusFilter === "ARCHIVED" && debouncedSearch === "" && data?.total === 0;
   const isSearchEmpty = !isLoading && !isError && debouncedSearch !== "" && cases.length === 0;
 
   return (
@@ -93,19 +128,62 @@ export default function CaseManagerDashboard() {
           </Tooltip>
         </div>
 
-        <div className="relative w-full sm:max-w-80 flex items-center">
-          <span className="absolute left-4 text-muted-foreground">
-            <Search className="w-4 h-4" />
-          </span>
-          {/* text-base (16px) on mobile avoids iOS Safari's auto-zoom-on-focus; sm:text-[13px]
-           * restores the original compact desktop size once that's no longer a risk. */}
-          <input
-            type="text"
-            className="w-full bg-card border border-border rounded-full h-11 sm:h-10 pl-11 pr-4 outline-none font-['Inter'] text-base sm:text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
-            placeholder={t("searchPlaceholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative w-full sm:max-w-80 flex items-center">
+            <span className="absolute left-4 text-muted-foreground">
+              <Search className="w-4 h-4" />
+            </span>
+            {/* text-base (16px) on mobile avoids iOS Safari's auto-zoom-on-focus; sm:text-[13px]
+             * restores the original compact desktop size once that's no longer a risk. */}
+            <input
+              type="text"
+              className="w-full bg-card border border-border rounded-full h-11 sm:h-10 pl-11 pr-4 outline-none font-['Inter'] text-base sm:text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
+              placeholder={t("searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* bg-card/bg-muted collapse to the same flat --background in dark mode (see
+           * globals.css), so the track and active pill need explicit dark-mode fills
+           * (dark:bg-white/*) plus a border — otherwise the whole toggle (and which side is
+           * selected) goes invisible in dark mode, leaving bare text with no affordance. */}
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted dark:bg-white/[0.06] p-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => switchStatusFilter("ACTIVE")}
+                  aria-pressed={statusFilter === "ACTIVE"}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3.5 h-8 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                    statusFilter === "ACTIVE"
+                      ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t("statusToggle.active")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Show active cases</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => switchStatusFilter("ARCHIVED")}
+                  aria-pressed={statusFilter === "ARCHIVED"}
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3.5 h-8 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                    statusFilter === "ARCHIVED"
+                      ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t("statusToggle.archived")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Show archived cases</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         {isLoading && (
@@ -138,16 +216,17 @@ export default function CaseManagerDashboard() {
           <div className="md:overflow-x-auto lg:overflow-visible">
             {/* Column header only makes sense once the row below is actually a grid (md+) —
              * the stacked mobile card has no columns to label. */}
-            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_296px] gap-4 md:min-w-[760px] px-4 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] gap-4 md:min-w-[760px] pl-4 pr-6 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
               <span>{t("tableCaseHeader")}</span>
               <span>{t("tableUpdatedHeader")}</span>
               <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
+              <span className="text-right">{t("tableActionHeader")}</span>
             </div>
             <div className="md:min-w-[760px]">
               {cases.map((c) => (
                 <div
                   key={c.id}
-                  className="group/row flex flex-col gap-3 border-b border-border px-4 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_296px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
+                  className="group/row flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
                 >
                   <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
                     <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
@@ -158,71 +237,89 @@ export default function CaseManagerDashboard() {
                     </span>
                   </Link>
 
-                  {/* Below md this becomes the card's second row (date + actions on one line);
-                   * at md+ `contents` drops the wrapper so date and actions resume being their
-                   * own grid columns, matching the header row above. */}
+                  {/* Below md this becomes the card's second row (date, links, and the action
+                   * menu on one line); at md+ each `contents` wrapper drops out so date, links,
+                   * and the action menu resume being their own grid columns, matching the header
+                   * row above. */}
                   <div className="flex items-center justify-between gap-3 md:contents">
                     <span className="text-[13px] text-foreground">
                       {new Date(c.updatedAt).toLocaleDateString()}
                     </span>
 
-                    <div className="flex items-center gap-2">
-                      {/* Hidden below md — the case name/party block above is already a link
-                       * to this same Workspace route, so on mobile (where every button is
-                       * competing for the same ~300px row) this would just be a second,
-                       * redundant way to do what tapping the row already does. Desktop keeps
-                       * it for parity with the "Open in" column header. */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            href={`/homepage/case-portfolio/${c.id}`}
-                            className="hidden md:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
-                          >
-                            {t("overview.tabWorkspace")}
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent>Open {c.caseName}&rsquo;s Workspace</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            href={`/homepage/terminal/${c.id}`}
-                            className="flex h-11 md:h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
-                          >
-                            {t("Terminal")}
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
-                      </Tooltip>
-                      {/* Edit/delete are always visible on mobile (no hover to reveal them on
-                       * touch) and only fade in on hover from md+, where a pointer exists. */}
-                      <div className="flex items-center gap-1 md:opacity-0 md:group-hover/row:opacity-100 md:focus-within:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-3 md:contents">
+                      <div className="flex items-center gap-2">
+                        {/* Hidden below md — the case name/party block above is already a link
+                         * to this same Workspace route, so on mobile (where every button is
+                         * competing for the same ~300px row) this would just be a second,
+                         * redundant way to do what tapping the row already does. Desktop keeps
+                         * it for parity with the "Open in" column header. */}
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => setEditingCase(c)}
-                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                              aria-label={t("editCase", { caseName: c.caseName })}
+                            <Link
+                              href={`/homepage/case-portfolio/${c.id}`}
+                              className="hidden md:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
                             >
-                              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                            </button>
+                              {t("overview.tabWorkspace")}
+                            </Link>
                           </TooltipTrigger>
-                          <TooltipContent>{t("editCase", { caseName: c.caseName })}</TooltipContent>
+                          <TooltipContent>Open {c.caseName}&rsquo;s Workspace</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => setDeletingCase(c)}
-                              className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-red-600 hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                              aria-label={t("deleteCase", { caseName: c.caseName })}
+                            <Link
+                              href={`/homepage/terminal/${c.id}`}
+                              className="flex h-11 md:h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
                             >
-                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                            </button>
+                              {t("Terminal")}
+                            </Link>
                           </TooltipTrigger>
-                          <TooltipContent>{t("deleteCase", { caseName: c.caseName })}</TooltipContent>
+                          <TooltipContent>Open {c.caseName} in the Legal Terminal</TooltipContent>
                         </Tooltip>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 data-[state=open]:bg-background data-[state=open]:text-foreground"
+                                  aria-label={t("rowActions", { caseName: c.caseName })}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                                </button>
+                              </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("rowActions", { caseName: c.caseName })}</TooltipContent>
+                          </Tooltip>
+                          <DropdownMenuContent>
+                            {c.status === "ARCHIVED" ? (
+                              <>
+                                <DropdownMenuItem onSelect={() => unarchiveCase(c.id)}>
+                                  <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {t("unarchiveCaseCta")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onSelect={() => setDeletingCase(c)}>
+                                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {t("editModal.deleteCase")}
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <>
+                                <DropdownMenuItem onSelect={() => setEditingCase(c)}>
+                                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {t("editModal.editCase")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setArchivingCase(c)}>
+                                  <Archive className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {t("archiveCaseCta")}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -281,6 +378,18 @@ export default function CaseManagerDashboard() {
             <h4 className="font-['Libre_Caslon_Text'] text-[22px] text-foreground mb-2">{t("noMatchingCases")}</h4>
             <p className="text-muted-foreground text-[15px] max-w-[320px]">
               {t("noMatchingCasesHint")}
+            </p>
+          </div>
+        )}
+
+        {isArchivedEmpty && (
+          <div className="flex flex-col items-center justify-center text-center py-16 -mt-4">
+            <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 text-muted-foreground">
+              <Archive className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <h4 className="font-['Libre_Caslon_Text'] text-[22px] text-foreground mb-2">{t("noArchivedCases")}</h4>
+            <p className="text-muted-foreground text-[15px] max-w-[320px]">
+              {t("noArchivedCasesHint")}
             </p>
           </div>
         )}
@@ -347,6 +456,16 @@ export default function CaseManagerDashboard() {
           isDeleting={isDeleting}
           onConfirm={() => void handleConfirmDelete()}
           onClose={() => setDeletingCase(null)}
+        />
+      )}
+
+      {archivingCase && (
+        <ArchiveCaseModal
+          key={archivingCase.id}
+          caseRecord={archivingCase}
+          isArchiving={isArchiving}
+          onConfirm={() => void handleConfirmArchive()}
+          onClose={() => setArchivingCase(null)}
         />
       )}
     </PageShell>

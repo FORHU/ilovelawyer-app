@@ -5,11 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, AlertCircle, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
-import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, type UserDocument } from "@/lib/cases/mutations";
+import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, type UserDocument } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
 import { useConsultationsQuery, type Consultation } from "@/lib/chat/mutations";
@@ -78,7 +78,17 @@ export default function CaseDetailPage() {
                 </span>
               )}
               <div className="flex items-center justify-between gap-3">
-                <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
+                  {caseRecord?.status === "ARCHIVED" && (
+                    <>
+                      <span className="shrink-0 text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
+                        {t("archivedBadge")}
+                      </span>
+                      <UnarchiveButton id={id} caseName={caseRecord.caseName} />
+                    </>
+                  )}
+                </div>
                 {/* Stands in for GlobalHeader's own hamburger (hidden here via
                  * mobileHeaderMerged) — opens the exact same drawer. */}
                 <Tooltip>
@@ -189,6 +199,32 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
         </button>
       </TooltipTrigger>
       <TooltipContent>{t("detail.editCaseTitle")}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function UnarchiveButton({ id, caseName }: { id: string; caseName: string }) {
+  const { t } = useTranslation("case-portfolio");
+  const { mutate: unarchiveCase, isPending } = useUnarchiveCaseMutation();
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => unarchiveCase(id)}
+          disabled={isPending}
+          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label={t("unarchiveCase", { caseName })}
+        >
+          {isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{isPending ? t("restoring") : t("unarchiveCase", { caseName })}</TooltipContent>
     </Tooltip>
   );
 }
