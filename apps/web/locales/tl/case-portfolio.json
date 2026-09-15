@@ -9,6 +9,22 @@
   "noMatchingCases": "Walang tugmang kaso",
   "noMatchingCasesHint": "Subukan ang ibang search term, o alisin ang category filter sa itaas.",
   "noPartyListed": "Walang nakalistang partido",
+  "archiveCase": "I-archive ang {{caseName}}",
+  "unarchiveCase": "Ibalik ang {{caseName}}",
+  "archiveCaseCta": "I-archive ang Kaso",
+  "unarchiveCaseCta": "Ibalik ang Kaso",
+  "tableActionHeader": "Aksyon",
+  "rowActions": "Mga aksyon para kay {{caseName}}",
+  "archiving": "Ina-archive…",
+  "restoring": "Ibinabalik…",
+  "archiveConfirm": "I-archive ang \"{{caseName}}\"? Maibabalik mo ito anumang oras mula sa tab na Archived.",
+  "statusToggle": {
+    "active": "Aktibo",
+    "archived": "Archived"
+  },
+  "noArchivedCases": "Walang naka-archive na kaso",
+  "noArchivedCasesHint": "Lalabas dito ang mga kasong ina-archive mo — walang binubura.",
+  "archivedBadge": "Archived",
   "tools": {
     "mindMap": "Mind Map",
     "timeline": "Timeline"

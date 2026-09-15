@@ -82,11 +82,18 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
         className="flex min-h-0 flex-1 flex-col"
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/60 shrink-0">
-          <DialogTitle asChild>
-            <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
-              {t("Edit Case")}
-            </h2>
-          </DialogTitle>
+          <div className="flex items-center gap-2.5">
+            <DialogTitle asChild>
+              <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
+                {t("Edit Case")}
+              </h2>
+            </DialogTitle>
+            {caseRecord.status === "ARCHIVED" && (
+              <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
+                {t("archivedBadge")}
+              </span>
+            )}
+          </div>
           <Tooltip>
             <TooltipTrigger asChild>
               <button

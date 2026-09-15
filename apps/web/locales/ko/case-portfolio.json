@@ -9,6 +9,22 @@
   "noMatchingCases": "일치하는 사건 없음",
   "noMatchingCasesHint": "다른 검색어를 사용하거나 위의 카테고리 필터를 지워보세요.",
   "noPartyListed": "등록된 당사자 없음",
+  "archiveCase": "{{caseName}} 보관",
+  "unarchiveCase": "{{caseName}} 복원",
+  "archiveCaseCta": "사건 보관",
+  "unarchiveCaseCta": "사건 복원",
+  "tableActionHeader": "작업",
+  "rowActions": "{{caseName}} 작업",
+  "archiving": "보관 중…",
+  "restoring": "복원 중…",
+  "archiveConfirm": "\"{{caseName}}\"을(를) 보관하시겠습니까? 보관됨 탭에서 언제든지 복원할 수 있습니다.",
+  "statusToggle": {
+    "active": "활성",
+    "archived": "보관됨"
+  },
+  "noArchivedCases": "보관된 사건 없음",
+  "noArchivedCasesHint": "보관한 사건이 여기에 표시됩니다 — 삭제되지 않습니다.",
+  "archivedBadge": "보관됨",
   "tools": {
     "mindMap": "마인드맵",
     "timeline": "타임라인"

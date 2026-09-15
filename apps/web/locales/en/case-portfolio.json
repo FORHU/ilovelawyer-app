@@ -19,6 +19,8 @@
   "tableCaseHeader": "Case",
   "tableUpdatedHeader": "Last updated",
   "tableOpenInHeader": "Open in",
+  "tableActionHeader": "Action",
+  "rowActions": "Actions for {{caseName}}",
   "emptyState": {
     "heading1": "Your caseload,",
     "heading2": "under control.",
@@ -71,6 +73,20 @@
   "editCase": "Edit {{caseName}}",
   "deleteCase": "Delete {{caseName}}",
   "deleteConfirm": "Delete \"{{caseName}}\"? This cannot be undone.",
+  "archiveCase": "Archive {{caseName}}",
+  "unarchiveCase": "Restore {{caseName}}",
+  "archiveCaseCta": "Archive Case",
+  "unarchiveCaseCta": "Restore Case",
+  "archiving": "Archiving…",
+  "restoring": "Restoring…",
+  "archiveConfirm": "Archive \"{{caseName}}\"? You can restore it anytime from the Archived tab.",
+  "statusToggle": {
+    "active": "Active",
+    "archived": "Archived"
+  },
+  "noArchivedCases": "No archived cases",
+  "noArchivedCasesHint": "Cases you archive appear here — nothing is deleted.",
+  "archivedBadge": "Archived",
   "editModal": {
     "heading": "Edit Case",
     "close": "Close",
