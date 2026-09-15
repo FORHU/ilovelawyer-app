@@ -35,6 +35,7 @@
     "viewFile": "View {{fileName}}",
     "closePreview": "Close preview",
     "openInNewTab": "Open in new tab",
+    "download": "Download",
     "previewUnavailable": "Preview isn't available for this file type.",
     "previewFailed": "This file couldn't be previewed here."
   },

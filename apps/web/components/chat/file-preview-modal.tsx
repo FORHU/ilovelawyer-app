@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, X } from "lucide-react";
+import { Download, ExternalLink, FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { isImageAttachment, isPdfAttachment, type MessageAttachment } from "@/components/chat/message-attachments";
@@ -12,10 +12,12 @@ interface FilePreviewModalProps {
 }
 
 /** In-app preview for a Message Attachment (ADR 0012). PDFs render inline via the browser's
- * native viewer, images via a plain `<img>`; DOCX (and any PDF/image that fails to render)
- * falls back to filename + "open in a new tab" instead — deliberately not a third-party embed
- * viewer (Office/Google), which would send a potentially confidential document's URL to that
- * third party. */
+ * native viewer, images via a plain `<img>`; DOCX/XLSX (nothing renders those client-side
+ * without either a third-party embed viewer — Office/Google, which would send a potentially
+ * confidential document's URL to that party, so deliberately not used here — or adding a new
+ * parser dependency, which this app doesn't carry) fall back to a filename + Download action
+ * instead. A PDF/image that fails to render gets the same fallback layout, but keeps an "open
+ * in a new tab" action instead, since the browser genuinely can handle those two types. */
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const { t } = useTranslation("homepage");
   const [inlineFailed, setInlineFailed] = useState(false);
@@ -106,17 +108,27 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
               <p className="text-sm text-muted-foreground">
                 {t(isPdf || isImage ? "attachment.previewFailed" : "attachment.previewUnavailable")}
               </p>
-              {attachment.url && (
-                <a
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-navy-950 hover:underline dark:text-white"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("attachment.openInNewTab")}
-                </a>
-              )}
+              {attachment.url &&
+                (isPdf || isImage ? (
+                  <a
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-navy-950 hover:underline dark:text-white"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("attachment.openInNewTab")}
+                  </a>
+                ) : (
+                  <a
+                    href={attachment.url}
+                    download={attachment.name}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-navy-950 hover:underline dark:text-white"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("attachment.download")}
+                  </a>
+                ))}
             </div>
           )}
         </div>
