@@ -53,7 +53,7 @@ const REPEL_MAX_PUSH = 16;
 export function CapabilitiesSection() {
   const { t } = useTranslation("landing");
   const labels = t("capabilities.items", { returnObjects: true }) as string[];
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   const handleEnter = (hoveredIndex: number) => {
     const hovered = cardRefs.current[hoveredIndex];
@@ -105,26 +105,31 @@ export function CapabilitiesSection() {
                 </span>
               </Link>
             </TooltipTrigger>
-            <TooltipContent>Sign up to explore every feature</TooltipContent>
+            <TooltipContent>{t("capabilities.exploreTooltip")}</TooltipContent>
           </Tooltip>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-11">
           {ICONS.map((Icon, i) => (
-            <div
-              key={i}
-              ref={(el) => {
-                cardRefs.current[i] = el;
-              }}
-              onMouseEnter={() => handleEnter(i)}
-              onMouseLeave={handleLeave}
-              className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform"
-            >
-              <span className="w-12 h-12 rounded-full border border-border flex items-center justify-center text-foreground transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
-                <Icon size={22} strokeWidth={1.6} />
-              </span>
-              <span className="text-foreground text-[13px]">{labels[i]}</span>
-            </div>
+            <Tooltip key={i}>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/signup"
+                  ref={(el) => {
+                    cardRefs.current[i] = el;
+                  }}
+                  onMouseEnter={() => handleEnter(i)}
+                  onMouseLeave={handleLeave}
+                  className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform"
+                >
+                  <span className="w-12 h-12 rounded-full border border-border flex items-center justify-center text-foreground transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
+                    <Icon size={22} strokeWidth={1.6} />
+                  </span>
+                  <span className="text-foreground text-[13px]">{labels[i]}</span>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>{t("capabilities.tileTooltip")}</TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>

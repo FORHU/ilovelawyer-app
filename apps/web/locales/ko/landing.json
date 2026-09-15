@@ -39,6 +39,8 @@
     "heading": "ilovelawyer가 제공하는 모든 기능",
     "subheading": "목업도, 로드맵 항목도 아닙니다. 오늘 제품에 이미 담겨 있는 18가지 기능입니다.",
     "explorePlatform": "플랫폼 살펴보기",
+    "exploreTooltip": "가입하고 플랫폼을 둘러보세요",
+    "tileTooltip": "가입하고 이 기능을 사용해 보세요",
     "items": [
       "계정 및 로그인",
       "로펌 및 팀",

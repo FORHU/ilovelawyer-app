@@ -39,6 +39,8 @@
     "heading": "Every feature ilovelawyer ships",
     "subheading": "No mockups, no roadmap items. Eighteen capabilities live in the product today.",
     "explorePlatform": "Explore Platform",
+    "exploreTooltip": "Sign up to explore the platform",
+    "tileTooltip": "Sign up to explore this",
     "items": [
       "Accounts & sign-in",
       "Firms & teams",
