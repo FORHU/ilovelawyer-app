@@ -14,6 +14,7 @@ import {
   useLawSearchMutation,
 } from "@/lib/law/queries"
 import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
+import { FilterChipGroup } from "@/components/library/filter-chip-group"
 
 function itemTitle(item: LawSearchItem): string {
   return item.case_title ?? item.title ?? ""
@@ -26,13 +27,6 @@ function itemReference(item: LawSearchItem): string | null {
 function topicLabel(topic: LawTopic): string {
   return topic.charAt(0).toUpperCase() + topic.slice(1)
 }
-
-const chipClass = (selected: boolean) =>
-  `cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none ${
-    selected
-      ? "border-primary bg-primary text-primary-foreground"
-      : "border-border bg-transparent text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-  }`
 
 /**
  * Live Library search + browse. Default state = faceted browse; typing a query switches to
@@ -217,6 +211,7 @@ export function LawSearchPanel() {
             <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input
               type="text"
+              enterKeyHint="search"
               aria-label={t(cfg.searchAriaKey)}
               className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-foreground placeholder-muted-foreground outline-none"
               placeholder={t(cfg.searchPlaceholderKey)}
@@ -238,7 +233,7 @@ export function LawSearchPanel() {
           <button
             type="submit"
             disabled={search.isPending || !query.trim()}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
             {search.isPending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -253,63 +248,35 @@ export function LawSearchPanel() {
         {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
           <div className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {t("lawSearch.filterCaseType")}
-                </span>
-                <button type="button" onClick={() => setCaseType(null)} className={chipClass(caseType === null)}>
-                  {t("lawSearch.filterAll")}
-                </button>
-                {cfg.caseTypes.map((ct) => (
-                  <button
-                    key={ct}
-                    type="button"
-                    onClick={() => setCaseType(caseType === ct ? null : (ct as LawCaseType))}
-                    className={chipClass(caseType === ct)}
-                  >
-                    {ct}
-                  </button>
-                ))}
-              </div>
+              <FilterChipGroup
+                label={t("lawSearch.filterCaseType")}
+                mode="single"
+                allLabel={t("lawSearch.filterAll")}
+                options={cfg.caseTypes.map((ct) => ({ value: ct, label: ct }))}
+                selected={caseType}
+                onSelect={(v) => setCaseType(v as LawCaseType | null)}
+              />
             )}
 
             {(facetKind === "ph-jurisprudence" || facetKind === "ph-topics") && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {t("lawSearch.filterTopics")}
-                </span>
-                {cfg.topics.map((topic) => (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() => toggleTopic(topic as LawTopic)}
-                    className={chipClass(topics.includes(topic as LawTopic))}
-                  >
-                    {topicLabel(topic as LawTopic)}
-                  </button>
-                ))}
-              </div>
+              <FilterChipGroup
+                label={t("lawSearch.filterTopics")}
+                mode="multi"
+                options={cfg.topics.map((topic) => ({ value: topic, label: topicLabel(topic as LawTopic) }))}
+                selected={topics}
+                onToggle={(v) => toggleTopic(v as LawTopic)}
+              />
             )}
 
             {facetKind === "uk-court" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {t("lawSearch.filterCourt")}
-                </span>
-                <button type="button" onClick={() => setCourt(null)} className={chipClass(court === null)}>
-                  {t("lawSearch.filterAll")}
-                </button>
-                {cfg.courts.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCourt(court === c ? null : (c as UkCourt))}
-                    className={chipClass(court === c)}
-                  >
-                    {ukCourtLabel(c)}
-                  </button>
-                ))}
-              </div>
+              <FilterChipGroup
+                label={t("lawSearch.filterCourt")}
+                mode="single"
+                allLabel={t("lawSearch.filterAll")}
+                options={cfg.courts.map((c) => ({ value: c, label: ukCourtLabel(c) }))}
+                selected={court}
+                onSelect={(v) => setCourt(v as UkCourt | null)}
+              />
             )}
           </div>
         )}
