@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { chatKeys } from "@/lib/query-keys"
@@ -62,8 +62,17 @@ function generateUsername(fullName: string): string {
   return `${base}.${suffix}`
 }
 
+/** A `?next=` value is attacker-controllable (a crafted link), so only a same-app relative
+ * path is honored — anything else (an absolute URL, a protocol-relative "//evil.example"
+ * open redirect, or nothing at all) falls back to the default post-auth destination. */
+export function sanitizeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/homepage"
+  return raw
+}
+
 export function useLoginMutation() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
@@ -83,7 +92,7 @@ export function useLoginMutation() {
       // until the tab is refreshed, even though the user just "freshly" logged in.
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      router.push("/homepage")
+      router.push(sanitizeNextPath(searchParams.get("next")))
     },
   })
 }
@@ -136,6 +145,7 @@ export function useVerifyOtpMutation() {
 
 export function useGoogleAuthMutation() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
@@ -151,7 +161,7 @@ export function useGoogleAuthMutation() {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      router.push("/homepage")
+      router.push(sanitizeNextPath(searchParams.get("next")))
     },
   })
 }

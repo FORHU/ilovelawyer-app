@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   AudioLines,
@@ -10,8 +11,6 @@ import {
   CheckCircle2,
   FolderOpen,
   GitBranch,
-  Globe,
-  Languages,
   MessageSquare,
   Mic,
   Network,
@@ -25,33 +24,37 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 
-const ICONS: LucideIcon[] = [
-  UserCircle,
-  Users,
-  Globe,
-  MessageSquare,
-  FolderOpen,
-  PanelsTopLeft,
-  Terminal,
-  BookOpen,
-  Mic,
-  Upload,
-  Calendar,
-  Network,
-  GitBranch,
-  Shield,
-  AudioLines,
-  CheckCircle2,
-  AlertTriangle,
-  Languages,
+const CAPABILITIES: { Icon: LucideIcon; route: string }[] = [
+  { Icon: UserCircle, route: "/homepage/profile" },
+  { Icon: Users, route: "/homepage/organization" },
+  { Icon: MessageSquare, route: "/homepage" },
+  { Icon: FolderOpen, route: "/homepage/case-portfolio" },
+  { Icon: PanelsTopLeft, route: "/homepage/case-portfolio" },
+  { Icon: Terminal, route: "/homepage/terminal" },
+  { Icon: BookOpen, route: "/homepage/library" },
+  { Icon: Mic, route: "/homepage/transcription" },
+  { Icon: Upload, route: "/homepage/document-analysis" },
+  { Icon: Calendar, route: "/homepage/calendar" },
+  { Icon: Network, route: "/homepage/terminal" },
+  { Icon: GitBranch, route: "/homepage/terminal" },
+  { Icon: Shield, route: "/homepage/terminal" },
+  { Icon: AudioLines, route: "/homepage/terminal" },
+  { Icon: CheckCircle2, route: "/homepage/terminal" },
+  { Icon: AlertTriangle, route: "/homepage/terminal" },
 ];
 
 const REPEL_RADIUS = 130;
 const REPEL_MAX_PUSH = 16;
 
+function loginHref(route: string): string {
+  return `/login?next=${encodeURIComponent(route)}`;
+}
+
 export function CapabilitiesSection() {
   const { t } = useTranslation("landing");
+  const router = useRouter();
   const labels = t("capabilities.items", { returnObjects: true }) as string[];
   const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
@@ -82,6 +85,23 @@ export function CapabilitiesSection() {
     });
   };
 
+  // Logged-out visitors go through sign-in/sign-up (the tile's `href`, so it still works
+  // with JS disabled) with `next` pointing back at the real feature; a visitor who's
+  // already got a live session skips that detour and lands on the feature directly.
+  const handleClick = async (e: React.MouseEvent, route: string) => {
+    e.preventDefault();
+    if (hasSessionHint()) {
+      try {
+        await refreshAccessToken();
+        router.push(route);
+        return;
+      } catch {
+        // fall through — hint was stale, visitor isn't actually logged in
+      }
+    }
+    router.push(loginHref(route));
+  };
+
   return (
     <section id="capabilities" className="relative bg-background py-24 px-6 md:px-16">
       <div className="max-w-360 mx-auto">
@@ -110,16 +130,17 @@ export function CapabilitiesSection() {
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-11">
-          {ICONS.map((Icon, i) => (
+          {CAPABILITIES.map(({ Icon, route }, i) => (
             <Tooltip key={i}>
               <TooltipTrigger asChild>
                 <Link
-                  href="/signup"
+                  href={loginHref(route)}
                   ref={(el) => {
                     cardRefs.current[i] = el;
                   }}
                   onMouseEnter={() => handleEnter(i)}
                   onMouseLeave={handleLeave}
+                  onClick={(e) => void handleClick(e, route)}
                   className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform"
                 >
                   <span className="w-12 h-12 rounded-full border border-border flex items-center justify-center text-foreground transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
