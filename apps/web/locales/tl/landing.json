@@ -138,9 +138,11 @@
       { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
     ],
     "vetted": "Beripikado",
-    "indexing": "Ina-index para sa chat...",
-    "mockFilename": "termination-letter.pdf",
-    "mockFilename_UK": "family-trust-deed.pdf"
+    "question": "Puwede ko bang argumentuhan na hindi wasto ang pagtanggal sa aking kliyente dahil walang unang nakasulat na abiso?",
+    "answer": "Oo. Sa ilalim ng twin-notice rule, kailangang magbigay ang employer ng dalawang nakasulat na abiso bago ang pagtanggal. Kinumpirma ng *Agabon v. NLRC* na ang pagkaligtaan ng unang abiso ay sapat na para sa illegal dismissal, kahit may just cause.",
+    "question_UK": "Puwede bang hamunin ng aking kliyente ang pagkakatanggal niya sa testamento ng kanyang ama?",
+    "answer_UK": "Oo. Sa ilalim ng Inheritance Act 1975, maaaring humingi ng makatwirang tustos-pananalapi ang isang umaasang hindi isinama sa testamento. Itinakda ng *Ilott v The Blue Cross* ang pangunahing pagsusulit na gagamitin dito ng korte.",
+    "composerPlaceholder": "Magtanong pa..."
   },
   "firms": {
     "heading": "Ginawa ayon sa aktwal na paraan ng paggawa ng mga law firm",

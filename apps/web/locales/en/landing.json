@@ -138,9 +138,11 @@
       { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
     ],
     "vetted": "Vetted",
-    "indexing": "Indexing for chat...",
-    "mockFilename": "termination-letter.pdf",
-    "mockFilename_UK": "family-trust-deed.pdf"
+    "question": "Can I argue my client's dismissal was invalid without a first written notice?",
+    "answer": "Yes. Under the twin-notice rule, an employer must issue two written notices before dismissal. *Agabon v. NLRC* confirms that skipping the first notice alone supports an illegal-dismissal finding, even where just cause otherwise exists.",
+    "question_UK": "Can my client challenge her exclusion from her father's will?",
+    "answer_UK": "Yes. Under the Inheritance Act 1975, a dependant excluded from a will may claim reasonable financial provision. *Ilott v The Blue Cross* set the leading test the court will apply here.",
+    "composerPlaceholder": "Ask a follow-up..."
   },
   "firms": {
     "heading": "Built for how firms actually work",
