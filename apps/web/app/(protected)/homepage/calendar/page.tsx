@@ -10,12 +10,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { AlertCircle, CalendarOff, ChevronLeft, ChevronRight, Clock, RotateCw, StickyNote, X } from "lucide-react";
+import { AlertCircle, Ban, CalendarOff, ChevronLeft, ChevronRight, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAppointmentsQuery, useCreateAppointmentMutation, useNotesQuery, useCreateNoteMutation, normalizeTimeString } from "@/lib/calendar/mutations";
+import {
+  useAppointmentsQuery,
+  useCreateAppointmentMutation,
+  useUpdateAppointmentMutation,
+  useNotesQuery,
+  useCreateNoteMutation,
+  normalizeTimeString,
+} from "@/lib/calendar/mutations";
+import type { Appointment } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
 
-const MAX_VISIBLE_PER_DAY = 2;
+// Day cells have a fixed height (see CalendarDayCell) — 1 visible item plus an overflow
+// label is what reliably fits without the cell growing or clipping mid-line.
+const MAX_VISIBLE_PER_DAY = 1;
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -25,6 +35,12 @@ function isPastDay(date: Date): boolean {
   return isBefore(startOfDay(date), startOfDay(new Date()));
 }
 
+/** An appointment reads as "Done" once its own date/time has passed — not a status the
+ * lawyer sets manually, so this is computed fresh on every render rather than stored. */
+function isAppointmentPast(appt: { date: string; startTime: string }): boolean {
+  return new Date(`${appt.date}T${appt.startTime}`) < new Date();
+}
+
 function formatTime12h(time: string): string {
   return format(parse(time, "HH:mm", new Date()), "h:mm a");
 }
@@ -32,7 +48,7 @@ function formatTime12h(time: string): string {
 /* ==========================================
    MONTH GRID DAY CELL (appointments)
    ========================================== */
-type DayItem = { id: string; label: string; sortKey: string; kind: "appointment" | "note" };
+type DayItem = { id: string; title: string; time: string | null; sortKey: string; kind: "appointment" | "note"; cancelled?: boolean };
 type DayItems = { visible: DayItem[]; overflowCount: number };
 
 const CalendarItemsContext = React.createContext<{
@@ -51,40 +67,47 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
   const dayItems = itemsByDate?.get(toDateKey(day.date));
   const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
   const isPast = !!modifiers.past && !modifiers.today;
+  // A day-wide "view or add appointments" tooltip would overlap the per-item ones below once
+  // the cell has content, so it's only shown for empty cells.
+  const hasItems = !!dayItems && (dayItems.visible.length > 0 || dayItems.overflowCount > 0);
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={() => onSelectDay(day.date)}
-          disabled={props.disabled}
-          className={cn(
-            "flex h-full min-h-[92px] w-full flex-col items-start gap-1 rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent dark:hover:bg-overlay-hover disabled:pointer-events-none disabled:opacity-40",
-            modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
-            isPast && !modifiers.outside && "bg-muted/30",
-            isSelected && "border-primary bg-primary/10",
-            className
-          )}
-        >
-          <span
-            className={cn(
-              "flex size-5 items-center justify-center rounded-full text-xs font-medium",
-              modifiers.today && "bg-primary font-bold text-primary-foreground",
-              isPast && "bg-muted text-muted-foreground"
-            )}
-          >
-            {day.date.getDate()}
-          </span>
-          <div className="flex w-full flex-col gap-0.5 overflow-hidden">
-            {dayItems?.visible.map((item) => (
+  const button = (
+    <button
+      type="button"
+      onClick={() => onSelectDay(day.date)}
+      disabled={props.disabled}
+      className={cn(
+        "flex w-full min-w-0 flex-col items-start gap-1 overflow-hidden rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent dark:hover:bg-overlay-hover disabled:pointer-events-none disabled:opacity-40",
+        modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
+        isPast && !modifiers.outside && "bg-muted/30",
+        isSelected && "border-primary bg-primary/10",
+        className
+      )}
+      // Inline, not a Tailwind class: guarantees a hard cap regardless of class-merge order
+      // or stale-CSS-cache quirks — a day with many appointments must never grow this box.
+      style={{ height: 92, maxHeight: 92, overflow: "hidden" }}
+    >
+      <span
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+          modifiers.today && "bg-primary font-bold text-primary-foreground",
+          isPast && "bg-muted text-muted-foreground"
+        )}
+      >
+        {day.date.getDate()}
+      </span>
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-0.5 overflow-hidden">
+        {dayItems?.visible.map((item) => (
+          <Tooltip key={item.id}>
+            <TooltipTrigger asChild>
               <span
-                key={item.id}
                 className={cn(
-                  "flex items-center gap-1 truncate rounded px-1 py-0.5 text-[10px] leading-tight",
-                  item.kind === "note"
-                    ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
-                    : "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
+                  "flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-tight",
+                  item.cancelled
+                    ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                    : item.kind === "note"
+                      ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300"
+                      : "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300"
                 )}
               >
                 {item.kind === "note" ? (
@@ -92,15 +115,57 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
                 ) : (
                   <Clock className="size-2.5 shrink-0" aria-hidden="true" />
                 )}
-                <span className="truncate">{item.label}</span>
+                <span className={cn("min-w-0 truncate", item.cancelled && "line-through")}>
+                  {item.time ? `${item.time} ` : ""}
+                  {item.title}
+                </span>
               </span>
-            ))}
-            {dayItems && dayItems.overflowCount > 0 && (
-              <span className="text-[10px] text-muted-foreground">{t("overflowMore", { count: dayItems.overflowCount })}</span>
-            )}
-          </div>
-        </button>
-      </TooltipTrigger>
+            </TooltipTrigger>
+            <TooltipContent className="h-[104px] w-64 max-w-64 px-3 py-2 text-left">
+              <div className="flex h-full items-start gap-2">
+                <span
+                  className={cn(
+                    "mt-1 size-2 shrink-0 rounded-full",
+                    item.cancelled ? "bg-red-400" : item.kind === "note" ? "bg-amber-400" : "bg-blue-400"
+                  )}
+                  aria-hidden="true"
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  {/* Fixed height (not just a line-clamp max) so a one-word title and a
+                      three-line title produce the same popout size — never grows/shrinks
+                      with content, same as the fixed-size day cell it comes from. */}
+                  <p
+                    className={cn(
+                      "line-clamp-3 h-12 overflow-hidden text-xs leading-snug font-semibold break-words",
+                      item.cancelled && "line-through"
+                    )}
+                  >
+                    {item.title}
+                  </p>
+                  {/* Same fixed-block approach as the title — 2 lines reserved so the full
+                      date/time/status text is readable instead of getting ellipsis-cut. */}
+                  <p className="mt-1 line-clamp-2 h-8 overflow-hidden text-[11px] break-words opacity-80">
+                    {format(day.date, "EEEE, MMM d")}
+                    {item.time ? ` · ${item.time}` : ""}
+                    {item.cancelled ? ` · ${t("statusCancelled")}` : ""}
+                  </p>
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {dayItems && dayItems.overflowCount > 0 && (
+          <span className="text-[10px] text-muted-foreground">{t("overflowMore", { count: dayItems.overflowCount })}</span>
+        )}
+      </div>
+    </button>
+  );
+
+  if (hasItems) return button;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent>{isPast ? t("pastDate.tooltip", { date: format(day.date, "MMM d") }) : `View or add appointments on ${format(day.date, "MMM d")}`}</TooltipContent>
     </Tooltip>
   );
@@ -109,7 +174,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
 /* ==========================================
    AGENDA VIEW (mobile replacement for the 7-column grid below md)
    ========================================== */
-type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null };
+type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null; status: string };
 type AgendaNote = { id: string; date: string; body: string };
 type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
 
@@ -146,15 +211,25 @@ function AgendaView({
                   {format(day.date, "EEEE, MMM d")}
                 </span>
                 <div className="flex flex-col gap-1.5">
-                  {day.appointments.map((appt) => (
-                    <span
-                      key={appt.id}
-                      className="flex items-center gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
-                    >
-                      <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                      {formatTime12h(appt.startTime)} · {appt.title}
-                    </span>
-                  ))}
+                  {day.appointments.map((appt) => {
+                    const isCancelled = appt.status === "cancelled";
+                    return (
+                      <span
+                        key={appt.id}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs",
+                          isCancelled
+                            ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                            : "bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
+                        )}
+                      >
+                        <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span className={cn(isCancelled && "line-through")}>
+                          {formatTime12h(appt.startTime)} · {appt.title}
+                        </span>
+                      </span>
+                    );
+                  })}
                   {day.notes.map((note) => (
                     <span
                       key={note.id}
@@ -212,7 +287,7 @@ function PlannerPanel({
   currentMonth: Date;
   onSelectDay: (date: Date) => void;
   onMonthChange: (month: Date) => void;
-  selectedAppointments: { id: string; title: string; startTime: string; endTime: string | null; description: string | null }[];
+  selectedAppointments: Appointment[];
   selectedNotes: { id: string; body: string }[];
   initialCaseId: string | null;
 }) {
@@ -223,24 +298,60 @@ function PlannerPanel({
   const [description, setDescription] = React.useState("");
   const [notifyEmail, setNotifyEmail] = React.useState("");
   const [caseId, setCaseId] = React.useState(initialCaseId ?? "");
+  const [reminderLeadMinutes, setReminderLeadMinutes] = React.useState("");
   const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
+  const updateAppointment = useUpdateAppointmentMutation();
   const createNote = useCreateNoteMutation();
-  const isSubmitting = createAppointment.isPending || createNote.isPending;
+  const isSubmitting = createAppointment.isPending || createNote.isPending || updateAppointment.isPending;
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
 
+  function resetAppointmentFields() {
+    setTitle("");
+    setStartTime("");
+    setEndTime("");
+    setDescription("");
+    setNotifyEmail("");
+    setReminderLeadMinutes("");
+    setEditingId(null);
+  }
+
+  function startEdit(appt: Appointment) {
+    setFormError(null);
+    setEntryType("appointment");
+    setEditingId(appt.id);
+    setTitle(appt.title);
+    setStartTime(appt.startTime);
+    setEndTime(appt.endTime ?? "");
+    setDescription(appt.description ?? "");
+    setNotifyEmail(appt.notifyEmail ?? "");
+    setCaseId(appt.caseId ?? "");
+    setReminderLeadMinutes(appt.reminderLeadMinutes ? String(appt.reminderLeadMinutes) : "");
+  }
+
+  async function setAppointmentStatus(appt: Appointment, status: string) {
+    setFormError(null);
+    try {
+      await updateAppointment.mutateAsync({ id: appt.id, status, caseId: appt.caseId ?? undefined });
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!selectedDate || isPastSelected) return;
+    if (!selectedDate) return;
     const date = toDateKey(selectedDate);
 
     if (entryType === "note") {
+      if (isPastSelected) return;
       if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
       try {
         await createNote.mutateAsync({ date, body: noteBody.trim() });
@@ -263,20 +374,31 @@ function PlannerPanel({
     if (!normalizedStart || !normalizedEnd) return setFormError(t("errors.invalidTime"));
     if (normalizedEnd <= normalizedStart) return setFormError(t("errors.endAfterStart"));
     try {
-      await createAppointment.mutateAsync({
-        title: title.trim(),
-        date,
-        startTime: normalizedStart,
-        endTime: normalizedEnd,
-        description: description.trim() || undefined,
-        notifyEmail: notifyEmail.trim() || undefined,
-        caseId: caseId || undefined,
-      });
-      setTitle("");
-      setStartTime("");
-      setEndTime("");
-      setDescription("");
-      setNotifyEmail("");
+      if (editingId) {
+        await updateAppointment.mutateAsync({
+          id: editingId,
+          title: title.trim(),
+          date,
+          startTime: normalizedStart,
+          description: description.trim(),
+          notifyEmail: notifyEmail.trim(),
+          caseId,
+          reminderLeadMinutes: reminderLeadMinutes ? Number(reminderLeadMinutes) : null,
+        });
+      } else {
+        if (isPastSelected) return;
+        await createAppointment.mutateAsync({
+          title: title.trim(),
+          date,
+          startTime: normalizedStart,
+          endTime: normalizedEnd,
+          description: description.trim() || undefined,
+          notifyEmail: notifyEmail.trim() || undefined,
+          caseId: caseId || undefined,
+          reminderLeadMinutes: reminderLeadMinutes ? Number(reminderLeadMinutes) : undefined,
+        });
+      }
+      resetAppointmentFields();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
     }
@@ -303,7 +425,27 @@ function PlannerPanel({
         />
 
         <div className="border-t border-border pt-4">
-          {isPastSelected ? (
+          {editingId ? (
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("editingAppointment")}</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetAppointmentFields();
+                      setFormError(null);
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                    aria-label={t("cancelEdit")}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("cancelEdit")}</TooltipContent>
+              </Tooltip>
+            </div>
+          ) : isPastSelected ? (
             <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
               <CalendarOff className="size-3.5 shrink-0" aria-hidden="true" />
               <p className="text-xs font-bold uppercase tracking-wider">{t("pastDate.title")}</p>
@@ -314,7 +456,7 @@ function PlannerPanel({
             </p>
           )}
 
-          {isPastSelected ? (
+          {!editingId && isPastSelected ? (
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5">
               <p className="text-xs text-muted-foreground">{t("pastDate.description")}</p>
             </div>
@@ -322,28 +464,30 @@ function PlannerPanel({
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
-              <div className="flex gap-1 rounded-md border border-border p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setEntryType("appointment")}
-                  className={cn(
-                    "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                    entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
-                  )}
-                >
-                  {t("appointment")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEntryType("note")}
-                  className={cn(
-                    "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                    entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
-                  )}
-                >
-                  {t("note")}
-                </button>
-              </div>
+              {!editingId && (
+                <div className="flex gap-1 rounded-md border border-border p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setEntryType("appointment")}
+                    className={cn(
+                      "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                      entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
+                    )}
+                  >
+                    {t("appointment")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntryType("note")}
+                    className={cn(
+                      "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                      entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
+                    )}
+                  >
+                    {t("note")}
+                  </button>
+                </div>
+              )}
 
               {entryType === "note" ? (
                 <textarea
@@ -413,6 +557,31 @@ function PlannerPanel({
                       </option>
                     ))}
                   </select>
+                  <select
+                    value={reminderLeadMinutes}
+                    onChange={(e) => setReminderLeadMinutes(e.target.value)}
+                    aria-label={t("reminderLabel")}
+                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
+                  >
+                    <option value="" className="text-black">
+                      {t("reminderNone")}
+                    </option>
+                    <option value="1440" className="text-black">
+                      {t("reminder1Day")}
+                    </option>
+                    <option value="2880" className="text-black">
+                      {t("reminder2Days")}
+                    </option>
+                    <option value="4320" className="text-black">
+                      {t("reminder3Days")}
+                    </option>
+                    <option value="7200" className="text-black">
+                      {t("reminder5Days")}
+                    </option>
+                    <option value="10080" className="text-black">
+                      {t("reminder1Week")}
+                    </option>
+                  </select>
                   <textarea
                     placeholder={t("descriptionPlaceholder")}
                     value={description}
@@ -426,11 +595,15 @@ function PlannerPanel({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-                    {isSubmitting ? t("saving") : entryType === "note" ? t("addNote") : t("addAppointment")}
+                    {isSubmitting ? t("saving") : editingId ? t("saveChanges") : entryType === "note" ? t("addNote") : t("addAppointment")}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {entryType === "note" ? "Save this note to the selected day" : "Save this appointment to the selected day"}
+                  {editingId
+                    ? "Save changes to this appointment"
+                    : entryType === "note"
+                      ? "Save this note to the selected day"
+                      : "Save this appointment to the selected day"}
                 </TooltipContent>
               </Tooltip>
             </form>
@@ -446,20 +619,90 @@ function PlannerPanel({
           <p className="text-xs text-muted-foreground">{t("nothingScheduledDay")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {selectedAppointments.map((appt) => (
-              <li key={appt.id} className="flex items-start gap-2 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-900 dark:bg-blue-500/15 dark:text-blue-300">
-                <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <div>
-                  <p className="font-medium">{appt.title}</p>
-                  <p className="text-blue-700 dark:text-blue-300">
-                    {appt.endTime
-                      ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
-                      : formatTime12h(appt.startTime)}
-                  </p>
-                  {appt.description && <p className="mt-0.5 text-blue-700 dark:text-blue-300">{appt.description}</p>}
-                </div>
-              </li>
-            ))}
+            {selectedAppointments.map((appt) => {
+              const isCancelled = appt.status === "cancelled";
+              const isDone = !isCancelled && isAppointmentPast(appt);
+              return (
+                <li
+                  key={appt.id}
+                  className={cn(
+                    "flex flex-col gap-1.5 rounded-md px-2.5 py-1.5 text-xs",
+                    isCancelled
+                      ? "bg-red-50 text-red-900 dark:bg-red-500/10 dark:text-red-300"
+                      : isDone
+                        ? "bg-green-50 text-green-900 dark:bg-green-500/10 dark:text-green-300"
+                        : "bg-blue-50 text-blue-900 dark:bg-blue-500/15 dark:text-blue-300"
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-medium", isCancelled && "line-through")}>
+                        {appt.title}
+                        {isCancelled && <span className="ml-1.5 font-normal">({t("statusCancelled")})</span>}
+                        {isDone && <span className="ml-1.5 font-normal">({t("statusDone")})</span>}
+                      </p>
+                      <p
+                        className={cn(
+                          isCancelled ? "text-red-700 dark:text-red-300" : isDone ? "text-green-700 dark:text-green-300" : "text-blue-700 dark:text-blue-300"
+                        )}
+                      >
+                        {appt.endTime
+                          ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
+                          : formatTime12h(appt.startTime)}
+                      </p>
+                      {appt.description && <p className="mt-0.5">{appt.description}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 pl-5">
+                    {isCancelled ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setAppointmentStatus(appt, "pending")}
+                            className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                            aria-label={t("restore")}
+                          >
+                            <Undo2 className="size-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("restore")}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(appt)}
+                              className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                              aria-label={t("edit")}
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("edit")}</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setAppointmentStatus(appt, "cancelled")}
+                              className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                              aria-label={t("cancelAppointment")}
+                            >
+                              <Ban className="size-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{t("cancelAppointment")}</TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
             {selectedNotes.map((note) => (
               <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
                 <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
@@ -508,9 +751,11 @@ export default function CalendarPage() {
       const list = grouped.get(appt.date) ?? [];
       list.push({
         id: appt.id,
-        label: `${formatTime12h(appt.startTime)} ${appt.title}`,
+        title: appt.title,
+        time: formatTime12h(appt.startTime),
         sortKey: appt.startTime,
         kind: "appointment",
+        cancelled: appt.status === "cancelled",
       });
       grouped.set(appt.date, list);
     }
@@ -519,7 +764,8 @@ export default function CalendarPage() {
       const list = grouped.get(note.date) ?? [];
       list.push({
         id: note.id,
-        label: note.body,
+        title: note.body,
+        time: null,
         // Notes have no time, so they always sort after the day's appointments.
         sortKey: "24:00",
         kind: "note",
@@ -669,7 +915,8 @@ export default function CalendarPage() {
                     classNames={{
                       nav: "hidden",
                       month_caption: "hidden",
-                      day: "flex-1 basis-0 p-0.5 align-top",
+                      day: "flex-1 basis-0 min-w-0 self-start p-0.5 align-top",
+                      week: "mt-2 flex w-full items-start",
                       month_grid: "w-full border-collapse",
                       today: "",
                     }}
