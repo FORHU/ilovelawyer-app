@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { format, parse, isValid } from "date-fns"
 import { apiFetch } from "@/lib/fetch"
 import { appointmentKeys, caseKeys, noteKeys } from "@/lib/query-keys"
 
@@ -50,6 +50,14 @@ interface BackendEvent {
   caseId: string | null
 }
 
+/** Re-formats `value` as zero-padded "HH:mm" if it's a valid time (accepts "9:00" -> "09:00"),
+ * or null if it isn't parseable as a time at all (e.g. "9:00 AM", "14h30") — guards against
+ * free-text fallback on browsers where <input type="time"> degrades to a text field. */
+export function normalizeTimeString(value: string): string | null {
+  const parsed = parse(value, "HH:mm", new Date())
+  return isValid(parsed) ? format(parsed, "HH:mm") : null
+}
+
 function toAppointment(event: BackendEvent): Appointment {
   const dt = new Date(event.dateTime)
   return {
@@ -81,11 +89,20 @@ export function useCreateAppointmentMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CreateAppointmentPayload) => {
+      // Defensive: the Calendar form (page.tsx's handleSubmit) already validates/normalizes
+      // startTime before calling this, so this should be unreachable in practice — but this is
+      // an exported hook, not private to that one form, so it shouldn't rely solely on every
+      // future caller re-implementing the same check. Without this, an unparseable startTime
+      // would reach `new Date(...).toISOString()` below and throw a native RangeError with the
+      // raw, untranslated V8 message "Invalid time value" instead of a readable one.
+      const normalizedStartTime = normalizeTimeString(payload.startTime)
+      if (!normalizedStartTime) throw new Error(`Invalid start time: "${payload.startTime}"`)
+
       const { event } = await apiFetch<{ event: BackendEvent }>("/api/events", {
         method: "POST",
         body: JSON.stringify({
           title: payload.title,
-          dateTime: new Date(`${payload.date}T${payload.startTime}`).toISOString(),
+          dateTime: new Date(`${payload.date}T${normalizedStartTime}`).toISOString(),
           notes: payload.description,
           clientEmail: payload.notifyEmail,
           caseId: payload.caseId,

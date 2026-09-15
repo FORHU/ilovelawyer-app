@@ -9,6 +9,7 @@
   "addTo": "Idagdag sa {{date}}",
   "appointment": "Appointment",
   "note": "Tala",
+  "endTimeHint": "Ang oras ng pagtatapos ay dapat pagkatapos ng {{time}}.",
   "titlePlaceholder": "Pamagat",
   "notifyEmailPlaceholder": "Email na paalalahanan (opsyonal)",
   "descriptionPlaceholder": "Paglalarawan (opsyonal)",
@@ -25,6 +26,7 @@
   "errors": {
     "titleRequired": "Kinakailangan ang pamagat.",
     "timeRequired": "Kinakailangan ang oras ng simula at pagtatapos.",
+    "invalidTime": "Dapat wastong oras ang simula at pagtatapos (hal. 09:00).",
     "endAfterStart": "Ang oras ng pagtatapos ay dapat pagkatapos ng oras ng simula.",
     "appointmentSaveFailed": "Hindi na-save ang appointment.",
     "noteRequired": "Kinakailangan ang teksto ng tala.",
