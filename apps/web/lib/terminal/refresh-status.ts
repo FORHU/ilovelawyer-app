@@ -1,12 +1,9 @@
 import type { AiJobStatus } from "@/lib/terminal/mutations"
 
-/** Whether the Legal Terminal header should show "Updating analysis…" — true only when a
- * caseRefresh job is IN_PROGRESS and it wasn't this tab's own button click that's driving it
- * (that case already gets its own spinner/label on the Refresh button itself, via
- * useRefreshSnapshotMutation's isPending). This is what actually distinguishes "background work
- * is happening" from "I just clicked Refresh" — covers a corpus change auto-triggering a
- * refresh, another tab/user clicking Refresh, or this page loading mid-run, anything the
- * existing 3s useAiJobStatus poll can see that this tab's own pending flag can't. */
-export function shouldShowUpdatingAnalysis(refreshIsPending: boolean, jobStatus: AiJobStatus["status"] | undefined): boolean {
-  return !refreshIsPending && jobStatus === "IN_PROGRESS"
+/** Whether the Legal Terminal header should show "Updating analysis…" — true whenever a
+ * caseRefresh job is IN_PROGRESS. There is no manual "Refresh analysis" trigger in the UI
+ * anymore (auto-refresh on corpus change replaced it) — every IN_PROGRESS job here is a
+ * background one, so there is nothing left to distinguish it from. */
+export function shouldShowUpdatingAnalysis(jobStatus: AiJobStatus["status"] | undefined): boolean {
+  return jobStatus === "IN_PROGRESS"
 }

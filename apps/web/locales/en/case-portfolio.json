@@ -44,7 +44,7 @@
     "riskLevelMedium": "Medium",
     "riskLevelLow": "Low",
     "keyIssues": "Key issues",
-    "noRisk": "No risk analysis yet — refresh analysis in the Legal Terminal to generate one.",
+    "noRisk": "No risk analysis yet — it appears automatically once the case's analysis updates.",
     "documents": "Documents",
     "noDocuments": "No documents attached yet.",
     "manageDocuments": "Manage in Workspace",

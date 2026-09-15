@@ -70,6 +70,16 @@ export interface AiJobStatus {
 }
 
 const AI_JOB_POLL_MS = 3000
+// Idle heartbeat while no job is IN_PROGRESS — deliberately not `false`/no-poll. staleTime 0
+// (below) only refetches fresh on a genuine unmount+remount, but Next's client-side router can
+// reuse an already-rendered page across a soft navigation (e.g. Workspace -> Terminal for the
+// same case) without actually remounting this hook — no mount event fires, so nothing would
+// ever re-check status until this heartbeat does. Observed directly: a lawyer uploading/deleting
+// a document in the Workspace, then navigating straight to the Terminal, saw a caseRefresh job
+// that was genuinely IN_PROGRESS server-side sit unnoticed here until a hard browser refresh.
+// 15s bounds how late "Updating analysis…" can appear after a background job actually starts,
+// independent of whatever Next's navigation caching happens to do.
+const AI_JOB_IDLE_POLL_MS = 15_000
 
 /** Polls whether a Generate/Refresh/Scan action is currently running for this case, regardless
  * of who triggered it or when — a page refresh mid-generation otherwise looks idle even though
@@ -80,12 +90,9 @@ const AI_JOB_POLL_MS = 3000
  * without a manual refresh — every current caller wants this, so it's built in rather than left
  * as an opt-in callback.
  *
- * staleTime 0 deliberately opts out of the app's 5-minute default (see providers.tsx): this
- * hook unmounts entirely while the lawyer is off on another page (e.g. uploading/deleting a
- * document in the Workspace), so an automatic caseRefresh that starts and finishes during that
- * gap leaves no live poll to notice it. Without staleTime 0, remounting here on return to the
- * Terminal would serve the stale pre-navigation cache — "IN_PROGRESS" never shown, snapshot
- * never invalidated — until the 5-minute window happened to lapse or the page was hard-refreshed. */
+ * staleTime 0 opts out of the app's 5-minute default (see providers.tsx) for the case where this
+ * genuinely does remount fresh. The AI_JOB_IDLE_POLL_MS heartbeat below is the backstop for when
+ * it doesn't — see that constant's comment. */
 export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   const queryClient = useQueryClient()
   const query = useQuery({
@@ -93,7 +100,7 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
     queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
     enabled: !!caseId,
     staleTime: 0,
-    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_POLL_MS : false),
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_POLL_MS : AI_JOB_IDLE_POLL_MS),
   })
 
   const prevStatus = useRef(query.data?.status)
@@ -121,6 +128,15 @@ export function useTerminalWorkspacesQuery() {
   })
 }
 
+// Backstop for the same reason as AI_JOB_IDLE_POLL_MS above: if this component also isn't
+// truly remounting on the Workspace -> Terminal navigation, staleTime 0's mount-triggered
+// refetch never fires, and there may be no live useAiJobStatus DONE-transition around either
+// (the whole caseRefresh cycle can complete before the lawyer ever lands on the Terminal, so
+// there's nothing to transition FROM). Long interval — this is the full case snapshot, not a
+// cheap status ping — just enough to bound "how stale can this get while idle" instead of
+// leaving it stale indefinitely.
+const SNAPSHOT_IDLE_POLL_MS = 30_000
+
 /** staleTime 0 for the same reason as useAiJobStatus above, and for a second one specific to
  * this query: a corpus change made from the Workspace (upload/delete) can trigger an automatic
  * caseRefresh entirely while the Terminal isn't mounted at all, so there's no live
@@ -133,6 +149,7 @@ export function useCaseSnapshotQuery(caseId: string) {
     queryFn: () => apiFetch<CaseSnapshot>(`/api/my-cases/${caseId}/snapshot`),
     enabled: !!caseId,
     staleTime: 0,
+    refetchInterval: SNAPSHOT_IDLE_POLL_MS,
   })
 }
 
@@ -224,24 +241,10 @@ export function useDeleteWorkspaceMutation() {
   })
 }
 
-// Refresh is queued server-side (AiGenerationQueue / SQS) rather than run inline — this POST
-// returns as soon as the job is claimed (AiGenerationJob, status IN_PROGRESS), not once the
-// refresh has actually finished. Invalidating the aiJob query here (rather than waiting for its
-// own next poll) is what makes useAiJobStatus's refetchInterval kick in immediately instead of
-// only after its next incidental refetch; that hook is what invalidates the snapshot once the
-// job flips to DONE, same as any other case-scoped Generate/Refresh action.
-export function useRefreshSnapshotMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/refresh`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseRefresh") })
-    },
-  })
-}
+// No frontend caller left — auto-refresh (corpus-change triggered) replaced the lawyer-facing
+// "Refresh analysis" button entirely. POST /api/my-cases/:caseId/refresh itself still exists
+// server-side (CaseTerminalCtrl.refresh) as a deliberate ops/support escape hatch (curl-able
+// directly), it's just no longer wrapped in a typed hook here since nothing in the UI calls it.
 
 export interface CaseTimelineEvent {
   id: string
@@ -608,11 +611,12 @@ export function useDeleteDamageMutation(caseId: string) {
   })
 }
 
-// A dedicated action (not part of useRefreshSnapshotMutation) — narrative generation is a
-// heavier, slower single-shot AI call the lawyer triggers deliberately. Queued server-side
-// (AiGenerationQueue / SQS): this POST returns once the job is claimed (AiJobStatus,
-// IN_PROGRESS), not once the narrative is actually written — see useRefreshSnapshotMutation's
-// comment for why invalidating the aiJob query (not the snapshot) here is what matters.
+// A dedicated action — narrative generation is a heavier, slower single-shot AI call the
+// lawyer triggers deliberately, distinct from the automatic caseRefresh pipeline (findings/
+// strategy/contradictions). Queued server-side (AiGenerationQueue / SQS): this POST returns
+// once the job is claimed (AiJobStatus, IN_PROGRESS), not once the narrative is actually
+// written, which is why invalidating the aiJob query (not the snapshot) here is what matters —
+// useAiJobStatus is what invalidates the snapshot once the job actually flips to DONE.
 // CaseReconstructionPanel resyncs its edit drafts off the job's IN_PROGRESS -> DONE transition
 // rather than off this mutation's return value, since that value is no longer the finished row.
 export function useGenerateReconstructionMutation(caseId: string) {
@@ -707,8 +711,8 @@ export function pollReconstructionAudio(caseId: string) {
 // Witnesses, Damages) rather than raw documents — see RedTeamSvc.generate on the backend.
 // No manual-edit counterpart to useUpdateReconstructionMutation: this is opposing counsel's
 // own commentary, not something the lawyer rewrites in their own voice. Queued server-side
-// (AiGenerationQueue / SQS) — see useRefreshSnapshotMutation's comment for why invalidating
-// the aiJob query (not the snapshot) here is what matters.
+// (AiGenerationQueue / SQS) — see useGenerateReconstructionMutation's comment above for why
+// invalidating the aiJob query (not the snapshot) here is what matters.
 export function useGenerateRedTeamMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

@@ -17,7 +17,6 @@ import {
   Plus,
   PanelLeft,
   PanelTop,
-  RefreshCw,
   Maximize2,
   Minimize2,
   Settings,
@@ -32,7 +31,6 @@ import {
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
   useDeleteWorkspaceMutation,
-  useRefreshSnapshotMutation,
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
@@ -127,9 +125,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const updateWorkspace = useUpdateWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const deleteWorkspace = useDeleteWorkspaceMutation()
-  const refresh = useRefreshSnapshotMutation(caseId)
+  // No manual "Refresh analysis" trigger — the Legal Terminal relies entirely on the automatic
+  // caseRefresh pipeline (corpus-change triggered) now. This poll is what drives the
+  // "Updating analysis…" indicator below while that background job is running.
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
-  const isRefreshing = refresh.isPending || refreshJob.data?.status === "IN_PROGRESS"
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
@@ -509,7 +508,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
             {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
           </span>
-          {shouldShowUpdatingAnalysis(refresh.isPending, refreshJob.data?.status) && (
+          {shouldShowUpdatingAnalysis(refreshJob.data?.status) && (
             <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               {t("updatingAnalysis")}
@@ -523,15 +522,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
               {t("downloadCaseBrief")}
-            </button>
-            <button
-              type="button"
-              onClick={() => refresh.mutate()}
-              disabled={isRefreshing}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} aria-hidden="true" />
-              {isRefreshing ? t("refreshing") : t("refresh")}
             </button>
           </div>
         </div>
