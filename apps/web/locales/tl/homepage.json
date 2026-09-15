@@ -32,6 +32,11 @@
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
+  "message": {
+    "copy": "Kopyahin ang sagot",
+    "copied": "Nakopya!",
+    "copyFailed": "Hindi nakopya"
+  },
   "caseHub": {
     "linkedCase": "Naka-link na kaso",
     "noCase": "Walang naka-link na kaso",

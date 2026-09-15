@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import AssistantMessage, { ThinkingIndicator } from "@/components/chat/assistant-message";
+import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/components/chat/assistant-message";
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
@@ -127,6 +127,91 @@ function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, case
   const tab = searchParams.get("tab");
   if (tab === "mindmap" || tab === "timeline") return tab;
   return "chat";
+}
+
+// navigator.clipboard requires a secure context (https, or localhost) — it's silently
+// `undefined` on a plain http origin, which is otherwise indistinguishable from the write
+// itself failing. Fall back to the old execCommand("copy") path (works over http) before
+// giving up.
+async function copyPlainText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to the execCommand fallback below
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  document.body.removeChild(textarea);
+  return ok;
+}
+
+// Lets a lawyer grab a full reply for pasting into Word/email without hand-selecting the
+// rendered text. Copies the same cleaned plain text AssistantMessage renders (markdown syntax
+// included) rather than rendered HTML — matches what the model actually produced.
+function CopyMessageButton({
+  text,
+  label,
+  copiedLabel,
+  failedLabel,
+  compact = false,
+}: {
+  text: string;
+  label: string;
+  copiedLabel: string;
+  failedLabel: string;
+  /** Icon-only, tighter padding — for the embedded case-workspace/case-terminal chat panels,
+   * which are narrower than the main consultation view. */
+  compact?: boolean;
+}) {
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    const ok = await copyPlainText(text);
+    setStatus(ok ? "copied" : "failed");
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setStatus("idle"), 1500);
+  }, [text]);
+
+  const currentLabel = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : label;
+  const iconSize = compact ? "h-3 w-3" : "h-3.5 w-3.5";
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={currentLabel}
+      aria-label={currentLabel}
+      className={`inline-flex items-center gap-1.5 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
+        compact ? "p-1" : "px-1.5 py-1 text-[11px]"
+      }`}
+    >
+      {status === "copied" ? (
+        <Check className={iconSize} aria-hidden="true" />
+      ) : (
+        <Copy className={iconSize} aria-hidden="true" />
+      )}
+      {!compact && <span>{currentLabel}</span>}
+    </button>
+  );
 }
 
 interface ConsultationChatProps {
@@ -291,6 +376,18 @@ export default function ConsultationChat({
   const queryClient = useQueryClient();
 
   const consultationId = urlConsultationId;
+  // doSend's fetch/stream-reading loop isn't tied to this component's lifecycle (see
+  // sendTokenRef's doc comment below) — switching away from this consultation (e.g. to
+  // another case-terminal panel, which unmounts this whole component) doesn't cancel the
+  // in-flight request, so the backend keeps generating and eventually persists the reply.
+  // But `pendingTurn`/`isSending` are local state, reset to nothing on remount, so without
+  // this the transcript looked "stopped" on return even though it wasn't — this store
+  // (written by every ConsultationChat instance's own doSend, see startSending/stopSending
+  // above) is what survives the remount and lets this instance know a turn for this
+  // consultation is still out there.
+  const isGeneratingElsewhere = useSendingConsultationsStore((s) =>
+    consultationId ? s.sendingConsultationIds.has(consultationId) : false,
+  );
   // Centralizes every place that used to write `?c=` to the URL — routes through local
   // state instead when isolated, per isolateConsultation's doc comment. useCallback keeps this
   // referentially stable so the auto-select effect below can safely depend on it.
@@ -353,7 +450,7 @@ export default function ConsultationChat({
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn,
+    pollWhilePending: !!pendingTurn || isGeneratingElsewhere,
   });
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
@@ -417,7 +514,21 @@ export default function ConsultationChat({
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
-  const messages = isPendingTurnActive ? pendingTurn!.messages : baseMessages;
+  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above):
+  // the user's message is already persisted (ChatRepo.createMessage happens before any
+  // streaming starts) but its reply isn't yet, so a trailing user message plus the global
+  // "still sending" flag is what a still-in-flight turn looks like from here.
+  const isResumedGenerating =
+    !isPendingTurnActive && isGeneratingElsewhere && baseMessages[baseMessages.length - 1]?.role === "user";
+  const messages = isPendingTurnActive
+    ? pendingTurn!.messages
+    : isResumedGenerating
+      ? [...baseMessages, { role: "assistant" as const, content: "" }]
+      : baseMessages;
+  // Composer/related-cases gating below used to only key off local isSending, which a
+  // remount clears — isBusy keeps them consistent with the resumed "still thinking" bubble
+  // above instead of looking idle while that bubble is showing.
+  const isBusy = isSending || isResumedGenerating;
 
   // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
   // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
@@ -761,7 +872,7 @@ export default function ConsultationChat({
       documentIds?: string[];
     },
   ) => {
-    if (!text || !session || isSending) return;
+    if (!text || !session || isBusy) return;
 
     // Identifies this send so it can tell, once it's back from an await, whether the
     // user has since navigated away (handleNewChat/handleSelectConsultation bump the
@@ -1186,7 +1297,7 @@ export default function ConsultationChat({
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
-                disabled={isSending}
+                disabled={isBusy}
               />
             </div>
           )}
@@ -1246,7 +1357,7 @@ export default function ConsultationChat({
 
               {!transcribingId && (
                 <VoiceDictate
-                  disabled={isSending}
+                  disabled={isBusy}
                   onRecordingChange={setIsRecording}
                   onComplete={(blob, durationSeconds) => {
                     // Same queue-then-transcribe pipeline as the non-embedded composer below —
@@ -1268,7 +1379,7 @@ export default function ConsultationChat({
                   <TooltipTrigger asChild>
                     <button
                       type="submit"
-                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
                       aria-label={t("input.sendMessage")}
                       className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
@@ -1304,7 +1415,7 @@ export default function ConsultationChat({
 
               {!transcribingId && (
                 <VoiceDictate
-                  disabled={isSending}
+                  disabled={isBusy}
                   onRecordingChange={setIsRecording}
                   onComplete={(blob, durationSeconds) => {
                     // Queued immediately so it shows up on the Transcription page right away —
@@ -1326,7 +1437,7 @@ export default function ConsultationChat({
                   <TooltipTrigger asChild>
                     <button
                       type="submit"
-                      disabled={isSending || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
                       aria-label={t("input.sendMessage")}
                       // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
                       // and would otherwise dominate a narrow composer row alongside the
@@ -1630,7 +1741,7 @@ export default function ConsultationChat({
                  * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
-                {visibleMessages.length === 0 && !historyLoading && !isSending && (
+                {visibleMessages.length === 0 && !historyLoading && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
                       <p className="mb-1 text-sm font-medium text-foreground">{emptyStateHeading}</p>
@@ -1658,7 +1769,12 @@ export default function ConsultationChat({
 
                   // The last assistant message is a placeholder pushed synchronously at send
                   // time, before any chunk streams in — that's the window "thinking" covers.
-                  const isStreamingThis = isSending && isPendingTurnActive && i === visibleMessages.length - 1;
+                  // isResumedGenerating covers the same window after a remount (switched
+                  // panels/pages mid-send and came back) — the placeholder here is `messages`'
+                  // own synthetic one, not pendingTurn's, so isSending/isPendingTurnActive (both
+                  // local to this instance) don't apply.
+                  const isStreamingThis =
+                    ((isSending && isPendingTurnActive) || isResumedGenerating) && i === visibleMessages.length - 1;
                   const isLastMessage = i === visibleMessages.length - 1;
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
@@ -1698,7 +1814,7 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
-                          {(showRelatedCases ?? !embedded) && !isSending && isLastMessage && m.content && relatedCases.length > 0 && (
+                          {(showRelatedCases ?? !embedded) && !isBusy && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
                                 <Grid2x2 className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
@@ -1712,6 +1828,17 @@ export default function ConsultationChat({
                                   emptyLabel={t("caseHub.relatedEmpty")}
                                 />
                               </div>
+                            </div>
+                          )}
+                          {!isStreamingThis && m.content && (
+                            <div className="mt-2 flex justify-start">
+                              <CopyMessageButton
+                                text={cleanAssistantContent(m.content)}
+                                label={t("message.copy", { defaultValue: "Copy response" })}
+                                copiedLabel={t("message.copied", { defaultValue: "Copied!" })}
+                                failedLabel={t("message.copyFailed", { defaultValue: "Couldn't copy" })}
+                                compact={embedded}
+                              />
                             </div>
                           )}
                         </>

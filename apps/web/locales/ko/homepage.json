@@ -32,6 +32,11 @@
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "thinking": "가 생각 중입니다",
+  "message": {
+    "copy": "응답 복사",
+    "copied": "복사됨!",
+    "copyFailed": "복사하지 못했습니다"
+  },
   "caseHub": {
     "linkedCase": "연결된 사건",
     "noCase": "연결된 사건 없음",
