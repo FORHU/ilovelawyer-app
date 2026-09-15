@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import {
   Sheet,
@@ -35,8 +35,10 @@ type FilterChipGroupProps =
       label: string
       options: FilterOption[]
       mode: "multi"
+      allLabel: string
       selected: string[]
       onToggle: (value: string) => void
+      onClear: () => void
     }
 
 /**
@@ -64,15 +66,20 @@ export function FilterChipGroup(props: FilterChipGroupProps) {
       ? (props.selected ? options.find((o) => o.value === props.selected)?.label : null) ?? props.allLabel
       : props.selected.length > 0
         ? t("lawSearch.filterSelectedCount", { count: props.selected.length })
-        : t("lawSearch.filterAll")
+        : props.allLabel
+
+  const isAllSelected = props.mode === "single" ? props.selected === null : props.selected.length === 0
+
+  const handleClearAll = () => {
+    if (props.mode === "single") props.onSelect(null)
+    else props.onClear()
+  }
 
   const chips = (
     <>
-      {props.mode === "single" && (
-        <button type="button" onClick={() => props.onSelect(null)} className={chipClass(props.selected === null)}>
-          {props.allLabel}
-        </button>
-      )}
+      <button type="button" onClick={handleClearAll} className={chipClass(isAllSelected)}>
+        {props.allLabel}
+      </button>
       {options.map((o) => (
         <button key={o.value} type="button" onClick={() => handlePick(o.value)} className={chipClass(isSelected(o.value))}>
           {o.label}
@@ -92,11 +99,17 @@ export function FilterChipGroup(props: FilterChipGroupProps) {
 
   const listRows = (
     <div className="flex flex-1 flex-col overflow-y-auto -mx-1">
-      {props.mode === "single" && (
-        <button type="button" onClick={() => { props.onSelect(null); setOpen(false) }} className={listRowClass(props.selected === null)}>
-          {props.allLabel}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => {
+          handleClearAll()
+          if (props.mode === "single") setOpen(false)
+        }}
+        className={listRowClass(isAllSelected)}
+      >
+        {props.allLabel}
+        {isAllSelected && <Check className="size-4 shrink-0" aria-hidden="true" />}
+      </button>
       {options.map((o) => (
         <button
           key={o.value}
@@ -108,6 +121,7 @@ export function FilterChipGroup(props: FilterChipGroupProps) {
           className={listRowClass(isSelected(o.value))}
         >
           {o.label}
+          {isSelected(o.value) && <Check className="size-4 shrink-0" aria-hidden="true" />}
         </button>
       ))}
     </div>
@@ -140,6 +154,13 @@ export function FilterChipGroup(props: FilterChipGroupProps) {
               <SheetTitle>{label}</SheetTitle>
             </SheetHeader>
             {listRows}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-auto inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+            >
+              {t("lawSearch.filterDone")}
+            </button>
           </SheetContent>
         </Sheet>
       </div>

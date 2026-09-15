@@ -52,7 +52,7 @@ export function LawSearchPanel() {
   const [query, setQuery] = useState("")
   const [caseType, setCaseType] = useState<LawCaseType | null>(null)
   const [topics, setTopics] = useState<LawTopic[]>([])
-  const [court, setCourt] = useState<UkCourt | null>(null)
+  const [courts, setCourts] = useState<UkCourt[]>([])
 
   const search = useLawSearchMutation()
   const showingSearch = search.status !== "idle"
@@ -64,7 +64,7 @@ export function LawSearchPanel() {
     category,
     caseType: facetKind === "ph-jurisprudence" && caseType ? caseType : undefined,
     topics,
-    court: facetKind === "uk-court" && court ? court : undefined,
+    courts: facetKind === "uk-court" ? courts : [],
     enabled: supported && !showingSearch && canBrowse,
   })
 
@@ -91,13 +91,16 @@ export function LawSearchPanel() {
     setRawCategory(next)
     setCaseType(null)
     setTopics([])
-    setCourt(null)
+    setCourts([])
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
     backToBrowse()
   }
 
   const toggleTopic = (topic: LawTopic) =>
     setTopics((cur) => (cur.includes(topic) ? cur.filter((x) => x !== topic) : [...cur, topic]))
+
+  const toggleCourt = (c: UkCourt) =>
+    setCourts((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]))
 
   const runSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -262,20 +265,23 @@ export function LawSearchPanel() {
               <FilterChipGroup
                 label={t("lawSearch.filterTopics")}
                 mode="multi"
+                allLabel={t("lawSearch.filterAll")}
                 options={cfg.topics.map((topic) => ({ value: topic, label: topicLabel(topic as LawTopic) }))}
                 selected={topics}
                 onToggle={(v) => toggleTopic(v as LawTopic)}
+                onClear={() => setTopics([])}
               />
             )}
 
             {facetKind === "uk-court" && (
               <FilterChipGroup
                 label={t("lawSearch.filterCourt")}
-                mode="single"
+                mode="multi"
                 allLabel={t("lawSearch.filterAll")}
                 options={cfg.courts.map((c) => ({ value: c, label: ukCourtLabel(c) }))}
-                selected={court}
-                onSelect={(v) => setCourt(v as UkCourt | null)}
+                selected={courts}
+                onToggle={(v) => toggleCourt(v as UkCourt)}
+                onClear={() => setCourts([])}
               />
             )}
           </div>
