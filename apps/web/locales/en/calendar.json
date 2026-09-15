@@ -9,6 +9,7 @@
   "addTo": "Add to {{date}}",
   "appointment": "Appointment",
   "note": "Note",
+  "endTimeHint": "End time must be after {{time}}.",
   "titlePlaceholder": "Title",
   "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",
@@ -25,6 +26,7 @@
   "errors": {
     "titleRequired": "Title is required.",
     "timeRequired": "Start and end time are required.",
+    "invalidTime": "Start and end time must be a valid time (e.g. 09:00).",
     "endAfterStart": "End time must be after start time.",
     "appointmentSaveFailed": "Failed to save appointment.",
     "noteRequired": "Note text is required.",

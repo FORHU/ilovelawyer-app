@@ -12,7 +12,7 @@ import type { DayButton } from "react-day-picker";
 import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { AlertCircle, CalendarOff, ChevronLeft, ChevronRight, Clock, RotateCw, StickyNote, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useAppointmentsQuery, useCreateAppointmentMutation, useNotesQuery, useCreateNoteMutation } from "@/lib/calendar/mutations";
+import { useAppointmentsQuery, useCreateAppointmentMutation, useNotesQuery, useCreateNoteMutation, normalizeTimeString } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
 
 const MAX_VISIBLE_PER_DAY = 2;
@@ -253,13 +253,21 @@ function PlannerPanel({
 
     if (!title.trim()) return setFormError(t("errors.titleRequired"));
     if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
-    if (endTime <= startTime) return setFormError(t("errors.endAfterStart"));
+    // Presence alone doesn't guarantee shape: <input type="time"> can fall back to free text on
+    // some browsers (older/desktop Safari, some mobile browsers), letting through values like
+    // "9:00 AM" or "14h30" that would otherwise reach the mutation's Date construction and throw
+    // a raw, untranslated engine error. Normalizing (and zero-padding, e.g. "9:00" -> "09:00")
+    // here also fixes the endAfterStart comparison below, which previously compared raw strings.
+    const normalizedStart = normalizeTimeString(startTime);
+    const normalizedEnd = normalizeTimeString(endTime);
+    if (!normalizedStart || !normalizedEnd) return setFormError(t("errors.invalidTime"));
+    if (normalizedEnd <= normalizedStart) return setFormError(t("errors.endAfterStart"));
     try {
       await createAppointment.mutateAsync({
         title: title.trim(),
         date,
-        startTime,
-        endTime,
+        startTime: normalizedStart,
+        endTime: normalizedEnd,
         description: description.trim() || undefined,
         notifyEmail: notifyEmail.trim() || undefined,
         caseId: caseId || undefined,
@@ -369,6 +377,20 @@ function PlannerPanel({
                       className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                     />
                   </div>
+                  {(() => {
+                    // Guidance shown in our own styling instead of a `min` attribute — a `min` on
+                    // the end-time input works, but Chrome pops up its own native constraint
+                    // bubble ("Value must be X or later") mid-edit, outside the app's control and
+                    // inconsistent with the rest of the UI. This is purely informational; the
+                    // actual enforcement still happens via the endAfterStart check on submit.
+                    const normalizedStartHint = normalizeTimeString(startTime);
+                    if (!normalizedStartHint) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground">
+                        {t("endTimeHint", { time: formatTime12h(normalizedStartHint) })}
+                      </p>
+                    );
+                  })()}
                   <input
                     type="email"
                     placeholder={t("notifyEmailPlaceholder")}
