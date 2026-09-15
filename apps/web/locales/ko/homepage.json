@@ -26,6 +26,7 @@
     "viewFile": "{{fileName}} 보기",
     "closePreview": "미리보기 닫기",
     "openInNewTab": "새 탭에서 열기",
+    "download": "다운로드",
     "previewUnavailable": "이 파일 형식은 미리 볼 수 없습니다.",
     "previewFailed": "이 파일은 여기서 미리 볼 수 없습니다."
   },
