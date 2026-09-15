@@ -357,21 +357,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <TooltipContent side="left">{t("workspace.mindMapRegenerateCta")}</TooltipContent>
           </Tooltip>
         )}
-        {expanded && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setBriefPreviewOpen(true)}
-                aria-label={t("workspace.downloadCaseBrief")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                <Download className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">{t("workspace.downloadCaseBrief")}</TooltipContent>
-          </Tooltip>
-        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -470,6 +455,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               expanded={expanded}
               disabled={isGeneratingAudioOverview}
               onClick={() => void handleGenerateAudioOverviewScript()}
+            />
+            {/* Same pattern as Documents above: opens directly (a modal, not an inline Studio
+             * view) rather than generating in place first — the modal itself handles generating
+             * the PDF preview once opened. */}
+            <StudioTile
+              icon={Download}
+              label={t("workspace.downloadCaseBrief")}
+              expanded={expanded}
+              onClick={() => setBriefPreviewOpen(true)}
             />
           </div>
 
