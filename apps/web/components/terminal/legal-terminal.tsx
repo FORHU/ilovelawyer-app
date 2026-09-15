@@ -861,6 +861,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       </div>
     </div>
+    </div>
   )
 }
 
