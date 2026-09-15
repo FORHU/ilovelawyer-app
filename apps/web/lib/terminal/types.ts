@@ -77,6 +77,9 @@ export interface SnapshotDocument {
   name: string
   ragStatus: string | null
   documentType: string | null
+  // Same field the Workspace document browser groups into "folders" from (DocumentFolderBrowser)
+  // — null/empty means the document isn't in any folder there.
+  category: string | null
   mimeType: string | null
   pageCount: number | null
   extractionMethod: string | null

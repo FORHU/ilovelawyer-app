@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
 import { CONFIRM_BATCH_SIZE, chunk, mapPoolSettled, putFileToS3, UPLOAD_CONCURRENCY } from "@/lib/cases/upload-batch"
+import { terminalKeys } from "@/lib/terminal/mutations"
+import type { CaseSnapshot } from "@/lib/terminal/types"
 
 export interface Party {
   id: string
@@ -271,6 +273,11 @@ export function useUploadCaseDocumentsMutation() {
     onSuccess: ({ confirmed }, { caseId }) => {
       if (confirmed.length > 0) {
         queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+        // The Legal Terminal's Evidence & Timeline panel reads documents from the case snapshot
+        // (useCaseSnapshotQuery), a separate query from this Workspace-owned list — without this,
+        // a document uploaded from the Terminal panel itself wouldn't appear there until its own
+        // idle poll eventually caught up (see AI_JOB_IDLE_POLL_MS's sibling on the snapshot query).
+        queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       }
     },
   })
@@ -425,6 +432,11 @@ export function useDeleteCaseDocumentMutation() {
       // already know just deleted successfully.
       queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
         old ? old.filter((d) => d.id !== documentId) : old,
+      )
+      // Same patch applied to the Legal Terminal's case snapshot — see the matching comment on
+      // useUploadCaseDocumentsMutation's onSuccess for why this second query needs it too.
+      queryClient.setQueryData<CaseSnapshot>(terminalKeys.snapshot(caseId), (old) =>
+        old ? { ...old, documents: old.documents.filter((d) => d.id !== documentId) } : old,
       )
     },
   })
