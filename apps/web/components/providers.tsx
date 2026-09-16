@@ -9,6 +9,7 @@ import { TenantCodeProvider } from "@/components/tenant-code-provider"
 import { GoogleOAuthProvider } from "@react-oauth/google"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import type { TenantCode } from "@/lib/tenant-code/resolve-host"
+import { useNotificationSocket } from "@/lib/notifications/queries"
 
 function makeQueryClient() {
   return new QueryClient({
@@ -32,6 +33,15 @@ function getQueryClient() {
   return browserQueryClient
 }
 
+// Mounted once here (rather than in GlobalHeader, which renders its notification bell twice —
+// once for desktop, once inside the always-mounted mobile drawer) so the notification socket
+// gets exactly one connection and one set of listeners for the whole app, logged in or not
+// (the hook itself no-ops without an access token).
+function NotificationSocketBridge() {
+  useNotificationSocket()
+  return null
+}
+
 export function Providers({
   children,
   tenantCodeHint,
@@ -51,6 +61,7 @@ export function Providers({
             </TenantCodeProvider>
           </I18nProvider>
         </ThemeProvider>
+        <NotificationSocketBridge />
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </GoogleOAuthProvider>

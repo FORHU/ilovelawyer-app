@@ -10,6 +10,7 @@ import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -27,6 +28,7 @@ interface GlobalHeaderProps {
     | "term"
     | "profile"
     | "organization"
+    | "notifications"
     // Secondary destinations — not part of the primary nav
     | "constitution"
     | "civil-code"
@@ -221,6 +223,8 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
           <ThemeToggle />
 
+          <NotificationBell />
+
           <div className="relative" ref={userMenuRef}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -350,7 +354,10 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                     {user.name && <p className="truncate text-[10px] text-white/50">@{user.username}</p>}
                     <p className="truncate text-[10px] text-white/50">{user.email}</p>
                   </div>
-                  <ThemeToggle />
+                  <div className="flex shrink-0 items-center gap-3">
+                    <NotificationBell />
+                    <ThemeToggle />
+                  </div>
                 </div>
               )}
 

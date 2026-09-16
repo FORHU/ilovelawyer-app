@@ -102,7 +102,22 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
         </Tooltip>
       </div>
       {hasUploadFailures && (
-        <span className="block text-right text-[11px] text-red-600 dark:text-red-400">{t("detail.uploadError")}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="block cursor-help text-right text-[11px] text-red-600 underline decoration-dotted underline-offset-2 dark:text-red-400">
+              {t("detail.uploadError")}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            <ul className="list-disc space-y-0.5 pl-3">
+              {uploadResult!.failed.map(({ file, reason }, i) => (
+                <li key={`${file.name}-${i}`}>
+                  <span className="font-semibold">{file.name}:</span> {reason}
+                </li>
+              ))}
+            </ul>
+          </TooltipContent>
+        </Tooltip>
       )}
       <input
         ref={fileInputRef}
