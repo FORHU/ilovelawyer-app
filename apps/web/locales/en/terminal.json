@@ -312,9 +312,14 @@
   "caseBriefPreviewError": "Couldn't generate the preview.",
   "downloadWord": "Download Word",
   "downloadPdf": "Download PDF",
-  "caseBriefNewTab": "New",
+  "caseBriefGenerateTab": "Generate",
+  "caseBriefPreviewTab": "Preview",
   "caseBriefHistoryTab": "History",
   "caseBriefHistoryLoading": "Loading history…",
   "caseBriefHistoryError": "Couldn't load case brief history.",
-  "caseBriefHistoryEmpty": "No case briefs generated yet."
+  "caseBriefHistoryEmpty": "No case briefs generated yet.",
+  "caseBriefGenerateHint": "Generate a Word and PDF version of this case's brief from its current snapshot.",
+  "caseBriefGenerateCta": "Generate case brief",
+  "caseBriefNothingGenerated": "Nothing generated yet this session — go to Generate first.",
+  "caseBriefFormatNotGenerated": "This format hasn't been generated yet."
 }
