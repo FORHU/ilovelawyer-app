@@ -61,7 +61,7 @@ export function DocumentFileCard({
       ) : (
         <span className="truncate text-sm text-foreground">{doc.name}</span>
       )}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <RagStatusBadge status={doc.ragStatus} />
         <Tooltip>
           <TooltipTrigger asChild>

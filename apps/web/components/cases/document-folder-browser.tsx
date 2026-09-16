@@ -129,9 +129,13 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     </div>
   )
 
+  // Sized off the panel's own width (@container), not the browser viewport — this grid lives in
+  // a resizable sidebar (see StudioPanel/case-workspace.tsx), so a viewport breakpoint like
+  // `lg:grid-cols-4` stays active even when the sidebar itself is dragged down to its 260px
+  // minimum, cramming 4 columns into a panel with no room for them.
   const gridClass =
     variant === "full"
-      ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+      ? "grid grid-cols-2 @sm:grid-cols-3 @lg:grid-cols-4 gap-4"
       : "grid grid-cols-2 gap-2 overflow-y-auto max-h-64"
 
   const newFolderCard = (
@@ -242,7 +246,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // shows when no specific folder card is being targeted, so it doesn't cover that card's own
   // highlighted state.
   return (
-    <div className="flex flex-col gap-3" {...dragHandlers}>
+    <div className="@container flex flex-col gap-3" {...dragHandlers}>
       {header}
       <div
         className={`relative rounded-xl border transition-colors ${
