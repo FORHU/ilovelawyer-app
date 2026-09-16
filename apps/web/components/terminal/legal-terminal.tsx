@@ -301,6 +301,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
+  // Backs the AI Assistant panel's "jump to panel" link (see ChatPanel/ConsultationChat) — makes
+  // whatever panel the AI's reply named actually visible, in whichever arrangement is active,
+  // without repositioning a panel that's already on the grid (showPanelAt would re-cascade it).
+  const jumpToPanel = (id: PanelId) => {
+    const isVisible = layout?.panels.some((panel) => panel.id === id && panel.visible) ?? false
+    if (!isVisible) showPanelAt(id)
+    bringToFront(id)
+    setMaximizedId(null)
+    setFocusedId(id)
+    setActiveTabA(id)
+    setActiveTabB(id)
+  }
+
   const patchPanelRect = (panelId: PanelId, rect: PaneRect) => {
     setLayout((prev) => {
       if (!prev) return prev
@@ -767,7 +780,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       />
                     </div>
                     <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
-                      <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
+                      <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
                     </div>
                     <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
                     <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
@@ -804,6 +817,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onSetActiveB={setActiveTabB}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
@@ -821,6 +835,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onFocus={setFocusedId}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
@@ -834,6 +849,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               labelFor={labelFor}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
@@ -856,7 +872,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
-                <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} />
+                <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
               </div>
             </div>
           )}
@@ -969,6 +985,7 @@ type ArrangementBodyProps = {
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
+  onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
 }
@@ -997,6 +1014,7 @@ function TabsArrangement({
   onSetActiveB,
   onToggleMaximize,
   onHide,
+  onJumpToPanel,
   t,
   onDrop,
 }: ArrangementBodyProps & {
@@ -1043,7 +1061,9 @@ function TabsArrangement({
               )}
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              {activePanel && <TerminalPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} />}
+              {activePanel && (
+                <TerminalPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+              )}
             </div>
           </div>
         )
@@ -1067,6 +1087,7 @@ function FocusArrangement({
   onFocus,
   onToggleMaximize,
   onHide,
+  onJumpToPanel,
   t,
   onDrop,
 }: ArrangementBodyProps & {
@@ -1095,7 +1116,7 @@ function FocusArrangement({
               <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(focusPanel.id)} onHide={() => onHide(focusPanel.id)} />
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} />
+              <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
             </div>
           </>
         )}
@@ -1123,7 +1144,7 @@ function FocusArrangement({
             <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(chatPanel.id)} onHide={() => onHide(chatPanel.id)} />
           </div>
           <div className="min-h-0 flex-1 overflow-hidden bg-card">
-            <TerminalPanelBody panelId={chatPanel.id} caseId={caseId} snapshot={snapshot} />
+            <TerminalPanelBody panelId={chatPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
           </div>
         </div>
       )}
@@ -1133,7 +1154,7 @@ function FocusArrangement({
 
 // Fixed 2-column grid of every visible pane, wrapping to further rows rather than the mock's
 // literal 2-pane assumption — every visible pane stays reachable, no drag/resize.
-function SplitArrangement({ panels, caseId, snapshot, labelFor, onToggleMaximize, onHide, t, onDrop }: ArrangementBodyProps) {
+function SplitArrangement({ panels, caseId, snapshot, labelFor, onToggleMaximize, onHide, onJumpToPanel, t, onDrop }: ArrangementBodyProps) {
   return (
     <div
       className="grid h-full min-h-0 auto-rows-[minmax(280px,1fr)] gap-3 overflow-y-auto"
@@ -1147,7 +1168,7 @@ function SplitArrangement({ panels, caseId, snapshot, labelFor, onToggleMaximize
             <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(panel.id)} onHide={() => onHide(panel.id)} />
           </div>
           <div className="min-h-0 flex-1 overflow-hidden bg-card">
-            <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} />
+            <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
           </div>
         </div>
       ))}

@@ -119,6 +119,16 @@ function shuffle<T>(items: T[]): T[] {
   return result;
 }
 
+// Exact (trim, case-insensitive) match only — a split reply's groupTitle is free text the model
+// wrote, not a real PanelId, so this never guesses at a close-but-wrong panel.
+function matchPanelId(groupTitle: string | null | undefined, panelTitles: Record<string, string> | undefined): string | null {
+  if (!groupTitle || !panelTitles) return null;
+  const normalized = groupTitle.trim().toLowerCase();
+  if (!normalized) return null;
+  const entry = Object.entries(panelTitles).find(([, title]) => title.trim().toLowerCase() === normalized);
+  return entry ? entry[0] : null;
+}
+
 type CaseChatTab = "chat" | "mindmap" | "timeline";
 
 function tabFromSearch(searchParams: URLSearchParams, mindMapOnly: boolean, caseId?: string): CaseChatTab {
@@ -281,6 +291,14 @@ interface ConsultationChatProps {
    * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
    * already-planned changes of its own that this deliberately doesn't preempt. */
   enableFileChips?: boolean;
+  /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
+   * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
+   * map to exact-match a reply's groupTitle against (no match, no link: never a fuzzy guess at
+   * the wrong panel), and onJumpToPanel actually focuses that panel on the Terminal's grid. Only
+   * the Terminal's ChatPanel passes these, so this never appears on the standalone Consultation
+   * page or in Case Workspace. */
+  panelTitles?: Record<string, string>;
+  onJumpToPanel?: (panelId: string) => void;
 }
 
 export default function ConsultationChat({
@@ -301,6 +319,8 @@ export default function ConsultationChat({
   mindMapOnly = false,
   inputPlaceholder,
   enableFileChips = false,
+  panelTitles,
+  onJumpToPanel,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -1824,6 +1844,20 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
+                          {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {
+                            const matchedPanelId = matchPanelId(m.groupTitle, panelTitles);
+                            if (!matchedPanelId) return null;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => onJumpToPanel(matchedPanelId)}
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-brand-gold/50 hover:text-foreground"
+                              >
+                                {t("chat.jumpToPanel", { defaultValue: "Open {{panel}} pane", panel: panelTitles![matchedPanelId] })}
+                                <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                              </button>
+                            );
+                          })()}
                           {(showRelatedCases ?? !embedded) && !isBusy && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
