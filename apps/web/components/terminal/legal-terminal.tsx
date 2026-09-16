@@ -505,7 +505,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
             {snapshot.data.case.caseName}
           </h1>
-          <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
+          <span className="hidden shrink-0 rounded-md border border-riskmed/30 bg-riskmed/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-riskmed sm:inline">
             {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
           </span>
           {shouldShowUpdatingAnalysis(refreshJob.data?.status) && (
@@ -886,7 +886,7 @@ function PreferenceToggle({
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-brand-gold" : "bg-muted-foreground/30"}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white dark:bg-foreground shadow transition-transform ${
             checked ? "translate-x-4" : "translate-x-0.5"
           }`}
         />

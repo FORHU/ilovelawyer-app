@@ -47,6 +47,10 @@
     --color-foreground: var(--foreground);
     --color-background: var(--background);
     --color-overlay-hover: var(--overlay-hover);
+    --color-ok: var(--ok);
+    --color-warn: var(--warn);
+    --color-danger: var(--danger);
+    --color-riskmed: var(--riskmed);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -59,7 +63,7 @@
 
 :root {
     /* Brand navy family — fixed across light/dark, since the header and hero
-       banners are intentionally always this near-black/gold pairing regardless of theme.
+       banners are intentionally always this near-black pairing regardless of theme.
        This is the app's one brand palette (the former "landing-theme" near-black/gold
        override is now the default everywhere, not a separate opt-in class — see DESIGN.md). */
     --brand-navy-950: #0b0b0b;
@@ -67,13 +71,24 @@
     /* No third near-black shade is sourced separately — reuse the 900 shade rather than
        invent an unsourced value. */
     --brand-navy-800: #1a1a1a;
-    --brand-gold: #c9a44c;
+    /* Unlike the navy family above, gold is NOT fixed across themes — it's used as the
+       primary/confirming-action color everywhere (buttons, CTAs), not just on the fixed-dark
+       header/hero chrome, so it needs its own light-mode value (see .dark override below)
+       rather than the one dark-tuned hex bleeding into light-mode UI. */
+    --brand-gold: #8a6200;
     /* Semantic status/verification accent (e.g. "Vetted" citation badges) — kept separate
        from --brand-gold so gold stays reserved for confirming actions, not status states. */
     --brand-status-green: #2e8b57;
     /* Sparing decorative accent — the footer's closing divider only. Not a second
        broad accent; gold stays the page's one confirming-action color. */
     --brand-oxblood: #5c1f28;
+
+    /* Risk/status severity tones (risk meters, theory/status badges) — light-mode values
+       are the same "darker foreground for a light bg" pattern as everything else here. */
+    --ok: #047857;
+    --warn: #a16207;
+    --danger: #b91c1c;
+    --riskmed: #c2410c;
 
     --background: #ffffff;
     --foreground: #252525;
@@ -110,6 +125,16 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+
+    /* Claim-attribution highlight colors (see components/shared/attributed-text.tsx) —
+       kept as vars, not hardcoded in the component, so dark mode can swap in lighter
+       foregrounds instead of the light-mode "700" shades going illegible on near-black. */
+    --claim-grounded-bg: rgba(59, 130, 246, 0.16);
+    --claim-grounded-fg: #1d4ed8;
+    --claim-inference-bg: rgba(217, 119, 6, 0.18);
+    --claim-inference-fg: #b45309;
+    --claim-unsupported-bg: rgba(220, 38, 38, 0.16);
+    --claim-unsupported-fg: #b91c1c;
 }
 
 .dark {
@@ -139,6 +164,13 @@
     --border: oklch(1 0 0 / 12%);
     --input: oklch(1 0 0 / 16%);
     --ring: #5c7cb0;
+    /* Gold's dark-mode value — the one this app was built against, unchanged.
+       :root now carries the light-mode value instead of a single fixed hex. */
+    --brand-gold: #c9a44c;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --riskmed: #fb923c;
     /* Now that --muted/--card/--accent/etc. equal --background, any hover/focus/aria-expanded
        state that relied on one of those for feedback would go visually silent in dark mode —
        this is that feedback instead, added alongside (not replacing) the existing token-based
@@ -157,6 +189,16 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 12%);
     --sidebar-ring: #5c7cb0;
+
+    /* Light-mode foregrounds are "700" shades tuned for a white background — against
+       near-black they fall well under 4.5:1 contrast, so dark mode gets lighter "300"
+       shades instead (backgrounds bumped slightly too, to stay visible as a tint). */
+    --claim-grounded-bg: rgba(59, 130, 246, 0.22);
+    --claim-grounded-fg: #93c5fd;
+    --claim-inference-bg: rgba(217, 119, 6, 0.22);
+    --claim-inference-fg: #fcd34d;
+    --claim-unsupported-bg: rgba(220, 38, 38, 0.22);
+    --claim-unsupported-fg: #fca5a5;
 }
 
 /* Documented z-index scale — pick from these instead of a freehand number. Sidebars/rails sit

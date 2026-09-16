@@ -883,7 +883,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                                 if (isMissingUrl) return null;
                                 return (
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/media:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                    <a href={url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white text-black text-[11px] font-black rounded-lg uppercase tracking-wider shadow-xl hover:scale-105 transition-transform">
+                                    <a href={url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white text-black dark:bg-card dark:text-foreground text-[11px] font-black rounded-lg uppercase tracking-wider shadow-xl hover:scale-105 transition-transform">
                                       Expand File
                                     </a>
                                   </div>

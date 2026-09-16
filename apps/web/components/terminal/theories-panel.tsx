@@ -25,8 +25,8 @@ import { fieldClass, primaryBtnClass, PanelBody, SectionLabel, EmptyNote } from 
 
 const STATUS_BADGE_CLASS: Record<CaseTheory["status"], string> = {
   DRAFT: "bg-muted text-muted-foreground",
-  ACTIVE: "bg-emerald-500/15 text-emerald-400",
-  RETIRED: "bg-red-500/15 text-red-300",
+  ACTIVE: "bg-ok/15 text-ok",
+  RETIRED: "bg-danger/15 text-danger",
 }
 
 export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
@@ -181,7 +181,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
             {theory.claims.map((c) => (
               <li key={c.id} className="text-[12px] leading-4 text-muted-foreground">
                 <span
-                  className={`mr-1.5 rounded px-1 py-0.5 font-mono text-[9px] font-semibold uppercase ${c.stance === "ASSERTS" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-300"}`}
+                  className={`mr-1.5 rounded px-1 py-0.5 font-mono text-[9px] font-semibold uppercase ${c.stance === "ASSERTS" ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}
                 >
                   {c.stance}
                 </span>

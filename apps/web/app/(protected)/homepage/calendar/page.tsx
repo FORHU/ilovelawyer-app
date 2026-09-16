@@ -7,6 +7,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
@@ -543,45 +544,27 @@ function PlannerPanel({
                     onChange={(e) => setNotifyEmail(e.target.value)}
                     className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
-                  <select
+                  <CustomSelect
                     value={caseId}
-                    onChange={(e) => setCaseId(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
-                  >
-                    <option value="" className="text-black">
-                      {t("noCase")}
-                    </option>
-                    {cases.map((c) => (
-                      <option key={c.id} value={c.id} className="text-black">
-                        {c.caseName}
-                      </option>
-                    ))}
-                  </select>
-                  <select
+                    onChange={setCaseId}
+                    options={[
+                      { value: "", label: t("noCase") },
+                      ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+                    ]}
+                  />
+                  <CustomSelect
                     value={reminderLeadMinutes}
-                    onChange={(e) => setReminderLeadMinutes(e.target.value)}
-                    aria-label={t("reminderLabel")}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
-                  >
-                    <option value="" className="text-black">
-                      {t("reminderNone")}
-                    </option>
-                    <option value="1440" className="text-black">
-                      {t("reminder1Day")}
-                    </option>
-                    <option value="2880" className="text-black">
-                      {t("reminder2Days")}
-                    </option>
-                    <option value="4320" className="text-black">
-                      {t("reminder3Days")}
-                    </option>
-                    <option value="7200" className="text-black">
-                      {t("reminder5Days")}
-                    </option>
-                    <option value="10080" className="text-black">
-                      {t("reminder1Week")}
-                    </option>
-                  </select>
+                    onChange={setReminderLeadMinutes}
+                    triggerTooltip={t("reminderLabel")}
+                    options={[
+                      { value: "", label: t("reminderNone") },
+                      { value: "1440", label: t("reminder1Day") },
+                      { value: "2880", label: t("reminder2Days") },
+                      { value: "4320", label: t("reminder3Days") },
+                      { value: "7200", label: t("reminder5Days") },
+                      { value: "10080", label: t("reminder1Week") },
+                    ]}
+                  />
                   <textarea
                     placeholder={t("descriptionPlaceholder")}
                     value={description}

@@ -6,10 +6,12 @@ import { findClaimMatches, type Claim, type ClaimCategory } from "./attributed-t
 
 export type { Claim, ClaimCategory } from "./attributed-text-match";
 
+/* Colors are CSS vars (see packages/ui/src/styles/globals.css) so dark mode can swap in
+   lighter foregrounds instead of the light-mode shades going illegible on a near-black background. */
 const CATEGORY_STYLE: Record<ClaimCategory, { bg: string; color: string; label: string }> = {
-  GROUNDED: { bg: "rgba(59,130,246,0.16)", color: "#1d4ed8", label: "Grounded in case data" },
-  INFERENCE: { bg: "rgba(217,119,6,0.18)", color: "#b45309", label: "AI inference" },
-  UNSUPPORTED: { bg: "rgba(220,38,38,0.16)", color: "#b91c1c", label: "Unsupported" },
+  GROUNDED: { bg: "var(--claim-grounded-bg)", color: "var(--claim-grounded-fg)", label: "Grounded in case data" },
+  INFERENCE: { bg: "var(--claim-inference-bg)", color: "var(--claim-inference-fg)", label: "AI inference" },
+  UNSUPPORTED: { bg: "var(--claim-unsupported-bg)", color: "var(--claim-unsupported-fg)", label: "Unsupported" },
 };
 
 /** Wraps each of findClaimMatches' spans in a highlighted <mark>, leaving everything else

@@ -196,14 +196,14 @@ function TerminalRagBadge({ status }: { status: string | null }) {
   const { t } = useTranslation("terminal")
   if (status === "READY") {
     return (
-      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-emerald-400 uppercase">
+      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-ok uppercase">
         {t("ragReady")}
       </span>
     )
   }
   if (status === "FAILED") {
     return (
-      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-red-400 uppercase">
+      <span className="shrink-0 text-[10px] font-semibold tracking-[1px] text-danger uppercase">
         {t("ragFailed")}
       </span>
     )
@@ -230,16 +230,16 @@ function RiskMeter({
   const width = Math.max(8, Math.min(100, score))
   const barColor =
     level === "HIGH"
-      ? "bg-red-500"
+      ? "bg-danger"
       : level === "MEDIUM"
-        ? "bg-orange-400"
-        : "bg-emerald-400"
+        ? "bg-riskmed"
+        : "bg-ok"
   const badge =
     level === "HIGH"
-      ? "bg-red-500/15 text-red-300"
+      ? "bg-danger/15 text-danger"
       : level === "MEDIUM"
-        ? "bg-orange-500/15 text-orange-400"
-        : "bg-emerald-500/15 text-emerald-400"
+        ? "bg-riskmed/15 text-riskmed"
+        : "bg-ok/15 text-ok"
   const driverText = drivers
     .map((driver) => {
       const key = RISK_DRIVER_KEYS[driver.code]
@@ -992,9 +992,9 @@ function ContradictionsPanel({ caseId }: { caseId: string }) {
               return (
                 <li
                   key={edge.id}
-                  className="rounded-md border border-orange-400/20 bg-orange-500/5 px-3 py-2.5"
+                  className="rounded-md border border-riskmed/20 bg-riskmed/5 px-3 py-2.5"
                 >
-                  <p className="font-mono text-[12px] text-orange-400">
+                  <p className="font-mono text-[12px] text-riskmed">
                     {contradictionHeadline(metadata)}
                   </p>
                   {metadata.leftExcerpt ? (
@@ -1263,7 +1263,7 @@ function DecisionCard({
 
   return (
     <li
-      className={`rounded-md border px-3 py-2.5 ${disputed ? "border-orange-500/40 bg-orange-500/5" : "border-border"}`}
+      className={`rounded-md border px-3 py-2.5 ${disputed ? "border-riskmed/40 bg-riskmed/5" : "border-border"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">
@@ -1273,7 +1273,7 @@ function DecisionCard({
       </div>
 
       {disputed && (
-        <p className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-orange-400 uppercase">
+        <p className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed uppercase">
           <MessageSquareWarning className="h-3 w-3" aria-hidden="true" />
           {t("decisionStatusDisputed")}
           {decision.disputeNote ? `: ${decision.disputeNote}` : ""}
@@ -2411,10 +2411,10 @@ function SceneConfidenceBadge({
   const { t } = useTranslation("terminal")
   const cls =
     confidence === "high"
-      ? "bg-emerald-500/15 text-emerald-400"
+      ? "bg-ok/15 text-ok"
       : confidence === "medium"
-        ? "bg-orange-500/15 text-orange-400"
-        : "bg-red-500/15 text-red-300"
+        ? "bg-riskmed/15 text-riskmed"
+        : "bg-danger/15 text-danger"
   return (
     <span
       className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[1px] uppercase ${cls}`}
@@ -2521,7 +2521,7 @@ function ScenesView({
                     {scene.unresolved.map((u, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-1.5 text-[11px] leading-4 text-orange-400"
+                        className="flex items-start gap-1.5 text-[11px] leading-4 text-riskmed"
                       >
                         <AlertTriangle
                           className="mt-0.5 h-3 w-3 shrink-0"
