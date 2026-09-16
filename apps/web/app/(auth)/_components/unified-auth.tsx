@@ -15,6 +15,7 @@ import { WorkspaceSetup } from "./workspace-setup";
 
 import {
   sanitizeNextPath,
+  useCancelSignupMutation,
   useForgotPasswordMutation,
   useGoogleAuthMutation,
   useLoginMutation,
@@ -83,6 +84,7 @@ function UnifiedAuthContent() {
   const forgotPasswordMutation = useForgotPasswordMutation();
   const sendOtpMutation = useSendOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
+  const cancelSignupMutation = useCancelSignupMutation();
 
 
   useEffect(() => {
@@ -367,6 +369,12 @@ function UnifiedAuthContent() {
                       <button
                         type="button"
                         onClick={() => {
+                          // Fire-and-forget — this signup attempt was never verified, so
+                          // there's nothing worth blocking navigation on; a failed cancel
+                          // call just leaves the abandoned row for a later attempt's
+                          // duplicate-email check/race-safe insert to handle instead (see
+                          // AuthSvc.signup's P2002 guard).
+                          if (signupEmail) cancelSignupMutation.mutate({ email: signupEmail });
                           setOtpStep(false);
                           selectTab("signup");
                         }}
