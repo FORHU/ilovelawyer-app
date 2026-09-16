@@ -25,6 +25,12 @@ const ACTION_TYPE_OPTIONS = [
   { value: "Commercial Arbitration", labelKey: "actionTypes.commercialArbitration" },
 ] as const;
 
+const UK_JURISDICTION_LABEL_KEYS: Record<string, string> = {
+  "England and Wales": "ukJurisdictions.englandAndWales",
+  "Scotland": "ukJurisdictions.scotland",
+  "Northern Ireland": "ukJurisdictions.northernIreland",
+};
+
 const DESIGNATION_OPTIONS = [
   { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
   { value: "Respondent / Defendant", labelKey: "designations.respondentDefendant" },
@@ -70,6 +76,7 @@ function CreateCasePageContent() {
     caseTitle: "",
     actionType: "",
     jurisdiction: "",
+    ukJurisdiction: "",
     parties: [{ id: "party-1", name: "", designation: "Petitioner / Plaintiff" }] as Party[],
     uploadedFiles: [] as UploadedFile[],
   });
@@ -287,6 +294,7 @@ function CreateCasePageContent() {
         const newCase = await createCase({
           caseName: formData.caseTitle.trim(),
           partyInvolved: partyInvolved || undefined,
+          ukJurisdiction: formData.ukJurisdiction || undefined,
         });
         caseId = newCase.id;
         setCreatedCaseId(caseId);
@@ -460,24 +468,47 @@ function CreateCasePageContent() {
                       />
                     </div>
 
-                    <div className="flex flex-col gap-3">
-                      <label htmlFor="jurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                        {t("sectionIdentity.jurisdictionLabel")}
-                      </label>
-                      <input
-                        id="jurisdiction"
-                        type="text"
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
-                        placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
-                        value={formData.jurisdiction}
-                        onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
-                      />
-                    </div>
+                    {tenantConfig.ui.caseIntake.ukJurisdictionOptions.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        <label htmlFor="ukJurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          {t("sectionIdentity.ukJurisdictionLabel")}
+                        </label>
+                        <CustomSelect
+                          id="ukJurisdiction"
+                          value={formData.ukJurisdiction}
+                          onChange={(v) => handleInputChange("ukJurisdiction", v)}
+                          options={tenantConfig.ui.caseIntake.ukJurisdictionOptions.map((v) => ({
+                            value: v,
+                            label: t(UK_JURISDICTION_LABEL_KEYS[v] ?? v),
+                          }))}
+                          placeholder={t("sectionIdentity.selectUkJurisdiction")}
+                          triggerTooltip="Which UK jurisdiction's law, courts, and procedure apply to this case"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <label htmlFor="jurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          {t("sectionIdentity.jurisdictionLabel")}
+                        </label>
+                        <input
+                          id="jurisdiction"
+                          type="text"
+                          className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                          placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
+                          value={formData.jurisdiction}
+                          onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <p className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                    {t("sectionIdentity.persistenceNotice")}
+                    {t(
+                      tenantConfig.ui.caseIntake.ukJurisdictionOptions.length > 0
+                        ? "sectionIdentity.persistenceNoticeActionTypeOnly"
+                        : "sectionIdentity.persistenceNotice",
+                    )}
                   </p>
                 </section>
               )}

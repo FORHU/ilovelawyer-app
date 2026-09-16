@@ -30,6 +30,8 @@ export interface CaseRecord {
   caseName: string
   parties: Party[]
   notes: string | null
+  /** England and Wales / Scotland / Northern Ireland — UK-tenant-only. */
+  ukJurisdiction?: string | null
   status: CaseStatus
   createdAt: string
   updatedAt: string
@@ -64,6 +66,10 @@ export function useCaseQuery(id: string) {
 export interface CreateCasePayload {
   caseName: string
   partyInvolved?: string
+  /** England and Wales / Scotland / Northern Ireland — UK-tenant-only, see Case.ukJurisdiction
+   * on the backend. Distinct from the free-text court/venue `jurisdiction` field, which this
+   * payload doesn't send yet (see CaseRecord above). */
+  ukJurisdiction?: string
   notes?: string
 }
 
