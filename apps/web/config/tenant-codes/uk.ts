@@ -19,6 +19,7 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
     caseIntake: {
       caseTitleExample: "Smith v Jones",
       jurisdictionExample: "County Court at Central London",
+      ukJurisdictionOptions: ["England and Wales", "Scotland", "Northern Ireland"],
     },
     capabilities: {
       // chat-wonder-v2-api routes UK requests to its own `legal_uk` persona (UK tool

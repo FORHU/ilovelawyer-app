@@ -61,6 +61,12 @@ export interface TenantCodeConfig {
       /** Placeholder example for the "Court / jurisdictional branch" field on case creation —
        * interpolated into create-case's `sectionIdentity.jurisdictionPlaceholder` i18n key. */
       jurisdictionExample: string
+      /** Selectable UK legal-system values (matches the backend's Case.ukJurisdiction enum,
+       * see ilovelawyer-api's case.validation.ts) for the "Jurisdiction" selector on case
+       * creation — distinct from `jurisdictionExample` above, which is the free-text
+       * court/venue field. Empty for tenants with no sub-national jurisdiction split (e.g.
+       * PH), which hides the selector entirely rather than showing it with no options. */
+      ukJurisdictionOptions: readonly string[]
     }
   }
 }
