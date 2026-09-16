@@ -1807,7 +1807,7 @@ export default function ConsultationChat({
                         )
                       ) : (
                         <>
-                          {!embedded && (
+                          {!embedded && !isGroupContinuation && (
                             <div className="flex items-center gap-2 text-[10px] tracking-[1px] uppercase text-muted-foreground mb-3.5">
                               <span className="font-['Libre_Caslon_Text'] text-[13px] tracking-normal normal-case text-foreground">
                                 {t("appName", { ns: "common" })}
