@@ -8,18 +8,19 @@ All tokens live in `packages/ui/src/styles/globals.css`. Never hardcode hex valu
 
 | Token | Utility | Value |
 |---|---|---|
-| `--brand-navy-950` | `bg-brand-navy-950` | `#0b0b0b` (near-black) |
-| `--brand-navy-900` | `bg-brand-navy-900` | `#1a1a1a` |
-| `--brand-navy-800` | `bg-brand-navy-800` | `#1a1a1a` |
-| `--brand-gold` | `text-brand-gold` / `bg-brand-gold` | `#c9a44c` |
+| `--brand-navy-950` | `bg-brand-navy-950` | `#0b0b0b` (near-black, fixed both themes) |
+| `--brand-navy-900` | `bg-brand-navy-900` | `#1a1a1a` (fixed both themes) |
+| `--brand-navy-800` | `bg-brand-navy-800` | `#1a1a1a` (fixed both themes) |
+| `--brand-gold` | `text-brand-gold` / `bg-brand-gold` | `#8a6200` light / `#c9a44c` dark |
 | `--brand-status-green` | `text-brand-status-green` | `#2e8b57` |
 | `--brand-oxblood` | `text-brand-oxblood` | `#5c1f28` |
+| `--ok` / `--warn` / `--danger` / `--riskmed` | `bg-ok`/`text-ok` etc. | see `globals.css` — light/dark pairs for risk & status severity |
 
-`--brand-gold` is reserved for confirming/primary actions (CTAs, active-tab dots). `--brand-status-green` is only for verification/status badges (e.g. "Vetted" citations) — never reuse gold for status. `--brand-oxblood` is a sparing decorative accent (footer dividers only), not a second broad accent.
+`--brand-gold` is reserved for confirming/primary actions (CTAs, active-tab dots) — unlike the navy family, it's **not** fixed across themes: it's the everyday primary-action color on ordinary light/dark surfaces (buttons, CTAs across the whole app), so it needs its own per-theme value the same way `--background`/`--foreground` do. `--brand-status-green` is only for verification/status badges (e.g. "Vetted" citations) — never reuse gold for status. `--brand-oxblood` is a sparing decorative accent (footer dividers only), not a second broad accent. `--ok`/`--warn`/`--danger`/`--riskmed` are for risk-meter and status-badge severity coloring (Terminal panels) — reuse these instead of hardcoding `bg-emerald-500`/`text-red-300`-style Tailwind palette classes, which have no light-mode equivalent.
 
-**There used to be two brand palettes** — a saturated-blue navy default and a near-black override that only applied under a `.landing-theme` class — and `GlobalHeader` (which hardcodes `bg-brand-navy-950`) looked inconsistent across pages purely based on whether the ambient wrapper happened to carry that class. The saturated-navy family has been retired; the near-black/gold look is simply the default now, everywhere, with nothing to opt into and nothing to forget.
+**There used to be two brand palettes** — a saturated-blue navy default and a near-black override that only applied under a `.landing-theme` class — and `GlobalHeader` (which hardcodes `bg-brand-navy-950`) looked inconsistent across pages purely based on whether the ambient wrapper happened to carry that class. The saturated-navy family has been retired; the near-black look (fixed chrome, not gold) is simply the default now, everywhere, with nothing to opt into and nothing to forget.
 
-Dark mode (`.dark`) recolors `--background`/`--card`/etc. to the near-black elevation scale via `var(--brand-navy-*)`. There's no second override layer to keep in sync anymore — if you add a new `.dark`-aware token, just declare it once in the `.dark` block like everything else there.
+Dark mode (`.dark`) recolors `--background`/`--card`/etc. to the near-black elevation scale via `var(--brand-navy-*)`, and separately overrides `--brand-gold`/`--ok`/`--warn`/`--danger`/`--riskmed` to their dark-tuned values. There's no second override layer to keep in sync anymore — if you add a new `.dark`-aware token, just declare it once in the `.dark` block like everything else there.
 
 Use `bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border` for everything else — never a raw gray.
 

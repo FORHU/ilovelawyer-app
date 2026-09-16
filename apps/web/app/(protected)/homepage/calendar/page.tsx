@@ -7,12 +7,12 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Trash2, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { TimePicker } from "@/components/calendar/time-picker";
 import {
   useAppointmentsQuery,
@@ -35,10 +35,6 @@ const MAX_VISIBLE_PER_DAY = 1;
 // the list container also scrolls (see the CardFooter <ul>) once content exceeds it.
 const DESCRIPTION_MAX_LENGTH = 500;
 const NOTE_MAX_LENGTH = 500;
-
-// Radix Select reserves the empty string for "no value selected", so the "no case" /
-// "no reminder" options need a real sentinel — translated to/from "" at the state boundary.
-const NONE_VALUE = "none";
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -517,35 +513,27 @@ function PlannerPanel({
                     onChange={(e) => setNotifyEmail(e.target.value)}
                     className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
-                  <Select value={caseId || NONE_VALUE} onValueChange={(v) => setCaseId(v === NONE_VALUE ? "" : v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE_VALUE}>{t("noCase")}</SelectItem>
-                      {cases.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.caseName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={reminderLeadMinutes || NONE_VALUE}
-                    onValueChange={(v) => setReminderLeadMinutes(v === NONE_VALUE ? "" : v)}
-                  >
-                    <SelectTrigger aria-label={t("reminderLabel")}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE_VALUE}>{t("reminderNone")}</SelectItem>
-                      <SelectItem value="1440">{t("reminder1Day")}</SelectItem>
-                      <SelectItem value="2880">{t("reminder2Days")}</SelectItem>
-                      <SelectItem value="4320">{t("reminder3Days")}</SelectItem>
-                      <SelectItem value="7200">{t("reminder5Days")}</SelectItem>
-                      <SelectItem value="10080">{t("reminder1Week")}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <CustomSelect
+                    value={caseId}
+                    onChange={setCaseId}
+                    options={[
+                      { value: "", label: t("noCase") },
+                      ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+                    ]}
+                  />
+                  <CustomSelect
+                    value={reminderLeadMinutes}
+                    onChange={setReminderLeadMinutes}
+                    triggerTooltip={t("reminderLabel")}
+                    options={[
+                      { value: "", label: t("reminderNone") },
+                      { value: "1440", label: t("reminder1Day") },
+                      { value: "2880", label: t("reminder2Days") },
+                      { value: "4320", label: t("reminder3Days") },
+                      { value: "7200", label: t("reminder5Days") },
+                      { value: "10080", label: t("reminder1Week") },
+                    ]}
+                  />
                   <div className="flex flex-col gap-1">
                     <textarea
                       placeholder={t("descriptionPlaceholder")}
