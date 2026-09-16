@@ -131,6 +131,7 @@
     "folderNamePrompt": "Folder name",
     "dropToUpload": "Drop to upload",
     "backToFolders": "Back to folders",
+    "backToDocuments": "Back to documents",
     "ragIndexing": "Indexing",
     "ragIndexingHint": "File is uploaded. Chat can search it once indexing finishes.",
     "ragReady": "Ready",

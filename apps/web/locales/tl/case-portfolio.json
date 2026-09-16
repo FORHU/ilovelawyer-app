@@ -60,7 +60,8 @@
     "ragReady": "Handa",
     "ragReadyHint": "Maaaring hanapin ng chat ang dokumentong ito.",
     "ragFailed": "Hindi na-index",
-    "ragFailedHint": "Naka-save ang file, pero hindi pa ito mahahanap ng chat."
+    "ragFailedHint": "Naka-save ang file, pero hindi pa ito mahahanap ng chat.",
+    "backToDocuments": "Bumalik sa mga dokumento"
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",

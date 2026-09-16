@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronLeft, FolderPlus, Loader2, Plus } from "lucide-react"
+import { ChevronLeft, ExternalLink, FolderPlus, Loader2, Plus } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import {
   useCaseDocumentsQuery,
@@ -15,7 +15,7 @@ import { useFileDrop } from "@/hooks/use-file-drop"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
-import FilePreviewModal from "@/components/chat/file-preview-modal"
+import { AttachmentPreview } from "@/components/chat/attachment-preview"
 import type { MessageAttachment } from "@/components/chat/message-attachments"
 
 type View = { kind: "root" } | { kind: "folder"; name: string }
@@ -35,6 +35,9 @@ type View = { kind: "root" } | { kind: "folder"; name: string }
  * thinks they're adding to the folder they're looking at. */
 export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; variant: "full" | "compact" }) {
   const { t } = useTranslation("case-portfolio")
+  // AttachmentPreview's own strings (loading/fallback text) already live under this namespace —
+  // reused here rather than duplicated into case-portfolio.json for just the one header action.
+  const { t: tHome } = useTranslation("homepage")
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId)
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
   const { mutate: updateDocument, isPending: isUpdating, variables: updatingVars } = useUpdateCaseDocumentMutation()
@@ -222,6 +225,55 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     )
   }
 
+  // A selected document takes over this whole view (header + grid replaced by a back button and
+  // the preview surface) rather than popping a modal — the modal's fixed-position full-viewport
+  // overlay ignored the resizable Studio sidebar's own width/height entirely; this way the
+  // preview lives inside the panel like Mind Map/Timeline/Data Table's own inline detail views
+  // do. AttachmentPreview (the fetch/render logic for pdf/image/docx/xlsx) is shared with
+  // FilePreviewModal, which still wraps it in that modal chrome for the chat attachment-chip
+  // preview elsewhere.
+  if (previewDoc) {
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                aria-label={t("detail.backToDocuments")}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t("detail.backToDocuments")}</TooltipContent>
+          </Tooltip>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{previewDoc.name}</span>
+          {previewDoc.url && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href={previewDoc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={tHome("attachment.openInNewTab")}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="left">{tHome("attachment.openInNewTab")}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border">
+          <AttachmentPreview attachment={previewDoc} />
+        </div>
+      </div>
+    )
+  }
+
   // Drag listeners live on this single top-level wrapper so the whole Documents view — root grid,
   // empty state, and an open folder alike — is one drop target; useFileDrop resolves the actual
   // destination per-drop (a specific folder card vs. this view's `defaultDropTarget`). The
@@ -243,7 +295,6 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
           </div>
         )}
       </div>
-      {previewDoc && <FilePreviewModal attachment={previewDoc} onClose={() => setPreviewDoc(null)} />}
       {deletingDoc && (
         <DeleteDocumentModal
           key={deletingDoc.id}
