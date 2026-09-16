@@ -192,7 +192,7 @@ function CopyMessageButton({
   }, [text]);
 
   const currentLabel = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : label;
-  const iconSize = compact ? "h-3 w-3" : "h-3.5 w-3.5";
+  const iconSize = compact ? "h-4 w-4" : "h-[18px] w-[18px]";
 
   return (
     <button
@@ -201,7 +201,7 @@ function CopyMessageButton({
       title={currentLabel}
       aria-label={currentLabel}
       className={`inline-flex items-center gap-1.5 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
-        compact ? "p-1" : "px-1.5 py-1 text-[11px]"
+        compact ? "p-1.5" : "px-2 py-1.5 text-[13px]"
       }`}
     >
       {status === "copied" ? (
@@ -1782,6 +1782,16 @@ export default function ConsultationChat({
                   // the parent's gap-4 so they read as one answer broken into cards, not
                   // unrelated replies.
                   const isGroupContinuation = Boolean(m.groupId) && visibleMessages[i - 1]?.groupId === m.groupId;
+                  // One copy button per *reply*, not per topic card — a split answer (MessageGroup)
+                  // reads as several bubbles but is one response, so only the last card in the
+                  // group gets the button, and it copies every sibling's content joined together.
+                  const isLastOfGroup = !m.groupId || visibleMessages[i + 1]?.groupId !== m.groupId;
+                  const fullReplyText = m.groupId
+                    ? visibleMessages
+                        .filter((msg) => msg.groupId === m.groupId)
+                        .map((msg) => cleanAssistantContent(msg.content))
+                        .join("\n\n")
+                    : cleanAssistantContent(m.content);
 
                   return (
                     <div
@@ -1830,10 +1840,10 @@ export default function ConsultationChat({
                               </div>
                             </div>
                           )}
-                          {!isStreamingThis && m.content && (
+                          {!isStreamingThis && m.content && isLastOfGroup && (
                             <div className="mt-2 flex justify-start">
                               <CopyMessageButton
-                                text={cleanAssistantContent(m.content)}
+                                text={fullReplyText}
                                 label={t("message.copy", { defaultValue: "Copy response" })}
                                 copiedLabel={t("message.copied", { defaultValue: "Copied!" })}
                                 failedLabel={t("message.copyFailed", { defaultValue: "Couldn't copy" })}
