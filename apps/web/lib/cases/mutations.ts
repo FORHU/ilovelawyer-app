@@ -13,24 +13,33 @@ export interface Party {
 
 /** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
  * not yet supported by the backend — see CONTEXT.md pending section. */
+export type CaseStatus = "ACTIVE" | "ARCHIVED"
+
+/** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
+ * not yet supported by the backend — see CONTEXT.md pending section. */
 export interface CaseRecord {
   id: string
   userId: string
   caseName: string
   parties: Party[]
   notes: string | null
+  status: CaseStatus
   createdAt: string
   updatedAt: string
 }
 
 /** Lists the current user's cases, paginated (backend default: page 1, limit 20).
  * `search` is forwarded to the backend as a `search` query param so matching happens
- * across the user's full case set, not just the cases already fetched for this page. */
-export function useCasesQuery(page = 1, limit = 20, search = "") {
+ * across the user's full case set, not just the cases already fetched for this page.
+ * `status` defaults to "ACTIVE" (matching the backend default) so every existing caller —
+ * the calendar/transcription/document-analysis case-linking pickers and the Terminal landing
+ * page's case switcher, none of which pass this param — automatically keeps excluding archived
+ * cases without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
+export function useCasesQuery(page = 1, limit = 20, search = "", status: CaseStatus = "ACTIVE") {
   return useQuery({
-    queryKey: caseKeys.list({ page, limit, search }),
+    queryKey: caseKeys.list({ page, limit, search, status }),
     queryFn: () => {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+      const params = new URLSearchParams({ page: String(page), limit: String(limit), status })
       if (search) params.set("search", search)
       return apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?${params.toString()}`)
     },
@@ -96,6 +105,33 @@ export function useDeleteCaseMutation() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
       queryClient.removeQueries({ queryKey: caseKeys.detail(id) })
+    },
+  })
+}
+
+// Archiving/unarchiving are independent of delete — a case in either status can still be
+// deleted, and neither action blocks anything else on the case (documents, chat, etc. all keep
+// working identically regardless of status). Both invalidate caseKeys.lists() broadly (same
+// pattern as useUpdateCaseMutation/useDeleteCaseMutation above) so both the Active and Archived
+// tab queries refetch — the case needs to disappear from one tab and appear in the other.
+export function useArchiveCaseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<CaseRecord>(`/api/my-cases/${id}/archive`, { method: "POST" }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      queryClient.setQueryData(caseKeys.detail(updated.id), updated)
+    },
+  })
+}
+
+export function useUnarchiveCaseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<CaseRecord>(`/api/my-cases/${id}/unarchive`, { method: "POST" }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      queryClient.setQueryData(caseKeys.detail(updated.id), updated)
     },
   })
 }

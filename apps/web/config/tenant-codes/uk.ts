@@ -9,14 +9,8 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
     flag: "🇬🇧",
   },
   landingAssets: {
-    heroSlides: ["/landing/uk/hero-1.jpg", "/landing/uk/hero-2.jpg", "/landing/uk/hero-3.jpg"],
+    heroVideos: ["/landing/videos/hero-1.mp4", "/landing/videos/hero-2.mp4", "/landing/videos/hero-3.mp4"],
     firmWorkspace: "/landing/uk/firm-workspace.jpg",
-    terminalPanels: {
-      caseWorkspace: "/landing/uk/texture-dots.jpg",
-      redTeam: "/landing/uk/texture-blue.jpg",
-      audioOverview: "/landing/uk/texture-teal.jpg",
-      caseReconstruction: "/landing/uk/texture-gold.jpg",
-    },
   },
   ui: {
     tenantCodeLabel: "UK jurisdiction",

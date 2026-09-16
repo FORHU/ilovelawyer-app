@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -14,30 +14,46 @@ import { getTenantCodeConfig } from "@/config/tenant-codes";
 const tCtx = { context: "UK" };
 
 const SLIDE_KEYS = ["slideOne", "slideTwo", "slideThree"] as const;
-const AUTOPLAY_MS = 6200;
-const slideImages = getTenantCodeConfig("UK").landingAssets.heroSlides;
+const heroVideos = getTenantCodeConfig("UK").landingAssets.heroVideos;
 
 export function UkHeroSection() {
   const { t } = useTranslation("landing");
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   useEffect(() => {
     if (reduce) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % SLIDE_KEYS.length), AUTOPLAY_MS);
-    return () => clearInterval(id);
-  }, [reduce]);
+    const active = videoRefs.current[index];
+    if (!active) return;
+    videoRefs.current.forEach((v, i) => {
+      if (v && i !== index) v.pause();
+    });
+    active.currentTime = 0;
+    void active.play();
+  }, [index, reduce]);
 
   return (
     <section id="hero" className="relative h-[92vh] min-h-[620px] flex items-end overflow-hidden bg-brand-navy-950">
-      {slideImages.map((src, i) => (
+      {heroVideos.map((src, i) => (
         <motion.div
           key={src}
-          className="absolute inset-0 bg-center bg-cover"
-          style={{ backgroundImage: `url('${src}')` }}
+          className="absolute inset-0"
           animate={{ opacity: index === i ? 1 : 0 }}
           transition={{ duration: reduce ? 0 : 0.9, ease: "easeInOut" }}
-        />
+        >
+          <video
+            ref={(el) => {
+              videoRefs.current[i] = el;
+            }}
+            src={src}
+            muted
+            playsInline
+            preload="auto"
+            onEnded={reduce ? undefined : () => setIndex((i) => (i + 1) % SLIDE_KEYS.length)}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        </motion.div>
       ))}
       <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-950 via-brand-navy-950/20 to-black/30" />
 
@@ -89,41 +105,6 @@ export function UkHeroSection() {
               </TooltipTrigger>
               <TooltipContent>Jump down to see what the platform can do</TooltipContent>
             </Tooltip>
-
-            <div className="flex items-center gap-2 ml-auto">
-              {SLIDE_KEYS.map((key, i) => (
-                <Tooltip key={key}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setIndex(i)}
-                      aria-label={t("hero.slideLabel", { number: i + 1 })}
-                      className="size-5 flex items-center justify-center cursor-pointer bg-transparent border-0"
-                    >
-                      <span
-                        className={`rounded-full transition-all duration-300 ${
-                          i === index ? "size-2.5 bg-brand-gold" : "size-2 bg-white/30 hover:bg-white/60"
-                        }`}
-                      />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("hero.slideLabel", { number: i + 1 })}</TooltipContent>
-                </Tooltip>
-              ))}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setIndex((i) => (i + 1) % SLIDE_KEYS.length)}
-                    aria-label={t("hero.nextSlide")}
-                    className="ml-1 size-8 flex items-center justify-center rounded-full border border-white/30 text-white hover:border-white transition-colors duration-200 cursor-pointer bg-transparent"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("hero.nextSlide")}</TooltipContent>
-              </Tooltip>
-            </div>
           </div>
         </div>
       </div>

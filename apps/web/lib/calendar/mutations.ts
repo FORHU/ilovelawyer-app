@@ -15,6 +15,11 @@ export interface Appointment {
   notifyEmail: string | null
   /** Case this appointment is scheduled for, if any — feeds the case timeline. */
   caseId: string | null
+  /** Minutes before dateTime the backend should send a reminder, if a lead time was set. */
+  reminderLeadMinutes: number | null
+  /** "pending" (default), "cancelled", "completed", or a Google-sync-computed status
+   * ("confirmed" / "tentative" / "denied"). */
+  status: string
 }
 
 export interface CreateAppointmentPayload {
@@ -28,6 +33,23 @@ export interface CreateAppointmentPayload {
   notifyEmail?: string
   /** Links this appointment to a case, so it shows up on that case's timeline. */
   caseId?: string
+  /** Minutes before the appointment to send a reminder (e.g. 1440 = 1 day). Omitted means no reminder. */
+  reminderLeadMinutes?: number
+}
+
+export interface UpdateAppointmentPayload {
+  id: string
+  title?: string
+  /** Both required together to change the appointment's date/time. */
+  date?: string
+  startTime?: string
+  description?: string
+  notifyEmail?: string
+  /** Empty string clears the linked case. */
+  caseId?: string
+  /** null clears the reminder. */
+  reminderLeadMinutes?: number | null
+  status?: string
 }
 
 export interface Note {
@@ -48,6 +70,8 @@ interface BackendEvent {
   notes: string | null
   clientEmail: string | null
   caseId: string | null
+  reminderLeadMinutes: number | null
+  status: string
 }
 
 /** Re-formats `value` as zero-padded "HH:mm" if it's a valid time (accepts "9:00" -> "09:00"),
@@ -69,6 +93,8 @@ function toAppointment(event: BackendEvent): Appointment {
     description: event.notes,
     notifyEmail: event.clientEmail,
     caseId: event.caseId ?? null,
+    reminderLeadMinutes: event.reminderLeadMinutes ?? null,
+    status: event.status,
   }
 }
 
@@ -106,6 +132,7 @@ export function useCreateAppointmentMutation() {
           notes: payload.description,
           clientEmail: payload.notifyEmail,
           caseId: payload.caseId,
+          reminderLeadMinutes: payload.reminderLeadMinutes,
         }),
       })
       return toAppointment(event)
@@ -114,6 +141,39 @@ export function useCreateAppointmentMutation() {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() })
       if (appointment.caseId) {
         queryClient.invalidateQueries({ queryKey: caseKeys.timeline(appointment.caseId) })
+      }
+    },
+  })
+}
+
+/** Edits an appointment's fields and/or status (cancel/complete/restore) — the PUT endpoint
+ * only returns { success: true }, so callers rely on the appointments-list invalidation below
+ * rather than an optimistic update from the response. */
+export function useUpdateAppointmentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: UpdateAppointmentPayload) => {
+      const body: Record<string, unknown> = {}
+      if (payload.title !== undefined) body.title = payload.title
+      if (payload.date && payload.startTime) {
+        body.dateTime = new Date(`${payload.date}T${payload.startTime}`).toISOString()
+      }
+      if (payload.description !== undefined) body.notes = payload.description
+      if (payload.notifyEmail !== undefined) body.clientEmail = payload.notifyEmail
+      if (payload.caseId !== undefined) body.caseId = payload.caseId || null
+      if (payload.reminderLeadMinutes !== undefined) body.reminderLeadMinutes = payload.reminderLeadMinutes
+      if (payload.status !== undefined) body.status = payload.status
+
+      await apiFetch<{ success: boolean }>(`/api/events/${payload.id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      })
+      return payload
+    },
+    onSuccess: (payload) => {
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() })
+      if (payload.caseId) {
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(payload.caseId) })
       }
     },
   })

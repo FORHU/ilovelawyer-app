@@ -40,17 +40,12 @@ export interface TenantCodeConfig {
   branding: {
     flag: string
   }
-  /** Landing-page image paths. Copy and mock content belong in i18n (`_UK` context suffix);
-   * only asset paths live here, following the same philosophy as `ui`. */
+  /** Landing-page asset paths (hero background is video, the rest are images). Copy and
+   * mock content belong in i18n (`_UK` context suffix); only asset paths live here,
+   * following the same philosophy as `ui`. */
   landingAssets: {
-    heroSlides: [string, string, string]
+    heroVideos: [string, string, string]
     firmWorkspace: string
-    terminalPanels: {
-      caseWorkspace: string
-      redTeam: string
-      audioOverview: string
-      caseReconstruction: string
-    }
   }
   ui: {
     tenantCodeLabel: string
