@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Building2, Loader2, Mail, UserCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import CustomSelect from "@/components/ui/custom-select";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
 import { useMyInviteQuery, type OrganizationRole } from "@/lib/organizations/queries";
@@ -287,19 +288,12 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
               >
                 {t("organization:invite.roleLabel")}
               </label>
-              <select
+              <CustomSelect
                 value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as OrganizationRole)}
-                disabled={inviteMemberMutation.isPending}
-                className={inputClass}
-                style={{ fontFamily: "Inter, sans-serif", colorScheme: "light" }}
-              >
-                {INVITABLE_ROLES.map((role) => (
-                  <option key={role} value={role} className="text-black">
-                    {role}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setInviteRole(v as OrganizationRole)}
+                options={INVITABLE_ROLES.map((role) => ({ value: role, label: role }))}
+                className={inviteMemberMutation.isPending ? "opacity-50 pointer-events-none" : ""}
+              />
             </div>
 
             {inviteError && (

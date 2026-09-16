@@ -54,7 +54,7 @@ export function LanguageSwitcher() {
       {isOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 mt-3 w-32 bg-white border border-black/10 rounded-sm shadow-xl py-1 z-(--z-modal)"
+          className="absolute top-full right-0 mt-3 w-32 bg-white dark:bg-card border border-black/10 dark:border-border rounded-sm shadow-xl py-1 z-(--z-modal)"
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
             <button
@@ -66,7 +66,9 @@ export function LanguageSwitcher() {
                 setIsOpen(false)
               }}
               className={`block w-full text-left px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors ${
-                language === lang ? "text-black font-bold bg-black/5" : "text-black/60 hover:text-black hover:bg-black/5"
+                language === lang
+                  ? "text-black dark:text-foreground font-bold bg-black/5 dark:bg-overlay-hover"
+                  : "text-black/60 dark:text-muted-foreground hover:text-black dark:hover:text-foreground hover:bg-black/5 dark:hover:bg-overlay-hover"
               }`}
             >
               {LANGUAGE_LABELS[lang]}
