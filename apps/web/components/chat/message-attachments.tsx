@@ -24,6 +24,32 @@ export function isPdfAttachment(attachment: Pick<MessageAttachment, "mimeType" |
   return attachment.mimeType === "application/pdf" || attachment.name.toLowerCase().endsWith(".pdf");
 }
 
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+
+/** Same mimeType-then-extension fallback as isPdfAttachment, for the other in-app-previewable
+ * type — a plain <img>, no third-party viewer needed. */
+export function isImageAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType?.startsWith("image/")) return true;
+  const lower = attachment.name.toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/** .docx (OOXML) only — docx-preview parses the zipped XML format Word 2007+ writes, not the
+ * legacy binary .doc (Word 97-2003) format, which is a proprietary OLE structure no JS library
+ * in this app parses. A .doc falls through to the same Download fallback as xlsx/pptx/etc. */
+export function isDocxAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return true;
+  return attachment.name.toLowerCase().endsWith(".docx");
+}
+
+/** .xlsx (OOXML) only, same reasoning as isDocxAttachment — xlsx-preview's exceljs backend
+ * reads the zipped XML format Excel 2007+ writes, not the legacy binary .xls (Excel 97-2003)
+ * format. A .xls falls through to the same Download fallback as .doc/.ppt/etc. */
+export function isXlsxAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return true;
+  return attachment.name.toLowerCase().endsWith(".xlsx");
+}
+
 interface MessageAttachmentsProps {
   attachments: MessageAttachment[];
   onSelect: (attachment: MessageAttachment) => void;

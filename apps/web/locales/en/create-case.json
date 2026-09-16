@@ -27,9 +27,12 @@
     "caseTitleError": "Please specify a case title before initiating submission.",
     "actionTypeLabel": "Type of Action",
     "selectAction": "Select action",
+    "ukJurisdictionLabel": "Jurisdiction",
+    "selectUkJurisdiction": "Select jurisdiction",
     "jurisdictionLabel": "Court / Jurisdictional Branch",
     "jurisdictionPlaceholder": "e.g. {{example}}",
-    "persistenceNotice": "Type of Action and Jurisdiction aren't saved by the backend yet — support is in progress."
+    "persistenceNotice": "Type of Action and Court / Jurisdictional Branch aren't saved by the backend yet — support is in progress.",
+    "persistenceNoticeActionTypeOnly": "Type of Action isn't saved by the backend yet — support is in progress."
   },
   "sectionParties": {
     "heading": "II. Party Details",
@@ -66,5 +69,10 @@
     "petitionerPlaintiff": "Petitioner / Plaintiff",
     "respondentDefendant": "Respondent / Defendant",
     "intervenorThirdParty": "Intervenor / Third-Party"
+  },
+  "ukJurisdictions": {
+    "englandAndWales": "England and Wales",
+    "scotland": "Scotland",
+    "northernIreland": "Northern Ireland"
   }
 }

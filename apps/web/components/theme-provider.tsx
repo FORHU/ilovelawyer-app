@@ -1,16 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+import { ThemeProvider as NextThemesProvider, useTheme, type ThemeProviderProps } from "next-themes"
 import { Sun, Moon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
-function ThemeProvider({
-  children,
-  ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
+// ThemeProviderProps extends React.PropsWithChildren in next-themes's own .d.ts, but under
+// this project's installed @types/react, JSX children-checking against that type still
+// reports no `children` member — a known next-themes/React 19 types interaction. Recasting
+// the component's type locally (no runtime effect) sidesteps it without patching the library.
+const ThemeProviderRoot = NextThemesProvider as React.ComponentType<ThemeProviderProps & { children?: React.ReactNode }>
+
+function ThemeProvider({ children, ...props }: ThemeProviderProps & { children?: React.ReactNode }) {
   return (
-    <NextThemesProvider
+    <ThemeProviderRoot
       attribute="class"
       defaultTheme="system"
       enableSystem
@@ -18,7 +21,7 @@ function ThemeProvider({
       {...props}
     >
       {children}
-    </NextThemesProvider>
+    </ThemeProviderRoot>
   )
 }
 

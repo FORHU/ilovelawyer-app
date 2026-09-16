@@ -97,11 +97,11 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
       type="button"
       id={id}
       onClick={handleTriggerClick}
-      className="w-full flex items-center justify-between gap-2 border border-border rounded-xl py-3 sm:py-2 px-3 text-base sm:text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
+      className="w-full min-w-0 flex items-center justify-between gap-2 border border-border rounded-xl py-3 sm:py-2 px-3 text-base sm:text-sm text-left bg-transparent cursor-pointer hover:border-foreground/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary"
       aria-haspopup="listbox"
       aria-expanded={open}
     >
-      <span className={selected ? "text-foreground" : "text-muted-foreground"}>
+      <span className={`min-w-0 truncate ${selected ? "text-foreground" : "text-muted-foreground"}`}>
         {selected ? selected.label : placeholder}
       </span>
       <ChevronDown
