@@ -37,6 +37,13 @@ export function resolveTenantCodeFromHost(hostname: string | undefined | null): 
   return HOST_TENANT_CODE_MAP[host] ?? null
 }
 
+/** Local dev hosts (`ph.localhost:3002`, `ph.ilovelawyer.local:3002`, bare `ph.ilovelawyer:3002`)
+ * are the only ones ever served over plain HTTP — matches the dev-host conventions documented
+ * above. Shared by anything that needs to build an absolute URL from a bare `Host` header. */
+export function protocolForHost(host: string): "http" | "https" {
+  return /(localhost|\.local)(:|$)/i.test(host) ? "http" : "https"
+}
+
 /** The target host for a given Tenant code, used by the tenant switcher and the
  * domain-mismatch redirect. Preserves whichever convention `currentHost` is already using
  * (`.com`, `.local:port`, or the bare `.ilovelawyer:port` dev form) by swapping only the
