@@ -26,6 +26,7 @@
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "thinking": "is thinking",
+  "thinkingTraceUnavailable": "Research steps aren't shown after a refresh or switching away mid-reply.",
   "message": {
     "copy": "Copy response",
     "copied": "Copied!",
@@ -49,6 +50,7 @@
     "openCase": "Open case",
     "relatedCases": "Related Cases",
     "reasoning": "How I got this",
+    "researchSteps": "Research steps",
     "loadingCase": "Loading…",
     "relatedEmpty": "No related cases found yet.",
     "loadingRelated": "Loading related cases…",

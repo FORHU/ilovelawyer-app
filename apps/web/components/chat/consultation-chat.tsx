@@ -34,6 +34,7 @@ import {
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
+import { ResearchTracePanel } from "@/components/chat/research-trace-panel";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
@@ -67,8 +68,11 @@ interface DisplayMessage {
    * this is recomputed from the raw accumulated text on every chunk (see doSend); once the
    * message is persisted it comes straight from the backend (see baseMessages below). */
   mindMap?: MindMapItem;
-  /** Live research steps extracted from `[TRACE]...[/TRACE]` frames while this message is
-   * streaming — see doSend. Never persisted; gone once the turn finishes. */
+  /** Research steps extracted from `[TRACE]...[/TRACE]` frames. While this message is
+   * streaming, recomputed live from the raw accumulated text on every chunk (see doSend); once
+   * persisted it comes from the backend's MessageResearchTrace instead (see baseMessages
+   * below) — a page refresh (or switching away and back) mid-stream used to lose this for
+   * good, since it only ever existed in the streaming tab's own local state. */
   researchSteps?: TraceStep[];
   /** Set only when this reply is one topic of a split, multi-topic answer (see
    * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, used as the
@@ -539,6 +543,7 @@ export default function ConsultationChat({
               groupTitle: m.groupTitle,
               decisions: m.decisionRecords?.records,
               reasoning: m.reasoning ?? undefined,
+              researchSteps: m.researchTrace?.steps,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -1884,7 +1889,18 @@ export default function ConsultationChat({
                         m.researchSteps && m.researchSteps.length > 0 ? (
                           <ResearchTraceList steps={m.researchSteps} />
                         ) : (
-                          <ThinkingIndicator label={t("thinking")} />
+                          <div className="flex flex-col gap-1.5">
+                            <ThinkingIndicator label={t("thinking")} />
+                            {/* isResumedGenerating (not isSending) means this tab isn't the one
+                             * actually streaming the reply — a refresh, or switching away and
+                             * back, mid-generation. There's no live [TRACE] channel to show in
+                             * either case (that only ever existed in the original tab's own
+                             * WebSocket connection), so say so instead of just leaving an
+                             * unexplained generic "thinking" bubble sitting there. */}
+                            {isResumedGenerating && (
+                              <p className="text-[11px] text-muted-foreground/70">{t("thinkingTraceUnavailable")}</p>
+                            )}
+                          </div>
                         )
                       ) : (
                         <>
@@ -1905,6 +1921,7 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
+                          <ResearchTracePanel steps={m.researchSteps} />
                           {(showRelatedCases ?? !embedded) && !isBusy && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">

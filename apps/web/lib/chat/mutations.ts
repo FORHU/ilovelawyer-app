@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
-import type { MindMapItem } from "@/lib/chat/mind-map-parser"
+import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
 import type { DecisionRecordPayload } from "@/lib/terminal/types"
 
 export interface ChatSession {
@@ -82,6 +82,11 @@ export interface ChatMessage {
    * generated server-side when the turn actually used tool calls or retrieved sources —
    * absent/null is normal for direct-answer turns or on generation failure, not an error. */
   reasoning?: MessageReasoning | null
+  /** The glass-box research trace's finished state (ilovelawyer-api's MessageResearchTrace),
+   * persisted server-side from the same `[TRACE]` frames the live stream shows via
+   * ResearchTraceList — see consultation-chat.tsx's doSend. Absent whenever the turn made no
+   * tool calls, or on a message sent before this shipped; not an error either way. */
+  researchTrace?: { steps: TraceStep[] } | null
 }
 
 export function useChatSessionQuery() {
