@@ -24,6 +24,16 @@
     "open": "Open menu",
     "close": "Close menu"
   },
+  "notifications": {
+    "label": "Notifications",
+    "unreadCount": "{{count}} unread notifications",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all",
+    "empty": "You're all caught up",
+    "emptyDescription": "No new notifications right now.",
+    "justNow": "Just now",
+    "reconnecting": "Reconnecting…"
+  },
   "languageSwitcher": {
     "label": "Change display language"
   },

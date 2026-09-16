@@ -23,6 +23,16 @@
     "open": "메뉴 열기",
     "close": "메뉴 닫기"
   },
+  "notifications": {
+    "label": "알림",
+    "unreadCount": "읽지 않은 알림 {{count}}개",
+    "markAllRead": "모두 읽음으로 표시",
+    "viewAll": "전체 보기",
+    "empty": "새로운 알림이 없습니다",
+    "emptyDescription": "현재 새 알림이 없습니다.",
+    "justNow": "방금 전",
+    "reconnecting": "재연결 중…"
+  },
   "languageSwitcher": {
     "label": "표시 언어 변경"
   },
