@@ -119,9 +119,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     </div>
   )
 
+  // "full" is only ever rendered inside Studio's resizable, narrow (260-760px) dock — not the
+  // full page — so column count must track this grid's own container width, not the browser
+  // viewport. sm:/lg: breakpoints fire off viewport width regardless of how narrow the actual
+  // panel is, which forced 3-4 columns into ~300px and crushed each card's filename/status
+  // badge/exhibit-checkbox row into overlapping text. auto-fill/minmax sizes columns off the
+  // real available width instead, with no breakpoints needed.
   const gridClass =
     variant === "full"
-      ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+      ? "grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"
       : "grid grid-cols-2 gap-2 overflow-y-auto max-h-64"
 
   const newFolderCard = (
@@ -343,7 +349,7 @@ function NewFolderCard({
           placeholder={t("detail.folderNamePrompt")}
           className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         />
-        <div className="flex items-center justify-end gap-2 text-xs">
+        <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs">
           <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
             {t("editModal.cancel")}
           </button>
