@@ -24,7 +24,8 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
-import { CaseBriefPreviewModal } from "@/components/case-brief/case-brief-preview-modal"
+import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import {
   useAiJobStatus,
   useApplyWorkspaceMutation,
@@ -525,7 +526,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             </button>
           </div>
         </div>
-        <CaseBriefPreviewModal caseId={caseId} open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen} />
+        <Sheet open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-xl">
+            <SheetHeader>
+              <SheetTitle>{t("downloadCaseBrief")}</SheetTitle>
+            </SheetHeader>
+            <div className="min-h-0 flex-1">
+              <CaseBriefContent caseId={caseId} />
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Terminal bar: layout tabs · arrangement switch · pane count · add pane */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">

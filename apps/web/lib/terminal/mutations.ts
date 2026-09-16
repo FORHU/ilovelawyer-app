@@ -44,6 +44,8 @@ export const terminalKeys = {
     [...terminalKeys.all, "theory-diff", caseId, ...[theoryAId, theoryBId].sort()] as const,
   annotations: (caseId: string, targetType: string, targetId: string) =>
     [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
+  caseBriefHistory: (caseId: string) =>
+    [...terminalKeys.all, "case-brief-history", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -920,11 +922,35 @@ export interface CaseBriefExportResult {
 
 // Generates the Case Brief fresh from the live snapshot on every call — not cached, since the
 // export is meant to reflect the case as it stands right now. Called with format=pdf for the
-// CaseBriefPreviewModal's inline preview, and separately with format=docx/pdf for the modal's
-// two download actions (see CaseBriefExportSvc on the backend).
+// inline preview, and separately with format=docx/pdf for the two download actions (see
+// CaseBriefExportSvc on the backend). Every call — preview or download alike — is recorded
+// server-side as a history entry; see useCaseBriefHistoryQuery below.
 export function useExportCaseBriefMutation(caseId: string) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (format: CaseBriefFormat) =>
       apiFetch<CaseBriefExportResult>(`/api/my-cases/${caseId}/export?format=${format}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.caseBriefHistory(caseId) })
+    },
+  })
+}
+
+export interface CaseBriefHistoryEntry {
+  id: string
+  format: CaseBriefFormat
+  createdAt: string
+  file: { id: string; fileUrl: string | null }
+}
+
+/** Every past generation for this case (preview and download calls alike), most recent first —
+ * so a lawyer can redownload something they made earlier instead of only ever having the latest
+ * render. Each entry's fileUrl is re-presigned server-side on every fetch, since a URL minted at
+ * generation time may have already expired. */
+export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
+  return useQuery({
+    queryKey: terminalKeys.caseBriefHistory(caseId),
+    queryFn: () => apiFetch<CaseBriefHistoryEntry[]>(`/api/my-cases/${caseId}/export/history`),
+    enabled,
   })
 }

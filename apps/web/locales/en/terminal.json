@@ -308,5 +308,10 @@
   "caseBriefGenerating": "Generating preview…",
   "caseBriefPreviewError": "Couldn't generate the preview.",
   "downloadWord": "Download Word",
-  "downloadPdf": "Download PDF"
+  "downloadPdf": "Download PDF",
+  "caseBriefNewTab": "New",
+  "caseBriefHistoryTab": "History",
+  "caseBriefHistoryLoading": "Loading history…",
+  "caseBriefHistoryError": "Couldn't load case brief history.",
+  "caseBriefHistoryEmpty": "No case briefs generated yet."
 }

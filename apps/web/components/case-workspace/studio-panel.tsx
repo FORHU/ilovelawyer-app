@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Download } from "lucide-react";
-import { CaseBriefPreviewModal } from "@/components/case-brief/case-brief-preview-modal";
+import { CaseBriefContent } from "@/components/case-brief/case-brief-content";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
@@ -19,7 +19,7 @@ import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
-export type StudioTileKind = "documents" | "mindmap" | "timeline" | "dataTable" | "audioOverview";
+export type StudioTileKind = "documents" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
 
 interface DataTableRow {
   type: string;
@@ -107,7 +107,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
-  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false);
   const mindMapJob = useAiJobStatus(caseId, "mindMap");
   // Combines this tab's own in-flight request with the persisted job status, so a job kicked
   // off from another tab (or this one, before a refresh) still shows as generating here too.
@@ -293,7 +292,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             ? t("workspace.dataTableTile")
             : openTile === "audioOverview"
               ? t("workspace.audioOverviewTile")
-              : null;
+              : openTile === "caseBrief"
+                ? t("workspace.downloadCaseBrief")
+                : null;
 
   return (
     <aside
@@ -377,7 +378,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           </TooltipContent>
         </Tooltip>
       </div>
-      <CaseBriefPreviewModal caseId={caseId} open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen} />
 
       {(!expanded || !openTile) && (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
@@ -456,14 +456,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               disabled={isGeneratingAudioOverview}
               onClick={() => void handleGenerateAudioOverviewScript()}
             />
-            {/* Same pattern as Documents above: opens directly (a modal, not an inline Studio
-             * view) rather than generating in place first — the modal itself handles generating
-             * the PDF preview once opened. */}
+            {/* Same pattern as Documents above: opens the inline detail view directly rather
+             * than generating in place first — CaseBriefContent handles generating the preview
+             * once opened. */}
             <StudioTile
               icon={Download}
               label={t("workspace.downloadCaseBrief")}
               expanded={expanded}
-              onClick={() => setBriefPreviewOpen(true)}
+              onClick={() => openStudioTile("caseBrief")}
             />
           </div>
 
@@ -546,6 +546,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {openTile === "documents" ? (
             <DocumentFolderBrowser caseId={caseId} variant="full" />
+          ) : openTile === "caseBrief" ? (
+            <CaseBriefContent caseId={caseId} />
           ) : openTile === "mindmap" ? (
             consultationId ? (
               activeMindMap ? (
