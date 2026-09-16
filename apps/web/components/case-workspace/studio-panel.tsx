@@ -381,7 +381,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
       {(!expanded || !openTile) && (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-          <div className={expanded ? "grid grid-cols-2 gap-2" : "flex flex-col items-center gap-2"}>
+          {/* One column on phones (the mobile full-width Studio tab) — a 2-up grid there left
+           * every tile's icon/label/note cramped. Two columns from tablet width up. */}
+          <div className={expanded ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "flex flex-col items-center gap-2"}>
             {/* Documents is already-there data (this case's Case Documents), not something to
              * generate/refresh — so unlike the three tiles below, this one opens the detail view
              * directly instead of triggering an action first. The spinner here is purely a status
@@ -776,10 +778,14 @@ function StudioTile({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex flex-col items-start gap-2.5 rounded-xl border border-border p-3 text-left transition-colors enabled:hover:bg-muted dark:enabled:hover:bg-overlay-hover enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
+      className="flex w-full flex-col gap-2.5 rounded-xl border border-border p-3 text-left transition-colors enabled:hover:bg-muted dark:enabled:hover:bg-overlay-hover enabled:hover:border-brand-gold/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50 disabled:cursor-default"
     >
       <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
-      <span className="flex min-w-0 flex-col gap-0.5">
+      {/* w-full (not items-start's shrink-to-fit) so this wrapper is actually width-constrained
+       * by the tile — otherwise min-w-0/truncate below have no smaller width to clip against,
+       * and a long label like "Generating audio overview…" renders at its full natural width
+       * and visually spills out of the card instead of ellipsis-truncating in place. */}
+      <span className="flex w-full min-w-0 flex-col gap-0.5">
         <span className="truncate text-[13px] font-medium text-foreground">{label}</span>
         {note && <span className="truncate text-[11px] text-muted-foreground">{note}</span>}
       </span>
@@ -795,12 +801,16 @@ function StudioTile({
     </button>
   );
 
-  if (!disabled) return tile;
+  // Only wrap in a tooltip when a caller has something to say beyond what's already visible on
+  // the tile itself (e.g. a busy tile's label already reads "Generating…"/"Refreshing…" — a
+  // tooltip repeating that would just be a redundant, portaled duplicate that can render on top
+  // of the case's own tab bar above this panel, with no boundary tying it to the panel's bounds).
+  if (!disabled || !disabledHint) return tile;
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>{tile}</TooltipTrigger>
-      <TooltipContent side={expanded ? "top" : "left"}>{disabledHint ?? label}</TooltipContent>
+      <TooltipContent side={expanded ? "top" : "left"}>{disabledHint}</TooltipContent>
     </Tooltip>
   );
 }

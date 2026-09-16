@@ -28,6 +28,7 @@ import ConsultationChat from "@/components/chat/consultation-chat"
 import { CitationMap } from "@/components/citation-map"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
+import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import AttributedMarkdown, {
   AttributedTextLegend,
 } from "@/components/shared/attributed-text"
@@ -665,6 +666,7 @@ function EvidencePanel({
 }) {
   const { t } = useTranslation("terminal")
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null)
+  const [deletingDoc, setDeletingDoc] = useState<SnapshotDocument | null>(null)
   // Collapsed by default (empty set) — a folder's document count is visible without opening it,
   // and this panel also has the Timeline section below the document list that several
   // auto-expanded folders would otherwise push well down the pane. Not persisted across
@@ -792,7 +794,7 @@ function EvidencePanel({
                     matrixItem={snapshot.evidence.matrix.find((m) => m.documentId === doc.id)}
                     witnesses={snapshot.witnesses}
                     onOpen={() => setOpenDocumentId(doc.id)}
-                    onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
+                    onDelete={() => setDeletingDoc(doc)}
                     isDeleting={isDeleting && deletingVars?.documentId === doc.id}
                   />
                 ))}
@@ -850,7 +852,7 @@ function EvidencePanel({
                             matrixItem={snapshot.evidence.matrix.find((m) => m.documentId === doc.id)}
                             witnesses={snapshot.witnesses}
                             onOpen={() => setOpenDocumentId(doc.id)}
-                            onDelete={() => deleteDocument({ documentId: doc.id, caseId })}
+                            onDelete={() => setDeletingDoc(doc)}
                             isDeleting={isDeleting && deletingVars?.documentId === doc.id}
                           />
                         ))}
@@ -930,6 +932,19 @@ function EvidencePanel({
         matrixItem={openMatrixItem}
         witnesses={snapshot.witnesses}
       />
+
+      {deletingDoc && (
+        <DeleteDocumentModal
+          key={deletingDoc.id}
+          doc={deletingDoc}
+          isDeleting={isDeleting && deletingVars?.documentId === deletingDoc.id}
+          onConfirm={() => {
+            deleteDocument({ documentId: deletingDoc.id, caseId })
+            setDeletingDoc(null)
+          }}
+          onClose={() => setDeletingDoc(null)}
+        />
+      )}
     </PanelBody>
   )
 }

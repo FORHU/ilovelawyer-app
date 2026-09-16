@@ -26,6 +26,7 @@
     "viewFile": "Tingnan ang {{fileName}}",
     "closePreview": "Isara ang preview",
     "openInNewTab": "Buksan sa bagong tab",
+    "download": "I-download",
     "previewUnavailable": "Hindi available ang preview para sa ganitong uri ng file.",
     "previewFailed": "Hindi ma-preview ang file na ito dito."
   },

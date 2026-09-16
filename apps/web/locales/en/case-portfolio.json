@@ -120,6 +120,8 @@
     "uploading": "Uploading…",
     "uploadError": "Couldn't upload this file.",
     "removeDocument": "Remove {{documentName}}",
+    "removeDocumentCta": "Remove Document",
+    "removeDocumentConfirm": "Remove \"{{documentName}}\" from this case? This cannot be undone.",
     "exhibit": "Exhibit",
     "markAsExhibit": "Mark {{documentName}} as an exhibit for the Case Brief",
     "loadDocumentsError": "Couldn't load documents.",
