@@ -834,8 +834,8 @@ export default function CalendarPage() {
           />
 
           <Card className="w-full flex-1 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
-              <div className="flex items-center gap-2">
+            <CardHeader className="flex flex-row items-center gap-3 border-b border-border">
+              <div className="flex flex-1 items-center justify-center gap-2">
                 <div className="flex items-center gap-0.5">
                   <Tooltip>
                     <TooltipTrigger asChild>
