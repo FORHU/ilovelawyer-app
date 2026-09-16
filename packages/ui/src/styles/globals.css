@@ -46,7 +46,7 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-   --color-overlay-hover: var(--overlay-hover);
+    --color-overlay-hover: var(--overlay-hover);
     /* Shared severity/status tokens (Badge tones, risk meters) — see :root/.dark below. */
     --color-ok: var(--ok);
     --color-warn: var(--warn);
@@ -83,13 +83,6 @@
     /* Sparing decorative accent — the footer's closing divider only. Not a second
        broad accent; gold stays the page's one confirming-action color. */
     --brand-oxblood: #5c1f28;
-
-    /* Risk/status severity tones (risk meters, theory/status badges) — light-mode values
-       are the same "darker foreground for a light bg" pattern as everything else here. */
-    --ok: #047857;
-    --warn: #a16207;
-    --danger: #b91c1c;
-    --riskmed: #c2410c;
 
     --background: #ffffff;
     --foreground: #252525;
@@ -174,10 +167,6 @@
     /* Gold's dark-mode value — the one this app was built against, unchanged.
        :root now carries the light-mode value instead of a single fixed hex. */
     --brand-gold: #c9a44c;
-    --ok: #34d399;
-    --warn: #fbbf24;
-    --danger: #f87171;
-    --riskmed: #fb923c;
     /* Now that --muted/--card/--accent/etc. equal --background, any hover/focus/aria-expanded
        state that relied on one of those for feedback would go visually silent in dark mode —
        this is that feedback instead, added alongside (not replacing) the existing token-based
