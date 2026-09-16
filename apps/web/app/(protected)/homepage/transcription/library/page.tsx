@@ -164,7 +164,7 @@ export default function TranscriptionLibraryPage() {
 
   return (
     <PageShell activeTab="transcription">
-      <main className="max-w-[1000px] mx-auto px-6 sm:px-10 md:px-12 pt-16 pb-12 md:pb-16 flex flex-col gap-8">
+      <main className="max-w-[1000px] mx-auto w-full min-w-0 overflow-x-hidden px-4 sm:px-6 md:px-12 pt-16 pb-12 md:pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -178,7 +178,7 @@ export default function TranscriptionLibraryPage() {
             </TooltipTrigger>
             <TooltipContent>Return to the transcription workspace</TooltipContent>
           </Tooltip>
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[24px] sm:text-[28px] md:text-[36px] leading-tight text-foreground">
             {t("queue.viewFullLibrary")}
           </h1>
         </div>
