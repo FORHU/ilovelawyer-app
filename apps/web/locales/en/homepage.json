@@ -35,8 +35,11 @@
     "viewFile": "View {{fileName}}",
     "closePreview": "Close preview",
     "openInNewTab": "Open in new tab",
+    "download": "Download",
+    "loadingPreview": "Loading preview…",
     "previewUnavailable": "Preview isn't available for this file type.",
-    "previewFailed": "This file couldn't be previewed here."
+    "previewFailed": "This file couldn't be previewed here.",
+    "sheetLabel": "Sheet {{number}}"
   },
   "caseHub": {
     "linkedCase": "Linked case",

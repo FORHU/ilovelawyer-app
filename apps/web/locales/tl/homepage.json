@@ -26,8 +26,11 @@
     "viewFile": "Tingnan ang {{fileName}}",
     "closePreview": "Isara ang preview",
     "openInNewTab": "Buksan sa bagong tab",
+    "download": "I-download",
+    "loadingPreview": "Nilo-load ang preview…",
     "previewUnavailable": "Hindi available ang preview para sa ganitong uri ng file.",
-    "previewFailed": "Hindi ma-preview ang file na ito dito."
+    "previewFailed": "Hindi ma-preview ang file na ito dito.",
+    "sheetLabel": "Sheet {{number}}"
   },
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",

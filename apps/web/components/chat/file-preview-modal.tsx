@@ -1,23 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ExternalLink, FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { isPdfAttachment, type MessageAttachment } from "@/components/chat/message-attachments";
+import { AttachmentPreview } from "@/components/chat/attachment-preview";
+import type { MessageAttachment } from "@/components/chat/message-attachments";
 
 interface FilePreviewModalProps {
   attachment: MessageAttachment;
   onClose: () => void;
 }
 
-/** In-app preview for a Message Attachment (ADR 0012). PDFs render inline via the browser's
- * native viewer; DOCX (and any PDF that fails to render) falls back to filename + "open in a
- * new tab" instead — deliberately not a third-party embed viewer (Office/Google), which would
- * send a potentially confidential document's URL to that third party. */
+/** Modal chrome (backdrop, title bar, Escape-to-close) around AttachmentPreview — used for the
+ * chat attachment-chip preview. Studio's inline Documents preview (DocumentFolderBrowser) embeds
+ * AttachmentPreview directly instead, with its own back-navigation header, since a full-viewport
+ * overlay doesn't make sense inside a docked sidebar. */
 export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
   const { t } = useTranslation("homepage");
-  const [inlineFailed, setInlineFailed] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -26,9 +26,6 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
-
-  const isPdf = isPdfAttachment(attachment);
-  const canInlinePreview = isPdf && !!attachment.url && !inlineFailed;
 
   return (
     <div
@@ -81,33 +78,8 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 bg-muted/30">
-          {canInlinePreview ? (
-            <iframe
-              src={attachment.url!}
-              title={attachment.name}
-              className="h-full w-full border-0"
-              onError={() => setInlineFailed(true)}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm text-muted-foreground">
-                {t(isPdf ? "attachment.previewFailed" : "attachment.previewUnavailable")}
-              </p>
-              {attachment.url && (
-                <a
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-navy-950 hover:underline dark:text-white"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("attachment.openInNewTab")}
-                </a>
-              )}
-            </div>
-          )}
+        <div className="min-h-0 flex-1">
+          <AttachmentPreview attachment={attachment} />
         </div>
       </div>
     </div>

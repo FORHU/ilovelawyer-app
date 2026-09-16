@@ -119,6 +119,21 @@ export function useSendOtpMutation() {
   })
 }
 
+/** "Use a different email" on the OTP screen — deletes the still-pending, unverified account
+ * the abandoned signup attempt left behind, so the same email can be reused right away instead
+ * of permanently colliding with a later signup. Fire-and-forget from the caller's side (see
+ * unified-auth.tsx) — the UI navigates back to the sign-up form immediately either way. */
+export function useCancelSignupMutation() {
+  return useMutation({
+    mutationFn: ({ email }: { email: string }) =>
+      apiFetch("/api/auth/cancel-signup", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+        skipAuthRefresh: true,
+      }),
+  })
+}
+
 /** Unlike the other post-auth mutations, this deliberately does NOT redirect to
  * /homepage on success. A freshly-verified signup still needs to go through the
  * solo/create-org/join-org workspace step (see WorkspaceSetup) before landing in

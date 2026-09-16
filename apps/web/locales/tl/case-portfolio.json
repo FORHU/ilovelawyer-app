@@ -50,6 +50,8 @@
     "uploading": "Ina-upload…",
     "uploadError": "Hindi na-upload ang file na ito.",
     "removeDocument": "Alisin ang {{documentName}}",
+    "removeDocumentCta": "Alisin ang Dokumento",
+    "removeDocumentConfirm": "Alisin ang \"{{documentName}}\" mula sa kasong ito? Hindi na ito maibabalik.",
     "exhibit": "Ebidensiya",
     "markAsExhibit": "Markahan ang {{documentName}} bilang ebidensiya para sa Case Brief",
     "loadDocumentsError": "Hindi ma-load ang mga dokumento.",
@@ -58,7 +60,8 @@
     "ragReady": "Handa",
     "ragReadyHint": "Maaaring hanapin ng chat ang dokumentong ito.",
     "ragFailed": "Hindi na-index",
-    "ragFailedHint": "Naka-save ang file, pero hindi pa ito mahahanap ng chat."
+    "ragFailedHint": "Naka-save ang file, pero hindi pa ito mahahanap ng chat.",
+    "backToDocuments": "Bumalik sa mga dokumento"
   },
   "chat": {
     "emptyHeading": "Magtanong tungkol sa {{caseName}}",
