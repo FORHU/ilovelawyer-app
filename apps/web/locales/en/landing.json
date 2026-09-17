@@ -50,7 +50,6 @@
       "Legal Terminal",
       "Research library",
       "Transcription",
-      "Document upload",
       "Calendar",
       "Visual Strategy Map",
       "Case Reconstruction",
@@ -206,7 +205,6 @@
         "links": {
           "helpCentre": "Help Centre and FAQ",
           "transcription": "Transcription",
-          "documentUpload": "Document Upload",
           "calendar": "Calendar"
         }
       },

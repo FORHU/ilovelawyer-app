@@ -72,9 +72,9 @@ Use `@workspace/ui`'s `Badge` (`packages/ui/src/components/badge.tsx`) for any s
 ## Navigation (`GlobalHeader`, `apps/web/components/global-header.tsx`)
 
 This is the one global nav — every page renders it with an `activeTab` prop, there is no per-page header variant. Structure:
-- Fixed `bg-brand-navy-950` bar, `absolute top-0 left-0 w-full`, logo left, centered nav links (desktop only, `lg:flex`), language/theme/account icons right, hamburger + slide-in drawer below `lg`.
-- Active tab: bold + white + a small `bg-brand-gold` dot centered under the label (absolutely positioned so it never shifts label height).
-- Inactive tab: `opacity-60 text-white hover:opacity-100`.
+- Themed `bg-background` bar (and its mobile slide-in drawer, `bg-background` too), `absolute top-0 left-0 w-full`, logo left (`<Logo forBackground="auto" />`, which swaps ink color via `dark:`), centered nav links (desktop only, `lg:flex`), language/theme/account icons right, hamburger + slide-in drawer below `lg`. This used to hardcode `bg-brand-navy-950`/`text-white` regardless of theme — went invisible against itself in light mode (see "Never hardcode a dark-only color" above) and was switched to the semantic tokens instead.
+- Active tab: bold + `text-foreground` + a small `bg-brand-gold` dot centered under the label (absolutely positioned so it never shifts label height).
+- Inactive tab: `opacity-60 text-foreground hover:opacity-100`.
 - `mobileHeaderMerged` prop: set when a page renders its own mobile title row and wants the header to suppress its own mobile border/hamburger (see `case-portfolio/[id]/page.tsx`).
 
 ## Known gap

@@ -3,7 +3,6 @@ import enCalendar from "@/locales/en/calendar.json"
 import enCasePortfolio from "@/locales/en/case-portfolio.json"
 import enCommon from "@/locales/en/common.json"
 import enCreateCase from "@/locales/en/create-case.json"
-import enDocumentAnalysis from "@/locales/en/document-analysis.json"
 import enHomepage from "@/locales/en/homepage.json"
 import enLanding from "@/locales/en/landing.json"
 import enLibrary from "@/locales/en/library.json"
@@ -18,7 +17,6 @@ import koCalendar from "@/locales/ko/calendar.json"
 import koCasePortfolio from "@/locales/ko/case-portfolio.json"
 import koCommon from "@/locales/ko/common.json"
 import koCreateCase from "@/locales/ko/create-case.json"
-import koDocumentAnalysis from "@/locales/ko/document-analysis.json"
 import koHomepage from "@/locales/ko/homepage.json"
 import koLanding from "@/locales/ko/landing.json"
 import koLibrary from "@/locales/ko/library.json"
@@ -33,7 +31,6 @@ import tlCalendar from "@/locales/tl/calendar.json"
 import tlCasePortfolio from "@/locales/tl/case-portfolio.json"
 import tlCommon from "@/locales/tl/common.json"
 import tlCreateCase from "@/locales/tl/create-case.json"
-import tlDocumentAnalysis from "@/locales/tl/document-analysis.json"
 import tlHomepage from "@/locales/tl/homepage.json"
 import tlLanding from "@/locales/tl/landing.json"
 import tlLibrary from "@/locales/tl/library.json"
@@ -54,7 +51,6 @@ export const I18N_RESOURCES = {
     calendar: enCalendar,
     "case-portfolio": enCasePortfolio,
     "create-case": enCreateCase,
-    "document-analysis": enDocumentAnalysis,
     library: enLibrary,
     transcription: enTranscription,
     profile: enProfile,
@@ -70,7 +66,6 @@ export const I18N_RESOURCES = {
     calendar: koCalendar,
     "case-portfolio": koCasePortfolio,
     "create-case": koCreateCase,
-    "document-analysis": koDocumentAnalysis,
     library: koLibrary,
     transcription: koTranscription,
     profile: koProfile,
@@ -86,7 +81,6 @@ export const I18N_RESOURCES = {
     calendar: tlCalendar,
     "case-portfolio": tlCasePortfolio,
     "create-case": tlCreateCase,
-    "document-analysis": tlDocumentAnalysis,
     library: tlLibrary,
     transcription: tlTranscription,
     profile: tlProfile,

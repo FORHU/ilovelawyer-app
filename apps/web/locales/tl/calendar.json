@@ -32,8 +32,6 @@
   "statusDone": "Tapos",
   "saving": "Sine-save…",
   "pastDate": {
-    "title": "Nakalipas na ang petsang ito",
-    "description": "Maaari lang magdagdag ng appointment sa araw na ito o sa hinaharap.",
     "tooltip": "Tingnan ang mga appointment sa {{date}}"
   },
   "addAppointment": "Magdagdag ng Appointment",
@@ -43,6 +41,7 @@
     "timeRequired": "Kinakailangan ang oras ng simula at pagtatapos.",
     "invalidTime": "Dapat wastong oras ang simula at pagtatapos (hal. 09:00).",
     "endAfterStart": "Ang oras ng pagtatapos ay dapat pagkatapos ng oras ng simula.",
+    "startTimeInPast": "Hindi maaaring nakaraan ang oras ng simula.",
     "appointmentSaveFailed": "Hindi na-save ang appointment.",
     "noteRequired": "Kinakailangan ang teksto ng tala.",
     "noteSaveFailed": "Hindi na-save ang tala.",

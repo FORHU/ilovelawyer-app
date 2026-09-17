@@ -23,7 +23,6 @@ interface GlobalHeaderProps {
     | "case-portfolio"
     | "terminal"
     | "transcription"
-    | "document-analysis"
     | "calendar"
     | "term"
     | "profile"
@@ -62,7 +61,6 @@ const MOBILE_NAV_ITEMS = [
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library" },
   { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio" },
-  { tab: "document-analysis", labelKey: "nav.documents", href: "/homepage/document-analysis", tooltip: "Upload and analyze legal documents" },
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments" },
 ] as const;
 
@@ -118,28 +116,28 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
   // up whenever a dot appeared, so it no longer sat inline with the other labels.
   const getSubTabClass = (tabName: string) => {
     const baseClasses =
-      "relative inline-flex items-center text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60";
+      "relative inline-flex items-center text-[10px] tracking-[1px] uppercase transition-all duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
     if (activeTab === tabName) {
-      return `${baseClasses} text-white font-bold opacity-100`;
+      return `${baseClasses} text-foreground font-bold opacity-100`;
     }
 
-    return `${baseClasses} opacity-60 text-white hover:opacity-100`;
+    return `${baseClasses} opacity-60 text-foreground hover:opacity-100`;
   };
 
   const getMobileTabClass = (tabName: string) => {
     const baseClasses =
-      "text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-inset";
+      "text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
     if (activeTab === tabName) {
-      return `${baseClasses} text-white border-white font-bold`;
+      return `${baseClasses} text-foreground border-foreground font-bold`;
     }
-    return `${baseClasses} text-white/60 border-transparent hover:text-white`;
+    return `${baseClasses} text-muted-foreground border-transparent hover:text-foreground`;
   };
 
   return (
     <header
-      className={`absolute top-0 left-0 w-full bg-brand-navy-950 z-(--z-modal) ${
-        mobileHeaderMerged ? "lg:border-b lg:border-white/10" : "border-b border-white/10"
+      className={`absolute top-0 left-0 w-full bg-background z-(--z-modal) ${
+        mobileHeaderMerged ? "lg:border-b lg:border-border" : "border-b border-border"
       }`}
     >
       <div
@@ -149,10 +147,10 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       >
         <Link
           href="/"
-          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={t("appName")}
         >
-          <Logo forBackground="dark" size={40} />
+          <Logo forBackground="auto" size={40} />
         </Link>
 
         <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
@@ -199,15 +197,6 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/document-analysis" className={getSubTabClass("document-analysis")}>
-                {t("nav.documents").toUpperCase()}
-                {activeTab === "document-analysis" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>Upload and analyze legal documents</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
               <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>
                 {t("nav.calendar").toUpperCase()}
                 {activeTab === "calendar" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
@@ -217,8 +206,8 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           </Tooltip>
         </nav>
 
-        {/* Icons are now inside the main flex row, styled white for visibility */}
-        <div className="hidden lg:flex items-center gap-5 text-white">
+        {/* Icons are now inside the main flex row */}
+        <div className="hidden lg:flex items-center gap-5 text-foreground">
           <LanguageSwitcher />
 
           <ThemeToggle />
@@ -231,7 +220,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                 <button
                   type="button"
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-[10px] font-semibold tracking-[0.5px] cursor-pointer transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${isUserMenuOpen ? "border-white" : ""}`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full border border-border text-[10px] font-semibold tracking-[0.5px] cursor-pointer transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isUserMenuOpen ? "border-foreground" : ""}`}
                   aria-haspopup="menu"
                   aria-expanded={isUserMenuOpen}
                   aria-label={t("userMenu.accountMenu")}
@@ -303,7 +292,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-white rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-foreground rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -323,7 +312,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         onClose={closeMobileMenu}
         closeLabel={t("mobileMenu.close")}
         side="right"
-        panelClassName="w-[80%] max-w-[300px] overflow-y-auto border-l border-white/10 bg-brand-navy-950 px-4 py-4 shadow-2xl"
+        panelClassName="w-[80%] max-w-[300px] overflow-y-auto border-l border-border bg-background px-4 py-4 shadow-2xl"
       >
             <nav className="flex flex-col gap-0.5">
               {MOBILE_NAV_ITEMS.map((item) => (
@@ -342,7 +331,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               ))}
             </nav>
 
-            <div className="mt-4 flex flex-col gap-0.5 border-t border-white/10 pt-4">
+            <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4 text-foreground">
               <div className="px-3 pb-3">
                 <LanguageSwitcher />
               </div>
@@ -350,9 +339,9 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               {user && (
                 <div className="flex items-center justify-between gap-2 px-3 pb-3">
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-white">{user.name ?? user.username}</p>
-                    {user.name && <p className="truncate text-[10px] text-white/50">@{user.username}</p>}
-                    <p className="truncate text-[10px] text-white/50">{user.email}</p>
+                    <p className="truncate text-xs font-bold text-foreground">{user.name ?? user.username}</p>
+                    {user.name && <p className="truncate text-[10px] text-muted-foreground">@{user.username}</p>}
+                    <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <NotificationBell />
@@ -367,7 +356,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                     <Link
                       href={item.href}
                       onClick={closeMobileMenu}
-                      className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-white/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/60"
+                      className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
                       <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
                       {t(item.labelKey)}
@@ -386,7 +375,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                       closeMobileMenu();
                       logout.mutate();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-400 transition-colors hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-600 dark:text-red-400 transition-colors hover:text-red-700 dark:hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
                     {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}

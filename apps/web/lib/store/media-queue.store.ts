@@ -2,13 +2,6 @@ import { create } from "zustand"
 
 import { generateId } from "@/lib/id"
 
-export interface QueuedDocument {
-  id: string
-  name: string
-  meta: string
-  file: File
-}
-
 // Lifecycle of a queued recording/upload once the user hits "Transcribe":
 // local (never submitted) -> uploading -> starting -> in_progress (AWS Transcribe job running) -> completed | failed
 export type TranscriptionStatus = "local" | "uploading" | "starting" | "in_progress" | "completed" | "failed"
@@ -28,10 +21,7 @@ export interface QueuedTranscript {
 }
 
 interface MediaQueueState {
-  documents: QueuedDocument[]
   transcripts: QueuedTranscript[]
-  queueDocument: (file: File) => void
-  removeDocument: (id: string) => void
   /** Returns the new local queue id — callers that go on to drive it through the real
    * transcription pipeline (upload → create → start-job → poll) need it for updateTranscript. */
   queueTranscript: (blob: Blob, durationSeconds: number, text?: string) => string
@@ -39,14 +29,12 @@ interface MediaQueueState {
   updateTranscript: (id: string, patch: Partial<QueuedTranscript>) => void
 }
 
-// The Documents / Transcription pages are reached via plain <a> links in
-// GlobalHeader, which are full browser navigations — an in-memory store alone
-// would be wiped out on the hop from the consultation chat. IndexedDB (which,
-// unlike localStorage, can hold File/Blob values directly) is what lets a file
-// picked or a clip recorded on the chat page still be there after that reload.
+// The Transcription page is reached via a plain <a> link in GlobalHeader, a full browser
+// navigation — an in-memory store alone would be wiped out on the hop from the consultation
+// chat. IndexedDB (which, unlike localStorage, can hold Blob values directly) is what lets a
+// clip recorded on the chat page still be there after that reload.
 const DB_NAME = "ilovelawyer-media-queue"
 const DB_VERSION = 1
-const DOCUMENTS_STORE = "documents"
 const TRANSCRIPTS_STORE = "transcripts"
 
 function openDb(): Promise<IDBDatabase> {
@@ -54,7 +42,6 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
     req.onupgradeneeded = () => {
       const db = req.result
-      if (!db.objectStoreNames.contains(DOCUMENTS_STORE)) db.createObjectStore(DOCUMENTS_STORE, { keyPath: "id" })
       if (!db.objectStoreNames.contains(TRANSCRIPTS_STORE)) db.createObjectStore(TRANSCRIPTS_STORE, { keyPath: "id" })
     }
     req.onsuccess = () => resolve(req.result)
@@ -93,24 +80,7 @@ async function dbDelete(storeName: string, id: string): Promise<void> {
 }
 
 export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
-  documents: [],
   transcripts: [],
-
-  queueDocument: (file) => {
-    const doc: QueuedDocument = {
-      id: generateId(),
-      name: file.name,
-      meta: `QUEUED FROM CONSULTATION • ${new Date().toLocaleString()}`,
-      file,
-    }
-    set((state) => ({ documents: [doc, ...state.documents] }))
-    dbPut(DOCUMENTS_STORE, doc).catch((err) => console.error("Failed to persist queued document:", err))
-  },
-
-  removeDocument: (id) => {
-    set((state) => ({ documents: state.documents.filter((doc) => doc.id !== id) }))
-    dbDelete(DOCUMENTS_STORE, id).catch((err) => console.error("Failed to remove queued document:", err))
-  },
 
   queueTranscript: (blob, durationSeconds, text) => {
     const transcript: QueuedTranscript = {
@@ -148,11 +118,11 @@ export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
 }))
 
 if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
-  Promise.all([dbGetAll<QueuedDocument>(DOCUMENTS_STORE), dbGetAll<QueuedTranscript>(TRANSCRIPTS_STORE)])
-    .then(([documents, transcripts]) => {
+  dbGetAll<QueuedTranscript>(TRANSCRIPTS_STORE)
+    .then((transcripts) => {
       // Older records predate the status field; treat them as never-submitted.
       const normalized = transcripts.map((t) => (t.status ? t : { ...t, status: "local" as const }))
-      useMediaQueueStore.setState({ documents, transcripts: normalized })
+      useMediaQueueStore.setState({ transcripts: normalized })
     })
     .catch((err) => console.error("Failed to hydrate media queue from IndexedDB:", err))
 }

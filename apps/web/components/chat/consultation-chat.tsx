@@ -192,7 +192,7 @@ function CopyMessageButton({
   }, [text]);
 
   const currentLabel = status === "copied" ? copiedLabel : status === "failed" ? failedLabel : label;
-  const iconSize = compact ? "h-4 w-4" : "h-[18px] w-[18px]";
+  const iconSize = compact ? "h-4 w-4" : "h-6 w-6";
 
   return (
     <button
@@ -200,8 +200,8 @@ function CopyMessageButton({
       onClick={handleCopy}
       title={currentLabel}
       aria-label={currentLabel}
-      className={`inline-flex items-center gap-1.5 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
-        compact ? "p-1.5" : "px-2 py-1.5 text-[13px]"
+      className={`inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground ${
+        compact ? "p-1.5" : "p-2"
       }`}
     >
       {status === "copied" ? (
@@ -209,7 +209,6 @@ function CopyMessageButton({
       ) : (
         <Copy className={iconSize} aria-hidden="true" />
       )}
-      {!compact && <span>{currentLabel}</span>}
     </button>
   );
 }
@@ -348,7 +347,6 @@ export default function ConsultationChat({
       blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
-  const queueDocument = useMediaQueueStore((s) => s.queueDocument);
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
   const updateTranscript = useMediaQueueStore((s) => s.updateTranscript);
   const startSending = useSendingConsultationsStore((s) => s.startSending);
@@ -734,9 +732,8 @@ export default function ConsultationChat({
     fileInputRef.current?.click();
   };
 
-  // Adds files to the local queue as "pending" — upload doesn't start until Send is
-  // clicked (see handleSendMessage). Also queues each into the separate Document Analysis
-  // page's store (unrelated hand-off, unchanged from the single-file behavior).
+  // Adds files to the local queue as "pending" — upload doesn't start until Send is clicked
+  // (see handleSendMessage).
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
     if (list.length === 0) return;
@@ -755,7 +752,6 @@ export default function ConsultationChat({
       ...prev,
       ...accepted.map((file) => ({ id: generateId(), file, status: "pending" as const })),
     ]);
-    accepted.forEach(queueDocument);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1428,7 +1424,12 @@ export default function ConsultationChat({
                   voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
                   stopLabel={t("input.stopRecording")}
                   cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
-                  className="order-3"
+                  // ml-auto pushes this (and the send button right after it) to the far right
+                  // of the row-2 line it wraps onto below `sm` (see the wrapping div's comment
+                  // above) — at `sm`+ the textarea's own flex-1 already soaks up all the free
+                  // space on the single-line layout, so this margin has nothing left to claim
+                  // and is a no-op there.
+                  className="order-3 ml-auto"
                 />
               )}
 
