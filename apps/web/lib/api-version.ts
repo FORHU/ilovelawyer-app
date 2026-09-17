@@ -9,6 +9,7 @@ export const AUTH_PATHS = [
   "/api/auth/google",
   "/api/auth/reset-password",
   "/api/auth/verify-otp",
+  "/api/auth/login-link/consume",
 ] as const
 
 // Defaults to "" (no-op — paths hit the backend exactly as written, today's behavior) until
