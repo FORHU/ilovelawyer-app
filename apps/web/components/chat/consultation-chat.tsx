@@ -28,7 +28,8 @@ import {
   useCreateConsultationMutation,
   useMessagesQuery,
   useRelatedCasesQuery,
-  sendChatMessage,
+  sendChatMessageAndWait,
+  subscribeChatGeneration,
   type ChatMessage,
   type MessageReasoning,
 } from "@/lib/chat/mutations";
@@ -472,9 +473,7 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn || isGeneratingElsewhere,
-  });
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -537,27 +536,56 @@ export default function ConsultationChat({
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
-  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above):
-  // the user's message is already persisted (ChatRepo.createMessage happens before any
-  // streaming starts) but its reply isn't yet, so a trailing user message plus the global
-  // "still sending" flag is what a still-in-flight turn looks like from here.
+  // The backend's own durable truth for "is this turn's reply still generating" (see
+  // ilovelawyer-api's Message.replyStatus) — unlike isGeneratingElsewhere, this survives a
+  // full page reload, since it's read straight from the just-fetched history instead of any
+  // in-memory client flag. undefined history (still loading) reads as neither pending nor
+  // failed, same as before this existed.
+  const lastHistoryEntry = consultationId ? (history ?? []).filter((m) => m.role !== "system").at(-1) : undefined;
+  const serverSaysPending = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "PENDING";
+  const serverSaysFailed = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "FAILED";
+  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above),
+  // or a fresh mount after a full page reload mid-generation (serverSaysPending): the user's
+  // message is already persisted (ChatRepo.createMessage happens before any streaming starts)
+  // but its reply isn't yet, so a trailing user message plus either signal is what a
+  // still-in-flight turn looks like from here.
   const isResumedGenerating =
-    !isPendingTurnActive && isGeneratingElsewhere && baseMessages[baseMessages.length - 1]?.role === "user";
-  const messages = isPendingTurnActive
-    ? pendingTurn!.messages
-    : isResumedGenerating
-      ? [...baseMessages, { role: "assistant" as const, content: "" }]
-      : baseMessages;
+    !isPendingTurnActive &&
+    baseMessages[baseMessages.length - 1]?.role === "user" &&
+    (isGeneratingElsewhere || serverSaysPending);
+  // Memoized so this only gets a new reference when its content actually changes — not on
+  // every unrelated re-render. The isResumedGenerating/serverSaysFailed branches build a new
+  // array via spread every time they run; without useMemo here, any of the countless
+  // unrelated state updates this component has (sidebar toggles, textarea resize, etc.) would
+  // re-run those spreads and hand effects keyed on `messages` (the scroll-to-bottom effect
+  // below) a "changed" dependency even though nothing about the transcript actually did.
+  const messages = useMemo<DisplayMessage[]>(
+    () =>
+      isPendingTurnActive
+        ? pendingTurn!.messages
+        : isResumedGenerating
+          ? // pendingReplyContent is the last DB checkpoint (see Message.pendingReplyContent) —
+            // showing it instead of a bare "" lets a refreshed page display the partial answer
+            // already generated. It's a static snapshot now, not a live-updating one (the app
+            // no longer polls for newer checkpoints) — the subscribeChatGeneration effect
+            // below is what notices the turn actually finishing and swaps this for the real
+            // persisted reply, same as the "no partial-token recovery required" design intends.
+            [...baseMessages, { role: "assistant" as const, content: lastHistoryEntry?.pendingReplyContent ?? "" }]
+          : serverSaysFailed
+            ? [...baseMessages, { role: "assistant" as const, content: t("sendError") }]
+            : baseMessages,
+    [isPendingTurnActive, pendingTurn, isResumedGenerating, baseMessages, lastHistoryEntry?.pendingReplyContent, serverSaysFailed, t],
+  );
   // Composer/related-cases gating below used to only key off local isSending, which a
   // remount clears — isBusy keeps them consistent with the resumed "still thinking" bubble
   // above instead of looking idle while that bubble is showing.
   const isBusy = isSending || isResumedGenerating;
 
-  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
-  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
-  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
-  // above); once the persisted history is at least as long as the optimistic buffer, hand the
+  // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  // Driven by `history` changing — which now happens via explicit invalidateQueries calls
+  // (doSend's own post-generation refetch, the subscribeChatGeneration effect below, and the
+  // socket's on-(re)connect invalidate) rather than a polling interval.
   useEffect(() => {
     if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
     const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
@@ -566,6 +594,28 @@ export default function ConsultationChat({
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
     }
   }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
+
+  // Resumed generation (a reply still PENDING from a cold load, another tab, or a remount —
+  // see isResumedGenerating above) has no local doSend() call in THIS mount watching for
+  // completion. Rather than poll useMessagesQuery on an interval, subscribe directly to that
+  // turn's own chat:done/chat:error (its messageId is the pending user message's own id —
+  // see ChatGenerationJob.jobId) and do a single refetch once it settles. Guarded on
+  // `!isPendingTurnActive` so this never double-subscribes alongside doSend's own
+  // sendChatMessageAndWait subscription for a turn THIS mount just sent.
+  const resumedPendingMessageId = !isPendingTurnActive && serverSaysPending ? lastHistoryEntry?.id : undefined;
+  useEffect(() => {
+    if (!consultationId || !resumedPendingMessageId) return;
+    const unsubscribe = subscribeChatGeneration(resumedPendingMessageId, {
+      onDone: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
+      },
+      onError: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      },
+    });
+    return unsubscribe;
+  }, [consultationId, resumedPendingMessageId, queryClient]);
 
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
@@ -707,9 +757,36 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
+  // Scrolls to the bottom once a conversation's messages have actually loaded — either a
+  // fresh mount/switch (consultationKey changed) or the first time this key's query resolves
+  // (historyLoading false). Deliberately does NOT key on `history` itself: every later
+  // invalidation of it (doSend's post-send refetch, the resumed-generation chat:done
+  // subscription, the socket's on-reconnect invalidate) would otherwise re-fire this and
+  // scroll the user down again each time a reply lands — exactly the disruptive behavior
+  // being fixed here. scrolledForKeyRef makes this a one-shot per key instead.
+  const scrolledForKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (historyLoading) return;
+    if (scrolledForKeyRef.current === consultationKey) return;
+    scrolledForKeyRef.current = consultationKey;
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+  }, [consultationKey, historyLoading]);
+
+  // Scrolls to the bottom exactly once, the moment YOU send a message — a deliberate action
+  // that justifies jumping to show it. Deliberately does NOT keep re-scrolling on every
+  // chat:chunk update after that: an earlier version re-ran scrollIntoView on every streamed
+  // chunk (which can arrive many times a second), and a smooth-scroll animation re-triggered
+  // that fast makes it practically impossible to scroll away mid-generation — each new chunk
+  // yanks the view back down before a manual scroll attempt can register. Tracking the
+  // transition (false -> true) rather than just `isPendingTurnActive` itself is what makes
+  // this fire once per send instead of once per render while it's true.
+  const wasPendingTurnActiveRef = useRef(false);
+  useEffect(() => {
+    if (isPendingTurnActive && !wasPendingTurnActiveRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    wasPendingTurnActiveRef.current = isPendingTurnActive;
+  }, [isPendingTurnActive]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -953,40 +1030,48 @@ export default function ConsultationChat({
       // so a tag that straddles a chunk boundary still resolves correctly once it closes.
       let rawAccumulated = "";
 
-      const { newSessionId } = await sendChatMessage({
-        consultationId: activeConsultationId,
-        sessionId: session.session_id,
-        message: text,
-        documentContext: opts?.documentContext,
-        caseDocumentId: opts?.caseDocumentId,
-        documentIds: opts?.documentIds,
-        // Lets backend fall back to READY case docs when this consultation has none yet
-        // (homepage chat linked to a case, or case-portfolio without consultation uploads).
-        caseId: linkedCaseId || caseId || undefined,
-        onChunk: (chunk) => {
-          if (sendTokenRef.current !== myToken) return;
-          rawAccumulated += chunk;
-          const displayContent = stripStructuredBlocks(rawAccumulated);
-          const mindMap = extractMindMap(rawAccumulated);
-          const researchSteps = extractTraceSteps(rawAccumulated);
-          setPendingTurn((prev) => {
-            if (!prev) return prev;
-            const lastIndex = prev.messages.length - 1;
-            const last = prev.messages[lastIndex];
-            if (!last) return prev;
-            const nextMessages = [...prev.messages];
-            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
-            return { ...prev, messages: nextMessages };
-          });
+      // Creates the AI generation job (ilovelawyer-api's ChatGenerationQueue owns RAG/AI/
+      // persistence from here — see that queue's doc comment) and waits for the worker to
+      // actually finish it — chat:chunk renders live into pendingTurn as it streams in;
+      // "done" is chat:done/chat:error over the socket, or (the robust, refresh-safe fallback
+      // for a socket that's disconnected/reconnecting/missed the event) useMessagesQuery's own
+      // polling noticing the persisted reply — see sendChatMessageAndWait's doc comment. A
+      // chat:error rejects this, landing in the catch block below same as any other failure.
+      await sendChatMessageAndWait(
+        queryClient,
+        {
+          consultationId: activeConsultationId,
+          sessionId: session.session_id,
+          message: text,
+          documentContext: opts?.documentContext,
+          caseDocumentId: opts?.caseDocumentId,
+          documentIds: opts?.documentIds,
+          // Lets backend fall back to READY case docs when this consultation has none yet
+          // (homepage chat linked to a case, or case-portfolio without consultation uploads).
+          caseId: linkedCaseId || caseId || undefined,
         },
-      });
-
-      // The backend silently rotated to a fresh Chat Wonder session_id mid-request (ours
-      // had expired) — update the cache so the next message uses it directly instead of
-      // repeating the same failed-then-retried round trip.
-      if (newSessionId) {
-        queryClient.setQueryData(chatKeys.session(), { session_id: newSessionId });
-      }
+        {
+          onChunk: (chunk) => {
+            if (sendTokenRef.current !== myToken) return;
+            rawAccumulated += chunk;
+            const displayContent = stripStructuredBlocks(rawAccumulated);
+            const mindMap = extractMindMap(rawAccumulated);
+            const researchSteps = extractTraceSteps(rawAccumulated);
+            setPendingTurn((prev) => {
+              if (!prev) return prev;
+              const lastIndex = prev.messages.length - 1;
+              const last = prev.messages[lastIndex];
+              if (!last) return prev;
+              const nextMessages = [...prev.messages];
+              nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
+              return { ...prev, messages: nextMessages };
+            });
+          },
+          onSessionRotated: (rotatedSessionId) => {
+            queryClient.setQueryData(chatKeys.session(), { session_id: rotatedSessionId });
+          },
+        },
+      );
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then

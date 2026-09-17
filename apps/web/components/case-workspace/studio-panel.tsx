@@ -10,7 +10,7 @@ import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 import { AudioOverviewMiniPlayer, AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
-import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessage } from "@/lib/chat/mutations";
+import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
@@ -226,12 +226,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         targetConsultationId = consultation.id;
         onConsultationCreated?.(consultation.id);
       }
-      await sendChatMessage({
+      await sendChatMessageAndWait(queryClient, {
         consultationId: targetConsultationId,
         sessionId: session.session_id,
         message: AUTO_MINDMAP_PROMPT,
         caseId,
-        onChunk: () => {},
       });
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(targetConsultationId) });
     } catch {

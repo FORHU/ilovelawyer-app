@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { notificationKeys } from "@/lib/query-keys"
+import { notificationKeys, chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
 
@@ -49,7 +49,7 @@ export function useNotificationsQuery(options?: { limit?: number; enabled?: bool
 
 /**
  * Opens the app's one notification socket (see lib/notifications/socket.ts) and keeps
- * React Query's notification caches live from it — mounted once for the whole app, in
+ * React Query's notification AND chat caches live from it — mounted once for the whole app, in
  * Providers (NotificationSocketBridge), not per-component: the bell itself renders twice
  * (desktop nav + the always-mounted mobile drawer), so calling this from there would open
  * two connections and double-apply every push. `notification:new` patches the unread-count and any
@@ -57,6 +57,13 @@ export function useNotificationsQuery(options?: { limit?: number; enabled?: bool
  * latency); a fresh `connect` (including every reconnect after a dropped connection) instead
  * invalidates everything, since a gap in the connection means pushes could have been missed
  * and only a real refetch can be trusted to reconcile that.
+ *
+ * The chat invalidation is this same "gap in the connection" reasoning applied to
+ * chat:chunk/chat:done/chat:error (see subscribeChatGeneration in lib/chat/mutations.ts): a
+ * page mid-generation that loses its socket (background tab throttled, network blip) and
+ * later reconnects needs exactly one fresh GET /messages to pick up whatever it missed —
+ * `invalidateQueries`'s default `refetchType: "active"` means only currently-mounted queries
+ * actually refetch, so this is a no-op for any consultation nobody's looking at.
  */
 export function useNotificationSocket() {
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -69,6 +76,7 @@ export function useNotificationSocket() {
 
     const handleConnect = () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all })
+      queryClient.invalidateQueries({ queryKey: chatKeys.all })
     }
 
     const handleNew = (notification: Notification) => {
