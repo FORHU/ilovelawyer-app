@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, CalendarOff, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
+import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useAppointmentsQuery,
@@ -452,22 +452,13 @@ function PlannerPanel({
                 <TooltipContent>{t("cancelEdit")}</TooltipContent>
               </Tooltip>
             </div>
-          ) : isPastSelected ? (
-            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
-              <CalendarOff className="size-3.5 shrink-0" aria-hidden="true" />
-              <p className="text-xs font-bold uppercase tracking-wider">{t("pastDate.title")}</p>
-            </div>
-          ) : (
+          ) : isPastSelected ? null : (
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
             </p>
           )}
 
-          {!editingId && isPastSelected ? (
-            <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5">
-              <p className="text-xs text-muted-foreground">{t("pastDate.description")}</p>
-            </div>
-          ) : (
+          {!editingId && isPastSelected ? null : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
