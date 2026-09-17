@@ -35,6 +35,7 @@ import {
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
+import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType } from "@/lib/cases/upload-batch";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
   useUploadAudioMutation,
@@ -334,6 +335,10 @@ export default function ConsultationChat({
   // Names of any files a select/drop/paste dropped for exceeding MAX_FILE_SIZE_BYTES —
   // cleared on the next add attempt, same lifecycle as fileLimitHit.
   const [oversizedFileNames, setOversizedFileNames] = useState<string[]>([]);
+  // Names of any files a select/drop/paste dropped for having an unsupported extension —
+  // same lifecycle as oversizedFileNames. Checked ahead of size since there's no point
+  // reporting "too large" for a file that wouldn't be accepted anyway.
+  const [unsupportedFileNames, setUnsupportedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
@@ -738,9 +743,15 @@ export default function ConsultationChat({
     const list = Array.from(files);
     if (list.length === 0) return;
 
+    const [supported, unsupported] = [
+      list.filter(isAllowedFileType),
+      list.filter((f) => !isAllowedFileType(f)),
+    ];
+    setUnsupportedFileNames(unsupported.map((f) => f.name));
+
     const [withinSizeLimit, oversized] = [
-      list.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      list.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
+      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
     ];
     setOversizedFileNames(oversized.map((f) => f.name));
 
@@ -767,6 +778,7 @@ export default function ConsultationChat({
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
     setFileLimitHit(false);
     setOversizedFileNames([]);
+    setUnsupportedFileNames([]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
@@ -1161,11 +1173,12 @@ export default function ConsultationChat({
           ref={fileInputRef}
           type="file"
           multiple
+          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
           className="hidden"
           onChange={handleFileChange}
         />
 
-        {(queuedFiles.length > 0 || oversizedFileNames.length > 0) && (
+        {(queuedFiles.length > 0 || oversizedFileNames.length > 0 || unsupportedFileNames.length > 0) && (
           <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
               {queuedFiles.map((f) => (
@@ -1229,6 +1242,15 @@ export default function ConsultationChat({
                   defaultValue: `${oversizedFileNames.join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
                   fileNames: oversizedFileNames.join(", "),
                   maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+                })}
+              </span>
+            )}
+            {unsupportedFileNames.length > 0 && (
+              <span className="text-[10.5px] text-amber-500 pl-1">
+                {t("input.attachmentUnsupportedType", {
+                  defaultValue: `${unsupportedFileNames.join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+                  fileNames: unsupportedFileNames.join(", "),
+                  formats: ALLOWED_FILE_TYPES_LABEL,
                 })}
               </span>
             )}

@@ -57,6 +57,21 @@ export function resolveContentType(file: File): string {
   return (ext && EXTENSION_CONTENT_TYPES[ext]) || "application/octet-stream"
 }
 
+/** The formats Document Analysis / case evidence upload declares support for. Drives both the
+ * `<input accept>` hints and the actual pre-upload rejection below — `accept` alone doesn't stop
+ * drag-and-drop or an "All files" picker choice, so callers must still filter through
+ * `isAllowedFileType`. */
+export const ALLOWED_EXTENSIONS = Object.keys(EXTENSION_CONTENT_TYPES)
+
+export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOCX, XLSX, JPG, PNG"
+
+export const UNSUPPORTED_FILE_TYPE_MESSAGE = `Unsupported file type. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`
+
+export function isAllowedFileType(file: File): boolean {
+  const ext = file.name.split(".").pop()?.toLowerCase()
+  return !!ext && ALLOWED_EXTENSIONS.includes(ext)
+}
+
 /** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL.
  * `contentType` must be the exact value that was signed at presign time (see resolveContentType) —
  * S3 rejects a PUT whose Content-Type header doesn't match the signature with a 403. */
