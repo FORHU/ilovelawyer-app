@@ -56,8 +56,8 @@ function yearOf(at: Date) {
 }
 
 function dotClass(index: number, total: number) {
-  if (index === 0 || index === total - 1) return "bg-teal-400"
-  return "bg-sky-500"
+  if (index === 0 || index === total - 1) return "bg-brand-gold"
+  return "bg-muted-foreground/50"
 }
 
 function toDateTimeLocalValue(date: string, time: string) {
@@ -157,7 +157,7 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
               <ol className="relative">
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute top-3.5 bottom-8 w-0.5 bg-gradient-to-b from-teal-400 via-sky-500 to-teal-400"
+                  className="pointer-events-none absolute top-3.5 bottom-8 w-px bg-border"
                   style={{ left: "calc(5.25rem + 0.875rem)", transform: "translateX(-50%)" }}
                 />
                 {dated.map((item, index) => {
@@ -181,7 +181,7 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
                       ) : null}
                       <div className="grid grid-cols-[5.25rem_1.75rem_minmax(0,1fr)] items-start">
                         <div className="flex flex-col items-end gap-1 pr-3">
-                          <span className="inline-flex h-7 min-w-[3.75rem] shrink-0 items-center justify-center rounded-full bg-rose-300 px-2.5 text-[11px] font-semibold tabular-nums tracking-wide text-white dark:bg-rose-400/90">
+                          <span className="inline-flex h-7 min-w-[3.75rem] shrink-0 items-center justify-end text-[11px] font-semibold uppercase tracking-[1px] tabular-nums text-muted-foreground">
                             {formatBadge(at)}
                           </span>
                           {item.rawId && editingId !== item.id ? (
@@ -258,7 +258,7 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
                 <ul className="divide-y divide-border rounded-2xl border border-border bg-muted/40">
                   {undated.map((item) => (
                     <li key={item.id} className="flex gap-3 px-4 py-3.5">
-                      <span className="mt-2 size-2 shrink-0 rounded-full bg-rose-300 dark:bg-rose-400/90" />
+                      <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/50" />
                       <div className="min-w-0">
                         <p className="text-[15px] font-semibold leading-snug text-foreground">{item.title}</p>
                         {item.description ? (

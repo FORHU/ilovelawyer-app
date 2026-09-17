@@ -25,7 +25,7 @@ export const PANEL_IDS = [
 
 export type PanelId = (typeof PANEL_IDS)[number]
 export type PresetValue = "PANE_1" | "PANE_2" | "PANE_4" | "PANE_6"
-export const ARRANGEMENT_VALUES = ["columns", "tabs", "focus", "split"] as const
+export const ARRANGEMENT_VALUES = ["free", "columns", "tabs", "focus"] as const
 export type ArrangementValue = (typeof ARRANGEMENT_VALUES)[number]
 
 export interface PanelLayout {
@@ -36,13 +36,25 @@ export interface PanelLayout {
   height: number
   x?: number
   y?: number
+  /** Columns mode only: which column (0-based) this pane is stacked in. */
+  columnIndex?: number
+  /** Tabs mode only: which of the 2 groups this pane's tab lives in. Defaults to 0 when absent. */
+  tabGroup?: number
 }
 
 export interface WorkspaceLayout {
   preset: PresetValue
-  /** Optional — absent on workspaces saved before arrangement modes existed, treated as "columns". */
+  /** Optional — absent on workspaces saved before arrangement modes existed, treated as "free". */
   arrangement?: ArrangementValue
   panels: PanelLayout[]
+  /** Columns mode: how many columns (2-4) and their widths as fractions summing to 1. */
+  columnCount?: number
+  columnWidths?: number[]
+  /** Tabs mode: the 2 groups' width split (fraction for group A, 0-1) and each group's
+   * persisted active tab. */
+  tabsSplit?: number
+  tabsActiveA?: PanelId
+  tabsActiveB?: PanelId
 }
 
 export interface PanelCatalogEntry {

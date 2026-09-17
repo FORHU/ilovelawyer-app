@@ -9,9 +9,14 @@ const badgeVariants = cva(
     variants: {
       tone: {
         neutral: "bg-muted text-muted-foreground",
-        success: "bg-emerald-500/15 text-emerald-400",
-        warning: "bg-orange-500/15 text-orange-400",
-        danger: "bg-red-500/15 text-red-300",
+        // ok/warn/danger/riskmed are the app's shared light+dark severity tokens (see
+        // globals.css) — using them here instead of literal Tailwind colors is what keeps a
+        // Badge correct in both themes, not just the dark-only-tuned values a hardcoded
+        // emerald/amber/red/orange class would give you.
+        success: "bg-ok/15 text-ok",
+        caution: "bg-warn/15 text-warn",
+        danger: "bg-danger/15 text-danger",
+        warning: "bg-riskmed/15 text-riskmed",
       },
       // "rounded" is the terminal/evidence-panel look (font-mono, tight tracking). "pill" is
       // the rounded-full status-badge look used across the rest of the app (e.g. RAG status) —

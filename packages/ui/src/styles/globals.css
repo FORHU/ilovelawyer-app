@@ -47,6 +47,11 @@
     --color-foreground: var(--foreground);
     --color-background: var(--background);
     --color-overlay-hover: var(--overlay-hover);
+    /* Shared severity/status tokens (Badge tones, risk meters) — see :root/.dark below. */
+    --color-ok: var(--ok);
+    --color-warn: var(--warn);
+    --color-danger: var(--danger);
+    --color-riskmed: var(--riskmed);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -110,6 +115,13 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+
+    /* Severity/status colors — success, caution, error, medium-risk. --danger reuses
+       --destructive rather than a second red so there's one source of truth for "error red". */
+    --ok: oklch(0.6 0.14 150);
+    --warn: oklch(0.7 0.15 85);
+    --danger: var(--destructive);
+    --riskmed: oklch(0.65 0.19 45);
 }
 
 .dark {
@@ -157,6 +169,13 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 12%);
     --sidebar-ring: #5c7cb0;
+
+    /* Lighter/less saturated than light mode's, same as --destructive, so they read against
+       near-black instead of the light-mode value's lower contrast there. */
+    --ok: oklch(0.72 0.15 150);
+    --warn: oklch(0.78 0.14 85);
+    --danger: var(--destructive);
+    --riskmed: oklch(0.72 0.17 45);
 }
 
 /* Documented z-index scale — pick from these instead of a freehand number. Sidebars/rails sit
