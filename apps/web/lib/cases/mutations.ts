@@ -41,9 +41,9 @@ export interface CaseRecord {
  * `search` is forwarded to the backend as a `search` query param so matching happens
  * across the user's full case set, not just the cases already fetched for this page.
  * `status` defaults to "ACTIVE" (matching the backend default) so every existing caller —
- * the calendar/transcription/document-analysis case-linking pickers and the Terminal landing
- * page's case switcher, none of which pass this param — automatically keeps excluding archived
- * cases without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
+ * the calendar/transcription case-linking pickers and the Terminal landing page's case
+ * switcher, none of which pass this param — automatically keeps excluding archived cases
+ * without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
 export function useCasesQuery(page = 1, limit = 20, search = "", status: CaseStatus = "ACTIVE") {
   return useQuery({
     queryKey: caseKeys.list({ page, limit, search, status }),
@@ -169,54 +169,6 @@ export interface UserDocument {
    * document is an Exhibit just by being uploaded. Defaults false. */
   isExhibit: boolean
   createdAt: string
-}
-
-/** Uploads a file to the real document store: presigned S3 PUT, then a confirm call that
- * writes the DB row (POST /api/documents/presign -> PUT straight to S3 -> POST /api/documents).
- * `caseId` is forwarded to presign too (not just confirm) so the backend can build a
- * case-scoped S3 key — see ADR 0011. Re-enabled 2026-08-05 after confirming the backend's
- * `documents/users/{userId}/{timestamp}-{shortId}.ext` no-case fallback is live; re-test the
- * with-caseId path immediately after this change (it previously 400'd with `"caseId" is not
- * allowed` before this backend deploy — revert this if that recurs).
- * `consultationId` (a not-yet-cased consultation) is a fallback scope for presign only — same
- * idea as `caseId`, so a consultation's attachments land under documents/consultations/{id}/
- * instead of the generic per-user bucket. Ignored by the backend whenever `caseId` is present. */
-export function useUploadCaseDocumentMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ file, caseId, consultationId }: { file: File; caseId?: string; consultationId?: string }) => {
-      const contentType = resolveContentType(file)
-      const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
-        "/api/documents/presign",
-        {
-          method: "POST",
-          body: JSON.stringify({ filename: file.name, contentType, caseId, consultationId }),
-        },
-      )
-
-      await putFileToS3(uploadUrl, file, contentType)
-
-      // POST /api/documents' confirm schema only accepts key/name/caseId/consultationId — it
-      // has no use for contentType (DocumentSvc.create never reads it), and since the backend
-      // rejects unknown body fields, sending it here 400s this call every time, after the file
-      // has already landed in S3: the upload looks like it failed, but really it never got
-      // confirmed/registered at all.
-      return apiFetch<UserDocument>("/api/documents", {
-        method: "POST",
-        body: JSON.stringify({ key, name: file.name, caseId }),
-      })
-    },
-    onSuccess: (doc) => {
-      // Splice straight into the cached list instead of invalidating — invalidating here
-      // would force a second GET /api/documents?caseId= round trip immediately after the
-      // POST that already told us everything about the new document.
-      if (doc.caseId) {
-        queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(doc.caseId), (old) =>
-          old ? [doc, ...old] : old,
-        )
-      }
-    },
-  })
 }
 
 interface DocumentDataEntry {
@@ -412,9 +364,8 @@ export function useUploadDocumentsMutation() {
 
       return { confirmed, failed, succeededFiles }
     },
-      // Same reasoning as useUploadCaseDocumentMutation above: splice the confirmed batch
-      // straight into the cache rather than forcing a refetch right after the POST that
-      // already returned every document we'd get back from one.
+      // Splice the confirmed batch straight into the cache rather than forcing a refetch
+      // right after the POST that already returned every document we'd get back from one.
     onSuccess: ({ confirmed }, { caseId, consultationId }) => {
       if (caseId && confirmed.length > 0) {
         queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>

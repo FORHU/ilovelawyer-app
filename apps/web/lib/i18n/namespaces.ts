@@ -6,7 +6,6 @@ export const NAMESPACES = [
   "calendar",
   "case-portfolio",
   "create-case",
-  "document-analysis",
   "library",
   "transcription",
   "profile",

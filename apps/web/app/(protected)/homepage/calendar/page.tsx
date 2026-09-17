@@ -373,6 +373,13 @@ function PlannerPanel({
     const normalizedEnd = normalizeTimeString(endTime);
     if (!normalizedStart || !normalizedEnd) return setFormError(t("errors.invalidTime"));
     if (normalizedEnd <= normalizedStart) return setFormError(t("errors.endAfterStart"));
+    // isPastSelected only rules out a wholly past *day* — a same-day appointment still needs
+    // its own start time checked against the clock, otherwise "today at 12:00" typed at 12:05
+    // sails through unchallenged (isAppointmentPast is the same check the list view uses to
+    // mark an existing appointment "Done").
+    if (!editingId && isAppointmentPast({ date, startTime: normalizedStart })) {
+      return setFormError(t("errors.startTimeInPast"));
+    }
     try {
       if (editingId) {
         await updateAppointment.mutateAsync({
@@ -816,7 +823,7 @@ export default function CalendarPage() {
 
   return (
     <PageShell activeTab="calendar">
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-24">
         <div className="mb-8 flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
           <p className="max-w-xl text-base text-muted-foreground">Track hearings and deadlines in one place.</p>

@@ -64,6 +64,13 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   // Desktop-only concern (the docked panels' own expand/collapse). Mobile uses a completely
   // different layout below — a 3-way tab bar, not a resizable column — with its own state.
   const [mobileTab, setMobileTab] = useState<"sources" | "chat" | "studio">("chat");
+  // Mobile only: the topic last jumped to from the Topics tab, so switching away (to Topics
+  // or Studio) and back to Chat re-lands on that same reply instead of ConsultationChat's own
+  // mount effect scrolling straight to the bottom of the transcript (it unmounts whenever
+  // mobileTab isn't "chat" — see the mobile layout below — so that effect fires fresh every
+  // time Chat becomes visible again). Cleared only by jumping to a different topic, or by
+  // switching consultations (a topic index from one thread is meaningless in another).
+  const [pinnedTopicIndex, setPinnedTopicIndex] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   // Tracked in state (not just read off the ref) so a *passive* container resize — the window
@@ -82,6 +89,25 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // A topic index only means something within the thread it was jumped from.
+  useEffect(() => {
+    setPinnedTopicIndex(null);
+  }, [activeConsultationId]);
+
+  // Re-lands on the pinned topic every time the Chat tab becomes visible again (see
+  // pinnedTopicIndex's doc comment) — a no-op when nothing's pinned. Deferred two frames past
+  // the tab switch for the same reason as SourcesPanel's own jump: ConsultationChat has to
+  // actually remount and render its messages before `chat-msg-${index}` exists to scroll to.
+  useEffect(() => {
+    if (mobileTab !== "chat" || pinnedTopicIndex === null) return;
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`chat-msg-${pinnedTopicIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [mobileTab, pinnedTopicIndex]);
 
   const sources = useResizableWidth({
     storageKey: "case-workspace:sources-width",
@@ -242,6 +268,10 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
                 activeConsultationId={activeConsultationId}
                 width={0}
                 isResizing={false}
+                onBeforeJump={(index) => {
+                  setPinnedTopicIndex(index);
+                  setMobileTab("chat");
+                }}
               />
             )}
             {mobileTab === "chat" && chatColumn}
