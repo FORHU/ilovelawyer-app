@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2, Download, History, FileText } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
@@ -202,6 +202,32 @@ function formatLabel(format: CaseBriefFormat): string {
 function CaseBriefHistory({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const history = useCaseBriefHistoryQuery(caseId)
+  const sentinelRef = useRef<HTMLLIElement>(null)
+
+  // Scroll-triggered loading, not a "Load more" button and not numbered pages — the sentinel
+  // is a 1px element at the bottom of the list; once it's scrolled into view (i.e. the lawyer
+  // has scrolled near the end of what's loaded), fetch the next page automatically. root: null
+  // + the scrollable <ul> itself both work here since the <ul> is the nearest scrolling
+  // ancestor, but IntersectionObserver defaults root to the viewport, which is wrong once this
+  // list scrolls inside a fixed-height panel — root must be the scroll container itself.
+  const scrollContainerRef = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    const root = scrollContainerRef.current
+    if (!sentinel || !root || !history.hasNextPage) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !history.isFetchingNextPage) {
+          history.fetchNextPage()
+        }
+      },
+      { root, rootMargin: "100px" },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.hasNextPage, history.isFetchingNextPage, history.data])
 
   if (history.isPending) {
     return (
@@ -220,7 +246,9 @@ function CaseBriefHistory({ caseId }: { caseId: string }) {
     )
   }
 
-  if (history.data.length === 0) {
+  const entries = history.data.pages.flatMap((page) => page.items)
+
+  if (entries.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
         {t("caseBriefHistoryEmpty")}
@@ -229,8 +257,8 @@ function CaseBriefHistory({ caseId }: { caseId: string }) {
   }
 
   return (
-    <ul className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto">
-      {history.data.map((entry) => (
+    <ul ref={scrollContainerRef} className="flex h-full min-h-0 flex-col gap-2 overflow-y-auto">
+      {entries.map((entry) => (
         <li
           key={entry.id}
           className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
@@ -250,6 +278,11 @@ function CaseBriefHistory({ caseId }: { caseId: string }) {
           </Button>
         </li>
       ))}
+      {history.hasNextPage && (
+        <li ref={sentinelRef} className="flex shrink-0 items-center justify-center py-2" aria-hidden="true">
+          {history.isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </li>
+      )}
     </ul>
   )
 }

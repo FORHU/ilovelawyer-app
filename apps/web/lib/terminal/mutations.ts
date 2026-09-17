@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
@@ -943,14 +943,33 @@ export interface CaseBriefHistoryEntry {
   file: { id: string; fileUrl: string | null }
 }
 
+interface CaseBriefHistoryPage {
+  items: CaseBriefHistoryEntry[]
+  nextCursor: string | null
+}
+
+const CASE_BRIEF_HISTORY_PAGE_SIZE = 20
+
 /** Every past generation for this case (preview and download calls alike), most recent first —
  * so a lawyer can redownload something they made earlier instead of only ever having the latest
  * render. Each entry's fileUrl is re-presigned server-side on every fetch, since a URL minted at
- * generation time may have already expired. */
+ * generation time may have already expired.
+ * Cursor-paginated, infinite-scroll style (not numbered pages) — same shape as
+ * useInfiniteNotificationsQuery, but that one's own "view all" page drives loading via a manual
+ * Load More button; this one's caller (CaseBriefHistory) triggers fetchNextPage from an
+ * IntersectionObserver sentinel instead, since that's what was actually asked for here. `limit`
+ * is always sent explicitly (never omitted) — the backend's nextCursor only gets computed when
+ * the caller passes a limit, mirroring NotificationSvc.list's own contract. */
 export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: terminalKeys.caseBriefHistory(caseId),
-    queryFn: () => apiFetch<CaseBriefHistoryEntry[]>(`/api/my-cases/${caseId}/export/history`),
+    queryFn: ({ pageParam }: { pageParam: string | null }) => {
+      const params = new URLSearchParams({ limit: String(CASE_BRIEF_HISTORY_PAGE_SIZE) })
+      if (pageParam) params.set("cursor", pageParam)
+      return apiFetch<CaseBriefHistoryPage>(`/api/my-cases/${caseId}/export/history?${params.toString()}`)
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled,
   })
 }
