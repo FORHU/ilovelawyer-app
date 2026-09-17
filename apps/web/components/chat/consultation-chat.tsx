@@ -28,7 +28,8 @@ import {
   useCreateConsultationMutation,
   useMessagesQuery,
   useRelatedCasesQuery,
-  sendChatMessage,
+  sendChatMessageAndWait,
+  subscribeChatGeneration,
   type ChatMessage,
   type MessageReasoning,
 } from "@/lib/chat/mutations";
@@ -435,6 +436,14 @@ export default function ConsultationChat({
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // The actual scrollable message pane (overflow-y-auto) — messagesEndRef is just a sentinel
+  // div inside it, not itself scrollable, so scroll position has to be read off this instead.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Updated on every real scroll event (not on the messages-driven effect below, which runs
+  // after new content has already changed scrollHeight) — reflects where the user actually
+  // left the view a moment ago. Starts true so the first load of a conversation still lands
+  // at the bottom by default.
+  const isAtBottomRef = useRef(true);
   // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
   // only reflects it a render later, which is too late for callers within the same
   // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
@@ -447,9 +456,7 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn || isGeneratingElsewhere,
-  });
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -512,27 +519,56 @@ export default function ConsultationChat({
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
-  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above):
-  // the user's message is already persisted (ChatRepo.createMessage happens before any
-  // streaming starts) but its reply isn't yet, so a trailing user message plus the global
-  // "still sending" flag is what a still-in-flight turn looks like from here.
+  // The backend's own durable truth for "is this turn's reply still generating" (see
+  // ilovelawyer-api's Message.replyStatus) — unlike isGeneratingElsewhere, this survives a
+  // full page reload, since it's read straight from the just-fetched history instead of any
+  // in-memory client flag. undefined history (still loading) reads as neither pending nor
+  // failed, same as before this existed.
+  const lastHistoryEntry = consultationId ? (history ?? []).filter((m) => m.role !== "system").at(-1) : undefined;
+  const serverSaysPending = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "PENDING";
+  const serverSaysFailed = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "FAILED";
+  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above),
+  // or a fresh mount after a full page reload mid-generation (serverSaysPending): the user's
+  // message is already persisted (ChatRepo.createMessage happens before any streaming starts)
+  // but its reply isn't yet, so a trailing user message plus either signal is what a
+  // still-in-flight turn looks like from here.
   const isResumedGenerating =
-    !isPendingTurnActive && isGeneratingElsewhere && baseMessages[baseMessages.length - 1]?.role === "user";
-  const messages = isPendingTurnActive
-    ? pendingTurn!.messages
-    : isResumedGenerating
-      ? [...baseMessages, { role: "assistant" as const, content: "" }]
-      : baseMessages;
+    !isPendingTurnActive &&
+    baseMessages[baseMessages.length - 1]?.role === "user" &&
+    (isGeneratingElsewhere || serverSaysPending);
+  // Memoized so this only gets a new reference when its content actually changes — not on
+  // every unrelated re-render. The isResumedGenerating/serverSaysFailed branches build a new
+  // array via spread every time they run; without useMemo here, any of the countless
+  // unrelated state updates this component has (sidebar toggles, textarea resize, etc.) would
+  // re-run those spreads and hand effects keyed on `messages` (the scroll-to-bottom effect
+  // below) a "changed" dependency even though nothing about the transcript actually did.
+  const messages = useMemo<DisplayMessage[]>(
+    () =>
+      isPendingTurnActive
+        ? pendingTurn!.messages
+        : isResumedGenerating
+          ? // pendingReplyContent is the last DB checkpoint (see Message.pendingReplyContent) —
+            // showing it instead of a bare "" lets a refreshed page display the partial answer
+            // already generated. It's a static snapshot now, not a live-updating one (the app
+            // no longer polls for newer checkpoints) — the subscribeChatGeneration effect
+            // below is what notices the turn actually finishing and swaps this for the real
+            // persisted reply, same as the "no partial-token recovery required" design intends.
+            [...baseMessages, { role: "assistant" as const, content: lastHistoryEntry?.pendingReplyContent ?? "" }]
+          : serverSaysFailed
+            ? [...baseMessages, { role: "assistant" as const, content: t("sendError") }]
+            : baseMessages,
+    [isPendingTurnActive, pendingTurn, isResumedGenerating, baseMessages, lastHistoryEntry?.pendingReplyContent, serverSaysFailed, t],
+  );
   // Composer/related-cases gating below used to only key off local isSending, which a
   // remount clears — isBusy keeps them consistent with the resumed "still thinking" bubble
   // above instead of looking idle while that bubble is showing.
   const isBusy = isSending || isResumedGenerating;
 
-  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
-  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
-  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
-  // above); once the persisted history is at least as long as the optimistic buffer, hand the
+  // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  // Driven by `history` changing — which now happens via explicit invalidateQueries calls
+  // (doSend's own post-generation refetch, the subscribeChatGeneration effect below, and the
+  // socket's on-(re)connect invalidate) rather than a polling interval.
   useEffect(() => {
     if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
     const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
@@ -541,6 +577,28 @@ export default function ConsultationChat({
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
     }
   }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
+
+  // Resumed generation (a reply still PENDING from a cold load, another tab, or a remount —
+  // see isResumedGenerating above) has no local doSend() call in THIS mount watching for
+  // completion. Rather than poll useMessagesQuery on an interval, subscribe directly to that
+  // turn's own chat:done/chat:error (its messageId is the pending user message's own id —
+  // see ChatGenerationJob.jobId) and do a single refetch once it settles. Guarded on
+  // `!isPendingTurnActive` so this never double-subscribes alongside doSend's own
+  // sendChatMessageAndWait subscription for a turn THIS mount just sent.
+  const resumedPendingMessageId = !isPendingTurnActive && serverSaysPending ? lastHistoryEntry?.id : undefined;
+  useEffect(() => {
+    if (!consultationId || !resumedPendingMessageId) return;
+    const unsubscribe = subscribeChatGeneration(resumedPendingMessageId, {
+      onDone: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
+      },
+      onError: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      },
+    });
+    return unsubscribe;
+  }, [consultationId, resumedPendingMessageId, queryClient]);
 
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
@@ -682,8 +740,35 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
+  // Tracks the user's actual scroll position continuously, independent of the messages-driven
+  // effect below (which fires after new content already changed scrollHeight, too late to
+  // tell "was the user at the bottom before this update"). BOTTOM_THRESHOLD_PX tolerates
+  // sub-pixel/rounding drift and a user who's a few pixels off the exact bottom edge.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const BOTTOM_THRESHOLD_PX = 120;
+    const handleScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX;
+    };
+    handleScroll();
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [consultationKey]);
+
+  // A fresh conversation (switching consultations, or landing on one) should always open at
+  // the bottom regardless of where a *previous* conversation left the scroll position.
+  useEffect(() => {
+    isAtBottomRef.current = true;
+  }, [consultationKey]);
+
+  // Only auto-scrolls while the user is already at (or near) the bottom — e.g. actively
+  // watching a reply stream in. A user who scrolled up to reread earlier messages keeps their
+  // position instead of being yanked to the bottom on every incoming chat:chunk update.
+  useEffect(() => {
+    if (isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const handleNewChat = () => {
@@ -921,40 +1006,48 @@ export default function ConsultationChat({
       // so a tag that straddles a chunk boundary still resolves correctly once it closes.
       let rawAccumulated = "";
 
-      const { newSessionId } = await sendChatMessage({
-        consultationId: activeConsultationId,
-        sessionId: session.session_id,
-        message: text,
-        documentContext: opts?.documentContext,
-        caseDocumentId: opts?.caseDocumentId,
-        documentIds: opts?.documentIds,
-        // Lets backend fall back to READY case docs when this consultation has none yet
-        // (homepage chat linked to a case, or case-portfolio without consultation uploads).
-        caseId: linkedCaseId || caseId || undefined,
-        onChunk: (chunk) => {
-          if (sendTokenRef.current !== myToken) return;
-          rawAccumulated += chunk;
-          const displayContent = stripStructuredBlocks(rawAccumulated);
-          const mindMap = extractMindMap(rawAccumulated);
-          const researchSteps = extractTraceSteps(rawAccumulated);
-          setPendingTurn((prev) => {
-            if (!prev) return prev;
-            const lastIndex = prev.messages.length - 1;
-            const last = prev.messages[lastIndex];
-            if (!last) return prev;
-            const nextMessages = [...prev.messages];
-            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
-            return { ...prev, messages: nextMessages };
-          });
+      // Creates the AI generation job (ilovelawyer-api's ChatGenerationQueue owns RAG/AI/
+      // persistence from here — see that queue's doc comment) and waits for the worker to
+      // actually finish it — chat:chunk renders live into pendingTurn as it streams in;
+      // "done" is chat:done/chat:error over the socket, or (the robust, refresh-safe fallback
+      // for a socket that's disconnected/reconnecting/missed the event) useMessagesQuery's own
+      // polling noticing the persisted reply — see sendChatMessageAndWait's doc comment. A
+      // chat:error rejects this, landing in the catch block below same as any other failure.
+      await sendChatMessageAndWait(
+        queryClient,
+        {
+          consultationId: activeConsultationId,
+          sessionId: session.session_id,
+          message: text,
+          documentContext: opts?.documentContext,
+          caseDocumentId: opts?.caseDocumentId,
+          documentIds: opts?.documentIds,
+          // Lets backend fall back to READY case docs when this consultation has none yet
+          // (homepage chat linked to a case, or case-portfolio without consultation uploads).
+          caseId: linkedCaseId || caseId || undefined,
         },
-      });
-
-      // The backend silently rotated to a fresh Chat Wonder session_id mid-request (ours
-      // had expired) — update the cache so the next message uses it directly instead of
-      // repeating the same failed-then-retried round trip.
-      if (newSessionId) {
-        queryClient.setQueryData(chatKeys.session(), { session_id: newSessionId });
-      }
+        {
+          onChunk: (chunk) => {
+            if (sendTokenRef.current !== myToken) return;
+            rawAccumulated += chunk;
+            const displayContent = stripStructuredBlocks(rawAccumulated);
+            const mindMap = extractMindMap(rawAccumulated);
+            const researchSteps = extractTraceSteps(rawAccumulated);
+            setPendingTurn((prev) => {
+              if (!prev) return prev;
+              const lastIndex = prev.messages.length - 1;
+              const last = prev.messages[lastIndex];
+              if (!last) return prev;
+              const nextMessages = [...prev.messages];
+              nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
+              return { ...prev, messages: nextMessages };
+            });
+          },
+          onSessionRotated: (rotatedSessionId) => {
+            queryClient.setQueryData(chatKeys.session(), { session_id: rotatedSessionId });
+          },
+        },
+      );
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
@@ -1733,7 +1826,10 @@ export default function ConsultationChat({
               )}
 
               {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]"
+              >
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt

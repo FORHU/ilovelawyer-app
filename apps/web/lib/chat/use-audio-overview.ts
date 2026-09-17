@@ -4,7 +4,7 @@ import { AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import {
   useMessagesQuery,
   useChatSessionQuery,
-  sendChatMessage,
+  sendChatMessageAndWait,
   useGenerateAudioOverviewAudioMutation,
   pollAudioOverviewAudio,
   type ChatMessage,
@@ -95,12 +95,11 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
     setIsGeneratingScript(true);
     setGenerateScriptError(false);
     try {
-      await sendChatMessage({
+      await sendChatMessageAndWait(queryClient, {
         consultationId,
         sessionId: session.session_id,
         message: AUTO_AUDIO_OVERVIEW_PROMPT,
         caseId: caseId ?? undefined,
-        onChunk: () => {},
       });
       await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
       // Read the just-invalidated cache directly instead of activeAudioOverviewMessage — that
