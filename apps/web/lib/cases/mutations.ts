@@ -4,9 +4,11 @@ import { caseKeys, chatKeys } from "@/lib/query-keys"
 import {
   CONFIRM_BATCH_SIZE,
   chunk,
+  isAllowedFileType,
   mapPoolSettled,
   putFileToS3,
   resolveContentType,
+  UNSUPPORTED_FILE_TYPE_MESSAGE,
   UPLOAD_CONCURRENCY,
 } from "@/lib/cases/upload-batch"
 import { terminalKeys } from "@/lib/terminal/mutations"
@@ -215,7 +217,13 @@ export function useUploadCaseDocumentsMutation() {
       const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
 
-      for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+      const [allowedFiles, disallowedFiles] = [
+        files.filter(isAllowedFileType),
+        files.filter((f) => !isAllowedFileType(f)),
+      ]
+      failed.push(...disallowedFiles.map((file) => ({ file, reason: UNSUPPORTED_FILE_TYPE_MESSAGE })))
+
+      for (const fileChunk of chunk(allowedFiles, CONFIRM_BATCH_SIZE)) {
         const contentTypes = fileChunk.map(resolveContentType)
         let items: { uploadUrl: string; key: string }[]
         try {
@@ -307,7 +315,13 @@ export function useUploadDocumentsMutation() {
       const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
 
-      for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+      const [allowedFiles, disallowedFiles] = [
+        files.filter(isAllowedFileType),
+        files.filter((f) => !isAllowedFileType(f)),
+      ]
+      failed.push(...disallowedFiles.map((file) => ({ file, reason: UNSUPPORTED_FILE_TYPE_MESSAGE })))
+
+      for (const fileChunk of chunk(allowedFiles, CONFIRM_BATCH_SIZE)) {
         const contentTypes = fileChunk.map(resolveContentType)
         let items: { uploadUrl: string; key: string }[]
         try {
