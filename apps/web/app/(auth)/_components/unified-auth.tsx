@@ -722,10 +722,10 @@ function UnifiedAuthContent() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
-                            className={`relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors ${!hasReadTerms ? "opacity-50" : ""}`}
+                            className={`relative mt-1 size-5 border-2 border-foreground/40 rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors ${!hasReadTerms ? "opacity-50" : ""}`}
                             onClick={() => (hasReadTerms ? setAgreed(!agreed) : setTermsDialogOpen(true))}
                           >
-                            {agreed && <div className="absolute inset-0.5 bg-foreground rounded-sm" />}
+                            {agreed && <div className="absolute inset-0.5 bg-foreground rounded-[1px]" />}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>

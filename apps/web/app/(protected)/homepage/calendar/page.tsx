@@ -289,6 +289,7 @@ function PlannerPanel({
   selectedAppointments,
   selectedNotes,
   initialCaseId,
+  datesWithItems,
 }: {
   selectedDate: Date | undefined;
   currentMonth: Date;
@@ -297,6 +298,7 @@ function PlannerPanel({
   selectedAppointments: Appointment[];
   selectedNotes: { id: string; body: string }[];
   initialCaseId: string | null;
+  datesWithItems: Set<string>;
 }) {
   const [entryType, setEntryType] = React.useState<"appointment" | "note">("appointment");
   const [title, setTitle] = React.useState("");
@@ -461,7 +463,7 @@ function PlannerPanel({
           month={currentMonth}
           onMonthChange={onMonthChange}
           fixedWeeks
-          modifiers={{ past: isPastDay }}
+          modifiers={{ past: isPastDay, hasEvents: (date) => datesWithItems.has(toDateKey(date)) }}
           modifiersClassNames={{
             past: "rounded-(--cell-radius) bg-muted text-muted-foreground data-[selected=true]:rounded-none",
           }}
@@ -878,6 +880,8 @@ export default function CalendarPage() {
     return result;
   }, [appointments, notes]);
 
+  const datesWithItems = React.useMemo(() => new Set(itemsByDate.keys()), [itemsByDate]);
+
   const agendaDays = React.useMemo(() => {
     const grouped = new Map<string, AgendaDay>();
     for (const appt of appointments) {
@@ -925,6 +929,7 @@ export default function CalendarPage() {
             selectedAppointments={selectedAppointments}
             selectedNotes={selectedNotes}
             initialCaseId={initialCaseId}
+            datesWithItems={datesWithItems}
           />
 
           <Card className="w-full flex-1 backdrop-blur-sm">
