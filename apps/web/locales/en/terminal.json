@@ -82,6 +82,8 @@
   "keyIssues": "Key issues",
   "noKeyIssues": "No key issues recorded.",
   "status": "Status",
+  "claims": "Claims",
+  "posture": "Posture",
   "risks": "Risks",
   "noRisks": "No risks recorded.",
   "addRisk": "Add a key issue",

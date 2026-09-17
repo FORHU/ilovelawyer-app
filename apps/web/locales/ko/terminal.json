@@ -80,6 +80,8 @@
   "keyIssues": "쟁점",
   "noKeyIssues": "기록된 쟁점이 없습니다.",
   "status": "상태",
+  "claims": "청구",
+  "posture": "소송 단계",
   "risks": "위험",
   "noRisks": "기록된 위험이 없습니다.",
   "addRisk": "쟁점 추가",

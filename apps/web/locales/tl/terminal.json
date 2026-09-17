@@ -82,6 +82,8 @@
   "keyIssues": "Mga pangunahing isyu",
   "noKeyIssues": "Walang naitalang pangunahing isyu.",
   "status": "Status",
+  "claims": "Mga Paghahabol",
+  "posture": "Postura",
   "risks": "Mga panganib",
   "noRisks": "Walang naitalang panganib.",
   "addRisk": "Magdagdag ng isyu",

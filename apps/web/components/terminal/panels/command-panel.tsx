@@ -5,12 +5,12 @@ import { useCreateRiskMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, SnapshotRisk } from "@/lib/terminal/types"
 import { EmptyNote, PanelBody, PanelRow, PanelRowList, SectionLabel, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
-const RISK_SEVERITY_TONE: Record<SnapshotRisk["severity"], "danger" | "warning" | "caution" | "neutral"> = {
-  FATAL: "danger",
-  MAJOR: "warning",
-  UNVERIFIED: "caution",
-  MISSING_EVIDENCE: "neutral",
-  DEADLINE: "neutral",
+const RISK_TIER: Record<SnapshotRisk["severity"], { label: string; tone: "danger" | "warning" | "success" }> = {
+  FATAL: { label: "HIGH", tone: "danger" },
+  MAJOR: { label: "HIGH", tone: "danger" },
+  UNVERIFIED: { label: "MEDIUM", tone: "warning" },
+  DEADLINE: { label: "MEDIUM", tone: "warning" },
+  MISSING_EVIDENCE: { label: "LOW", tone: "success" },
 }
 
 export function CommandPanel({
@@ -23,51 +23,68 @@ export function CommandPanel({
   const { t } = useTranslation("terminal")
   const createRisk = useCreateRiskMutation(caseId)
   const [title, setTitle] = useState("")
-  const statusLabel =
-    snapshot.case.actionType?.trim() ||
-    snapshot.case.jurisdiction?.trim() ||
-    null
+  const claims = snapshot.case.actionType?.trim() || null
+  const posture = snapshot.case.jurisdiction?.trim() || null
 
   return (
     <PanelBody gap="5">
-      <div>
-        <SectionLabel>{t("parties")}</SectionLabel>
-        {snapshot.case.parties.length === 0 ? (
-          <p className="text-muted-foreground">—</p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2">
-            {snapshot.case.parties.map((party) => (
-              <div key={party.id} className="rounded-lg border border-border p-2.5">
-                {party.designation ? (
-                  <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
-                    {party.designation}
-                  </p>
-                ) : null}
-                <p className="mt-0.5 text-[13px] leading-snug font-medium text-foreground">
-                  {party.name}
+      {snapshot.case.parties.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3">
+          {snapshot.case.parties.map((party) => (
+            <div key={party.id} className="rounded-xl border border-border p-3">
+              {party.designation ? (
+                <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                  {party.designation}
                 </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ) : null}
+              <p className="mt-1 text-[13px] leading-snug font-semibold text-foreground">
+                {party.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {claims || posture ? (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {claims ? (
+            <div>
+              <SectionLabel>{t("claims")}</SectionLabel>
+              <p className="text-[13px] leading-snug text-foreground">{claims}</p>
+            </div>
+          ) : null}
+          {posture ? (
+            <div>
+              <SectionLabel>{t("posture")}</SectionLabel>
+              <p className="text-[13px] leading-snug text-foreground">{posture}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div>
-        <SectionLabel>{t("keyIssues")}</SectionLabel>
+        <div className="mb-2 flex items-center justify-between">
+          <SectionLabel>
+            {t("keyIssues")} · {snapshot.risks.length}
+          </SectionLabel>
+        </div>
         {snapshot.risks.length === 0 ? (
           <EmptyNote>{t("noKeyIssues")}</EmptyNote>
         ) : (
           <PanelRowList>
-            {snapshot.risks.map((risk) => (
-              <PanelRow key={risk.id}>
-                <Badge tone={RISK_SEVERITY_TONE[risk.severity]} shape="pill">
-                  {risk.severity}
-                </Badge>
-                <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">
-                  {risk.title}
-                </span>
-              </PanelRow>
-            ))}
+            {snapshot.risks.map((risk) => {
+              const tier = RISK_TIER[risk.severity]
+              return (
+                <PanelRow key={risk.id}>
+                  <Badge tone={tier.tone} shape="pill">
+                    {tier.label}
+                  </Badge>
+                  <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">
+                    {risk.title}
+                  </span>
+                </PanelRow>
+              )
+            })}
           </PanelRowList>
         )}
         <form
@@ -95,15 +112,6 @@ export function CommandPanel({
           </button>
         </form>
       </div>
-
-      {statusLabel ? (
-        <div>
-          <SectionLabel>{t("status")}</SectionLabel>
-          <div className="inline-flex h-8 items-center rounded-md border border-border bg-muted px-3 text-xs text-foreground">
-            {statusLabel}
-          </div>
-        </div>
-      ) : null}
     </PanelBody>
   )
 }
