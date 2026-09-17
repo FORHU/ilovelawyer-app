@@ -14,7 +14,7 @@
   "openInWorkspace": "Workspace",
   "openInTerminal": "Legal Terminal",
   "steps": {
-    "identity": { "numeral": "I", "title": "Case identity", "hint": "Caption, type of action, venue" },
+    "identity": { "numeral": "I", "title": "Case identity", "hint": "Caption and venue" },
     "parties": { "numeral": "II", "title": "Parties", "hint": "Everyone named, on either side" },
     "documents": { "numeral": "III", "title": "Documents", "hint": "Files to index for chat and analysis" }
   },
@@ -25,14 +25,11 @@
     "required": "(required)",
     "caseTitlePlaceholder": "e.g. {{example}}",
     "caseTitleError": "Please specify a case title before initiating submission.",
-    "actionTypeLabel": "Type of Action",
-    "selectAction": "Select action",
     "ukJurisdictionLabel": "Jurisdiction",
     "selectUkJurisdiction": "Select jurisdiction",
     "jurisdictionLabel": "Court / Jurisdictional Branch",
     "jurisdictionPlaceholder": "e.g. {{example}}",
-    "persistenceNotice": "Type of Action and Court / Jurisdictional Branch aren't saved by the backend yet — support is in progress.",
-    "persistenceNoticeActionTypeOnly": "Type of Action isn't saved by the backend yet — support is in progress."
+    "persistenceNotice": "Court / Jurisdictional Branch isn't saved by the backend yet — support is in progress."
   },
   "sectionParties": {
     "heading": "II. Party Details",
@@ -59,12 +56,6 @@
   "submitting": "Submitting…",
   "initiateFiling": "Initiate Filing",
   "editAnytimeNote": "You can edit these details anytime after filing.",
-  "actionTypes": {
-    "civilLitigation": "Civil Litigations",
-    "criminalProceeding": "Criminal Proceeding",
-    "laborDispute": "Labor Dispute",
-    "commercialArbitration": "Commercial Arbitration"
-  },
   "designations": {
     "petitionerPlaintiff": "Petitioner / Plaintiff",
     "respondentDefendant": "Respondent / Defendant",

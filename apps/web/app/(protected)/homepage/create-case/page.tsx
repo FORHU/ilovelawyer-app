@@ -19,13 +19,6 @@ import { generateId } from "@/lib/id";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 
-const ACTION_TYPE_OPTIONS = [
-  { value: "Civil Litigation", labelKey: "actionTypes.civilLitigation" },
-  { value: "Criminal Proceeding", labelKey: "actionTypes.criminalProceeding" },
-  { value: "Labor Dispute", labelKey: "actionTypes.laborDispute" },
-  { value: "Commercial Arbitration", labelKey: "actionTypes.commercialArbitration" },
-] as const;
-
 const UK_JURISDICTION_LABEL_KEYS: Record<string, string> = {
   "England and Wales": "ukJurisdictions.englandAndWales",
   "Scotland": "ukJurisdictions.scotland",
@@ -75,7 +68,6 @@ function CreateCasePageContent() {
   // parties added afterward only ever happen client-side, via addParty below.
   const [formData, setFormData] = useState({
     caseTitle: "",
-    actionType: "",
     jurisdiction: "",
     ukJurisdiction: "",
     parties: [{ id: "party-1", name: "", designation: "Petitioner / Plaintiff" }] as Party[],
@@ -297,9 +289,9 @@ function CreateCasePageContent() {
       // upload — otherwise creating a new case on every resubmit would leave duplicates behind.
       let caseId = createdCaseId;
       if (!caseId) {
-        // Type of Action and Jurisdiction have no home on the backend yet (see CONTEXT.md
-        // pending section) — they're captured in the form but not sent. Parties collapse into
-        // the single `partyInvolved` string the backend does support.
+        // Free-text Jurisdiction has no home on the backend yet (see CONTEXT.md pending
+        // section) — it's captured in the form but not sent. Parties collapse into the
+        // single `partyInvolved` string the backend does support.
         const partyInvolved = formData.parties
           .filter((p) => p.name.trim())
           .map((p) => `${p.name.trim()} (${p.designation})`)
@@ -467,63 +459,42 @@ function CreateCasePageContent() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {tenantConfig.ui.caseIntake.ukJurisdictionOptions.length > 0 ? (
                     <div className="flex flex-col gap-3">
-                      <label htmlFor="actionType" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                        {t("sectionIdentity.actionTypeLabel")}
+                      <label htmlFor="ukJurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {t("sectionIdentity.ukJurisdictionLabel")}
                       </label>
                       <CustomSelect
-                        id="actionType"
-                        value={formData.actionType}
-                        onChange={(v) => handleInputChange("actionType", v)}
-                        options={ACTION_TYPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                        placeholder={t("sectionIdentity.selectAction")}
-                        triggerTooltip="Choose the type of legal action"
+                        id="ukJurisdiction"
+                        value={formData.ukJurisdiction}
+                        onChange={(v) => handleInputChange("ukJurisdiction", v)}
+                        options={tenantConfig.ui.caseIntake.ukJurisdictionOptions.map((v) => ({
+                          value: v,
+                          label: t(UK_JURISDICTION_LABEL_KEYS[v] ?? v),
+                        }))}
+                        placeholder={t("sectionIdentity.selectUkJurisdiction")}
+                        triggerTooltip="Which UK jurisdiction's law, courts, and procedure apply to this case"
                       />
                     </div>
-
-                    {tenantConfig.ui.caseIntake.ukJurisdictionOptions.length > 0 ? (
-                      <div className="flex flex-col gap-3">
-                        <label htmlFor="ukJurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                          {t("sectionIdentity.ukJurisdictionLabel")}
-                        </label>
-                        <CustomSelect
-                          id="ukJurisdiction"
-                          value={formData.ukJurisdiction}
-                          onChange={(v) => handleInputChange("ukJurisdiction", v)}
-                          options={tenantConfig.ui.caseIntake.ukJurisdictionOptions.map((v) => ({
-                            value: v,
-                            label: t(UK_JURISDICTION_LABEL_KEYS[v] ?? v),
-                          }))}
-                          placeholder={t("sectionIdentity.selectUkJurisdiction")}
-                          triggerTooltip="Which UK jurisdiction's law, courts, and procedure apply to this case"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3">
-                        <label htmlFor="jurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                          {t("sectionIdentity.jurisdictionLabel")}
-                        </label>
-                        <input
-                          id="jurisdiction"
-                          type="text"
-                          className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
-                          placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
-                          value={formData.jurisdiction}
-                          onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                    {t(
-                      tenantConfig.ui.caseIntake.ukJurisdictionOptions.length > 0
-                        ? "sectionIdentity.persistenceNoticeActionTypeOnly"
-                        : "sectionIdentity.persistenceNotice",
-                    )}
-                  </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <label htmlFor="jurisdiction" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {t("sectionIdentity.jurisdictionLabel")}
+                      </label>
+                      <input
+                        id="jurisdiction"
+                        type="text"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
+                        placeholder={t("sectionIdentity.jurisdictionPlaceholder", { example: tenantConfig.ui.caseIntake.jurisdictionExample })}
+                        value={formData.jurisdiction}
+                        onChange={(e) => handleInputChange("jurisdiction", e.target.value)}
+                      />
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground italic">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        {t("sectionIdentity.persistenceNotice")}
+                      </p>
+                    </div>
+                  )}
                 </section>
               )}
 

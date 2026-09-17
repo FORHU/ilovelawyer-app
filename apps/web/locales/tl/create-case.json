@@ -12,8 +12,6 @@
     "required": "(kinakailangan)",
     "caseTitlePlaceholder": "hal. {{example}}",
     "caseTitleError": "Pakitukoy ang pamagat ng kaso bago simulan ang pagsusumite.",
-    "actionTypeLabel": "Uri ng Aksyon",
-    "selectAction": "Pumili ng aksyon",
     "jurisdictionLabel": "Hukuman / Sangay ng Hurisdiksyon",
     "jurisdictionPlaceholder": "hal. {{example}}"
   },
@@ -42,12 +40,6 @@
   "submitting": "Isinusumite…",
   "initiateFiling": "Simulan ang Filing",
   "editAnytimeNote": "Maaari mong i-edit ang mga detalyeng ito anumang oras pagkatapos mag-file.",
-  "actionTypes": {
-    "civilLitigation": "Civil Litigation",
-    "criminalProceeding": "Kasong Kriminal",
-    "laborDispute": "Alitan sa Paggawa",
-    "commercialArbitration": "Commercial Arbitration"
-  },
   "designations": {
     "petitionerPlaintiff": "Petitioner / Nagsasakdal",
     "respondentDefendant": "Respondent / Ipinagsasakdal",

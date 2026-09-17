@@ -18,6 +18,7 @@ export interface CurrentUser {
   createdAt: string
   lastLoginAt: string | null
   deletionRequestedAt: string | null
+  hasPassword: boolean
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -59,6 +60,16 @@ export function useUpdateCurrentUserMutation() {
           ),
       )
     },
+  })
+}
+
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      apiFetch<{ message: string }>("/api/users/me/change-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   })
 }
 
