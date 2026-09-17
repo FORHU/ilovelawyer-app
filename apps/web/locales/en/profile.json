@@ -48,12 +48,19 @@
     "closeModal": "Close",
     "deleteAccount": {
       "title": "Delete account",
-      "description": "Permanently deletes your account and all associated data. This action cannot be undone.",
+      "description": "Schedules your account for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted.",
       "button": "Delete Account",
-      "deleting": "Deleting…",
+      "deleting": "Scheduling…",
       "confirmTitle": "Delete your account?",
-      "confirmDescription": "This will permanently delete your account and all associated data. This action cannot be undone.",
-      "confirmButton": "Delete Account"
+      "confirmDescription": "Your account will be scheduled for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted. This cannot be undone after that.",
+      "confirmButton": "Schedule Deletion",
+      "scheduledTitle": "Account scheduled for deletion",
+      "scheduledDescription": "Your account and all associated data will be permanently deleted on {{date}}.",
+      "cancelButton": "Cancel Deletion",
+      "cancelling": "Cancelling…",
+      "successTitle": "Account scheduled for deletion",
+      "successDescription": "Your account and all associated data will be permanently deleted on {{date}}. You can cancel by signing back in before then. You'll now be logged out.",
+      "successLogoutButton": "Log Out"
     }
   }
 }

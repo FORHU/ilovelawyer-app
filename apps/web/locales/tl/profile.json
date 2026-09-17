@@ -48,12 +48,19 @@
     "closeModal": "Isara",
     "deleteAccount": {
       "title": "Burahin ang account",
-      "description": "Permanenteng bubura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
+      "description": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data.",
       "button": "Burahin ang Account",
-      "deleting": "Binubura…",
+      "deleting": "Sine-schedule…",
       "confirmTitle": "Burahin ang iyong account?",
-      "confirmDescription": "Permanenteng bubura nito ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
-      "confirmButton": "Burahin ang Account"
+      "confirmDescription": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa pagkatapos.",
+      "confirmButton": "I-schedule ang Pagbura",
+      "scheduledTitle": "Naka-schedule na para burahin ang account",
+      "scheduledDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}.",
+      "cancelButton": "Kanselahin ang Pagbura",
+      "cancelling": "Kinakansela…",
+      "successTitle": "Naka-schedule na para burahin ang account",
+      "successDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}. Maaari mo itong kanselahin sa pamamagitan ng muling pag-sign in bago mangyari iyon. Malo-log out ka na ngayon.",
+      "successLogoutButton": "Mag-log Out"
     }
   }
 }
