@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
+import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Trash2, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useAppointmentsQuery,
@@ -18,6 +18,8 @@ import {
   useUpdateAppointmentMutation,
   useNotesQuery,
   useCreateNoteMutation,
+  useUpdateNoteMutation,
+  useDeleteNoteMutation,
   normalizeTimeString,
 } from "@/lib/calendar/mutations";
 import type { Appointment } from "@/lib/calendar/mutations";
@@ -26,6 +28,11 @@ import { useCasesQuery } from "@/lib/cases/mutations";
 // Day cells have a fixed height (see CalendarDayCell) — 1 visible item plus an overflow
 // label is what reliably fits without the cell growing or clipping mid-line.
 const MAX_VISIBLE_PER_DAY = 1;
+
+// Keeps a single pasted wall of text from ballooning the day's appointment/note list —
+// the list container also scrolls (see the CardFooter <ul>) once content exceeds it.
+const DESCRIPTION_MAX_LENGTH = 500;
+const NOTE_MAX_LENGTH = 500;
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -302,12 +309,16 @@ function PlannerPanel({
   const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
   const updateAppointment = useUpdateAppointmentMutation();
   const createNote = useCreateNoteMutation();
-  const isSubmitting = createAppointment.isPending || createNote.isPending || updateAppointment.isPending;
+  const updateNote = useUpdateNoteMutation();
+  const deleteNote = useDeleteNoteMutation();
+  const isSubmitting =
+    createAppointment.isPending || createNote.isPending || updateAppointment.isPending || updateNote.isPending;
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
@@ -322,17 +333,31 @@ function PlannerPanel({
     setEditingId(null);
   }
 
+  function resetNoteFields() {
+    setNoteBody("");
+    setEditingNoteId(null);
+  }
+
   function startEdit(appt: Appointment) {
     setFormError(null);
     setEntryType("appointment");
+    resetNoteFields();
     setEditingId(appt.id);
     setTitle(appt.title);
     setStartTime(appt.startTime);
     setEndTime(appt.endTime ?? "");
-    setDescription(appt.description ?? "");
+    setDescription((appt.description ?? "").slice(0, DESCRIPTION_MAX_LENGTH));
     setNotifyEmail(appt.notifyEmail ?? "");
     setCaseId(appt.caseId ?? "");
     setReminderLeadMinutes(appt.reminderLeadMinutes ? String(appt.reminderLeadMinutes) : "");
+  }
+
+  function startEditNote(note: { id: string; body: string }) {
+    setFormError(null);
+    setEntryType("note");
+    resetAppointmentFields();
+    setEditingNoteId(note.id);
+    setNoteBody(note.body.slice(0, NOTE_MAX_LENGTH));
   }
 
   async function setAppointmentStatus(appt: Appointment, status: string) {
@@ -344,6 +369,17 @@ function PlannerPanel({
     }
   }
 
+  async function handleDeleteNote(note: { id: string; body: string }) {
+    setFormError(null);
+    if (!window.confirm(t("confirmDeleteNote"))) return;
+    try {
+      await deleteNote.mutateAsync(note.id);
+      if (editingNoteId === note.id) resetNoteFields();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t("errors.noteDeleteFailed"));
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -351,11 +387,15 @@ function PlannerPanel({
     const date = toDateKey(selectedDate);
 
     if (entryType === "note") {
-      if (isPastSelected) return;
+      if (!editingNoteId && isPastSelected) return;
       if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
       try {
-        await createNote.mutateAsync({ date, body: noteBody.trim() });
-        setNoteBody("");
+        if (editingNoteId) {
+          await updateNote.mutateAsync({ id: editingNoteId, body: noteBody.trim() });
+        } else {
+          await createNote.mutateAsync({ date, body: noteBody.trim() });
+        }
+        resetNoteFields();
       } catch (err) {
         setFormError(err instanceof Error ? err.message : t("errors.noteSaveFailed"));
       }
@@ -432,15 +472,18 @@ function PlannerPanel({
         />
 
         <div className="border-t border-border pt-4">
-          {editingId ? (
+          {editingId || editingNoteId ? (
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("editingAppointment")}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {editingNoteId ? t("editingNote") : t("editingAppointment")}
+              </p>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
                     onClick={() => {
                       resetAppointmentFields();
+                      resetNoteFields();
                       setFormError(null);
                     }}
                     className="text-muted-foreground hover:text-foreground"
@@ -458,11 +501,11 @@ function PlannerPanel({
             </p>
           )}
 
-          {!editingId && isPastSelected ? null : (
+          {!editingId && !editingNoteId && isPastSelected ? null : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
-              {!editingId && (
+              {!editingId && !editingNoteId && (
                 <div className="flex gap-1 rounded-md border border-border p-0.5">
                   <button
                     type="button"
@@ -488,14 +531,20 @@ function PlannerPanel({
               )}
 
               {entryType === "note" ? (
-                <textarea
-                  placeholder={t("notePlaceholder")}
-                  aria-label={t("notePlaceholder")}
-                  value={noteBody}
-                  onChange={(e) => setNoteBody(e.target.value)}
-                  rows={4}
-                  className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
+                <div className="flex flex-col gap-1">
+                  <textarea
+                    placeholder={t("notePlaceholder")}
+                    aria-label={t("notePlaceholder")}
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH))}
+                    maxLength={NOTE_MAX_LENGTH}
+                    rows={4}
+                    className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  />
+                  <p className="self-end text-xs text-muted-foreground">
+                    {noteBody.length}/{NOTE_MAX_LENGTH}
+                  </p>
+                </div>
               ) : (
                 <>
                   <input
@@ -580,28 +629,42 @@ function PlannerPanel({
                       {t("reminder1Week")}
                     </option>
                   </select>
-                  <textarea
-                    placeholder={t("descriptionPlaceholder")}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
-                    className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
+                  <div className="flex flex-col gap-1">
+                    <textarea
+                      placeholder={t("descriptionPlaceholder")}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+                      maxLength={DESCRIPTION_MAX_LENGTH}
+                      rows={2}
+                      className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                    />
+                    <p className="self-end text-xs text-muted-foreground">
+                      {description.length}/{DESCRIPTION_MAX_LENGTH}
+                    </p>
+                  </div>
                 </>
               )}
 
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-                    {isSubmitting ? t("saving") : editingId ? t("saveChanges") : entryType === "note" ? t("addNote") : t("addAppointment")}
+                    {isSubmitting
+                      ? t("saving")
+                      : editingId || editingNoteId
+                        ? t("saveChanges")
+                        : entryType === "note"
+                          ? t("addNote")
+                          : t("addAppointment")}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {editingId
                     ? "Save changes to this appointment"
-                    : entryType === "note"
-                      ? "Save this note to the selected day"
-                      : "Save this appointment to the selected day"}
+                    : editingNoteId
+                      ? "Save changes to this note"
+                      : entryType === "note"
+                        ? "Save this note to the selected day"
+                        : "Save this appointment to the selected day"}
                 </TooltipContent>
               </Tooltip>
             </form>
@@ -616,7 +679,7 @@ function PlannerPanel({
         {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t("nothingScheduledDay")}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
             {selectedAppointments.map((appt) => {
               const isCancelled = appt.status === "cancelled";
               const isDone = !isCancelled && isAppointmentPast(appt);
@@ -649,7 +712,7 @@ function PlannerPanel({
                           ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
                           : formatTime12h(appt.startTime)}
                       </p>
-                      {appt.description && <p className="mt-0.5">{appt.description}</p>}
+                      {appt.description && <p className="mt-0.5 line-clamp-4 break-words">{appt.description}</p>}
                     </div>
                   </div>
                   <div className="flex items-center gap-0.5 pl-5">
@@ -702,9 +765,42 @@ function PlannerPanel({
               );
             })}
             {selectedNotes.map((note) => (
-              <li key={note.id} className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300">
-                <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                <p>{note.body}</p>
+              <li
+                key={note.id}
+                className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300"
+              >
+                <div className="flex items-start gap-2">
+                  <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  <p className="min-w-0 flex-1 line-clamp-4 break-words">{note.body}</p>
+                </div>
+                <div className="flex items-center gap-0.5 pl-5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => startEditNote(note)}
+                        className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label={t("edit")}
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("edit")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNote(note)}
+                        className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
+                        aria-label={t("deleteNote")}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("deleteNote")}</TooltipContent>
+                  </Tooltip>
+                </div>
               </li>
             ))}
           </ul>
@@ -881,9 +977,17 @@ export default function CalendarPage() {
                     classNames={{
                       nav: "hidden",
                       month_caption: "hidden",
-                      day: "flex-1 basis-0 min-w-0 self-start p-0.5 align-top",
+                      day: "flex-1 basis-0 min-w-0 max-w-full self-start overflow-hidden p-0.5 align-top",
                       week: "mt-2 flex w-full items-start",
-                      month_grid: "w-full border-collapse",
+                      // table-fixed pins each column to an equal share of the table's own width
+                      // (set once, by the table itself — not by any cell's content). Without it,
+                      // the browser's table auto-layout still sizes columns from each cell's
+                      // *unconstrained* content width (a <td> stays a table-layout participant for
+                      // width purposes even once its display is overridden to flex), so one long,
+                      // unwrapped appointment/note title was enough to blow a single column wide
+                      // and shove the rest of the week off-screen — the flex-1/min-w-0 overrides on
+                      // "day" alone couldn't prevent that.
+                      month_grid: "w-full table-fixed border-collapse",
                       today: "",
                     }}
                     className="w-full p-0"
