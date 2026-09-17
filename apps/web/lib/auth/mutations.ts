@@ -221,6 +221,30 @@ export function useResetPasswordMutation() {
   })
 }
 
+/** Consumes the one-time "Login" link from the admin-approval email — mirrors
+ * useLoginMutation's onSuccess (sets auth state + hydrates the active org) since this is,
+ * from the frontend's perspective, just another way of logging in. Navigation to /homepage
+ * is left to the caller (the login-link page), same as useVerifyOtpMutation. */
+export function useConsumeLoginLinkMutation() {
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ token }: { token: string }) =>
+      apiFetch<AuthTokensResponse>("/api/auth/login-link/consume", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: async (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
+    },
+  })
+}
+
 export function useLogoutMutation() {
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)
