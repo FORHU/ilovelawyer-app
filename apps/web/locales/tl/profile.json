@@ -39,7 +39,29 @@
     "signOutTitle": "Mag-sign out sa device na ito",
     "signOutDescription": "Tinatapos ang iyong kasalukuyang session at ibinabalik ka sa login screen.",
     "logout": "Mag-log Out",
-    "loggingOut": "Nagla-log out…"
+    "loggingOut": "Nagla-log out…",
+    "changePassword": {
+      "rowTitle": "Palitan ang Password",
+      "rowDescription": "I-update ang password na ginagamit mo sa pag-sign in.",
+      "rowButton": "Palitan ang Password",
+      "rowTooltip": "Buksan ang dialog para palitan ang password",
+      "saved": "Na-update",
+      "title": "Palitan ang iyong password",
+      "description": "Ilagay ang iyong kasalukuyang password at pumili ng bago. Mananatili kang naka-sign in sa device na ito.",
+      "currentPasswordLabel": "Kasalukuyang Password",
+      "newPasswordLabel": "Bagong Password",
+      "confirmPasswordLabel": "Kumpirmahin ang Bagong Password",
+      "newPasswordRequirement": "Dapat hindi bababa sa 8 karakter at may kasamang simbolo.",
+      "passwordsMismatch": "Hindi tugma ang mga password.",
+      "showPassword": "Ipakita ang password",
+      "hidePassword": "Itago ang password",
+      "cancel": "Kanselahin",
+      "cancelTooltip": "Iwaksi ang mga pagbabago at isara ang dialog na ito",
+      "submit": "I-update ang Password",
+      "submitTooltip": "I-save ang iyong bagong password",
+      "saving": "Ina-update…",
+      "closeModal": "Isara"
+    }
   },
   "dangerZone": {
     "heading": "Danger Zone",

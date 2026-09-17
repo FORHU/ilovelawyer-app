@@ -39,7 +39,29 @@
     "signOutTitle": "Sign out of this device",
     "signOutDescription": "Ends your current session and returns you to the login screen.",
     "logout": "Log Out",
-    "loggingOut": "Logging out…"
+    "loggingOut": "Logging out…",
+    "changePassword": {
+      "rowTitle": "Change Password",
+      "rowDescription": "Update the password you use to sign in.",
+      "rowButton": "Change Password",
+      "rowTooltip": "Open the change password dialog",
+      "saved": "Updated",
+      "title": "Change your password",
+      "description": "Enter your current password and choose a new one. You'll stay signed in on this device.",
+      "currentPasswordLabel": "Current Password",
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm New Password",
+      "newPasswordRequirement": "Must be at least 8 characters and include a symbol.",
+      "passwordsMismatch": "Passwords don't match.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "cancel": "Cancel",
+      "cancelTooltip": "Discard changes and close this dialog",
+      "submit": "Update Password",
+      "submitTooltip": "Save your new password",
+      "saving": "Updating…",
+      "closeModal": "Close"
+    }
   },
   "dangerZone": {
     "heading": "Danger Zone",
