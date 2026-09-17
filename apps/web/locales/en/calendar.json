@@ -32,8 +32,6 @@
   "statusDone": "Done",
   "saving": "Saving…",
   "pastDate": {
-    "title": "This date has already passed",
-    "description": "Appointments can only be made for today or a future date.",
     "tooltip": "View appointments on {{date}}"
   },
   "addAppointment": "Add Appointment",
@@ -43,6 +41,7 @@
     "timeRequired": "Start and end time are required.",
     "invalidTime": "Start and end time must be a valid time (e.g. 09:00).",
     "endAfterStart": "End time must be after start time.",
+    "startTimeInPast": "Start time can't be in the past.",
     "appointmentSaveFailed": "Failed to save appointment.",
     "noteRequired": "Note text is required.",
     "noteSaveFailed": "Failed to save note.",

@@ -50,7 +50,6 @@
       "Legal Terminal",
       "Research library",
       "Transcription",
-      "Pag-upload ng dokumento",
       "Kalendaryo",
       "Visual Strategy Map",
       "Case Reconstruction",
@@ -206,7 +205,6 @@
         "links": {
           "helpCentre": "Help Centre at FAQ",
           "transcription": "Transcription",
-          "documentUpload": "Pag-upload ng Dokumento",
           "calendar": "Kalendaryo"
         }
       },

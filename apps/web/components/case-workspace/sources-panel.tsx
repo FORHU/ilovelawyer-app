@@ -27,6 +27,13 @@ interface SourcesPanelProps {
    * instances (one `hidden md:flex` docked/resizable, one `md:hidden` always-collapsed rail
    * whose expand toggle opens the mobile drawer instead of growing in place). */
   className?: string;
+  /** Case Workspace's mobile layout mounts exactly one of Topics/Chat/Studio at a time (see
+   * case-workspace.tsx) — the Chat pane, and the `chat-msg-${index}` bubble a topic jump
+   * scrolls to, don't exist in the DOM while this panel is the one showing. The mobile caller
+   * passes this to record which topic was jumped to and switch back to the Chat tab before the
+   * jump runs; left unset on desktop, where Chat is already mounted alongside this panel and
+   * the jump can run immediately. */
+  onBeforeJump?: (index: number) => void;
 }
 
 /** Case Workspace's left panel — a table of contents for the active thread's latest split AI
@@ -36,9 +43,18 @@ interface SourcesPanelProps {
  * Cases is being relocated elsewhere (not this panel) and Documents now lives in the Studio
  * panel instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move,
  * only where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex" }: SourcesPanelProps) {
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { groups, topics, activeIndex, scrollToTopic, isGenerating } = useTopicNavigator(activeConsultationId);
+
+  const handleJump = (index: number) => {
+    if (!onBeforeJump) return scrollToTopic(index);
+    onBeforeJump(index);
+    // The tab switch above still needs to commit and paint before `chat-msg-${index}` exists
+    // in the DOM — a single requestAnimationFrame can still land before layout in some
+    // browsers, so wait two.
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToTopic(index)));
+  };
 
   return (
     <aside
@@ -87,7 +103,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {!expanded && (
         <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto pt-3">
           {topics.length > 0 ? (
-            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={scrollToTopic} compact />
+            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={handleJump} compact />
           ) : isGenerating ? (
             <TopicNavigatorLoading label={t("workspace.topicsGenerating")} compact />
           ) : (
@@ -99,7 +115,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {expanded && (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {topics.length > 0 ? (
-            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={scrollToTopic} />
+            <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={handleJump} />
           ) : isGenerating ? (
             <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
           ) : !activeConsultationId ? (

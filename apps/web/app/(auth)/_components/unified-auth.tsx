@@ -297,7 +297,7 @@ function UnifiedAuthContent() {
             <WorkspaceSetup defaultOrgName={name} onDone={() => router.push(sanitizeNextPath(searchParams.get("next")))} />
           ) : otpStep ? (
             <>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 pt-20">
                 <h1
                   className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12"
                 >
@@ -391,15 +391,17 @@ function UnifiedAuthContent() {
             </>
           ) : (
             <>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 pt-20">
                 <h1
                   className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12"
                 >
                   {tab === "signup" ? t("signup.heading") : tab === "recover" ? (recoverSent ? t("forgotPassword.headingSent") : t("forgotPassword.headingDefault")) : t("login.heading")}
                 </h1>
-                <p className="text-muted-foreground text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
-                  {tab === "signup" ? t("signup.eyebrow") : tab === "recover" ? (recoverSent ? t("forgotPassword.subheadingSent") : t("forgotPassword.subheadingDefault")) : t("login.subheading")}
-                </p>
+                {tab !== "signup" && (
+                  <p className="text-muted-foreground text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+                    {tab === "recover" ? (recoverSent ? t("forgotPassword.subheadingSent") : t("forgotPassword.subheadingDefault")) : t("login.subheading")}
+                  </p>
+                )}
               </div>
 
               {legacySignupSuccess && tab === "signin" && (

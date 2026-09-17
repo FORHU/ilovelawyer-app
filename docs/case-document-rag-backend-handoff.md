@@ -118,9 +118,11 @@ the frontend team explicitly — don't let the two sides assume different contra
 
 **Orphaned-document risk (§4/ADR 0009), updated**: closed for Create Case specifically — a case now
 always exists before any document is confirmed, so this flow can no longer produce a `caseId: null`
-row. `document-analysis/page.tsx` still uploads with `caseId` optionally omitted, intentionally (a "no
-case" choice, not a pending-link state) — that entry point still needs whatever cleanup/lifecycle
-answer §4's open question already asked for.
+row. `document-analysis/page.tsx` used to still upload with `caseId` optionally omitted, intentionally
+(a "no case" choice, not a pending-link state) — that page has since been removed (document upload
+is already covered by Create Case, the consultation chat's paperclip attachment, and Case Workspace),
+so §4's open question no longer has a live entry point producing new `caseId: null` rows. Any that
+already exist in the DB from when this page was live are still unaddressed.
 
 ## 6. Requested: case-scoped S3 keys — spec, not yet built
 

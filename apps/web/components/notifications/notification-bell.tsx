@@ -52,8 +52,8 @@ export function NotificationBell() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className={`relative flex h-8 w-8 items-center justify-center rounded-full border border-white/40 text-white transition-colors hover:border-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
-                open ? "border-white" : ""
+              className={`relative flex h-8 w-8 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                open ? "border-foreground" : ""
               }`}
               aria-haspopup="dialog"
               aria-expanded={open}
@@ -80,7 +80,7 @@ export function NotificationBell() {
               {isReconnecting && (
                 <span
                   aria-hidden="true"
-                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-amber-400 ring-1 ring-brand-navy-950"
+                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-amber-400 ring-1 ring-background"
                 />
               )}
             </button>

@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, CalendarOff, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
+import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useAppointmentsQuery,
@@ -373,6 +373,13 @@ function PlannerPanel({
     const normalizedEnd = normalizeTimeString(endTime);
     if (!normalizedStart || !normalizedEnd) return setFormError(t("errors.invalidTime"));
     if (normalizedEnd <= normalizedStart) return setFormError(t("errors.endAfterStart"));
+    // isPastSelected only rules out a wholly past *day* — a same-day appointment still needs
+    // its own start time checked against the clock, otherwise "today at 12:00" typed at 12:05
+    // sails through unchallenged (isAppointmentPast is the same check the list view uses to
+    // mark an existing appointment "Done").
+    if (!editingId && isAppointmentPast({ date, startTime: normalizedStart })) {
+      return setFormError(t("errors.startTimeInPast"));
+    }
     try {
       if (editingId) {
         await updateAppointment.mutateAsync({
@@ -445,22 +452,13 @@ function PlannerPanel({
                 <TooltipContent>{t("cancelEdit")}</TooltipContent>
               </Tooltip>
             </div>
-          ) : isPastSelected ? (
-            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
-              <CalendarOff className="size-3.5 shrink-0" aria-hidden="true" />
-              <p className="text-xs font-bold uppercase tracking-wider">{t("pastDate.title")}</p>
-            </div>
-          ) : (
+          ) : isPastSelected ? null : (
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
             </p>
           )}
 
-          {!editingId && isPastSelected ? (
-            <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5">
-              <p className="text-xs text-muted-foreground">{t("pastDate.description")}</p>
-            </div>
-          ) : (
+          {!editingId && isPastSelected ? null : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
               {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
@@ -816,7 +814,7 @@ export default function CalendarPage() {
 
   return (
     <PageShell activeTab="calendar">
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-16">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-24">
         <div className="mb-8 flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
           <p className="max-w-xl text-base text-muted-foreground">Track hearings and deadlines in one place.</p>

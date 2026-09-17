@@ -38,7 +38,6 @@ const COLUMNS = [
     links: [
       { key: "helpCentre", href: "mailto:support@uk.ilovelawyer.com" },
       { key: "transcription", href: "/homepage/transcription" },
-      { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
   },
