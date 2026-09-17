@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, Suspense } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -48,6 +48,52 @@ interface UploadedFile {
 }
 
 type OpenTarget = "workspace" | "terminal";
+
+// Persists everything except uploadedFiles — raw File objects can't survive a refresh (the
+// browser drops their content for security reasons), so a not-yet-uploaded selection is
+// unavoidably lost. Everything else the user typed in (title, parties, jurisdiction, which step
+// they were on, and the case once it exists server-side) is restored instead of vanishing.
+const DRAFT_STORAGE_KEY = "create-case:draft";
+
+interface CaseDraft {
+  caseTitle: string;
+  jurisdiction: string;
+  ukJurisdiction: string;
+  parties: Party[];
+  step: number;
+  maxStepReached: number;
+  openTarget: OpenTarget;
+  createdCaseId: string | null;
+}
+
+function loadDraft(): CaseDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CaseDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(draft: CaseDraft) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // Storage full or unavailable (e.g. private browsing) — draft persistence is a nicety,
+    // not something worth surfacing an error for.
+  }
+}
+
+function clearDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // Nothing to clean up if storage was never writable to begin with.
+  }
+}
 
 export default function CreateCasePage() {
   return (
@@ -100,6 +146,59 @@ function CreateCasePageContent() {
 
   const { mutateAsync: uploadDocuments } = useUploadCaseDocumentsMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
+
+  // Rehydrate a draft left behind by a refresh — runs once, after mount (not in a lazy useState
+  // initializer), so the client's first render still matches the server's and React doesn't
+  // flag a hydration mismatch. A brief flash of the empty step 1 is the tradeoff.
+  const hasHydratedRef = useRef(false);
+  useEffect(() => {
+    if (hasHydratedRef.current) return;
+    hasHydratedRef.current = true;
+    const draft = loadDraft();
+    if (!draft) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      caseTitle: draft.caseTitle,
+      jurisdiction: draft.jurisdiction,
+      ukJurisdiction: draft.ukJurisdiction,
+      parties: draft.parties.length > 0 ? draft.parties : prev.parties,
+    }));
+    setStep(draft.step);
+    setMaxStepReached(draft.maxStepReached);
+    setOpenTarget(draft.openTarget);
+    setCreatedCaseId(draft.createdCaseId);
+
+    const highestPartyId = draft.parties.reduce((max, p) => {
+      const match = /^party-(\d+)$/.exec(p.id);
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 1);
+    nextPartyIdRef.current = highestPartyId + 1;
+  }, []);
+
+  // Keeps the draft in sync as the user types — skipped while everything is still at its
+  // pristine default so an untouched visit never writes an empty draft to storage.
+  useEffect(() => {
+    const isPristine =
+      step === 1 &&
+      !createdCaseId &&
+      !formData.caseTitle.trim() &&
+      !formData.jurisdiction.trim() &&
+      !formData.ukJurisdiction.trim() &&
+      formData.parties.every((p) => !p.name.trim());
+    if (isPristine) return;
+
+    saveDraft({
+      caseTitle: formData.caseTitle,
+      jurisdiction: formData.jurisdiction,
+      ukJurisdiction: formData.ukJurisdiction,
+      parties: formData.parties,
+      step,
+      maxStepReached,
+      openTarget,
+      createdCaseId,
+    });
+  }, [formData.caseTitle, formData.jurisdiction, formData.ukJurisdiction, formData.parties, step, maxStepReached, openTarget, createdCaseId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -265,8 +364,14 @@ function CreateCasePageContent() {
   };
 
   const handleStepBack = () => {
-    if (step > 1) setStep(step - 1);
-    else router.push("/homepage/case-portfolio");
+    if (step > 1) {
+      setStep(step - 1);
+      return;
+    }
+    // Leaving the wizard from step 1 is an explicit discard — don't resurrect this draft
+    // if the user starts a new case later.
+    clearDraft();
+    router.push("/homepage/case-portfolio");
   };
 
   const handleSubmitFiling = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -314,6 +419,7 @@ function CreateCasePageContent() {
         return;
       }
 
+      clearDraft();
       router.push(
         openTarget === "terminal"
           ? `/homepage/terminal/${caseId}`
@@ -333,12 +439,17 @@ function CreateCasePageContent() {
   return (
     <PageShell activeTab="create-case">
       <form onSubmit={handleSubmitFiling} className="flex-1 flex flex-col">
-        <div className="max-w-[1000px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 flex flex-col gap-8">
+        {/* md+ is pinned to the viewport height (no page-level scroll) — the back link and the
+            grid below split that height via flex-1, and the step card scrolls internally as a
+            fallback if its content doesn't fit. Below md this reverts to normal page flow, since
+            a fixed-height layout fights the keyboard/viewport-resize behavior of mobile browsers. */}
+        <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12 pt-24 md:pt-20 pb-16 md:pb-8 flex flex-col gap-8 md:gap-4 md:h-screen">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href="/homepage/case-portfolio"
-                className="self-start flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors"
+                onClick={clearDraft}
+                className="self-start shrink-0 flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
                 {t("backToCases")}
@@ -347,8 +458,8 @@ function CreateCasePageContent() {
             <TooltipContent>Return to your case portfolio list</TooltipContent>
           </Tooltip>
 
-          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-5 md:gap-12 items-start">
-            <div className="flex flex-col gap-4 md:gap-7 md:sticky md:top-24">
+          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-5 md:gap-12 items-start md:items-stretch md:flex-1 md:min-h-0">
+            <div className="flex flex-col gap-4 md:gap-7 md:sticky md:top-24 md:self-start">
               <div className="hidden md:flex flex-col gap-3">
                 <h1 className="font-['Libre_Caslon_Text'] text-[40px] font-light leading-none tracking-[-0.02em] text-foreground">
                   {t("newCaseHeading")}
@@ -402,9 +513,9 @@ function CreateCasePageContent() {
               </ol>
             </div>
 
-            <div className="flex flex-col gap-5 min-w-0">
+            <div className="flex flex-col gap-5 min-w-0 md:min-h-0">
               {submitError && (
-                <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3" role="alert">
+                <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3 md:shrink-0" role="alert">
                   <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <p className="text-sm">{submitError}</p>
                   <Tooltip>
@@ -424,7 +535,7 @@ function CreateCasePageContent() {
               )}
 
               {step === 1 && (
-                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-7">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-7 md:min-h-0 md:overflow-y-auto">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.identity.numeral")}
@@ -499,7 +610,7 @@ function CreateCasePageContent() {
               )}
 
               {step === 2 && (
-                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6 md:min-h-0 md:overflow-y-auto">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.parties.numeral")}
@@ -591,7 +702,7 @@ function CreateCasePageContent() {
               )}
 
               {step === 3 && (
-                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6">
+                <section className="bg-card rounded-2xl border border-border p-5 sm:p-7 md:p-8 flex flex-col gap-6 md:min-h-0 md:overflow-y-auto">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-brand-gold">
                       {t("steps.documents.numeral")}
@@ -641,8 +752,15 @@ function CreateCasePageContent() {
                   )}
 
                   {formData.uploadedFiles.length > 0 && (
-                    <div className="flex flex-col border border-border rounded-xl overflow-hidden">
-                      {formData.uploadedFiles.map((f) => (
+                    <>
+                      <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}
+                      </span>
+
+                      {/* Bounded + scrollable instead of growing the page forever — a handful of
+                          files fit with no scrollbar at all, more than that scrolls within this box. */}
+                      <div className="flex flex-col border border-border rounded-xl overflow-y-auto max-h-72">
+                        {formData.uploadedFiles.map((f) => (
                         <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px]">
                           <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           <span className="flex-1 min-w-0 truncate">{f.file.name}</span>
@@ -682,8 +800,9 @@ function CreateCasePageContent() {
                             <TooltipContent>{t("sectionEvidence.removeFile", { fileName: f.file.name })}</TooltipContent>
                           </Tooltip>
                         </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    </>
                   )}
 
                   <div className="flex flex-col gap-3 pt-2 border-t border-border">
@@ -718,7 +837,7 @@ function CreateCasePageContent() {
                 </section>
               )}
 
-              <div className={`flex items-center gap-4 ${step === 1 ? "justify-end sm:justify-between" : "justify-between"}`}>
+              <div className={`flex items-center gap-4 md:shrink-0 ${step === 1 ? "justify-end sm:justify-between" : "justify-between"}`}>
                 {/* On step 1, this button and the "Cases" link at the top of the page do the
                  * exact same thing (leave the wizard) — redundant on mobile, where the link
                  * above is already on screen. Desktop keeps it for symmetry with steps 2/3. */}
