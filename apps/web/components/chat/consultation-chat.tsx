@@ -436,14 +436,6 @@ export default function ConsultationChat({
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // The actual scrollable message pane (overflow-y-auto) — messagesEndRef is just a sentinel
-  // div inside it, not itself scrollable, so scroll position has to be read off this instead.
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  // Updated on every real scroll event (not on the messages-driven effect below, which runs
-  // after new content has already changed scrollHeight) — reflects where the user actually
-  // left the view a moment ago. Starts true so the first load of a conversation still lands
-  // at the bottom by default.
-  const isAtBottomRef = useRef(true);
   // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
   // only reflects it a render later, which is too late for callers within the same
   // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
@@ -740,36 +732,36 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
-  // Tracks the user's actual scroll position continuously, independent of the messages-driven
-  // effect below (which fires after new content already changed scrollHeight, too late to
-  // tell "was the user at the bottom before this update"). BOTTOM_THRESHOLD_PX tolerates
-  // sub-pixel/rounding drift and a user who's a few pixels off the exact bottom edge.
+  // Scrolls to the bottom once a conversation's messages have actually loaded — either a
+  // fresh mount/switch (consultationKey changed) or the first time this key's query resolves
+  // (historyLoading false). Deliberately does NOT key on `history` itself: every later
+  // invalidation of it (doSend's post-send refetch, the resumed-generation chat:done
+  // subscription, the socket's on-reconnect invalidate) would otherwise re-fire this and
+  // scroll the user down again each time a reply lands — exactly the disruptive behavior
+  // being fixed here. scrolledForKeyRef makes this a one-shot per key instead.
+  const scrolledForKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const BOTTOM_THRESHOLD_PX = 120;
-    const handleScroll = () => {
-      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX;
-    };
-    handleScroll();
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, [consultationKey]);
+    if (historyLoading) return;
+    if (scrolledForKeyRef.current === consultationKey) return;
+    scrolledForKeyRef.current = consultationKey;
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+  }, [consultationKey, historyLoading]);
 
-  // A fresh conversation (switching consultations, or landing on one) should always open at
-  // the bottom regardless of where a *previous* conversation left the scroll position.
+  // Scrolls to the bottom exactly once, the moment YOU send a message — a deliberate action
+  // that justifies jumping to show it. Deliberately does NOT keep re-scrolling on every
+  // chat:chunk update after that: an earlier version re-ran scrollIntoView on every streamed
+  // chunk (which can arrive many times a second), and a smooth-scroll animation re-triggered
+  // that fast makes it practically impossible to scroll away mid-generation — each new chunk
+  // yanks the view back down before a manual scroll attempt can register. Tracking the
+  // transition (false -> true) rather than just `isPendingTurnActive` itself is what makes
+  // this fire once per send instead of once per render while it's true.
+  const wasPendingTurnActiveRef = useRef(false);
   useEffect(() => {
-    isAtBottomRef.current = true;
-  }, [consultationKey]);
-
-  // Only auto-scrolls while the user is already at (or near) the bottom — e.g. actively
-  // watching a reply stream in. A user who scrolled up to reread earlier messages keeps their
-  // position instead of being yanked to the bottom on every incoming chat:chunk update.
-  useEffect(() => {
-    if (isAtBottomRef.current) {
+    if (isPendingTurnActive && !wasPendingTurnActiveRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+    wasPendingTurnActiveRef.current = isPendingTurnActive;
+  }, [isPendingTurnActive]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -1826,10 +1818,7 @@ export default function ConsultationChat({
               )}
 
               {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
-              <div
-                ref={scrollContainerRef}
-                className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]"
-              >
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
