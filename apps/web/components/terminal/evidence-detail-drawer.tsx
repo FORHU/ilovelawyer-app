@@ -22,13 +22,8 @@ import type {
   SnapshotEvidenceMatrixItem,
   Witness,
 } from "@/lib/terminal/types"
-import {
-  fieldClass,
-  formatDate,
-  HEARSAY_CATEGORY_KEYS,
-  PRIVILEGE_STATUS_KEYS,
-  primaryBtnClass,
-} from "@/components/terminal/terminal-panels"
+import { fieldClass, formatDate, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { HEARSAY_CATEGORY_KEYS, PRIVILEGE_STATUS_KEYS } from "@/components/terminal/panels/evidence-panel"
 
 export function EvidenceDetailDrawer({
   open,

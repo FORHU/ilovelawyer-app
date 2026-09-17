@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { AtSign, Check, Clock, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
+import { AtSign, Check, Clock, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
+import ChangePasswordModal from "@/components/account/change-password-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import {
+  ACCOUNT_DELETION_GRACE_PERIOD_DAYS,
+  useCancelDeletionMutation,
+  useChangePasswordMutation,
   useCurrentUserQuery,
   useDeleteAccountMutation,
   useUpdateCurrentUserMutation,
@@ -50,6 +54,14 @@ function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
 
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(date);
+}
+
+function addDays(iso: string, days: number): Date {
+  return new Date(new Date(iso).getTime() + days * 24 * 60 * 60 * 1000);
+}
+
 export default function ProfilePage() {
   const { t } = useTranslation("profile");
   // The auth store only ever holds {id, username, email} from login/signup — the
@@ -61,8 +73,16 @@ export default function ProfilePage() {
   const updateName = useUpdateCurrentUserMutation();
   const updateUsername = useUpdateCurrentUserMutation();
   const deleteAccount = useDeleteAccountMutation();
+  const cancelDeletion = useCancelDeletionMutation();
+  const changePassword = useChangePasswordMutation();
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletionSuccessDate, setDeletionSuccessDate] = useState<Date | null>(null);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [passwordJustChanged, setPasswordJustChanged] = useState(false);
+
+  const deletionRequestedAt = currentUser?.deletionRequestedAt ?? null;
+  const scheduledDeletionDate = deletionRequestedAt ? addDays(deletionRequestedAt, ACCOUNT_DELETION_GRACE_PERIOD_DAYS) : null;
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -419,6 +439,41 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {currentUser?.hasPassword && (
+              <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex gap-4 items-center">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                    <KeyRound className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground text-[16px]">{t("security.changePassword.rowTitle")}</p>
+                    <p className="text-muted-foreground text-[14px]">{t("security.changePassword.rowDescription")}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {passwordJustChanged && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <Check className="h-3 w-3" aria-hidden="true" />
+                      {t("security.changePassword.saved")}
+                    </span>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setIsChangePasswordModalOpen(true)}
+                        className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        {t("security.changePassword.rowButton")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("security.changePassword.rowTooltip")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            )}
+
             <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex gap-4 items-center">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
@@ -454,39 +509,102 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex flex-col divide-y divide-border">
-            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex gap-4 items-center">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {scheduledDeletionDate ? (
+              <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex gap-4 items-center">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground text-[16px]">{t("dangerZone.deleteAccount.scheduledTitle")}</p>
+                    <p className="text-muted-foreground text-[14px]">
+                      {t("dangerZone.deleteAccount.scheduledDescription", { date: formatDate(scheduledDeletionDate) })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground text-[16px]">{t("dangerZone.deleteAccount.title")}</p>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={cancelDeletion.isPending}
+                      onClick={() => cancelDeletion.mutate()}
+                      className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {cancelDeletion.isPending ? t("dangerZone.deleteAccount.cancelling") : t("dangerZone.deleteAccount.cancelButton")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Keep your account and cancel the scheduled deletion</TooltipContent>
+                </Tooltip>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setIsDeleteModalOpen(true)}
-                    className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    {t("dangerZone.deleteAccount.button")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Open the account-deletion confirmation dialog</TooltipContent>
-              </Tooltip>
-            </div>
+            ) : (
+              <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex gap-4 items-center">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground text-[16px]">{t("dangerZone.deleteAccount.title")}</p>
+                    <p className="text-muted-foreground text-[14px]">{t("dangerZone.deleteAccount.description")}</p>
+                  </div>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteModalOpen(true)}
+                      className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {t("dangerZone.deleteAccount.button")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open the account-deletion confirmation dialog</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
         </section>
       </main>
+
+      {isChangePasswordModalOpen && (
+        <ChangePasswordModal
+          isPending={changePassword.isPending}
+          error={changePassword.error ? (changePassword.error as Error).message : null}
+          onSubmit={(currentPassword, newPassword) =>
+            changePassword.mutate(
+              { currentPassword, newPassword },
+              {
+                onSuccess: () => {
+                  setIsChangePasswordModalOpen(false);
+                  flashSaved(setPasswordJustChanged);
+                  changePassword.reset();
+                },
+              },
+            )
+          }
+          onClose={() => {
+            setIsChangePasswordModalOpen(false);
+            changePassword.reset();
+          }}
+        />
+      )}
 
       {isDeleteModalOpen && (
         <DeleteAccountModal
           isPending={deleteAccount.isPending}
           error={deleteAccount.error ? (deleteAccount.error as Error).message : null}
-          onConfirm={() => deleteAccount.mutate()}
+          onConfirm={() =>
+            deleteAccount.mutate(undefined, {
+              onSuccess: (updated) =>
+                setDeletionSuccessDate(
+                  updated.deletionRequestedAt ? addDays(updated.deletionRequestedAt, ACCOUNT_DELETION_GRACE_PERIOD_DAYS) : new Date(),
+                ),
+            })
+          }
           onClose={() => setIsDeleteModalOpen(false)}
+          scheduledFor={deletionSuccessDate ? formatDate(deletionSuccessDate) : null}
+          isLoggingOut={logout.isPending}
+          onLogout={() => logout.mutate()}
         />
       )}
     </PageShell>

@@ -39,7 +39,29 @@
     "signOutTitle": "이 기기에서 로그아웃",
     "signOutDescription": "현재 세션을 종료하고 로그인 화면으로 돌아갑니다.",
     "logout": "로그아웃",
-    "loggingOut": "로그아웃 중…"
+    "loggingOut": "로그아웃 중…",
+    "changePassword": {
+      "rowTitle": "비밀번호 변경",
+      "rowDescription": "로그인에 사용하는 비밀번호를 업데이트하세요.",
+      "rowButton": "비밀번호 변경",
+      "rowTooltip": "비밀번호 변경 대화상자 열기",
+      "saved": "업데이트됨",
+      "title": "비밀번호 변경",
+      "description": "현재 비밀번호를 입력하고 새 비밀번호를 선택하세요. 이 기기에서는 로그인 상태가 유지됩니다.",
+      "currentPasswordLabel": "현재 비밀번호",
+      "newPasswordLabel": "새 비밀번호",
+      "confirmPasswordLabel": "새 비밀번호 확인",
+      "newPasswordRequirement": "최소 8자 이상이며 특수문자를 포함해야 합니다.",
+      "passwordsMismatch": "비밀번호가 일치하지 않습니다.",
+      "showPassword": "비밀번호 표시",
+      "hidePassword": "비밀번호 숨기기",
+      "cancel": "취소",
+      "cancelTooltip": "변경 사항을 취소하고 대화상자를 닫습니다",
+      "submit": "비밀번호 업데이트",
+      "submitTooltip": "새 비밀번호를 저장합니다",
+      "saving": "업데이트 중…",
+      "closeModal": "닫기"
+    }
   },
   "dangerZone": {
     "heading": "위험 구역",
@@ -48,12 +70,19 @@
     "closeModal": "닫기",
     "deleteAccount": {
       "title": "계정 삭제",
-      "description": "계정과 관련된 모든 데이터를 영구적으로 삭제합니다. 이 작업은 취소할 수 없습니다.",
+      "description": "계정을 삭제 예약합니다. 30일 이내에 취소하지 않으면 계정과 관련된 모든 데이터가 영구적으로 삭제됩니다.",
       "button": "계정 삭제",
-      "deleting": "삭제 중…",
+      "deleting": "예약 중…",
       "confirmTitle": "계정을 삭제하시겠습니까?",
-      "confirmDescription": "계정과 관련된 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
-      "confirmButton": "계정 삭제"
+      "confirmDescription": "계정이 삭제 예약됩니다. 30일 이내에 취소하지 않으면 계정과 관련된 모든 데이터가 영구적으로 삭제됩니다. 이후에는 되돌릴 수 없습니다.",
+      "confirmButton": "삭제 예약",
+      "scheduledTitle": "계정 삭제가 예약되었습니다",
+      "scheduledDescription": "계정과 관련된 모든 데이터가 {{date}}에 영구적으로 삭제됩니다.",
+      "cancelButton": "삭제 취소",
+      "cancelling": "취소 중…",
+      "successTitle": "계정 삭제가 예약되었습니다",
+      "successDescription": "계정과 관련된 모든 데이터가 {{date}}에 영구적으로 삭제됩니다. 그 전에 다시 로그인하면 취소할 수 있습니다. 이제 로그아웃됩니다.",
+      "successLogoutButton": "로그아웃"
     }
   }
 }

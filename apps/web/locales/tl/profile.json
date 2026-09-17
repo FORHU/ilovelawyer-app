@@ -39,7 +39,29 @@
     "signOutTitle": "Mag-sign out sa device na ito",
     "signOutDescription": "Tinatapos ang iyong kasalukuyang session at ibinabalik ka sa login screen.",
     "logout": "Mag-log Out",
-    "loggingOut": "Nagla-log out…"
+    "loggingOut": "Nagla-log out…",
+    "changePassword": {
+      "rowTitle": "Palitan ang Password",
+      "rowDescription": "I-update ang password na ginagamit mo sa pag-sign in.",
+      "rowButton": "Palitan ang Password",
+      "rowTooltip": "Buksan ang dialog para palitan ang password",
+      "saved": "Na-update",
+      "title": "Palitan ang iyong password",
+      "description": "Ilagay ang iyong kasalukuyang password at pumili ng bago. Mananatili kang naka-sign in sa device na ito.",
+      "currentPasswordLabel": "Kasalukuyang Password",
+      "newPasswordLabel": "Bagong Password",
+      "confirmPasswordLabel": "Kumpirmahin ang Bagong Password",
+      "newPasswordRequirement": "Dapat hindi bababa sa 8 karakter at may kasamang simbolo.",
+      "passwordsMismatch": "Hindi tugma ang mga password.",
+      "showPassword": "Ipakita ang password",
+      "hidePassword": "Itago ang password",
+      "cancel": "Kanselahin",
+      "cancelTooltip": "Iwaksi ang mga pagbabago at isara ang dialog na ito",
+      "submit": "I-update ang Password",
+      "submitTooltip": "I-save ang iyong bagong password",
+      "saving": "Ina-update…",
+      "closeModal": "Isara"
+    }
   },
   "dangerZone": {
     "heading": "Danger Zone",
@@ -48,12 +70,19 @@
     "closeModal": "Isara",
     "deleteAccount": {
       "title": "Burahin ang account",
-      "description": "Permanenteng bubura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
+      "description": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data.",
       "button": "Burahin ang Account",
-      "deleting": "Binubura…",
+      "deleting": "Sine-schedule…",
       "confirmTitle": "Burahin ang iyong account?",
-      "confirmDescription": "Permanenteng bubura nito ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa.",
-      "confirmButton": "Burahin ang Account"
+      "confirmDescription": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa pagkatapos.",
+      "confirmButton": "I-schedule ang Pagbura",
+      "scheduledTitle": "Naka-schedule na para burahin ang account",
+      "scheduledDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}.",
+      "cancelButton": "Kanselahin ang Pagbura",
+      "cancelling": "Kinakansela…",
+      "successTitle": "Naka-schedule na para burahin ang account",
+      "successDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}. Maaari mo itong kanselahin sa pamamagitan ng muling pag-sign in bago mangyari iyon. Malo-log out ka na ngayon.",
+      "successLogoutButton": "Mag-log Out"
     }
   }
 }

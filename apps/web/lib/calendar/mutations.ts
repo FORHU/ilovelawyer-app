@@ -63,6 +63,12 @@ export interface CreateNotePayload {
   body: string
 }
 
+export interface UpdateNotePayload {
+  id: string
+  date?: string
+  body?: string
+}
+
 interface BackendEvent {
   id: string
   title: string
@@ -195,6 +201,36 @@ export function useCreateNoteMutation() {
         method: "POST",
         body: JSON.stringify(payload),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: noteKeys.lists() })
+    },
+  })
+}
+
+export function useUpdateNoteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: UpdateNotePayload) => {
+      const body: Record<string, unknown> = {}
+      if (payload.date !== undefined) body.date = payload.date
+      if (payload.body !== undefined) body.body = payload.body
+
+      await apiFetch<{ success: boolean }>(`/api/notes/${payload.id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      })
+      return payload
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: noteKeys.lists() })
+    },
+  })
+}
+
+export function useDeleteNoteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/api/notes/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.lists() })
     },

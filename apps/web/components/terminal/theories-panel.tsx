@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
 import { GitFork, Loader2, MessageSquareWarning, Send, Sparkles } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
+import { Badge } from "@workspace/ui/components/badge"
 import {
   terminalKeys,
   useAddTheoryAssumptionMutation,
@@ -21,12 +22,12 @@ import {
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { fieldClass, primaryBtnClass, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/terminal-panels"
+import { fieldClass, primaryBtnClass, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/panel-kit"
 
-const STATUS_BADGE_CLASS: Record<CaseTheory["status"], string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  ACTIVE: "bg-emerald-500/15 text-emerald-400",
-  RETIRED: "bg-red-500/15 text-red-300",
+const STATUS_TONE: Record<CaseTheory["status"], "neutral" | "success" | "danger"> = {
+  DRAFT: "neutral",
+  ACTIVE: "success",
+  RETIRED: "danger",
 }
 
 export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
@@ -160,11 +161,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
           <p className="leading-5 font-medium text-foreground">{theory.title}</p>
           <p className="mt-1 text-[12px] leading-4 text-muted-foreground">{theory.thesis}</p>
         </div>
-        <span
-          className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[1px] uppercase ${STATUS_BADGE_CLASS[theory.status]}`}
-        >
-          {theory.status}
-        </span>
+        <Badge tone={STATUS_TONE[theory.status]}>{theory.status}</Badge>
       </div>
 
       {isAiProposed && (
@@ -179,12 +176,8 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
           <SectionLabel>{t("theoryClaims")}</SectionLabel>
           <ul className="space-y-1">
             {theory.claims.map((c) => (
-              <li key={c.id} className="text-[12px] leading-4 text-muted-foreground">
-                <span
-                  className={`mr-1.5 rounded px-1 py-0.5 font-mono text-[9px] font-semibold uppercase ${c.stance === "ASSERTS" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-300"}`}
-                >
-                  {c.stance}
-                </span>
+              <li key={c.id} className="flex items-center gap-1.5 text-[12px] leading-4 text-muted-foreground">
+                <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"}>{c.stance}</Badge>
                 {c.statement}
               </li>
             ))}

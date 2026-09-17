@@ -1,0 +1,126 @@
+import { useState } from "react"
+import { useTranslation } from "react-i18next"
+import { Trash2 } from "lucide-react"
+import { useCreateDamageMutation, useDeleteDamageMutation } from "@/lib/terminal/mutations"
+import type { CaseSnapshot, DamageCategory } from "@/lib/terminal/types"
+import { EmptyNote, PanelBody, PanelRow, PanelRowList, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+
+const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
+  ACTUAL: "damageActual",
+  MORAL: "damageMoral",
+  EXEMPLARY: "damageExemplary",
+  ATTORNEYS_FEES: "damageAttorneysFees",
+  OTHER: "damageOther",
+}
+
+export function DamagePanel({
+  snapshot,
+  caseId,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+}) {
+  const { t } = useTranslation("terminal")
+  const create = useCreateDamageMutation(caseId)
+  const del = useDeleteDamageMutation(caseId)
+  const [category, setCategory] = useState<DamageCategory>("ACTUAL")
+  const [description, setDescription] = useState("")
+  const [amount, setAmount] = useState("")
+
+  const total = snapshot.damages.reduce((sum, d) => sum + (d.amount ?? 0), 0)
+
+  return (
+    <PanelBody gap="4">
+      {snapshot.damages.length === 0 ? (
+        <EmptyNote>{t("noDamages")}</EmptyNote>
+      ) : (
+        <>
+          <PanelRowList>
+            {snapshot.damages.map((d) => (
+              <PanelRow key={d.id} className="items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                    {t(DAMAGE_CATEGORY_KEYS[d.category])}
+                  </p>
+                  {d.description ? (
+                    <p className="mt-0.5 text-[13px] leading-5 text-foreground">
+                      {d.description}
+                    </p>
+                  ) : null}
+                  {d.amount != null ? (
+                    <p className="mt-1 font-mono text-[13px] text-foreground">
+                      {d.amount.toLocaleString()}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => del.mutate(d.id)}
+                  disabled={del.isPending}
+                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                  aria-label={t("delete")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </PanelRow>
+            ))}
+          </PanelRowList>
+          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
+            <span>{t("damageTotal")}</span>
+            <span className="font-mono">{total.toLocaleString()}</span>
+          </div>
+        </>
+      )}
+      <form
+        className="mt-auto flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const parsedAmount = amount.trim() ? Number(amount) : undefined
+          create.mutate({
+            category,
+            description: description.trim() || undefined,
+            amount: parsedAmount,
+          })
+          setDescription("")
+          setAmount("")
+        }}
+      >
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value as DamageCategory)}
+          className={fieldClass}
+        >
+          {(Object.keys(DAMAGE_CATEGORY_KEYS) as DamageCategory[]).map((c) => (
+            <option key={c} value={c}>
+              {t(DAMAGE_CATEGORY_KEYS[c])}
+            </option>
+          ))}
+        </select>
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={t("damageDescription")}
+          className={fieldClass}
+        />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={t("damageAmount")}
+            className={`flex-1 ${fieldClass}`}
+          />
+          <button
+            type="submit"
+            disabled={create.isPending}
+            className={primaryBtnClass}
+          >
+            {t("add")}
+          </button>
+        </div>
+      </form>
+    </PanelBody>
+  )
+}

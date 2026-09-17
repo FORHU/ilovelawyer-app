@@ -185,6 +185,7 @@ function CalendarDayButton({
   day,
   modifiers,
   locale,
+  children,
   ...props
 }: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
   const defaultClassNames = getDefaultClassNames()
@@ -193,6 +194,11 @@ function CalendarDayButton({
   React.useEffect(() => {
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
+
+  const isFilled =
+    modifiers.range_start ||
+    modifiers.range_end ||
+    (modifiers.selected && !modifiers.range_middle)
 
   return (
     <Button
@@ -215,7 +221,18 @@ function CalendarDayButton({
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      {modifiers.hasEvents && (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full",
+            isFilled ? "bg-primary-foreground" : "bg-primary"
+          )}
+        />
+      )}
+    </Button>
   )
 }
 

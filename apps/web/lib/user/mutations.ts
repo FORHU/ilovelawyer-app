@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useRouter } from "next/navigation"
-import { apiFetch, apiFetchRaw } from "@/lib/fetch"
+import { apiFetch } from "@/lib/fetch"
 import { organizationKeys, userKeys } from "@/lib/query-keys"
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationMemberRecord } from "@/lib/organizations/queries"
+
+// Mirrors ACCOUNT_DELETION_GRACE_PERIOD_DAYS on the API — the account is only ever actually
+// hard-deleted server-side, this is just for showing the scheduled date before a refetch.
+export const ACCOUNT_DELETION_GRACE_PERIOD_DAYS = 30
 
 export interface CurrentUser {
   id: string
@@ -14,6 +17,8 @@ export interface CurrentUser {
   denialReason: string | null
   createdAt: string
   lastLoginAt: string | null
+  deletionRequestedAt: string | null
+  hasPassword: boolean
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -58,17 +63,33 @@ export function useUpdateCurrentUserMutation() {
   })
 }
 
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      apiFetch<{ message: string }>("/api/users/me/change-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  })
+}
+
+/** Requests account deletion — this starts the grace period rather than deleting immediately,
+ * so the session stays valid and the request can still be cancelled (useCancelDeletionMutation)
+ * up until the API's AccountDeletionQueue performs the actual hard delete. */
 export function useDeleteAccountMutation() {
-  const router = useRouter()
-  const clearAuth = useAuthStore((s) => s.clearAuth)
+  const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async () => {
-      await apiFetchRaw("/api/users/me", { method: "DELETE" })
-    },
-    onSuccess: () => {
-      clearAuth()
-      router.push("/login")
-    },
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me", { method: "DELETE" }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+  })
+}
+
+export function useCancelDeletionMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me/cancel-deletion", { method: "POST" }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }

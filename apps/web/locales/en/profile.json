@@ -39,7 +39,29 @@
     "signOutTitle": "Sign out of this device",
     "signOutDescription": "Ends your current session and returns you to the login screen.",
     "logout": "Log Out",
-    "loggingOut": "Logging out…"
+    "loggingOut": "Logging out…",
+    "changePassword": {
+      "rowTitle": "Change Password",
+      "rowDescription": "Update the password you use to sign in.",
+      "rowButton": "Change Password",
+      "rowTooltip": "Open the change password dialog",
+      "saved": "Updated",
+      "title": "Change your password",
+      "description": "Enter your current password and choose a new one. You'll stay signed in on this device.",
+      "currentPasswordLabel": "Current Password",
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm New Password",
+      "newPasswordRequirement": "Must be at least 8 characters and include a symbol.",
+      "passwordsMismatch": "Passwords don't match.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "cancel": "Cancel",
+      "cancelTooltip": "Discard changes and close this dialog",
+      "submit": "Update Password",
+      "submitTooltip": "Save your new password",
+      "saving": "Updating…",
+      "closeModal": "Close"
+    }
   },
   "dangerZone": {
     "heading": "Danger Zone",
@@ -48,12 +70,19 @@
     "closeModal": "Close",
     "deleteAccount": {
       "title": "Delete account",
-      "description": "Permanently deletes your account and all associated data. This action cannot be undone.",
+      "description": "Schedules your account for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted.",
       "button": "Delete Account",
-      "deleting": "Deleting…",
+      "deleting": "Scheduling…",
       "confirmTitle": "Delete your account?",
-      "confirmDescription": "This will permanently delete your account and all associated data. This action cannot be undone.",
-      "confirmButton": "Delete Account"
+      "confirmDescription": "Your account will be scheduled for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted. This cannot be undone after that.",
+      "confirmButton": "Schedule Deletion",
+      "scheduledTitle": "Account scheduled for deletion",
+      "scheduledDescription": "Your account and all associated data will be permanently deleted on {{date}}.",
+      "cancelButton": "Cancel Deletion",
+      "cancelling": "Cancelling…",
+      "successTitle": "Account scheduled for deletion",
+      "successDescription": "Your account and all associated data will be permanently deleted on {{date}}. You can cancel by signing back in before then. You'll now be logged out.",
+      "successLogoutButton": "Log Out"
     }
   }
 }
