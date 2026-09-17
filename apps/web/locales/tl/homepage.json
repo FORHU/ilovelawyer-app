@@ -35,6 +35,7 @@
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
+  "thinkingTraceUnavailable": "Hindi ipinapakita ang mga hakbang sa pagsasaliksik pagkatapos mag-refresh o lumipat ng view.",
   "message": {
     "copy": "Kopyahin ang sagot",
     "copied": "Nakopya!",
@@ -48,6 +49,7 @@
     "openCase": "Buksan ang kaso",
     "relatedCases": "Kaugnay na Kaso",
     "reasoning": "Paano ko ito nakuha",
+    "researchSteps": "Mga hakbang sa pagsasaliksik",
     "loadingCase": "Nilo-load…",
     "relatedEmpty": "Wala pang nahanap na kaugnay na kaso.",
     "loadingRelated": "Ni-loload ang kaugnay na mga kaso…",

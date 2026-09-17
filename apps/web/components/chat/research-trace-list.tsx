@@ -4,10 +4,13 @@ import type { TraceStep } from "@/lib/chat/mind-map-parser";
 
 const MAX_VISIBLE_STEPS = 5;
 
-/** Live "glass-box" research trace shown in place of ThinkingIndicator once the
- * backend's [TRACE] frames start arriving — see consultation-chat.tsx's doSend. */
-export function ResearchTraceList({ steps }: { steps: TraceStep[] }) {
-  const visible = steps.slice(-MAX_VISIBLE_STEPS);
+/** Live "glass-box" research trace shown in place of ThinkingIndicator once the backend's
+ * [TRACE] frames start arriving — see consultation-chat.tsx's doSend. Also reused by
+ * ResearchTracePanel for a completed, persisted trace (every step already "done" by then) —
+ * `maxVisible` defaults to only the most recent few, right for a live feed still growing, but
+ * ResearchTracePanel passes `steps.length` so a finished trace isn't truncated. */
+export function ResearchTraceList({ steps, maxVisible = MAX_VISIBLE_STEPS }: { steps: TraceStep[]; maxVisible?: number }) {
+  const visible = steps.slice(-maxVisible);
 
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-1.5 text-[13px] font-['Inter']">

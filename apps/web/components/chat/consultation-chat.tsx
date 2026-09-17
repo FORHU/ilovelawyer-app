@@ -34,6 +34,7 @@ import {
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
+import { ResearchTracePanel } from "@/components/chat/research-trace-panel";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
@@ -67,8 +68,11 @@ interface DisplayMessage {
    * this is recomputed from the raw accumulated text on every chunk (see doSend); once the
    * message is persisted it comes straight from the backend (see baseMessages below). */
   mindMap?: MindMapItem;
-  /** Live research steps extracted from `[TRACE]...[/TRACE]` frames while this message is
-   * streaming — see doSend. Never persisted; gone once the turn finishes. */
+  /** Research steps extracted from `[TRACE]...[/TRACE]` frames. While this message is
+   * streaming, recomputed live from the raw accumulated text on every chunk (see doSend); once
+   * persisted it comes from the backend's MessageResearchTrace instead (see baseMessages
+   * below) — a page refresh (or switching away and back) mid-stream used to lose this for
+   * good, since it only ever existed in the streaming tab's own local state. */
   researchSteps?: TraceStep[];
   /** Set only when this reply is one topic of a split, multi-topic answer (see
    * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, used as the
@@ -96,6 +100,27 @@ const MAX_ATTACHED_FILES = 10;
 // than inventing a new one: generous for a scanned legal PDF, but keeps a single attachment
 // from stalling the browser upload / RAG indexing for minutes.
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+
+// A fresh page load's history can end in an unanswered user message simply because the
+// assistant's reply hasn't been persisted yet (MessagePersistenceQueue is async — see
+// chat.service.ts — not bound to the request that streamed the answer to this same browser).
+// AWAITING_REPLY_RECENCY_MS bounds how old that trailing message can be before it's worth
+// polling for at all (an old, already-known-unanswered conversation reopened from history
+// shouldn't start polling again); AWAITING_REPLY_POLL_TIMEOUT_MS bounds how long that polling
+// runs before giving up, so a genuinely, permanently lost reply doesn't poll forever. Must
+// comfortably clear the backend's own worst-case *legitimate* latency, not just network time:
+// chatWonder.ts keeps the connection open up to STRUCTURED_DATA_WAIT_MS (60s) *after* the
+// visible answer finishes, waiting on trailing structured-data frames, before the reply is
+// even considered done server-side — so a value close to that made this give up before a
+// perfectly healthy reply could possibly have landed yet.
+const AWAITING_REPLY_RECENCY_MS = 2 * 60 * 1000;
+const AWAITING_REPLY_POLL_TIMEOUT_MS = 3 * 60 * 1000;
+
+// How close to the bottom (in px) the transcript pane has to already be for a new chunk/poll
+// tick to auto-follow it — gives a little slack for sub-pixel/rounding drift so someone who's
+// basically at the bottom still auto-scrolls, without yanking someone genuinely scrolled up
+// (rereading an earlier message) back down mid-generation.
+const NEAR_BOTTOM_THRESHOLD_PX = 120;
 
 // How many pills show under the empty-state composer, and how many of those slots (at
 // most) get pulled from the case's own uploaded documents / the user's consultation
@@ -437,6 +462,11 @@ export default function ConsultationChat({
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Which consultation the auto-scroll effect below last ran for — lets it tell "switched to a
+  // different conversation" (always jump to bottom) apart from "same conversation, new content
+  // arrived" (only follow if already near the bottom).
+  const lastScrolledKeyRef = useRef<string | null>(null);
   // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
   // only reflects it a render later, which is too late for callers within the same
   // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
@@ -446,11 +476,17 @@ export default function ConsultationChat({
   // Dedupes concurrent ensureConsultationId() calls (e.g. an upload racing the send that
   // triggered it) onto a single create-consultation request instead of firing one each.
   const consultationCreationRef = useRef<Promise<string> | null>(null);
+  // Refresh-safe counterpart to pendingTurn/isGeneratingElsewhere below — both of those are
+  // pure in-memory state that a hard reload always clears, so on its own a fresh page load
+  // never re-polls even when the reply is only seconds from landing. Sits alongside them in
+  // pollWhilePending; see the detection effect near `history` below for how it's armed/cleared.
+  const [awaitingReplyForId, setAwaitingReplyForId] = useState<string | null>(null);
+  const awaitingReplyArmedRef = useRef<string | null>(null);
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn || isGeneratingElsewhere,
+    pollWhilePending: !!pendingTurn || isGeneratingElsewhere || awaitingReplyForId === consultationId,
   });
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
@@ -507,6 +543,7 @@ export default function ConsultationChat({
               groupTitle: m.groupTitle,
               decisions: m.decisionRecords?.records,
               reasoning: m.reasoning ?? undefined,
+              researchSteps: m.researchTrace?.steps,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -514,12 +551,18 @@ export default function ConsultationChat({
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
-  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above):
+  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above) —
   // the user's message is already persisted (ChatRepo.createMessage happens before any
   // streaming starts) but its reply isn't yet, so a trailing user message plus the global
-  // "still sending" flag is what a still-in-flight turn looks like from here.
+  // "still sending" flag is what a still-in-flight turn looks like from here — OR a hard
+  // refresh landing in that same gap, which clears isGeneratingElsewhere (in-memory only) but
+  // is exactly what awaitingReplyForId is for: same "might still be generating" situation,
+  // just detected from freshly-fetched data instead of a live flag. Either way, show the
+  // thinking bubble instead of leaving the user's message sitting with no feedback.
   const isResumedGenerating =
-    !isPendingTurnActive && isGeneratingElsewhere && baseMessages[baseMessages.length - 1]?.role === "user";
+    !isPendingTurnActive &&
+    (isGeneratingElsewhere || awaitingReplyForId === consultationId) &&
+    baseMessages[baseMessages.length - 1]?.role === "user";
   const messages = isPendingTurnActive
     ? pendingTurn!.messages
     : isResumedGenerating
@@ -543,6 +586,31 @@ export default function ConsultationChat({
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
     }
   }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
+
+  // Arms/clears awaitingReplyForId (see its declaration above). Re-runs on every history
+  // change, including the extra polls it itself triggers — so as soon as the assistant's
+  // reply actually lands, the very next poll's `isUnanswered` flip clears it immediately
+  // rather than waiting out the rest of the timeout.
+  useEffect(() => {
+    if (!consultationId) return;
+    const nonSystem = (history ?? []).filter((m) => m.role !== "system");
+    const last = nonSystem[nonSystem.length - 1];
+    const isUnanswered = last?.role === "user";
+
+    if (!isUnanswered) {
+      setAwaitingReplyForId((cur) => (cur === consultationId ? null : cur));
+      return;
+    }
+    const isRecent = Date.now() - new Date(last.createdAt).getTime() < AWAITING_REPLY_RECENCY_MS;
+    if (!isRecent || awaitingReplyArmedRef.current === consultationId) return;
+
+    awaitingReplyArmedRef.current = consultationId;
+    setAwaitingReplyForId(consultationId);
+    const timer = setTimeout(() => {
+      setAwaitingReplyForId((cur) => (cur === consultationId ? null : cur));
+    }, AWAITING_REPLY_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [consultationId, history]);
 
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
@@ -684,9 +752,27 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
+  // Opening/switching to a conversation always shows its latest messages (regardless of where
+  // a previous conversation happened to be left scrolled); within the SAME conversation, a new
+  // chunk streaming in or a poll tick landing should only pull the view down if the user was
+  // already following along at the bottom — otherwise it yanks someone rereading an earlier
+  // message back down on every token.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const isNewConversation = lastScrolledKeyRef.current !== consultationKey;
+    lastScrolledKeyRef.current = consultationKey;
+
+    if (isNewConversation) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      return;
+    }
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceFromBottom < NEAR_BOTTOM_THRESHOLD_PX) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, consultationKey]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -1732,7 +1818,7 @@ export default function ConsultationChat({
               )}
 
               {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+              <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
@@ -1803,7 +1889,18 @@ export default function ConsultationChat({
                         m.researchSteps && m.researchSteps.length > 0 ? (
                           <ResearchTraceList steps={m.researchSteps} />
                         ) : (
-                          <ThinkingIndicator label={t("thinking")} />
+                          <div className="flex flex-col gap-1.5">
+                            <ThinkingIndicator label={t("thinking")} />
+                            {/* isResumedGenerating (not isSending) means this tab isn't the one
+                             * actually streaming the reply — a refresh, or switching away and
+                             * back, mid-generation. There's no live [TRACE] channel to show in
+                             * either case (that only ever existed in the original tab's own
+                             * WebSocket connection), so say so instead of just leaving an
+                             * unexplained generic "thinking" bubble sitting there. */}
+                            {isResumedGenerating && (
+                              <p className="text-[11px] text-muted-foreground/70">{t("thinkingTraceUnavailable")}</p>
+                            )}
+                          </div>
                         )
                       ) : (
                         <>
@@ -1824,6 +1921,7 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
+                          <ResearchTracePanel steps={m.researchSteps} />
                           {(showRelatedCases ?? !embedded) && !isBusy && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
