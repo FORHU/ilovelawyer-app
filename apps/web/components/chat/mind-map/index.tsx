@@ -426,7 +426,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
 
   const onConnect = useCallback((params: Connection | Edge) => {
     saveToHistory();
-    setEdges((eds) => addEdge({
+    setEdges((eds: Edge[]) => addEdge({
       ...params,
       animated: true,
       style: { stroke: MIND_MAP_THEME.edgeColor, strokeWidth: 2 },
@@ -440,15 +440,15 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     const newLabel = prompt('Enter new text:', node.data.label);
     if (newLabel !== null) {
       saveToHistory();
-      setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label: newLabel } } : n));
+      setNodes((nds: Node[]) => nds.map((n: Node) => n.id === id ? { ...n, data: { ...n.data, label: newLabel } } : n));
     }
   }, [nodes, setNodes, saveToHistory]);
 
   const handleDeleteNode = useCallback((id: string) => {
     if (id === 'root') return;
     saveToHistory();
-    setNodes((nds) => nds.filter((node) => node.id !== id));
-    setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
+    setNodes((nds: Node[]) => nds.filter((node: Node) => node.id !== id));
+    setEdges((eds: Edge[]) => eds.filter((edge: Edge) => edge.source !== id && edge.target !== id));
   }, [setNodes, setEdges, saveToHistory]);
 
   const handleAddNode = useCallback((parentId: string) => {
@@ -471,8 +471,8 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       style: { stroke: MIND_MAP_THEME.edgeColor, strokeWidth: 2 },
       markerEnd: { type: MarkerType.ArrowClosed, color: MIND_MAP_THEME.edgeColor }
     };
-    setNodes((nds) => nds.concat(newNode));
-    setEdges((eds) => eds.concat(newEdge));
+    setNodes((nds: Node[]) => nds.concat(newNode));
+    setEdges((eds: Edge[]) => eds.concat(newEdge));
     // `handleAddNode` itself is intentionally omitted from the deps below: this is its own
     // initial-mount definition, referenced only inside a closure that fires later (in a click
     // handler), by which point the real value is already assigned.
@@ -554,7 +554,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_, node) => {
+            onNodeClick={(_: React.MouseEvent, node: Node) => {
               setSelectedNodeId(node.id);
               setSelected3DNodeData({
                 label: node.data.label,

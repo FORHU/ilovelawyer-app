@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
-import { CONFIRM_BATCH_SIZE, chunk, mapPoolSettled, putFileToS3, UPLOAD_CONCURRENCY } from "@/lib/cases/upload-batch"
+import {
+  CONFIRM_BATCH_SIZE,
+  chunk,
+  mapPoolSettled,
+  putFileToS3,
+  resolveContentType,
+  UPLOAD_CONCURRENCY,
+} from "@/lib/cases/upload-batch"
 import { terminalKeys } from "@/lib/terminal/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
 
@@ -23,6 +30,8 @@ export interface CaseRecord {
   caseName: string
   parties: Party[]
   notes: string | null
+  /** England and Wales / Scotland / Northern Ireland — UK-tenant-only. */
+  ukJurisdiction?: string | null
   status: CaseStatus
   createdAt: string
   updatedAt: string
@@ -57,6 +66,10 @@ export function useCaseQuery(id: string) {
 export interface CreateCasePayload {
   caseName: string
   partyInvolved?: string
+  /** England and Wales / Scotland / Northern Ireland — UK-tenant-only, see Case.ukJurisdiction
+   * on the backend. Distinct from the free-text court/venue `jurisdiction` field, which this
+   * payload doesn't send yet (see CaseRecord above). */
+  ukJurisdiction?: string
   notes?: string
 }
 
@@ -172,15 +185,16 @@ export function useUploadCaseDocumentMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ file, caseId, consultationId }: { file: File; caseId?: string; consultationId?: string }) => {
+      const contentType = resolveContentType(file)
       const { uploadUrl, key } = await apiFetch<{ uploadUrl: string; key: string }>(
         "/api/documents/presign",
         {
           method: "POST",
-          body: JSON.stringify({ filename: file.name, contentType: file.type, caseId, consultationId }),
+          body: JSON.stringify({ filename: file.name, contentType, caseId, consultationId }),
         },
       )
 
-      await putFileToS3(uploadUrl, file)
+      await putFileToS3(uploadUrl, file, contentType)
 
       // POST /api/documents' confirm schema only accepts key/name/caseId/consultationId — it
       // has no use for contentType (DocumentSvc.create never reads it), and since the backend
@@ -250,6 +264,7 @@ export function useUploadCaseDocumentsMutation() {
       const succeededFiles: File[] = []
 
       for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+        const contentTypes = fileChunk.map(resolveContentType)
         let items: { uploadUrl: string; key: string }[]
         try {
           const res = await apiFetch<{ items: { uploadUrl: string; key: string }[] }>(
@@ -257,7 +272,7 @@ export function useUploadCaseDocumentsMutation() {
             {
               method: "POST",
               body: JSON.stringify({
-                files: fileChunk.map((file) => ({ filename: file.name, contentType: file.type })),
+                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i] })),
                 caseId,
               }),
             },
@@ -272,8 +287,9 @@ export function useUploadCaseDocumentsMutation() {
 
         const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
           const { uploadUrl, key } = items[i]!
-          await putFileToS3(uploadUrl, file)
-          return { file, key }
+          const contentType = contentTypes[i]!
+          await putFileToS3(uploadUrl, file, contentType)
+          return { file, key, contentType }
         })
 
         const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
@@ -286,10 +302,10 @@ export function useUploadCaseDocumentsMutation() {
         if (succeeded.length === 0) continue
 
         try {
-          const documentData: DocumentDataEntry[] = succeeded.map(({ file, key }) => ({
+          const documentData: DocumentDataEntry[] = succeeded.map(({ file, key, contentType }) => ({
             filename: file.name,
             s3Key: key,
-            metaData: { fileSize: file.size, mimeType: file.type, ...(category ? { category } : {}) },
+            metaData: { fileSize: file.size, mimeType: contentType, ...(category ? { category } : {}) },
           }))
 
           const docs = await apiFetch<UserDocument[]>(`/api/my-cases/${caseId}/documents`, {
@@ -340,6 +356,7 @@ export function useUploadDocumentsMutation() {
       const succeededFiles: File[] = []
 
       for (const fileChunk of chunk(files, CONFIRM_BATCH_SIZE)) {
+        const contentTypes = fileChunk.map(resolveContentType)
         let items: { uploadUrl: string; key: string }[]
         try {
           const res = await apiFetch<{ items: { uploadUrl: string; key: string }[] }>(
@@ -347,7 +364,7 @@ export function useUploadDocumentsMutation() {
             {
               method: "POST",
               body: JSON.stringify({
-                files: fileChunk.map((file) => ({ filename: file.name, contentType: file.type })),
+                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i] })),
                 caseId,
                 consultationId,
               }),
@@ -363,7 +380,7 @@ export function useUploadDocumentsMutation() {
 
         const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
           const { uploadUrl, key } = items[i]!
-          await putFileToS3(uploadUrl, file)
+          await putFileToS3(uploadUrl, file, contentTypes[i]!)
           return { file, key }
         })
 

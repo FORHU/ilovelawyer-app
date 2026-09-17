@@ -9,8 +9,8 @@ import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
-import { addMonths, format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, subMonths, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, CalendarOff, ChevronLeft, ChevronRight, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
+import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { AlertCircle, Ban, CalendarOff, Clock, Pencil, RotateCw, StickyNote, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   useAppointmentsQuery,
@@ -834,40 +834,8 @@ export default function CalendarPage() {
           />
 
           <Card className="w-full flex-1 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-0.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-11 text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover hover:text-foreground"
-                        onClick={() => setCurrentMonth((prev) => subMonths(prev, 1))}
-                        aria-label={t("previousMonth")}
-                      >
-                        <ChevronLeft className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("previousMonth")}</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-11 text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover hover:text-foreground"
-                        onClick={() => setCurrentMonth((prev) => addMonths(prev, 1))}
-                        aria-label={t("nextMonth")}
-                      >
-                        <ChevronRight className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("nextMonth")}</TooltipContent>
-                  </Tooltip>
-                </div>
+            <CardHeader className="flex flex-row items-center gap-3 border-b border-border">
+              <div className="flex flex-1 items-center justify-center gap-2">
                 <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
               </div>
 

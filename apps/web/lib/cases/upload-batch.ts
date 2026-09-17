@@ -36,14 +36,37 @@ export async function mapPoolSettled<T, R>(
   return results
 }
 
-/** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL. */
-export async function putFileToS3(uploadUrl: string, file: File): Promise<void> {
+/** Windows browsers in particular often leave File.type blank for .docx/.xlsx (and others). An
+ * empty Content-Type breaks the upload chain — the presign/confirm Joi schemas reject an empty
+ * string, and even where they don't, the browser may substitute its own value on the actual PUT,
+ * which no longer matches what was signed and gets a 403 from S3. Resolve a real value from the
+ * extension once per file and reuse it for the presign request, the S3 PUT header, and the
+ * confirm call's mimeType so all three always agree. */
+const EXTENSION_CONTENT_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+}
+
+export function resolveContentType(file: File): string {
+  if (file.type) return file.type
+  const ext = file.name.split(".").pop()?.toLowerCase()
+  return (ext && EXTENSION_CONTENT_TYPES[ext]) || "application/octet-stream"
+}
+
+/** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL.
+ * `contentType` must be the exact value that was signed at presign time (see resolveContentType) —
+ * S3 rejects a PUT whose Content-Type header doesn't match the signature with a 403. */
+export async function putFileToS3(uploadUrl: string, file: File, contentType: string): Promise<void> {
   let putRes: Response
   try {
     putRes = await fetch(uploadUrl, {
       method: "PUT",
       body: file,
-      headers: { "Content-Type": file.type },
+      headers: { "Content-Type": contentType },
     })
   } catch (err) {
     throw new Error(`Network error uploading to storage: ${err instanceof Error ? err.message : String(err)}`)

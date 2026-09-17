@@ -120,7 +120,7 @@ function TranscriptRow({
               type="button"
               aria-label={t("queue.removeFromQueue")}
               onClick={() => onRemove(transcript.id)}
-              className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 group-hover:opacity-100"
+              className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground opacity-100 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 sm:opacity-0 sm:group-hover:opacity-100"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -269,6 +269,192 @@ function TranscriptRow({
   );
 }
 
+// Mobile-only redesign: same props/behavior as TranscriptRow, presented as a compact
+// accordion row (voice-memo style) instead of an always-expanded card — the row header
+// stays visible, tapping it reveals the Read/Listen tabs and actions below.
+function MobileTranscriptRow({
+  transcript,
+  cases,
+  caseId,
+  onCaseChange,
+  onRemove,
+  onTranscribe,
+}: {
+  transcript: QueuedTranscript;
+  cases: CaseRecord[];
+  caseId: string;
+  onCaseChange: (id: string, caseId: string) => void;
+  onRemove: (id: string) => void;
+  onTranscribe: (transcript: QueuedTranscript) => void;
+}) {
+  const { t } = useTranslation("transcription");
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"read" | "listen">(transcript.text ? "read" : "listen");
+
+  useEffect(() => {
+    const url = URL.createObjectURL(transcript.blob);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [transcript.blob]);
+
+  const isBusy = BUSY_STATUSES.has(transcript.status);
+  const caseOptions = [
+    { value: "", label: t("queue.noCaseOption") },
+    ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+  ];
+  const linkedCaseName = cases.find((c) => c.id === caseId)?.caseName;
+
+  const handleCopy = async () => {
+    if (!transcript.transcript) return;
+    await navigator.clipboard.writeText(transcript.transcript);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card/60 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+          <FileAudio className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13.5px] font-medium text-foreground">{transcript.name}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{transcript.meta}</span>
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${STATUS_STYLES[transcript.status]}`}
+            >
+              {isBusy && <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />}
+              {transcript.status === "failed" && <AlertCircle className="h-2.5 w-2.5" aria-hidden="true" />}
+              {t(`queue.status.${transcript.status}`)}
+            </span>
+          </span>
+        </span>
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label={t("queue.removeFromQueue")}
+          onClick={(e) => { e.stopPropagation(); onRemove(transcript.id); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onRemove(transcript.id);
+            }
+          }}
+          className="shrink-0 cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-3 border-t border-border px-3.5 pb-4 pt-3">
+          <div className="flex items-center gap-1 self-start rounded-lg bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("read")}
+              aria-pressed={activeTab === "read"}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === "read" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+              Read
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("listen")}
+              aria-pressed={activeTab === "listen"}
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === "listen" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              <Headphones className="h-3.5 w-3.5" aria-hidden="true" />
+              Listen
+            </button>
+          </div>
+
+          {activeTab === "read" ? (
+            transcript.status === "completed" ? (
+              <div className="flex flex-col gap-2">
+                <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-muted p-3">
+                  <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground">
+                    {transcript.transcript || t("queue.emptyTranscript")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="inline-flex cursor-pointer items-center gap-1 self-start text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+                  {copied ? t("queue.copied") : t("queue.copyTranscript")}
+                </button>
+              </div>
+            ) : transcript.text ? (
+              <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-muted p-3">
+                <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-foreground">{transcript.text}</p>
+              </div>
+            ) : (
+              <p className="rounded-md border border-dashed border-border bg-muted p-3 text-[12px] leading-relaxed text-muted-foreground">
+                No text transcript available for this file. Live recordings are transcribed automatically as you speak —
+                uploaded audio only supports playback for now.
+              </p>
+            )
+          ) : (
+            audioUrl && <audio controls src={audioUrl} className="h-9 w-full" />
+          )}
+
+          {transcript.status === "failed" && transcript.errorMessage && (
+            <p className="text-[11px] text-red-600">{transcript.errorMessage}</p>
+          )}
+
+          {(transcript.status === "local" || transcript.status === "failed") && (
+            <>
+              <CustomSelect
+                value={caseId}
+                onChange={(v) => onCaseChange(transcript.id, v)}
+                options={caseOptions}
+                placeholder={t("queue.noCaseOption")}
+                className="w-full"
+              />
+              <button
+                type="button"
+                onClick={() => onTranscribe(transcript)}
+                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {transcript.status === "failed" ? (
+                  <>
+                    <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                    {t("queue.retry")}
+                  </>
+                ) : (
+                  t("queue.transcribe")
+                )}
+              </button>
+            </>
+          )}
+
+          {transcript.backendId && !isBusy && (
+            <p className="text-[11px] text-muted-foreground">
+              {linkedCaseName ? t("queue.sentToCase", { caseName: linkedCaseName }) : t("queue.sentNoCase")}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function IlovelawyerTranscriptionDashboard() {
   const { t } = useTranslation("transcription");
   const searchParams = useSearchParams();
@@ -325,8 +511,25 @@ export default function IlovelawyerTranscriptionDashboard() {
   const recordingStartRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Mobile view renders its own upload control alongside the desktop one (only one is ever
+  // visible at a time via `hidden`/`lg:hidden`) — each needs its own <input> to click/ref.
+  const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const finalTranscriptRef = useRef("");
+
+  // Decorative waveform for the mobile record hero — purely visual, not tied to real audio
+  // levels, so it's a plain randomized pulse rather than an AnalyserNode.
+  const [waveLevels, setWaveLevels] = useState<number[]>(() => Array(24).fill(4));
+  useEffect(() => {
+    if (!isRecording) {
+      setWaveLevels(Array(24).fill(4));
+      return;
+    }
+    const id = setInterval(() => {
+      setWaveLevels((prev) => prev.map(() => 4 + Math.random() * 26));
+    }, 140);
+    return () => clearInterval(id);
+  }, [isRecording]);
 
   useEffect(() => {
     return () => {
@@ -432,7 +635,7 @@ export default function IlovelawyerTranscriptionDashboard() {
     e.currentTarget.value = "";
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     setDragActive(false);
     if (e.dataTransfer.files) queueFiles(e.dataTransfer.files);
@@ -440,23 +643,26 @@ export default function IlovelawyerTranscriptionDashboard() {
 
   return (
     <PageShell activeTab="transcription">
-      <main className="max-w-[1440px] mx-auto px-6 md:px-16 pt-16 pb-14 md:pb-16 grid grid-cols-12 gap-8">
+      <main className="max-w-[1440px] mx-auto pt-16 min-w-0 w-full overflow-x-hidden">
+      {/* Desktop / tablet layout — unchanged below, only visible at lg+. Below lg,
+          the CaseTape-style redesign further down takes over instead. */}
+      <div className="hidden lg:grid px-16 pb-16 grid-cols-12 gap-8">
         {/* Banner Section Info */}
         <div className="col-span-12 flex flex-col gap-3 mb-2">
-          <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[36px] leading-tight text-foreground">
+          <h1 className="font-['Libre_Caslon_Text',serif] text-[24px] sm:text-[28px] md:text-[36px] leading-tight text-foreground">
             {t("hero.titlePrefix")} <span className="italic">{t("hero.titleEmphasis")}</span>
           </h1>
           <p className="text-muted-foreground text-[14px] md:text-[15px] max-w-[560px] leading-relaxed">
             {t("hero.subtitle")}
           </p>
-          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <label className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
             {t("linkToCase")}
             <Tooltip>
               <TooltipTrigger asChild>
                 <select
                   value={linkedCaseId}
                   onChange={(e) => setLinkedCaseId(e.target.value)}
-                  className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary"
+                  className="w-full max-w-[220px] rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary sm:w-auto"
                 >
                   <option value="">{t("noCase")}</option>
                   {cases.map((c) => (
@@ -472,9 +678,9 @@ export default function IlovelawyerTranscriptionDashboard() {
         </div>
 
         {/* Primary Functional Panel Columns */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-8">
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-6 md:gap-8">
           {/* Card: Launch live recorder controller */}
-          <div className="bg-brand-navy-900 rounded-xl text-white p-8 md:p-10 relative overflow-hidden flex flex-col justify-between min-h-75">
+          <div className="bg-brand-navy-900 rounded-xl text-white p-6 sm:p-8 md:p-10 relative overflow-hidden flex flex-col justify-between min-h-75">
             <div className="flex flex-col gap-3">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
@@ -542,7 +748,7 @@ export default function IlovelawyerTranscriptionDashboard() {
             onDragOver={(e) => e.preventDefault()}
             onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
             onDrop={handleDrop}
-            className={`bg-card/85 backdrop-blur-[6px] border shadow-sm rounded-xl p-6 md:p-8 flex justify-between items-center gap-4 flex-wrap transition-colors ${
+            className={`bg-card/85 backdrop-blur-[6px] border shadow-sm rounded-xl p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 transition-colors ${
               dragActive ? "border-amber-500 bg-amber-50/40 dark:bg-amber-500/15" : "border-border"
             }`}
           >
@@ -566,7 +772,7 @@ export default function IlovelawyerTranscriptionDashboard() {
                       fileInputRef.current?.click();
                     }
                   }}
-                  className="cursor-pointer rounded-lg bg-primary px-6 py-3 text-[12px] font-semibold uppercase tracking-[1.2px] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-lg bg-primary px-6 py-3 text-center text-[12px] font-semibold uppercase tracking-[1.2px] text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-auto"
                 >
                   {isUploading ? t("uploader.uploading") : t("uploader.selectFiles")}
                   <input
@@ -586,7 +792,7 @@ export default function IlovelawyerTranscriptionDashboard() {
         </div>
 
         {/* Sidebar Status Realtime Queue Display */}
-        <div className="col-span-12 lg:col-span-5 bg-card/85 backdrop-blur-[6px] border border-border rounded-xl p-8 md:p-9 flex flex-col justify-between min-h-[500px]">
+        <div className="col-span-12 lg:col-span-5 bg-card/85 backdrop-blur-[6px] border border-border rounded-xl p-5 sm:p-6 md:p-9 flex flex-col justify-between md:min-h-[500px]">
           <div className="flex flex-col min-h-0">
             <div className="flex justify-between items-center border-b border-border pb-4 mb-6">
               <span className="text-[12px] font-semibold tracking-[1.2px] text-foreground uppercase">{t("queue.activityQueue")}</span>
@@ -596,7 +802,7 @@ export default function IlovelawyerTranscriptionDashboard() {
             </div>
 
             {transcripts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center py-16">
+              <div className="flex flex-col items-center justify-center text-center py-10 sm:py-16">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4 text-muted-foreground">
                   <FileAudio className="h-6 w-6" aria-hidden="true" />
                 </div>
@@ -606,7 +812,7 @@ export default function IlovelawyerTranscriptionDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-3 md:max-h-[380px] md:overflow-y-auto md:pr-1">
                 {transcripts.map((item) => (
                   <TranscriptRow
                     key={item.id}
@@ -635,6 +841,191 @@ export default function IlovelawyerTranscriptionDashboard() {
             <TooltipContent>See every saved transcription, not just this session&rsquo;s queue</TooltipContent>
           </Tooltip>
         </div>
+      </div>
+
+      {/* Mobile layout — CaseTape-style redesign, visible below lg. Leads with the record
+          action as a hero, then a slim upload row, then the queue as a compact accordion list. */}
+      <div className="lg:hidden flex w-full min-w-0 flex-col gap-5 overflow-x-hidden px-4 sm:px-6 pb-10">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[1.5px] text-muted-foreground">{t("hero.titlePrefix")}</p>
+            <h1 className="font-['Libre_Caslon_Text',serif] text-[24px] italic leading-tight text-foreground">
+              {t("hero.titleEmphasis")}
+            </h1>
+          </div>
+          {/* A native <select> can't shrink below its selected option's intrinsic width — in
+              this tight a chip that forced the whole page wider than the viewport (min-width:
+              auto on flex items lets a descendant's min-content override max-w-[150px]).
+              CustomSelect is a real button + listbox, so it truncates and shrinks normally. */}
+          <CustomSelect
+            value={linkedCaseId}
+            onChange={setLinkedCaseId}
+            options={[
+              { value: "", label: t("noCase") },
+              ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+            ]}
+            placeholder={t("noCase")}
+            triggerTooltip="Tag new recordings and uploads to this case"
+            className="min-w-0 max-w-[150px] shrink-0"
+          />
+        </div>
+
+        <p className="-mt-2 text-[13px] leading-relaxed text-muted-foreground">{t("hero.subtitle")}</p>
+
+        {/* Record hero */}
+        <div className="relative flex flex-col items-center gap-4 overflow-hidden rounded-2xl bg-brand-navy-900 px-5 pt-5 pb-6 text-white">
+          <div className="flex w-full items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-['Libre_Caslon_Text',serif] text-[16px]">{t("recorder.startNewRecording")}</p>
+              {!isRecording && !speechSupported && (
+                <p className="mt-0.5 text-[11px] text-white/50">
+                  Live captions aren&apos;t supported here — audio still saves.
+                </p>
+              )}
+            </div>
+            {isRecording && (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-[11px] font-semibold text-red-300">
+                <Radio className="h-3 w-3 animate-pulse" aria-hidden="true" />
+                {formatClock(elapsedSeconds)}
+              </span>
+            )}
+          </div>
+
+          <div className="flex h-9 items-center gap-[3px]" aria-hidden="true">
+            {waveLevels.map((h, i) => (
+              <span key={i} className="w-[3px] rounded-full bg-brand-gold/80 transition-[height] duration-150" style={{ height: `${h}px` }} />
+            ))}
+          </div>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleRecorderClick}
+                aria-pressed={isRecording}
+                className={`flex h-20 w-20 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-900 ${
+                  isRecording ? "border-red-600 bg-red-600" : "border-brand-gold bg-brand-gold"
+                }`}
+              >
+                {isRecording ? (
+                  <Square className="h-7 w-7 fill-current text-white" aria-hidden="true" />
+                ) : (
+                  <Mic className="h-7 w-7 text-brand-navy-900" aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isRecording ? "Stop recording and save the clip" : "Start recording audio from your microphone"}
+            </TooltipContent>
+          </Tooltip>
+
+          <p className="text-[11px] text-white/50">{isRecording ? "Tap to stop" : t("recorder.launchRecorder")}</p>
+
+          {isRecording && (
+            <div className="w-full rounded-lg border border-white/10 bg-white/5 p-3 min-h-[3.5rem]">
+              <span className="mb-1 flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider text-white/50">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" aria-hidden="true" />
+                {speechSupported ? "Live caption" : "Live caption unavailable"}
+              </span>
+              <p className="text-[13px] leading-relaxed text-white/90">
+                {speechSupported
+                  ? liveCaption || "Listening…"
+                  : "This browser can't generate text while recording — audio playback will still be saved."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Upload */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <label
+              tabIndex={isUploading ? undefined : 0}
+              role="button"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  mobileFileInputRef.current?.click();
+                }
+              }}
+              onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+              onDrop={handleDrop}
+              className={`flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-3.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                dragActive ? "border-amber-500 bg-amber-50/40 dark:bg-amber-500/15" : "border-border bg-card/60"
+              }`}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-muted-foreground">
+                <Upload className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-foreground">
+                  {isUploading ? t("uploader.uploading") : t("uploader.title")}
+                </span>
+                <span className="block truncate text-[11px] text-muted-foreground">{t("uploader.hint")}</span>
+              </span>
+              <input
+                ref={mobileFileInputRef}
+                type="file"
+                accept="audio/*"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+              />
+            </label>
+          </TooltipTrigger>
+          <TooltipContent>Choose audio files to upload for transcription</TooltipContent>
+        </Tooltip>
+
+        {/* Queue */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-[1.2px] text-foreground">{t("queue.activityQueue")}</span>
+            <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {transcripts.length > 0 ? t("queue.items", { count: transcripts.length }) : t("queue.live")}
+            </span>
+          </div>
+
+          {transcripts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-10 text-center">
+              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <FileAudio className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <h4 className="font-['Libre_Caslon_Text',serif] text-[16px] text-foreground mb-1">{t("queue.noActiveTranscripts")}</h4>
+              <p className="max-w-[240px] text-[12px] text-muted-foreground">{t("queue.noActiveTranscriptsHint")}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {transcripts.map((item) => (
+                <MobileTranscriptRow
+                  key={item.id}
+                  transcript={item}
+                  cases={cases}
+                  caseId={getRowCaseId(item.id)}
+                  onCaseChange={setRowCaseId}
+                  onRemove={removeTranscript}
+                  onTranscribe={handleTranscribe}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/homepage/transcription/library"
+              className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3.5 text-[12px] font-semibold uppercase tracking-[1px] text-foreground"
+            >
+              <span>{t("queue.viewFullLibrary")}</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>See every saved transcription, not just this session&rsquo;s queue</TooltipContent>
+        </Tooltip>
+      </div>
       </main>
     </PageShell>
   );

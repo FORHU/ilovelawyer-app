@@ -22,6 +22,7 @@ export const phTenantCodeConfig: TenantCodeConfig = {
     caseIntake: {
       caseTitleExample: "Cruz vs. Santos",
       jurisdictionExample: "RTC Branch 12, Makati City",
+      ukJurisdictionOptions: [],
     },
     capabilities: {
       aiChat: "available",
