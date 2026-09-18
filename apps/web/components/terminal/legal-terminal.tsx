@@ -323,7 +323,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       setSelectedWorkspaceId(lastUsed.id)
       return
     }
-    setLayout(applyPreset(fallback, "PANE_4", catalog.data.panels.filter((p) => p.available).map((p) => p.id)))
+    // No saved workspace means the user intentionally has an empty terminal. Keep every pane
+    // hidden so a refresh does not recreate the default preset after the final layout was deleted.
+    lastSavedLayoutRef.current = JSON.stringify(fallback)
+    setLayout(fallback)
   }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
 
   useEffect(() => {
@@ -803,7 +806,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     }
     const availableIds = catalog.data.panels.filter((p) => p.available).map((p) => p.id)
     const layoutJson = applyPreset(fallback, newLayoutPreset, availableIds)
-    createWorkspace.mutate({ caseId, name, preset: newLayoutPreset, layoutJson })
+    createWorkspace.mutate(
+      { caseId, name, preset: newLayoutPreset, layoutJson },
+      {
+        onSuccess: (workspace) => {
+          lastSavedLayoutRef.current = JSON.stringify(layoutJson)
+          setSelectedWorkspaceId(workspace.id)
+          setLayout(layoutJson)
+          applyWorkspace.mutate(workspace.id)
+        },
+      },
+    )
     setNewLayoutName("")
   }
 
@@ -832,15 +845,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
   }
 
-  // Deleting the active tab needs somewhere else to land — falls back to whichever tab is
-  // first in the (now stable, createdAt-ordered) remaining list. Blocked entirely when it's the
-  // only tab left; the terminal always needs at least one layout to show.
+  // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
+  // is allowed and leaves the terminal in an empty state until the user creates a new one.
   const closeWorkspaceTab = (id: string) => {
     const [fallback] = (workspaces.data ?? []).filter((w) => w.id !== id)
-    if (!fallback) return
     deleteWorkspace.mutate(id, {
       onSuccess: () => {
-        if (id === selectedWorkspaceId) selectWorkspace(fallback.id)
+        if (id !== selectedWorkspaceId) return
+        if (fallback) {
+          selectWorkspace(fallback.id)
+          return
+        }
+        setSelectedWorkspaceId("")
+        lastSavedLayoutRef.current = ""
+        setLayout((prev) =>
+          prev
+            ? { ...prev, panels: prev.panels.map((panel) => ({ ...panel, visible: false })) }
+            : prev,
+        )
       },
     })
   }
@@ -954,7 +976,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <div className="flex min-w-0 flex-1 items-stretch gap-5 overflow-x-auto">
             {(workspaces.data ?? []).map((workspace) => {
               const active = workspace.id === selectedWorkspaceId
-              const canClose = (workspaces.data?.length ?? 0) > 1
               return (
                 <span key={workspace.id} className="group/tab flex shrink-0 items-center gap-1">
                   <button
@@ -966,16 +987,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   >
                     {workspace.name}
                   </button>
-                  {canClose && (
-                    <button
-                      type="button"
-                      onClick={() => closeWorkspaceTab(workspace.id)}
-                      aria-label={t("closeLayout")}
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
-                    >
-                      <X className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => closeWorkspaceTab(workspace.id)}
+                    aria-label={t("closeLayout")}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
                 </span>
               )
             })}
@@ -1284,7 +1303,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onClose={() => setNewLayoutOpen(false)}
               labelledBy="new-layout-prompt"
               backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
-              className="w-80 rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+              className="w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
             >
               {(close) => (
                 <>
@@ -1292,20 +1311,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     {t("newLayout")}
                   </p>
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
-                  <div className="mb-3 grid grid-cols-2 gap-1.5">
+                  <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {catalog.data.presets.map((preset) => (
                       <button
                         key={preset}
                         type="button"
                         onClick={() => selectPresetForNewLayout(preset)}
                         aria-pressed={newLayoutPreset === preset}
-                        className={`rounded-md border px-2.5 py-2 text-left text-xs transition-colors ${
+                        className={`rounded-md border p-2 text-left transition-colors ${
                           newLayoutPreset === preset
                             ? "border-brand-gold bg-brand-gold/10 text-foreground"
                             : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                         }`}
                       >
-                        {t(PRESET_LABEL_KEYS[preset])}
+                        <span className="mb-1.5 block text-xs font-medium">{t(PRESET_LABEL_KEYS[preset])}</span>
+                        <PresetLayoutPreview preset={preset} selected={newLayoutPreset === preset} />
                       </button>
                     ))}
                   </div>
@@ -2633,10 +2653,34 @@ function defaultIdsForPreset(preset: PresetValue): PanelId[] {
     case "PANE_2":
       return ["command", "evidence"]
     case "PANE_4":
-      return ["command", "evidence", "chat", "procedure", "mindMap"]
+      return ["command", "evidence", "chat", "procedure"]
     case "PANE_6":
       return ["command", "evidence", "law", "mindMap", "procedure", "chat"]
     default:
       return ["command", "evidence"]
   }
+}
+
+function PresetLayoutPreview({ preset, selected }: { preset: PresetValue; selected: boolean }) {
+  const panelIds = defaultIdsForPreset(preset)
+  const columns = preset === "PANE_1" ? 1 : preset === "PANE_6" ? 3 : 2
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`grid h-20 w-full gap-1 rounded border p-1.5 transition-colors ${
+        selected ? "border-brand-gold/60 bg-brand-navy-950/70" : "border-border/70 bg-muted/60"
+      }`}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {panelIds.map((panelId, index) => (
+        <span
+          key={`${panelId}-${index}`}
+          className={`min-h-0 rounded-sm border ${
+            selected ? "border-brand-gold/35 bg-brand-gold/35" : "border-foreground/10 bg-foreground/15"
+          }`}
+        />
+      ))}
+    </span>
+  )
 }
