@@ -3,11 +3,14 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { ChevronLeft, ExternalLink, FolderPlus, Loader2, Plus } from "lucide-react"
+import { Archive, ChevronLeft, ExternalLink, FolderPlus, Loader2, Plus } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import {
+  useArchivedCaseDocumentsQuery,
+  useArchiveCaseDocumentMutation,
   useCaseDocumentsQuery,
   useDeleteCaseDocumentMutation,
+  useUnarchiveCaseDocumentMutation,
   useUpdateCaseDocumentMutation,
   useUploadCaseDocumentsMutation,
   type UserDocument,
@@ -17,6 +20,8 @@ import { useFileDrop } from "@/hooks/use-file-drop"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
+import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
+import RestoreDocumentModal from "@/components/cases/restore-document-modal"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
 import type { MessageAttachment } from "@/components/chat/message-attachments"
 
@@ -51,7 +56,22 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [newFolderName, setNewFolderName] = useState("")
   const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null)
   const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
+  const [archivingDoc, setArchivingDoc] = useState<UserDocument | null>(null)
+  const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const {
+    data: archivedDocuments,
+    isLoading: isLoadingArchived,
+    isError: isErrorArchived,
+  } = useArchivedCaseDocumentsQuery(caseId, showArchived)
+  const { mutate: archiveDocument, isPending: isArchiving, variables: archivingVars } = useArchiveCaseDocumentMutation()
+  const {
+    mutate: unarchiveDocument,
+    isPending: isUnarchiving,
+    variables: unarchivingVars,
+  } = useUnarchiveCaseDocumentMutation()
 
   const upload = (files: File[], category?: string) => {
     const [supported, unsupported] = [
@@ -100,6 +120,10 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // resolves to a more specific folder card via `data-drop-target` (see useFileDrop).
   const defaultDropTarget = view.kind === "folder" ? view.name : undefined
   const { isDragOver, hoverTarget, dragHandlers } = useFileDrop(upload, defaultDropTarget)
+  // Uploads always land as ACTIVE documents (see useUploadCaseDocumentsMutation) — dropping
+  // files while looking at the Archived list would silently upload into the wrong context, so
+  // drag/drop upload is disabled there.
+  const activeDragHandlers = showArchived ? {} : dragHandlers
 
   const openPreview = (doc: UserDocument) =>
     setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })
@@ -117,29 +141,60 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{view.name}</span>
           </button>
+        ) : showArchived ? (
+          <button
+            type="button"
+            onClick={() => setShowArchived(false)}
+            aria-label={t("detail.backToActiveDocuments")}
+            className="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left text-sm font-semibold text-foreground hover:text-brand-gold"
+          >
+            <ChevronLeft className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{t("detail.viewArchived")}</span>
+          </button>
         ) : (
           <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
             {t("detail.documents")}
           </span>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-1 text-[11px] font-semibold text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-            >
-              {isUploading ? (
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              ) : (
-                <Plus className="h-3 w-3" aria-hidden="true" />
-              )}
-              {isUploading ? t("detail.uploading") : t("detail.addDocument")}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{view.kind === "folder" ? t("detail.dropToUpload") : "Upload one or more documents to this case"}</TooltipContent>
-        </Tooltip>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {view.kind === "root" && !showArchived && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(true)}
+                  aria-pressed={showArchived}
+                  aria-label={t("detail.viewArchived")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Archive className="h-3 w-3" aria-hidden="true" />
+                  {t("detail.viewArchived")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.viewArchived")}</TooltipContent>
+            </Tooltip>
+          )}
+          {!showArchived && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-1 text-[11px] font-semibold text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {isUploading ? t("detail.uploading") : t("detail.addDocument")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{view.kind === "folder" ? t("detail.dropToUpload") : "Upload one or more documents to this case"}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       </div>
       {hasUploadFailures && (
         <Tooltip>
@@ -206,7 +261,38 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   )
 
   let body: React.ReactNode
-  if (isLoading) {
+  if (showArchived) {
+    if (isLoadingArchived) {
+      body = <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>
+    } else if (isErrorArchived && !archivedDocuments) {
+      body = <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>
+    } else if (!archivedDocuments || archivedDocuments.length === 0) {
+      body = (
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-8 text-center">
+          <span className="text-sm text-muted-foreground">{t("detail.noArchivedDocuments")}</span>
+          <span className="text-xs text-muted-foreground">{t("detail.archivedDocumentsHint")}</span>
+        </div>
+      )
+    } else {
+      body = (
+        <div className={gridClass}>
+          {archivedDocuments.map((doc) => (
+            <DocumentFileCard
+              key={doc.id}
+              doc={doc}
+              onPreview={() => openPreview(doc)}
+              onDelete={() => setDeletingDoc(doc)}
+              isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+              onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
+              isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
+              onToggleArchive={() => setRestoringDoc(doc)}
+              isTogglingArchive={isUnarchiving && unarchivingVars?.documentId === doc.id}
+            />
+          ))}
+        </div>
+      )
+    }
+  } else if (isLoading) {
     body = <p className="text-sm text-muted-foreground">{t("detail.loading")}</p>
   } else if (isError && !documents) {
     // Checked after isLoading, and only when there's no cached data at all — while a document is
@@ -233,6 +319,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               isDeleting={isDeleting && deletingVars?.documentId === doc.id}
               onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
               isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
+              onToggleArchive={() => setArchivingDoc(doc)}
+              isTogglingArchive={isArchiving && archivingVars?.documentId === doc.id}
             />
           ))}
         </div>
@@ -279,6 +367,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             isDeleting={isDeleting && deletingVars?.documentId === doc.id}
             onToggleExhibit={(isExhibit) => updateDocument({ documentId: doc.id, caseId, isExhibit })}
             isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
+            onToggleArchive={() => setArchivingDoc(doc)}
+            isTogglingArchive={isArchiving && archivingVars?.documentId === doc.id}
           />
         ))}
         {newFolderCard}
@@ -342,15 +432,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // shows when no specific folder card is being targeted, so it doesn't cover that card's own
   // highlighted state.
   return (
-    <div className="flex flex-col gap-3" {...dragHandlers}>
+    <div className="flex flex-col gap-3" {...activeDragHandlers}>
       {header}
       <div
         className={`relative rounded-xl border transition-colors ${
-          isDragOver ? "border-primary border-dashed bg-primary/5" : "border-transparent"
+          !showArchived && isDragOver ? "border-primary border-dashed bg-primary/5" : "border-transparent"
         }`}
       >
         {body}
-        {isDragOver && !hoverTarget && (
+        {!showArchived && isDragOver && !hoverTarget && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-card/90">
             <span className="text-sm font-semibold text-primary">{t("detail.dropToUpload")}</span>
           </div>
@@ -366,6 +456,30 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             setDeletingDoc(null)
           }}
           onClose={() => setDeletingDoc(null)}
+        />
+      )}
+      {archivingDoc && (
+        <ArchiveDocumentModal
+          key={archivingDoc.id}
+          doc={archivingDoc}
+          isArchiving={isArchiving && archivingVars?.documentId === archivingDoc.id}
+          onConfirm={() => {
+            archiveDocument({ documentId: archivingDoc.id, caseId })
+            setArchivingDoc(null)
+          }}
+          onClose={() => setArchivingDoc(null)}
+        />
+      )}
+      {restoringDoc && (
+        <RestoreDocumentModal
+          key={restoringDoc.id}
+          doc={restoringDoc}
+          isRestoring={isUnarchiving && unarchivingVars?.documentId === restoringDoc.id}
+          onConfirm={() => {
+            unarchiveDocument({ documentId: restoringDoc.id, caseId })
+            setRestoringDoc(null)
+          }}
+          onClose={() => setRestoringDoc(null)}
         />
       )}
     </div>
