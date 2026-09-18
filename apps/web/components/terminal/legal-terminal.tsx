@@ -123,6 +123,24 @@ const RESIZE_KEY_STEP = 0.02
 // What ModalOverlay below treats as a tab stop when trapping focus inside itself.
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
+// Shared by every pointer-drag in this file (pane move/resize, column/stack/tab-split
+// dividers): setPointerCapture alone doesn't stop the browser from starting a native text
+// selection under the initial pointerdown (e.g. a header title), which then keeps extending
+// as the pointer moves and makes the drag look like it's fighting itself. Module-scoped
+// (not per-component) since body.style is global and only one drag runs at a time. Mirrors
+// use-resizable-width.ts's cursor/selection lock.
+let prevBodyUserSelect: string | null = null
+function lockSelection() {
+  if (prevBodyUserSelect !== null) return
+  prevBodyUserSelect = document.body.style.userSelect
+  document.body.style.userSelect = "none"
+}
+function unlockSelection() {
+  if (prevBodyUserSelect === null) return
+  document.body.style.userSelect = prevBodyUserSelect
+  prevBodyUserSelect = null
+}
+
 // Local z-index scale for this file's own stacking context (the terminal-grid stage and its
 // overlays) — deliberately ordered, not arbitrary. Below `z-10`: nothing, panes sit in normal
 // flow order. Kept as plain Tailwind literals (z-10/z-20/z-30/z-[90]/z-[95] below, plus the
@@ -530,6 +548,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     event.preventDefault()
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
+    lockSelection()
     const rect = panelRect(panel)
     bringToFront(panel.id)
     resizeRef.current = { panelId: panel.id, edges, startX: event.clientX, startY: event.clientY, ...rect }
@@ -545,6 +564,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     }
     cancelFrame()
     resizeRef.current = null
+    unlockSelection()
   }
 
   const onResizePointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -593,6 +613,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
+    lockSelection()
     bringToFront(panel.id)
     moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
     const el = document.querySelector<HTMLElement>(`[data-panel-id="${panel.id}"]`)
@@ -612,6 +633,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     cancelFrame()
     moveRef.current = null
     setDraggingId(null)
+    unlockSelection()
   }
 
   const onHeaderPointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -1661,6 +1683,7 @@ function ColumnsArrangement({
   const onColumnResizeDown = (index: number, e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
+    lockSelection()
     columnDragRef.current = { index, startX: e.clientX, widths: [...widths] }
   }
   const onColumnResizeMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -1672,7 +1695,7 @@ function ColumnsArrangement({
     // pointermove over the divider would keep resizing with no button held. See the matching
     // comment on Free mode's onResizePointerMove for the fuller explanation.
     if ((e.buttons & 1) === 0) {
-      columnDragRef.current = null
+      onColumnResizeUp()
       return
     }
     const dx = (e.clientX - drag.startX) / grid.clientWidth
@@ -1687,6 +1710,7 @@ function ColumnsArrangement({
   }
   const onColumnResizeUp = () => {
     columnDragRef.current = null
+    unlockSelection()
   }
 
   const onColumnResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
@@ -1780,6 +1804,7 @@ function ColumnStack({
   const onStackResizeDown = (index: number, e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
+    lockSelection()
     stackDragRef.current = {
       aboveId: panels[index]!.id,
       belowId: panels[index + 1]!.id,
@@ -1793,7 +1818,7 @@ function ColumnStack({
     const stack = stackRef.current
     if (!drag || !stack || stack.clientHeight === 0) return
     if ((e.buttons & 1) === 0) {
-      stackDragRef.current = null
+      onStackResizeUp()
       return
     }
     const dy = (e.clientY - drag.startY) / stack.clientHeight
@@ -1804,6 +1829,7 @@ function ColumnStack({
   }
   const onStackResizeUp = () => {
     stackDragRef.current = null
+    unlockSelection()
   }
 
   const onStackResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
@@ -1905,6 +1931,7 @@ function TabsArrangement({
   const onSplitDown = (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
+    lockSelection()
     splitDragRef.current = { startX: e.clientX, split }
   }
   const onSplitMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -1912,7 +1939,7 @@ function TabsArrangement({
     const container = groupsRef.current
     if (!drag || !container || container.clientWidth === 0) return
     if ((e.buttons & 1) === 0) {
-      splitDragRef.current = null
+      onSplitUp()
       return
     }
     const dx = (e.clientX - drag.startX) / container.clientWidth
@@ -1920,6 +1947,7 @@ function TabsArrangement({
   }
   const onSplitUp = () => {
     splitDragRef.current = null
+    unlockSelection()
   }
 
   const onSplitKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
