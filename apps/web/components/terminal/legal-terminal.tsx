@@ -14,7 +14,6 @@ import {
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import gsap from "gsap"
-import { Flip } from "gsap/Flip"
 import { useGSAP } from "@gsap/react"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
@@ -61,6 +60,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
+import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -189,6 +189,7 @@ type MoveDrag = PaneRect & {
   lastDx?: number
   lastDy?: number
 }
+type PaneDragPreview = PaneRect & { panelId: PanelId }
 
 function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
   if (!value || typeof value !== "object") return fallback
@@ -237,6 +238,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
+  const [dragPreview, setDragPreview] = useState<PaneDragPreview | null>(null)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
   // A maximized pane covers the whole stage on top of whatever arrangement is active; its
@@ -365,8 +367,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
   const arrangementStageRef = useRef<HTMLDivElement>(null)
-  const pendingArrangementFlipRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
-  const reducedMotionForArrangement = usePrefersReducedMotion()
+  const paneAnimations = useTerminalPaneAnimations({ stageRef: arrangementStageRef, layoutKey: layout })
 
   // Free/Columns/Tabs/Focus are 4 structurally different layout engines (absolute canvas vs.
   // flex columns vs. a 2-group tab strip vs. a big-pane-plus-rail grid) — switching between them
@@ -378,22 +379,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Panels with no rendered box in one of the two modes (e.g. every Tabs tab that isn't the
   // active one) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
   const setArrangement = (next: ArrangementValue) => {
-    const stage = arrangementStageRef.current
-    if (stage && !reducedMotionForArrangement) {
-      pendingArrangementFlipRef.current = Flip.getState(stage.querySelectorAll<HTMLElement>("[data-flip-id]"))
-    }
+    paneAnimations.capturePaneState()
     setLayout((prev) => (prev ? { ...prev, arrangement: next } : prev))
   }
-
-  useGSAP(
-    () => {
-      const state = pendingArrangementFlipRef.current
-      if (!state) return
-      pendingArrangementFlipRef.current = null
-      Flip.from(state, { duration: 0.35, ease: "power2.inOut", absolute: true, nested: true })
-    },
-    { dependencies: [arrangement] },
-  )
 
   const visiblePanels = useMemo(() => {
     if (!layout) return []
@@ -456,6 +444,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}
 
   const hidePanel = (id: PanelId) => {
+    paneAnimations.animatePaneOut(id, panelLibraryRect(id))
+    paneAnimations.capturePaneState()
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => {
       if (!prev) return prev
@@ -468,10 +458,27 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     bringToFront(id)
   }
 
+  const panelLibraryRect = (id: PanelId) =>
+    document.querySelector<HTMLElement>(`[data-panel-library-id="${CSS.escape(id)}"]`)?.getBoundingClientRect() ?? null
+
+  const dragPreviewRect = (id: PanelId) => {
+    if (dragPreview?.panelId !== id || !arrangementStageRef.current) return null
+    const bounds = arrangementStageRef.current.getBoundingClientRect()
+    return new DOMRect(
+      bounds.left + dragPreview.x * bounds.width,
+      bounds.top + dragPreview.y * bounds.height,
+      dragPreview.width * bounds.width,
+      dragPreview.height * bounds.height,
+    )
+  }
+
   // `extra` is the Free canvas's drop rect, or a Columns-mode columnIndex; omitted for the Panel
   // Library's plain click fallback, which keeps today's cascade placement (harmless in modes
   // that don't use x/y/width/height).
-  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>) => {
+  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>, sourceRect?: DOMRect | null) => {
+    paneAnimations.capturePaneState()
+    paneAnimations.queuePaneEntry(id, sourceRect ?? dragPreviewRect(id) ?? panelLibraryRect(id))
+    setDragPreview(null)
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
@@ -513,6 +520,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       return
     }
     showPanelAt(id, { columnIndex: leastFullColumn(columns) })
+  }
+
+  const beginPanelDrag = (id: PanelId) => {
+    setDragPreview({ panelId: id, x: 0.34, y: 0.28, width: 0.32, height: 0.32 })
+  }
+
+  const updateDragPreview = (event: DragEvent) => {
+    const id = event.dataTransfer.getData("text/x-panel-id") as PanelId
+    const bounds = arrangementStageRef.current?.getBoundingClientRect()
+    if (!id || !bounds) return
+    const width = 0.32
+    const height = 0.32
+    const x = clamp(snapValue(clamp((event.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
+    const y = clamp(snapValue(clamp((event.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
+    setDragPreview({ panelId: id, x, y, width, height })
   }
 
   const replacePaneInColumns = (oldId: PanelId, newId: PanelId) => {
@@ -663,9 +685,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
+    event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     lockSelection()
-    bringToFront(panel.id)
+    // Reordering here can replace the captured header DOM node and stop the drag before it
+    // reaches the canvas edge. The active pane is raised by its drag z-index and promoted on up.
     moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
     const el = document.querySelector<HTMLElement>(`[data-panel-id="${panel.id}"]`)
     if (el) el.style.willChange = "transform"
@@ -676,11 +700,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const endHeaderMove = () => {
     const move = moveRef.current
     if (move?.armed && move.lastDx !== undefined && move.lastDy !== undefined) {
-      const x = clamp(snapValue(clamp(move.x + move.lastDx, 0, 1 - move.width), GRID_SNAP_STEP), 0, 1 - move.width)
-      const y = clamp(snapValue(clamp(move.y + move.lastDy, 0, 1 - move.height), GRID_SNAP_STEP), 0, 1 - move.height)
+      const x = snapPosition(move.x + move.lastDx, 1 - move.width, GRID_SNAP_STEP)
+      const y = snapPosition(move.y + move.lastDy, 1 - move.height, GRID_SNAP_STEP)
       patchPanelRect(move.panelId, { x, y, width: move.width, height: move.height })
     }
     if (move) clearLiveMoveTransform(move.panelId)
+    if (move?.armed) bringToFront(move.panelId)
     cancelFrame()
     moveRef.current = null
     setDraggingId(null)
@@ -736,10 +761,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const onHeaderKeyDown = (panel: PanelLayout, event: KeyboardEvent<HTMLDivElement>) => {
     const rect = panelRect(panel)
     let { x, y } = rect
-    if (event.key === "ArrowLeft") x = clamp(x - GRID_SNAP_STEP, 0, 1 - rect.width)
-    else if (event.key === "ArrowRight") x = clamp(x + GRID_SNAP_STEP, 0, 1 - rect.width)
-    else if (event.key === "ArrowUp") y = clamp(y - GRID_SNAP_STEP, 0, 1 - rect.height)
-    else if (event.key === "ArrowDown") y = clamp(y + GRID_SNAP_STEP, 0, 1 - rect.height)
+    if (event.key === "ArrowLeft") x = snapPosition(x - GRID_SNAP_STEP, 1 - rect.width, GRID_SNAP_STEP)
+    else if (event.key === "ArrowRight") x = snapPosition(x + GRID_SNAP_STEP, 1 - rect.width, GRID_SNAP_STEP)
+    else if (event.key === "ArrowUp") y = snapPosition(y - GRID_SNAP_STEP, 1 - rect.height, GRID_SNAP_STEP)
+    else if (event.key === "ArrowDown") y = snapPosition(y + GRID_SNAP_STEP, 1 - rect.height, GRID_SNAP_STEP)
     else return
     event.preventDefault()
     patchPanelRect(panel.id, { ...rect, x, y })
@@ -768,6 +793,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const selectWorkspace = async (id: string) => {
     await flushPendingSave()
+    paneAnimations.capturePaneState()
     setSelectedWorkspaceId(id)
     setMaximizedId(null)
     const workspace = workspaces.data?.find((w) => w.id === id)
@@ -1118,6 +1144,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           visiblePanelIds={visiblePanels.map((p) => p.id)}
           panelBadges={panelBadges}
           onAddPanel={requestAddPanel}
+          onPanelDragStart={beginPanelDrag}
+          onPanelDragEnd={() => setDragPreview(null)}
         />
         <div
           className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding-left] duration-200 lg:pl-16 ${
@@ -1132,7 +1160,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
         <div ref={arrangementStageRef} className="relative min-h-0 flex-1 overflow-hidden p-3">
           {visiblePanels.length === 0 && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
               <div className="flex w-full max-w-md flex-col items-center rounded-xl border border-dashed border-border/80 bg-card/70 px-6 py-10 shadow-sm">
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold">
                   <LayoutPanelLeft className="h-5 w-5" aria-hidden="true" />
@@ -1142,7 +1170,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 <button
                   type="button"
                   onClick={openNewLayoutDialog}
-                  className="mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                  className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                   {t("addNewLayout")}
@@ -1150,12 +1178,29 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               </div>
             </div>
           )}
+          {arrangement !== "free" && dragPreview && (
+            <PaneDragGhost
+              label={labelFor({ id: dragPreview.panelId })}
+              badge={panelBadges[dragPreview.panelId]}
+              rect={dragPreview}
+            />
+          )}
 
           {arrangement === "free" && (
             <div
               id="terminal-grid"
               className="terminal-grid-texture relative h-full min-h-0"
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => {
+                e.preventDefault()
+                const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
+                if (!id) return
+                const bounds = e.currentTarget.getBoundingClientRect()
+                const width = 0.32
+                const height = 0.32
+                const x = clamp(snapValue(clamp((e.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
+                const y = clamp(snapValue(clamp((e.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
+                setDragPreview({ panelId: id, x, y, width, height })
+              }}
               onDrop={(e) => {
                 e.preventDefault()
                 const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
@@ -1165,9 +1210,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 const height = 0.32
                 const x = clamp(snapValue(clamp((e.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
                 const y = clamp(snapValue(clamp((e.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
-                showPanelAt(id, { x, y, width, height })
+                const preview = dragPreview?.panelId === id ? dragPreview : { x, y, width, height }
+                const sourceRect = new DOMRect(
+                  bounds.left + preview.x * bounds.width,
+                  bounds.top + preview.y * bounds.height,
+                  preview.width * bounds.width,
+                  preview.height * bounds.height,
+                )
+                showPanelAt(id, { x, y, width, height }, sourceRect)
+                setDragPreview(null)
               }}
             >
+              {dragPreview && (
+                <PaneDragGhost
+                  label={labelFor({ id: dragPreview.panelId })}
+                  badge={panelBadges[dragPreview.panelId]}
+                  rect={dragPreview}
+                />
+              )}
               {visiblePanels.map((panel) => {
                 const rect = panelRect(panel)
                 const label = labelFor(panel)
@@ -1268,6 +1328,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={requestAddPanel}
+              onDragPreview={updateDragPreview}
             />
           )}
 
@@ -1290,6 +1351,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
+              onDragPreview={updateDragPreview}
             />
           )}
 
@@ -1309,6 +1371,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
+              onDragPreview={updateDragPreview}
             />
           )}
 
@@ -1681,6 +1744,21 @@ function ModalOverlay({
       return
     }
     if (backdropRef.current) gsap.to(backdropRef.current, { opacity: 0, duration: 0.15 })
+    const origin = originRect()
+    if (origin) {
+      const target = el.getBoundingClientRect()
+      gsap.to(el, {
+        opacity: 0,
+        scaleX: origin.width / target.width,
+        scaleY: origin.height / target.height,
+        x: origin.left + origin.width / 2 - (target.left + target.width / 2),
+        y: origin.top + origin.height / 2 - (target.top + target.height / 2),
+        duration: 0.22,
+        ease: "power2.in",
+        onComplete: onClose,
+      })
+      return
+    }
     gsap.to(el, { opacity: 0, scale: 0.97, duration: 0.14, ease: "power1.in", onComplete: onClose })
   }
 
@@ -1800,11 +1878,15 @@ type ArrangementBodyProps = {
   onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
+  onDragPreview?: (event: DragEvent) => void
 }
 
-function dropHandlers(onDrop: (id: PanelId) => void) {
+function dropHandlers(onDrop: (id: PanelId) => void, onDragPreview?: (event: DragEvent) => void) {
   return {
-    onDragOver: (e: DragEvent) => e.preventDefault(),
+    onDragOver: (e: DragEvent) => {
+      e.preventDefault()
+      onDragPreview?.(e)
+    },
     onDrop: (e: DragEvent) => {
       e.preventDefault()
       const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
@@ -1833,6 +1915,7 @@ function ColumnsArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   columnCount: number
   columnWidths: number[]
@@ -1894,7 +1977,7 @@ function ColumnsArrangement({
   }
 
   return (
-    <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop)}>
+    <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop, onDragPreview)}>
       {columns.map((columnPanels, columnIndex) => (
         <div key={columnIndex} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${widths[columnIndex]} 0 0%` }}>
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
@@ -2076,6 +2159,7 @@ function TabsArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   activeA: PanelId | null
   activeB: PanelId | null
@@ -2154,7 +2238,10 @@ function TabsArrangement({
             data-flip-id={activePanel?.id}
             className="relative flex min-h-0 min-w-[200px] flex-col overflow-hidden rounded-lg border border-border bg-card"
             style={{ flex: `${widths[groupIndex]} 0 0%` }}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              onDragPreview?.(e)
+            }}
             onDrop={(e) => onGroupDrop(groupIndex, e)}
           >
             <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
@@ -2274,6 +2361,7 @@ function FocusArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   stackSummaries: Partial<Record<PanelId, string>>
   panelBadges: Partial<Record<PanelId, string>>
@@ -2289,7 +2377,7 @@ function FocusArrangement({
     <div
       className="grid h-full min-h-0 gap-3"
       style={{ gridTemplateColumns: "minmax(280px,1.4fr) 260px minmax(260px,1fr)" }}
-      {...dropHandlers(onDrop)}
+      {...dropHandlers(onDrop, onDragPreview)}
     >
       <div data-flip-id={focusPanel?.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
         {focusPanel && (
@@ -2396,6 +2484,12 @@ function panelRect(panel: PanelLayout): PaneRect {
 
 function snapValue(value: number, step: number): number {
   return Math.round(value / step) * step
+}
+
+function snapPosition(value: number, max: number, step: number): number {
+  const clamped = clamp(value, 0, max)
+  const snapped = snapValue(clamped, step)
+  return Math.abs(max - snapped) < step / 2 ? max : clamp(snapped, 0, max)
 }
 
 function clampResize(drag: ResizeDrag, dx: number, dy: number, snap: boolean): PaneRect {
@@ -2609,6 +2703,41 @@ function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, opts?: 
   }
 
   return summaries
+}
+
+function PaneDragGhost({
+  label,
+  badge,
+  rect,
+}: {
+  label: string
+  badge?: string
+  rect: PaneDragPreview
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute z-40 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-brand-gold/70 bg-card/85 shadow-xl backdrop-blur-sm"
+      style={{
+        left: `${rect.x * 100}%`,
+        top: `${rect.y * 100}%`,
+        width: `${rect.width * 100}%`,
+        height: `${rect.height * 100}%`,
+      }}
+    >
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-brand-gold/30 bg-brand-gold/10 px-3">
+        <Grip className="h-3 w-3 text-brand-gold" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-[1.2px] text-foreground">{label}</span>
+        {badge && <span className="text-[9px] text-brand-gold">{badge}</span>}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 opacity-70">
+        <span className="h-2 w-3/4 rounded-full bg-foreground/20" />
+        <span className="h-2 w-full rounded-full bg-foreground/10" />
+        <span className="h-2 w-5/6 rounded-full bg-foreground/10" />
+        <span className="mt-2 h-8 w-full rounded border border-foreground/10 bg-foreground/5" />
+      </div>
+    </div>
+  )
 }
 
 function ResizeHandle({
