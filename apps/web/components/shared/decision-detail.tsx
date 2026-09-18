@@ -151,36 +151,49 @@ function AlternativeItem({ alternative, rejectedWhyLabel }: { alternative: Decis
 export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload }) {
   const { t } = useTranslation("terminal")
 
+  // `payload` is chat-wonder's own JSON, stored verbatim with no runtime validation (see the
+  // doc comment above) — the type above is a compile-time contract only. An off-spec generation
+  // (e.g. `rule` coming back as a plain string instead of DecisionRule[]) must not crash this
+  // whole drawer over one malformed field, so every array field is normalized before use rather
+  // than trusted as-is. A field that isn't actually an array is treated as empty — not coerced
+  // into a guessed shape, since fabricating e.g. a `verified` flag this app never audited would
+  // violate the very anti-fabrication stance this component documents.
+  const rules = Array.isArray(payload.rule) ? payload.rule : []
+  const evidenceFor = Array.isArray(payload.evidenceFor) ? payload.evidenceFor : []
+  const evidenceAgainst = Array.isArray(payload.evidenceAgainst) ? payload.evidenceAgainst : []
+  const alternatives = Array.isArray(payload.alternatives) ? payload.alternatives : []
+  const wouldChangeIf = Array.isArray(payload.wouldChangeIf) ? payload.wouldChangeIf : []
+
   return (
     <>
-      {payload.rule.length > 0 && (
+      {rules.length > 0 && (
         <div>
           <Label>{t("decisionRuleApplied")}</Label>
           <ul className="space-y-1">
-            {payload.rule.map((rule, i) => (
+            {rules.map((rule, i) => (
               <RuleItem key={i} rule={rule} />
             ))}
           </ul>
         </div>
       )}
 
-      {(payload.evidenceFor.length > 0 || payload.evidenceAgainst.length > 0) && (
+      {(evidenceFor.length > 0 || evidenceAgainst.length > 0) && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {payload.evidenceFor.length > 0 && (
+          {evidenceFor.length > 0 && (
             <div>
               <Label>{t("decisionEvidenceFor")}</Label>
               <ul className="space-y-1.5">
-                {payload.evidenceFor.map((ev, i) => (
+                {evidenceFor.map((ev, i) => (
                   <EvidenceItem key={i} evidence={ev} />
                 ))}
               </ul>
             </div>
           )}
-          {payload.evidenceAgainst.length > 0 && (
+          {evidenceAgainst.length > 0 && (
             <div>
               <Label>{t("decisionEvidenceAgainst")}</Label>
               <ul className="space-y-1.5">
-                {payload.evidenceAgainst.map((ev, i) => (
+                {evidenceAgainst.map((ev, i) => (
                   <EvidenceItem key={i} evidence={ev} />
                 ))}
               </ul>
@@ -189,11 +202,11 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
         </div>
       )}
 
-      {payload.alternatives.length > 0 && (
+      {alternatives.length > 0 && (
         <div>
           <Label>{t("decisionAlternativeConsidered")}</Label>
           <ul className="space-y-1">
-            {payload.alternatives.map((alt, i) => (
+            {alternatives.map((alt, i) => (
               <AlternativeItem key={i} alternative={alt} rejectedWhyLabel={t("decisionRejectedWhy")} />
             ))}
           </ul>
@@ -207,12 +220,12 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
         </p>
       )}
 
-      {payload.wouldChangeIf.length > 0 && (
+      {wouldChangeIf.length > 0 && (
         <p className="flex items-start gap-1.5 text-[12px] leading-4 text-muted-foreground">
           <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
           <span>
             <span className="font-semibold text-foreground">{t("decisionWouldChangeIf")}: </span>
-            {payload.wouldChangeIf.join("; ")}
+            {wouldChangeIf.join("; ")}
           </span>
         </p>
       )}

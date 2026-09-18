@@ -1,7 +1,10 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { FileText } from "lucide-react"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
@@ -73,6 +76,26 @@ function RiskMeter({
     })
     .filter(Boolean)
     .join(" · ")
+
+  const barRef = useRef<HTMLDivElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  const mountedRef = useRef(false)
+  // Tweens the bar to its new width on a score change instead of snapping — skipped on first
+  // mount (nothing to animate from) and under reduced motion.
+  useGSAP(
+    () => {
+      const bar = barRef.current
+      if (!bar) return
+      if (!mountedRef.current || reducedMotion) {
+        mountedRef.current = true
+        bar.style.width = `${width}%`
+        return
+      }
+      gsap.to(bar, { width: `${width}%`, duration: 0.35, ease: "power2.out" })
+    },
+    { dependencies: [width, reducedMotion] },
+  )
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -84,10 +107,7 @@ function RiskMeter({
         </Badge>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className={`h-full rounded-full ${barColor}`}
-          style={{ width: `${width}%` }}
-        />
+        <div ref={barRef} className={`h-full rounded-full ${barColor}`} />
       </div>
       {driverText ? (
         <p className="text-[11px] leading-4 text-muted-foreground">
