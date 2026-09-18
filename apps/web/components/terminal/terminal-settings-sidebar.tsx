@@ -23,6 +23,8 @@ interface TerminalSettingsSidebarProps {
   // computePanelBadges in legal-terminal.tsx). Absent entries render no badge.
   panelBadges: Partial<Record<PanelId, string>>
   onAddPanel: (id: PanelId) => void
+  onPanelDragStart?: (id: PanelId) => void
+  onPanelDragEnd?: () => void
 }
 
 export default function TerminalSettingsSidebar({
@@ -34,6 +36,8 @@ export default function TerminalSettingsSidebar({
   visiblePanelIds,
   panelBadges,
   onAddPanel,
+  onPanelDragStart,
+  onPanelDragEnd,
 }: TerminalSettingsSidebarProps) {
   const { t } = useTranslation("terminal")
   const [query, setQuery] = useState("")
@@ -110,8 +114,13 @@ export default function TerminalSettingsSidebar({
                     <li key={panel.id}>
                       <button
                         type="button"
+                        data-panel-library-id={panel.id}
                         draggable={!onScreen}
-                        onDragStart={(e) => e.dataTransfer.setData("text/x-panel-id", panel.id)}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/x-panel-id", panel.id)
+                          onPanelDragStart?.(panel.id)
+                        }}
+                        onDragEnd={onPanelDragEnd}
                         onClick={() => {
                           if (onScreen) return
                           onAddPanel(panel.id)

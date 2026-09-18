@@ -14,7 +14,6 @@ import {
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import gsap from "gsap"
-import { Flip } from "gsap/Flip"
 import { useGSAP } from "@gsap/react"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
@@ -61,6 +60,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
+import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -101,6 +101,15 @@ const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }
   { id: "tabs", labelKey: "arrangementTabs", icon: PanelTop },
   { id: "focus", labelKey: "arrangementFocus", icon: LayoutPanelLeft },
 ]
+
+// Drives the New Layout dialog's preset picker — labels already exist in every locale (see
+// terminal.json's preset1/preset2/preset4/preset6), just never rendered anywhere until now.
+const PRESET_LABEL_KEYS: Record<PresetValue, string> = {
+  PANE_1: "preset1",
+  PANE_2: "preset2",
+  PANE_4: "preset4",
+  PANE_6: "preset6",
+}
 
 const COLUMN_COUNT_OPTIONS = [2, 3, 4]
 // How many panes a single column can stack before it's "full" and adding another pane
@@ -180,6 +189,7 @@ type MoveDrag = PaneRect & {
   lastDx?: number
   lastDy?: number
 }
+type PaneDragPreview = PaneRect & { panelId: PanelId }
 
 function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
   if (!value || typeof value !== "object") return fallback
@@ -216,7 +226,7 @@ function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): Wor
 export default function LegalTerminal({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const catalog = useTerminalCatalogQuery()
-  const workspaces = useTerminalWorkspacesQuery()
+  const workspaces = useTerminalWorkspacesQuery(caseId)
   const snapshot = useCaseSnapshotQuery(caseId)
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
@@ -228,6 +238,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
+  const [dragPreview, setDragPreview] = useState<PaneDragPreview | null>(null)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("")
   const [draggingId, setDraggingId] = useState<PanelId | null>(null)
   // A maximized pane covers the whole stage on top of whatever arrangement is active; its
@@ -246,7 +257,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Set while Columns mode is full and the user just tried to add this pane — opens the
   // "replace which pane?" picker. Null the rest of the time.
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
-  const [creatingLayout, setCreatingLayout] = useState(false)
+  const [newLayoutOpen, setNewLayoutOpen] = useState(false)
+  const [newLayoutPreset, setNewLayoutPreset] = useState<PresetValue>("PANE_4")
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
@@ -271,6 +283,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // while dragging, which looked worse than the reflow cost it was meant to avoid — contain-layout
   // on the pane (see its className) keeps that reflow scoped and affordable instead.
   const liveStyleRafRef = useRef<number | null>(null)
+  const lastSavedLayoutRef = useRef("")
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<{ workspaceId: string; layoutJson: WorkspaceLayout } | null>(null)
+  const inFlightSaveRef = useRef<Promise<unknown> | null>(null)
   // Tracks pop-out windows this tab opened, so the polling effect below can flip a pane back to
   // visible the moment its popup closes. A ref, not state — nothing here needs to re-render.
   const popupWindowsRef = useRef<Map<PanelId, Window>>(new Map())
@@ -303,19 +319,55 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     if (lastUsed) {
-      setLayout(
-        hydrateFreeform(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id))),
-      )
+      const hydrated = hydrateFreeform(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id)))
+      lastSavedLayoutRef.current = JSON.stringify(hydrated)
+      setLayout(hydrated)
       setSelectedWorkspaceId(lastUsed.id)
       return
     }
-    setLayout(applyPreset(fallback, "PANE_4", catalog.data.panels.filter((p) => p.available).map((p) => p.id)))
+    // No saved workspace means the user intentionally has an empty terminal. Keep every pane
+    // hidden so a refresh does not recreate the default preset after the final layout was deleted.
+    lastSavedLayoutRef.current = JSON.stringify(fallback)
+    setLayout(fallback)
   }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
+
+  useEffect(() => {
+    if (!layout || !selectedWorkspaceId) return
+    const serialized = JSON.stringify(layout)
+    if (serialized === lastSavedLayoutRef.current) return
+
+    pendingSaveRef.current = { workspaceId: selectedWorkspaceId, layoutJson: layout }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null
+      const pending = pendingSaveRef.current
+      pendingSaveRef.current = null
+      if (!pending) return
+      const save = updateWorkspace.mutateAsync({
+        id: pending.workspaceId,
+        preset: pending.layoutJson.preset,
+        layoutJson: pending.layoutJson,
+      })
+      inFlightSaveRef.current = save
+      save.then(() => {
+        if (lastSavedLayoutRef.current === JSON.stringify(pending.layoutJson)) return
+        lastSavedLayoutRef.current = JSON.stringify(pending.layoutJson)
+      }).finally(() => {
+        if (inFlightSaveRef.current === save) inFlightSaveRef.current = null
+      })
+    }, 1200)
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [layout, selectedWorkspaceId, updateWorkspace])
 
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
   const arrangementStageRef = useRef<HTMLDivElement>(null)
-  const pendingArrangementFlipRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
-  const reducedMotionForArrangement = usePrefersReducedMotion()
+  const paneAnimations = useTerminalPaneAnimations({ stageRef: arrangementStageRef, layoutKey: layout })
 
   // Free/Columns/Tabs/Focus are 4 structurally different layout engines (absolute canvas vs.
   // flex columns vs. a 2-group tab strip vs. a big-pane-plus-rail grid) — switching between them
@@ -327,22 +379,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Panels with no rendered box in one of the two modes (e.g. every Tabs tab that isn't the
   // active one) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
   const setArrangement = (next: ArrangementValue) => {
-    const stage = arrangementStageRef.current
-    if (stage && !reducedMotionForArrangement) {
-      pendingArrangementFlipRef.current = Flip.getState(stage.querySelectorAll<HTMLElement>("[data-flip-id]"))
-    }
+    paneAnimations.capturePaneState()
     setLayout((prev) => (prev ? { ...prev, arrangement: next } : prev))
   }
-
-  useGSAP(
-    () => {
-      const state = pendingArrangementFlipRef.current
-      if (!state) return
-      pendingArrangementFlipRef.current = null
-      Flip.from(state, { duration: 0.35, ease: "power2.inOut", absolute: true, nested: true })
-    },
-    { dependencies: [arrangement] },
-  )
 
   const visiblePanels = useMemo(() => {
     if (!layout) return []
@@ -405,6 +444,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}
 
   const hidePanel = (id: PanelId) => {
+    paneAnimations.animatePaneOut(id, panelLibraryRect(id))
+    paneAnimations.capturePaneState()
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => {
       if (!prev) return prev
@@ -417,10 +458,27 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     bringToFront(id)
   }
 
+  const panelLibraryRect = (id: PanelId) =>
+    document.querySelector<HTMLElement>(`[data-panel-library-id="${CSS.escape(id)}"]`)?.getBoundingClientRect() ?? null
+
+  const dragPreviewRect = (id: PanelId) => {
+    if (dragPreview?.panelId !== id || !arrangementStageRef.current) return null
+    const bounds = arrangementStageRef.current.getBoundingClientRect()
+    return new DOMRect(
+      bounds.left + dragPreview.x * bounds.width,
+      bounds.top + dragPreview.y * bounds.height,
+      dragPreview.width * bounds.width,
+      dragPreview.height * bounds.height,
+    )
+  }
+
   // `extra` is the Free canvas's drop rect, or a Columns-mode columnIndex; omitted for the Panel
   // Library's plain click fallback, which keeps today's cascade placement (harmless in modes
   // that don't use x/y/width/height).
-  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>) => {
+  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>, sourceRect?: DOMRect | null) => {
+    paneAnimations.capturePaneState()
+    paneAnimations.queuePaneEntry(id, sourceRect ?? dragPreviewRect(id) ?? panelLibraryRect(id))
+    setDragPreview(null)
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
@@ -462,6 +520,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       return
     }
     showPanelAt(id, { columnIndex: leastFullColumn(columns) })
+  }
+
+  const beginPanelDrag = (id: PanelId) => {
+    setDragPreview({ panelId: id, x: 0.34, y: 0.28, width: 0.32, height: 0.32 })
+  }
+
+  const updateDragPreview = (event: DragEvent) => {
+    const id = event.dataTransfer.getData("text/x-panel-id") as PanelId
+    const bounds = arrangementStageRef.current?.getBoundingClientRect()
+    if (!id || !bounds) return
+    const width = 0.32
+    const height = 0.32
+    const x = clamp(snapValue(clamp((event.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
+    const y = clamp(snapValue(clamp((event.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
+    setDragPreview({ panelId: id, x, y, width, height })
   }
 
   const replacePaneInColumns = (oldId: PanelId, newId: PanelId) => {
@@ -612,9 +685,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
+    event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     lockSelection()
-    bringToFront(panel.id)
+    // Reordering here can replace the captured header DOM node and stop the drag before it
+    // reaches the canvas edge. The active pane is raised by its drag z-index and promoted on up.
     moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
     const el = document.querySelector<HTMLElement>(`[data-panel-id="${panel.id}"]`)
     if (el) el.style.willChange = "transform"
@@ -625,11 +700,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const endHeaderMove = () => {
     const move = moveRef.current
     if (move?.armed && move.lastDx !== undefined && move.lastDy !== undefined) {
-      const x = clamp(snapValue(clamp(move.x + move.lastDx, 0, 1 - move.width), GRID_SNAP_STEP), 0, 1 - move.width)
-      const y = clamp(snapValue(clamp(move.y + move.lastDy, 0, 1 - move.height), GRID_SNAP_STEP), 0, 1 - move.height)
+      const x = snapPosition(move.x + move.lastDx, 1 - move.width, GRID_SNAP_STEP)
+      const y = snapPosition(move.y + move.lastDy, 1 - move.height, GRID_SNAP_STEP)
       patchPanelRect(move.panelId, { x, y, width: move.width, height: move.height })
     }
     if (move) clearLiveMoveTransform(move.panelId)
+    if (move?.armed) bringToFront(move.panelId)
     cancelFrame()
     moveRef.current = null
     setDraggingId(null)
@@ -685,36 +761,89 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const onHeaderKeyDown = (panel: PanelLayout, event: KeyboardEvent<HTMLDivElement>) => {
     const rect = panelRect(panel)
     let { x, y } = rect
-    if (event.key === "ArrowLeft") x = clamp(x - GRID_SNAP_STEP, 0, 1 - rect.width)
-    else if (event.key === "ArrowRight") x = clamp(x + GRID_SNAP_STEP, 0, 1 - rect.width)
-    else if (event.key === "ArrowUp") y = clamp(y - GRID_SNAP_STEP, 0, 1 - rect.height)
-    else if (event.key === "ArrowDown") y = clamp(y + GRID_SNAP_STEP, 0, 1 - rect.height)
+    if (event.key === "ArrowLeft") x = snapPosition(x - GRID_SNAP_STEP, 1 - rect.width, GRID_SNAP_STEP)
+    else if (event.key === "ArrowRight") x = snapPosition(x + GRID_SNAP_STEP, 1 - rect.width, GRID_SNAP_STEP)
+    else if (event.key === "ArrowUp") y = snapPosition(y - GRID_SNAP_STEP, 1 - rect.height, GRID_SNAP_STEP)
+    else if (event.key === "ArrowDown") y = snapPosition(y + GRID_SNAP_STEP, 1 - rect.height, GRID_SNAP_STEP)
     else return
     event.preventDefault()
     patchPanelRect(panel.id, { ...rect, x, y })
   }
 
-  const selectWorkspace = (id: string) => {
+  const flushPendingSave = async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+      const pending = pendingSaveRef.current
+      pendingSaveRef.current = null
+      if (pending) {
+        const save = updateWorkspace.mutateAsync({
+          id: pending.workspaceId,
+          preset: pending.layoutJson.preset,
+          layoutJson: pending.layoutJson,
+        })
+        inFlightSaveRef.current = save
+        save.finally(() => {
+          if (inFlightSaveRef.current === save) inFlightSaveRef.current = null
+        })
+      }
+    }
+    await inFlightSaveRef.current
+  }
+
+  const selectWorkspace = async (id: string) => {
+    await flushPendingSave()
+    paneAnimations.capturePaneState()
     setSelectedWorkspaceId(id)
     setMaximizedId(null)
     const workspace = workspaces.data?.find((w) => w.id === id)
     if (!workspace || !layout) return
-    setLayout(
-      hydrateFreeform(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? [])),
-    )
+    const hydrated = hydrateFreeform(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
+    lastSavedLayoutRef.current = JSON.stringify(hydrated)
+    setLayout(hydrated)
     applyWorkspace.mutate(id)
   }
 
-  const commitNewLayout = () => {
-    const name = newLayoutName.trim()
-    if (name && layout) createWorkspace.mutate({ name, preset: layout.preset, layoutJson: layout })
-    setNewLayoutName("")
-    setCreatingLayout(false)
+  // Opens the New Layout dialog defaulted to the account's own default preset, with the name
+  // field pre-filled from that preset's label (selectPresetForNewLayout below keeps the name in
+  // sync with the picker as long as the user hasn't typed their own).
+  const openNewLayoutDialog = () => {
+    const preset = catalog.data?.defaultPreset ?? "PANE_4"
+    setNewLayoutPreset(preset)
+    setNewLayoutName(t(PRESET_LABEL_KEYS[preset]))
+    setNewLayoutOpen(true)
   }
 
-  const updateCurrentWorkspace = () => {
-    if (!selectedWorkspaceId || !layout) return
-    updateWorkspace.mutate({ id: selectedWorkspaceId, preset: layout.preset, layoutJson: layout })
+  const selectPresetForNewLayout = (preset: PresetValue) => {
+    setNewLayoutName((prev) => (prev === t(PRESET_LABEL_KEYS[newLayoutPreset]) ? t(PRESET_LABEL_KEYS[preset]) : prev))
+    setNewLayoutPreset(preset)
+  }
+
+  // Builds the new layout from the CHOSEN preset (applyPreset — the same function Reset and
+  // initial-load already use) instead of cloning whatever arrangement happens to be on screen,
+  // which is what this used to do before the preset picker existed.
+  const commitNewLayout = () => {
+    if (!catalog.data) return
+    const name = newLayoutName.trim() || t(PRESET_LABEL_KEYS[newLayoutPreset])
+    const fallback: WorkspaceLayout = {
+      preset: newLayoutPreset,
+      arrangement: "free",
+      panels: catalog.data.panels.map((panel, index) => ({ id: panel.id, visible: false, order: index, width: 1, height: 1 })),
+    }
+    const availableIds = catalog.data.panels.filter((p) => p.available).map((p) => p.id)
+    const layoutJson = applyPreset(fallback, newLayoutPreset, availableIds)
+    createWorkspace.mutate(
+      { caseId, name, preset: newLayoutPreset, layoutJson },
+      {
+        onSuccess: (workspace) => {
+          lastSavedLayoutRef.current = JSON.stringify(layoutJson)
+          setSelectedWorkspaceId(workspace.id)
+          setLayout(layoutJson)
+          applyWorkspace.mutate(workspace.id)
+        },
+      },
+    )
+    setNewLayoutName("")
   }
 
   // Resets the CURRENT tab's contents back to the default arrangement, in place — previously
@@ -737,19 +866,29 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     const defaultLayout = applyPreset(fallback, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
+    lastSavedLayoutRef.current = JSON.stringify(defaultLayout)
     setLayout(defaultLayout)
     updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
   }
 
-  // Deleting the active tab needs somewhere else to land — falls back to whichever tab is
-  // first in the (now stable, createdAt-ordered) remaining list. Blocked entirely when it's the
-  // only tab left; the terminal always needs at least one layout to show.
+  // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
+  // is allowed and leaves the terminal in an empty state until the user creates a new one.
   const closeWorkspaceTab = (id: string) => {
     const [fallback] = (workspaces.data ?? []).filter((w) => w.id !== id)
-    if (!fallback) return
     deleteWorkspace.mutate(id, {
       onSuccess: () => {
-        if (id === selectedWorkspaceId) selectWorkspace(fallback.id)
+        if (id !== selectedWorkspaceId) return
+        if (fallback) {
+          selectWorkspace(fallback.id)
+          return
+        }
+        setSelectedWorkspaceId("")
+        lastSavedLayoutRef.current = ""
+        setLayout((prev) =>
+          prev
+            ? { ...prev, panels: prev.panels.map((panel) => ({ ...panel, visible: false })) }
+            : prev,
+        )
       },
     })
   }
@@ -858,12 +997,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </SheetContent>
         </Sheet>
 
-        {/* Terminal bar: layout tabs · arrangement switch · pane count · add pane */}
+        {/* Terminal bar: layout tabs, arrangement switch, pane count, and settings */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">
           <div className="flex min-w-0 flex-1 items-stretch gap-5 overflow-x-auto">
             {(workspaces.data ?? []).map((workspace) => {
               const active = workspace.id === selectedWorkspaceId
-              const canClose = (workspaces.data?.length ?? 0) > 1
               return (
                 <span key={workspace.id} className="group/tab flex shrink-0 items-center gap-1">
                   <button
@@ -875,45 +1013,25 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   >
                     {workspace.name}
                   </button>
-                  {canClose && (
-                    <button
-                      type="button"
-                      onClick={() => closeWorkspaceTab(workspace.id)}
-                      aria-label={t("closeLayout")}
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
-                    >
-                      <X className="h-3 w-3" aria-hidden="true" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => closeWorkspaceTab(workspace.id)}
+                    aria-label={t("closeLayout")}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
                 </span>
               )
             })}
-            {creatingLayout ? (
-              <input
-                autoFocus
-                value={newLayoutName}
-                onChange={(e) => setNewLayoutName(e.target.value)}
-                onBlur={commitNewLayout}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitNewLayout()
-                  if (e.key === "Escape") {
-                    setNewLayoutName("")
-                    setCreatingLayout(false)
-                  }
-                }}
-                placeholder={t("workspaceName")}
-                className="h-7 w-36 shrink-0 self-center rounded-md border border-border bg-muted px-2 text-xs text-foreground outline-none focus:border-brand-gold/60"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setCreatingLayout(true)}
-                className="flex shrink-0 items-center gap-1.5 self-center text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Plus className="h-3 w-3" aria-hidden="true" />
-                {t("newLayout")}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={openNewLayoutDialog}
+              className="flex shrink-0 items-center gap-1.5 self-center text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Plus className="h-3 w-3" aria-hidden="true" />
+              {t("newLayout")}
+            </button>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-0.5 rounded-full border border-border p-0.5">
@@ -966,19 +1084,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             <span className="hidden text-[10px] uppercase tracking-[1px] text-muted-foreground sm:inline">
               {t("paneCount", { count: visiblePanels.length, total: availablePanels.length })}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                // Only one of these is ever visible at a given viewport (aside is lg-and-up,
-                // MobileDrawer is below lg) — setting both is harmless and viewport-agnostic.
-                setSidebarExpanded(true)
-                setMobileLibraryOpen(true)
-              }}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("addPane")}
-            </button>
             <Popover>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1013,16 +1118,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     <p className="text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">
                       {t("loadWorkspace")}
                     </p>
-                    {selectedWorkspaceId && (
-                      <button
-                        type="button"
-                        disabled={updateWorkspace.isPending}
-                        onClick={updateCurrentWorkspace}
-                        className="h-8 w-full rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
-                      >
-                        {t("saveChanges")}
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={resetCurrentWorkspace}
@@ -1049,6 +1144,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           visiblePanelIds={visiblePanels.map((p) => p.id)}
           panelBadges={panelBadges}
           onAddPanel={requestAddPanel}
+          onPanelDragStart={beginPanelDrag}
+          onPanelDragEnd={() => setDragPreview(null)}
         />
         <div
           className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding-left] duration-200 lg:pl-16 ${
@@ -1063,16 +1160,47 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
         <div ref={arrangementStageRef} className="relative min-h-0 flex-1 overflow-hidden p-3">
           {visiblePanels.length === 0 && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
-              <p className="text-sm text-muted-foreground">{t("emptyGrid")}</p>
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
+              <div className="flex w-full max-w-md flex-col items-center rounded-xl border border-dashed border-border/80 bg-card/70 px-6 py-10 shadow-sm">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold">
+                  <LayoutPanelLeft className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <h2 className="text-sm font-semibold uppercase tracking-[1.4px] text-foreground">{t("emptyLayoutTitle")}</h2>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">{t("emptyLayoutDescription")}</p>
+                <button
+                  type="button"
+                  onClick={openNewLayoutDialog}
+                  className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("addNewLayout")}
+                </button>
+              </div>
             </div>
+          )}
+          {arrangement !== "free" && dragPreview && (
+            <PaneDragGhost
+              label={labelFor({ id: dragPreview.panelId })}
+              badge={panelBadges[dragPreview.panelId]}
+              rect={dragPreview}
+            />
           )}
 
           {arrangement === "free" && (
             <div
               id="terminal-grid"
               className="terminal-grid-texture relative h-full min-h-0"
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={(e) => {
+                e.preventDefault()
+                const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
+                if (!id) return
+                const bounds = e.currentTarget.getBoundingClientRect()
+                const width = 0.32
+                const height = 0.32
+                const x = clamp(snapValue(clamp((e.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
+                const y = clamp(snapValue(clamp((e.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
+                setDragPreview({ panelId: id, x, y, width, height })
+              }}
               onDrop={(e) => {
                 e.preventDefault()
                 const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
@@ -1082,9 +1210,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 const height = 0.32
                 const x = clamp(snapValue(clamp((e.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
                 const y = clamp(snapValue(clamp((e.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
-                showPanelAt(id, { x, y, width, height })
+                const preview = dragPreview?.panelId === id ? dragPreview : { x, y, width, height }
+                const sourceRect = new DOMRect(
+                  bounds.left + preview.x * bounds.width,
+                  bounds.top + preview.y * bounds.height,
+                  preview.width * bounds.width,
+                  preview.height * bounds.height,
+                )
+                showPanelAt(id, { x, y, width, height }, sourceRect)
+                setDragPreview(null)
               }}
             >
+              {dragPreview && (
+                <PaneDragGhost
+                  label={labelFor({ id: dragPreview.panelId })}
+                  badge={panelBadges[dragPreview.panelId]}
+                  rect={dragPreview}
+                />
+              )}
               {visiblePanels.map((panel) => {
                 const rect = panelRect(panel)
                 const label = labelFor(panel)
@@ -1185,6 +1328,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={requestAddPanel}
+              onDragPreview={updateDragPreview}
             />
           )}
 
@@ -1207,6 +1351,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
+              onDragPreview={updateDragPreview}
             />
           )}
 
@@ -1226,7 +1371,89 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
+              onDragPreview={updateDragPreview}
             />
+          )}
+
+          {newLayoutOpen && catalog.data && (
+            <ModalOverlay
+              onClose={() => setNewLayoutOpen(false)}
+              labelledBy="new-layout-prompt"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              className="w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+            >
+              {(close) => (
+                <>
+                  <div className="mb-3 flex items-start gap-3">
+                    <p id="new-layout-prompt" className="min-w-0 flex-1 pt-1 text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                      {t("newLayout")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={close}
+                      aria-label={t("closeDialog")}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                    {t("workspaceName")}
+                  </label>
+                  <input
+                    id="new-layout-name"
+                    autoFocus
+                    value={newLayoutName}
+                    onChange={(e) => setNewLayoutName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        commitNewLayout()
+                        close()
+                      }
+                    }}
+                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-brand-gold/60"
+                  />
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
+                  <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {catalog.data.presets.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => selectPresetForNewLayout(preset)}
+                        aria-pressed={newLayoutPreset === preset}
+                        className={`rounded-md border p-2 text-left transition-colors ${
+                          newLayoutPreset === preset
+                            ? "border-brand-gold bg-brand-gold/10 text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                        }`}
+                      >
+                        <span className="mb-1.5 block text-xs font-medium">{t(PRESET_LABEL_KEYS[preset])}</span>
+                        <PresetLayoutPreview preset={preset} selected={newLayoutPreset === preset} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    >
+                      {t("cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        commitNewLayout()
+                        close()
+                      }}
+                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+                    >
+                      {t("createLayout")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </ModalOverlay>
           )}
 
           {replaceTarget && layout && (
@@ -1517,6 +1744,21 @@ function ModalOverlay({
       return
     }
     if (backdropRef.current) gsap.to(backdropRef.current, { opacity: 0, duration: 0.15 })
+    const origin = originRect()
+    if (origin) {
+      const target = el.getBoundingClientRect()
+      gsap.to(el, {
+        opacity: 0,
+        scaleX: origin.width / target.width,
+        scaleY: origin.height / target.height,
+        x: origin.left + origin.width / 2 - (target.left + target.width / 2),
+        y: origin.top + origin.height / 2 - (target.top + target.height / 2),
+        duration: 0.22,
+        ease: "power2.in",
+        onComplete: onClose,
+      })
+      return
+    }
     gsap.to(el, { opacity: 0, scale: 0.97, duration: 0.14, ease: "power1.in", onComplete: onClose })
   }
 
@@ -1636,11 +1878,15 @@ type ArrangementBodyProps = {
   onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
+  onDragPreview?: (event: DragEvent) => void
 }
 
-function dropHandlers(onDrop: (id: PanelId) => void) {
+function dropHandlers(onDrop: (id: PanelId) => void, onDragPreview?: (event: DragEvent) => void) {
   return {
-    onDragOver: (e: DragEvent) => e.preventDefault(),
+    onDragOver: (e: DragEvent) => {
+      e.preventDefault()
+      onDragPreview?.(e)
+    },
     onDrop: (e: DragEvent) => {
       e.preventDefault()
       const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
@@ -1669,6 +1915,7 @@ function ColumnsArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   columnCount: number
   columnWidths: number[]
@@ -1730,7 +1977,7 @@ function ColumnsArrangement({
   }
 
   return (
-    <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop)}>
+    <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop, onDragPreview)}>
       {columns.map((columnPanels, columnIndex) => (
         <div key={columnIndex} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${widths[columnIndex]} 0 0%` }}>
           <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
@@ -1912,6 +2159,7 @@ function TabsArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   activeA: PanelId | null
   activeB: PanelId | null
@@ -1990,7 +2238,10 @@ function TabsArrangement({
             data-flip-id={activePanel?.id}
             className="relative flex min-h-0 min-w-[200px] flex-col overflow-hidden rounded-lg border border-border bg-card"
             style={{ flex: `${widths[groupIndex]} 0 0%` }}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              e.preventDefault()
+              onDragPreview?.(e)
+            }}
             onDrop={(e) => onGroupDrop(groupIndex, e)}
           >
             <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
@@ -2110,6 +2361,7 @@ function FocusArrangement({
   onJumpToPanel,
   t,
   onDrop,
+  onDragPreview,
 }: ArrangementBodyProps & {
   stackSummaries: Partial<Record<PanelId, string>>
   panelBadges: Partial<Record<PanelId, string>>
@@ -2125,7 +2377,7 @@ function FocusArrangement({
     <div
       className="grid h-full min-h-0 gap-3"
       style={{ gridTemplateColumns: "minmax(280px,1.4fr) 260px minmax(260px,1fr)" }}
-      {...dropHandlers(onDrop)}
+      {...dropHandlers(onDrop, onDragPreview)}
     >
       <div data-flip-id={focusPanel?.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
         {focusPanel && (
@@ -2232,6 +2484,12 @@ function panelRect(panel: PanelLayout): PaneRect {
 
 function snapValue(value: number, step: number): number {
   return Math.round(value / step) * step
+}
+
+function snapPosition(value: number, max: number, step: number): number {
+  const clamped = clamp(value, 0, max)
+  const snapped = snapValue(clamped, step)
+  return Math.abs(max - snapped) < step / 2 ? max : clamp(snapped, 0, max)
 }
 
 function clampResize(drag: ResizeDrag, dx: number, dy: number, snap: boolean): PaneRect {
@@ -2447,6 +2705,41 @@ function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, opts?: 
   return summaries
 }
 
+function PaneDragGhost({
+  label,
+  badge,
+  rect,
+}: {
+  label: string
+  badge?: string
+  rect: PaneDragPreview
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute z-40 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-brand-gold/70 bg-card/85 shadow-xl backdrop-blur-sm"
+      style={{
+        left: `${rect.x * 100}%`,
+        top: `${rect.y * 100}%`,
+        width: `${rect.width * 100}%`,
+        height: `${rect.height * 100}%`,
+      }}
+    >
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-brand-gold/30 bg-brand-gold/10 px-3">
+        <Grip className="h-3 w-3 text-brand-gold" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-[1.2px] text-foreground">{label}</span>
+        {badge && <span className="text-[9px] text-brand-gold">{badge}</span>}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 opacity-70">
+        <span className="h-2 w-3/4 rounded-full bg-foreground/20" />
+        <span className="h-2 w-full rounded-full bg-foreground/10" />
+        <span className="h-2 w-5/6 rounded-full bg-foreground/10" />
+        <span className="mt-2 h-8 w-full rounded border border-foreground/10 bg-foreground/5" />
+      </div>
+    </div>
+  )
+}
+
 function ResizeHandle({
   edge,
   className,
@@ -2513,10 +2806,34 @@ function defaultIdsForPreset(preset: PresetValue): PanelId[] {
     case "PANE_2":
       return ["command", "evidence"]
     case "PANE_4":
-      return ["command", "evidence", "chat", "procedure", "mindMap"]
+      return ["command", "evidence", "chat", "procedure"]
     case "PANE_6":
       return ["command", "evidence", "law", "mindMap", "procedure", "chat"]
     default:
       return ["command", "evidence"]
   }
+}
+
+function PresetLayoutPreview({ preset, selected }: { preset: PresetValue; selected: boolean }) {
+  const panelIds = defaultIdsForPreset(preset)
+  const columns = preset === "PANE_1" ? 1 : preset === "PANE_6" ? 3 : 2
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`grid h-20 w-full gap-1 rounded border p-1.5 transition-colors ${
+        selected ? "border-brand-gold/60 bg-brand-navy-950/70" : "border-border/70 bg-muted/60"
+      }`}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {panelIds.map((panelId, index) => (
+        <span
+          key={`${panelId}-${index}`}
+          className={`min-h-0 rounded-sm border ${
+            selected ? "border-brand-gold/35 bg-brand-gold/35" : "border-foreground/10 bg-foreground/15"
+          }`}
+        />
+      ))}
+    </span>
+  )
 }

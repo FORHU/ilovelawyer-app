@@ -217,9 +217,9 @@
 
 /* Legal Terminal — docs/adr/0013-legal-terminal-redesign.md */
 
-/* Background grid for the terminal canvas, matching the 24-column/row snap increments that
-   drag/resize always snaps to (not just cosmetic — see clampResize/onHeaderPointerMove in
-   legal-terminal.tsx). `opacity` on the grid-line pattern must live on a ::before, not on
+/* Square background grid for the terminal canvas. The 24-column/row snap increments used by
+   drag/resize remain a layout concern in legal-terminal.tsx. `opacity` on the grid-line pattern
+   must live on a ::before, not on
    .terminal-grid-texture itself — that class is applied to #terminal-grid, which every Pane
    mounts into as a real DOM child, and CSS opacity composites an element's entire subtree, not
    just its own background. Putting it on the element directly was dimming every Pane's content
@@ -232,7 +232,7 @@
   background-image:
     linear-gradient(to right, var(--sidebar-accent) 1px, transparent 1px),
     linear-gradient(to bottom, var(--sidebar-accent) 1px, transparent 1px);
-  background-size: calc(100% / 24) calc(100% / 24);
+   background-size: 24px 24px;
   opacity: 0.5;
 }
 
