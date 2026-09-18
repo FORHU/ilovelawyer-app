@@ -102,6 +102,15 @@ const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }
   { id: "focus", labelKey: "arrangementFocus", icon: LayoutPanelLeft },
 ]
 
+// Drives the New Layout dialog's preset picker — labels already exist in every locale (see
+// terminal.json's preset1/preset2/preset4/preset6), just never rendered anywhere until now.
+const PRESET_LABEL_KEYS: Record<PresetValue, string> = {
+  PANE_1: "preset1",
+  PANE_2: "preset2",
+  PANE_4: "preset4",
+  PANE_6: "preset6",
+}
+
 const COLUMN_COUNT_OPTIONS = [2, 3, 4]
 // How many panes a single column can stack before it's "full" and adding another pane
 // requires replacing one instead.
@@ -246,7 +255,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Set while Columns mode is full and the user just tried to add this pane — opens the
   // "replace which pane?" picker. Null the rest of the time.
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
-  const [creatingLayout, setCreatingLayout] = useState(false)
+  const [newLayoutOpen, setNewLayoutOpen] = useState(false)
+  const [newLayoutPreset, setNewLayoutPreset] = useState<PresetValue>("PANE_4")
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
@@ -271,6 +281,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // while dragging, which looked worse than the reflow cost it was meant to avoid — contain-layout
   // on the pane (see its className) keeps that reflow scoped and affordable instead.
   const liveStyleRafRef = useRef<number | null>(null)
+  const lastSavedLayoutRef = useRef("")
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<{ workspaceId: string; layoutJson: WorkspaceLayout } | null>(null)
+  const inFlightSaveRef = useRef<Promise<unknown> | null>(null)
   // Tracks pop-out windows this tab opened, so the polling effect below can flip a pane back to
   // visible the moment its popup closes. A ref, not state — nothing here needs to re-render.
   const popupWindowsRef = useRef<Map<PanelId, Window>>(new Map())
@@ -303,14 +317,48 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     if (lastUsed) {
-      setLayout(
-        hydrateFreeform(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id))),
-      )
+      const hydrated = hydrateFreeform(mergeCatalogPanels(asLayout(lastUsed.layoutJson, fallback), catalog.data.panels.map((p) => p.id)))
+      lastSavedLayoutRef.current = JSON.stringify(hydrated)
+      setLayout(hydrated)
       setSelectedWorkspaceId(lastUsed.id)
       return
     }
     setLayout(applyPreset(fallback, "PANE_4", catalog.data.panels.filter((p) => p.available).map((p) => p.id)))
   }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
+
+  useEffect(() => {
+    if (!layout || !selectedWorkspaceId) return
+    const serialized = JSON.stringify(layout)
+    if (serialized === lastSavedLayoutRef.current) return
+
+    pendingSaveRef.current = { workspaceId: selectedWorkspaceId, layoutJson: layout }
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null
+      const pending = pendingSaveRef.current
+      pendingSaveRef.current = null
+      if (!pending) return
+      const save = updateWorkspace.mutateAsync({
+        id: pending.workspaceId,
+        preset: pending.layoutJson.preset,
+        layoutJson: pending.layoutJson,
+      })
+      inFlightSaveRef.current = save
+      save.then(() => {
+        if (lastSavedLayoutRef.current === JSON.stringify(pending.layoutJson)) return
+        lastSavedLayoutRef.current = JSON.stringify(pending.layoutJson)
+      }).finally(() => {
+        if (inFlightSaveRef.current === save) inFlightSaveRef.current = null
+      })
+    }, 1200)
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [layout, selectedWorkspaceId, updateWorkspace])
 
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
   const arrangementStageRef = useRef<HTMLDivElement>(null)
@@ -694,27 +742,69 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     patchPanelRect(panel.id, { ...rect, x, y })
   }
 
-  const selectWorkspace = (id: string) => {
+  const flushPendingSave = async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+      const pending = pendingSaveRef.current
+      pendingSaveRef.current = null
+      if (pending) {
+        const save = updateWorkspace.mutateAsync({
+          id: pending.workspaceId,
+          preset: pending.layoutJson.preset,
+          layoutJson: pending.layoutJson,
+        })
+        inFlightSaveRef.current = save
+        save.finally(() => {
+          if (inFlightSaveRef.current === save) inFlightSaveRef.current = null
+        })
+      }
+    }
+    await inFlightSaveRef.current
+  }
+
+  const selectWorkspace = async (id: string) => {
+    await flushPendingSave()
     setSelectedWorkspaceId(id)
     setMaximizedId(null)
     const workspace = workspaces.data?.find((w) => w.id === id)
     if (!workspace || !layout) return
-    setLayout(
-      hydrateFreeform(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? [])),
-    )
+    const hydrated = hydrateFreeform(mergeCatalogPanels(asLayout(workspace.layoutJson, layout), catalog.data?.panels.map((p) => p.id) ?? []))
+    lastSavedLayoutRef.current = JSON.stringify(hydrated)
+    setLayout(hydrated)
     applyWorkspace.mutate(id)
   }
 
-  const commitNewLayout = () => {
-    const name = newLayoutName.trim()
-    if (name && layout) createWorkspace.mutate({ caseId, name, preset: layout.preset, layoutJson: layout })
-    setNewLayoutName("")
-    setCreatingLayout(false)
+  // Opens the New Layout dialog defaulted to the account's own default preset, with the name
+  // field pre-filled from that preset's label (selectPresetForNewLayout below keeps the name in
+  // sync with the picker as long as the user hasn't typed their own).
+  const openNewLayoutDialog = () => {
+    const preset = catalog.data?.defaultPreset ?? "PANE_4"
+    setNewLayoutPreset(preset)
+    setNewLayoutName(t(PRESET_LABEL_KEYS[preset]))
+    setNewLayoutOpen(true)
   }
 
-  const updateCurrentWorkspace = () => {
-    if (!selectedWorkspaceId || !layout) return
-    updateWorkspace.mutate({ id: selectedWorkspaceId, preset: layout.preset, layoutJson: layout })
+  const selectPresetForNewLayout = (preset: PresetValue) => {
+    setNewLayoutName((prev) => (prev === t(PRESET_LABEL_KEYS[newLayoutPreset]) ? t(PRESET_LABEL_KEYS[preset]) : prev))
+    setNewLayoutPreset(preset)
+  }
+
+  // Builds the new layout from the CHOSEN preset (applyPreset — the same function Reset and
+  // initial-load already use) instead of cloning whatever arrangement happens to be on screen,
+  // which is what this used to do before the preset picker existed.
+  const commitNewLayout = () => {
+    if (!catalog.data) return
+    const name = newLayoutName.trim() || t(PRESET_LABEL_KEYS[newLayoutPreset])
+    const fallback: WorkspaceLayout = {
+      preset: newLayoutPreset,
+      arrangement: "free",
+      panels: catalog.data.panels.map((panel, index) => ({ id: panel.id, visible: false, order: index, width: 1, height: 1 })),
+    }
+    const availableIds = catalog.data.panels.filter((p) => p.available).map((p) => p.id)
+    const layoutJson = applyPreset(fallback, newLayoutPreset, availableIds)
+    createWorkspace.mutate({ caseId, name, preset: newLayoutPreset, layoutJson })
+    setNewLayoutName("")
   }
 
   // Resets the CURRENT tab's contents back to the default arrangement, in place — previously
@@ -737,6 +827,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })),
     }
     const defaultLayout = applyPreset(fallback, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
+    lastSavedLayoutRef.current = JSON.stringify(defaultLayout)
     setLayout(defaultLayout)
     updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
   }
@@ -858,7 +949,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </SheetContent>
         </Sheet>
 
-        {/* Terminal bar: layout tabs · arrangement switch · pane count · add pane */}
+        {/* Terminal bar: layout tabs, arrangement switch, pane count, and settings */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">
           <div className="flex min-w-0 flex-1 items-stretch gap-5 overflow-x-auto">
             {(workspaces.data ?? []).map((workspace) => {
@@ -888,32 +979,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 </span>
               )
             })}
-            {creatingLayout ? (
-              <input
-                autoFocus
-                value={newLayoutName}
-                onChange={(e) => setNewLayoutName(e.target.value)}
-                onBlur={commitNewLayout}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitNewLayout()
-                  if (e.key === "Escape") {
-                    setNewLayoutName("")
-                    setCreatingLayout(false)
-                  }
-                }}
-                placeholder={t("workspaceName")}
-                className="h-7 w-36 shrink-0 self-center rounded-md border border-border bg-muted px-2 text-xs text-foreground outline-none focus:border-brand-gold/60"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setCreatingLayout(true)}
-                className="flex shrink-0 items-center gap-1.5 self-center text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Plus className="h-3 w-3" aria-hidden="true" />
-                {t("newLayout")}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={openNewLayoutDialog}
+              className="flex shrink-0 items-center gap-1.5 self-center text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Plus className="h-3 w-3" aria-hidden="true" />
+              {t("newLayout")}
+            </button>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-0.5 rounded-full border border-border p-0.5">
@@ -1000,16 +1073,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     <p className="text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">
                       {t("loadWorkspace")}
                     </p>
-                    {selectedWorkspaceId && (
-                      <button
-                        type="button"
-                        disabled={updateWorkspace.isPending}
-                        onClick={updateCurrentWorkspace}
-                        className="h-8 w-full rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
-                      >
-                        {t("saveChanges")}
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={resetCurrentWorkspace}
@@ -1214,6 +1277,76 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
+          )}
+
+          {newLayoutOpen && catalog.data && (
+            <ModalOverlay
+              onClose={() => setNewLayoutOpen(false)}
+              labelledBy="new-layout-prompt"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              className="w-80 rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+            >
+              {(close) => (
+                <>
+                  <p id="new-layout-prompt" className="mb-3 text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                    {t("newLayout")}
+                  </p>
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
+                  <div className="mb-3 grid grid-cols-2 gap-1.5">
+                    {catalog.data.presets.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => selectPresetForNewLayout(preset)}
+                        aria-pressed={newLayoutPreset === preset}
+                        className={`rounded-md border px-2.5 py-2 text-left text-xs transition-colors ${
+                          newLayoutPreset === preset
+                            ? "border-brand-gold bg-brand-gold/10 text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                        }`}
+                      >
+                        {t(PRESET_LABEL_KEYS[preset])}
+                      </button>
+                    ))}
+                  </div>
+                  <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                    {t("workspaceName")}
+                  </label>
+                  <input
+                    id="new-layout-name"
+                    autoFocus
+                    value={newLayoutName}
+                    onChange={(e) => setNewLayoutName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        commitNewLayout()
+                        close()
+                      }
+                    }}
+                    className="h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-brand-gold/60"
+                  />
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    >
+                      {t("cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        commitNewLayout()
+                        close()
+                      }}
+                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+                    >
+                      {t("createLayout")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </ModalOverlay>
           )}
 
           {replaceTarget && layout && (

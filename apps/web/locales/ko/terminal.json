@@ -33,6 +33,7 @@
   "preset6": "6개 패널",
   "addPane": "패널 추가",
   "newLayout": "New layout",
+  "createLayout": "Create layout",
   "paneCount": "{{count}} / {{total}} panes",
   "arrangementFree": "Free",
   "arrangementColumns": "Columns",
