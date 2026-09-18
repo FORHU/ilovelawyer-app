@@ -212,9 +212,14 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
         </div>
       ) : canInlinePreview ? (
         <iframe
-          src={attachment.url!}
+          // PDF Open Parameters fragment (Adobe spec, honored by Chrome/Edge's built-in PDFium
+          // viewer and Firefox's pdf.js) — without it the native viewer opens at its own default
+          // zoom, which on a narrow mobile width renders the page wider than the iframe with no
+          // way to zoom out first, so it never fits the screen. FitH forces "fit to width" so the
+          // page always starts scaled to the frame and only needs vertical scroll.
+          src={isPdf ? `${attachment.url!}#view=FitH` : attachment.url!}
           title={attachment.name}
-          className="h-full w-full border-0"
+          className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}
         />
       ) : canDocxPreview ? (

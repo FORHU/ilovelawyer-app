@@ -197,10 +197,15 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    /* Stops Chrome/Edge's native edge-swipe back/forward navigation gesture — without
+       this, swiping from the left/right screen edge on mobile silently navigates the
+       browser history instead of whatever the page itself does with that gesture. */
+    overscroll-behavior-x: none;
     }
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
     }
 }
 

@@ -77,19 +77,6 @@ export default function ConsultationSidebar({
     });
   };
 
-  // Collapse on an outside click, without an overlay that would block scrolling elsewhere.
-  // Skipped on mobile, where the drawer already has its own dedicated overlay + close button.
-  useEffect(() => {
-    if (!expanded || isMobileOpen) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (asideRef.current && !asideRef.current.contains(e.target as Node)) {
-        onExpandedChange(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [expanded, isMobileOpen, onExpandedChange]);
-
   // Close the mobile drawer if the viewport grows past lg (e.g. rotating a tablet) — matches
   // GlobalHeader's own mobile-drawer breakpoint, so both switch together instead of leaving
   // a tablet-portrait viewport with a mismatched half-mobile, half-desktop chrome.
@@ -104,6 +91,10 @@ export default function ConsultationSidebar({
 
   const panelBody = (isMobile: boolean) => (
     <>
+      {/* Desktop/tablet rail only — mobile has its own "new chat" pencil in the sticky
+          header's kebab row (consultation-chat.tsx), reachable without opening this drawer
+          first, so this would just be a redundant second way to do the same thing here. */}
+      {!isMobile && (
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -114,11 +105,11 @@ export default function ConsultationSidebar({
             }}
             aria-label={t("sidebar.newChat")}
             className={`h-10 flex items-center gap-3 rounded-full border border-border hover:border-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-              expanded || isMobile ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
+              expanded ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
             }`}
           >
             <Plus className="h-3.5 w-3.5 shrink-0 text-foreground" aria-hidden="true" />
-            {(expanded || isMobile) && (
+            {expanded && (
               <span className="text-[10px] font-['Inter'] font-semibold uppercase tracking-[1.2px] text-foreground">
                 {t("sidebar.newConsultation", { defaultValue: "New consultation" })}
               </span>
@@ -127,6 +118,7 @@ export default function ConsultationSidebar({
         </TooltipTrigger>
         <TooltipContent>{t("sidebar.newChat")}</TooltipContent>
       </Tooltip>
+      )}
 
       {/* "Recent" is a plain section label once the rail is expanded/on mobile — it's only
           ever a clickable icon in the collapsed desktop rail, where it doubles as a way to

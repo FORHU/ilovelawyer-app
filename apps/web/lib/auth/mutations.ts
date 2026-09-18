@@ -97,6 +97,42 @@ export function useLoginMutation() {
   })
 }
 
+/** Completes the one-time forced password update a 428 from useLoginMutation sends the
+ * caller to (see AuthSvc.login / updateRequiredPassword on the backend) — mirrors
+ * useLoginMutation's onSuccess since a successful call here *is* a completed login. */
+export function useUpdateRequiredPasswordMutation() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      email,
+      currentPassword,
+      newPassword,
+      remember,
+    }: {
+      email: string
+      currentPassword: string
+      newPassword: string
+      remember: boolean
+    }) =>
+      apiFetch<AuthTokensResponse>("/api/auth/update-required-password", {
+        method: "POST",
+        body: JSON.stringify({ email, currentPassword, newPassword, remember }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: async (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
+      router.push(sanitizeNextPath(searchParams.get("next")))
+    },
+  })
+}
+
 export function useSignupMutation() {
   return useMutation({
     mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>

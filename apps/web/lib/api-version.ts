@@ -6,6 +6,7 @@ export const AUTH_PATHS = [
   "/api/auth/refresh",
   "/api/auth/logout",
   "/api/auth/login",
+  "/api/auth/update-required-password",
   "/api/auth/google",
   "/api/auth/reset-password",
   "/api/auth/verify-otp",
