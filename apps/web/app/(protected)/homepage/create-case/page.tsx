@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import {
@@ -13,7 +14,7 @@ import {
   useCreateCaseMutation,
   useUploadCaseDocumentsMutation,
 } from "@/lib/cases/mutations";
-import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -95,6 +96,23 @@ function clearDraft() {
   }
 }
 
+// A plain property on `window` itself (not sessionStorage) — the one thing that's true for the
+// lifetime of the JS runtime but false again after an actual browser refresh. Next.js's <Link>/
+// router.push navigations are client-side: the tab's `window` object is never torn down, so this
+// flag survives them and correctly marks a second visit within the same load as "not a refresh."
+// A real refresh (or closing and reopening the tab) discards `window` entirely along with it,
+// while sessionStorage.getItem(DRAFT_STORAGE_KEY) survives — which is exactly the distinction
+// isPageRevisit() below needs to make.
+const CREATE_CASE_VISITED_FLAG = "__createCaseVisitedThisLoad";
+
+function isPageRevisit(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as Record<string, boolean>;
+  if (w[CREATE_CASE_VISITED_FLAG]) return true;
+  w[CREATE_CASE_VISITED_FLAG] = true;
+  return false;
+}
+
 export default function CreateCasePage() {
   return (
     <Suspense fallback={null}>
@@ -121,10 +139,6 @@ function CreateCasePageContent() {
   });
   const [caseTitleError, setCaseTitleError] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
-  // Names of any files a select/drop dropped for having an unsupported extension — cleared on
-  // the next add attempt. These are never queued (unlike upload failures, which retryUpload can
-  // recover from, retrying an unsupported type would just fail again).
-  const [rejectedFileNames, setRejectedFileNames] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Set once the case is created on first submit. Kept across retries so a resubmit after a
   // partial upload failure reuses the existing case instead of creating a duplicate.
@@ -154,6 +168,14 @@ function CreateCasePageContent() {
   useEffect(() => {
     if (hasHydratedRef.current) return;
     hasHydratedRef.current = true;
+    if (isPageRevisit()) {
+      // We've already mounted this page once during this same browser-tab session — arriving
+      // here again means the user left (clicked another top-nav tab, hit back, started a fresh
+      // "New case") and came back, not that they refreshed. Treat any leftover draft as
+      // abandoned rather than resurrecting it into what the user expects to be a blank form.
+      clearDraft();
+      return;
+    }
     const draft = loadDraft();
     if (!draft) return;
 
@@ -288,10 +310,32 @@ function CreateCasePageContent() {
       incoming.filter(isAllowedFileType),
       incoming.filter((f) => !isAllowedFileType(f)),
     ];
-    setRejectedFileNames(unsupported.map((f) => f.name));
-    if (supported.length === 0) return;
+    if (unsupported.length > 0) {
+      toast.error(
+        t("sectionEvidence.unsupportedFileType", {
+          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+          fileNames: unsupported.map((f) => f.name).join(", "),
+          formats: ALLOWED_FILE_TYPES_LABEL,
+        })
+      );
+    }
 
-    const entries: UploadedFile[] = supported.map((file) => ({
+    const [withinSizeLimit, oversized] = [
+      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
+      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+    ];
+    if (oversized.length > 0) {
+      toast.error(
+        t("sectionEvidence.attachmentTooLarge", {
+          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+          fileNames: oversized.map((f) => f.name).join(", "),
+          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+        })
+      );
+    }
+    if (withinSizeLimit.length === 0) return;
+
+    const entries: UploadedFile[] = withinSizeLimit.map((file) => ({
       id: generateId(),
       file,
       status: "pending",
@@ -312,7 +356,6 @@ function CreateCasePageContent() {
       ...prev,
       uploadedFiles: prev.uploadedFiles.filter((f) => f.id !== id),
     }));
-    setRejectedFileNames([]);
   };
 
   // Only reachable once a submit attempt has already run (that's the only way a file can be
@@ -728,7 +771,7 @@ function CreateCasePageContent() {
                       multiple
                       ref={fileInputRef}
                       className="hidden"
-                      accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+                      accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
                       onChange={handleFileChange}
                     />
 
@@ -740,16 +783,6 @@ function CreateCasePageContent() {
                       {t("sectionEvidence.dropHint")}
                     </p>
                   </div>
-
-                  {rejectedFileNames.length > 0 && (
-                    <p className="text-[12px] text-red-600 dark:text-red-400 -mt-3">
-                      {t("sectionEvidence.unsupportedFileType", {
-                        defaultValue: `${rejectedFileNames.join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
-                        fileNames: rejectedFileNames.join(", "),
-                        formats: ALLOWED_FILE_TYPES_LABEL,
-                      })}
-                    </p>
-                  )}
 
                   {formData.uploadedFiles.length > 0 && (
                     <>

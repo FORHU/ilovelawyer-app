@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { ChevronRight, FolderPlus, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -7,6 +8,7 @@ import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import { useUploadCaseDocumentsMutation, useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import type {
   CaseSnapshot,
@@ -201,7 +203,48 @@ export function EvidencePanel({
 
   const uploadDocuments = useUploadCaseDocumentsMutation()
   const upload = (files: File[], category?: string) => {
-    uploadDocuments.mutate({ files, caseId, category })
+    const [supported, unsupported] = [
+      files.filter(isAllowedFileType),
+      files.filter((f) => !isAllowedFileType(f)),
+    ]
+    if (unsupported.length > 0) {
+      toast.error(
+        t("attachmentUnsupportedType", {
+          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+          fileNames: unsupported.map((f) => f.name).join(", "),
+          formats: ALLOWED_FILE_TYPES_LABEL,
+        })
+      )
+    }
+
+    const [withinSizeLimit, oversized] = [
+      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
+      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+    ]
+    if (oversized.length > 0) {
+      toast.error(
+        t("attachmentTooLarge", {
+          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+          fileNames: oversized.map((f) => f.name).join(", "),
+          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+        })
+      )
+    }
+    if (withinSizeLimit.length === 0) return
+
+    uploadDocuments.mutate(
+      { files: withinSizeLimit, caseId, category },
+      {
+        // Per-file reasons the mutation itself already collects (presign/S3/confirm failures) —
+        // surfaced individually rather than the one generic "couldn't upload" line this replaced,
+        // so a lawyer can tell a transient network blip apart from a file the backend rejected.
+        onSuccess: (result) => {
+          result.failed.forEach(({ file, reason }) => {
+            toast.error(`${file.name} — ${reason}`)
+          })
+        },
+      },
+    )
     // The pending placeholder's only job was to keep an empty folder visible until a real
     // document lands in it — once that upload is in flight, groupDocumentsByFolder will pick
     // the category up for real as soon as the snapshot refetches.
@@ -283,7 +326,7 @@ export function EvidencePanel({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+          accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
           className="hidden"
           onChange={(e) => {
             const files = Array.from(e.target.files ?? [])
@@ -291,9 +334,6 @@ export function EvidencePanel({
             if (files.length > 0) upload(files, uploadTargetRef.current)
           }}
         />
-        {uploadDocuments.data && uploadDocuments.data.failed.length > 0 && (
-          <p className="mb-2 text-[11px] text-danger">{t("uploadError")}</p>
-        )}
         {snapshot.documents.length === 0 && folders.length === 0 ? (
           <EmptyNote>{t("noDocuments")}</EmptyNote>
         ) : (
