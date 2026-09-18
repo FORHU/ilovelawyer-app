@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { apiFetch } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket } from "@/lib/notifications/socket"
-import type { MindMapItem } from "@/lib/chat/mind-map-parser"
+import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
 import type { DecisionRecordPayload } from "@/lib/terminal/types"
 
 export interface ChatSession {
@@ -79,6 +79,11 @@ export interface ChatMessage {
    * on MessageDecisionRecord — see docs/plans/differentiation-program.md Workstream A. Absent on
    * non-legal-persona messages, or a message sent before this shipped. */
   decisionRecords?: { records: DecisionRecordPayload[] } | null
+  /** This turn's research/verification trace (ilovelawyer-api#119) — the persisted counterpart
+   * of the live-only `[TRACE]` steps ResearchTraceList shows while streaming (see
+   * ConsultationChat's doSend). Absent for turns that made no tool calls, or a message sent
+   * before this shipped — not an error either way. */
+  researchSteps?: { steps: TraceStep[] } | null
   /** The "why this answer" explanation for this turn (legal/legal_uk personas only),
    * generated server-side when the turn actually used tool calls or retrieved sources —
    * absent/null is normal for direct-answer turns or on generation failure, not an error. */

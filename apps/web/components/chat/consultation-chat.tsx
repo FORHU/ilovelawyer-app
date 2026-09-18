@@ -20,7 +20,7 @@ import ConsultationSidebar from "@/components/chat/consultation-sidebar";
 import TopicNavigator from "@/components/chat/topic-navigator";
 import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
-import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
+import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
@@ -76,8 +76,11 @@ interface DisplayMessage {
    * this is recomputed from the raw accumulated text on every chunk (see doSend); once the
    * message is persisted it comes straight from the backend (see baseMessages below). */
   mindMap?: MindMapItem;
-  /** Live research steps extracted from `[TRACE]...[/TRACE]` frames while this message is
-   * streaming — see doSend. Never persisted; gone once the turn finishes. */
+  /** While streaming: live research steps extracted from `[TRACE]...[/TRACE]` frames — see
+   * doSend, rebuilt on every chunk. Once persisted (ilovelawyer-api#119), this instead comes
+   * straight from the backend (see baseMessages below), the same timing split mindMap/decisions/
+   * reasoning already have — absent on turns that made no tool calls, or ones sent before this
+   * shipped, not an error either way. */
   researchSteps?: TraceStep[];
   /** Set only when this reply is one topic of a split, multi-topic answer (see
    * ilovelawyer-api's MessageGroup) — `groupTitle` is that topic's heading, used as the
@@ -527,6 +530,7 @@ export default function ConsultationChat({
               groupTitle: m.groupTitle,
               decisions: m.decisionRecords?.records,
               reasoning: m.reasoning ?? undefined,
+              researchSteps: m.researchSteps?.steps,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -684,11 +688,31 @@ export default function ConsultationChat({
     activeIndex: activeTopicIndex,
     scrollToTopic,
     isGenerating: isGeneratingTopics,
+    latestDecisions,
   } = useTopicNavigator(consultationId);
   // Gates both the desktop TopicNavigator rail/mobile drawer and the mobile kebab's "Topics"
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
+
+  // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
+  // the transcript so each can highlight yellow whichever quotes actually appear in its own
+  // text — a split reply only attaches `decisions` to its last topic bubble (see
+  // ChatSvc.persistAssistantTurn), but the quoted sentence itself is just as likely to be in an
+  // earlier sibling, so no single bubble can be assumed to hold every quote. Cheap: this is a
+  // handful of short strings, and AssistantMessage no-ops (no highlight) wherever none match.
+  const evidenceQuoteHighlights = useMemo(() => {
+    const targets: { id: string; text: string }[] = [];
+    (latestDecisions?.records ?? []).forEach((record, ri) => {
+      record.evidenceFor.forEach((ev, ei) => {
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "for", ei), text: ev.quote });
+      });
+      record.evidenceAgainst.forEach((ev, ei) => {
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "against", ei), text: ev.quote });
+      });
+    });
+    return targets;
+  }, [latestDecisions]);
 
   // Empty-state composer pills, most relevant first: (1) the case's own uploaded documents
   // — the clearest signal of what this chat is actually for, so a fresh case with a file
@@ -1999,6 +2023,8 @@ export default function ConsultationChat({
                             className={embedded ? "text-[13px] leading-5 text-foreground" : undefined}
                             decisions={m.decisions}
                             onOpenDecision={handleOpenDecision}
+                            messageIndex={i}
+                            quoteHighlights={evidenceQuoteHighlights}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
                           {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {

@@ -2,49 +2,100 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
-import { CircleHelp } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { CircleHelp, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { MermaidDiagram } from "./mermaid-diagram";
 import { findAnchorMatches } from "@/components/shared/decision-anchor-match";
+import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
+import { decisionAnchorElementId } from "@/lib/chat/use-topic-navigator";
+import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
+
+/** One piece of evidence's quote (evidenceFor/evidenceAgainst), searched for and highlighted
+ * yellow wherever it actually appears in a reply — see SourcesPanel, which builds this list from
+ * the same turn's decisions and supplies `id` via evidenceQuoteElementId, so its Evidence rows
+ * can jump straight to the quoted sentence instead of just the message it happened to land in. */
+export interface QuoteHighlight {
+  id: string;
+  text: string;
+}
+
+const NO_QUOTE_HIGHLIGHTS: QuoteHighlight[] = [];
 
 // A Decision Record's `anchor` is a verbatim sentence chat-wonder-v2-api copied from this same
 // answer and already verified against it server-side (whitespace-normalized substring check —
 // see findAnchorMatches). Highlighting it here lets a lawyer click straight to the "Why?" for
-// that conclusion instead of only finding it in the case-level Decisions panel.
-function highlightDecisionAnchors(
+// that conclusion instead of only finding it in the case-level Decisions panel — dotted
+// underline, opens the drawer, always on. Evidence quotes (`quoteHighlights`) are the opposite:
+// invisible (plain text, id-only) until SourcesPanel's Evidence rows are clicked — only the one
+// matching `activeHighlightId` (active-highlight.store.ts, "one at a time," a new click replaces
+// the last) actually turns yellow, so the chat doesn't read as pre-highlighted everywhere a quote
+// happens to appear. Both share one findAnchorMatches call (longest-first, non-overlapping) so a
+// decision anchor and a quote can never fight over the same span. Each span still carries its
+// stable DOM id (decisionAnchorElementId / the quote's own `id`) even while inactive — Case
+// Workspace's Sources panel (use-topic-navigator.ts's scrollToElementId) needs it to exist
+// already, since the id is what a click scrolls (and un/highlights) to. `messageIndex` is only
+// used for decision-anchor ids — optional since only ConsultationChat's transcript render (which
+// knows each bubble's visibleMessages index) can supply it; quote ids don't need it (see
+// evidenceQuoteElementId's doc comment — a quote isn't scoped to one message).
+function highlightAnchorsAndQuotes(
   text: string,
   decisions: DecisionRecordPayload[],
   onOpenDecision: (decision: DecisionRecordPayload) => void,
+  messageIndex: number | undefined,
+  quoteHighlights: QuoteHighlight[],
+  activeHighlightId: string | null,
 ): React.ReactNode[] {
-  const matches = findAnchorMatches(
-    text,
-    decisions.map((d, i) => ({ id: String(i), anchor: d.anchor })),
-  );
+  const decisionTargets = decisions.map((d, i) => ({ id: `decision-${i}`, anchor: d.anchor }));
+  const quoteTargets = quoteHighlights.map((q) => ({ id: q.id, anchor: q.text }));
+  const matches = findAnchorMatches(text, [...decisionTargets, ...quoteTargets]);
   if (matches.length === 0) return [text];
 
   const nodes: React.ReactNode[] = [];
   let cursor = 0;
   matches.forEach((m, i) => {
     if (m.start > cursor) nodes.push(text.slice(cursor, m.start));
-    const decision = decisions[Number(m.decisionId)]!;
-    nodes.push(
-      <span
-        key={`decision-${i}-${m.start}`}
-        role="button"
-        tabIndex={0}
-        onClick={() => onOpenDecision(decision)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenDecision(decision);
-          }
-        }}
-        className="cursor-pointer rounded-sm underline decoration-dotted decoration-brand-gold underline-offset-2 hover:bg-brand-gold/10"
-      >
-        {text.slice(m.start, m.end)}
-        <CircleHelp className="ml-0.5 inline h-3 w-3 -translate-y-px text-brand-gold" aria-hidden="true" />
-      </span>,
-    );
+    if (m.decisionId.startsWith("decision-")) {
+      const decisionIndex = Number(m.decisionId.slice("decision-".length));
+      const decision = decisions[decisionIndex]!;
+      nodes.push(
+        <span
+          key={`decision-${i}-${m.start}`}
+          id={messageIndex !== undefined ? decisionAnchorElementId(messageIndex, decisionIndex) : undefined}
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpenDecision(decision)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenDecision(decision);
+            }
+          }}
+          className="cursor-pointer rounded-sm underline decoration-dotted decoration-brand-gold underline-offset-2 hover:bg-brand-gold/10"
+        >
+          {text.slice(m.start, m.end)}
+          <CircleHelp className="ml-0.5 inline h-3 w-3 -translate-y-px text-brand-gold" aria-hidden="true" />
+        </span>,
+      );
+    } else if (m.decisionId === activeHighlightId) {
+      nodes.push(
+        <mark
+          key={`quote-${i}-${m.start}`}
+          id={m.decisionId}
+          className="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-500/30"
+        >
+          {text.slice(m.start, m.end)}
+        </mark>,
+      );
+    } else {
+      // Not the active one — same span, no highlight styling, just carries the id so a later
+      // click can still find and highlight it (see the doc comment above).
+      nodes.push(
+        <span key={`quote-${i}-${m.start}`} id={m.decisionId}>
+          {text.slice(m.start, m.end)}
+        </span>,
+      );
+    }
     cursor = m.end;
   });
   if (cursor < text.length) nodes.push(text.slice(cursor));
@@ -59,10 +110,15 @@ function highlightChildren(
   children: React.ReactNode,
   decisions: DecisionRecordPayload[],
   onOpenDecision: (decision: DecisionRecordPayload) => void,
+  messageIndex: number | undefined,
+  quoteHighlights: QuoteHighlight[],
+  activeHighlightId: string | null,
 ): React.ReactNode {
-  if (decisions.length === 0) return children;
+  if (decisions.length === 0 && quoteHighlights.length === 0) return children;
   return React.Children.map(children, (child) =>
-    typeof child === "string" ? highlightDecisionAnchors(child, decisions, onOpenDecision) : child,
+    typeof child === "string"
+      ? highlightAnchorsAndQuotes(child, decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId)
+      : child,
   );
 }
 
@@ -71,18 +127,29 @@ function highlightChildren(
 function buildComponents(
   decisions: DecisionRecordPayload[],
   onOpenDecision: (decision: DecisionRecordPayload) => void,
+  messageIndex: number | undefined,
+  quoteHighlights: QuoteHighlight[],
+  activeHighlightId: string | null,
 ): Components {
   return {
     h1: ({ children }) => <p className="text-[18px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
     h2: ({ children }) => <p className="text-[17px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
     h3: ({ children }) => <p className="text-[16px] font-bold mt-3 mb-1 first:mt-0">{children}</p>,
     h4: ({ children }) => <p className="text-[16px] font-bold mt-3 mb-1 first:mt-0">{children}</p>,
-    p: ({ children }) => <p className="mb-2 last:mb-0">{highlightChildren(children, decisions, onOpenDecision)}</p>,
+    p: ({ children }) => (
+      <p className="mb-2 last:mb-0">
+        {highlightChildren(children, decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId)}
+      </p>
+    ),
     strong: ({ children }) => <strong className="font-bold">{children}</strong>,
     em: ({ children }) => <em className="italic font-medium text-primary">{children}</em>,
     ul: ({ children }) => <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-1">{children}</ul>,
     ol: ({ children }) => <ol className="list-decimal pl-5 mb-2 last:mb-0 space-y-1">{children}</ol>,
-    li: ({ children }) => <li className="pl-1">{highlightChildren(children, decisions, onOpenDecision)}</li>,
+    li: ({ children }) => (
+      <li className="pl-1">
+        {highlightChildren(children, decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId)}
+      </li>
+    ),
     blockquote: ({ children }) => (
       <blockquote className="border-l-2 border-border pl-3 my-2 text-muted-foreground">{children}</blockquote>
     ),
@@ -140,6 +207,56 @@ function buildComponents(
   };
 }
 
+// Compact confidence + "would change if" summary shown directly on the reply, below the
+// highlighted anchor text — so a cautious/contested answer reads as cautious without an extra
+// click. Expands in place into the full DecisionDetailBody (rule, evidence for/against,
+// alternatives, weighting) on click, dropdown-style — not the DecisionDrawer the inline anchor
+// highlight above opens for this same decision; a second side panel for what's already right
+// here in the transcript read as a worse interaction than just expanding downward.
+function DecisionSummaryRow({ decision }: { decision: DecisionRecordPayload }) {
+  const { t } = useTranslation("terminal");
+  const [open, setOpen] = React.useState(false);
+  const wouldChangeIf = decision.wouldChangeIf;
+  return (
+    <div className="mt-1.5 rounded-lg border border-border/60 text-[12px] leading-4 text-muted-foreground">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+        className="flex cursor-pointer flex-wrap items-start gap-x-2 gap-y-1 px-2.5 py-1.5 transition-colors hover:bg-muted/60"
+      >
+        <DecisionConfidenceBadge confidence={decision.confidence} />
+        {wouldChangeIf.length > 0 && (
+          <span className="flex min-w-0 flex-1 items-start gap-1">
+            <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 truncate">
+              <span className="font-semibold text-foreground">{t("decisionWouldChangeIf")}: </span>
+              {wouldChangeIf[0]}
+              {wouldChangeIf.length > 1 && t("decisionWouldChangeIfMore", { count: wouldChangeIf.length - 1 })}
+            </span>
+          </span>
+        )}
+        {open ? (
+          <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        ) : (
+          <ChevronRight className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        )}
+      </div>
+      {open && (
+        <div className="space-y-2 border-t border-border/60 px-2.5 py-2">
+          <DecisionDetailBody payload={decision} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // The backend appends a `[RELATED_QUERIES][...][/RELATED_QUERIES]` suffix intended
 // to drive a future "suggested follow-up" UI. That feature doesn't exist yet, so
 // strip it rather than let it leak into the visible response.
@@ -184,6 +301,8 @@ const AssistantMessage = React.memo(function AssistantMessage({
   className,
   decisions = NO_DECISIONS,
   onOpenDecision,
+  messageIndex,
+  quoteHighlights = NO_QUOTE_HIGHLIGHTS,
 }: {
   content: string;
   className?: string;
@@ -192,17 +311,38 @@ const AssistantMessage = React.memo(function AssistantMessage({
    * a plain reply, or while the persisted turn (and its decisions) hasn't loaded yet. */
   decisions?: DecisionRecordPayload[];
   onOpenDecision?: (decision: DecisionRecordPayload) => void;
+  /** This bubble's index in ConsultationChat's visibleMessages — only used to id each highlighted
+   * decision anchor (decisionAnchorElementId) so Case Workspace's Sources panel can scroll to a
+   * specific decision's sentence rather than just this whole message. Omit where nothing needs to
+   * scroll here by index (the id is simply left off those spans). */
+  messageIndex?: number;
+  /** Evidence quotes (from this reply's decisions, wherever they actually landed among a split
+   * reply's sibling bubbles) to highlight yellow if they appear in THIS bubble's text — see
+   * ConsultationChat, which builds one list per turn and hands it to every sibling, since only
+   * the split reply's last bubble carries `decisions` but a quote can be in any of them. */
+  quoteHighlights?: QuoteHighlight[];
 }) {
   const cleaned = cleanAssistantContent(content);
+  // Subscribed directly (not a prop) so a click anywhere that calls setActiveHighlight —
+  // currently only SourcesPanel — re-renders every bubble to move the highlight, without
+  // ConsultationChat needing to know or forward that state itself.
+  const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const components = React.useMemo(
-    () => buildComponents(decisions, onOpenDecision ?? (() => {})),
-    [decisions, onOpenDecision],
+    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId),
+    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId],
   );
   return (
     <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {cleaned}
       </ReactMarkdown>
+      {decisions.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {decisions.map((decision, i) => (
+            <DecisionSummaryRow key={i} decision={decision} />
+          ))}
+        </div>
+      )}
     </div>
   );
 });

@@ -20,16 +20,44 @@ export function DecisionConfidenceBadge({ confidence }: { confidence: DecisionRe
   return <Badge tone={CONFIDENCE_TONE[confidence]}>{t(CONFIDENCE_KEYS[confidence])}</Badge>
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+export function Label({ children }: { children: React.ReactNode }) {
   return (
     <p className="mb-1.5 text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">{children}</p>
   )
 }
 
-function EvidenceItem({ evidence }: { evidence: DecisionEvidence }) {
+// `onClick`/`active` are only ever passed by SourcesPanel — `active` marks the one row the user
+// last clicked (active-highlight.store.ts's activeHighlightId), so the panel itself shows what's
+// selected, not just the yellow highlight landing in the chat transcript elsewhere. Both unset
+// by DecisionDetailBody's own callers (the case-level Decisions panel, the chat drawer), whose
+// rendering is unchanged.
+export function EvidenceItem({
+  evidence,
+  onClick,
+  active = false,
+}: {
+  evidence: DecisionEvidence
+  onClick?: () => void
+  active?: boolean
+}) {
   const { t } = useTranslation("terminal")
   return (
-    <li className="text-[12px] leading-4 text-muted-foreground">
+    <li
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`text-[12px] leading-4 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
+    >
       <div className="flex items-center gap-1.5">
         {evidence.verified ? (
           <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
@@ -49,9 +77,36 @@ function EvidenceItem({ evidence }: { evidence: DecisionEvidence }) {
   )
 }
 
-function RuleItem({ rule }: { rule: DecisionRule }) {
+// Same onClick/active convention as EvidenceItem above — unset by every caller except
+// SourcesPanel. The title stays its own independent link when `rule.url` is set (rule.verified
+// already means chat-wonder resolved it against a real source — that link is worth keeping
+// regardless of whether the row itself also jumps back to the reply).
+export function RuleItem({
+  rule,
+  onClick,
+  active = false,
+}: {
+  rule: DecisionRule
+  onClick?: () => void
+  active?: boolean
+}) {
   return (
-    <li className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+    <li
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`flex items-center gap-1.5 text-[12px] text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
+    >
       {rule.verified ? (
         <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
       ) : (
@@ -62,6 +117,7 @@ function RuleItem({ rule }: { rule: DecisionRule }) {
           href={rule.url}
           target="_blank"
           rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center gap-1 text-foreground underline decoration-dotted hover:text-brand-gold"
         >
           {rule.title}

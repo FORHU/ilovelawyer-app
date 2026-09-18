@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMessagesQuery } from "@/lib/chat/mutations";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
+import type { DecisionRecordPayload } from "@/lib/terminal/types";
 
 export interface TopicNavigatorItem {
   /** Index into ConsultationChat's own visibleMessages — matches the `chat-msg-${index}` id
@@ -20,6 +21,33 @@ export interface TopicNavigatorGroup {
   topics: TopicNavigatorItem[];
 }
 
+/** DOM id of one decision's highlighted anchor span inside a reply bubble (see
+ * assistant-message.tsx's highlightAnchorsAndQuotes, which sets this same id) — `decisionIndex`
+ * is that message's own `decisions` array index, matching `m.decisions`/`decisionRecords.records`
+ * order exactly (both come from the same array, never re-sorted). Shared so AssistantMessage
+ * (writer) and SourcesPanel (reader, via scrollToElementId below) agree on the exact id without
+ * either one hardcoding a format the other actually owns. */
+export function decisionAnchorElementId(messageIndex: number, decisionIndex: number): string {
+  return `chat-msg-${messageIndex}-decision-${decisionIndex}`;
+}
+
+/** DOM id of one piece of evidence's highlighted (yellow) quote span, wherever in the reply it
+ * actually appears — unlike decisionAnchorElementId, this is NOT scoped to one message, because
+ * a split reply only attaches its decisions to the *last* topic bubble (see chat.service.ts's
+ * persistAssistantTurn) while the quoted sentence itself can live in any earlier sibling. Every
+ * bubble in a split reply gets offered the same full quote list (ConsultationChat's doSend) and
+ * each independently highlights whichever quotes actually match its own text — so the id only
+ * needs to name the evidence item, not a message. `recordIndex`/`indexInDirection` mirror
+ * SourcesPanel's own flatMap order over `latestDecisions.records[recordIndex].evidenceFor` /
+ * `.evidenceAgainst`, so both sides agree without either hardcoding the other's iteration. */
+export function evidenceQuoteElementId(
+  recordIndex: number,
+  direction: "for" | "against",
+  indexInDirection: number,
+): string {
+  return `evidence-quote-${recordIndex}-${direction}-${indexInDirection}`;
+}
+
 /** Derives "topics across every split AI reply" for a consultation straight from persisted
  * history — usable from anywhere on the page, not just inside ConsultationChat's own render
  * tree, since a split reply is always already-persisted data (see MessageGroup). Each turn's
@@ -27,7 +55,10 @@ export interface TopicNavigatorGroup {
  * the panel builds up into a running table of contents for the whole thread instead of only
  * ever showing the most recent reply. Replicates ConsultationChat's own visibleMessages filter
  * (dropping the hidden system-driven mind-map/audio-overview turns) so index numbering lines
- * up with the bubble ids it renders. */
+ * up with the bubble ids it renders. Also the single place SourcesPanel gets `chat-msg-${index}`
+ * jump targets for its Evidence/Authorities sections (`latestDecisions`, `latestAssistantIndex`)
+ * — deliberately not re-derived there, so there's only one copy of this filter to keep in sync
+ * with ConsultationChat's own. */
 export function useTopicNavigator(consultationId: string | null | undefined) {
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -76,8 +107,49 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
 
   const topics = useMemo<TopicNavigatorItem[]>(() => groups.flatMap((g) => g.topics), [groups]);
 
+  // Same "walk visibleMessages backward" shape as Case Workspace's Decisions Studio tile
+  // (studio-panel.tsx's latestDecisionsMessage), but computed against this hook's *filtered*
+  // visibleMessages instead of raw history — SourcesPanel needs the index to double as a
+  // `chat-msg-${index}` scroll target, and only visibleMessages' numbering lines up with that id.
+  const latestDecisionsIndex = useMemo(() => {
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      if ((visibleMessages[i]?.decisionRecords?.records.length ?? 0) > 0) return i;
+    }
+    return -1;
+  }, [visibleMessages]);
+  const latestDecisionsRecords = latestDecisionsIndex >= 0 ? visibleMessages[latestDecisionsIndex]!.decisionRecords!.records : undefined;
+  const latestDecisions: { index: number; records: DecisionRecordPayload[] } | null =
+    latestDecisionsRecords ? { index: latestDecisionsIndex, records: latestDecisionsRecords } : null;
+
+  // The reply Related Cases (useRelatedCasesQuery) belongs to — that query is always "this
+  // consultation's latest turn," with no per-item anchor of its own, so SourcesPanel jumps any
+  // related-case row here rather than to a specific sentence.
+  const latestAssistantIndex = useMemo(() => {
+    for (let i = visibleMessages.length - 1; i >= 0; i--) {
+      if (visibleMessages[i]?.role === "assistant") return i;
+    }
+    return null;
+  }, [visibleMessages]);
+
   const scrollToTopic = useCallback((index: number) => {
     document.getElementById(`chat-msg-${index}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // A message can carry several decision records, each highlighted at its own anchor sentence,
+  // and each piece of evidence at its own quoted sentence (see assistant-message.tsx's
+  // highlightAnchorsAndQuotes) — SourcesPanel's Evidence/Authorities rows should jump to the
+  // specific sentence they actually came from, not just the message as a whole (every row
+  // landing on the same spot regardless of which decision/quote it backs was the bug this
+  // fixes). Falls back to the plain message scroll when that id never matched in the rendered
+  // text (findAnchorMatches can miss one — e.g. split across markdown formatting, or a quote the
+  // model paraphrased instead of copying verbatim).
+  const scrollToElementId = useCallback((id: string, fallbackMessageIndex: number) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    document.getElementById(`chat-msg-${fallbackMessageIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   // Lightweight scroll-spy: highlights whichever topic bubble is nearest the top of the
@@ -108,5 +180,14 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
     return () => observer.disconnect();
   }, [topics]);
 
-  return { topics, groups, activeIndex, scrollToTopic, isGenerating };
+  return {
+    topics,
+    groups,
+    activeIndex,
+    scrollToTopic,
+    scrollToElementId,
+    isGenerating,
+    latestDecisions,
+    latestAssistantIndex,
+  };
 }
