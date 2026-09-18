@@ -1132,8 +1132,22 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
         <div ref={arrangementStageRef} className="relative min-h-0 flex-1 overflow-hidden p-3">
           {visiblePanels.length === 0 && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
-              <p className="text-sm text-muted-foreground">{t("emptyGrid")}</p>
+            <div className="absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
+              <div className="flex w-full max-w-md flex-col items-center rounded-xl border border-dashed border-border/80 bg-card/70 px-6 py-10 shadow-sm">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold">
+                  <LayoutPanelLeft className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <h2 className="text-sm font-semibold uppercase tracking-[1.4px] text-foreground">{t("emptyLayoutTitle")}</h2>
+                <p className="mt-2 max-w-sm text-xs leading-5 text-muted-foreground">{t("emptyLayoutDescription")}</p>
+                <button
+                  type="button"
+                  onClick={openNewLayoutDialog}
+                  className="mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("addNewLayout")}
+                </button>
+              </div>
             </div>
           )}
 
@@ -1307,9 +1321,35 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             >
               {(close) => (
                 <>
-                  <p id="new-layout-prompt" className="mb-3 text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
-                    {t("newLayout")}
-                  </p>
+                  <div className="mb-3 flex items-start gap-3">
+                    <p id="new-layout-prompt" className="min-w-0 flex-1 pt-1 text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                      {t("newLayout")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={close}
+                      aria-label={t("closeDialog")}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+                    {t("workspaceName")}
+                  </label>
+                  <input
+                    id="new-layout-name"
+                    autoFocus
+                    value={newLayoutName}
+                    onChange={(e) => setNewLayoutName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        commitNewLayout()
+                        close()
+                      }
+                    }}
+                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-brand-gold/60"
+                  />
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
                   <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {catalog.data.presets.map((preset) => (
@@ -1329,22 +1369,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       </button>
                     ))}
                   </div>
-                  <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
-                    {t("workspaceName")}
-                  </label>
-                  <input
-                    id="new-layout-name"
-                    autoFocus
-                    value={newLayoutName}
-                    onChange={(e) => setNewLayoutName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        commitNewLayout()
-                        close()
-                      }
-                    }}
-                    className="h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-brand-gold/60"
-                  />
                   <div className="mt-3 flex justify-end gap-2">
                     <button
                       type="button"
