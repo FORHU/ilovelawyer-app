@@ -51,7 +51,13 @@
       "currentPasswordLabel": "Kasalukuyang Password",
       "newPasswordLabel": "Bagong Password",
       "confirmPasswordLabel": "Kumpirmahin ang Bagong Password",
-      "newPasswordRequirement": "Dapat hindi bababa sa 8 karakter at may kasamang simbolo.",
+      "passwordRequirements": {
+        "length": "Hindi bababa sa 10 karakter",
+        "uppercase": "Isang malaking titik",
+        "lowercase": "Isang maliit na titik",
+        "number": "Isang numero",
+        "special": "Isang espesyal na karakter"
+      },
       "passwordsMismatch": "Hindi tugma ang mga password.",
       "showPassword": "Ipakita ang password",
       "hidePassword": "Itago ang password",

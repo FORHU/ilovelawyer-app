@@ -179,85 +179,6 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
 }
 
 /* ==========================================
-   AGENDA VIEW (mobile replacement for the 7-column grid below md)
-   ========================================== */
-type AgendaAppointment = { id: string; date: string; title: string; startTime: string; endTime: string | null; description: string | null; status: string };
-type AgendaNote = { id: string; date: string; body: string };
-type AgendaDay = { date: Date; appointments: AgendaAppointment[]; notes: AgendaNote[] };
-
-function AgendaView({
-  agendaDays,
-  selectedDate,
-  onSelectDay,
-}: {
-  agendaDays: AgendaDay[];
-  selectedDate: Date | undefined;
-  onSelectDay: (date: Date) => void;
-}) {
-  const { t } = useTranslation("calendar");
-  if (agendaDays.length === 0) {
-    return <p className="px-4 py-10 text-center text-sm text-muted-foreground">Nothing scheduled this month yet.</p>;
-  }
-
-  return (
-    <div className="flex flex-col divide-y divide-border">
-      {agendaDays.map((day) => {
-        const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
-        return (
-          <Tooltip key={toDateKey(day.date)}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onSelectDay(day.date)}
-                className={cn(
-                  "flex flex-col gap-2 px-4 py-4 text-left transition-colors hover:bg-accent dark:hover:bg-overlay-hover",
-                  isSelected && "bg-primary/10"
-                )}
-              >
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {format(day.date, "EEEE, MMM d")}
-                </span>
-                <div className="flex flex-col gap-1.5">
-                  {day.appointments.map((appt) => {
-                    const isCancelled = appt.status === "cancelled";
-                    return (
-                      <span
-                        key={appt.id}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs",
-                          isCancelled
-                            ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
-                            : "bg-blue-50 text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"
-                        )}
-                      >
-                        <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-                        <span className={cn(isCancelled && "line-through")}>
-                          {formatTime12h(appt.startTime)} · {appt.title}
-                        </span>
-                      </span>
-                    );
-                  })}
-                  {day.notes.map((note) => (
-                    <span
-                      key={note.id}
-                      className="flex items-center gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
-                    >
-                      <StickyNote className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{note.body}</span>
-                    </span>
-                  ))}
-                </div>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>View appointments on {format(day.date, "MMM d")}</TooltipContent>
-          </Tooltip>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ==========================================
    DISMISSIBLE INLINE ERROR BANNER
    ========================================== */
 function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -882,23 +803,6 @@ export default function CalendarPage() {
 
   const datesWithItems = React.useMemo(() => new Set(itemsByDate.keys()), [itemsByDate]);
 
-  const agendaDays = React.useMemo(() => {
-    const grouped = new Map<string, AgendaDay>();
-    for (const appt of appointments) {
-      const entry = grouped.get(appt.date) ?? { date: parse(appt.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
-      entry.appointments.push(appt);
-      grouped.set(appt.date, entry);
-    }
-    for (const note of notes) {
-      const entry = grouped.get(note.date) ?? { date: parse(note.date, "yyyy-MM-dd", new Date()), appointments: [], notes: [] };
-      entry.notes.push(note);
-      grouped.set(note.date, entry);
-    }
-    return Array.from(grouped.values())
-      .map((day) => ({ ...day, appointments: [...day.appointments].sort((a, b) => a.startTime.localeCompare(b.startTime)) }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [appointments, notes]);
-
   const selectedDateKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedAppointments = React.useMemo(
     () =>
@@ -932,7 +836,10 @@ export default function CalendarPage() {
             datesWithItems={datesWithItems}
           />
 
-          <Card className="w-full flex-1 backdrop-blur-sm">
+          {/* Desktop/tablet only — PlannerPanel's own calendar grid + selected-day list above
+              already covers mobile's date-picking and "what's on this day" needs, so this
+              month-grid + agenda pairing would otherwise just repeat the same day's notes. */}
+          <Card className="hidden w-full flex-1 backdrop-blur-sm md:block">
             <CardHeader className="flex flex-row items-center gap-3 border-b border-border">
               <div className="flex flex-1 items-center justify-center gap-2">
                 <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
@@ -965,43 +872,36 @@ export default function CalendarPage() {
               )}
             </CardHeader>
             <CardContent className="p-0 md:px-6 md:pb-6">
-              {/* Below md the 7-column grid has no reasonable shrink path to phone width,
-                  so it's replaced entirely by a scrollable Agenda View (see ADR 0004). */}
-              <div className="hidden md:block">
-                <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && handleSelectDay(date)}
-                    month={currentMonth}
-                    onMonthChange={setCurrentMonth}
-                    showOutsideDays
-                    fixedWeeks
-                    components={{ DayButton: CalendarDayCell }}
-                    modifiers={{ past: isPastDay }}
-                    classNames={{
-                      nav: "hidden",
-                      month_caption: "hidden",
-                      day: "flex-1 basis-0 min-w-0 max-w-full self-start overflow-hidden p-0.5 align-top",
-                      week: "mt-2 flex w-full items-start",
-                      // table-fixed pins each column to an equal share of the table's own width
-                      // (set once, by the table itself — not by any cell's content). Without it,
-                      // the browser's table auto-layout still sizes columns from each cell's
-                      // *unconstrained* content width (a <td> stays a table-layout participant for
-                      // width purposes even once its display is overridden to flex), so one long,
-                      // unwrapped appointment/note title was enough to blow a single column wide
-                      // and shove the rest of the week off-screen — the flex-1/min-w-0 overrides on
-                      // "day" alone couldn't prevent that.
-                      month_grid: "w-full table-fixed border-collapse",
-                      today: "",
-                    }}
-                    className="w-full p-0"
-                  />
-                </CalendarItemsContext.Provider>
-              </div>
-              <div className="md:hidden">
-                <AgendaView agendaDays={agendaDays} selectedDate={selectedDate} onSelectDay={handleSelectDay} />
-              </div>
+              <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && handleSelectDay(date)}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  showOutsideDays
+                  fixedWeeks
+                  components={{ DayButton: CalendarDayCell }}
+                  modifiers={{ past: isPastDay }}
+                  classNames={{
+                    nav: "hidden",
+                    month_caption: "hidden",
+                    day: "flex-1 basis-0 min-w-0 max-w-full self-start overflow-hidden p-0.5 align-top",
+                    week: "mt-2 flex w-full items-start",
+                    // table-fixed pins each column to an equal share of the table's own width
+                    // (set once, by the table itself — not by any cell's content). Without it,
+                    // the browser's table auto-layout still sizes columns from each cell's
+                    // *unconstrained* content width (a <td> stays a table-layout participant for
+                    // width purposes even once its display is overridden to flex), so one long,
+                    // unwrapped appointment/note title was enough to blow a single column wide
+                    // and shove the rest of the week off-screen — the flex-1/min-w-0 overrides on
+                    // "day" alone couldn't prevent that.
+                    month_grid: "w-full table-fixed border-collapse",
+                    today: "",
+                  }}
+                  className="w-full p-0"
+                />
+              </CalendarItemsContext.Provider>
             </CardContent>
           </Card>
         </div>

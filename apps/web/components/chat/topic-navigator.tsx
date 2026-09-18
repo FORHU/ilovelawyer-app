@@ -180,6 +180,9 @@ export default function TopicNavigator({
   label,
   isGenerating = false,
   generatingLabel,
+  isMobileOpen: isMobileOpenProp,
+  onMobileOpenChange: onMobileOpenChangeProp,
+  hideMobileTrigger = false,
 }: {
   groups: TopicNavigatorGroup[];
   activeIndex: number | null;
@@ -192,13 +195,26 @@ export default function TopicNavigator({
    * topic list, rather than nothing. */
   isGenerating?: boolean;
   generatingLabel?: string;
+  /** Lets a caller drive the mobile drawer's open state itself (e.g. from its own header's
+   * kebab menu) instead of this component's own floating trigger circle. Uncontrolled
+   * (internal state) when omitted — every caller except consultation-chat.tsx's non-embedded
+   * mode still relies on that default. */
+  isMobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
+  /** Hides this component's own floating trigger circle — for a caller that opens the drawer
+   * from elsewhere (its sticky header's kebab menu) and would otherwise end up with two
+   * redundant ways to open the same panel. */
+  hideMobileTrigger?: boolean;
 }) {
   // Mobile drawer — the desktop/tablet rail below is `hidden` under `lg` (matching
   // ConsultationSidebar's own mobile-drawer breakpoint, see consultation-sidebar.tsx), so
   // topic-jump navigation needs its own trigger + overlay drawer on phones instead of just
   // disappearing. Mirrors that same pattern (trigger button + boolean state + resize-based
-  // auto-close + overlay), sliding in from the right instead of the left.
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  // auto-close + overlay), sliding in from the right instead of the left. Falls back to local
+  // state when the caller doesn't control it (see isMobileOpen's doc comment above).
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const isMobileOpen = isMobileOpenProp ?? internalMobileOpen;
+  const setIsMobileOpen = onMobileOpenChangeProp ?? setInternalMobileOpen;
 
   useEffect(() => {
     if (!isMobileOpen) return;
@@ -207,7 +223,7 @@ export default function TopicNavigator({
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [isMobileOpen]);
+  }, [isMobileOpen, setIsMobileOpen]);
 
   const body = (compact: boolean, onJumpOverride: (index: number) => void = onJump) =>
     groups.length === 0 && isGenerating ? (
@@ -218,6 +234,7 @@ export default function TopicNavigator({
 
   return (
     <>
+      {!hideMobileTrigger && (
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -234,6 +251,7 @@ export default function TopicNavigator({
         </TooltipTrigger>
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>
+      )}
 
       <aside
         className={`hidden lg:flex absolute right-0 top-16 bottom-0 bg-card/90 backdrop-blur-md border-l border-y border-border rounded-l-[8px] shadow-lg flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
