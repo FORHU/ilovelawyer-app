@@ -770,7 +770,6 @@ export default function ConsultationChat({
   useEffect(() => {
     shouldFollowTranscriptRef.current = true;
   }, [consultationKey]);
-
   useEffect(() => {
     const transcript = transcriptRef.current;
     if (!transcript || !shouldFollowTranscriptRef.current) return;
