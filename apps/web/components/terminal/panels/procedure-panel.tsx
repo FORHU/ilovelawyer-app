@@ -4,7 +4,7 @@ import { FileText } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
-import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
