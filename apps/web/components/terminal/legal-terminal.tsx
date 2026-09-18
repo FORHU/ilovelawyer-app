@@ -198,7 +198,7 @@ function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): Wor
 export default function LegalTerminal({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const catalog = useTerminalCatalogQuery()
-  const workspaces = useTerminalWorkspacesQuery()
+  const workspaces = useTerminalWorkspacesQuery(caseId)
   const snapshot = useCaseSnapshotQuery(caseId)
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
@@ -685,7 +685,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   const commitNewLayout = () => {
     const name = newLayoutName.trim()
-    if (name && layout) createWorkspace.mutate({ name, preset: layout.preset, layoutJson: layout })
+    if (name && layout) createWorkspace.mutate({ caseId, name, preset: layout.preset, layoutJson: layout })
     setNewLayoutName("")
     setCreatingLayout(false)
   }
@@ -944,19 +944,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             <span className="hidden text-[10px] uppercase tracking-[1px] text-muted-foreground sm:inline">
               {t("paneCount", { count: visiblePanels.length, total: availablePanels.length })}
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                // Only one of these is ever visible at a given viewport (aside is lg-and-up,
-                // MobileDrawer is below lg) — setting both is harmless and viewport-agnostic.
-                setSidebarExpanded(true)
-                setMobileLibraryOpen(true)
-              }}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("addPane")}
-            </button>
             <Popover>
               <Tooltip>
                 <TooltipTrigger asChild>

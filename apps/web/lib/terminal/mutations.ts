@@ -32,7 +32,12 @@ import type {
 export const terminalKeys = {
   all: ["terminal"] as const,
   catalog: () => [...terminalKeys.all, "catalog"] as const,
-  workspaces: () => [...terminalKeys.all, "workspaces"] as const,
+  // Case-scoped: each case gets its own cached list. `workspacesAll` is the shared prefix, used
+  // only for invalidating every case's cached list after a mutation (React Query's
+  // invalidateQueries prefix-matches by default) since a create/update/delete doesn't otherwise
+  // know which case's list is currently on screen.
+  workspacesAll: () => [...terminalKeys.all, "workspaces"] as const,
+  workspaces: (caseId: string) => [...terminalKeys.all, "workspaces", caseId] as const,
   snapshot: (caseId: string) =>
     [...terminalKeys.all, "snapshot", caseId] as const,
   timeline: (caseId: string) =>
@@ -123,10 +128,11 @@ export function useTerminalCatalogQuery() {
   })
 }
 
-export function useTerminalWorkspacesQuery() {
+export function useTerminalWorkspacesQuery(caseId: string) {
   return useQuery({
-    queryKey: terminalKeys.workspaces(),
-    queryFn: () => apiFetch<TerminalWorkspace[]>("/api/terminal/workspaces"),
+    queryKey: terminalKeys.workspaces(caseId),
+    queryFn: () => apiFetch<TerminalWorkspace[]>(`/api/terminal/workspaces?caseId=${caseId}`),
+    enabled: !!caseId,
   })
 }
 
@@ -166,6 +172,7 @@ export function useCreateWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: {
+      caseId: string
       name: string
       preset?: PresetValue
       layoutJson?: WorkspaceLayout
@@ -175,7 +182,7 @@ export function useCreateWorkspaceMutation() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
     },
   })
 }
@@ -199,7 +206,7 @@ export function useUpdateWorkspaceMutation() {
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
     },
   })
 }
@@ -212,7 +219,7 @@ export function useApplyWorkspaceMutation() {
         method: "POST",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
     },
   })
 }
@@ -220,13 +227,13 @@ export function useApplyWorkspaceMutation() {
 export function useResetWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (preset?: PresetValue) =>
+    mutationFn: ({ caseId, preset }: { caseId: string; preset?: PresetValue }) =>
       apiFetch<TerminalWorkspace>("/api/terminal/workspaces/reset", {
         method: "POST",
-        body: JSON.stringify(preset ? { preset } : {}),
+        body: JSON.stringify(preset ? { caseId, preset } : { caseId }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
     },
   })
 }
@@ -238,7 +245,7 @@ export function useDeleteWorkspaceMutation() {
       await apiFetchRaw(`/api/terminal/workspaces/${id}`, { method: "DELETE" })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.workspaces() })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
     },
   })
 }
