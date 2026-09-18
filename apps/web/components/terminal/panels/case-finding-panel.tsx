@@ -4,7 +4,7 @@ import { FileText, Sparkles, Trash2 } from "lucide-react"
 import { useCreateFindingMutation, useDeleteFindingMutation } from "@/lib/terminal/mutations"
 import { useGraphViewQuery } from "@/lib/graph-view/mutations"
 import type { CaseSnapshot, FindingCategory } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, PanelRow, PanelRowList, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 // Backs Legal Issues / Weaknesses / Strengths / Attack Strategies / Defense Strategies — one
 // CaseFinding table filtered by category (see lib/terminal/mutations.ts), same as the backend.
@@ -57,7 +57,7 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
                         className="h-3 w-3 shrink-0"
                         aria-hidden="true"
                       />
-                      <span className="truncate">
+                      <span className="truncate" title={item.sourceLabel}>
                         {t("groundedIn", { doc: item.sourceLabel })}
                       </span>
                     </p>
@@ -67,7 +67,7 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={() => del.mutate(node.refId)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                  className={dangerIconBtnClass}
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -91,6 +91,7 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder={t(FINDING_ADD_LABEL_KEYS.LEGAL_ISSUE)}
+          aria-label={t(FINDING_ADD_LABEL_KEYS.LEGAL_ISSUE)}
           className={`flex-1 ${fieldClass}`}
         />
         <button
@@ -101,6 +102,7 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
           {t("add")}
         </button>
       </form>
+      <MutationError show={create.isError || del.isError} />
     </PanelBody>
   )
 }
@@ -139,7 +141,7 @@ export function CaseFindingPanel({
                 {item.sourceLabel && (
                   <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
+                    <span className="truncate" title={item.sourceLabel}>
                       {t("groundedIn", { doc: item.sourceLabel })}
                     </span>
                   </p>
@@ -149,7 +151,7 @@ export function CaseFindingPanel({
                 type="button"
                 onClick={() => del.mutate(item.id)}
                 disabled={del.isPending}
-                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                className={dangerIconBtnClass}
                 aria-label={t("delete")}
               >
                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -172,6 +174,7 @@ export function CaseFindingPanel({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder={t(FINDING_ADD_LABEL_KEYS[category])}
+          aria-label={t(FINDING_ADD_LABEL_KEYS[category])}
           className={`flex-1 ${fieldClass}`}
         />
         <button
@@ -182,6 +185,7 @@ export function CaseFindingPanel({
           {t("add")}
         </button>
       </form>
+      <MutationError show={create.isError || del.isError} />
     </PanelBody>
   )
 }

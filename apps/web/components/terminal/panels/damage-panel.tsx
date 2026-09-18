@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { useCreateDamageMutation, useDeleteDamageMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, PanelRow, PanelRowList, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
   ACTUAL: "damageActual",
@@ -57,7 +57,7 @@ export function DamagePanel({
                   type="button"
                   onClick={() => del.mutate(d.id)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                  className={dangerIconBtnClass}
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -88,6 +88,7 @@ export function DamagePanel({
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as DamageCategory)}
+          aria-label={t("damageCategoryLabel")}
           className={fieldClass}
         >
           {(Object.keys(DAMAGE_CATEGORY_KEYS) as DamageCategory[]).map((c) => (
@@ -100,6 +101,7 @@ export function DamagePanel({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t("damageDescription")}
+          aria-label={t("damageDescription")}
           className={fieldClass}
         />
         <div className="flex gap-2">
@@ -110,6 +112,7 @@ export function DamagePanel({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={t("damageAmount")}
+            aria-label={t("damageAmount")}
             className={`flex-1 ${fieldClass}`}
           />
           <button
@@ -121,6 +124,7 @@ export function DamagePanel({
           </button>
         </div>
       </form>
+      <MutationError show={create.isError || del.isError} />
     </PanelBody>
   )
 }

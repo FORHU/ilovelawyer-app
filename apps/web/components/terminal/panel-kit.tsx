@@ -1,4 +1,5 @@
 import { type ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -15,6 +16,20 @@ export const primaryBtnClass =
   "h-8 shrink-0 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-50"
 export const ghostBtnClass =
   "h-8 shrink-0 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
+// The shared "delete this row" icon-button look — was duplicated byte-for-byte across 5 panels
+// with a raw hover:text-red-500 before being pulled out here onto the semantic --danger token.
+export const dangerIconBtnClass =
+  "shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-danger disabled:opacity-50"
+
+// Inline failure feedback for a mutation — every panel's add/update/delete action should show
+// this instead of letting a failed save look identical to a successful one. `children` overrides
+// the generic message for mutations that have something more specific to say (e.g. upload
+// failures); most call sites just pass `show={mutation.isError}` and take the default text.
+export function MutationError({ show, children }: { show: boolean; children?: ReactNode }) {
+  const { t } = useTranslation("terminal")
+  if (!show) return null
+  return <p className="text-[11px] text-danger">{children ?? t("genericSaveError")}</p>
+}
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (

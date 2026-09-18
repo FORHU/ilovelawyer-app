@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next"
-import { Search } from "lucide-react"
+import { AlertTriangle, Search } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { useAiJobStatus, useScanContradictionsMutation } from "@/lib/terminal/mutations"
 import { useGraphViewQuery } from "@/lib/graph-view/mutations"
-import { EmptyNote, PanelBody, PanelRow, PanelRowList, SectionLabel } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, SectionLabel } from "@/components/terminal/panel-kit"
 
 function formatContradictionValue(kind: string, value: string) {
   if (kind === "amount_mismatch" && /^\d+(\.\d+)?$/.test(value)) {
@@ -51,6 +51,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
         <Search className="h-3.5 w-3.5" aria-hidden="true" />
         {isScanning ? t("scanning") : t("scan")}
       </button>
+      <MutationError show={scan.isError} />
 
       {contradictions.length === 0 ? (
         <EmptyNote>{t("noContradictions")}</EmptyNote>
@@ -70,7 +71,8 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
               return (
                 <PanelRow key={edge.id} className="flex-col items-start gap-1.5">
                   <div className="flex w-full items-center gap-2">
-                    <p className="min-w-0 flex-1 font-mono text-[12px] text-orange-400">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-riskmed" aria-hidden="true" />
+                    <p className="min-w-0 flex-1 font-mono text-[12px] text-riskmed">
                       {contradictionHeadline(metadata)}
                     </p>
                     {/* Substitutes the mock's fabricated "Direct/Inferential" tag with the real

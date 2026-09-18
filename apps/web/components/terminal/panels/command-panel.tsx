@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Badge } from "@workspace/ui/components/badge"
 import { useCreateRiskMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, SnapshotRisk } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, PanelRow, PanelRowList, SectionLabel, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, SectionLabel, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 const RISK_TIER: Record<SnapshotRisk["severity"], { label: string; tone: "danger" | "warning" | "success" }> = {
   FATAL: { label: "HIGH", tone: "danger" },
@@ -101,6 +101,7 @@ export function CommandPanel({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t("addRisk")}
+            aria-label={t("addRisk")}
             className={`flex-1 ${fieldClass}`}
           />
           <button
@@ -111,6 +112,7 @@ export function CommandPanel({
             {t("add")}
           </button>
         </form>
+        <MutationError show={createRisk.isError} />
       </div>
     </PanelBody>
   )

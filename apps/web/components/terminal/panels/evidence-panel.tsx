@@ -141,7 +141,7 @@ function DocumentRow({
         className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-md px-1 py-1.5 text-left"
       >
         <div className="flex w-full items-center justify-between gap-3">
-          <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-foreground" title={doc.name}>
             {doc.name}
           </span>
           <TerminalRagBadge status={doc.ragStatus} />
@@ -155,7 +155,7 @@ function DocumentRow({
             disabled={isDeleting}
             onClick={onDelete}
             aria-label={t("removeDocument", { documentName: doc.name })}
-            className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
+            className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             {isDeleting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -292,7 +292,7 @@ export function EvidencePanel({
           }}
         />
         {uploadDocuments.data && uploadDocuments.data.failed.length > 0 && (
-          <p className="mb-2 text-[11px] text-red-600 dark:text-red-400">{t("uploadError")}</p>
+          <p className="mb-2 text-[11px] text-danger">{t("uploadError")}</p>
         )}
         {snapshot.documents.length === 0 && folders.length === 0 ? (
           <EmptyNote>{t("noDocuments")}</EmptyNote>
@@ -332,7 +332,10 @@ export function EvidencePanel({
                         className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`}
                         aria-hidden="true"
                       />
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[1px] text-foreground uppercase">
+                      <span
+                        className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[1px] text-foreground uppercase"
+                        title={folder.label ?? t("uncategorizedFolder")}
+                      >
                         {folder.label ?? t("uncategorizedFolder")}
                       </span>
                       <span className="shrink-0 text-[11px] text-muted-foreground">{folder.docs.length}</span>

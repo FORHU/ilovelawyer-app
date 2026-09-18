@@ -81,7 +81,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
             </button>
           )}
           {generateScriptError && (
-            <p className="text-xs text-red-500">
+            <p className="text-xs text-danger">
               {t("case-portfolio:workspace.audioOverviewGenerateError")}
             </p>
           )}
@@ -95,7 +95,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   return (
     <PanelBody gap="4">
       {audioRenderError && (
-        <p className="text-center text-xs text-red-500">
+        <p className="text-center text-xs text-danger">
           {t("case-portfolio:workspace.audioOverviewRenderError")}
         </p>
       )}

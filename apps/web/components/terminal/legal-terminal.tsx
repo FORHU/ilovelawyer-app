@@ -1,11 +1,22 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type DragEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import {
   AppWindow,
   ArrowLeft,
+  ArrowLeftRight,
   Columns3,
   Download,
   Grip,
@@ -101,7 +112,32 @@ const GRID_SNAP_STEP = 1 / 24
 // same neighbor-trade + floor model as the Free canvas's MIN_FR, just a separate constant since
 // this grid's minimum can be roomier (fewer, larger panes than the freeform canvas).
 const MIN_COLUMN_FR = 0.12
+// Fraction nudged per arrow-key press on any resize divider/handle — the keyboard alternative
+// to pointer-drag resize (WCAG 2.5.7). Deliberately coarser than GRID_SNAP_STEP (~0.042) so a
+// keyboard user can reach a meaningfully different size in a handful of presses.
+const RESIZE_KEY_STEP = 0.02
+// What ModalOverlay below treats as a tab stop when trapping focus inside itself.
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
+// Local z-index scale for this file's own stacking context (the terminal-grid stage and its
+// overlays) — deliberately ordered, not arbitrary. Below `z-10`: nothing, panes sit in normal
+// flow order. Kept as plain Tailwind literals (z-10/z-20/z-30/z-[90]/z-[95] below, plus the
+// inline `zIndex: 80/panel.order+1` on a Free-canvas pane) rather than named constants, since
+// Tailwind can't resolve an interpolated class at build time — this comment is the scale's
+// documentation instead:
+//   z-10  Columns/Tabs resize dividers (column border, in-column stack, tabs group split)
+//   z-20  Free canvas edge resize handles
+//   z-30  Free canvas corner resize handles
+//   80    a Free-canvas pane actively being dragged (inline zIndex, momentarily above every
+//         other pane's own order-based z-index, which otherwise grows unbounded via
+//         bringToFront — see z-(--z-canvas-overlay) below for why the Settings popover can't
+//         just sit at a fixed value under that ceiling)
+//   z-[90]  the maximized-pane overlay
+//   z-[95]  the Columns replace-picker overlay
+// The Settings popover is a special case: it's portaled inside this same stacking context (see
+// PopoverContent's `container` doc comment) but needs to sit above every possible pane z-index,
+// so it uses the global `z-(--z-canvas-overlay)` token (globals.css) instead of a number in this
+// scale — see its call site below.
 type PaneRect = { x: number; y: number; width: number; height: number }
 type ResizeEdge = { n?: boolean; s?: boolean; e?: boolean; w?: boolean }
 type ResizeDrag = PaneRect & { panelId: PanelId; edges: ResizeEdge; startX: number; startY: number }
@@ -449,6 +485,36 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setDraggingId(null)
   }
 
+  // Keyboard alternative to onResizePointerMove — a single discrete commit per arrow-key press
+  // (no live-drag ref needed, unlike the pointer path) through the same clampResize the pointer
+  // path uses, so both share identical math/floors. An axis a handle's `edges` don't cover is a
+  // no-op inside clampResize, so all 4 arrow keys are safe to wire on every handle uniformly.
+  const onResizeKeyDown = (panel: PanelLayout, edges: ResizeEdge, event: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    let dy = 0
+    if (event.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (event.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else if (event.key === "ArrowUp") dy = -RESIZE_KEY_STEP
+    else if (event.key === "ArrowDown") dy = RESIZE_KEY_STEP
+    else return
+    event.preventDefault()
+    const drag: ResizeDrag = { panelId: panel.id, edges, startX: 0, startY: 0, ...panelRect(panel) }
+    patchPanelRect(panel.id, clampResize(drag, dx, dy, true))
+  }
+
+  // Keyboard alternative to onHeaderPointerMove for moving a Free-canvas pane.
+  const onHeaderKeyDown = (panel: PanelLayout, event: KeyboardEvent<HTMLDivElement>) => {
+    const rect = panelRect(panel)
+    let { x, y } = rect
+    if (event.key === "ArrowLeft") x = clamp(x - GRID_SNAP_STEP, 0, 1 - rect.width)
+    else if (event.key === "ArrowRight") x = clamp(x + GRID_SNAP_STEP, 0, 1 - rect.width)
+    else if (event.key === "ArrowUp") y = clamp(y - GRID_SNAP_STEP, 0, 1 - rect.height)
+    else if (event.key === "ArrowDown") y = clamp(y + GRID_SNAP_STEP, 0, 1 - rect.height)
+    else return
+    event.preventDefault()
+    patchPanelRect(panel.id, { ...rect, x, y })
+  }
+
   const selectWorkspace = (id: string) => {
     setSelectedWorkspaceId(id)
     setMaximizedId(null)
@@ -635,7 +701,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       type="button"
                       onClick={() => closeWorkspaceTab(workspace.id)}
                       aria-label={t("closeLayout")}
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 dark:hover:bg-overlay-hover"
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
                     >
                       <X className="h-3 w-3" aria-hidden="true" />
                     </button>
@@ -749,7 +815,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 </TooltipTrigger>
                 <TooltipContent>{t("settingsTab")}</TooltipContent>
               </Tooltip>
-              <PopoverContent container={rootRef.current}>
+              {/* Portaled inside rootRef (same stacking context as the Free-canvas panes, see
+                  PopoverContent's own container doc comment), so it needs a z-index above the
+                  pane ceiling (bringToFront grows panel.order past Radix's default z-50 during
+                  ordinary use) rather than Radix's default. */}
+              <PopoverContent container={rootRef.current} className="z-(--z-canvas-overlay)">
                 <div className="flex flex-col gap-5">
                   <div>
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">
@@ -858,11 +928,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     onPointerDown={() => bringToFront(panel.id)}
                   >
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t("dragHint")}
                       onPointerDown={(e) => onHeaderPointerDown(panel, e)}
                       onPointerMove={onHeaderPointerMove}
                       onPointerUp={onHeaderPointerUp}
                       onPointerCancel={onHeaderPointerUp}
-                      className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
+                      onKeyDown={(e) => onHeaderKeyDown(panel, e)}
+                      className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset"
                       title={t("dragHint")}
                     >
                       <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -879,13 +953,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                       <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
                     </div>
-                    <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                    <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
                     <ResizeHandle
                       edge={{ s: true, e: true }}
                       className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
@@ -893,6 +967,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       onDown={onResizePointerDown}
                       onMove={onResizePointerMove}
                       onUp={onResizePointerUp}
+                      onKeyDown={onResizeKeyDown}
+                      t={t}
                     >
                       <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
                     </ResizeHandle>
@@ -960,12 +1036,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           )}
 
           {replaceTarget && layout && (
-            <div
-              className="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
-              onClick={() => setReplaceTarget(null)}
-            >
-              <div className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                <p className="mb-2 text-xs text-foreground">{t("replacePanePrompt")}</p>
+            <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/50" onClick={() => setReplaceTarget(null)}>
+              <ModalOverlay
+                onClose={() => setReplaceTarget(null)}
+                labelledBy="replace-pane-prompt"
+                className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl focus:outline-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p id="replace-pane-prompt" className="mb-2 text-xs text-foreground">
+                  {t("replacePanePrompt")}
+                </p>
                 <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
                   {visiblePanels.map((panel) => (
                     <li key={panel.id}>
@@ -987,17 +1067,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 >
                   {t("cancel")}
                 </button>
-              </div>
+              </ModalOverlay>
             </div>
           )}
 
           {maximizedPanel && (
-            <div
+            <ModalOverlay
+              onClose={() => toggleMaximize(maximizedPanel.id)}
+              labelledBy="maximized-pane-title"
               data-panel-id={maximizedPanel.id}
-              className="terminal-pane absolute inset-3 z-[90] flex flex-col rounded-lg border border-brand-gold/40 bg-card shadow-2xl"
+              className="terminal-pane absolute inset-3 z-[90] flex flex-col rounded-lg border border-brand-gold/40 bg-card shadow-2xl focus:outline-none"
             >
               <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
-                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {labelFor(maximizedPanel)}
                 </span>
                 <PaneHeaderActions
@@ -1010,7 +1092,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                 <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
               </div>
-            </div>
+            </ModalOverlay>
           )}
         </div>
         </div>
@@ -1114,6 +1196,74 @@ function PaneHeaderActions({
   )
 }
 
+// Minimal manual focus-trap dialog, local to this file rather than the shared Dialog component —
+// the shared one always portals to document.body with no container override, which would drop
+// the overlay out of the Terminal's forced-dark theme scope (see PopoverContent's own `container`
+// doc comment for the same issue). Handles what a plain conditionally-rendered <div> didn't:
+// focus moves in on mount, Tab wraps within the dialog instead of escaping it, Escape closes,
+// and focus returns to whatever triggered it on unmount.
+function ModalOverlay({
+  onClose,
+  labelledBy,
+  className,
+  children,
+  ...rest
+}: {
+  onClose: () => void
+  labelledBy: string
+  className?: string
+  children: ReactNode
+} & Omit<ComponentPropsWithoutRef<"div">, "onClose" | "className" | "children">) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const container = ref.current
+    const focusable = container?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+    ;(focusable ?? container)?.focus()
+    return () => {
+      previouslyFocused?.focus()
+    }
+  }, [])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.stopPropagation()
+      onClose()
+      return
+    }
+    if (event.key !== "Tab") return
+    const container = ref.current
+    if (!container) return
+    const focusables = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    if (focusables.length === 0) return
+    const first = focusables[0]!
+    const last = focusables[focusables.length - 1]!
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      className={className}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
+}
+
 type ArrangementBodyProps = {
   panels: PanelLayout[]
   caseId: string
@@ -1190,6 +1340,22 @@ function ColumnsArrangement({
     columnDragRef.current = null
   }
 
+  const onColumnResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    if (e.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    const a = index
+    const b = index + 1
+    const pairTotal = widths[a]! + widths[b]!
+    const newA = clamp(widths[a]! + dx, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    const next = [...widths]
+    next[a] = newA
+    next[b] = pairTotal - newA
+    onSetColumnWidths(next)
+  }
+
   return (
     <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop)}>
       {columns.map((columnPanels, columnIndex) => (
@@ -1209,11 +1375,16 @@ function ColumnsArrangement({
           </div>
           {columnIndex < columnCount - 1 && (
             <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t("resizeColumns")}
+              tabIndex={0}
               onPointerDown={(e) => onColumnResizeDown(columnIndex, e)}
               onPointerMove={onColumnResizeMove}
               onPointerUp={onColumnResizeUp}
               onPointerCancel={onColumnResizeUp}
-              className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize"
+              onKeyDown={(e) => onColumnResizeKeyDown(columnIndex, e)}
+              className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
             />
           )}
         </div>
@@ -1278,6 +1449,18 @@ function ColumnStack({
     stackDragRef.current = null
   }
 
+  const onStackResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
+    let dy = 0
+    if (e.key === "ArrowUp") dy = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowDown") dy = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    const pairTotal = heights[index]! + heights[index + 1]!
+    const newAbove = clamp(heights[index]! + dy, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    onPatchPanel(panels[index]!.id, { height: newAbove })
+    onPatchPanel(panels[index + 1]!.id, { height: pairTotal - newAbove })
+  }
+
   return (
     <div ref={stackRef} className="flex min-h-0 flex-1 flex-col gap-1.5">
       {panels.map((panel, index) => (
@@ -1295,11 +1478,16 @@ function ColumnStack({
           </div>
           {index < panels.length - 1 && (
             <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label={t("resizeColumnStack")}
+              tabIndex={0}
               onPointerDown={(e) => onStackResizeDown(index, e)}
               onPointerMove={onStackResizeMove}
               onPointerUp={onStackResizeUp}
               onPointerCancel={onStackResizeUp}
-              className="absolute -bottom-1 left-0 z-10 h-2 w-full cursor-row-resize"
+              onKeyDown={(e) => onStackResizeKeyDown(index, e)}
+              className="absolute -bottom-1 left-0 z-10 h-2 w-full cursor-row-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
             />
           )}
         </div>
@@ -1360,12 +1548,25 @@ function TabsArrangement({
     splitDragRef.current = null
   }
 
+  const onSplitKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    if (e.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    onSetSplit(clamp(split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
+  }
+
+  const moveToGroup = (panelId: PanelId, targetGroupIndex: number) => {
+    const maxOrder = Math.max(0, ...groups[targetGroupIndex]!.map((p) => p.order))
+    onPatchPanel(panelId, { tabGroup: targetGroupIndex, order: maxOrder + 1 })
+  }
+
   const onGroupDrop = (groupIndex: number, e: DragEvent) => {
     e.preventDefault()
     const tabId = e.dataTransfer.getData("text/x-tab-id") as PanelId
     if (tabId) {
-      const maxOrder = Math.max(0, ...groups[groupIndex]!.map((p) => p.order))
-      onPatchPanel(tabId, { tabGroup: groupIndex, order: maxOrder + 1 })
+      moveToGroup(tabId, groupIndex)
       return
     }
     const newId = e.dataTransfer.getData("text/x-panel-id") as PanelId
@@ -1389,26 +1590,34 @@ function TabsArrangement({
               {group.map((panel) => {
                 const active = panel.id === activePanel?.id
                 return (
-                  <button
+                  <div
                     key={panel.id}
-                    type="button"
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("text/x-tab-id", panel.id)}
-                    onClick={() => setActives[groupIndex]?.(panel.id)}
-                    className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
+                    className={`flex items-center gap-0.5 whitespace-nowrap border-b-2 pl-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
                       active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {labelFor(panel)}
-                    <X
-                      className="h-3 w-3 text-muted-foreground/60 hover:text-foreground"
-                      aria-hidden="true"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onHide(panel.id)
-                      }}
-                    />
-                  </button>
+                    <button type="button" onClick={() => setActives[groupIndex]?.(panel.id)}>
+                      {labelFor(panel)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveToGroup(panel.id, groupIndex === 0 ? 1 : 0)}
+                      aria-label={t("moveToOtherGroup")}
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    >
+                      <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onHide(panel.id)}
+                      aria-label={t("hidePane")}
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  </div>
                 )
               })}
               {activePanel && (
@@ -1429,11 +1638,16 @@ function TabsArrangement({
             </div>
             {groupIndex === 0 && (
               <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={t("resizeTabGroups")}
+                tabIndex={0}
                 onPointerDown={onSplitDown}
                 onPointerMove={onSplitMove}
                 onPointerUp={onSplitUp}
                 onPointerCancel={onSplitUp}
-                className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize"
+                onKeyDown={onSplitKeyDown}
+                className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
               />
             )}
           </div>
@@ -1780,6 +1994,8 @@ function ResizeHandle({
   onDown,
   onMove,
   onUp,
+  onKeyDown,
+  t,
   children,
 }: {
   edge: ResizeEdge
@@ -1788,16 +2004,26 @@ function ResizeHandle({
   onDown: (panel: PanelLayout, edges: ResizeEdge, event: PointerEvent<HTMLDivElement>) => void
   onMove: (event: PointerEvent<HTMLDivElement>) => void
   onUp: () => void
+  onKeyDown: (panel: PanelLayout, edges: ResizeEdge, event: KeyboardEvent<HTMLDivElement>) => void
+  t: (key: string) => string
   children?: ReactNode
 }) {
+  // A corner handle carries both axes — aria-orientation just describes which one to lead with
+  // for a screen reader; arrow keys in both directions still work regardless (see
+  // onResizeKeyDown, which no-ops an axis clampResize doesn't recognize for this handle's edges).
+  const orientation = edge.e || edge.w ? "vertical" : "horizontal"
   return (
     <div
       role="separator"
-      className={className}
+      aria-orientation={orientation}
+      aria-label={t("resizePane")}
+      tabIndex={0}
+      className={`${className} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60`}
       onPointerDown={(event) => onDown(panel, edge, event)}
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
+      onKeyDown={(event) => onKeyDown(panel, edge, event)}
     >
       {children}
     </div>
