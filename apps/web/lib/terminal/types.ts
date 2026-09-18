@@ -40,6 +40,10 @@ export interface PanelLayout {
   columnIndex?: number
   /** Tabs mode only: which of the 2 groups this pane's tab lives in. Defaults to 0 when absent. */
   tabGroup?: number
+  /** Protects this pane's own slot: no move/resize in Free, no reassignment/replace in
+   * Columns/Tabs. Never disables a divider shared with a neighboring, unpinned pane — see
+   * PaneHeaderActions' pin handling in legal-terminal.tsx. No-op in Focus mode. */
+  pinned?: boolean
 }
 
 export interface WorkspaceLayout {

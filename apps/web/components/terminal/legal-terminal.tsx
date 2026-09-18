@@ -13,6 +13,9 @@ import {
 } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
+import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
 import {
   AppWindow,
   ArrowLeft,
@@ -140,8 +143,24 @@ const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, select, texta
 // scale — see its call site below.
 type PaneRect = { x: number; y: number; width: number; height: number }
 type ResizeEdge = { n?: boolean; s?: boolean; e?: boolean; w?: boolean }
-type ResizeDrag = PaneRect & { panelId: PanelId; edges: ResizeEdge; startX: number; startY: number }
-type MoveDrag = PaneRect & { panelId: PanelId; startX: number; startY: number; armed: boolean }
+type ResizeDrag = PaneRect & {
+  panelId: PanelId
+  edges: ResizeEdge
+  startX: number
+  startY: number
+  // Set on every live pointermove, read back on pointer-up to compute the one snapped commit —
+  // see the live-drag comment near resizeRef/moveRef below.
+  lastDx?: number
+  lastDy?: number
+}
+type MoveDrag = PaneRect & {
+  panelId: PanelId
+  startX: number
+  startY: number
+  armed: boolean
+  lastDx?: number
+  lastDy?: number
+}
 
 function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
   if (!value || typeof value !== "object") return fallback
@@ -221,12 +240,34 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
-  // Drag/resize used to call setLayout() (a full state update, re-rendering every visible
-  // pane's contents) on every raw pointermove — the measured cause of the reported lag. This
-  // ref instead tracks the in-progress rect and is written straight to the pane's DOM style
-  // (applyLivePaneStyle, bypassing React) on each move; the single commit to React state
-  // happens once, on pointer-up.
-  const pendingRectRef = useRef<{ panelId: PanelId; rect: PaneRect } | null>(null)
+  // Drag/resize used to call setLayout() (a full state update, re-rendering every visible pane's
+  // contents) on every raw pointermove — a measured cause of visible lag. Now both are throttled
+  // to one DOM write per animation frame (scheduleFrame below), since pointer devices fire move
+  // events far more often than the screen repaints, and grid-snapping is applied only once, on
+  // pointer-up (via the dx/dy stashed on resizeRef/moveRef), not on every live frame — snapping
+  // mid-drag is what made the pane appear to teleport between grid cells instead of tracking the
+  // cursor. Move's live frames use a compositor-only `transform` (applyLiveMoveTransform) since
+  // translating a whole box doesn't distort it; resize writes real left/top/width/height
+  // (applyLiveResizeStyle) because a scale()-transform experiment made content visibly stretch
+  // while dragging, which looked worse than the reflow cost it was meant to avoid — contain-layout
+  // on the pane (see its className) keeps that reflow scoped and affordable instead.
+  const liveStyleRafRef = useRef<number | null>(null)
+  // Tracks pop-out windows this tab opened, so the polling effect below can flip a pane back to
+  // visible the moment its popup closes. A ref, not state — nothing here needs to re-render.
+  const popupWindowsRef = useRef<Map<PanelId, Window>>(new Map())
+
+  // Only reliable cross-window signal a popup gives its opener without any cooperation from the
+  // popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      for (const [id, win] of popupWindowsRef.current) {
+        if (!win.closed) continue
+        popupWindowsRef.current.delete(id)
+        setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: true } : p)) } : prev))
+      }
+    }, 500)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
@@ -386,6 +427,23 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setReplaceTarget(null)
   }
 
+  // Opens the panel in its own window (see app/(protected)/homepage/terminal/[caseId]/panel/
+  // [panelId]/page.tsx — a minimal, independent page hitting the same API, no cross-window sync).
+  // The pane hides from the main grid — same mechanism as hidePanel, just without touching
+  // maximizedId's "is this the maximized one" semantics beyond clearing it if it matches — while
+  // the popup is open (see the polling effect below for how it comes back once closed).
+  const popOutPanel = (id: PanelId) => {
+    const win = window.open(
+      `/homepage/terminal/${caseId}/panel/${id}`,
+      `terminal-panel-${caseId}-${id}`,
+      "width=560,height=680",
+    )
+    if (!win) return
+    popupWindowsRef.current.set(id, win)
+    setMaximizedId((cur) => (cur === id ? null : cur))
+    setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: false } : p)) } : prev))
+  }
+
   const bringToFront = (panelId: PanelId) => {
     setLayout((prev) => {
       if (!prev) return prev
@@ -414,6 +472,23 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setTabsActiveB(id)
   }
 
+  // Coalesces live-drag DOM writes to once per animation frame — pointer devices can fire many
+  // more raw pointermove events than the display can repaint, so writing on every raw event was
+  // doing far more work than frames actually rendered.
+  const scheduleFrame = (fn: () => void) => {
+    if (liveStyleRafRef.current != null) cancelAnimationFrame(liveStyleRafRef.current)
+    liveStyleRafRef.current = requestAnimationFrame(() => {
+      liveStyleRafRef.current = null
+      fn()
+    })
+  }
+  const cancelFrame = () => {
+    if (liveStyleRafRef.current != null) {
+      cancelAnimationFrame(liveStyleRafRef.current)
+      liveStyleRafRef.current = null
+    }
+  }
+
   const patchPanelRect = (panelId: PanelId, rect: PaneRect) => {
     setLayout((prev) => {
       if (!prev) return prev
@@ -433,57 +508,93 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     resizeRef.current = { panelId: panel.id, edges, startX: event.clientX, startY: event.clientY, ...rect }
   }
 
+  // Ends the resize started by onResizePointerDown, committing the final snapped rect. Called
+  // from the normal pointerup/pointercancel/lostpointercapture paths, and also defensively from
+  // onResizePointerMove itself — see the comment there for why capture can go missing mid-drag.
+  const endResize = () => {
+    const drag = resizeRef.current
+    if (drag && drag.lastDx !== undefined && drag.lastDy !== undefined) {
+      patchPanelRect(drag.panelId, clampResize(drag, drag.lastDx, drag.lastDy, true))
+    }
+    cancelFrame()
+    resizeRef.current = null
+  }
+
   const onResizePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const drag = resizeRef.current
     const grid = document.getElementById("terminal-grid")
     if (!drag || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
+    // Safety net: bringToFront (called on pointerdown, below) reorders the panel array that the
+    // pane divs are mapped from, which can move this handle's ancestor pane in the DOM mid-drag —
+    // browsers can silently drop pointer capture on that kind of mutation, with no pointerup or
+    // pointercancel ever firing. Without this check, the next hover-only pointermove over the
+    // handle (buttons === 0) would still resize using the stale drag ref. Treat "button already
+    // released" as the release we missed.
+    if ((event.buttons & 1) === 0) {
+      endResize()
+      return
+    }
     const dx = (event.clientX - drag.startX) / grid.clientWidth
     const dy = (event.clientY - drag.startY) / grid.clientHeight
-    const rect = clampResize(drag, dx, dy, true)
-    pendingRectRef.current = { panelId: drag.panelId, rect }
-    applyLivePaneStyle(drag.panelId, rect)
+    drag.lastDx = dx
+    drag.lastDy = dy
+    const rect = clampResize(drag, dx, dy, false)
+    scheduleFrame(() => applyLiveResizeStyle(drag.panelId, rect))
   }
 
-  const onResizePointerUp = () => {
-    if (pendingRectRef.current) {
-      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
-      pendingRectRef.current = null
-    }
-    resizeRef.current = null
-  }
+  const onResizePointerUp = endResize
 
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
     bringToFront(panel.id)
     moveRef.current = { panelId: panel.id, startX: event.clientX, startY: event.clientY, armed: false, ...panelRect(panel) }
+    const el = document.querySelector<HTMLElement>(`[data-panel-id="${panel.id}"]`)
+    if (el) el.style.willChange = "transform"
+  }
+
+  // Ends the move started by onHeaderPointerDown — see endResize's comment for why this also
+  // needs to be reachable from a mid-drag safety-net check, not just pointerup/cancel.
+  const endHeaderMove = () => {
+    const move = moveRef.current
+    if (move?.armed && move.lastDx !== undefined && move.lastDy !== undefined) {
+      const x = clamp(snapValue(clamp(move.x + move.lastDx, 0, 1 - move.width), GRID_SNAP_STEP), 0, 1 - move.width)
+      const y = clamp(snapValue(clamp(move.y + move.lastDy, 0, 1 - move.height), GRID_SNAP_STEP), 0, 1 - move.height)
+      patchPanelRect(move.panelId, { x, y, width: move.width, height: move.height })
+    }
+    if (move) clearLiveMoveTransform(move.panelId)
+    cancelFrame()
+    moveRef.current = null
+    setDraggingId(null)
   }
 
   const onHeaderPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const move = moveRef.current
     const grid = document.getElementById("terminal-grid")
     if (!move || !grid || grid.clientWidth === 0 || grid.clientHeight === 0) return
+    if ((event.buttons & 1) === 0) {
+      endHeaderMove()
+      return
+    }
     const distance = Math.hypot(event.clientX - move.startX, event.clientY - move.startY)
     if (!move.armed && distance < 6) return
     move.armed = true
     setDraggingId(move.panelId)
     const dx = (event.clientX - move.startX) / grid.clientWidth
     const dy = (event.clientY - move.startY) / grid.clientHeight
-    const x = clamp(snapValue(clamp(move.x + dx, 0, 1 - move.width), GRID_SNAP_STEP), 0, 1 - move.width)
-    const y = clamp(snapValue(clamp(move.y + dy, 0, 1 - move.height), GRID_SNAP_STEP), 0, 1 - move.height)
-    const rect = { x, y, width: move.width, height: move.height }
-    pendingRectRef.current = { panelId: move.panelId, rect }
-    applyLivePaneStyle(move.panelId, rect)
+    move.lastDx = dx
+    move.lastDy = dy
+    // Live frames are visualized via a compositor-only transform, offset in pixels from the
+    // pane's committed rest position — no left/top writes, no layout. The real x/y are only ever
+    // committed once, on release, in endHeaderMove.
+    const clampedX = clamp(move.x + dx, 0, 1 - move.width)
+    const clampedY = clamp(move.y + dy, 0, 1 - move.height)
+    const dxPx = (clampedX - move.x) * grid.clientWidth
+    const dyPx = (clampedY - move.y) * grid.clientHeight
+    scheduleFrame(() => applyLiveMoveTransform(move.panelId, dxPx, dyPx))
   }
 
-  const onHeaderPointerUp = () => {
-    if (pendingRectRef.current) {
-      patchPanelRect(pendingRectRef.current.panelId, pendingRectRef.current.rect)
-      pendingRectRef.current = null
-    }
-    moveRef.current = null
-    setDraggingId(null)
-  }
+  const onHeaderPointerUp = endHeaderMove
 
   // Keyboard alternative to onResizePointerMove — a single discrete commit per arrow-key press
   // (no live-drag ref needed, unlike the pointer path) through the same clampResize the pointer
@@ -910,14 +1021,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 const rect = panelRect(panel)
                 const label = labelFor(panel)
                 const isDragging = draggingId === panel.id
+                const isPinned = !!panel.pinned
                 return (
                   <div
                     key={panel.id}
                     data-panel-id={panel.id}
                     data-panel-labels={panelLabels ? "on" : "off"}
-                    className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col rounded-lg border border-border bg-card ${
-                      isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""
-                    }`}
+                    className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col contain-layout rounded-lg border bg-card ${
+                      isPinned ? "border-brand-gold/60" : "border-border"
+                    } ${isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""}`}
                     style={{
                       left: `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`,
                       top: `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`,
@@ -928,16 +1040,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     onPointerDown={() => bringToFront(panel.id)}
                   >
                     <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={t("dragHint")}
-                      onPointerDown={(e) => onHeaderPointerDown(panel, e)}
-                      onPointerMove={onHeaderPointerMove}
-                      onPointerUp={onHeaderPointerUp}
-                      onPointerCancel={onHeaderPointerUp}
-                      onKeyDown={(e) => onHeaderKeyDown(panel, e)}
-                      className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset"
-                      title={t("dragHint")}
+                      role={isPinned ? undefined : "button"}
+                      tabIndex={isPinned ? undefined : 0}
+                      aria-label={isPinned ? undefined : t("dragHint")}
+                      onPointerDown={isPinned ? undefined : (e) => onHeaderPointerDown(panel, e)}
+                      onPointerMove={isPinned ? undefined : onHeaderPointerMove}
+                      onPointerUp={isPinned ? undefined : onHeaderPointerUp}
+                      onPointerCancel={isPinned ? undefined : onHeaderPointerUp}
+                      onLostPointerCapture={isPinned ? undefined : onHeaderPointerUp}
+                      onKeyDown={isPinned ? undefined : (e) => onHeaderKeyDown(panel, e)}
+                      className={`terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset ${
+                        isPinned ? "" : "cursor-grab active:cursor-grabbing"
+                      }`}
+                      title={isPinned ? t("pinnedHint") : t("dragHint")}
                     >
                       <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
@@ -948,30 +1063,37 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         isMaximized={false}
                         onToggleMaximize={() => toggleMaximize(panel.id)}
                         onHide={() => hidePanel(panel.id)}
+                        onPopOut={() => popOutPanel(panel.id)}
+                        pinned={isPinned}
+                        onTogglePin={() => patchPanel(panel.id, { pinned: !isPinned })}
                       />
                     </div>
                     <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
                       <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
                     </div>
-                    <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                    <ResizeHandle
-                      edge={{ s: true, e: true }}
-                      className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
-                      panel={panel}
-                      onDown={onResizePointerDown}
-                      onMove={onResizePointerMove}
-                      onUp={onResizePointerUp}
-                      onKeyDown={onResizeKeyDown}
-                      t={t}
-                    >
-                      <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
-                    </ResizeHandle>
+                    {!isPinned && (
+                      <>
+                        <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle
+                          edge={{ s: true, e: true }}
+                          className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
+                          panel={panel}
+                          onDown={onResizePointerDown}
+                          onMove={onResizePointerMove}
+                          onUp={onResizePointerUp}
+                          onKeyDown={onResizeKeyDown}
+                          t={t}
+                        >
+                          <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
+                        </ResizeHandle>
+                      </>
+                    )}
                   </div>
                 )
               })}
@@ -990,6 +1112,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPatchPanel={patchPanel}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={requestAddPanel}
@@ -1011,6 +1134,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPatchPanel={patchPanel}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
@@ -1029,6 +1153,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onFocus={setFocusedId}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
@@ -1036,62 +1161,80 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           )}
 
           {replaceTarget && layout && (
-            <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/50" onClick={() => setReplaceTarget(null)}>
-              <ModalOverlay
-                onClose={() => setReplaceTarget(null)}
-                labelledBy="replace-pane-prompt"
-                className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl focus:outline-none"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <p id="replace-pane-prompt" className="mb-2 text-xs text-foreground">
-                  {t("replacePanePrompt")}
-                </p>
-                <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-                  {visiblePanels.map((panel) => (
-                    <li key={panel.id}>
-                      <button
-                        type="button"
-                        onClick={() => replacePaneInColumns(panel.id, replaceTarget)}
-                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover"
-                      >
-                        <span className="min-w-0 flex-1 truncate">{labelFor(panel)}</span>
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">{t("replacePane")}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => setReplaceTarget(null)}
-                  className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {t("cancel")}
-                </button>
-              </ModalOverlay>
-            </div>
+            <ModalOverlay
+              onClose={() => setReplaceTarget(null)}
+              labelledBy="replace-pane-prompt"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl focus:outline-none"
+            >
+              {(close) => (
+                <>
+                  <p id="replace-pane-prompt" className="mb-2 text-xs text-foreground">
+                    {t("replacePanePrompt")}
+                  </p>
+                  {(() => {
+                    const replaceable = visiblePanels.filter((p) => !p.pinned)
+                    if (replaceable.length === 0) {
+                      return <p className="text-xs text-muted-foreground">{t("noUnpinnedPanes")}</p>
+                    }
+                    return (
+                      <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+                        {replaceable.map((panel) => (
+                          <li key={panel.id}>
+                            <button
+                              type="button"
+                              onClick={() => replacePaneInColumns(panel.id, replaceTarget)}
+                              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover"
+                            >
+                              <span className="min-w-0 flex-1 truncate">{labelFor(panel)}</span>
+                              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">{t("replacePane")}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  })()}
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {t("cancel")}
+                  </button>
+                </>
+              )}
+            </ModalOverlay>
           )}
 
           {maximizedPanel && (
             <ModalOverlay
               onClose={() => toggleMaximize(maximizedPanel.id)}
               labelledBy="maximized-pane-title"
+              originPanelId={maximizedPanel.id}
               data-panel-id={maximizedPanel.id}
               className="terminal-pane absolute inset-3 z-[90] flex flex-col rounded-lg border border-brand-gold/40 bg-card shadow-2xl focus:outline-none"
             >
-              <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
-                <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
-                  {labelFor(maximizedPanel)}
-                </span>
-                <PaneHeaderActions
-                  t={t}
-                  isMaximized
-                  onToggleMaximize={() => toggleMaximize(maximizedPanel.id)}
-                  onHide={() => hidePanel(maximizedPanel.id)}
-                />
-              </div>
-              <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
-                <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
-              </div>
+              {(close) => (
+                <>
+                  <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
+                    <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                      {labelFor(maximizedPanel)}
+                    </span>
+                    <PaneHeaderActions
+                      t={t}
+                      isMaximized
+                      onToggleMaximize={close}
+                      onHide={() => hidePanel(maximizedPanel.id)}
+                      onPopOut={() => popOutPanel(maximizedPanel.id)}
+                      pinned={!!maximizedPanel.pinned}
+                      onTogglePin={() => patchPanel(maximizedPanel.id, { pinned: !maximizedPanel.pinned })}
+                    />
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
+                    <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
+                  </div>
+                </>
+              )}
             </ModalOverlay>
           )}
         </div>
@@ -1129,40 +1272,60 @@ function PreferenceToggle({
   )
 }
 
-// Shared header icon cluster: static (disabled) Pin/Pop-out affordances for visual parity
-// with the redesign, plus the real Maximize/Hide controls that already exist today.
+// Shared header icon cluster: Maximize/Hide (always available), Pop-out (always available —
+// see popOutPanel), and Pin (rendered only when the caller passes onTogglePin — omitted where
+// there's nothing for it to lock, e.g. Focus mode's own header — see call sites).
 function PaneHeaderActions({
   t,
   isMaximized,
   onToggleMaximize,
   onHide,
+  onPopOut,
+  pinned,
+  onTogglePin,
 }: {
   t: (key: string) => string
   isMaximized: boolean
   onToggleMaximize: () => void
   onHide: () => void
+  onPopOut: () => void
+  pinned?: boolean
+  onTogglePin?: () => void
 }) {
   return (
     <div className="flex shrink-0 items-center gap-0.5">
+      {onTogglePin && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onTogglePin}
+              aria-pressed={!!pinned}
+              className={`rounded p-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover ${
+                pinned ? "text-brand-gold" : "text-muted-foreground hover:text-foreground"
+              }`}
+              aria-label={pinned ? t("unpinPane") : t("pinPane")}
+            >
+              <Pin className="h-3.5 w-3.5" aria-hidden="true" fill={pinned ? "currentColor" : "none"} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{pinned ? t("unpinPane") : t("pinPane")}</TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="flex h-6 w-6 cursor-not-allowed items-center justify-center rounded p-1 text-muted-foreground/40">
-            <Pin className="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          {t("pinPane")} — {t("comingSoon")}
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="flex h-6 w-6 cursor-not-allowed items-center justify-center rounded p-1 text-muted-foreground/40">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={onPopOut}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+            aria-label={t("popOutPane")}
+          >
             <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
-          </span>
+          </button>
         </TooltipTrigger>
-        <TooltipContent>
-          {t("popOutPane")} — {t("comingSoon")}
-        </TooltipContent>
+        <TooltipContent>{t("popOutPane")}</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -1207,14 +1370,29 @@ function ModalOverlay({
   labelledBy,
   className,
   children,
+  backdropClassName,
+  originPanelId,
   ...rest
 }: {
   onClose: () => void
   labelledBy: string
   className?: string
-  children: ReactNode
+  // A function child gets the animated closer, for any in-content control (a Cancel button, a
+  // selection that should dismiss) that needs to play the exit tween before really closing —
+  // same reason the backdrop and Escape key below don't just call `onClose` directly.
+  children: ReactNode | ((close: () => void) => ReactNode)
+  // Renders a click-to-close backdrop behind the dialog (the replace-pane picker wants one, the
+  // maximize overlay doesn't — it already fills the canvas with no need to dim anything behind).
+  backdropClassName?: string
+  // Panel id to visually zoom from/to (its current on-canvas position, read straight off its
+  // `data-panel-id` element) instead of a generic center fade — used for maximize/restore so it
+  // reads as "this pane expanding," not a dialog appearing from nowhere.
+  originPanelId?: PanelId
 } & Omit<ComponentPropsWithoutRef<"div">, "onClose" | "className" | "children">) {
   const ref = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  const closingRef = useRef(false)
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null
@@ -1226,10 +1404,57 @@ function ModalOverlay({
     }
   }, [])
 
+  const originRect = () => {
+    if (!originPanelId) return null
+    const candidates = document.querySelectorAll<HTMLElement>(`[data-panel-id="${CSS.escape(originPanelId)}"]`)
+    return Array.from(candidates).find((el) => el !== ref.current)?.getBoundingClientRect() ?? null
+  }
+
+  useGSAP(
+    () => {
+      const el = ref.current
+      if (!el || reducedMotion) return
+      if (backdropRef.current) gsap.from(backdropRef.current, { opacity: 0, duration: 0.18 })
+      const origin = originRect()
+      if (origin) {
+        const target = el.getBoundingClientRect()
+        gsap.fromTo(
+          el,
+          {
+            opacity: 0,
+            scaleX: origin.width / target.width,
+            scaleY: origin.height / target.height,
+            x: origin.left + origin.width / 2 - (target.left + target.width / 2),
+            y: origin.top + origin.height / 2 - (target.top + target.height / 2),
+          },
+          { opacity: 1, scaleX: 1, scaleY: 1, x: 0, y: 0, duration: 0.22, ease: "power2.out" },
+        )
+      } else {
+        gsap.from(el, { opacity: 0, scale: 0.95, y: 8, duration: 0.18, ease: "power2.out" })
+      }
+    },
+    { scope: ref, dependencies: [] },
+  )
+
+  // Plays the exit tween, then runs the real onClose — every close path (Escape, backdrop click,
+  // an in-content Cancel/selection) routes through this instead of calling onClose directly, so
+  // none of them skip the animation.
+  const handleClose = () => {
+    if (closingRef.current) return
+    closingRef.current = true
+    const el = ref.current
+    if (!el || reducedMotion) {
+      onClose()
+      return
+    }
+    if (backdropRef.current) gsap.to(backdropRef.current, { opacity: 0, duration: 0.15 })
+    gsap.to(el, { opacity: 0, scale: 0.97, duration: 0.14, ease: "power1.in", onComplete: onClose })
+  }
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.stopPropagation()
-      onClose()
+      handleClose()
       return
     }
     if (event.key !== "Tab") return
@@ -1248,7 +1473,7 @@ function ModalOverlay({
     }
   }
 
-  return (
+  const dialog = (
     <div
       ref={ref}
       role="dialog"
@@ -1256,10 +1481,18 @@ function ModalOverlay({
       aria-labelledby={labelledBy}
       tabIndex={-1}
       onKeyDown={onKeyDown}
+      onClick={backdropClassName ? (e) => e.stopPropagation() : undefined}
       className={className}
       {...rest}
     >
-      {children}
+      {typeof children === "function" ? children(handleClose) : children}
+    </div>
+  )
+
+  if (!backdropClassName) return dialog
+  return (
+    <div ref={backdropRef} className={backdropClassName} onClick={handleClose}>
+      {dialog}
     </div>
   )
 }
@@ -1271,6 +1504,7 @@ type ArrangementBodyProps = {
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
+  onPopOut: (id: PanelId) => void
   onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
@@ -1303,6 +1537,7 @@ function ColumnsArrangement({
   onPatchPanel,
   onToggleMaximize,
   onHide,
+  onPopOut,
   onJumpToPanel,
   t,
   onDrop,
@@ -1326,6 +1561,14 @@ function ColumnsArrangement({
     const drag = columnDragRef.current
     const grid = gridRef.current
     if (!drag || !grid || grid.clientWidth === 0) return
+    // Safety net for capture silently dropping mid-drag (browser quirk, or the pointer leaving
+    // the window while the button is released outside it) — without this, the next hover-only
+    // pointermove over the divider would keep resizing with no button held. See the matching
+    // comment on Free mode's onResizePointerMove for the fuller explanation.
+    if ((e.buttons & 1) === 0) {
+      columnDragRef.current = null
+      return
+    }
     const dx = (e.clientX - drag.startX) / grid.clientWidth
     const a = drag.index
     const b = drag.index + 1
@@ -1368,6 +1611,7 @@ function ColumnsArrangement({
               labelFor={labelFor}
               onToggleMaximize={onToggleMaximize}
               onHide={onHide}
+              onPopOut={onPopOut}
               onJumpToPanel={onJumpToPanel}
               onPatchPanel={onPatchPanel}
               t={t}
@@ -1383,6 +1627,7 @@ function ColumnsArrangement({
               onPointerMove={onColumnResizeMove}
               onPointerUp={onColumnResizeUp}
               onPointerCancel={onColumnResizeUp}
+              onLostPointerCapture={onColumnResizeUp}
               onKeyDown={(e) => onColumnResizeKeyDown(columnIndex, e)}
               className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
             />
@@ -1404,6 +1649,7 @@ function ColumnStack({
   labelFor,
   onToggleMaximize,
   onHide,
+  onPopOut,
   onJumpToPanel,
   onPatchPanel,
   t,
@@ -1414,6 +1660,7 @@ function ColumnStack({
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
+  onPopOut: (id: PanelId) => void
   onJumpToPanel: (id: PanelId) => void
   onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
   t: (key: string, opts?: Record<string, unknown>) => string
@@ -1439,6 +1686,10 @@ function ColumnStack({
     const drag = stackDragRef.current
     const stack = stackRef.current
     if (!drag || !stack || stack.clientHeight === 0) return
+    if ((e.buttons & 1) === 0) {
+      stackDragRef.current = null
+      return
+    }
     const dy = (e.clientY - drag.startY) / stack.clientHeight
     const pairTotal = drag.heightAbove + drag.heightBelow
     const newAbove = clamp(drag.heightAbove + dy, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
@@ -1465,12 +1716,20 @@ function ColumnStack({
     <div ref={stackRef} className="flex min-h-0 flex-1 flex-col gap-1.5">
       {panels.map((panel, index) => (
         <div key={panel.id} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${heights[index]} 0 0%` }}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card ${panel.pinned ? "border-brand-gold/60" : "border-border"}`}>
             <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
               <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                 {labelFor(panel)}
               </span>
-              <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(panel.id)} onHide={() => onHide(panel.id)} />
+              <PaneHeaderActions
+                t={t}
+                isMaximized={false}
+                onToggleMaximize={() => onToggleMaximize(panel.id)}
+                onHide={() => onHide(panel.id)}
+                onPopOut={() => onPopOut(panel.id)}
+                pinned={!!panel.pinned}
+                onTogglePin={() => onPatchPanel(panel.id, { pinned: !panel.pinned })}
+              />
             </div>
             <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
               <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
@@ -1486,6 +1745,7 @@ function ColumnStack({
               onPointerMove={onStackResizeMove}
               onPointerUp={onStackResizeUp}
               onPointerCancel={onStackResizeUp}
+              onLostPointerCapture={onStackResizeUp}
               onKeyDown={(e) => onStackResizeKeyDown(index, e)}
               className="absolute -bottom-1 left-0 z-10 h-2 w-full cursor-row-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
             />
@@ -1513,6 +1773,7 @@ function TabsArrangement({
   onPatchPanel,
   onToggleMaximize,
   onHide,
+  onPopOut,
   onJumpToPanel,
   t,
   onDrop,
@@ -1541,6 +1802,10 @@ function TabsArrangement({
     const drag = splitDragRef.current
     const container = groupsRef.current
     if (!drag || !container || container.clientWidth === 0) return
+    if ((e.buttons & 1) === 0) {
+      splitDragRef.current = null
+      return
+    }
     const dx = (e.clientX - drag.startX) / container.clientWidth
     onSetSplit(clamp(drag.split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
   }
@@ -1589,11 +1854,12 @@ function TabsArrangement({
             <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
               {group.map((panel) => {
                 const active = panel.id === activePanel?.id
+                const isPinned = !!panel.pinned
                 return (
                   <div
                     key={panel.id}
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData("text/x-tab-id", panel.id)}
+                    draggable={!isPinned}
+                    onDragStart={isPinned ? undefined : (e) => e.dataTransfer.setData("text/x-tab-id", panel.id)}
                     className={`flex items-center gap-0.5 whitespace-nowrap border-b-2 pl-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
                       active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
@@ -1603,12 +1869,25 @@ function TabsArrangement({
                     </button>
                     <button
                       type="button"
-                      onClick={() => moveToGroup(panel.id, groupIndex === 0 ? 1 : 0)}
-                      aria-label={t("moveToOtherGroup")}
-                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                      onClick={() => onPatchPanel(panel.id, { pinned: !isPinned })}
+                      aria-pressed={isPinned}
+                      aria-label={isPinned ? t("unpinPane") : t("pinPane")}
+                      className={`rounded p-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover ${
+                        isPinned ? "text-brand-gold" : "text-muted-foreground/60 hover:text-foreground"
+                      }`}
                     >
-                      <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+                      <Pin className="h-3 w-3" aria-hidden="true" fill={isPinned ? "currentColor" : "none"} />
                     </button>
+                    {!isPinned && (
+                      <button
+                        type="button"
+                        onClick={() => moveToGroup(panel.id, groupIndex === 0 ? 1 : 0)}
+                        aria-label={t("moveToOtherGroup")}
+                        className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                      >
+                        <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onHide(panel.id)}
@@ -1621,14 +1900,24 @@ function TabsArrangement({
                 )
               })}
               {activePanel && (
-                <button
-                  type="button"
-                  onClick={() => onToggleMaximize(activePanel.id)}
-                  className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center self-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                  aria-label={t("maximizePane")}
-                >
-                  <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
+                <div className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
+                  <button
+                    type="button"
+                    onClick={() => onPopOut(activePanel.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    aria-label={t("popOutPane")}
+                  >
+                    <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMaximize(activePanel.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    aria-label={t("maximizePane")}
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
               )}
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
@@ -1646,6 +1935,7 @@ function TabsArrangement({
                 onPointerMove={onSplitMove}
                 onPointerUp={onSplitUp}
                 onPointerCancel={onSplitUp}
+                onLostPointerCapture={onSplitUp}
                 onKeyDown={onSplitKeyDown}
                 className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
               />
@@ -1674,6 +1964,7 @@ function FocusArrangement({
   onFocus,
   onToggleMaximize,
   onHide,
+  onPopOut,
   onJumpToPanel,
   t,
   onDrop,
@@ -1699,7 +1990,13 @@ function FocusArrangement({
           <>
             <div className="terminal-pane-header flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
               <span className="min-w-0 flex-1 truncate font-['Libre_Caslon_Text'] text-sm text-foreground">{labelFor(focusPanel)}</span>
-              <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(focusPanel.id)} onHide={() => onHide(focusPanel.id)} />
+              <PaneHeaderActions
+                t={t}
+                isMaximized={false}
+                onToggleMaximize={() => onToggleMaximize(focusPanel.id)}
+                onHide={() => onHide(focusPanel.id)}
+                onPopOut={() => onPopOut(focusPanel.id)}
+              />
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
               <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
@@ -1726,6 +2023,10 @@ function FocusArrangement({
       <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-brand-gold/35 bg-card">
         <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
           <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor({ id: "chat" })}</span>
+          {/* No pop-out here either — anchored means a permanent fixture (see the file doc
+              comment above): pop-out would hide it from the main grid, but this column ignores
+              visibility and always renders "chat" regardless, so the panel would stay put while
+              a redundant, confusing duplicate opened in a new window. */}
           <button
             type="button"
             onClick={() => onToggleMaximize("chat")}
@@ -1747,12 +2048,29 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
-// Writes a pane's position/size straight to its DOM node during an active drag/resize,
-// bypassing React so the gesture doesn't re-render the whole Terminal (and every visible
-// pane's contents) on every pointermove. Mirrors the `style` computed from `rect` in the
-// JSX below — must stay in sync with it, since a later React re-render will overwrite
-// whatever this wrote with `rect` from committed state.
-function applyLivePaneStyle(panelId: PanelId, rect: PaneRect) {
+// Move is visualized live with a compositor-only `transform` (translate) instead of touching
+// left/top (layout-triggering) — see the comment on scheduleFrame below. React never renders a
+// `transform` for a pane (it's outside the style object in the JSX), so nothing clears it except
+// clearLiveMoveTransform, called once the drag ends and the real, committed left/top are patched
+// into state.
+function applyLiveMoveTransform(panelId: PanelId, dxPx: number, dyPx: number) {
+  const el = document.querySelector<HTMLElement>(`[data-panel-id="${panelId}"]`)
+  if (!el) return
+  el.style.transform = `translate3d(${dxPx}px, ${dyPx}px, 0)`
+}
+
+function clearLiveMoveTransform(panelId: PanelId) {
+  const el = document.querySelector<HTMLElement>(`[data-panel-id="${panelId}"]`)
+  if (!el) return
+  el.style.transform = ""
+  el.style.willChange = ""
+}
+
+// Resize deliberately writes real left/top/width/height (not a transform) — a scale() experiment
+// made content visibly stretch while dragging, which read as worse than the reflow cost it was
+// meant to avoid. rAF-throttling (scheduleFrame) plus contain-layout on the pane (see its
+// className) keep this affordable without distorting anything.
+function applyLiveResizeStyle(panelId: PanelId, rect: PaneRect) {
   const el = document.querySelector<HTMLElement>(`[data-panel-id="${panelId}"]`)
   if (!el) return
   el.style.left = `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`
@@ -2023,6 +2341,7 @@ function ResizeHandle({
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
+      onLostPointerCapture={onUp}
       onKeyDown={(event) => onKeyDown(panel, edge, event)}
     >
       {children}

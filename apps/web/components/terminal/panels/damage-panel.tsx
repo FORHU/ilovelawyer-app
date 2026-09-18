@@ -1,9 +1,12 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 import { useCreateDamageMutation, useDeleteDamageMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory } from "@/lib/terminal/types"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
 
 const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
   ACTUAL: "damageActual",
@@ -28,6 +31,30 @@ export function DamagePanel({
   const [amount, setAmount] = useState("")
 
   const total = snapshot.damages.reduce((sum, d) => sum + (d.amount ?? 0), 0)
+  const reducedMotion = usePrefersReducedMotion()
+  const [displayTotal, setDisplayTotal] = useState(total)
+  const totalProxyRef = useRef({ value: total })
+  const mountedRef = useRef(false)
+
+  // Tweens the displayed total instead of snapping — skipped on first mount (nothing to count up
+  // from) and whenever reduced-motion is on, both of which just jump straight to the real value.
+  useGSAP(
+    () => {
+      if (!mountedRef.current || reducedMotion) {
+        mountedRef.current = true
+        totalProxyRef.current.value = total
+        setDisplayTotal(total)
+        return
+      }
+      gsap.to(totalProxyRef.current, {
+        value: total,
+        duration: 0.4,
+        ease: "power2.out",
+        onUpdate: () => setDisplayTotal(Math.round(totalProxyRef.current.value)),
+      })
+    },
+    { dependencies: [total, reducedMotion] },
+  )
 
   return (
     <PanelBody gap="4">
@@ -67,7 +94,7 @@ export function DamagePanel({
           </PanelRowList>
           <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
             <span>{t("damageTotal")}</span>
-            <span className="font-mono">{total.toLocaleString()}</span>
+            <span className="font-mono">{displayTotal.toLocaleString()}</span>
           </div>
         </>
       )}
