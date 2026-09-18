@@ -3,7 +3,18 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { Archive, ChevronLeft, ExternalLink, FolderPlus, Loader2, Plus } from "lucide-react"
+import {
+  Archive,
+  CheckSquare,
+  ChevronLeft,
+  ExternalLink,
+  FolderPlus,
+  ListX,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import {
   useArchivedCaseDocumentsQuery,
@@ -20,6 +31,7 @@ import { useFileDrop } from "@/hooks/use-file-drop"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
+import BulkDeleteDocumentsModal from "@/components/cases/bulk-delete-documents-modal"
 import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
 import RestoreDocumentModal from "@/components/cases/restore-document-modal"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
@@ -46,7 +58,12 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // reused here rather than duplicated into case-portfolio.json for just the one header action.
   const { t: tHome } = useTranslation("homepage")
   const { data: documents, isLoading, isError } = useCaseDocumentsQuery(caseId)
-  const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
+  const {
+    mutate: deleteDocument,
+    mutateAsync: deleteDocumentAsync,
+    isPending: isDeleting,
+    variables: deletingVars,
+  } = useDeleteCaseDocumentMutation()
   const { mutate: updateDocument, isPending: isUpdating, variables: updatingVars } = useUpdateCaseDocumentMutation()
   const { mutate: uploadDocuments, isPending: isUploading, data: uploadResult } = useUploadCaseDocumentsMutation()
   const hasUploadFailures = (uploadResult?.failed.length ?? 0) > 0
@@ -56,6 +73,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [newFolderName, setNewFolderName] = useState("")
   const [previewDoc, setPreviewDoc] = useState<MessageAttachment | null>(null)
   const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
+  // Bulk selection: document ids selected directly (loose files at root, or any file inside an
+  // open folder) plus folder names selected at root — a folder has no id of its own (see the
+  // module doc comment on why folders are purely derived), so "deleting" a selected folder means
+  // resolving it to every document currently filed under that category at delete time.
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [archivingDoc, setArchivingDoc] = useState<UserDocument | null>(null)
   const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -115,6 +141,38 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     )
   }
 
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedDocIds(new Set())
+    setSelectedFolders(new Set())
+  }
+
+  // Navigating between root and a folder changes which items are on screen, so any in-flight
+  // selection no longer means what it did — clear it rather than carry stale ids/folder names
+  // across views.
+  const changeView = (next: View) => {
+    exitSelectMode()
+    setView(next)
+  }
+
+  const toggleDocSelected = (id: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleFolderSelected = (name: string) => {
+    setSelectedFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+
   // Root-level (and empty-state) drops have no open folder to target, so the payload goes to the
   // case's root directory (category undefined); an open folder targets itself unless the drop
   // resolves to a more specific folder card via `data-drop-target` (see useFileDrop).
@@ -128,13 +186,76 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const openPreview = (doc: UserDocument) =>
     setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })
 
+  // Grouped unconditionally (not just inside the root-view render branch) so both the header's
+  // select-all row and the body below can share one derivation of what's currently on screen.
+  const folderMap = new Map<string, UserDocument[]>()
+  const looseFiles: UserDocument[] = []
+  for (const doc of documents ?? []) {
+    const category = doc.category?.trim()
+    if (category) {
+      const bucket = folderMap.get(category)
+      if (bucket) bucket.push(doc)
+      else folderMap.set(category, [doc])
+    } else {
+      looseFiles.push(doc)
+    }
+  }
+  const sortedFolders = [...folderMap.entries()].sort(([a], [b]) => a.localeCompare(b))
+  const folderDocs =
+    view.kind === "folder" ? (documents ?? []).filter((doc) => (doc.category?.trim() || null) === view.name) : []
+
+  const selectableCount = view.kind === "folder" ? folderDocs.length : sortedFolders.length + looseFiles.length
+  const selectedCount = view.kind === "folder" ? selectedDocIds.size : selectedDocIds.size + selectedFolders.size
+  const allSelected = selectableCount > 0 && selectedCount === selectableCount
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedDocIds(new Set())
+      setSelectedFolders(new Set())
+    } else if (view.kind === "folder") {
+      setSelectedDocIds(new Set(folderDocs.map((d) => d.id)))
+    } else {
+      setSelectedDocIds(new Set(looseFiles.map((d) => d.id)))
+      setSelectedFolders(new Set(sortedFolders.map(([name]) => name)))
+    }
+  }
+
+  // Clears the current pick without leaving select mode — distinct from exitSelectMode (the
+  // toolbar's Cancel button), which drops out of selection entirely.
+  const deselectAll = () => {
+    setSelectedDocIds(new Set())
+    setSelectedFolders(new Set())
+  }
+
+  // A selected folder has no id to delete — it resolves to every document currently filed under
+  // that category, unioned with any individually-selected document ids.
+  const resolveSelectedDocumentIds = (): string[] => {
+    const ids = new Set(selectedDocIds)
+    if (documents) {
+      for (const doc of documents) {
+        const category = doc.category?.trim() || null
+        if (category && selectedFolders.has(category)) ids.add(doc.id)
+      }
+    }
+    return [...ids]
+  }
+
+  const handleBulkDelete = async () => {
+    const ids = resolveSelectedDocumentIds()
+    setIsBulkDeleting(true)
+    await Promise.allSettled(ids.map((documentId) => deleteDocumentAsync({ documentId, caseId })))
+    setIsBulkDeleting(false)
+    setConfirmingBulkDelete(false)
+    exitSelectMode()
+  }
+
   const header = (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
         {view.kind === "folder" ? (
           <button
             type="button"
-            onClick={() => setView({ kind: "root" })}
+            onClick={() => changeView({ kind: "root" })}
             aria-label={t("detail.backToFolders")}
             className="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left text-sm font-semibold text-foreground hover:text-brand-gold"
           >
@@ -162,7 +283,10 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => setShowArchived(true)}
+                  onClick={() => {
+                    exitSelectMode()
+                    setShowArchived(true)
+                  }}
                   aria-pressed={showArchived}
                   aria-label={t("detail.viewArchived")}
                   className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -253,11 +377,110 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       onConfirm={() => {
         const trimmed = newFolderName.trim()
         if (!trimmed) return
-        setView({ kind: "folder", name: trimmed })
+        changeView({ kind: "folder", name: trimmed })
         setNamingFolder(false)
         setNewFolderName("")
       }}
     />
+  )
+
+  // A "Select"/"Select all"/"Delete" row above the grid — folders and documents share it since
+  // deleting a folder just means bulk-deleting the documents in it (see resolveSelectedDocumentIds
+  // above). Hidden once there's nothing on screen to select, while a document preview has taken
+  // over the view (that branch returns early below, before this is ever reached), and while
+  // viewing the Archived list — selectableCount/selectedCount are derived from the active
+  // `documents` set, not `archivedDocuments`, so they'd be meaningless there. Active mode gets its
+  // own toolbar surface (border + tinted background) so it reads as a distinct interaction state
+  // rather than a second line of plain body text.
+  const selectionBar = !showArchived && selectableCount > 0 && (
+    <div
+      className={
+        selectMode
+          ? // flex-wrap keeps every control inside this bordered box on narrow widths (Studio's
+            // dock can be as narrow as 260px) — the row grows taller instead of letting the
+            // cancel button overflow past the box's right edge.
+            "flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
+          : "flex items-center justify-end"
+      }
+    >
+      {selectMode ? (
+        <>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
+              />
+              {t("detail.selectAll")}
+              <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                {t("detail.selectedCount", { count: selectedCount })}
+              </span>
+            </label>
+            {selectedCount > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={deselectAll}
+                    disabled={isBulkDeleting}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {t("detail.deselectAll")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("detail.deselectAll")}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={selectedCount === 0 || isBulkDeleting}
+                  onClick={() => setConfirmingBulkDelete(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400"
+                >
+                  {isBulkDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  {t("detail.deleteSelected")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={exitSelectMode}
+                  disabled={isBulkDeleting}
+                  aria-label={t("editModal.cancel")}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
+                >
+                  <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("editModal.cancel")}</TooltipContent>
+            </Tooltip>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setSelectMode(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:hover:bg-overlay-hover"
+        >
+          <CheckSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {t("detail.selectItems")}
+        </button>
+      )}
+    </div>
   )
 
   let body: React.ReactNode
@@ -302,7 +525,6 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     // during indexing despite nothing actually changing server-side.
     body = <p className="text-sm text-red-600 dark:text-red-400">{t("detail.loadDocumentsError")}</p>
   } else if (view.kind === "folder") {
-    const folderDocs = (documents ?? []).filter((doc) => (doc.category?.trim() || null) === view.name)
     body =
       folderDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-8 text-center">
@@ -321,6 +543,9 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
               onToggleArchive={() => setArchivingDoc(doc)}
               isTogglingArchive={isArchiving && archivingVars?.documentId === doc.id}
+              selectable={selectMode}
+              selected={selectedDocIds.has(doc.id)}
+              onToggleSelect={() => toggleDocSelected(doc.id)}
             />
           ))}
         </div>
@@ -333,20 +558,6 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       </div>
     )
   } else {
-    const folders = new Map<string, UserDocument[]>()
-    const looseFiles: UserDocument[] = []
-    for (const doc of documents) {
-      const category = doc.category?.trim()
-      if (category) {
-        const bucket = folders.get(category)
-        if (bucket) bucket.push(doc)
-        else folders.set(category, [doc])
-      } else {
-        looseFiles.push(doc)
-      }
-    }
-    const sortedFolders = [...folders.entries()].sort(([a], [b]) => a.localeCompare(b))
-
     body = (
       <div className={gridClass}>
         {sortedFolders.map(([name, docs]) => (
@@ -354,8 +565,11 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             key={name}
             name={name}
             count={docs.length}
-            onOpen={() => setView({ kind: "folder", name })}
+            onOpen={() => changeView({ kind: "folder", name })}
             isDragOver={hoverTarget === name}
+            selectable={selectMode}
+            selected={selectedFolders.has(name)}
+            onToggleSelect={() => toggleFolderSelected(name)}
           />
         ))}
         {looseFiles.map((doc) => (
@@ -369,9 +583,12 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
             onToggleArchive={() => setArchivingDoc(doc)}
             isTogglingArchive={isArchiving && archivingVars?.documentId === doc.id}
+            selectable={selectMode}
+            selected={selectedDocIds.has(doc.id)}
+            onToggleSelect={() => toggleDocSelected(doc.id)}
           />
         ))}
-        {newFolderCard}
+        {!selectMode && newFolderCard}
       </div>
     )
   }
@@ -434,6 +651,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   return (
     <div className="flex flex-col gap-3" {...activeDragHandlers}>
       {header}
+      {selectionBar}
       <div
         className={`relative rounded-xl border transition-colors ${
           !showArchived && isDragOver ? "border-primary border-dashed bg-primary/5" : "border-transparent"
@@ -456,6 +674,14 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             setDeletingDoc(null)
           }}
           onClose={() => setDeletingDoc(null)}
+        />
+      )}
+      {confirmingBulkDelete && (
+        <BulkDeleteDocumentsModal
+          count={resolveSelectedDocumentIds().length}
+          isDeleting={isBulkDeleting}
+          onConfirm={handleBulkDelete}
+          onClose={() => setConfirmingBulkDelete(false)}
         />
       )}
       {archivingDoc && (
