@@ -11,6 +11,10 @@ const CATEGORY_STYLE: Record<ClaimCategory, { bg: string; color: string; label: 
   INFERENCE: { bg: "rgba(217,119,6,0.18)", color: "#b45309", label: "AI inference" },
   UNSUPPORTED: { bg: "rgba(220,38,38,0.16)", color: "#b91c1c", label: "Unsupported" },
 };
+// `category` comes from the model's own [CLAIMS] block, not a value this app controls — a
+// category outside the 3 above (an off-spec/malformed generation) must not crash the whole
+// markdown render over one highlighted span.
+const FALLBACK_CATEGORY_STYLE = { bg: "rgba(107,114,128,0.16)", color: "#374151", label: "Unlabeled" };
 
 /** Wraps each of findClaimMatches' spans in a highlighted <mark>, leaving everything else
  * untouched — see attributed-text-match.ts for the (JSX-free, unit-tested) matching logic. */
@@ -22,7 +26,7 @@ export function highlightText(input: string, claims: Claim[]): React.ReactNode[]
   let cursor = 0;
   matches.forEach((m, i) => {
     if (m.start > cursor) nodes.push(input.slice(cursor, m.start));
-    const style = CATEGORY_STYLE[m.claim.category];
+    const style = CATEGORY_STYLE[m.claim.category] ?? FALLBACK_CATEGORY_STYLE;
     const title = m.claim.sourceLabel ? `${style.label} — ${m.claim.sourceLabel}` : style.label;
     nodes.push(
       <mark
