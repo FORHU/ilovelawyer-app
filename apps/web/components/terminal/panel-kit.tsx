@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next"
 import gsap from "gsap"
 import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
-import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
 
 gsap.registerPlugin(Flip)
@@ -171,6 +171,10 @@ export function PanelBody({
   const dense = useTerminalDisplayStore((state) => state.highDensity)
   return (
     <div
+      // Read by Free mode's "fit to content" resize (see fitPaneHeightToContent in
+      // legal-terminal.tsx) — this is the one scrollable root every panel body shares, so its
+      // scrollHeight is the panel's true natural content height regardless of its current size.
+      data-panel-scroll
       className={`flex h-full min-h-0 flex-col ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto ${
         dense ? "p-2.5 text-[13px]" : "p-4 text-sm"
       } text-foreground`}

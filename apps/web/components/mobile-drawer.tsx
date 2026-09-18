@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { cn } from "@workspace/ui/lib/utils";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 
 interface MobileDrawerProps {
   open: boolean;
@@ -34,7 +37,57 @@ export function MobileDrawer({
   panelClassName = "w-[85vw] max-w-80 bg-card py-4",
   children,
 }: MobileDrawerProps) {
-  if (!open) return null;
+  // `open` toggles on this same persistent instance (the 4 callers always render MobileDrawer,
+  // never conditionally) — `mounted` lags one tick behind `open` on close so the slide-out tween
+  // has something to animate before the panel actually leaves the DOM.
+  const [mounted, setMounted] = useState(open);
+  const backdropRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  const offscreenX = side === "right" ? "100%" : "-100%";
+
+  useGSAP(
+    () => {
+      if (open) {
+        setMounted(true);
+        return;
+      }
+      if (!mounted) return;
+      const panel = panelRef.current;
+      const backdrop = backdropRef.current;
+      if (reducedMotion || !panel) {
+        setMounted(false);
+        return;
+      }
+      gsap.killTweensOf(panel);
+      if (backdrop) {
+        gsap.killTweensOf(backdrop);
+        gsap.to(backdrop, { opacity: 0, duration: 0.15 });
+      }
+      gsap.to(panel, { x: offscreenX, duration: 0.2, ease: "power2.in", onComplete: () => setMounted(false) });
+    },
+    { dependencies: [open] },
+  );
+
+  // Runs right after `mounted` flips true and the panel/backdrop actually exist to animate.
+  useGSAP(
+    () => {
+      if (!open || reducedMotion) return;
+      const panel = panelRef.current;
+      const backdrop = backdropRef.current;
+      if (backdrop) {
+        gsap.killTweensOf(backdrop);
+        gsap.from(backdrop, { opacity: 0, duration: 0.15 });
+      }
+      if (panel) {
+        gsap.killTweensOf(panel);
+        gsap.from(panel, { x: offscreenX, duration: 0.22, ease: "power2.out" });
+      }
+    },
+    { dependencies: [mounted] },
+  );
+
+  if (!mounted) return null;
 
   return (
     <div
@@ -44,8 +97,8 @@ export function MobileDrawer({
         side === "right" && "justify-end"
       )}
     >
-      <button type="button" aria-label={closeLabel} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className={cn("relative flex h-full flex-col shadow-xl", panelClassName)}>{children}</div>
+      <button ref={backdropRef} type="button" aria-label={closeLabel} onClick={onClose} className="absolute inset-0 bg-black/40" />
+      <div ref={panelRef} className={cn("relative flex h-full flex-col shadow-xl", panelClassName)}>{children}</div>
     </div>
   );
 }
