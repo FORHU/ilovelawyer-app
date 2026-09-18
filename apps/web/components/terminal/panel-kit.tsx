@@ -1,7 +1,22 @@
-import { type ReactNode } from "react"
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactElement,
+  type ReactNode,
+} from "react"
 import { useTranslation } from "react-i18next"
+import gsap from "gsap"
+import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
+import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
+
+gsap.registerPlugin(Flip)
 
 export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
@@ -50,10 +65,77 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 // Shared "bordered list of rows" shape used across the mostly-flat panels (contradictions,
 // witnesses, findings, damages, citations, audit log, risk register, deadlines) — one bordered
 // container with a 1px divider between rows, instead of every row separately bordering itself.
+//
+// Also owns row enter/exit animation for every one of those panels, with no per-panel changes:
+// callers just keep rendering `.map()` → `<PanelRow key={id}>` as before. React would normally
+// unmount a removed row before any exit tween could play, so a removed key is kept rendered here
+// (in `rendered`, tracked separately from the live `children`) until its own fade-out finishes;
+// only then is it dropped, and Flip smooths the remaining rows into their new positions instead
+// of letting them snap into the vacated space. Known gap: several panels swap their whole
+// `PanelRowList` for an `<EmptyNote>` once the last row is gone (see e.g. witness-panel.tsx) —
+// that parent-level swap unmounts this component outright, so the very last row in a list never
+// gets to play its exit animation. Not worth threading an "animating out" flag through every
+// panel's empty-state check for that one edge case.
 export function PanelRowList({ children }: { children: ReactNode }) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  const items = Children.toArray(children).filter(isValidElement) as ReactElement<Record<string, unknown>>[]
+  const keys = items.map((item) => String(item.key))
+  const [rendered, setRendered] = useState(items)
+  const prevKeysRef = useRef<string[]>(keys)
+  const flipStateRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
+
+  useLayoutEffect(() => {
+    const prevKeys = prevKeysRef.current
+    prevKeysRef.current = keys
+    if (reducedMotion) {
+      setRendered(items)
+      return
+    }
+    const nextKeySet = new Set(keys)
+    const removedKeys = prevKeys.filter((k) => !nextKeySet.has(k))
+    const addedKeys = keys.filter((k) => !prevKeys.includes(k))
+
+    if (removedKeys.length === 0) {
+      setRendered(items)
+      if (addedKeys.length > 0) {
+        requestAnimationFrame(() => {
+          const nodes = addedKeys
+            .map((k) => listRef.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(k)}"]`))
+            .filter((el): el is HTMLElement => !!el)
+          if (nodes.length) gsap.from(nodes, { opacity: 0, y: 6, duration: 0.25, stagger: 0.04, ease: "power2.out" })
+        })
+      }
+      return
+    }
+
+    removedKeys.forEach((k) => {
+      const node = listRef.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(k)}"]`)
+      if (!node) return
+      gsap.to(node, {
+        opacity: 0,
+        duration: 0.18,
+        ease: "power1.in",
+        onComplete: () => {
+          flipStateRef.current = listRef.current ? Flip.getState(listRef.current.children) : null
+          setRendered((prev) => prev.filter((el) => String(el.key) !== k))
+        },
+      })
+    })
+    // items/keys are recomputed fresh from `children` every render — re-running this effect only
+    // when the actual key composition changes (not on every render) is the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keys.join("|"), reducedMotion])
+
+  useLayoutEffect(() => {
+    if (!flipStateRef.current) return
+    Flip.from(flipStateRef.current, { duration: 0.25, ease: "power1.inOut" })
+    flipStateRef.current = null
+  }, [rendered])
+
   return (
-    <ul className="overflow-hidden rounded-lg border border-border divide-y divide-border">
-      {children}
+    <ul ref={listRef} className="overflow-hidden rounded-lg border border-border divide-y divide-border">
+      {rendered.map((item) => cloneElement(item, { "data-row-key": String(item.key) }))}
     </ul>
   )
 }
@@ -61,12 +143,13 @@ export function PanelRowList({ children }: { children: ReactNode }) {
 export function PanelRow({
   children,
   className,
+  ...rest
 }: {
   children: ReactNode
   className?: string
-}) {
+} & ComponentPropsWithoutRef<"li">) {
   return (
-    <li className={cn("flex items-center gap-2.5 px-3 py-2.5", className)}>
+    <li className={cn("flex items-center gap-2.5 px-3 py-2.5", className)} {...rest}>
       {children}
     </li>
   )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
 import { useMessagesQuery } from "@/lib/chat/mutations";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
@@ -28,7 +28,11 @@ export interface TopicNavigatorGroup {
  * ever showing the most recent reply. Replicates ConsultationChat's own visibleMessages filter
  * (dropping the hidden system-driven mind-map/audio-overview turns) so index numbering lines
  * up with the bubble ids it renders. */
-export function useTopicNavigator(consultationId: string | null | undefined) {
+export function useTopicNavigator(
+  consultationId: string | null | undefined,
+  instanceId = "",
+  transcriptRef?: RefObject<HTMLElement | null>,
+) {
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   // Set by ConsultationChat's doSend the moment a turn starts for this consultation (see
@@ -76,9 +80,17 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
 
   const topics = useMemo<TopicNavigatorItem[]>(() => groups.flatMap((g) => g.topics), [groups]);
 
+  const messageId = useCallback((index: number) => (instanceId ? `${instanceId}-chat-msg-${index}` : `chat-msg-${index}`), [instanceId]);
+
   const scrollToTopic = useCallback((index: number) => {
-    document.getElementById(`chat-msg-${index}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+    const target = document.getElementById(messageId(index));
+    const transcript = transcriptRef?.current;
+    if (!target || !transcript) {
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    transcript.scrollTo({ top: target.offsetTop - transcript.offsetTop - 8, behavior: "smooth" });
+  }, [messageId, transcriptRef]);
 
   // Lightweight scroll-spy: highlights whichever topic bubble is nearest the top of the
   // scrollable transcript. Re-observes whenever the topic set changes (a different split
@@ -90,7 +102,7 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
       return;
     }
     const elements = topics
-      .map((t) => document.getElementById(`chat-msg-${t.index}`))
+      .map((t) => document.getElementById(messageId(t.index)))
       .filter((el): el is HTMLElement => Boolean(el));
     if (elements.length === 0) return;
 
@@ -99,14 +111,14 @@ export function useTopicNavigator(consultationId: string | null | undefined) {
         const visible = entries.filter((e) => e.isIntersecting);
         if (visible.length === 0) return;
         const topmost = visible.reduce((a, b) => (a.boundingClientRect.top <= b.boundingClientRect.top ? a : b));
-        const index = Number(topmost.target.id.replace("chat-msg-", ""));
+        const index = Number(topmost.target.id.slice(topmost.target.id.lastIndexOf("chat-msg-") + "chat-msg-".length));
         if (!Number.isNaN(index)) setActiveIndex(index);
       },
-      { root: null, rootMargin: "-15% 0px -70% 0px", threshold: 0 },
+      { root: transcriptRef?.current ?? null, rootMargin: "-15% 0px -70% 0px", threshold: 0 },
     );
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [topics]);
+  }, [topics, messageId, transcriptRef]);
 
   return { topics, groups, activeIndex, scrollToTopic, isGenerating };
 }
