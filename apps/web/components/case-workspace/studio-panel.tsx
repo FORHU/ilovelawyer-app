@@ -2,12 +2,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, Files, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, Loader2, RefreshCw, Download } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search } from "lucide-react";
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
+import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
+import { ResearchTraceList } from "@/components/chat/research-trace-list";
+import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import { AudioOverviewMiniPlayer, AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
@@ -19,7 +22,7 @@ import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
 
-export type StudioTileKind = "documents" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
+export type StudioTileKind = "documents" | "decisions" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
 
 interface DataTableRow {
   type: string;
@@ -107,6 +110,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  // Collapsed by default — a sub-section of the Decisions tile (ilovelawyer-api#119's replay),
+  // not its own tile, since it's turn-scoped the same way a decision is and would otherwise
+  // compete with Decisions for the same "this turn's reasoning" attention.
+  const [researchStepsOpen, setResearchStepsOpen] = useState(false);
   const mindMapJob = useAiJobStatus(caseId, "mindMap");
   // Combines this tab's own in-flight request with the persisted job status, so a job kicked
   // off from another tab (or this one, before a refresh) still shows as generating here too.
@@ -196,6 +203,25 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     ? t("workspace.mindMapGenerating")
     : formatUpdatedAt(t, mindMapUpdatedAt);
 
+  // Decision Records are already-there data (this thread's own audited turns), not something to
+  // generate/refresh — same "open directly" shape as Documents, not the generate-then-result-row
+  // shape the other tiles use. Scoped to the latest turn that has any, walked the same way
+  // mindMapUpdatedAt is above — not the case-wide list (that's Legal Terminal's Decisions panel,
+  // read via useCaseSnapshotQuery, left untouched by this tile).
+  const latestDecisionsMessage = useMemo(() => {
+    const list = history ?? [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      if ((list[i]?.decisionRecords?.records.length ?? 0) > 0) return list[i];
+    }
+    return undefined;
+  }, [history]);
+  const latestDecisionRecords = latestDecisionsMessage?.decisionRecords?.records;
+  // Persisted replay (ilovelawyer-api#119) of that same turn's research/verification trace —
+  // paired to whichever message the Decisions tile is already showing rather than independently
+  // "whichever turn has research steps," so the two stay about the same turn. Absent when that
+  // turn made no tool calls, same as everywhere else this field shows up.
+  const latestResearchSteps = latestDecisionsMessage?.researchSteps?.steps;
+
   const openStudioTile = (kind: StudioTileKind) => {
     setOpenTile(kind);
     if (!expanded) onExpandedChange(true);
@@ -283,7 +309,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const tileLabel =
     openTile === "documents"
       ? t("workspace.documentsTab")
-      : openTile === "mindmap"
+      : openTile === "decisions"
+        ? t("workspace.decisionsTile")
+        : openTile === "mindmap"
         ? t("workspace.mindMapTile")
         : openTile === "timeline"
           ? t("workspace.timelineTile")
@@ -396,6 +424,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               note={documentsNote}
               expanded={expanded}
               onClick={() => openStudioTile("documents")}
+            />
+            {/* Same "already-there data, open directly" shape as Documents above — Decision
+             * Records are produced automatically per legal chat turn, nothing to generate here. */}
+            <StudioTile
+              icon={Scale}
+              label={t("workspace.decisionsTile")}
+              note={latestDecisionRecords ? t("workspace.decisionsNoteCount", { count: latestDecisionRecords.length }) : undefined}
+              expanded={expanded}
+              onClick={() => openStudioTile("decisions")}
             />
             {/* Triggers a (re)generation in place — it does not open the detail view. Once
              * something exists (or is generating), the result row below is what opens it; this
@@ -547,6 +584,43 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {openTile === "documents" ? (
             <DocumentFolderBrowser caseId={caseId} variant="full" />
+          ) : openTile === "decisions" ? (
+            latestDecisionRecords ? (
+              <div className="flex flex-col gap-3">
+                <ul className="space-y-3">
+                  {latestDecisionRecords.map((record, i) => (
+                    <DecisionRecordCard key={record.anchor || i} payload={record} />
+                  ))}
+                </ul>
+                {latestResearchSteps && latestResearchSteps.length > 0 && (
+                  <div className="rounded-md border border-border px-3 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setResearchStepsOpen((v) => !v)}
+                      className="flex w-full items-center justify-between gap-2 text-left"
+                    >
+                      <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
+                        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        {t("workspace.researchStepsTile")}
+                      </span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${researchStepsOpen ? "" : "-rotate-90"}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {researchStepsOpen && (
+                      <div className="mt-2.5 border-t border-border pt-2.5">
+                        <ResearchTraceList steps={latestResearchSteps} variant="replay" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {consultationId ? t("workspace.decisionsEmpty") : t("workspace.decisionsNoConsultation")}
+              </p>
+            )
           ) : openTile === "caseBrief" ? (
             <CaseBriefContent caseId={caseId} />
           ) : openTile === "mindmap" ? (
@@ -717,6 +791,24 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
        * view mid-play. */}
       {audioElement}
     </aside>
+  );
+}
+
+// Read-only — same conclusion+badge header and DecisionDetailBody body as the case-level
+// DecisionCard (decisions-panel.tsx) and the chat DecisionDrawer, minus dispute/annotations:
+// this thread's decision hasn't necessarily been promoted into the case graph (only happens for
+// case-linked consultations), so there's no case-level row here to dispute against yet.
+function DecisionRecordCard({ payload }: { payload: DecisionRecordPayload }) {
+  return (
+    <li className="rounded-md border border-border px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">{payload.conclusion}</p>
+        <DecisionConfidenceBadge confidence={payload.confidence} />
+      </div>
+      <div className="mt-2 space-y-2">
+        <DecisionDetailBody payload={payload} />
+      </div>
+    </li>
   );
 }
 

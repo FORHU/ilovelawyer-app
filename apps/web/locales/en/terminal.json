@@ -260,6 +260,7 @@
   "decisionRejectedWhy": "Why rejected",
   "decisionWeighting": "Weighting",
   "decisionWouldChangeIf": "What would change this",
+  "decisionWouldChangeIfMore": " +{{count}} more",
   "decisionConfidenceHigh": "High confidence",
   "decisionConfidenceMedium": "Medium confidence",
   "decisionConfidenceLow": "Low confidence",
