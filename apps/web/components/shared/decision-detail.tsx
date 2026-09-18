@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Info, Quote, XCircle } from "lucide-react"
+import { ExternalLink, Info, Quote } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@workspace/ui/components/badge"
 import type { DecisionAlternative, DecisionEvidence, DecisionRecordPayload, DecisionRule } from "@/lib/terminal/types"
@@ -40,7 +40,6 @@ export function EvidenceItem({
   onClick?: () => void
   active?: boolean
 }) {
-  const { t } = useTranslation("terminal")
   return (
     <li
       role={onClick ? "button" : undefined}
@@ -59,11 +58,6 @@ export function EvidenceItem({
       className={`text-[12px] leading-4 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
     >
       <div className="flex items-center gap-1.5">
-        {evidence.verified ? (
-          <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
-        ) : (
-          <XCircle className="h-3 w-3 shrink-0 text-red-400" aria-hidden="true" aria-label={t("decisionUnverified")} />
-        )}
         <span className="font-medium text-foreground">{evidence.doc}</span>
         {evidence.pinpoint && <span className="text-muted-foreground">· {evidence.pinpoint}</span>}
       </div>
@@ -107,11 +101,6 @@ export function RuleItem({
       }
       className={`flex items-center gap-1.5 text-[12px] text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
     >
-      {rule.verified ? (
-        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
-      ) : (
-        <XCircle className="h-3 w-3 shrink-0 text-red-400" aria-hidden="true" />
-      )}
       {rule.url ? (
         <a
           href={rule.url}
