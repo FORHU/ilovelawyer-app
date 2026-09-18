@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { ChevronLeft, ExternalLink, FolderPlus, Loader2, Plus } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import {
@@ -11,6 +12,7 @@ import {
   useUploadCaseDocumentsMutation,
   type UserDocument,
 } from "@/lib/cases/mutations"
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
@@ -52,7 +54,45 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const upload = (files: File[], category?: string) => {
-    uploadDocuments({ files, caseId, category })
+    const [supported, unsupported] = [
+      files.filter(isAllowedFileType),
+      files.filter((f) => !isAllowedFileType(f)),
+    ]
+    if (unsupported.length > 0) {
+      toast.error(
+        t("detail.attachmentUnsupportedType", {
+          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+          fileNames: unsupported.map((f) => f.name).join(", "),
+          formats: ALLOWED_FILE_TYPES_LABEL,
+        })
+      )
+    }
+
+    const [withinSizeLimit, oversized] = [
+      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
+      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+    ]
+    if (oversized.length > 0) {
+      toast.error(
+        t("detail.attachmentTooLarge", {
+          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+          fileNames: oversized.map((f) => f.name).join(", "),
+          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+        })
+      )
+    }
+    if (withinSizeLimit.length === 0) return
+
+    uploadDocuments(
+      { files: withinSizeLimit, caseId, category },
+      {
+        onSuccess: (result) => {
+          result.failed.forEach(({ file, reason }) => {
+            toast.error(`${file.name} — ${reason}`)
+          })
+        },
+      },
+    )
   }
 
   // Root-level (and empty-state) drops have no open folder to target, so the payload goes to the
@@ -123,7 +163,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+        accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
         className="hidden"
         onChange={(e) => {
           const files = Array.from(e.target.files ?? [])

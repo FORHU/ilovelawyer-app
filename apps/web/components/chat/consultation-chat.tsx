@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/components/chat/assistant-message";
@@ -36,7 +37,7 @@ import {
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
-import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
   useUploadAudioMutation,
@@ -92,12 +93,6 @@ interface DisplayMessage {
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
 // the attachment-chip row or upload/indexing time getting unwieldy.
 const MAX_ATTACHED_FILES = 10;
-// No backend size cap on the presigned-S3 case-document upload path either (unlike the
-// /api/files/upload route the voice recorder uses, which multer caps at 25MB — see
-// ilovelawyer-api/src/routes/files.route.ts). Matching that existing number here rather
-// than inventing a new one: generous for a scanned legal PDF, but keeps a single attachment
-// from stalling the browser upload / RAG indexing for minutes.
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
 // How many pills show under the empty-state composer, and how many of those slots (at
 // most) get pulled from the case's own uploaded documents / the user's consultation
@@ -350,16 +345,6 @@ export default function ConsultationChat({
     }>
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  // Set when a select/drop/paste got clipped by MAX_ATTACHED_FILES — cleared on the next
-  // add attempt so it doesn't linger once the user's back under the cap.
-  const [fileLimitHit, setFileLimitHit] = useState(false);
-  // Names of any files a select/drop/paste dropped for exceeding MAX_FILE_SIZE_BYTES —
-  // cleared on the next add attempt, same lifecycle as fileLimitHit.
-  const [oversizedFileNames, setOversizedFileNames] = useState<string[]>([]);
-  // Names of any files a select/drop/paste dropped for having an unsupported extension —
-  // same lifecycle as oversizedFileNames. Checked ahead of size since there's no point
-  // reporting "too large" for a file that wouldn't be accepted anyway.
-  const [unsupportedFileNames, setUnsupportedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
@@ -844,17 +829,37 @@ export default function ConsultationChat({
       list.filter(isAllowedFileType),
       list.filter((f) => !isAllowedFileType(f)),
     ];
-    setUnsupportedFileNames(unsupported.map((f) => f.name));
+    if (unsupported.length > 0) {
+      toast.error(
+        t("input.attachmentUnsupportedType", {
+          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+          fileNames: unsupported.map((f) => f.name).join(", "),
+          formats: ALLOWED_FILE_TYPES_LABEL,
+        })
+      );
+    }
 
     const [withinSizeLimit, oversized] = [
       supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
       supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
     ];
-    setOversizedFileNames(oversized.map((f) => f.name));
+    if (oversized.length > 0) {
+      toast.error(
+        t("input.attachmentTooLarge", {
+          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+          fileNames: oversized.map((f) => f.name).join(", "),
+          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+        })
+      );
+    }
 
     const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
     const accepted = withinSizeLimit.slice(0, remaining);
-    setFileLimitHit(accepted.length < withinSizeLimit.length);
+    if (accepted.length < withinSizeLimit.length) {
+      toast.warning(
+        t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })
+      );
+    }
     if (accepted.length === 0) return;
     setQueuedFiles((prev) => [
       ...prev,
@@ -873,9 +878,6 @@ export default function ConsultationChat({
 
   const handleRemoveFile = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
-    setFileLimitHit(false);
-    setOversizedFileNames([]);
-    setUnsupportedFileNames([]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
@@ -1278,12 +1280,12 @@ export default function ConsultationChat({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+          accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
           className="hidden"
           onChange={handleFileChange}
         />
 
-        {(queuedFiles.length > 0 || oversizedFileNames.length > 0 || unsupportedFileNames.length > 0) && (
+        {queuedFiles.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
               {queuedFiles.map((f) => (
@@ -1336,29 +1338,6 @@ export default function ConsultationChat({
                 </span>
               ))}
             </div>
-            {fileLimitHit && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })}
-              </span>
-            )}
-            {oversizedFileNames.length > 0 && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentTooLarge", {
-                  defaultValue: `${oversizedFileNames.join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-                  fileNames: oversizedFileNames.join(", "),
-                  maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-                })}
-              </span>
-            )}
-            {unsupportedFileNames.length > 0 && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentUnsupportedType", {
-                  defaultValue: `${unsupportedFileNames.join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
-                  fileNames: unsupportedFileNames.join(", "),
-                  formats: ALLOWED_FILE_TYPES_LABEL,
-                })}
-              </span>
-            )}
             {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
