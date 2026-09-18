@@ -4,6 +4,8 @@ import { Eye, EyeOff, KeyRound, Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { isPasswordValid } from "@/lib/auth/password-policy";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-card px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20";
@@ -25,7 +27,7 @@ export default function ChangePasswordModal({ isPending, error, onSubmit, onClos
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const newPasswordValid = newPassword.length >= 8 && /[^a-zA-Z0-9]/.test(newPassword);
+  const newPasswordValid = isPasswordValid(newPassword);
   const passwordsMatch = newPassword && confirmPassword && newPassword === confirmPassword;
   const canSubmit = !!currentPassword && newPasswordValid && passwordsMatch;
 
@@ -126,8 +128,17 @@ export default function ChangePasswordModal({ isPending, error, onSubmit, onClos
                   <TooltipContent>{showNew ? t("security.changePassword.hidePassword") : t("security.changePassword.showPassword")}</TooltipContent>
                 </Tooltip>
               </div>
-              {newPassword && !newPasswordValid && (
-                <p className="text-[12px] text-red-600 dark:text-red-400">{t("security.changePassword.newPasswordRequirement")}</p>
+              {newPassword && (
+                <PasswordRequirements
+                  password={newPassword}
+                  labels={{
+                    length: t("security.changePassword.passwordRequirements.length"),
+                    uppercase: t("security.changePassword.passwordRequirements.uppercase"),
+                    lowercase: t("security.changePassword.passwordRequirements.lowercase"),
+                    number: t("security.changePassword.passwordRequirements.number"),
+                    special: t("security.changePassword.passwordRequirements.special"),
+                  }}
+                />
               )}
             </div>
 

@@ -5,7 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, ListTree } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@workspace/ui/components/dropdown-menu";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/components/chat/assistant-message";
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
@@ -336,6 +342,10 @@ export default function ConsultationChat({
   // A Terminal pane is an independent chat surface. Its topic navigation must be a real
   // column in that pane rather than the full-page navigator's absolute overlay.
   const [terminalTopicsOpen, setTerminalTopicsOpen] = useState(true);
+  // TopicNavigator's own mobile drawer, lifted up (same reason as sidebarMobileOpen) so the
+  // sticky header's mobile kebab menu can open it instead of TopicNavigator's own floating
+  // trigger circle, which the kebab replaces on phones.
+  const [topicMobileOpen, setTopicMobileOpen] = useState(false);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -402,16 +412,19 @@ export default function ConsultationChat({
   );
   // Centralizes every place that used to write `?c=` to the URL — routes through local
   // state instead when isolated, per isolateConsultation's doc comment. useCallback keeps this
-  // referentially stable so the auto-select effect below can safely depend on it.
+  // referentially stable so the auto-select effect below can safely depend on it. Always
+  // replaces rather than pushing a history entry — switching consultations (or starting a new
+  // one) used to push, which meant the phone's native edge-swipe-back gesture (and the browser
+  // back button) stepped backward through consultations one at a time instead of leaving the
+  // chat page, since each `?c=<id>` was its own history entry.
   const navigateToConsultation = useCallback(
-    (id: string | null, opts?: { replace?: boolean }) => {
+    (id: string | null) => {
       if (isolateConsultation) {
         setLocalConsultationId(id);
         return;
       }
       const href = id ? `${basePath}?c=${id}` : basePath;
-      if (opts?.replace) router.replace(href);
-      else router.push(href);
+      router.replace(href);
     },
     [isolateConsultation, basePath, router],
   );
@@ -681,6 +694,10 @@ export default function ConsultationChat({
     scrollToTopic,
     isGenerating: isGeneratingTopics,
   } = useTopicNavigator(consultationId, chatInstanceId, transcriptRef);
+  // Gates both the desktop TopicNavigator rail/mobile drawer and the mobile kebab's "Topics"
+  // item below — same condition as the <TopicNavigator> mount further down, kept in sync
+  // rather than duplicated ad hoc.
+  const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
 
   // Empty-state composer pills, most relevant first: (1) the case's own uploaded documents
   // — the clearest signal of what this chat is actually for, so a fresh case with a file
@@ -737,7 +754,7 @@ export default function ConsultationChat({
     autoSelectedRef.current = true;
     const mostRecent = caseConsultations[0];
     if (mostRecent) {
-      navigateToConsultation(mostRecent.id, { replace: true });
+      navigateToConsultation(mostRecent.id);
     }
   }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
 
@@ -1614,12 +1631,15 @@ export default function ConsultationChat({
         />
       )}
 
-      {!embedded && (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics) && (
+      {!embedded && hasTopics && (
         <TopicNavigator
           groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
           onExpandedChange={setTopicPanelExpanded}
+          isMobileOpen={topicMobileOpen}
+          onMobileOpenChange={setTopicMobileOpen}
+          hideMobileTrigger={!embedded}
           onJump={scrollToTopic}
           label={t("topicNavigator.label")}
           isGenerating={isGeneratingTopics}
@@ -1840,13 +1860,18 @@ export default function ConsultationChat({
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
-                    <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
-                      {consultationTitle ?? t("sidebar.untitledConsultation")}
-                    </span>
+                    {/* Title strip — desktop/tablet only. Mobile's header is just the sidebar
+                        toggle and the kebab menu below, matching the redesign's leaner phone
+                        chrome (no room for a truncated title next to a case chip). */}
+                    <div className="hidden lg:flex items-center gap-2.5 min-w-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                      <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
+                        {consultationTitle ?? t("sidebar.untitledConsultation")}
+                      </span>
+                    </div>
                   </div>
                   {linkedCaseId && linkedCaseRecord && (
-                    <div className="flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
+                    <div className="hidden lg:flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
                       <span className="hidden sm:inline">
                         {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
                       </span>
@@ -1858,6 +1883,51 @@ export default function ConsultationChat({
                       </Link>
                     </div>
                   )}
+                  {/* Mobile-only controls: a ChatGPT-style "new chat" pencil sitting left of the
+                      kebab, so starting a fresh consultation doesn't require opening the sidebar
+                      drawer first just to reach its own "New consultation" button. The kebab
+                      itself is the stand-in for the desktop "Open case" chip and the Topics
+                      rail, both of which have no room on a phone header — only rendered when
+                      there's actually something for it to hold. */}
+                  <div className="lg:hidden flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleNewChat}
+                      aria-label={t("sidebar.newChat")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <SquarePen className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    {(linkedCaseId || hasTopics) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t("caseHub.moreOptions", { defaultValue: "More options" })}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {linkedCaseId && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/homepage/case-portfolio/${linkedCaseId}`}>
+                                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                                {t("caseHub.openCase", { defaultValue: "Open case" })}
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {hasTopics && (
+                            <DropdownMenuItem onSelect={() => setTopicMobileOpen(true)}>
+                              <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
+                              {t("topicNavigator.label")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -9,6 +9,8 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { isPasswordValid } from "@/lib/auth/password-policy";
 
 const inputClass =
   "w-full border border-border rounded-xl border-b-2 bg-transparent px-3 py-4 text-base text-foreground placeholder-muted-foreground outline-none focus:border-brand-gold transition-colors";
@@ -27,7 +29,7 @@ function ResetPasswordContent() {
   const validateQuery = useValidateResetTokenQuery(success ? "" : token);
 
   const passwordsMatch = newPassword && confirmPassword && newPassword === confirmPassword;
-  const valid = newPassword.length >= 8 && /[^a-zA-Z0-9]/.test(newPassword);
+  const valid = isPasswordValid(newPassword);
 
   const resetError = resetPasswordMutation.error as (Error & { status?: number }) | null;
   const checkingToken = !success && !!token && validateQuery.isPending;
@@ -165,7 +167,7 @@ function ResetPasswordContent() {
                     type={showNew ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder={t("resetPassword.newPasswordPlaceholder")}
+                    placeholder="••••••••••"
                     required
                     className={`${inputClass} pr-10`}
                     style={{ fontFamily: "Inter, sans-serif" }}
@@ -184,6 +186,18 @@ function ResetPasswordContent() {
                     <TooltipContent>{showNew ? "Hide password" : "Show password"}</TooltipContent>
                   </Tooltip>
                 </div>
+                {newPassword && (
+                  <PasswordRequirements
+                    password={newPassword}
+                    labels={{
+                      length: t("resetPassword.passwordRequirements.length"),
+                      uppercase: t("resetPassword.passwordRequirements.uppercase"),
+                      lowercase: t("resetPassword.passwordRequirements.lowercase"),
+                      number: t("resetPassword.passwordRequirements.number"),
+                      special: t("resetPassword.passwordRequirements.special"),
+                    }}
+                  />
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
