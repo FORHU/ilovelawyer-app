@@ -201,11 +201,38 @@
        this, swiping from the left/right screen edge on mobile silently navigates the
        browser history instead of whatever the page itself does with that gesture. */
     overscroll-behavior-x: none;
+    /* scrollbar-gutter only takes effect on a box whose own overflow is auto/scroll/hidden —
+       it's a no-op on the default `visible`, even though a `visible` root still gets a real
+       viewport scrollbar once content overflows. So overflow-y has to be spelled out here for
+       the rule below to actually do anything. */
+    overflow-y: auto;
+    /* Reserves the vertical scrollbar's width permanently, so it doesn't disappear/reappear.
+       Radix components (Select, Dialog, DropdownMenu, ...) lock body scroll while open —
+       without this, that lock removes the scrollbar on open and restores it on close, and the
+       page content (still sized to the viewport, not blocked by overflow-x above) visibly
+       shifts sideways each time, most noticeably right when a Select closes after picking a
+       value. */
+    scrollbar-gutter: stable;
     }
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
     overscroll-behavior-x: none;
+    }
+  /* react-remove-scroll (used by every Radix popup — Select, Dialog, DropdownMenu, ...) injects
+     `body[data-scroll-locked] { overflow: hidden !important; position: relative !important;
+     margin-right: 0px !important; ... }` for as long as that popup is open, then removes it the
+     instant it closes. Flipping body's overflow and position on and off like that visibly jolts
+     the page each time (most noticeable as a left/right jump right when a Select closes after
+     picking a value) — not just from the scrollbar width changing (scrollbar-gutter above
+     already covers that), but from `position` itself flipping. The selector below repeats the
+     attribute selector to out-specificity that injected rule regardless of load order, so body
+     never actually changes overflow/position/margin while something is open. */
+  body[data-scroll-locked][data-scroll-locked] {
+    overflow: visible !important;
+    position: static !important;
+    margin-right: 0 !important;
+    padding-right: 0 !important;
     }
 }
 

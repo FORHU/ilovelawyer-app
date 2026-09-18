@@ -10,6 +10,8 @@
   "appointment": "약속",
   "note": "메모",
   "endTimeHint": "종료 시간은 {{time}} 이후여야 합니다.",
+  "startTime": "시작 시간",
+  "endTime": "종료 시간",
   "titlePlaceholder": "제목",
   "notifyEmailPlaceholder": "알림 받을 이메일 (선택 사항)",
   "descriptionPlaceholder": "설명 (선택 사항)",

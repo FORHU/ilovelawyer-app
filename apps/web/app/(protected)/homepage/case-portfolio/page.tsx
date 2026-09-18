@@ -27,7 +27,10 @@ import {
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-const PAGE_SIZE = 20;
+// Kept small (rather than shrinking the row/heading spacing) so a full page of rows fits
+// a typical desktop browser window (~900px+ tall) without a page scrollbar — the fixed
+// chrome above the table (heading, search bar, table header) already runs ~520px on its own.
+const PAGE_SIZE = 5;
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
@@ -60,6 +63,15 @@ export default function CaseManagerDashboard() {
   const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
   const cases = data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
+
+  // The current page can outlive the data that justified it — e.g. archiving/deleting the
+  // last case on the last page shrinks totalPages out from under `page`. Snap back to the
+  // new last page rather than rendering a blank result with no cases and no empty-state copy.
+  React.useEffect(() => {
+    if (data && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [data, page, totalPages]);
 
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
   const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
@@ -351,6 +363,8 @@ export default function CaseManagerDashboard() {
 
             <span className="text-[12px] text-muted-foreground">
               {t("pagination.pageOf", { page, total: totalPages })}
+              {" | "}
+              {t("caseCountBadge", { count: cases.length })}
             </span>
 
             <Tooltip>

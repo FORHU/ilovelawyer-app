@@ -10,6 +10,8 @@
   "appointment": "Appointment",
   "note": "Tala",
   "endTimeHint": "Ang oras ng pagtatapos ay dapat pagkatapos ng {{time}}.",
+  "startTime": "Oras ng simula",
+  "endTime": "Oras ng pagtatapos",
   "titlePlaceholder": "Pamagat",
   "notifyEmailPlaceholder": "Email na paalalahanan (opsyonal)",
   "descriptionPlaceholder": "Paglalarawan (opsyonal)",
