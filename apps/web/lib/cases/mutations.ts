@@ -170,6 +170,9 @@ export interface UserDocument {
   /** Lawyer-curated subset shown in the Case Brief export's Exhibit list — not every uploaded
    * document is an Exhibit just by being uploaded. Defaults false. */
   isExhibit: boolean
+  /** Pure visibility flag, same as Case.status — an ARCHIVED document stays fully intact (RAG
+   * grounding, metadata, relationships) and is only hidden from the active document view. */
+  status: "ACTIVE" | "ARCHIVED"
   createdAt: string
 }
 
@@ -409,6 +412,16 @@ export function useCaseDocumentsQuery(caseId: string) {
   })
 }
 
+/** Archived counterpart of useCaseDocumentsQuery — separate query key so the Active and
+ * Archived document views can be cached and refetched independently. */
+export function useArchivedCaseDocumentsQuery(caseId: string, enabled = true) {
+  return useQuery({
+    queryKey: caseKeys.archivedTimeline(caseId),
+    queryFn: () => apiFetch<UserDocument[]>(`/api/documents?caseId=${caseId}&status=ARCHIVED`),
+    enabled: enabled && !!caseId,
+  })
+}
+
 export function useConsultationDocumentsQuery(consultationId: string | undefined) {
   return useQuery({
     queryKey: chatKeys.documents(consultationId ?? ""),
@@ -447,8 +460,13 @@ export function useDeleteCaseDocumentMutation() {
     onSuccess: (_data, { documentId, caseId }) => {
       // Filter the deleted id out of the cache in place rather than invalidating — same
       // reasoning as the upload mutations above: no need for a refetch to learn what we
-      // already know just deleted successfully.
+      // already know just deleted successfully. Deletable from either the active or the
+      // Archived view (DocumentFileCard's delete button works in both), so both caches need
+      // the patch — whichever one didn't contain this id is an unaffected no-op filter.
       queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
+        old ? old.filter((d) => d.id !== documentId) : old,
+      )
+      queryClient.setQueryData<UserDocument[]>(caseKeys.archivedTimeline(caseId), (old) =>
         old ? old.filter((d) => d.id !== documentId) : old,
       )
       // Same patch applied to the Legal Terminal's case snapshot — see the matching comment on
@@ -456,6 +474,39 @@ export function useDeleteCaseDocumentMutation() {
       queryClient.setQueryData<CaseSnapshot>(terminalKeys.snapshot(caseId), (old) =>
         old ? { ...old, documents: old.documents.filter((d) => d.id !== documentId) } : old,
       )
+    },
+  })
+}
+
+// Archiving/unarchiving is a pure visibility flag on the active Document browser — an archived
+// document behaves identically everywhere else (RAG grounding, chat, case snapshot, AI analysis
+// all keep seeing it), matching how Case archiving deliberately leaves everything but the
+// Active/Archived tab unchanged. So unlike delete, these deliberately do NOT touch
+// terminalKeys.snapshot — the backend still returns archived documents there by design.
+export function useArchiveCaseDocumentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ documentId }: { documentId: string; caseId: string }) =>
+      apiFetch<UserDocument>(`/api/documents/${documentId}/archive`, { method: "POST" }),
+    onSuccess: (_updated, { documentId, caseId }) => {
+      queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
+        old ? old.filter((d) => d.id !== documentId) : old,
+      )
+      queryClient.invalidateQueries({ queryKey: caseKeys.archivedTimeline(caseId) })
+    },
+  })
+}
+
+export function useUnarchiveCaseDocumentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ documentId }: { documentId: string; caseId: string }) =>
+      apiFetch<UserDocument>(`/api/documents/${documentId}/unarchive`, { method: "POST" }),
+    onSuccess: (_updated, { documentId, caseId }) => {
+      queryClient.setQueryData<UserDocument[]>(caseKeys.archivedTimeline(caseId), (old) =>
+        old ? old.filter((d) => d.id !== documentId) : old,
+      )
+      queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
     },
   })
 }

@@ -8,10 +8,12 @@ import { useTranslation } from "react-i18next";
 import {
   isDocxAttachment,
   isImageAttachment,
+  isLegacyDocAttachment,
   isPdfAttachment,
   isXlsxAttachment,
   type MessageAttachment,
 } from "@/components/chat/message-attachments";
+import { apiFetch } from "@/lib/fetch";
 
 interface AttachmentPreviewProps {
   attachment: MessageAttachment;
@@ -33,11 +35,13 @@ function fixTransparentCellColors(html: string): string {
 }
 
 /** The actual preview surface for a Message Attachment (ADR 0012) — PDFs render inline via the
- * browser's native viewer, images via a plain `<img>`, .docx via docx-preview and .xlsx via
- * xlsx-preview (both client-side, file bytes never leave the browser — unlike a third-party
- * embed viewer such as Office/Google, which would send a potentially confidential document's URL
- * to that party; deliberately not used here). Legacy binary .doc/.xls and everything else these
- * libraries/the browser can't render fall back to a filename + Download action instead.
+ * browser's native viewer, images via a plain `<img>`, .docx via docx-preview and .xlsx/.xlsm/
+ * .xlam via xlsx-preview (all client-side, file bytes never leave the browser — unlike a
+ * third-party embed viewer such as Office/Google, which would send a potentially confidential
+ * document's URL to that party; deliberately not used here). Legacy binary .doc has no
+ * client-parseable format at all, so it instead shows a plain-text extraction fetched from the
+ * backend (GET /documents/:id/text-preview). Legacy .xls and everything else no viewer here can
+ * render fall back to a filename + Download action instead.
  *
  * Deliberately just the preview surface, no surrounding chrome (title bar, close button,
  * backdrop) — FilePreviewModal wraps this for the chat attachment-chip modal, and
@@ -52,6 +56,7 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
   const isImage = isImageAttachment(attachment);
   const isDocx = isDocxAttachment(attachment);
   const isXlsx = isXlsxAttachment(attachment);
+  const isLegacyDoc = isLegacyDocAttachment(attachment);
   // Seeded from the initial attachment (which never changes across this component's lifetime —
   // every caller only renders it behind `{x && <AttachmentPreview .../>}`, so a new attachment
   // always remounts rather than updating props) instead of set synchronously inside the render
@@ -62,10 +67,16 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
   const [xlsxLoading, setXlsxLoading] = useState(() => isXlsx && !!attachment.url);
   const [xlsxSheets, setXlsxSheets] = useState<string[] | null>(null);
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
+  // Text preview needs only attachment.id (a real backend Document id) — unlike docx/xlsx it
+  // never fetches the S3 blob directly, so it works even for the url-less pre-persisted chip
+  // state other previews can't render (see MessageAttachment's `url` doc comment).
+  const [docLoading, setDocLoading] = useState(() => isLegacyDoc);
+  const [docText, setDocText] = useState<string | null>(null);
 
   const canInlinePreview = (isPdf || isImage) && !!attachment.url && !inlineFailed;
   const canDocxPreview = isDocx && !!attachment.url && !inlineFailed;
   const canXlsxPreview = isXlsx && !!attachment.url && !inlineFailed;
+  const canDocTextPreview = isLegacyDoc && !inlineFailed;
 
   // docx-preview renders imperatively into a live DOM node rather than taking React props, so
   // this fetches the bytes and hands them off once per attachment. Requires the presigned S3
@@ -166,6 +177,28 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
     };
   }, [isXlsx, attachment.url]);
 
+  // Legacy .doc has no client-parseable format at all (see isLegacyDocAttachment), so unlike
+  // docx/xlsx above this never fetches file bytes itself — it asks the backend to run the same
+  // word-extractor pass the RAG pipeline already uses and just renders the resulting text.
+  useEffect(() => {
+    if (!isLegacyDoc) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { text } = await apiFetch<{ text: string }>(`/api/documents/${attachment.id}/text-preview`);
+        if (cancelled) return;
+        setDocText(text);
+      } catch {
+        if (!cancelled) setInlineFailed(true);
+      } finally {
+        if (!cancelled) setDocLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLegacyDoc, attachment.id]);
+
   return (
     <div className="h-full min-h-0 bg-muted/30">
       {canInlinePreview && isImage ? (
@@ -179,9 +212,14 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
         </div>
       ) : canInlinePreview ? (
         <iframe
-          src={attachment.url!}
+          // PDF Open Parameters fragment (Adobe spec, honored by Chrome/Edge's built-in PDFium
+          // viewer and Firefox's pdf.js) — without it the native viewer opens at its own default
+          // zoom, which on a narrow mobile width renders the page wider than the iframe with no
+          // way to zoom out first, so it never fits the screen. FitH forces "fit to width" so the
+          // page always starts scaled to the frame and only needs vertical scroll.
+          src={isPdf ? `${attachment.url!}#view=FitH` : attachment.url!}
           title={attachment.name}
-          className="h-full w-full border-0"
+          className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}
         />
       ) : canDocxPreview ? (
@@ -256,11 +294,30 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
             </>
           )}
         </div>
+      ) : canDocTextPreview ? (
+        <div className="h-full overflow-y-auto bg-white p-4 sm:p-8">
+          {docLoading ? (
+            <div className="flex h-full items-center justify-center gap-2 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              {t("attachment.loadingPreview")}
+            </div>
+          ) : (
+            // No rich layout to reconstruct — word-extractor only gives back a flat body string
+            // (see DocumentSvc.getTextPreview on the backend), so this is a plain text dump
+            // rather than docx-preview's paginated rendering. whitespace-pre-wrap keeps the
+            // extractor's own line breaks instead of collapsing them like normal HTML text flow.
+            <p className="mx-auto max-w-3xl whitespace-pre-wrap text-sm text-neutral-900">{docText}</p>
+          )}
+        </div>
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
           <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
-            {t(isPdf || isImage || isDocx || isXlsx ? "attachment.previewFailed" : "attachment.previewUnavailable")}
+            {t(
+              isPdf || isImage || isDocx || isXlsx || isLegacyDoc
+                ? "attachment.previewFailed"
+                : "attachment.previewUnavailable",
+            )}
           </p>
           {attachment.url &&
             (isPdf || isImage ? (

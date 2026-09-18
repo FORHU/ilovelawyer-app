@@ -32,7 +32,7 @@
     "depositCaseFiles": "Idiposito ang mga Case File",
     "dropHint": "I-drag at i-drop, o mag-browse. Suportado ang PDF, DOCX, XLSX, JPG, PNG para sa automated indexing",
     "selectDocuments": "Pumili ng mga Dokumento",
-    "attachedDossiers": "Mga Nakalakip na Dossier ({{count}}):",
+    "attachedDossiers": "Mga Nakalakip na Dokumento ({{count}}):",
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
     "removeFile": "Alisin ang {{fileName}}",
     "uploadFailed": "Nabigo ang pag-upload."

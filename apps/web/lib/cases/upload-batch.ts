@@ -44,8 +44,11 @@ export async function mapPoolSettled<T, R>(
  * confirm call's mimeType so all three always agree. */
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   pdf: "application/pdf",
+  doc: "application/msword",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  xlsm: "application/vnd.ms-excel.sheet.macroEnabled.12",
+  xlam: "application/vnd.ms-excel.addin.macroEnabled.12",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
@@ -63,7 +66,7 @@ export function resolveContentType(file: File): string {
  * `isAllowedFileType`. */
 export const ALLOWED_EXTENSIONS = Object.keys(EXTENSION_CONTENT_TYPES)
 
-export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOCX, XLSX, JPG, PNG"
+export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, JPG, PNG"
 
 export const UNSUPPORTED_FILE_TYPE_MESSAGE = `Unsupported file type. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`
 
@@ -71,6 +74,14 @@ export function isAllowedFileType(file: File): boolean {
   const ext = file.name.split(".").pop()?.toLowerCase()
   return !!ext && ALLOWED_EXTENSIONS.includes(ext)
 }
+
+/** No server-side size cap on the presigned-S3 case-document path (presign/S3-PUT/confirm all
+ * accept any size — confirmed against ilovelawyer-api's presign/S3/Joi validation, none of which
+ * carry a max). Enforced client-side only, reusing the /api/files/upload route's existing 25MB
+ * multer cap (see ilovelawyer-api/src/routes/files.route.ts) purely so every upload surface in
+ * the app shares one sane, consistent ceiling rather than letting a single attachment stall the
+ * browser upload / RAG indexing for minutes. */
+export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024
 
 /** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL.
  * `contentType` must be the exact value that was signed at presign time (see resolveContentType) —

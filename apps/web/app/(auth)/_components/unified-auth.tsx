@@ -10,6 +10,8 @@ import { ThemeToggle } from "@/components/theme-provider";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { isPasswordValid } from "@/lib/auth/password-policy";
 import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup } from "./workspace-setup";
 
@@ -21,6 +23,7 @@ import {
   useLoginMutation,
   useSendOtpMutation,
   useSignupMutation,
+  useUpdateRequiredPasswordMutation,
   useVerifyOtpMutation,
 } from "@/lib/auth/mutations";
 
@@ -55,6 +58,14 @@ function UnifiedAuthContent() {
   const [remember, setRemember] = useState(false);
   const [showSigninPw, setShowSigninPw] = useState(false);
 
+  // Forced one-time password update — a 428 from login() means this account predates the
+  // current password policy. signinPassword doubles as the "current password" proof here.
+  const [passwordUpdateRequired, setPasswordUpdateRequired] = useState(false);
+  const [requiredNewPassword, setRequiredNewPassword] = useState("");
+  const [requiredConfirmPassword, setRequiredConfirmPassword] = useState("");
+  const [showRequiredNewPw, setShowRequiredNewPw] = useState(false);
+  const [showRequiredConfirmPw, setShowRequiredConfirmPw] = useState(false);
+
   // Sign up fields
   const [name, setName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -79,6 +90,7 @@ function UnifiedAuthContent() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const loginMutation = useLoginMutation();
+  const updateRequiredPasswordMutation = useUpdateRequiredPasswordMutation();
   const signupMutation = useSignupMutation();
   const googleMutation = useGoogleAuthMutation();
   const forgotPasswordMutation = useForgotPasswordMutation();
@@ -134,14 +146,42 @@ function UnifiedAuthContent() {
             );
             return;
           }
+          // 428 from login() means the account predates the current password policy —
+          // signinPassword already proved they know the current password, so just ask for
+          // a new one instead of bouncing them back to a blank sign-in form.
+          if ((err as Error & { status?: number }).status === 428) {
+            setPasswordUpdateRequired(true);
+            return;
+          }
           setError((err as Error).message);
         },
       }
     );
   }
 
+  function handleUpdateRequiredPassword(e: React.SyntheticEvent) {
+    e.preventDefault();
+    if (!isPasswordValid(requiredNewPassword)) {
+      setError(t("signup.passwordRequirements.notMet"));
+      return;
+    }
+    if (requiredNewPassword !== requiredConfirmPassword) {
+      setError(t("signup.passwordsMismatch"));
+      return;
+    }
+    setError(null);
+    updateRequiredPasswordMutation.mutate(
+      { email: signinEmail, currentPassword: signinPassword, newPassword: requiredNewPassword, remember },
+      { onError: (err) => setError((err as Error).message) }
+    );
+  }
+
   function handleSignUp(e: React.SyntheticEvent) {
     e.preventDefault();
+    if (!isPasswordValid(signupPassword)) {
+      setError(t("signup.passwordRequirements.notMet"));
+      return;
+    }
     if (signupPassword !== confirmSignupPassword) {
       setError(t("signup.passwordsMismatch"));
       return;
@@ -232,6 +272,7 @@ function UnifiedAuthContent() {
   const otpComplete = otpDigits.every((d) => d !== "");
   const isPending =
     loginMutation.isPending ||
+    updateRequiredPasswordMutation.isPending ||
     signupMutation.isPending ||
     googleMutation.isPending ||
     sendOtpMutation.isPending ||
@@ -388,6 +429,148 @@ function UnifiedAuthContent() {
                   </Tooltip>
                 </div>
               </div>
+            </>
+          ) : passwordUpdateRequired ? (
+            <>
+              <div className="flex flex-col gap-1 pt-20">
+                <h1 className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12">
+                  {t("forcedPasswordUpdate.heading")}
+                </h1>
+                <p className="text-muted-foreground text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("forcedPasswordUpdate.subheading")}
+                </p>
+              </div>
+
+              <form onSubmit={handleUpdateRequiredPassword} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label
+                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("forcedPasswordUpdate.newPasswordLabel")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRequiredNewPw ? "text" : "password"}
+                      value={requiredNewPassword}
+                      onChange={(e) => setRequiredNewPassword(e.target.value)}
+                      placeholder="••••••••••"
+                      required
+                      autoFocus
+                      className={`${inputClass} pr-10`}
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setShowRequiredNewPw(!showRequiredNewPw)}
+                          aria-label={showRequiredNewPw ? "Hide password" : "Show password"}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showRequiredNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showRequiredNewPw ? "Hide password" : "Show password"}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {requiredNewPassword && (
+                    <PasswordRequirements
+                      password={requiredNewPassword}
+                      labels={{
+                        length: t("signup.passwordRequirements.length"),
+                        uppercase: t("signup.passwordRequirements.uppercase"),
+                        lowercase: t("signup.passwordRequirements.lowercase"),
+                        number: t("signup.passwordRequirements.number"),
+                        special: t("signup.passwordRequirements.special"),
+                      }}
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label
+                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("forcedPasswordUpdate.confirmPasswordLabel")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRequiredConfirmPw ? "text" : "password"}
+                      value={requiredConfirmPassword}
+                      onChange={(e) => setRequiredConfirmPassword(e.target.value)}
+                      placeholder="••••••••••"
+                      required
+                      className={`${inputClass} pr-10`}
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setShowRequiredConfirmPw(!showRequiredConfirmPw)}
+                          aria-label={showRequiredConfirmPw ? "Hide password" : "Show password"}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showRequiredConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showRequiredConfirmPw ? "Hide password" : "Show password"}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {requiredConfirmPassword && requiredNewPassword !== requiredConfirmPassword && (
+                    <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>
+                      {t("signup.passwordsMismatch")}
+                    </p>
+                  )}
+                </div>
+
+                {error && (
+                  <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                    {error}
+                  </p>
+                )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={
+                        isPending ||
+                        !isPasswordValid(requiredNewPassword) ||
+                        (requiredConfirmPassword !== "" && requiredNewPassword !== requiredConfirmPassword)
+                      }
+                      className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {updateRequiredPasswordMutation.isPending
+                        ? t("forcedPasswordUpdate.updating")
+                        : t("forcedPasswordUpdate.updatePassword")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save your new password and continue signing in</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPasswordUpdateRequired(false);
+                        setRequiredNewPassword("");
+                        setRequiredConfirmPassword("");
+                        setError(null);
+                      }}
+                      className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors self-center"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {t("forcedPasswordUpdate.back")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Return to the sign-in form</TooltipContent>
+                </Tooltip>
+              </form>
             </>
           ) : (
             <>
@@ -659,7 +842,6 @@ function UnifiedAuthContent() {
                           onChange={(e) => setSignupPassword(e.target.value)}
                           placeholder="••••••••"
                           required
-                          minLength={8}
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
@@ -677,6 +859,18 @@ function UnifiedAuthContent() {
                           <TooltipContent>{showSignupPw ? "Hide password" : "Show password"}</TooltipContent>
                         </Tooltip>
                       </div>
+                      {signupPassword && (
+                        <PasswordRequirements
+                          password={signupPassword}
+                          labels={{
+                            length: t("signup.passwordRequirements.length"),
+                            uppercase: t("signup.passwordRequirements.uppercase"),
+                            lowercase: t("signup.passwordRequirements.lowercase"),
+                            number: t("signup.passwordRequirements.number"),
+                            special: t("signup.passwordRequirements.special"),
+                          }}
+                        />
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -693,7 +887,6 @@ function UnifiedAuthContent() {
                           onChange={(e) => setConfirmSignupPassword(e.target.value)}
                           placeholder="••••••••"
                           required
-                          minLength={8}
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
@@ -722,10 +915,10 @@ function UnifiedAuthContent() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
-                            className={`relative mt-1 size-4 border border-border rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors ${!hasReadTerms ? "opacity-50" : ""}`}
+                            className={`relative mt-1 size-5 border-2 border-foreground/40 rounded-sm bg-background cursor-pointer shrink-0 hover:border-brand-gold transition-colors ${!hasReadTerms ? "opacity-50" : ""}`}
                             onClick={() => (hasReadTerms ? setAgreed(!agreed) : setTermsDialogOpen(true))}
                           >
-                            {agreed && <div className="absolute inset-0.5 bg-foreground rounded-sm" />}
+                            {agreed && <div className="absolute inset-0.5 bg-foreground rounded-[1px]" />}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -764,7 +957,11 @@ function UnifiedAuthContent() {
                       <TooltipTrigger asChild>
                         <button
                           type="submit"
-                          disabled={isPending || (confirmSignupPassword !== "" && signupPassword !== confirmSignupPassword)}
+                          disabled={
+                            isPending ||
+                            !isPasswordValid(signupPassword) ||
+                            (confirmSignupPassword !== "" && signupPassword !== confirmSignupPassword)
+                          }
                           className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{ fontFamily: "Inter, sans-serif" }}
                         >

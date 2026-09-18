@@ -1,5 +1,6 @@
 import { CheckCircle2, ExternalLink, Info, Quote, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { Badge } from "@workspace/ui/components/badge"
 import type { DecisionAlternative, DecisionEvidence, DecisionRecordPayload, DecisionRule } from "@/lib/terminal/types"
 
 export const CONFIDENCE_KEYS: Record<DecisionRecordPayload["confidence"], string> = {
@@ -8,21 +9,15 @@ export const CONFIDENCE_KEYS: Record<DecisionRecordPayload["confidence"], string
   low: "decisionConfidenceLow",
 }
 
-export const CONFIDENCE_BADGE_CLASS: Record<DecisionRecordPayload["confidence"], string> = {
-  high: "bg-emerald-500/15 text-emerald-400",
-  medium: "bg-orange-500/15 text-orange-400",
-  low: "bg-red-500/15 text-red-300",
+const CONFIDENCE_TONE: Record<DecisionRecordPayload["confidence"], "success" | "warning" | "danger"> = {
+  high: "success",
+  medium: "warning",
+  low: "danger",
 }
 
 export function DecisionConfidenceBadge({ confidence }: { confidence: DecisionRecordPayload["confidence"] }) {
   const { t } = useTranslation("terminal")
-  return (
-    <span
-      className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[1px] uppercase ${CONFIDENCE_BADGE_CLASS[confidence]}`}
-    >
-      {t(CONFIDENCE_KEYS[confidence])}
-    </span>
-  )
+  return <Badge tone={CONFIDENCE_TONE[confidence]}>{t(CONFIDENCE_KEYS[confidence])}</Badge>
 }
 
 function Label({ children }: { children: React.ReactNode }) {

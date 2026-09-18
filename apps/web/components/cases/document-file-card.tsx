@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Loader2, Trash2 } from "lucide-react"
+import { Archive, ArchiveRestore, FileText, Loader2, Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { RagStatusBadge } from "@/components/cases/rag-status-badge"
@@ -15,6 +15,8 @@ export function DocumentFileCard({
   isDeleting,
   onToggleExhibit,
   isTogglingExhibit,
+  onToggleArchive,
+  isTogglingArchive,
   selectable = false,
   selected = false,
   onToggleSelect,
@@ -25,14 +27,20 @@ export function DocumentFileCard({
   isDeleting: boolean
   onToggleExhibit: (isExhibit: boolean) => void
   isTogglingExhibit: boolean
-  /** Selection mode: the delete button and exhibit toggle are hidden (bulk delete replaces the
-   * former; the latter would otherwise sit under a card that no longer has a plain click target)
-   * and the whole card becomes a checkbox-driven toggle instead of a preview trigger. */
+  /** Archives an ACTIVE document, or restores an ARCHIVED one — which action fires is derived
+   * from `doc.status`. */
+  onToggleArchive: () => void
+  isTogglingArchive: boolean
+  /** Selection mode: the delete/archive buttons and exhibit toggle are hidden (bulk delete
+   * replaces the former; the latter would otherwise sit under a card that no longer has a plain
+   * click target) and the whole card becomes a checkbox-driven toggle instead of a preview
+   * trigger. */
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: () => void
 }) {
   const { t } = useTranslation("case-portfolio")
+  const isArchived = doc.status === "ARCHIVED"
 
   return (
     <div
@@ -72,24 +80,54 @@ export function DocumentFileCard({
           </span>
         )}
         {!selectable && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={onDelete}
-                aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
-              >
-                {isDeleting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
-          </Tooltip>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isTogglingArchive}
+                  onClick={onToggleArchive}
+                  aria-label={
+                    isArchived
+                      ? t("detail.unarchiveDocument", { documentName: doc.name })
+                      : t("detail.archiveDocument", { documentName: doc.name })
+                  }
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-amber-500/10 hover:text-amber-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-amber-400"
+                >
+                  {isTogglingArchive ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : isArchived ? (
+                    <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isArchived
+                  ? t("detail.unarchiveDocument", { documentName: doc.name })
+                  : t("detail.archiveDocument", { documentName: doc.name })}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={onDelete}
+                  aria-label={t("detail.removeDocument", { documentName: doc.name })}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
+            </Tooltip>
+          </div>
         )}
       </div>
       {doc.fileUrl && !selectable ? (

@@ -42,12 +42,31 @@ export function isDocxAttachment(attachment: Pick<MessageAttachment, "mimeType" 
   return attachment.name.toLowerCase().endsWith(".docx");
 }
 
-/** .xlsx (OOXML) only, same reasoning as isDocxAttachment — xlsx-preview's exceljs backend
- * reads the zipped XML format Excel 2007+ writes, not the legacy binary .xls (Excel 97-2003)
- * format. A .xls falls through to the same Download fallback as .doc/.ppt/etc. */
+/** .xlsx/.xlsm/.xlam (OOXML) only, same reasoning as isDocxAttachment — xlsx-preview's exceljs
+ * backend reads the zipped XML format Excel 2007+ writes. .xlsm (macro-enabled) and .xlam
+ * (add-in) are the same OOXML container as .xlsx, so they preview the same way. Legacy binary
+ * .xls (Excel 97-2003) is a different, unsupported format and falls through to the same
+ * Download fallback as .doc/.ppt/etc. */
+const XLSX_FAMILY_MIME_TYPES = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel.sheet.macroEnabled.12",
+  "application/vnd.ms-excel.addin.macroEnabled.12",
+];
+const XLSX_FAMILY_EXTENSIONS = [".xlsx", ".xlsm", ".xlam"];
+
 export function isXlsxAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
-  if (attachment.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return true;
-  return attachment.name.toLowerCase().endsWith(".xlsx");
+  if (attachment.mimeType && XLSX_FAMILY_MIME_TYPES.includes(attachment.mimeType)) return true;
+  const lower = attachment.name.toLowerCase();
+  return XLSX_FAMILY_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+/** Legacy binary .doc (Word 97-2003) — no client-side JS library parses its OLE structure (see
+ * isDocxAttachment above), so this doesn't get a rich preview. Instead AttachmentPreview fetches
+ * a plain-text extraction from GET /documents/:id/text-preview (backend reuses the same
+ * word-extractor-based extraction the RAG indexing pipeline already runs) and renders that. */
+export function isLegacyDocAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType === "application/msword") return true;
+  return attachment.name.toLowerCase().endsWith(".doc");
 }
 
 interface MessageAttachmentsProps {

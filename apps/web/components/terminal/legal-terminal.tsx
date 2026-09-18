@@ -1,18 +1,29 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type DragEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import {
   AppWindow,
   ArrowLeft,
-  Columns2,
+  ArrowLeftRight,
   Columns3,
   Download,
   Grip,
   LayoutPanelLeft,
   Loader2,
   AlertCircle,
+  Move,
   Pin,
   Plus,
   PanelLeft,
@@ -81,18 +92,52 @@ export const PANEL_TITLES: Record<PanelId, string> = {
 }
 
 const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }[] = [
+  { id: "free", labelKey: "arrangementFree", icon: Move },
   { id: "columns", labelKey: "arrangementColumns", icon: Columns3 },
   { id: "tabs", labelKey: "arrangementTabs", icon: PanelTop },
   { id: "focus", labelKey: "arrangementFocus", icon: LayoutPanelLeft },
-  { id: "split", labelKey: "arrangementSplit", icon: Columns2 },
 ]
+
+const COLUMN_COUNT_OPTIONS = [2, 3, 4]
+// How many panes a single column can stack before it's "full" and adding another pane
+// requires replacing one instead.
+const MAX_PANES_PER_COLUMN = 3
 
 const MIN_FR = 0.18
 const PANE_GAP_PX = 6
 // 1/24 gives a 24-column/row grid — fine enough not to feel restrictive at
 // MIN_FR-sized panes (~4.3 cells) but still a real snap, not a cosmetic one.
 const GRID_SNAP_STEP = 1 / 24
+// Minimum width/height fraction a Columns-mode column or stacked pane can be resized down to —
+// same neighbor-trade + floor model as the Free canvas's MIN_FR, just a separate constant since
+// this grid's minimum can be roomier (fewer, larger panes than the freeform canvas).
+const MIN_COLUMN_FR = 0.12
+// Fraction nudged per arrow-key press on any resize divider/handle — the keyboard alternative
+// to pointer-drag resize (WCAG 2.5.7). Deliberately coarser than GRID_SNAP_STEP (~0.042) so a
+// keyboard user can reach a meaningfully different size in a handful of presses.
+const RESIZE_KEY_STEP = 0.02
+// What ModalOverlay below treats as a tab stop when trapping focus inside itself.
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
+// Local z-index scale for this file's own stacking context (the terminal-grid stage and its
+// overlays) — deliberately ordered, not arbitrary. Below `z-10`: nothing, panes sit in normal
+// flow order. Kept as plain Tailwind literals (z-10/z-20/z-30/z-[90]/z-[95] below, plus the
+// inline `zIndex: 80/panel.order+1` on a Free-canvas pane) rather than named constants, since
+// Tailwind can't resolve an interpolated class at build time — this comment is the scale's
+// documentation instead:
+//   z-10  Columns/Tabs resize dividers (column border, in-column stack, tabs group split)
+//   z-20  Free canvas edge resize handles
+//   z-30  Free canvas corner resize handles
+//   80    a Free-canvas pane actively being dragged (inline zIndex, momentarily above every
+//         other pane's own order-based z-index, which otherwise grows unbounded via
+//         bringToFront — see z-(--z-canvas-overlay) below for why the Settings popover can't
+//         just sit at a fixed value under that ceiling)
+//   z-[90]  the maximized-pane overlay
+//   z-[95]  the Columns replace-picker overlay
+// The Settings popover is a special case: it's portaled inside this same stacking context (see
+// PopoverContent's `container` doc comment) but needs to sit above every possible pane z-index,
+// so it uses the global `z-(--z-canvas-overlay)` token (globals.css) instead of a number in this
+// scale — see its call site below.
 type PaneRect = { x: number; y: number; width: number; height: number }
 type ResizeEdge = { n?: boolean; s?: boolean; e?: boolean; w?: boolean }
 type ResizeDrag = PaneRect & { panelId: PanelId; edges: ResizeEdge; startX: number; startY: number }
@@ -102,10 +147,23 @@ function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
   if (!value || typeof value !== "object") return fallback
   const raw = value as Partial<WorkspaceLayout>
   if (!Array.isArray(raw.panels)) return fallback
+  // Pre-rework saves used "columns" to mean today's freeform canvas — a genuinely new
+  // Columns-mode save always carries columnCount, so its absence is what marks a legacy save.
+  // This only ever fires once per legacy workspace: once it's re-saved (still "columns", now
+  // with columnCount set), it reads as the new mode from then on.
+  const arrangement =
+    raw.arrangement === "columns" && raw.columnCount === undefined
+      ? "free"
+      : (raw.arrangement ?? fallback.arrangement ?? "free")
   return {
     preset: raw.preset ?? fallback.preset,
-    arrangement: raw.arrangement ?? fallback.arrangement ?? "columns",
+    arrangement,
     panels: raw.panels as PanelLayout[],
+    columnCount: raw.columnCount,
+    columnWidths: raw.columnWidths,
+    tabsSplit: raw.tabsSplit,
+    tabsActiveA: raw.tabsActiveA,
+    tabsActiveB: raw.tabsActiveB,
   }
 }
 
@@ -142,12 +200,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // the mobile trigger can render inline in the Case Row instead of as a floating circle that
   // overlapped the "Back to Case" link below `lg`.
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
-  // Tabs/Focus "which one is showing" state is intentionally ephemeral (not saved with the
-  // workspace) — it resets to the first pane in each group/stack on reload, same spirit as
-  // the freeform canvas not remembering scroll position.
-  const [activeTabA, setActiveTabA] = useState<PanelId | null>(null)
-  const [activeTabB, setActiveTabB] = useState<PanelId | null>(null)
+  // Focus's "which one is showing" state is intentionally ephemeral (not saved with the
+  // workspace) — it resets to the first pane in the stack on reload, same spirit as the
+  // freeform canvas not remembering scroll position. Tabs mode persists its active tab in
+  // layout.tabsActiveA/B instead (see TabsArrangement).
   const [focusedId, setFocusedId] = useState<PanelId | null>(null)
+  // Set while Columns mode is full and the user just tried to add this pane — opens the
+  // "replace which pane?" picker. Null the rest of the time.
+  const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
   const [creatingLayout, setCreatingLayout] = useState(false)
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
@@ -173,7 +233,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     const lastUsed = workspaces.data?.find((w) => w.isLastUsed)
     const fallback: WorkspaceLayout = {
       preset: catalog.data.defaultPreset,
-      arrangement: "columns",
+      arrangement: "free",
       panels: catalog.data.panels.map((panel, index) => ({
         id: panel.id,
         visible: false,
@@ -192,7 +252,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setLayout(applyPreset(fallback, "PANE_4", catalog.data.panels.filter((p) => p.available).map((p) => p.id)))
   }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
 
-  const arrangement: ArrangementValue = layout?.arrangement ?? "columns"
+  const arrangement: ArrangementValue = layout?.arrangement ?? "free"
 
   const setArrangement = (next: ArrangementValue) => {
     setLayout((prev) => (prev ? { ...prev, arrangement: next } : prev))
@@ -271,14 +331,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     bringToFront(id)
   }
 
-  // rect is explicit for a drag-and-drop drop position; omitted for the Panel Library's
-  // click fallback (and for drops in a non-Columns arrangement, where there's no on-screen
-  // coordinate to place it at), which keeps today's cascade placement.
-  const showPanelAt = (id: PanelId, rect?: PaneRect) => {
+  // `extra` is the Free canvas's drop rect, or a Columns-mode columnIndex; omitted for the Panel
+  // Library's plain click fallback, which keeps today's cascade placement (harmless in modes
+  // that don't use x/y/width/height).
+  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>) => {
     setLayout((prev) => {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const next = { id, visible: true, order: maxOrder + 1, ...(rect ?? cascadeRect(prev.panels)) }
+      const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(prev.panels), ...extra }
       if (prev.panels.some((panel) => panel.id === id)) {
         return {
           ...prev,
@@ -287,6 +347,43 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       }
       return { ...prev, panels: [...prev.panels, next] }
     })
+  }
+
+  const patchPanel = (id: PanelId, patch: Partial<PanelLayout>) => {
+    setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, ...patch } : panel)) } : prev))
+  }
+
+  const setColumnCount = (count: number) => setLayout((prev) => (prev ? { ...prev, columnCount: count } : prev))
+  const setColumnWidths = (widths: number[]) => setLayout((prev) => (prev ? { ...prev, columnWidths: widths } : prev))
+  const setTabsSplit = (value: number) => setLayout((prev) => (prev ? { ...prev, tabsSplit: value } : prev))
+  const setTabsActiveA = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveA: id } : prev))
+  const setTabsActiveB = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveB: id } : prev))
+
+  // Adding a pane goes through the ordinary cascade placement in every mode except Columns,
+  // where it either auto-joins the least-full column or — if every column is already at
+  // MAX_PANES_PER_COLUMN — opens the replace picker instead of silently growing past the grid.
+  const requestAddPanel = (id: PanelId) => {
+    if (!layout) return
+    if (arrangement !== "columns") {
+      showPanelAt(id)
+      return
+    }
+    const count = layout.columnCount ?? 3
+    const columns = columnsOf(visiblePanels, count)
+    const alreadyVisible = visiblePanels.some((p) => p.id === id)
+    if (!alreadyVisible && visiblePanels.length >= count * MAX_PANES_PER_COLUMN) {
+      setReplaceTarget(id)
+      return
+    }
+    showPanelAt(id, { columnIndex: leastFullColumn(columns) })
+  }
+
+  const replacePaneInColumns = (oldId: PanelId, newId: PanelId) => {
+    const oldPanel = layout?.panels.find((p) => p.id === oldId)
+    if (!oldPanel) return
+    hidePanel(oldId)
+    showPanelAt(newId, { columnIndex: oldPanel.columnIndex, order: oldPanel.order, height: oldPanel.height })
+    setReplaceTarget(null)
   }
 
   const bringToFront = (panelId: PanelId) => {
@@ -300,6 +397,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         panels: prev.panels.map((panel) => (panel.id === panelId ? { ...panel, order: maxOrder + 1 } : panel)),
       }
     })
+  }
+
+  // Backs the AI Assistant panel's "jump to panel" link (see ChatPanel/ConsultationChat) — makes
+  // whatever panel the AI's reply named actually visible, in whichever arrangement is active,
+  // without repositioning a panel that's already on the grid (showPanelAt would re-cascade it).
+  const jumpToPanel = (id: PanelId) => {
+    const isVisible = layout?.panels.some((panel) => panel.id === id && panel.visible) ?? false
+    if (!isVisible) requestAddPanel(id)
+    bringToFront(id)
+    setMaximizedId(null)
+    setFocusedId(id)
+    // Harmless if `id` isn't actually a member of Tabs' group A or B — TabsArrangement only
+    // treats an active-tab id as real when it finds it in that group's own panel list.
+    setTabsActiveA(id)
+    setTabsActiveB(id)
   }
 
   const patchPanelRect = (panelId: PanelId, rect: PaneRect) => {
@@ -373,6 +485,36 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setDraggingId(null)
   }
 
+  // Keyboard alternative to onResizePointerMove — a single discrete commit per arrow-key press
+  // (no live-drag ref needed, unlike the pointer path) through the same clampResize the pointer
+  // path uses, so both share identical math/floors. An axis a handle's `edges` don't cover is a
+  // no-op inside clampResize, so all 4 arrow keys are safe to wire on every handle uniformly.
+  const onResizeKeyDown = (panel: PanelLayout, edges: ResizeEdge, event: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    let dy = 0
+    if (event.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (event.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else if (event.key === "ArrowUp") dy = -RESIZE_KEY_STEP
+    else if (event.key === "ArrowDown") dy = RESIZE_KEY_STEP
+    else return
+    event.preventDefault()
+    const drag: ResizeDrag = { panelId: panel.id, edges, startX: 0, startY: 0, ...panelRect(panel) }
+    patchPanelRect(panel.id, clampResize(drag, dx, dy, true))
+  }
+
+  // Keyboard alternative to onHeaderPointerMove for moving a Free-canvas pane.
+  const onHeaderKeyDown = (panel: PanelLayout, event: KeyboardEvent<HTMLDivElement>) => {
+    const rect = panelRect(panel)
+    let { x, y } = rect
+    if (event.key === "ArrowLeft") x = clamp(x - GRID_SNAP_STEP, 0, 1 - rect.width)
+    else if (event.key === "ArrowRight") x = clamp(x + GRID_SNAP_STEP, 0, 1 - rect.width)
+    else if (event.key === "ArrowUp") y = clamp(y - GRID_SNAP_STEP, 0, 1 - rect.height)
+    else if (event.key === "ArrowDown") y = clamp(y + GRID_SNAP_STEP, 0, 1 - rect.height)
+    else return
+    event.preventDefault()
+    patchPanelRect(panel.id, { ...rect, x, y })
+  }
+
   const selectWorkspace = (id: string) => {
     setSelectedWorkspaceId(id)
     setMaximizedId(null)
@@ -406,7 +548,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     const preset = catalog.data.defaultPreset
     const fallback: WorkspaceLayout = {
       preset,
-      arrangement: "columns",
+      arrangement: "free",
       panels: catalog.data.panels.map((panel, index) => ({
         id: panel.id,
         visible: false,
@@ -559,7 +701,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       type="button"
                       onClick={() => closeWorkspaceTab(workspace.id)}
                       aria-label={t("closeLayout")}
-                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 dark:hover:bg-overlay-hover"
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
                     >
                       <X className="h-3 w-3" aria-hidden="true" />
                     </button>
@@ -618,6 +760,30 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 )
               })}
             </div>
+            {arrangement === "columns" && (
+              <div className="flex items-center gap-0.5 rounded-full border border-border p-0.5">
+                {COLUMN_COUNT_OPTIONS.map((count) => {
+                  const active = (layout.columnCount ?? 3) === count
+                  return (
+                    <Tooltip key={count}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setColumnCount(count)}
+                          aria-pressed={active}
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
+                            active ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                          }`}
+                        >
+                          {count}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("columnCount", { count })}</TooltipContent>
+                    </Tooltip>
+                  )
+                })}
+              </div>
+            )}
             <span className="hidden text-[10px] uppercase tracking-[1px] text-muted-foreground sm:inline">
               {t("paneCount", { count: visiblePanels.length, total: availablePanels.length })}
             </span>
@@ -649,7 +815,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 </TooltipTrigger>
                 <TooltipContent>{t("settingsTab")}</TooltipContent>
               </Tooltip>
-              <PopoverContent container={rootRef.current}>
+              {/* Portaled inside rootRef (same stacking context as the Free-canvas panes, see
+                  PopoverContent's own container doc comment), so it needs a z-index above the
+                  pane ceiling (bringToFront grows panel.order past Radix's default z-50 during
+                  ordinary use) rather than Radix's default. */}
+              <PopoverContent container={rootRef.current} className="z-(--z-canvas-overlay)">
                 <div className="flex flex-col gap-5">
                   <div>
                     <p className="mb-2 text-[10px] font-semibold uppercase tracking-[1.4px] text-muted-foreground">
@@ -699,7 +869,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           allPanels={availablePanels}
           visiblePanelIds={visiblePanels.map((p) => p.id)}
           panelBadges={panelBadges}
-          onAddPanel={(id) => showPanelAt(id)}
+          onAddPanel={requestAddPanel}
         />
         <div
           className={`relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding-left] duration-200 lg:pl-16 ${
@@ -719,7 +889,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             </div>
           )}
 
-          {arrangement === "columns" && (
+          {arrangement === "free" && (
             <div
               id="terminal-grid"
               className="terminal-grid-texture relative h-full min-h-0"
@@ -758,11 +928,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     onPointerDown={() => bringToFront(panel.id)}
                   >
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t("dragHint")}
                       onPointerDown={(e) => onHeaderPointerDown(panel, e)}
                       onPointerMove={onHeaderPointerMove}
                       onPointerUp={onHeaderPointerUp}
                       onPointerCancel={onHeaderPointerUp}
-                      className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing"
+                      onKeyDown={(e) => onHeaderKeyDown(panel, e)}
+                      className="terminal-pane-header flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset"
                       title={t("dragHint")}
                     >
                       <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -777,15 +951,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       />
                     </div>
                     <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
-                      <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} />
+                      <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
                     </div>
-                    <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
-                    <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} />
+                    <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                    <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
                     <ResizeHandle
                       edge={{ s: true, e: true }}
                       className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
@@ -793,6 +967,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       onDown={onResizePointerDown}
                       onMove={onResizePointerMove}
                       onUp={onResizePointerUp}
+                      onKeyDown={onResizeKeyDown}
+                      t={t}
                     >
                       <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
                     </ResizeHandle>
@@ -802,18 +978,40 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             </div>
           )}
 
+          {arrangement === "columns" && visiblePanels.length > 0 && (
+            <ColumnsArrangement
+              panels={visiblePanels}
+              caseId={caseId}
+              snapshot={snapshot.data}
+              labelFor={labelFor}
+              columnCount={layout.columnCount ?? 3}
+              columnWidths={layout.columnWidths ?? []}
+              onSetColumnWidths={setColumnWidths}
+              onPatchPanel={patchPanel}
+              onToggleMaximize={toggleMaximize}
+              onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
+              t={t}
+              onDrop={requestAddPanel}
+            />
+          )}
+
           {arrangement === "tabs" && visiblePanels.length > 0 && (
             <TabsArrangement
               panels={visiblePanels}
               caseId={caseId}
               snapshot={snapshot.data}
               labelFor={labelFor}
-              activeA={activeTabA}
-              activeB={activeTabB}
-              onSetActiveA={setActiveTabA}
-              onSetActiveB={setActiveTabB}
+              activeA={layout.tabsActiveA ?? null}
+              activeB={layout.tabsActiveB ?? null}
+              onSetActiveA={setTabsActiveA}
+              onSetActiveB={setTabsActiveB}
+              split={layout.tabsSplit ?? 0.5}
+              onSetSplit={setTabsSplit}
+              onPatchPanel={patchPanel}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
@@ -831,31 +1029,57 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onFocus={setFocusedId}
               onToggleMaximize={toggleMaximize}
               onHide={hidePanel}
+              onJumpToPanel={jumpToPanel}
               t={t}
               onDrop={(id) => showPanelAt(id)}
             />
           )}
 
-          {arrangement === "split" && visiblePanels.length > 0 && (
-            <SplitArrangement
-              panels={visiblePanels}
-              caseId={caseId}
-              snapshot={snapshot.data}
-              labelFor={labelFor}
-              onToggleMaximize={toggleMaximize}
-              onHide={hidePanel}
-              t={t}
-              onDrop={(id) => showPanelAt(id)}
-            />
+          {replaceTarget && layout && (
+            <div className="absolute inset-0 z-[95] flex items-center justify-center bg-black/50" onClick={() => setReplaceTarget(null)}>
+              <ModalOverlay
+                onClose={() => setReplaceTarget(null)}
+                labelledBy="replace-pane-prompt"
+                className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl focus:outline-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p id="replace-pane-prompt" className="mb-2 text-xs text-foreground">
+                  {t("replacePanePrompt")}
+                </p>
+                <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+                  {visiblePanels.map((panel) => (
+                    <li key={panel.id}>
+                      <button
+                        type="button"
+                        onClick={() => replacePaneInColumns(panel.id, replaceTarget)}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{labelFor(panel)}</span>
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">{t("replacePane")}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => setReplaceTarget(null)}
+                  className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {t("cancel")}
+                </button>
+              </ModalOverlay>
+            </div>
           )}
 
           {maximizedPanel && (
-            <div
+            <ModalOverlay
+              onClose={() => toggleMaximize(maximizedPanel.id)}
+              labelledBy="maximized-pane-title"
               data-panel-id={maximizedPanel.id}
-              className="terminal-pane absolute inset-3 z-[90] flex flex-col rounded-lg border border-brand-gold/40 bg-card shadow-2xl"
+              className="terminal-pane absolute inset-3 z-[90] flex flex-col rounded-lg border border-brand-gold/40 bg-card shadow-2xl focus:outline-none"
             >
               <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
-                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {labelFor(maximizedPanel)}
                 </span>
                 <PaneHeaderActions
@@ -866,9 +1090,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
-                <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} />
+                <TerminalPanelBody panelId={maximizedPanel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
               </div>
-            </div>
+            </ModalOverlay>
           )}
         </div>
         </div>
@@ -972,6 +1196,74 @@ function PaneHeaderActions({
   )
 }
 
+// Minimal manual focus-trap dialog, local to this file rather than the shared Dialog component —
+// the shared one always portals to document.body with no container override, which would drop
+// the overlay out of the Terminal's forced-dark theme scope (see PopoverContent's own `container`
+// doc comment for the same issue). Handles what a plain conditionally-rendered <div> didn't:
+// focus moves in on mount, Tab wraps within the dialog instead of escaping it, Escape closes,
+// and focus returns to whatever triggered it on unmount.
+function ModalOverlay({
+  onClose,
+  labelledBy,
+  className,
+  children,
+  ...rest
+}: {
+  onClose: () => void
+  labelledBy: string
+  className?: string
+  children: ReactNode
+} & Omit<ComponentPropsWithoutRef<"div">, "onClose" | "className" | "children">) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const container = ref.current
+    const focusable = container?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
+    ;(focusable ?? container)?.focus()
+    return () => {
+      previouslyFocused?.focus()
+    }
+  }, [])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.stopPropagation()
+      onClose()
+      return
+    }
+    if (event.key !== "Tab") return
+    const container = ref.current
+    if (!container) return
+    const focusables = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    if (focusables.length === 0) return
+    const first = focusables[0]!
+    const last = focusables[focusables.length - 1]!
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      className={className}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
+}
+
 type ArrangementBodyProps = {
   panels: PanelLayout[]
   caseId: string
@@ -979,6 +1271,7 @@ type ArrangementBodyProps = {
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
+  onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
 }
@@ -994,8 +1287,218 @@ function dropHandlers(onDrop: (id: PanelId) => void) {
   }
 }
 
-// Splits visible panes into 2 tab groups (first half / second half by order) — each group
-// renders as one card with a clickable tab strip, only the active tab's body mounted below it.
+// Fixed 2/3/4-column grid — strictly no floating. Each column stacks up to MAX_PANES_PER_COLUMN
+// panes (columnsOf below decides membership: an explicit panel.columnIndex wins, anything else
+// auto-joins whichever column currently has the fewest panes). Column borders and in-column
+// stack dividers both resize with a neighbor-only trade + MIN_COLUMN_FR floor — dragging one
+// border only ever moves width/height between the two panes/columns it sits between.
+function ColumnsArrangement({
+  panels,
+  caseId,
+  snapshot,
+  labelFor,
+  columnCount,
+  columnWidths,
+  onSetColumnWidths,
+  onPatchPanel,
+  onToggleMaximize,
+  onHide,
+  onJumpToPanel,
+  t,
+  onDrop,
+}: ArrangementBodyProps & {
+  columnCount: number
+  columnWidths: number[]
+  onSetColumnWidths: (widths: number[]) => void
+  onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
+}) {
+  const gridRef = useRef<HTMLDivElement>(null)
+  const columnDragRef = useRef<{ index: number; startX: number; widths: number[] } | null>(null)
+  const columns = columnsOf(panels, columnCount)
+  const widths = columnWidths.length === columnCount ? columnWidths : Array(columnCount).fill(1 / columnCount)
+
+  const onColumnResizeDown = (index: number, e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    columnDragRef.current = { index, startX: e.clientX, widths: [...widths] }
+  }
+  const onColumnResizeMove = (e: PointerEvent<HTMLDivElement>) => {
+    const drag = columnDragRef.current
+    const grid = gridRef.current
+    if (!drag || !grid || grid.clientWidth === 0) return
+    const dx = (e.clientX - drag.startX) / grid.clientWidth
+    const a = drag.index
+    const b = drag.index + 1
+    const pairTotal = drag.widths[a]! + drag.widths[b]!
+    const newA = clamp(drag.widths[a]! + dx, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    const next = [...drag.widths]
+    next[a] = newA
+    next[b] = pairTotal - newA
+    onSetColumnWidths(next)
+  }
+  const onColumnResizeUp = () => {
+    columnDragRef.current = null
+  }
+
+  const onColumnResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    if (e.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    const a = index
+    const b = index + 1
+    const pairTotal = widths[a]! + widths[b]!
+    const newA = clamp(widths[a]! + dx, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    const next = [...widths]
+    next[a] = newA
+    next[b] = pairTotal - newA
+    onSetColumnWidths(next)
+  }
+
+  return (
+    <div ref={gridRef} className="flex h-full min-h-0" {...dropHandlers(onDrop)}>
+      {columns.map((columnPanels, columnIndex) => (
+        <div key={columnIndex} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${widths[columnIndex]} 0 0%` }}>
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-1.5">
+            <ColumnStack
+              panels={columnPanels}
+              caseId={caseId}
+              snapshot={snapshot}
+              labelFor={labelFor}
+              onToggleMaximize={onToggleMaximize}
+              onHide={onHide}
+              onJumpToPanel={onJumpToPanel}
+              onPatchPanel={onPatchPanel}
+              t={t}
+            />
+          </div>
+          {columnIndex < columnCount - 1 && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t("resizeColumns")}
+              tabIndex={0}
+              onPointerDown={(e) => onColumnResizeDown(columnIndex, e)}
+              onPointerMove={onColumnResizeMove}
+              onPointerUp={onColumnResizeUp}
+              onPointerCancel={onColumnResizeUp}
+              onKeyDown={(e) => onColumnResizeKeyDown(columnIndex, e)}
+              className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// One column's vertical stack (up to MAX_PANES_PER_COLUMN panes). Height per pane comes from
+// panel.height, reinterpreted here as "fraction of this column's height" rather than Free
+// mode's "fraction of the whole canvas" — same field, different meaning per arrangement,
+// consistent with how x/y/width/height already only mean something in Free mode today.
+function ColumnStack({
+  panels,
+  caseId,
+  snapshot,
+  labelFor,
+  onToggleMaximize,
+  onHide,
+  onJumpToPanel,
+  onPatchPanel,
+  t,
+}: {
+  panels: PanelLayout[]
+  caseId: string
+  snapshot: CaseSnapshot
+  labelFor: (panel: PanelLayout | { id: PanelId }) => string
+  onToggleMaximize: (id: PanelId) => void
+  onHide: (id: PanelId) => void
+  onJumpToPanel: (id: PanelId) => void
+  onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
+  t: (key: string, opts?: Record<string, unknown>) => string
+}) {
+  const stackRef = useRef<HTMLDivElement>(null)
+  const stackDragRef = useRef<{ aboveId: PanelId; belowId: PanelId; startY: number; heightAbove: number; heightBelow: number } | null>(null)
+  const rawHeights = panels.map((p) => (Number.isFinite(p.height) && p.height! > 0 ? p.height! : 1 / panels.length))
+  const total = rawHeights.reduce((sum, h) => sum + h, 0) || 1
+  const heights = rawHeights.map((h) => h / total)
+
+  const onStackResizeDown = (index: number, e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    stackDragRef.current = {
+      aboveId: panels[index]!.id,
+      belowId: panels[index + 1]!.id,
+      startY: e.clientY,
+      heightAbove: heights[index]!,
+      heightBelow: heights[index + 1]!,
+    }
+  }
+  const onStackResizeMove = (e: PointerEvent<HTMLDivElement>) => {
+    const drag = stackDragRef.current
+    const stack = stackRef.current
+    if (!drag || !stack || stack.clientHeight === 0) return
+    const dy = (e.clientY - drag.startY) / stack.clientHeight
+    const pairTotal = drag.heightAbove + drag.heightBelow
+    const newAbove = clamp(drag.heightAbove + dy, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    onPatchPanel(drag.aboveId, { height: newAbove })
+    onPatchPanel(drag.belowId, { height: pairTotal - newAbove })
+  }
+  const onStackResizeUp = () => {
+    stackDragRef.current = null
+  }
+
+  const onStackResizeKeyDown = (index: number, e: KeyboardEvent<HTMLDivElement>) => {
+    let dy = 0
+    if (e.key === "ArrowUp") dy = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowDown") dy = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    const pairTotal = heights[index]! + heights[index + 1]!
+    const newAbove = clamp(heights[index]! + dy, MIN_COLUMN_FR, pairTotal - MIN_COLUMN_FR)
+    onPatchPanel(panels[index]!.id, { height: newAbove })
+    onPatchPanel(panels[index + 1]!.id, { height: pairTotal - newAbove })
+  }
+
+  return (
+    <div ref={stackRef} className="flex min-h-0 flex-1 flex-col gap-1.5">
+      {panels.map((panel, index) => (
+        <div key={panel.id} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${heights[index]} 0 0%` }}>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+            <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
+              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                {labelFor(panel)}
+              </span>
+              <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(panel.id)} onHide={() => onHide(panel.id)} />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
+              <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+            </div>
+          </div>
+          {index < panels.length - 1 && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label={t("resizeColumnStack")}
+              tabIndex={0}
+              onPointerDown={(e) => onStackResizeDown(index, e)}
+              onPointerMove={onStackResizeMove}
+              onPointerUp={onStackResizeUp}
+              onPointerCancel={onStackResizeUp}
+              onKeyDown={(e) => onStackResizeKeyDown(index, e)}
+              className="absolute -bottom-1 left-0 z-10 h-2 w-full cursor-row-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Two independently drag-assignable, resizable, persisted tab groups. Group membership comes
+// from panel.tabGroup (defaults to 0 until a tab is dragged into group 1), order within a group
+// from panel.order, and the active tab per group is saved with the workspace via tabsActiveA/B.
 function TabsArrangement({
   panels,
   caseId,
@@ -1005,8 +1508,12 @@ function TabsArrangement({
   activeB,
   onSetActiveA,
   onSetActiveB,
+  split,
+  onSetSplit,
+  onPatchPanel,
   onToggleMaximize,
   onHide,
+  onJumpToPanel,
   t,
   onDrop,
 }: ArrangementBodyProps & {
@@ -1014,47 +1521,135 @@ function TabsArrangement({
   activeB: PanelId | null
   onSetActiveA: (id: PanelId) => void
   onSetActiveB: (id: PanelId) => void
+  split: number
+  onSetSplit: (value: number) => void
+  onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
 }) {
-  const half = Math.ceil(panels.length / 2)
-  const groups = [panels.slice(0, half), panels.slice(half)].filter((group) => group.length > 0)
+  const groupsRef = useRef<HTMLDivElement>(null)
+  const splitDragRef = useRef<{ startX: number; split: number } | null>(null)
+  const groups = [0, 1].map((groupIndex) => panels.filter((p) => (p.tabGroup ?? 0) === groupIndex).sort((a, b) => a.order - b.order))
   const actives = [activeA, activeB]
   const setActives = [onSetActiveA, onSetActiveB]
+  const widths = [split, 1 - split]
+
+  const onSplitDown = (e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    splitDragRef.current = { startX: e.clientX, split }
+  }
+  const onSplitMove = (e: PointerEvent<HTMLDivElement>) => {
+    const drag = splitDragRef.current
+    const container = groupsRef.current
+    if (!drag || !container || container.clientWidth === 0) return
+    const dx = (e.clientX - drag.startX) / container.clientWidth
+    onSetSplit(clamp(drag.split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
+  }
+  const onSplitUp = () => {
+    splitDragRef.current = null
+  }
+
+  const onSplitKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    let dx = 0
+    if (e.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
+    else if (e.key === "ArrowRight") dx = RESIZE_KEY_STEP
+    else return
+    e.preventDefault()
+    onSetSplit(clamp(split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
+  }
+
+  const moveToGroup = (panelId: PanelId, targetGroupIndex: number) => {
+    const maxOrder = Math.max(0, ...groups[targetGroupIndex]!.map((p) => p.order))
+    onPatchPanel(panelId, { tabGroup: targetGroupIndex, order: maxOrder + 1 })
+  }
+
+  const onGroupDrop = (groupIndex: number, e: DragEvent) => {
+    e.preventDefault()
+    const tabId = e.dataTransfer.getData("text/x-tab-id") as PanelId
+    if (tabId) {
+      moveToGroup(tabId, groupIndex)
+      return
+    }
+    const newId = e.dataTransfer.getData("text/x-panel-id") as PanelId
+    if (newId) onDrop(newId)
+  }
 
   return (
-    <div className="flex h-full min-h-0 gap-3 overflow-x-auto" {...dropHandlers(onDrop)}>
+    <div ref={groupsRef} className="flex h-full min-h-0">
       {groups.map((group, groupIndex) => {
         const activeId = actives[groupIndex] && group.some((p) => p.id === actives[groupIndex]) ? actives[groupIndex] : group[0]?.id
-        const activePanel = group.find((p) => p.id === activeId) ?? group[0]
+        const activePanel = group.find((p) => p.id === activeId)
         return (
           <div
             key={groupIndex}
-            className="flex min-w-[280px] flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card"
+            className="relative flex min-h-0 min-w-[200px] flex-col overflow-hidden rounded-lg border border-border bg-card"
+            style={{ flex: `${widths[groupIndex]} 0 0%` }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => onGroupDrop(groupIndex, e)}
           >
-            <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 border-b border-border px-2">
+            <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
               {group.map((panel) => {
                 const active = panel.id === activePanel?.id
                 return (
-                  <button
+                  <div
                     key={panel.id}
-                    type="button"
-                    onClick={() => setActives[groupIndex]?.(panel.id)}
-                    className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("text/x-tab-id", panel.id)}
+                    className={`flex items-center gap-0.5 whitespace-nowrap border-b-2 pl-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
                       active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {labelFor(panel)}
-                  </button>
+                    <button type="button" onClick={() => setActives[groupIndex]?.(panel.id)}>
+                      {labelFor(panel)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveToGroup(panel.id, groupIndex === 0 ? 1 : 0)}
+                      aria-label={t("moveToOtherGroup")}
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    >
+                      <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onHide(panel.id)}
+                      aria-label={t("hidePane")}
+                      className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  </div>
                 )
               })}
               {activePanel && (
-                <div className="ml-auto flex items-center">
-                  <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(activePanel.id)} onHide={() => onHide(activePanel.id)} />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onToggleMaximize(activePanel.id)}
+                  className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center self-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                  aria-label={t("maximizePane")}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
               )}
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              {activePanel && <TerminalPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} />}
+              {activePanel && (
+                <TerminalPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+              )}
             </div>
+            {groupIndex === 0 && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={t("resizeTabGroups")}
+                tabIndex={0}
+                onPointerDown={onSplitDown}
+                onPointerMove={onSplitMove}
+                onPointerUp={onSplitUp}
+                onPointerCancel={onSplitUp}
+                onKeyDown={onSplitKeyDown}
+                className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+              />
+            )}
           </div>
         )
       })}
@@ -1065,7 +1660,9 @@ function TabsArrangement({
 // One large focused pane plus a clickable stack of the rest — clicking a stack card swaps
 // which pane is focused. Stack summaries are real data composites (stackSummaries, falling
 // back to the single-metric panelBadges) — never an invented description of a pane's contents,
-// same anti-fabrication stance as docs/adr/0013.
+// same anti-fabrication stance as docs/adr/0013. The AI Legal Assistant is anchored: it's
+// always the third column here, whether or not "chat" happens to be in the visible-pane list,
+// and (unlike every other pane) isn't hideable from this mode — it's a permanent fixture.
 function FocusArrangement({
   panels,
   caseId,
@@ -1077,6 +1674,7 @@ function FocusArrangement({
   onFocus,
   onToggleMaximize,
   onHide,
+  onJumpToPanel,
   t,
   onDrop,
 }: ArrangementBodyProps & {
@@ -1085,7 +1683,6 @@ function FocusArrangement({
   focusedId: PanelId | null
   onFocus: (id: PanelId) => void
 }) {
-  const chatPanel = panels.find((p) => p.id === "chat")
   const stackable = panels.filter((p) => p.id !== "chat")
   const focusId = focusedId && stackable.some((p) => p.id === focusedId) ? focusedId : stackable[0]?.id
   const focusPanel = stackable.find((p) => p.id === focusId)
@@ -1094,7 +1691,7 @@ function FocusArrangement({
   return (
     <div
       className="grid h-full min-h-0 gap-3"
-      style={{ gridTemplateColumns: chatPanel ? "minmax(280px,1.4fr) 260px minmax(260px,1fr)" : "minmax(280px,1.4fr) 260px" }}
+      style={{ gridTemplateColumns: "minmax(280px,1.4fr) 260px minmax(260px,1fr)" }}
       {...dropHandlers(onDrop)}
     >
       <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -1105,7 +1702,7 @@ function FocusArrangement({
               <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(focusPanel.id)} onHide={() => onHide(focusPanel.id)} />
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} />
+              <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
             </div>
           </>
         )}
@@ -1126,41 +1723,22 @@ function FocusArrangement({
           )
         })}
       </div>
-      {chatPanel && (
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-brand-gold/35 bg-card">
-          <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
-            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor(chatPanel)}</span>
-            <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(chatPanel.id)} onHide={() => onHide(chatPanel.id)} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden bg-card">
-            <TerminalPanelBody panelId={chatPanel.id} caseId={caseId} snapshot={snapshot} />
-          </div>
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-brand-gold/35 bg-card">
+        <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor({ id: "chat" })}</span>
+          <button
+            type="button"
+            onClick={() => onToggleMaximize("chat")}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+            aria-label={t("maximizePane")}
+          >
+            <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
         </div>
-      )}
-    </div>
-  )
-}
-
-// Fixed 2-column grid of every visible pane, wrapping to further rows rather than the mock's
-// literal 2-pane assumption — every visible pane stays reachable, no drag/resize.
-function SplitArrangement({ panels, caseId, snapshot, labelFor, onToggleMaximize, onHide, t, onDrop }: ArrangementBodyProps) {
-  return (
-    <div
-      className="grid h-full min-h-0 auto-rows-[minmax(280px,1fr)] gap-3 overflow-y-auto"
-      style={{ gridTemplateColumns: "repeat(2, minmax(280px, 1fr))" }}
-      {...dropHandlers(onDrop)}
-    >
-      {panels.map((panel) => (
-        <div key={panel.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-          <div className="terminal-pane-header flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
-            <span className="min-w-0 flex-1 truncate font-['Libre_Caslon_Text'] text-sm text-foreground">{labelFor(panel)}</span>
-            <PaneHeaderActions t={t} isMaximized={false} onToggleMaximize={() => onToggleMaximize(panel.id)} onHide={() => onHide(panel.id)} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden bg-card">
-            <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} />
-          </div>
+        <div className="min-h-0 flex-1 overflow-hidden bg-card">
+          <TerminalPanelBody panelId="chat" caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -1251,6 +1829,37 @@ function cascadeRect(panels: PanelLayout[]): PaneRect {
   }
 }
 
+// Columns mode's placement rule: an explicit, in-range panel.columnIndex wins (sorted within
+// that column by `order`); anything else auto-joins whichever column currently has fewest
+// panes. Recomputed fresh from `panels` on every render rather than written back to state for
+// auto-placed panes — cheap, and simplest given how rarely the visible set actually changes;
+// a shrunk columnCount's now-out-of-range indices are also just treated as unassigned here,
+// so they don't need separate cleanup when the column count changes.
+function columnsOf(panels: PanelLayout[], columnCount: number): PanelLayout[][] {
+  const columns: PanelLayout[][] = Array.from({ length: columnCount }, () => [])
+  const unassigned: PanelLayout[] = []
+  for (const panel of panels) {
+    if (panel.columnIndex !== undefined && panel.columnIndex >= 0 && panel.columnIndex < columnCount) {
+      columns[panel.columnIndex]!.push(panel)
+    } else {
+      unassigned.push(panel)
+    }
+  }
+  for (const panel of unassigned) {
+    columns[leastFullColumn(columns)]!.push(panel)
+  }
+  for (const column of columns) column.sort((a, b) => a.order - b.order)
+  return columns
+}
+
+function leastFullColumn(columns: PanelLayout[][]): number {
+  let target = 0
+  for (let i = 1; i < columns.length; i++) {
+    if (columns[i]!.length < columns[target]!.length) target = i
+  }
+  return target
+}
+
 function columnCount(preset: PresetValue, n: number) {
   if (n <= 1) return 1
   if (preset === "PANE_6" || n >= 5) return 3
@@ -1286,6 +1895,11 @@ function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
   }
 }
 
+// ponytail: tileLayout also rewrites every visible panel's `height`, which Columns mode
+// reinterprets as "fraction of its column" rather than Free's "fraction of the canvas" — if
+// this ever fires on a Columns-mode layout (only possible if a visible panel is somehow still
+// missing x/y, which showPanelAt/applyPreset always set) it'll reset that layout's in-column
+// stack proportions too. Give Columns its own height-like field if that turns out to matter.
 function hydrateFreeform(layout: WorkspaceLayout): WorkspaceLayout {
   const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
   if (visible.some((panel) => !Number.isFinite(panel.x) || !Number.isFinite(panel.y))) {
@@ -1380,6 +1994,8 @@ function ResizeHandle({
   onDown,
   onMove,
   onUp,
+  onKeyDown,
+  t,
   children,
 }: {
   edge: ResizeEdge
@@ -1388,16 +2004,26 @@ function ResizeHandle({
   onDown: (panel: PanelLayout, edges: ResizeEdge, event: PointerEvent<HTMLDivElement>) => void
   onMove: (event: PointerEvent<HTMLDivElement>) => void
   onUp: () => void
+  onKeyDown: (panel: PanelLayout, edges: ResizeEdge, event: KeyboardEvent<HTMLDivElement>) => void
+  t: (key: string) => string
   children?: ReactNode
 }) {
+  // A corner handle carries both axes — aria-orientation just describes which one to lead with
+  // for a screen reader; arrow keys in both directions still work regardless (see
+  // onResizeKeyDown, which no-ops an axis clampResize doesn't recognize for this handle's edges).
+  const orientation = edge.e || edge.w ? "vertical" : "horizontal"
   return (
     <div
       role="separator"
-      className={className}
+      aria-orientation={orientation}
+      aria-label={t("resizePane")}
+      tabIndex={0}
+      className={`${className} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60`}
       onPointerDown={(event) => onDown(panel, edge, event)}
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
+      onKeyDown={(event) => onKeyDown(panel, edge, event)}
     >
       {children}
     </div>

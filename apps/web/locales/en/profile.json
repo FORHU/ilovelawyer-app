@@ -51,7 +51,13 @@
       "currentPasswordLabel": "Current Password",
       "newPasswordLabel": "New Password",
       "confirmPasswordLabel": "Confirm New Password",
-      "newPasswordRequirement": "Must be at least 8 characters and include a symbol.",
+      "passwordRequirements": {
+        "length": "At least 10 characters",
+        "uppercase": "One uppercase letter",
+        "lowercase": "One lowercase letter",
+        "number": "One number",
+        "special": "One special character"
+      },
       "passwordsMismatch": "Passwords don't match.",
       "showPassword": "Show password",
       "hidePassword": "Hide password",

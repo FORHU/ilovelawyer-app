@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
 import { GitFork, Loader2, MessageSquareWarning, Send, Sparkles } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
+import { Badge } from "@workspace/ui/components/badge"
 import {
   terminalKeys,
   useAddTheoryAssumptionMutation,
@@ -21,12 +22,12 @@ import {
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { fieldClass, primaryBtnClass, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/terminal-panels"
+import { fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/panel-kit"
 
-const STATUS_BADGE_CLASS: Record<CaseTheory["status"], string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  ACTIVE: "bg-emerald-500/15 text-emerald-400",
-  RETIRED: "bg-red-500/15 text-red-300",
+const STATUS_TONE: Record<CaseTheory["status"], "neutral" | "success" | "danger"> = {
+  DRAFT: "neutral",
+  ACTIVE: "success",
+  RETIRED: "danger",
 }
 
 export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
@@ -70,6 +71,8 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
         </div>
       </div>
 
+      <MutationError show={propose.isError} />
+
       {showCreate && (
         <form
           className="flex flex-col gap-2 rounded-md border border-border p-3"
@@ -84,17 +87,25 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
             setShowCreate(false)
           }}
         >
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("theoryTitlePlaceholder")} className={fieldClass} />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t("theoryTitlePlaceholder")}
+            aria-label={t("theoryTitlePlaceholder")}
+            className={fieldClass}
+          />
           <textarea
             value={thesis}
             onChange={(e) => setThesis(e.target.value)}
             placeholder={t("theoryThesisPlaceholder")}
+            aria-label={t("theoryThesisPlaceholder")}
             rows={3}
             className={`resize-none py-1.5 ${fieldClass} h-auto`}
           />
           <button type="submit" disabled={create.isPending} className={`self-start ${primaryBtnClass}`}>
             {t("add")}
           </button>
+          <MutationError show={create.isError} />
         </form>
       )}
 
@@ -112,7 +123,12 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
         <div className="rounded-md border border-border p-3">
           <SectionLabel>{t("diffTheories")}</SectionLabel>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <select value={diffA} onChange={(e) => setDiffA(e.target.value)} className={`flex-1 ${fieldClass}`}>
+            <select
+              value={diffA}
+              onChange={(e) => setDiffA(e.target.value)}
+              aria-label={t("theoryA")}
+              className={`flex-1 ${fieldClass}`}
+            >
               <option value="">{t("theoryA")}</option>
               {theories.map((th) => (
                 <option key={th.id} value={th.id} disabled={th.id === diffB}>
@@ -120,7 +136,12 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
                 </option>
               ))}
             </select>
-            <select value={diffB} onChange={(e) => setDiffB(e.target.value)} className={`flex-1 ${fieldClass}`}>
+            <select
+              value={diffB}
+              onChange={(e) => setDiffB(e.target.value)}
+              aria-label={t("theoryB")}
+              className={`flex-1 ${fieldClass}`}
+            >
               <option value="">{t("theoryB")}</option>
               {theories.map((th) => (
                 <option key={th.id} value={th.id} disabled={th.id === diffA}>
@@ -160,11 +181,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
           <p className="leading-5 font-medium text-foreground">{theory.title}</p>
           <p className="mt-1 text-[12px] leading-4 text-muted-foreground">{theory.thesis}</p>
         </div>
-        <span
-          className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-[1px] uppercase ${STATUS_BADGE_CLASS[theory.status]}`}
-        >
-          {theory.status}
-        </span>
+        <Badge tone={STATUS_TONE[theory.status]}>{theory.status}</Badge>
       </div>
 
       {isAiProposed && (
@@ -179,12 +196,8 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
           <SectionLabel>{t("theoryClaims")}</SectionLabel>
           <ul className="space-y-1">
             {theory.claims.map((c) => (
-              <li key={c.id} className="text-[12px] leading-4 text-muted-foreground">
-                <span
-                  className={`mr-1.5 rounded px-1 py-0.5 font-mono text-[9px] font-semibold uppercase ${c.stance === "ASSERTS" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-300"}`}
-                >
-                  {c.stance}
-                </span>
+              <li key={c.id} className="flex items-center gap-1.5 text-[12px] leading-4 text-muted-foreground">
+                <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"}>{c.stance}</Badge>
                 {c.statement}
               </li>
             ))}
@@ -230,7 +243,12 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
               setClaimStatement("")
             }}
           >
-            <select value={claimStance} onChange={(e) => setClaimStance(e.target.value as TheoryStance)} className={fieldClass}>
+            <select
+              value={claimStance}
+              onChange={(e) => setClaimStance(e.target.value as TheoryStance)}
+              aria-label={t("claimStance")}
+              className={fieldClass}
+            >
               <option value="ASSERTS">{t("asserts")}</option>
               <option value="DENIES">{t("denies")}</option>
             </select>
@@ -238,6 +256,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
               value={claimStatement}
               onChange={(e) => setClaimStatement(e.target.value)}
               placeholder={t("addClaimPlaceholder")}
+              aria-label={t("addClaimPlaceholder")}
               className={`flex-1 ${fieldClass}`}
             />
             <button type="submit" disabled={addClaim.isPending} className={primaryBtnClass}>
@@ -258,6 +277,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
               value={assumptionText}
               onChange={(e) => setAssumptionText(e.target.value)}
               placeholder={t("addAssumptionPlaceholder")}
+              aria-label={t("addAssumptionPlaceholder")}
               className={`flex-1 ${fieldClass}`}
             />
             <button type="submit" disabled={addAssumption.isPending} className={primaryBtnClass}>
@@ -278,12 +298,14 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               placeholder={t("addOpenQuestionPlaceholder")}
+              aria-label={t("addOpenQuestionPlaceholder")}
               className={`flex-1 ${fieldClass}`}
             />
             <button type="submit" disabled={addOpenQuestion.isPending} className={primaryBtnClass}>
               {t("add")}
             </button>
           </form>
+          <MutationError show={addClaim.isError || addAssumption.isError || addOpenQuestion.isError} />
         </div>
       )}
 
@@ -291,7 +313,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
         <button
           type="button"
           onClick={() => setShowAnnotations((s) => !s)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground"
+          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
         >
           <MessageSquareWarning className="h-3 w-3" aria-hidden="true" />
           {t("notes")}
@@ -311,7 +333,7 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
             type="button"
             onClick={() => retire.mutate(theory.id)}
             disabled={retire.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground"
+            className={ghostBtnClass}
           >
             {t("retire")}
           </button>
@@ -321,13 +343,14 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
             type="button"
             onClick={() => fork.mutate(theory.id)}
             disabled={fork.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground"
+            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
           >
             <GitFork className="h-3 w-3" aria-hidden="true" />
             {t("fork")}
           </button>
         )}
       </div>
+      <MutationError show={publish.isError || retire.isError || fork.isError} />
 
       {showAnnotations && (
         <div className="mt-2.5 border-t border-border pt-2.5">
@@ -366,6 +389,7 @@ function TheoryDiffSection({ caseId, theoryAId, theoryBId }: { caseId: string; t
         {isDiffing ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Send className="h-3 w-3" aria-hidden="true" />}
         {diff ? t("regenerateDiff") : t("generateDiff")}
       </button>
+      <MutationError show={generate.isError} />
 
       {diff && (
         <div className="mt-2 flex flex-col gap-2">

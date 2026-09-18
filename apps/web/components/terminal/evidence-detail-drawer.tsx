@@ -22,13 +22,8 @@ import type {
   SnapshotEvidenceMatrixItem,
   Witness,
 } from "@/lib/terminal/types"
-import {
-  fieldClass,
-  formatDate,
-  HEARSAY_CATEGORY_KEYS,
-  PRIVILEGE_STATUS_KEYS,
-  primaryBtnClass,
-} from "@/components/terminal/terminal-panels"
+import { MutationError, dangerIconBtnClass, fieldClass, formatDate, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { HEARSAY_CATEGORY_KEYS, PRIVILEGE_STATUS_KEYS } from "@/components/terminal/panels/evidence-panel"
 
 export function EvidenceDetailDrawer({
   open,
@@ -144,6 +139,8 @@ export function EvidenceDetailDrawer({
             )}
           </div>
 
+          <MutationError show={updateMatrix.isError} />
+
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase">
@@ -190,7 +187,7 @@ export function EvidenceDetailDrawer({
                         })
                       }
                       disabled={deleteCustody.isPending}
-                      className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                      className={dangerIconBtnClass}
                       aria-label={t("delete")}
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -224,24 +221,28 @@ export function EvidenceDetailDrawer({
                 value={custodianName}
                 onChange={(e) => setCustodianName(e.target.value)}
                 placeholder={t("custodianName")}
+                aria-label={t("custodianName")}
                 className={fieldClass}
               />
               <input
                 value={custodyAction}
                 onChange={(e) => setCustodyAction(e.target.value)}
                 placeholder={t("custodyAction")}
+                aria-label={t("custodyAction")}
                 className={fieldClass}
               />
               <input
                 type="date"
                 value={custodyDate}
                 onChange={(e) => setCustodyDate(e.target.value)}
+                aria-label={t("custodyDate")}
                 className={fieldClass}
               />
               <textarea
                 value={custodyNotes}
                 onChange={(e) => setCustodyNotes(e.target.value)}
                 placeholder={t("custodyNotes")}
+                aria-label={t("custodyNotes")}
                 rows={2}
                 className={`resize-none py-1.5 ${fieldClass} h-auto`}
               />
@@ -253,6 +254,7 @@ export function EvidenceDetailDrawer({
                 {t("addCustodyEvent")}
               </button>
             </form>
+            <MutationError show={addCustody.isError || deleteCustody.isError} />
           </div>
         </div>
       </SheetContent>

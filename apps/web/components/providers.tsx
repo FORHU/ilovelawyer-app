@@ -8,6 +8,7 @@ import { I18nProvider } from "@/components/i18n-provider"
 import { TenantCodeProvider } from "@/components/tenant-code-provider"
 import { GoogleOAuthProvider } from "@react-oauth/google"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { Toaster } from "@workspace/ui/components/sonner"
 import type { TenantCode } from "@/lib/tenant-code/resolve-host"
 import { useNotificationSocket } from "@/lib/notifications/queries"
 
@@ -64,6 +65,7 @@ export function Providers({
         <NotificationSocketBridge />
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
+      <Toaster />
     </GoogleOAuthProvider>
   )
 }

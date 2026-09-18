@@ -4,7 +4,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@workspace/ui/components/dropdown-menu";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/components/chat/assistant-message";
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
@@ -28,14 +35,15 @@ import {
   useCreateConsultationMutation,
   useMessagesQuery,
   useRelatedCasesQuery,
-  sendChatMessage,
+  sendChatMessageAndWait,
+  subscribeChatGeneration,
   type ChatMessage,
   type MessageReasoning,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
-import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
   useUploadAudioMutation,
@@ -91,12 +99,6 @@ interface DisplayMessage {
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
 // the attachment-chip row or upload/indexing time getting unwieldy.
 const MAX_ATTACHED_FILES = 10;
-// No backend size cap on the presigned-S3 case-document upload path either (unlike the
-// /api/files/upload route the voice recorder uses, which multer caps at 25MB — see
-// ilovelawyer-api/src/routes/files.route.ts). Matching that existing number here rather
-// than inventing a new one: generous for a scanned legal PDF, but keeps a single attachment
-// from stalling the browser upload / RAG indexing for minutes.
-const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
 // How many pills show under the empty-state composer, and how many of those slots (at
 // most) get pulled from the case's own uploaded documents / the user's consultation
@@ -118,6 +120,16 @@ function shuffle<T>(items: T[]): T[] {
     result[j] = temp;
   }
   return result;
+}
+
+// Exact (trim, case-insensitive) match only — a split reply's groupTitle is free text the model
+// wrote, not a real PanelId, so this never guesses at a close-but-wrong panel.
+function matchPanelId(groupTitle: string | null | undefined, panelTitles: Record<string, string> | undefined): string | null {
+  if (!groupTitle || !panelTitles) return null;
+  const normalized = groupTitle.trim().toLowerCase();
+  if (!normalized) return null;
+  const entry = Object.entries(panelTitles).find(([, title]) => title.trim().toLowerCase() === normalized);
+  return entry ? entry[0] : null;
 }
 
 type CaseChatTab = "chat" | "mindmap" | "timeline";
@@ -281,6 +293,14 @@ interface ConsultationChatProps {
    * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
    * already-planned changes of its own that this deliberately doesn't preempt. */
   enableFileChips?: boolean;
+  /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
+   * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
+   * map to exact-match a reply's groupTitle against (no match, no link: never a fuzzy guess at
+   * the wrong panel), and onJumpToPanel actually focuses that panel on the Terminal's grid. Only
+   * the Terminal's ChatPanel passes these, so this never appears on the standalone Consultation
+   * page or in Case Workspace. */
+  panelTitles?: Record<string, string>;
+  onJumpToPanel?: (panelId: string) => void;
 }
 
 export default function ConsultationChat({
@@ -301,6 +321,8 @@ export default function ConsultationChat({
   mindMapOnly = false,
   inputPlaceholder,
   enableFileChips = false,
+  panelTitles,
+  onJumpToPanel,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -317,6 +339,10 @@ export default function ConsultationChat({
   // right — defaults open since the panel only ever mounts for a split reply already on
   // screen (a rare, deliberate moment), unlike the always-present left sidebar.
   const [topicPanelExpanded, setTopicPanelExpanded] = useState(true);
+  // TopicNavigator's own mobile drawer, lifted up (same reason as sidebarMobileOpen) so the
+  // sticky header's mobile kebab menu can open it instead of TopicNavigator's own floating
+  // trigger circle, which the kebab replaces on phones.
+  const [topicMobileOpen, setTopicMobileOpen] = useState(false);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -329,16 +355,6 @@ export default function ConsultationChat({
     }>
   >([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  // Set when a select/drop/paste got clipped by MAX_ATTACHED_FILES — cleared on the next
-  // add attempt so it doesn't linger once the user's back under the cap.
-  const [fileLimitHit, setFileLimitHit] = useState(false);
-  // Names of any files a select/drop/paste dropped for exceeding MAX_FILE_SIZE_BYTES —
-  // cleared on the next add attempt, same lifecycle as fileLimitHit.
-  const [oversizedFileNames, setOversizedFileNames] = useState<string[]>([]);
-  // Names of any files a select/drop/paste dropped for having an unsupported extension —
-  // same lifecycle as oversizedFileNames. Checked ahead of size since there's no point
-  // reporting "too large" for a file that wouldn't be accepted anyway.
-  const [unsupportedFileNames, setUnsupportedFileNames] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
   const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
@@ -393,16 +409,19 @@ export default function ConsultationChat({
   );
   // Centralizes every place that used to write `?c=` to the URL — routes through local
   // state instead when isolated, per isolateConsultation's doc comment. useCallback keeps this
-  // referentially stable so the auto-select effect below can safely depend on it.
+  // referentially stable so the auto-select effect below can safely depend on it. Always
+  // replaces rather than pushing a history entry — switching consultations (or starting a new
+  // one) used to push, which meant the phone's native edge-swipe-back gesture (and the browser
+  // back button) stepped backward through consultations one at a time instead of leaving the
+  // chat page, since each `?c=<id>` was its own history entry.
   const navigateToConsultation = useCallback(
-    (id: string | null, opts?: { replace?: boolean }) => {
+    (id: string | null) => {
       if (isolateConsultation) {
         setLocalConsultationId(id);
         return;
       }
       const href = id ? `${basePath}?c=${id}` : basePath;
-      if (opts?.replace) router.replace(href);
-      else router.push(href);
+      router.replace(href);
     },
     [isolateConsultation, basePath, router],
   );
@@ -452,9 +471,7 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined, {
-    pollWhilePending: !!pendingTurn || isGeneratingElsewhere,
-  });
+  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -517,27 +534,56 @@ export default function ConsultationChat({
 
   const consultationKey = consultationId ?? pendingUrlConsultationId ?? NEW_CONSULTATION_KEY;
   const isPendingTurnActive = pendingTurn?.key === consultationKey;
-  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above):
-  // the user's message is already persisted (ChatRepo.createMessage happens before any
-  // streaming starts) but its reply isn't yet, so a trailing user message plus the global
-  // "still sending" flag is what a still-in-flight turn looks like from here.
+  // The backend's own durable truth for "is this turn's reply still generating" (see
+  // ilovelawyer-api's Message.replyStatus) — unlike isGeneratingElsewhere, this survives a
+  // full page reload, since it's read straight from the just-fetched history instead of any
+  // in-memory client flag. undefined history (still loading) reads as neither pending nor
+  // failed, same as before this existed.
+  const lastHistoryEntry = consultationId ? (history ?? []).filter((m) => m.role !== "system").at(-1) : undefined;
+  const serverSaysPending = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "PENDING";
+  const serverSaysFailed = lastHistoryEntry?.role === "user" && lastHistoryEntry.replyStatus === "FAILED";
+  // Covers a remounted instance of this same consultation (see isGeneratingElsewhere above),
+  // or a fresh mount after a full page reload mid-generation (serverSaysPending): the user's
+  // message is already persisted (ChatRepo.createMessage happens before any streaming starts)
+  // but its reply isn't yet, so a trailing user message plus either signal is what a
+  // still-in-flight turn looks like from here.
   const isResumedGenerating =
-    !isPendingTurnActive && isGeneratingElsewhere && baseMessages[baseMessages.length - 1]?.role === "user";
-  const messages = isPendingTurnActive
-    ? pendingTurn!.messages
-    : isResumedGenerating
-      ? [...baseMessages, { role: "assistant" as const, content: "" }]
-      : baseMessages;
+    !isPendingTurnActive &&
+    baseMessages[baseMessages.length - 1]?.role === "user" &&
+    (isGeneratingElsewhere || serverSaysPending);
+  // Memoized so this only gets a new reference when its content actually changes — not on
+  // every unrelated re-render. The isResumedGenerating/serverSaysFailed branches build a new
+  // array via spread every time they run; without useMemo here, any of the countless
+  // unrelated state updates this component has (sidebar toggles, textarea resize, etc.) would
+  // re-run those spreads and hand effects keyed on `messages` (the scroll-to-bottom effect
+  // below) a "changed" dependency even though nothing about the transcript actually did.
+  const messages = useMemo<DisplayMessage[]>(
+    () =>
+      isPendingTurnActive
+        ? pendingTurn!.messages
+        : isResumedGenerating
+          ? // pendingReplyContent is the last DB checkpoint (see Message.pendingReplyContent) —
+            // showing it instead of a bare "" lets a refreshed page display the partial answer
+            // already generated. It's a static snapshot now, not a live-updating one (the app
+            // no longer polls for newer checkpoints) — the subscribeChatGeneration effect
+            // below is what notices the turn actually finishing and swaps this for the real
+            // persisted reply, same as the "no partial-token recovery required" design intends.
+            [...baseMessages, { role: "assistant" as const, content: lastHistoryEntry?.pendingReplyContent ?? "" }]
+          : serverSaysFailed
+            ? [...baseMessages, { role: "assistant" as const, content: t("sendError") }]
+            : baseMessages,
+    [isPendingTurnActive, pendingTurn, isResumedGenerating, baseMessages, lastHistoryEntry?.pendingReplyContent, serverSaysFailed, t],
+  );
   // Composer/related-cases gating below used to only key off local isSending, which a
   // remount clears — isBusy keeps them consistent with the resumed "still thinking" bubble
   // above instead of looking idle while that bubble is showing.
   const isBusy = isSending || isResumedGenerating;
 
-  // The assistant reply is persisted asynchronously after the stream ends (ilovelawyer-api's
-  // MessagePersistenceQueue), so doSend's own post-stream refetch can settle a beat before the
-  // rows land. useMessagesQuery keeps polling while a pendingTurn is on screen (pollWhilePending
-  // above); once the persisted history is at least as long as the optimistic buffer, hand the
+  // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
+  // Driven by `history` changing — which now happens via explicit invalidateQueries calls
+  // (doSend's own post-generation refetch, the subscribeChatGeneration effect below, and the
+  // socket's on-(re)connect invalidate) rather than a polling interval.
   useEffect(() => {
     if (!pendingTurn || !consultationId || pendingTurn.key !== consultationKey) return;
     const persistedCount = (history ?? []).filter((m) => m.role !== "system").length;
@@ -546,6 +592,28 @@ export default function ConsultationChat({
       queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
     }
   }, [history, pendingTurn, consultationId, consultationKey, queryClient]);
+
+  // Resumed generation (a reply still PENDING from a cold load, another tab, or a remount —
+  // see isResumedGenerating above) has no local doSend() call in THIS mount watching for
+  // completion. Rather than poll useMessagesQuery on an interval, subscribe directly to that
+  // turn's own chat:done/chat:error (its messageId is the pending user message's own id —
+  // see ChatGenerationJob.jobId) and do a single refetch once it settles. Guarded on
+  // `!isPendingTurnActive` so this never double-subscribes alongside doSend's own
+  // sendChatMessageAndWait subscription for a turn THIS mount just sent.
+  const resumedPendingMessageId = !isPendingTurnActive && serverSaysPending ? lastHistoryEntry?.id : undefined;
+  useEffect(() => {
+    if (!consultationId || !resumedPendingMessageId) return;
+    const unsubscribe = subscribeChatGeneration(resumedPendingMessageId, {
+      onDone: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+        queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
+      },
+      onError: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      },
+    });
+    return unsubscribe;
+  }, [consultationId, resumedPendingMessageId, queryClient]);
 
   // Also drivable via a `?tab=mindmap` URL param (case-details-panel.tsx's "MindMap" row
   // links here) — the lazy initializer covers a fresh mount from that link, and the effect
@@ -617,6 +685,10 @@ export default function ConsultationChat({
     scrollToTopic,
     isGenerating: isGeneratingTopics,
   } = useTopicNavigator(consultationId);
+  // Gates both the desktop TopicNavigator rail/mobile drawer and the mobile kebab's "Topics"
+  // item below — same condition as the <TopicNavigator> mount further down, kept in sync
+  // rather than duplicated ad hoc.
+  const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
 
   // Empty-state composer pills, most relevant first: (1) the case's own uploaded documents
   // — the clearest signal of what this chat is actually for, so a fresh case with a file
@@ -673,7 +745,7 @@ export default function ConsultationChat({
     autoSelectedRef.current = true;
     const mostRecent = caseConsultations[0];
     if (mostRecent) {
-      navigateToConsultation(mostRecent.id, { replace: true });
+      navigateToConsultation(mostRecent.id);
     }
   }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
 
@@ -687,9 +759,36 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
+  // Scrolls to the bottom once a conversation's messages have actually loaded — either a
+  // fresh mount/switch (consultationKey changed) or the first time this key's query resolves
+  // (historyLoading false). Deliberately does NOT key on `history` itself: every later
+  // invalidation of it (doSend's post-send refetch, the resumed-generation chat:done
+  // subscription, the socket's on-reconnect invalidate) would otherwise re-fire this and
+  // scroll the user down again each time a reply lands — exactly the disruptive behavior
+  // being fixed here. scrolledForKeyRef makes this a one-shot per key instead.
+  const scrolledForKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (historyLoading) return;
+    if (scrolledForKeyRef.current === consultationKey) return;
+    scrolledForKeyRef.current = consultationKey;
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+  }, [consultationKey, historyLoading]);
+
+  // Scrolls to the bottom exactly once, the moment YOU send a message — a deliberate action
+  // that justifies jumping to show it. Deliberately does NOT keep re-scrolling on every
+  // chat:chunk update after that: an earlier version re-ran scrollIntoView on every streamed
+  // chunk (which can arrive many times a second), and a smooth-scroll animation re-triggered
+  // that fast makes it practically impossible to scroll away mid-generation — each new chunk
+  // yanks the view back down before a manual scroll attempt can register. Tracking the
+  // transition (false -> true) rather than just `isPendingTurnActive` itself is what makes
+  // this fire once per send instead of once per render while it's true.
+  const wasPendingTurnActiveRef = useRef(false);
+  useEffect(() => {
+    if (isPendingTurnActive && !wasPendingTurnActiveRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    wasPendingTurnActiveRef.current = isPendingTurnActive;
+  }, [isPendingTurnActive]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -747,17 +846,37 @@ export default function ConsultationChat({
       list.filter(isAllowedFileType),
       list.filter((f) => !isAllowedFileType(f)),
     ];
-    setUnsupportedFileNames(unsupported.map((f) => f.name));
+    if (unsupported.length > 0) {
+      toast.error(
+        t("input.attachmentUnsupportedType", {
+          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
+          fileNames: unsupported.map((f) => f.name).join(", "),
+          formats: ALLOWED_FILE_TYPES_LABEL,
+        })
+      );
+    }
 
     const [withinSizeLimit, oversized] = [
       supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
       supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
     ];
-    setOversizedFileNames(oversized.map((f) => f.name));
+    if (oversized.length > 0) {
+      toast.error(
+        t("input.attachmentTooLarge", {
+          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
+          fileNames: oversized.map((f) => f.name).join(", "),
+          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+        })
+      );
+    }
 
     const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
     const accepted = withinSizeLimit.slice(0, remaining);
-    setFileLimitHit(accepted.length < withinSizeLimit.length);
+    if (accepted.length < withinSizeLimit.length) {
+      toast.warning(
+        t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })
+      );
+    }
     if (accepted.length === 0) return;
     setQueuedFiles((prev) => [
       ...prev,
@@ -776,9 +895,6 @@ export default function ConsultationChat({
 
   const handleRemoveFile = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
-    setFileLimitHit(false);
-    setOversizedFileNames([]);
-    setUnsupportedFileNames([]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
@@ -933,40 +1049,48 @@ export default function ConsultationChat({
       // so a tag that straddles a chunk boundary still resolves correctly once it closes.
       let rawAccumulated = "";
 
-      const { newSessionId } = await sendChatMessage({
-        consultationId: activeConsultationId,
-        sessionId: session.session_id,
-        message: text,
-        documentContext: opts?.documentContext,
-        caseDocumentId: opts?.caseDocumentId,
-        documentIds: opts?.documentIds,
-        // Lets backend fall back to READY case docs when this consultation has none yet
-        // (homepage chat linked to a case, or case-portfolio without consultation uploads).
-        caseId: linkedCaseId || caseId || undefined,
-        onChunk: (chunk) => {
-          if (sendTokenRef.current !== myToken) return;
-          rawAccumulated += chunk;
-          const displayContent = stripStructuredBlocks(rawAccumulated);
-          const mindMap = extractMindMap(rawAccumulated);
-          const researchSteps = extractTraceSteps(rawAccumulated);
-          setPendingTurn((prev) => {
-            if (!prev) return prev;
-            const lastIndex = prev.messages.length - 1;
-            const last = prev.messages[lastIndex];
-            if (!last) return prev;
-            const nextMessages = [...prev.messages];
-            nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
-            return { ...prev, messages: nextMessages };
-          });
+      // Creates the AI generation job (ilovelawyer-api's ChatGenerationQueue owns RAG/AI/
+      // persistence from here — see that queue's doc comment) and waits for the worker to
+      // actually finish it — chat:chunk renders live into pendingTurn as it streams in;
+      // "done" is chat:done/chat:error over the socket, or (the robust, refresh-safe fallback
+      // for a socket that's disconnected/reconnecting/missed the event) useMessagesQuery's own
+      // polling noticing the persisted reply — see sendChatMessageAndWait's doc comment. A
+      // chat:error rejects this, landing in the catch block below same as any other failure.
+      await sendChatMessageAndWait(
+        queryClient,
+        {
+          consultationId: activeConsultationId,
+          sessionId: session.session_id,
+          message: text,
+          documentContext: opts?.documentContext,
+          caseDocumentId: opts?.caseDocumentId,
+          documentIds: opts?.documentIds,
+          // Lets backend fall back to READY case docs when this consultation has none yet
+          // (homepage chat linked to a case, or case-portfolio without consultation uploads).
+          caseId: linkedCaseId || caseId || undefined,
         },
-      });
-
-      // The backend silently rotated to a fresh Chat Wonder session_id mid-request (ours
-      // had expired) — update the cache so the next message uses it directly instead of
-      // repeating the same failed-then-retried round trip.
-      if (newSessionId) {
-        queryClient.setQueryData(chatKeys.session(), { session_id: newSessionId });
-      }
+        {
+          onChunk: (chunk) => {
+            if (sendTokenRef.current !== myToken) return;
+            rawAccumulated += chunk;
+            const displayContent = stripStructuredBlocks(rawAccumulated);
+            const mindMap = extractMindMap(rawAccumulated);
+            const researchSteps = extractTraceSteps(rawAccumulated);
+            setPendingTurn((prev) => {
+              if (!prev) return prev;
+              const lastIndex = prev.messages.length - 1;
+              const last = prev.messages[lastIndex];
+              if (!last) return prev;
+              const nextMessages = [...prev.messages];
+              nextMessages[lastIndex] = { role: last.role, content: displayContent, mindMap, researchSteps };
+              return { ...prev, messages: nextMessages };
+            });
+          },
+          onSessionRotated: (rotatedSessionId) => {
+            queryClient.setQueryData(chatKeys.session(), { session_id: rotatedSessionId });
+          },
+        },
+      );
 
       // The backend has now persisted both messages (and may have generated a title) —
       // refresh both queries so the transcript and sidebar reflect the saved state, then
@@ -1173,12 +1297,12 @@ export default function ConsultationChat({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png"
+          accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
           className="hidden"
           onChange={handleFileChange}
         />
 
-        {(queuedFiles.length > 0 || oversizedFileNames.length > 0 || unsupportedFileNames.length > 0) && (
+        {queuedFiles.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
               {queuedFiles.map((f) => (
@@ -1231,29 +1355,6 @@ export default function ConsultationChat({
                 </span>
               ))}
             </div>
-            {fileLimitHit && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })}
-              </span>
-            )}
-            {oversizedFileNames.length > 0 && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentTooLarge", {
-                  defaultValue: `${oversizedFileNames.join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-                  fileNames: oversizedFileNames.join(", "),
-                  maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-                })}
-              </span>
-            )}
-            {unsupportedFileNames.length > 0 && (
-              <span className="text-[10.5px] text-amber-500 pl-1">
-                {t("input.attachmentUnsupportedType", {
-                  defaultValue: `${unsupportedFileNames.join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
-                  fileNames: unsupportedFileNames.join(", "),
-                  formats: ALLOWED_FILE_TYPES_LABEL,
-                })}
-              </span>
-            )}
             {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
@@ -1527,12 +1628,15 @@ export default function ConsultationChat({
         />
       )}
 
-      {(showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics) && (
+      {hasTopics && (
         <TopicNavigator
           groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
           onExpandedChange={setTopicPanelExpanded}
+          isMobileOpen={topicMobileOpen}
+          onMobileOpenChange={setTopicMobileOpen}
+          hideMobileTrigger={!embedded}
           onJump={scrollToTopic}
           label={t("topicNavigator.label")}
           isGenerating={isGeneratingTopics}
@@ -1733,13 +1837,18 @@ export default function ConsultationChat({
                     >
                       <PanelLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
-                    <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
-                      {consultationTitle ?? t("sidebar.untitledConsultation")}
-                    </span>
+                    {/* Title strip — desktop/tablet only. Mobile's header is just the sidebar
+                        toggle and the kebab menu below, matching the redesign's leaner phone
+                        chrome (no room for a truncated title next to a case chip). */}
+                    <div className="hidden lg:flex items-center gap-2.5 min-w-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                      <span className="font-['Libre_Caslon_Text'] text-[15px] uppercase tracking-[-0.01em] truncate text-foreground">
+                        {consultationTitle ?? t("sidebar.untitledConsultation")}
+                      </span>
+                    </div>
                   </div>
                   {linkedCaseId && linkedCaseRecord && (
-                    <div className="flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
+                    <div className="hidden lg:flex items-center gap-5 text-[10px] tracking-[1px] uppercase text-muted-foreground shrink-0">
                       <span className="hidden sm:inline">
                         {t("caseHub.linkedCase", { defaultValue: "Linked case" })} · {linkedCaseRecord.caseName}
                       </span>
@@ -1751,6 +1860,51 @@ export default function ConsultationChat({
                       </Link>
                     </div>
                   )}
+                  {/* Mobile-only controls: a ChatGPT-style "new chat" pencil sitting left of the
+                      kebab, so starting a fresh consultation doesn't require opening the sidebar
+                      drawer first just to reach its own "New consultation" button. The kebab
+                      itself is the stand-in for the desktop "Open case" chip and the Topics
+                      rail, both of which have no room on a phone header — only rendered when
+                      there's actually something for it to hold. */}
+                  <div className="lg:hidden flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleNewChat}
+                      aria-label={t("sidebar.newChat")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <SquarePen className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    {(linkedCaseId || hasTopics) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t("caseHub.moreOptions", { defaultValue: "More options" })}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                          >
+                            <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {linkedCaseId && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/homepage/case-portfolio/${linkedCaseId}`}>
+                                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                                {t("caseHub.openCase", { defaultValue: "Open case" })}
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {hasTopics && (
+                            <DropdownMenuItem onSelect={() => setTopicMobileOpen(true)}>
+                              <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
+                              {t("topicNavigator.label")}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1847,6 +2001,20 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
+                          {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {
+                            const matchedPanelId = matchPanelId(m.groupTitle, panelTitles);
+                            if (!matchedPanelId) return null;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => onJumpToPanel(matchedPanelId)}
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-brand-gold/50 hover:text-foreground"
+                              >
+                                {t("chat.jumpToPanel", { defaultValue: "Open {{panel}} pane", panel: panelTitles![matchedPanelId] })}
+                                <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                              </button>
+                            );
+                          })()}
                           {(showRelatedCases ?? !embedded) && !isBusy && isLastMessage && m.content && relatedCases.length > 0 && (
                             <div className="mt-3 rounded-[14px] border border-border bg-card overflow-hidden">
                               <div className="flex items-center gap-2 px-4 pt-3 pb-2.5 border-b border-border text-[12px]">
