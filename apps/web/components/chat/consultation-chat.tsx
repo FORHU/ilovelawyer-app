@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, ListTree } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/components/chat/assistant-message";
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
-import TopicNavigator from "@/components/chat/topic-navigator";
+import TopicNavigator, { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
@@ -333,6 +333,9 @@ export default function ConsultationChat({
   // right — defaults open since the panel only ever mounts for a split reply already on
   // screen (a rare, deliberate moment), unlike the always-present left sidebar.
   const [topicPanelExpanded, setTopicPanelExpanded] = useState(true);
+  // A Terminal pane is an independent chat surface. Its topic navigation must be a real
+  // column in that pane rather than the full-page navigator's absolute overlay.
+  const [terminalTopicsOpen, setTerminalTopicsOpen] = useState(true);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -445,7 +448,13 @@ export default function ConsultationChat({
   // it has to affect what gets rendered.
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const shouldFollowTranscriptRef = useRef(true);
+  const generatedChatInstanceId = useId().replace(/:/g, "");
+  // The Case Workspace owns topic navigation outside this component and intentionally relies
+  // on its historical `chat-msg-*` anchors. Only Terminal's embedded navigator needs a local
+  // namespace because it owns the scrolling surface itself.
+  const chatInstanceId = embedded && showTopicNavigator ? generatedChatInstanceId : "";
   // Synchronous mirror of a just-created consultation's id — state (pendingUrlConsultationId)
   // only reflects it a render later, which is too late for callers within the same
   // handleSendMessage call (upload needs the id before doSend runs). Cleared whenever the user
@@ -671,7 +680,7 @@ export default function ConsultationChat({
     activeIndex: activeTopicIndex,
     scrollToTopic,
     isGenerating: isGeneratingTopics,
-  } = useTopicNavigator(consultationId);
+  } = useTopicNavigator(consultationId, chatInstanceId, transcriptRef);
 
   // Empty-state composer pills, most relevant first: (1) the case's own uploaded documents
   // — the clearest signal of what this chat is actually for, so a fresh case with a file
@@ -742,36 +751,31 @@ export default function ConsultationChat({
     el.style.height = `${el.scrollHeight}px`;
   }, [inputMessage]);
 
-  // Scrolls to the bottom once a conversation's messages have actually loaded — either a
-  // fresh mount/switch (consultationKey changed) or the first time this key's query resolves
-  // (historyLoading false). Deliberately does NOT key on `history` itself: every later
-  // invalidation of it (doSend's post-send refetch, the resumed-generation chat:done
-  // subscription, the socket's on-reconnect invalidate) would otherwise re-fire this and
-  // scroll the user down again each time a reply lands — exactly the disruptive behavior
-  // being fixed here. scrolledForKeyRef makes this a one-shot per key instead.
-  const scrolledForKeyRef = useRef<string | null>(null);
+  // The transcript, rather than the page, owns scrolling. Follow new/streaming content only
+  // while the lawyer is already at the bottom; toggling Topics, scroll-spy state, or a query
+  // refresh must never pull someone away from the part of the advice they are reading.
   useEffect(() => {
-    if (historyLoading) return;
-    if (scrolledForKeyRef.current === consultationKey) return;
-    scrolledForKeyRef.current = consultationKey;
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [consultationKey, historyLoading]);
+    const transcript = transcriptRef.current;
+    if (!transcript) return;
+    const updateFollowState = () => {
+      shouldFollowTranscriptRef.current = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 72;
+    };
+    updateFollowState();
+    transcript.addEventListener("scroll", updateFollowState, { passive: true });
+    return () => transcript.removeEventListener("scroll", updateFollowState);
+  }, []);
 
-  // Scrolls to the bottom exactly once, the moment YOU send a message — a deliberate action
-  // that justifies jumping to show it. Deliberately does NOT keep re-scrolling on every
-  // chat:chunk update after that: an earlier version re-ran scrollIntoView on every streamed
-  // chunk (which can arrive many times a second), and a smooth-scroll animation re-triggered
-  // that fast makes it practically impossible to scroll away mid-generation — each new chunk
-  // yanks the view back down before a manual scroll attempt can register. Tracking the
-  // transition (false -> true) rather than just `isPendingTurnActive` itself is what makes
-  // this fire once per send instead of once per render while it's true.
-  const wasPendingTurnActiveRef = useRef(false);
+  // Switching to a different conversation should always land at its bottom, regardless of
+  // whether a scroll position from the *previous* conversation had left "follow" turned off.
   useEffect(() => {
-    if (isPendingTurnActive && !wasPendingTurnActiveRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-    wasPendingTurnActiveRef.current = isPendingTurnActive;
-  }, [isPendingTurnActive]);
+    shouldFollowTranscriptRef.current = true;
+  }, [consultationKey]);
+
+  useEffect(() => {
+    const transcript = transcriptRef.current;
+    if (!transcript || !shouldFollowTranscriptRef.current) return;
+    transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
+  }, [messages]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -1611,7 +1615,7 @@ export default function ConsultationChat({
         />
       )}
 
-      {(showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics) && (
+      {!embedded && (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics) && (
         <TopicNavigator
           groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
@@ -1626,9 +1630,9 @@ export default function ConsultationChat({
 
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
-      <main className={`relative z-10 w-full mx-auto flex flex-col flex-1 min-h-0 ${embedded ? "max-w-none" : "max-w-5xl"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+      <main className={`relative z-10 w-full mx-auto flex flex-1 min-h-0 ${embedded ? "max-w-none flex-row" : "max-w-5xl flex-col"} ${headerSlot || embedded ? "" : "pt-16"}`}>
 
-        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+        <div className="relative z-10 flex min-w-0 flex-col flex-1 min-h-0">
         {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
          * !embedded above) and no external picker of its own (unlike Case Workspace, which
          * already renders its own ThreadPicker above this component — see case-workspace.tsx).
@@ -1637,8 +1641,28 @@ export default function ConsultationChat({
          * picker. A Case's chat is a single thread (see thread-picker.tsx), so this is just a
          * label of what's open, not a switcher — there's nothing else here to reach past. */}
         {isolateConsultation && !mindMapOnly && caseId && (
-          <div className="flex shrink-0 pb-2">
+          <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
             <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />
+            {embedded && showTopicNavigator && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setTerminalTopicsOpen((open) => !open)}
+                    aria-expanded={terminalTopicsOpen}
+                    aria-controls={terminalTopicsOpen ? `${chatInstanceId}-topics` : undefined}
+                    className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={splitTopics.length === 0 && !isGeneratingTopics}
+                  >
+                    <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
+                    Topics
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {splitTopics.length === 0 && !isGeneratingTopics ? "Topics appear after a structured AI response" : "Show or hide response topics"}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
         {(() => {
@@ -1839,7 +1863,7 @@ export default function ConsultationChat({
               )}
 
               {/* Scrollable message pane — input bar below stays put regardless of scroll position */}
-              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
+              <div ref={transcriptRef} data-chat-transcript className="flex-1 min-h-0 overflow-y-auto scrollbar-thin [scrollbar-color:var(--border)_transparent]">
               <div className={`w-full mx-auto flex flex-col gap-4 py-4 ${embedded ? (centerContent ? "max-w-[850px] px-6" : "px-2") : "max-w-3xl px-2"}`}>
                 {/* A consultation can resolve (auto-picked "most recent", or otherwise) to one
                  * whose only messages are hidden system turns (e.g. the auto mind-map prompt
@@ -1903,7 +1927,7 @@ export default function ConsultationChat({
                   return (
                     <div
                       key={i}
-                      id={`chat-msg-${i}`}
+                      id={chatInstanceId ? `${chatInstanceId}-chat-msg-${i}` : `chat-msg-${i}`}
                       className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
                     >
                       {isStreamingThis && !m.content ? (
@@ -1978,7 +2002,6 @@ export default function ConsultationChat({
                   );
                 })}
 
-                <div ref={messagesEndRef} />
               </div>
               </div>
             </>
@@ -1990,6 +2013,25 @@ export default function ConsultationChat({
           );
         })()}
         </div>
+        {embedded && showTopicNavigator && terminalTopicsOpen && (splitTopics.length > 0 || isGeneratingTopics) && (
+          <aside
+            id={`${chatInstanceId}-topics`}
+            aria-label={t("topicNavigator.label")}
+            className="ml-2 flex w-52 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
+          >
+            <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
+              <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+              {t("topicNavigator.label")}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {splitTopics.length === 0 ? (
+                <TopicNavigatorLoading label={t("topicNavigator.generating")} />
+              ) : (
+                <TopicNavigatorList groups={splitTopicGroups} activeIndex={activeTopicIndex} onJump={scrollToTopic} />
+              )}
+            </div>
+          </aside>
+        )}
       </main>
 
       {previewAttachment && !embedded && (

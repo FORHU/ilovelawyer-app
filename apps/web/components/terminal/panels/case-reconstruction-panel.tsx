@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, FileText, Loader2, Pencil, Quote, Save, Sparkles, Volume2 } from "lucide-react"
+import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
+import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import {
   pollReconstructionAudio,
@@ -391,6 +394,20 @@ function ScenesView({
   const isGeneratingTableRead =
     generateTableRead.isPending || tableReadJob.data?.status === "IN_PROGRESS"
 
+  const scenesListRef = useRef<HTMLUListElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  // Fires once per successful (re)generate — `isSuccess` flips false→true only on an actual
+  // mutation resolving, never on an ordinary mount where scenes were already there from a prior
+  // session, so freshly-generated scenes get a reveal moment without animating on every visit.
+  useGSAP(
+    () => {
+      if (!generateScenes.isSuccess || reducedMotion) return
+      const rows = scenesListRef.current?.children
+      if (rows?.length) gsap.from(rows, { opacity: 0, y: 8, duration: 0.3, stagger: 0.06, ease: "power2.out" })
+    },
+    { dependencies: [generateScenes.isSuccess, reducedMotion] },
+  )
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -419,7 +436,7 @@ function ScenesView({
         <EmptyNote>{t("noScenes")}</EmptyNote>
       ) : (
         <>
-          <ul className="space-y-2">
+          <ul ref={scenesListRef} className="space-y-2">
             {scenes.map((scene) => (
               <li
                 key={scene.index}
