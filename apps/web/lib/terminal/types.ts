@@ -80,6 +80,9 @@ export interface TerminalCatalog {
 export interface TerminalWorkspace {
   id: string
   userId: string
+  // Null on any workspace saved before case-scoping existed — those are never returned by the
+  // now case-scoped list query, so in practice every row this app ever reads back has one.
+  caseId: string | null
   name: string
   preset: PresetValue
   layoutJson: WorkspaceLayout
