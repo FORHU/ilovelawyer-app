@@ -92,7 +92,7 @@ export function DocumentFileCard({
                       ? t("detail.unarchiveDocument", { documentName: doc.name })
                       : t("detail.archiveDocument", { documentName: doc.name })
                   }
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-amber-500/10 hover:text-amber-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-amber-400"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-colors sm:opacity-0 sm:group-hover:opacity-100 hover:bg-amber-500/10 hover:text-amber-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-amber-400"
                 >
                   {isTogglingArchive ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -116,7 +116,7 @@ export function DocumentFileCard({
                   disabled={isDeleting}
                   onClick={onDelete}
                   aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-colors sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
                 >
                   {isDeleting ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

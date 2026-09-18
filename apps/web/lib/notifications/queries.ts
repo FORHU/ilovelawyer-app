@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/fetch"
 import { notificationKeys, chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
+import type { Consultation } from "@/lib/chat/mutations"
 
 /** Mirrors the backend's free-form `type` string (see notification.validation.ts on the API) —
  * kept as a union here so UI code (icon/label per type) can switch over it exhaustively. */
@@ -64,6 +65,12 @@ export function useNotificationsQuery(options?: { limit?: number; enabled?: bool
  * later reconnects needs exactly one fresh GET /messages to pick up whatever it missed —
  * `invalidateQueries`'s default `refetchType: "active"` means only currently-mounted queries
  * actually refetch, so this is a no-op for any consultation nobody's looking at.
+ *
+ * `chat:title-updated` patches every cached consultations list directly (same reasoning as
+ * `notification:new` below) — title generation usually finishes in 1-2s, well before the AI
+ * reply itself, so waiting for the end-of-turn refetch to show it made the sidebar/header title
+ * visibly trail behind the topic breakdown, which only appears once the full reply is
+ * persisted. This makes the title show up as soon as it's actually ready instead.
  */
 export function useNotificationSocket() {
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -101,13 +108,25 @@ export function useNotificationSocket() {
       })
     }
 
+    const handleTitleUpdated = (payload: { consultationId: string; title: string }) => {
+      queryClient.getQueriesData<Consultation[]>({ queryKey: chatKeys.consultationsAll() }).forEach(([key, data]) => {
+        if (!data) return
+        queryClient.setQueryData(
+          key,
+          data.map((c) => (c.id === payload.consultationId ? { ...c, title: payload.title } : c)),
+        )
+      })
+    }
+
     socket.on("connect", handleConnect)
     socket.on("notification:new", handleNew)
+    socket.on("chat:title-updated", handleTitleUpdated)
     socket.connect()
 
     return () => {
       socket.off("connect", handleConnect)
       socket.off("notification:new", handleNew)
+      socket.off("chat:title-updated", handleTitleUpdated)
       socket.disconnect()
     }
   }, [accessToken, queryClient])

@@ -1411,11 +1411,11 @@ export default function ConsultationChat({
          * where flex-nowrap keeps it one row again. */}
         <div className={embedded ? "flex items-center gap-1.5" : "flex flex-wrap sm:flex-nowrap items-center gap-1.5"}>
           {!isRecording && !transcribingId && (
-            <div className="min-w-0 basis-full sm:flex-1 order-1 sm:order-2">
+            <div className="relative min-w-0 basis-full sm:flex-1 order-1 sm:order-2">
               <textarea
                 ref={textareaRef}
                 rows={1}
-                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate ${
+                className={`w-full resize-none bg-transparent border-none outline-none font-['Inter'] leading-6 overflow-y-auto scrollbar-none [-ms-overflow-style:none] placeholder:truncate placeholder:text-transparent ${
                   // embedded (Terminal's split panes) keeps the old, tighter 200px cap — there's
                   // real risk of squeezing an already-small pane. The full-page composer has a
                   // whole empty page below it a long paste can grow into, so it gets a much more
@@ -1427,17 +1427,23 @@ export default function ConsultationChat({
                   // styling, where this is the row's only child) forced it to claim the full row
                   // width regardless of the button, pushing the button out past the pane's
                   // clipped edge (or spilling past the rounded border where nothing clips it).
-                  // placeholder:truncate keeps a long placeholder (e.g. the default
-                  // "Draft your legal inquiry or case particulars here...") on one line instead
-                  // of wrapping — a wrapped placeholder still inflates the textarea's own
-                  // scrollHeight (see the auto-grow effect below), visibly expanding an empty
-                  // box to 2+ lines on a narrow phone width before anything's even typed.
+                  // placeholder:truncate's white-space:nowrap still matters even though the
+                  // placeholder itself is invisible below (placeholder:text-transparent) — a
+                  // wrapped native placeholder still inflates the textarea's own scrollHeight
+                  // (see the auto-grow effect below), visibly expanding an empty box to 2+ lines
+                  // on a narrow phone width before anything's even typed. Its overflow/ellipsis
+                  // half of `truncate` is dead weight (kept only for the small chance a future
+                  // engine honors it) — text-overflow: ellipsis is not reliably applied to a
+                  // <textarea>'s ::placeholder across browsers (confirmed: Chromium renders it as
+                  // a hard clip with no "…" at all), which is what the visible overlay span below
+                  // actually exists to fix. The native placeholder attribute itself is kept (just
+                  // invisible) so screen readers still get it as the field's accessible name.
                   // text-base (16px) below sm avoids iOS Safari's auto-zoom-on-focus in embedded
                   // panes (Case Workspace/Terminal) — the smaller desktop size returns once
                   // that's no longer a risk.
                   embedded
-                    ? "px-2 py-1.5 text-base sm:text-[13px] text-foreground placeholder-muted-foreground"
-                    : "px-1 py-1.5 text-[15px] text-foreground placeholder-muted-foreground"
+                    ? "px-2 py-1.5 text-base sm:text-[13px] text-foreground"
+                    : "px-1 py-1.5 text-[15px] text-foreground"
                 }`}
                 placeholder={inputPlaceholder ?? t("input.placeholder")}
                 value={inputMessage}
@@ -1446,6 +1452,21 @@ export default function ConsultationChat({
                 onPaste={handlePaste}
                 disabled={isBusy}
               />
+              {/* Visible stand-in for the (now transparent) native placeholder — truncate
+                  reliably applies overflow/ellipsis on a plain span, unlike on a textarea's
+                  ::placeholder. Mirrors the textarea's own padding/font so it lines up exactly
+                  where typed text would start; pointer-events-none so clicks reach the textarea
+                  underneath, and it's hidden the instant there's real input. */}
+              {!inputMessage && (
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none select-none absolute inset-0 truncate leading-6 font-['Inter'] text-muted-foreground ${
+                    embedded ? "px-2 py-1.5 text-base sm:text-[13px]" : "px-1 py-1.5 text-[15px]"
+                  }`}
+                >
+                  {inputPlaceholder ?? t("input.placeholder")}
+                </span>
+              )}
             </div>
           )}
 
@@ -1834,7 +1855,7 @@ export default function ConsultationChat({
                     </button>
                   </div>
                 )}
-                <div className={`relative flex-1 flex flex-col items-center justify-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "gap-4 pb-4" : "gap-5 pb-24"}`}>
+                <div className={`relative flex-1 flex flex-col items-center min-h-0 overflow-y-auto scrollbar-none [-ms-overflow-style:none] ${embedded ? "justify-center gap-4 pb-4" : "justify-between sm:justify-center gap-5 pt-8 pb-6 sm:pt-0 sm:pb-24"}`}>
                   <div className="max-w-3xl mx-auto px-2 w-full text-center">
                     <h1
                       className={
@@ -1848,7 +1869,7 @@ export default function ConsultationChat({
                   </div>
                   {chatInputBar}
                   {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
-                    <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                    <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}

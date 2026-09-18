@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { AlertTriangle, CheckCircle2, Info, Loader2, OctagonAlert } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
@@ -24,11 +25,23 @@ function ToastIcon({ icon: Icon, tone }: { icon: typeof OctagonAlert; tone: "dan
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { resolvedTheme } = useTheme()
+  // Bottom-right (desktop default) sits right over the composer's attach/mic controls on a
+  // narrow phone screen — top-center keeps it clear of that whole bottom cluster there. Tracked
+  // via matchMedia (not just a CSS position override) since sonner positions each toast with a
+  // fixed-position wrapper keyed to this prop, not something a later className can relocate.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)")
+    setIsMobile(mql.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mql.addEventListener("change", onChange)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
 
   return (
     <Sonner
       theme={resolvedTheme as ToasterProps["theme"]}
-      position="bottom-right"
+      position={isMobile ? "top-center" : "bottom-right"}
       closeButton
       gap={10}
       className="toaster group"

@@ -12,6 +12,8 @@ import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Trash2, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
+import { TimePicker } from "@/components/calendar/time-picker";
 import {
   useAppointmentsQuery,
   useCreateAppointmentMutation,
@@ -33,6 +35,10 @@ const MAX_VISIBLE_PER_DAY = 1;
 // the list container also scrolls (see the CardFooter <ul>) once content exceeds it.
 const DESCRIPTION_MAX_LENGTH = 500;
 const NOTE_MAX_LENGTH = 500;
+
+// Radix Select reserves the empty string for "no value selected", so the "no case" /
+// "no reminder" options need a real sentinel — translated to/from "" at the state boundary.
+const NONE_VALUE = "none";
 
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -286,7 +292,7 @@ function PlannerPanel({
   async function setAppointmentStatus(appt: Appointment, status: string) {
     setFormError(null);
     try {
-      await updateAppointment.mutateAsync({ id: appt.id, status, caseId: appt.caseId ?? undefined });
+      await updateAppointment.mutateAsync({ id: appt.id, status });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
     }
@@ -342,6 +348,14 @@ function PlannerPanel({
     // mark an existing appointment "Done").
     if (!editingId && isAppointmentPast({ date, startTime: normalizedStart })) {
       return setFormError(t("errors.startTimeInPast"));
+    }
+    // Defense-in-depth: the Edit button is already hidden for cancelled appointments (it's
+    // swapped for Restore below), but this form's `editingId` can outlive that — e.g. the
+    // appointment gets cancelled in another tab while this form is still open. Re-check here
+    // rather than trusting the button was clicked while the appointment was still editable.
+    if (editingId && selectedAppointments.find((appt) => appt.id === editingId)?.status === "cancelled") {
+      resetAppointmentFields();
+      return setFormError(t("errors.cannotEditCancelled"));
     }
     try {
       if (editingId) {
@@ -478,18 +492,8 @@ function PlannerPanel({
                     className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                   <div className="flex gap-2">
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                    />
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                    />
+                    <TimePicker value={startTime} onChange={setStartTime} placeholder={t("startTime")} aria-label={t("startTime")} />
+                    <TimePicker value={endTime} onChange={setEndTime} placeholder={t("endTime")} aria-label={t("endTime")} />
                   </div>
                   {(() => {
                     // Guidance shown in our own styling instead of a `min` attribute — a `min` on
@@ -513,45 +517,35 @@ function PlannerPanel({
                     onChange={(e) => setNotifyEmail(e.target.value)}
                     className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
-                  <select
-                    value={caseId}
-                    onChange={(e) => setCaseId(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
+                  <Select value={caseId || NONE_VALUE} onValueChange={(v) => setCaseId(v === NONE_VALUE ? "" : v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>{t("noCase")}</SelectItem>
+                      {cases.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.caseName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={reminderLeadMinutes || NONE_VALUE}
+                    onValueChange={(v) => setReminderLeadMinutes(v === NONE_VALUE ? "" : v)}
                   >
-                    <option value="" className="text-black">
-                      {t("noCase")}
-                    </option>
-                    {cases.map((c) => (
-                      <option key={c.id} value={c.id} className="text-black">
-                        {c.caseName}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={reminderLeadMinutes}
-                    onChange={(e) => setReminderLeadMinutes(e.target.value)}
-                    aria-label={t("reminderLabel")}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary [color-scheme:light]"
-                  >
-                    <option value="" className="text-black">
-                      {t("reminderNone")}
-                    </option>
-                    <option value="1440" className="text-black">
-                      {t("reminder1Day")}
-                    </option>
-                    <option value="2880" className="text-black">
-                      {t("reminder2Days")}
-                    </option>
-                    <option value="4320" className="text-black">
-                      {t("reminder3Days")}
-                    </option>
-                    <option value="7200" className="text-black">
-                      {t("reminder5Days")}
-                    </option>
-                    <option value="10080" className="text-black">
-                      {t("reminder1Week")}
-                    </option>
-                  </select>
+                    <SelectTrigger aria-label={t("reminderLabel")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>{t("reminderNone")}</SelectItem>
+                      <SelectItem value="1440">{t("reminder1Day")}</SelectItem>
+                      <SelectItem value="2880">{t("reminder2Days")}</SelectItem>
+                      <SelectItem value="4320">{t("reminder3Days")}</SelectItem>
+                      <SelectItem value="7200">{t("reminder5Days")}</SelectItem>
+                      <SelectItem value="10080">{t("reminder1Week")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex flex-col gap-1">
                     <textarea
                       placeholder={t("descriptionPlaceholder")}
