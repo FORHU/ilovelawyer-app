@@ -32,6 +32,7 @@ import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
 import BulkDeleteDocumentsModal from "@/components/cases/bulk-delete-documents-modal"
+import BulkArchiveDocumentsModal from "@/components/cases/bulk-archive-documents-modal"
 import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
 import RestoreDocumentModal from "@/components/cases/restore-document-modal"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
@@ -75,13 +76,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
   // Bulk selection: document ids selected directly (loose files at root, or any file inside an
   // open folder) plus folder names selected at root — a folder has no id of its own (see the
-  // module doc comment on why folders are purely derived), so "deleting" a selected folder means
-  // resolving it to every document currently filed under that category at delete time.
+  // module doc comment on why folders are purely derived), so acting on a selected folder (delete
+  // or archive) means resolving it to every document currently filed under that category first.
   const [selectMode, setSelectMode] = useState(false)
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false)
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [confirmingBulkArchive, setConfirmingBulkArchive] = useState(false)
+  const [isBulkArchiving, setIsBulkArchiving] = useState(false)
   const [archivingDoc, setArchivingDoc] = useState<UserDocument | null>(null)
   const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -92,7 +95,12 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     isLoading: isLoadingArchived,
     isError: isErrorArchived,
   } = useArchivedCaseDocumentsQuery(caseId, showArchived)
-  const { mutate: archiveDocument, isPending: isArchiving, variables: archivingVars } = useArchiveCaseDocumentMutation()
+  const {
+    mutate: archiveDocument,
+    mutateAsync: archiveDocumentAsync,
+    isPending: isArchiving,
+    variables: archivingVars,
+  } = useArchiveCaseDocumentMutation()
   const {
     mutate: unarchiveDocument,
     isPending: isUnarchiving,
@@ -227,8 +235,9 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     setSelectedFolders(new Set())
   }
 
-  // A selected folder has no id to delete — it resolves to every document currently filed under
-  // that category, unioned with any individually-selected document ids.
+  // A selected folder has no id of its own — it resolves to every document currently filed under
+  // that category, unioned with any individually-selected document ids. Shared by both the bulk
+  // delete and bulk archive flows below.
   const resolveSelectedDocumentIds = (): string[] => {
     const ids = new Set(selectedDocIds)
     if (documents) {
@@ -246,6 +255,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     await Promise.allSettled(ids.map((documentId) => deleteDocumentAsync({ documentId, caseId })))
     setIsBulkDeleting(false)
     setConfirmingBulkDelete(false)
+    exitSelectMode()
+  }
+
+  const handleBulkArchive = async () => {
+    const ids = resolveSelectedDocumentIds()
+    setIsBulkArchiving(true)
+    await Promise.allSettled(ids.map((documentId) => archiveDocumentAsync({ documentId, caseId })))
+    setIsBulkArchiving(false)
+    setConfirmingBulkArchive(false)
     exitSelectMode()
   }
 
@@ -384,9 +402,9 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     />
   )
 
-  // A "Select"/"Select all"/"Delete" row above the grid — folders and documents share it since
-  // deleting a folder just means bulk-deleting the documents in it (see resolveSelectedDocumentIds
-  // above). Hidden once there's nothing on screen to select, while a document preview has taken
+  // A "Select"/"Select all"/"Archive"/"Delete" row above the grid — folders and documents share it
+  // since acting on a folder just means bulk-acting on the documents in it (see
+  // resolveSelectedDocumentIds above). Hidden once there's nothing on screen to select, while a document preview has taken
   // over the view (that branch returns early below, before this is ever reached), and while
   // viewing the Archived list — selectableCount/selectedCount are derived from the active
   // `documents` set, not `archivedDocuments`, so they'd be meaningless there. Active mode gets its
@@ -424,7 +442,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   <button
                     type="button"
                     onClick={deselectAll}
-                    disabled={isBulkDeleting}
+                    disabled={isBulkDeleting || isBulkArchiving}
                     className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -440,7 +458,25 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  disabled={selectedCount === 0 || isBulkDeleting}
+                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                  onClick={() => setConfirmingBulkArchive(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
+                >
+                  {isBulkArchiving ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  {t("detail.archiveSelected")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
                   onClick={() => setConfirmingBulkDelete(true)}
                   className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400"
                 >
@@ -459,7 +495,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                 <button
                   type="button"
                   onClick={exitSelectMode}
-                  disabled={isBulkDeleting}
+                  disabled={isBulkDeleting || isBulkArchiving}
                   aria-label={t("editModal.cancel")}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
                 >
@@ -682,6 +718,14 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
           isDeleting={isBulkDeleting}
           onConfirm={handleBulkDelete}
           onClose={() => setConfirmingBulkDelete(false)}
+        />
+      )}
+      {confirmingBulkArchive && (
+        <BulkArchiveDocumentsModal
+          count={resolveSelectedDocumentIds().length}
+          isArchiving={isBulkArchiving}
+          onConfirm={handleBulkArchive}
+          onClose={() => setConfirmingBulkArchive(false)}
         />
       )}
       {archivingDoc && (
