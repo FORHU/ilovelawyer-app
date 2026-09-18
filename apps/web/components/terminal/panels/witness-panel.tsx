@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import { useCreateWitnessMutation, useDeleteWitnessMutation } from "@/lib/terminal/mutations"
 import { useGraphViewQuery } from "@/lib/graph-view/mutations"
-import { EmptyNote, PanelBody, PanelRow, PanelRowList, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 // Reads the graph-view projection (view_type=witnesses) instead of slicing CaseSnapshot, so a
 // witness added/removed from any mounted panel refreshes this one via the shared query cache.
@@ -48,7 +48,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={() => del.mutate(node.refId)}
                   disabled={del.isPending}
-                  className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-red-500 disabled:opacity-50"
+                  className={dangerIconBtnClass}
                   aria-label={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -73,6 +73,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t("witnessName")}
+          aria-label={t("witnessName")}
           className={fieldClass}
         />
         <div className="flex gap-2">
@@ -80,6 +81,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
             value={role}
             onChange={(e) => setRole(e.target.value)}
             placeholder={t("witnessRole")}
+            aria-label={t("witnessRole")}
             className={`flex-1 ${fieldClass}`}
           />
           <button
@@ -91,6 +93,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
           </button>
         </div>
       </form>
+      <MutationError show={create.isError || del.isError} />
     </PanelBody>
   )
 }

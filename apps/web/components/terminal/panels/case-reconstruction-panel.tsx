@@ -16,7 +16,7 @@ import {
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, SceneDetail } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, SectionLabel, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, SectionLabel, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 type ReconstructionRegister = "general" | "court" | "opposing"
 
@@ -152,7 +152,7 @@ export function CaseReconstructionPanel({
           type="button"
           onClick={() => generate.mutate()}
           disabled={isGenerating}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
         >
           {isGenerating ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -166,6 +166,7 @@ export function CaseReconstructionPanel({
               : t("generate")}
         </button>
       </div>
+      <MutationError show={generate.isError} />
 
       <div className="flex gap-1 border-b border-border">
         {(["narrative", "scenes", "storyboard"] as const).map((mode) => (
@@ -230,7 +231,7 @@ export function CaseReconstructionPanel({
                 <button
                   type="button"
                   onClick={() => setIsEditingGeneral(true)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
+                  className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
                 >
                   <Pencil className="h-3 w-3" aria-hidden="true" />
                   {t("edit")}
@@ -281,6 +282,7 @@ export function CaseReconstructionPanel({
               {update.isPending ? t("saving") : t("save")}
             </button>
           )}
+          <MutationError show={update.isError} />
 
           {reconstruction && reconstruction.gaps.length > 0 && (
             <div>
@@ -310,7 +312,7 @@ export function CaseReconstructionPanel({
                     })
                   }
                   disabled={generateAudio.isPending || audioPolling}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+                  className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
                 >
                   {generateAudio.isPending || audioPolling ? (
                     <Loader2
@@ -328,6 +330,7 @@ export function CaseReconstructionPanel({
                 </button>
               </div>
 
+              <MutationError show={generateAudio.isError} />
               {reconstruction?.audioFile?.fileUrl && (
                 <audio
                   controls
@@ -396,7 +399,7 @@ function ScenesView({
           type="button"
           onClick={() => generateScenes.mutate()}
           disabled={isGeneratingScenes}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
         >
           {isGeneratingScenes ? (
             <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -410,6 +413,7 @@ function ScenesView({
               : t("generateScenes")}
         </button>
       </div>
+      <MutationError show={generateScenes.isError} />
 
       {!scenes || scenes.length === 0 ? (
         <EmptyNote>{t("noScenes")}</EmptyNote>
@@ -459,7 +463,7 @@ function ScenesView({
                     {scene.unresolved.map((u, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-1.5 text-[11px] leading-4 text-orange-400"
+                        className="flex items-start gap-1.5 text-[11px] leading-4 text-riskmed"
                       >
                         <AlertTriangle
                           className="mt-0.5 h-3 w-3 shrink-0"
@@ -486,7 +490,7 @@ function ScenesView({
                 type="button"
                 onClick={() => generateTableRead.mutate()}
                 disabled={isGeneratingTableRead}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+                className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
               >
                 {isGeneratingTableRead ? (
                   <Loader2
@@ -503,6 +507,7 @@ function ScenesView({
                     : t("generateTableRead")}
               </button>
             </div>
+            <MutationError show={generateTableRead.isError} />
             {reconstruction?.tableReadFile?.fileUrl ? (
               <audio
                 controls
@@ -561,7 +566,7 @@ function StoryboardView({
                 >
                   <p className="flex items-center gap-1.5 font-medium text-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
+                    <span className="truncate" title={docNameById.get(ref.docId) ?? ref.docId}>
                       {docNameById.get(ref.docId) ?? ref.docId}
                     </span>
                     {ref.page != null && (

@@ -3,7 +3,7 @@ import { Loader2, Sparkles } from "lucide-react"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import { useAiJobStatus, useGenerateRedTeamMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, SectionLabel, ghostBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, SectionLabel, ghostBtnClass } from "@/components/terminal/panel-kit"
 
 // Opposing counsel's own adversarial read of the case — generated from the case's structured
 // findings (Legal Issues, Weaknesses, Contradictions, Witnesses, Damages), not raw documents.
@@ -44,6 +44,7 @@ export function RedTeamPanel({
               : t("generate")}
         </button>
       </div>
+      <MutationError show={generate.isError} />
 
       {!content && !isGenerating ? (
         <EmptyNote>{t("noRedTeam")}</EmptyNote>

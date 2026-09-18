@@ -15,6 +15,7 @@ import { useAuthStore } from "@/lib/store/auth.store"
 import { getStatus } from "@/config/tenant-codes/capabilities"
 import {
   EmptyNote,
+  MutationError,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -60,10 +61,10 @@ function RiskMeter({
   const width = Math.max(8, Math.min(100, score))
   const barColor =
     level === "HIGH"
-      ? "bg-red-500"
+      ? "bg-danger"
       : level === "MEDIUM"
-        ? "bg-orange-400"
-        : "bg-emerald-400"
+        ? "bg-riskmed"
+        : "bg-ok"
   const badgeTone = level === "HIGH" ? "danger" : level === "MEDIUM" ? "warning" : "success"
   const driverText = drivers
     .map((driver) => {
@@ -146,7 +147,7 @@ export function ProcedurePanel({
                 {item.sourceLabel && (
                   <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
+                    <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
                       {t("groundedIn", { doc: item.sourceLabel })}
                     </span>
                   </span>
@@ -194,7 +195,7 @@ export function ProcedurePanel({
                           className="h-3 w-3 shrink-0"
                           aria-hidden="true"
                         />
-                        <span className="truncate">
+                        <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
                           {t("groundedIn", { doc: item.sourceLabel })}
                         </span>
                       </span>
@@ -219,6 +220,7 @@ export function ProcedurePanel({
             value={todoLabel}
             onChange={(e) => setTodoLabel(e.target.value)}
             placeholder={t("addTodo")}
+            aria-label={t("addTodo")}
             className={`flex-1 ${fieldClass}`}
           />
           <button
@@ -229,6 +231,7 @@ export function ProcedurePanel({
             {t("add")}
           </button>
         </form>
+        <MutationError show={createItem.isError || updateItem.isError} />
       </div>
 
       <div>
@@ -328,6 +331,7 @@ export function ProcedurePanel({
           <select
             value={ruleCode}
             onChange={(e) => setRuleCode(e.target.value)}
+            aria-label={t("computeDeadline")}
             className={fieldClass}
           >
             <option value="">{t("computeDeadline")}</option>
@@ -347,6 +351,7 @@ export function ProcedurePanel({
           <select
             value={sourceTimelineEventId}
             onChange={(e) => setSourceTimelineEventId(e.target.value)}
+            aria-label={t("linkToTimelineEvent")}
             className={fieldClass}
           >
             <option value="">{t("noTimelineLink")}</option>
@@ -367,6 +372,7 @@ export function ProcedurePanel({
             {t("computeDeadline")}
           </button>
         </form>
+        <MutationError show={confirmDeadline.isError || recomputeDeadline.isError || createDeadline.isError} />
       </div>
     </PanelBody>
   )

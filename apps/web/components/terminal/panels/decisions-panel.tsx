@@ -5,7 +5,7 @@ import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail"
 import { useDisputeDecisionMutation, useReactivateDecisionMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DecisionRecord } from "@/lib/terminal/types"
-import { EmptyNote, PanelBody, fieldClass, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, fieldClass, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 // The "Why?" behind one conclusion in a legal answer — every rule[].url and evidence*[].docId
 // was already verified against that turn's retrieved sources by chat-wonder-v2-api before this
@@ -43,6 +43,7 @@ export function DecisionsPanel({
             onDispute={(note) => dispute.mutate({ id: decision.id, note })}
             onReactivate={() => reactivate.mutate({ id: decision.id })}
             isPending={dispute.isPending || reactivate.isPending}
+            isError={dispute.isError || reactivate.isError}
           />
         ))}
       </ul>
@@ -56,12 +57,14 @@ function DecisionCard({
   onDispute,
   onReactivate,
   isPending,
+  isError,
 }: {
   caseId: string
   decision: DecisionRecord
   onDispute: (note?: string) => void
   onReactivate: () => void
   isPending: boolean
+  isError: boolean
 }) {
   const { t } = useTranslation("terminal")
   const [disputing, setDisputing] = useState(false)
@@ -72,7 +75,7 @@ function DecisionCard({
 
   return (
     <li
-      className={`rounded-md border px-3 py-2.5 ${disputed ? "border-orange-500/40 bg-orange-500/5" : "border-border"}`}
+      className={`rounded-md border px-3 py-2.5 ${disputed ? "border-riskmed/40 bg-riskmed/5" : "border-border"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">
@@ -82,7 +85,7 @@ function DecisionCard({
       </div>
 
       {disputed && (
-        <p className="mt-1.5 flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-orange-400">
+        <p className="mt-1.5 flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed">
           <MessageSquareWarning className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="uppercase">{t("decisionStatusDisputed")}</span>
           {decision.disputeNote ? <span className="normal-case">: {decision.disputeNote}</span> : null}
@@ -97,7 +100,7 @@ function DecisionCard({
         <button
           type="button"
           onClick={() => setShowAnnotations((s) => !s)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground"
+          className={ghostBtnClass}
         >
           {t("notes")}
         </button>
@@ -106,7 +109,7 @@ function DecisionCard({
             type="button"
             onClick={onReactivate}
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
+            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
           >
             <RotateCcw className="h-3 w-3" aria-hidden="true" />
             {t("decisionReactivate")}
@@ -125,6 +128,7 @@ function DecisionCard({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder={t("decisionDisputeNotePlaceholder")}
+              aria-label={t("decisionDisputeNotePlaceholder")}
               className={fieldClass}
               autoFocus
             />
@@ -153,13 +157,14 @@ function DecisionCard({
             type="button"
             onClick={() => setDisputing(true)}
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-transparent px-2.5 py-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
+            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
           >
             <MessageSquareWarning className="h-3 w-3" aria-hidden="true" />
             {t("decisionDispute")}
           </button>
         )}
       </div>
+      <MutationError show={isError} />
 
       {showAnnotations && (
         <div className="mt-2.5 border-t border-border pt-2.5">
