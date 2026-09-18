@@ -81,6 +81,7 @@
   "restorePane": "Ibalik ang pane",
   "dragHint": "I-drag ang title bar para ilipat ang pane. I-drag ang gilid o kanto para i-resize. Hindi magbabago ang ibang panes.",
   "resizePane": "I-resize ang pane. Gamitin ang arrow keys.",
+  "resizePaneFitHint": "I-resize ang pane. Gamitin ang arrow keys. Mag-double-click o pindutin ang Enter para i-fit ang taas sa laman.",
   "resizeColumns": "I-resize ang mga column. Gamitin ang left/right arrow keys.",
   "resizeColumnStack": "I-resize ang nakasalansang panes. Gamitin ang up/down arrow keys.",
   "resizeTabGroups": "I-resize ang mga pane. Gamitin ang left/right arrow keys.",

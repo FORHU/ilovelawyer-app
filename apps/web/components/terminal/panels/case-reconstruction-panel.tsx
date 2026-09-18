@@ -5,7 +5,7 @@ import { AlertTriangle, FileText, Loader2, Pencil, Quote, Save, Sparkles, Volume
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
-import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import {
   pollReconstructionAudio,

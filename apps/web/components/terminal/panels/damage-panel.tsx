@@ -6,7 +6,7 @@ import { useGSAP } from "@gsap/react"
 import { useCreateDamageMutation, useDeleteDamageMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DamageCategory } from "@/lib/terminal/types"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
-import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 
 const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
   ACTUAL: "damageActual",

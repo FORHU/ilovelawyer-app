@@ -14,8 +14,9 @@ import {
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import gsap from "gsap"
+import { Flip } from "gsap/Flip"
 import { useGSAP } from "@gsap/react"
-import { usePrefersReducedMotion } from "@/lib/terminal/use-reduced-motion"
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   AppWindow,
   ArrowLeft,
@@ -294,10 +295,36 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
 
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
+  const arrangementStageRef = useRef<HTMLDivElement>(null)
+  const pendingArrangementFlipRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
+  const reducedMotionForArrangement = usePrefersReducedMotion()
 
+  // Free/Columns/Tabs/Focus are 4 structurally different layout engines (absolute canvas vs.
+  // flex columns vs. a 2-group tab strip vs. a big-pane-plus-rail grid) — switching between them
+  // used to be a hard cut, every pane unmounting and a totally different tree mounting in its
+  // place. Every mode marks its own per-panel box with the same `data-flip-id={panel.id}` (see
+  // the Free-canvas pane, ColumnStack's box, Tabs' active-tab container, Focus's big-pane box),
+  // so Flip can carry a panel smoothly from wherever it sat in the old layout to wherever it
+  // lands in the new one even though the actual DOM nodes are completely different elements.
+  // Panels with no rendered box in one of the two modes (e.g. every Tabs tab that isn't the
+  // active one) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
   const setArrangement = (next: ArrangementValue) => {
+    const stage = arrangementStageRef.current
+    if (stage && !reducedMotionForArrangement) {
+      pendingArrangementFlipRef.current = Flip.getState(stage.querySelectorAll<HTMLElement>("[data-flip-id]"))
+    }
     setLayout((prev) => (prev ? { ...prev, arrangement: next } : prev))
   }
+
+  useGSAP(
+    () => {
+      const state = pendingArrangementFlipRef.current
+      if (!state) return
+      pendingArrangementFlipRef.current = null
+      Flip.from(state, { duration: 0.35, ease: "power2.inOut", absolute: true, nested: true })
+    },
+    { dependencies: [arrangement] },
+  )
 
   const visiblePanels = useMemo(() => {
     if (!layout) return []
@@ -543,6 +570,25 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   }
 
   const onResizePointerUp = endResize
+
+  // "Fit to content" for the plain N/S resize handles (see ResizeHandle's onFitToContent) — reads
+  // the panel's actual rendered content height (data-panel-scroll's scrollHeight, set on every
+  // panel's root by PanelBody) plus its header, and resizes to exactly that instead of a
+  // user-dragged height. Reuses clampResize/patchPanelRect, the same commit path a normal drag
+  // uses, by translating "grow/shrink to this height" into the dy that edge would need to move.
+  const fitPaneHeightToContent = (panel: PanelLayout, edge: "n" | "s") => {
+    const grid = document.getElementById("terminal-grid")
+    const paneEl = document.querySelector<HTMLElement>(`[data-panel-id="${CSS.escape(panel.id)}"]`)
+    const contentEl = paneEl?.querySelector<HTMLElement>("[data-panel-scroll]")
+    const headerEl = paneEl?.querySelector<HTMLElement>(".terminal-pane-header")
+    if (!grid || !paneEl || !contentEl || grid.clientHeight === 0) return
+    const naturalHeightPx = contentEl.scrollHeight + (headerEl?.offsetHeight ?? 0) + 2 // +2 for the pane's 1px top/bottom border
+    const rect = panelRect(panel)
+    const naturalHeight = naturalHeightPx / grid.clientHeight
+    const dy = edge === "s" ? naturalHeight - rect.height : rect.height - naturalHeight
+    const drag: ResizeDrag = { panelId: panel.id, edges: { [edge]: true }, startX: 0, startY: 0, ...rect }
+    patchPanelRect(panel.id, clampResize(drag, 0, dy, true))
+  }
 
   const onHeaderPointerDown = (panel: PanelLayout, event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return
@@ -993,7 +1039,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        <div className="relative min-h-0 flex-1 overflow-hidden p-3">
+        <div ref={arrangementStageRef} className="relative min-h-0 flex-1 overflow-hidden p-3">
           {visiblePanels.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
               <p className="text-sm text-muted-foreground">{t("emptyGrid")}</p>
@@ -1026,6 +1072,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   <div
                     key={panel.id}
                     data-panel-id={panel.id}
+                    data-flip-id={panel.id}
                     data-panel-labels={panelLabels ? "on" : "off"}
                     className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col contain-layout rounded-lg border bg-card ${
                       isPinned ? "border-brand-gold/60" : "border-border"
@@ -1073,8 +1120,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     </div>
                     {!isPinned && (
                       <>
-                        <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                        <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "n")} t={t} />
+                        <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "s")} t={t} />
                         <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
                         <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
                         <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
@@ -1497,6 +1544,65 @@ function ModalOverlay({
   )
 }
 
+// Crossfades between panel bodies when the active one changes — Tabs' per-group content and
+// Focus mode's "big" pane both used to swap instantly via a plain conditional render. Renders one
+// TerminalPanelBody at a time (not both mid-fade) to avoid double-mounting two panels' queries
+// simultaneously: fade the outgoing one out, swap which panelId is actually rendered, fade the
+// new one in. Skips animating on first mount (nothing to transition from yet).
+function AnimatedPanelBody({
+  panelId,
+  caseId,
+  snapshot,
+  onJumpToPanel,
+}: {
+  panelId: PanelId
+  caseId: string
+  snapshot: CaseSnapshot
+  onJumpToPanel: (id: PanelId) => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  const [displayedId, setDisplayedId] = useState(panelId)
+  const pendingIdRef = useRef(panelId)
+  const mountedRef = useRef(false)
+
+  useGSAP(
+    () => {
+      if (panelId === displayedId) return
+      pendingIdRef.current = panelId
+      const el = containerRef.current
+      if (reducedMotion || !el) {
+        setDisplayedId(panelId)
+        return
+      }
+      gsap.killTweensOf(el)
+      gsap.to(el, { opacity: 0, duration: 0.12, ease: "power1.in", onComplete: () => setDisplayedId(pendingIdRef.current) })
+    },
+    { dependencies: [panelId] },
+  )
+
+  useGSAP(
+    () => {
+      if (!mountedRef.current) {
+        mountedRef.current = true
+        return
+      }
+      if (reducedMotion) return
+      const el = containerRef.current
+      if (!el) return
+      gsap.killTweensOf(el)
+      gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "power1.out" })
+    },
+    { dependencies: [displayedId] },
+  )
+
+  return (
+    <div ref={containerRef} className="h-full min-h-0">
+      <TerminalPanelBody panelId={displayedId} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+    </div>
+  )
+}
+
 type ArrangementBodyProps = {
   panels: PanelLayout[]
   caseId: string
@@ -1716,7 +1822,10 @@ function ColumnStack({
     <div ref={stackRef} className="flex min-h-0 flex-1 flex-col gap-1.5">
       {panels.map((panel, index) => (
         <div key={panel.id} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${heights[index]} 0 0%` }}>
-          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card ${panel.pinned ? "border-brand-gold/60" : "border-border"}`}>
+          <div
+            data-flip-id={panel.id}
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card ${panel.pinned ? "border-brand-gold/60" : "border-border"}`}
+          >
             <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
               <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                 {labelFor(panel)}
@@ -1846,6 +1955,11 @@ function TabsArrangement({
         return (
           <div
             key={groupIndex}
+            // Tabs has no single per-panel box the way Free/Columns/Focus do (the header is a
+            // shared tab strip, only the active tab's body swaps) — this container stands in for
+            // "the active panel's box" during an arrangement-switch Flip, closest available
+            // analog. Inactive tabs in this group have no box at all and just fade in/out.
+            data-flip-id={activePanel?.id}
             className="relative flex min-h-0 min-w-[200px] flex-col overflow-hidden rounded-lg border border-border bg-card"
             style={{ flex: `${widths[groupIndex]} 0 0%` }}
             onDragOver={(e) => e.preventDefault()}
@@ -1922,7 +2036,7 @@ function TabsArrangement({
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
               {activePanel && (
-                <TerminalPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+                <AnimatedPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
               )}
             </div>
             {groupIndex === 0 && (
@@ -1985,7 +2099,7 @@ function FocusArrangement({
       style={{ gridTemplateColumns: "minmax(280px,1.4fr) 260px minmax(260px,1fr)" }}
       {...dropHandlers(onDrop)}
     >
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+      <div data-flip-id={focusPanel?.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
         {focusPanel && (
           <>
             <div className="terminal-pane-header flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
@@ -1999,7 +2113,7 @@ function FocusArrangement({
               />
             </div>
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              <TerminalPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
+              <AnimatedPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
             </div>
           </>
         )}
@@ -2313,6 +2427,7 @@ function ResizeHandle({
   onMove,
   onUp,
   onKeyDown,
+  onFitToContent,
   t,
   children,
 }: {
@@ -2323,6 +2438,11 @@ function ResizeHandle({
   onMove: (event: PointerEvent<HTMLDivElement>) => void
   onUp: () => void
   onKeyDown: (panel: PanelLayout, edges: ResizeEdge, event: KeyboardEvent<HTMLDivElement>) => void
+  // Only the plain N/S edge handles get this (see fitPaneHeightToContent) — snaps this edge to
+  // the panel's natural content height instead of a user-dragged one. Double-click matches the
+  // familiar spreadsheet/file-manager "double-click a border to autofit" convention; Enter is the
+  // keyboard equivalent, consistent with every other drag handle in the terminal having one.
+  onFitToContent?: () => void
   t: (key: string) => string
   children?: ReactNode
 }) {
@@ -2334,7 +2454,8 @@ function ResizeHandle({
     <div
       role="separator"
       aria-orientation={orientation}
-      aria-label={t("resizePane")}
+      aria-label={onFitToContent ? t("resizePaneFitHint") : t("resizePane")}
+      title={onFitToContent ? t("resizePaneFitHint") : undefined}
       tabIndex={0}
       className={`${className} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60`}
       onPointerDown={(event) => onDown(panel, edge, event)}
@@ -2342,7 +2463,15 @@ function ResizeHandle({
       onPointerUp={onUp}
       onPointerCancel={onUp}
       onLostPointerCapture={onUp}
-      onKeyDown={(event) => onKeyDown(panel, edge, event)}
+      onDoubleClick={onFitToContent}
+      onKeyDown={(event) => {
+        if (onFitToContent && event.key === "Enter") {
+          event.preventDefault()
+          onFitToContent()
+          return
+        }
+        onKeyDown(panel, edge, event)
+      }}
     >
       {children}
     </div>
