@@ -22,6 +22,8 @@ import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
+import { appendOptimisticUserMessage, resolveOptimisticMessageId, isOptimisticMessageId } from "@/lib/chat/optimistic-messages";
+import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
@@ -590,7 +592,10 @@ export default function ConsultationChat({
   // Composer/related-cases gating below used to only key off local isSending, which a
   // remount clears — isBusy keeps them consistent with the resumed "still thinking" bubble
   // above instead of looking idle while that bubble is showing.
-  const isBusy = isSending || isResumedGenerating;
+  // isGeneratingElsewhere covers coming back to a consultation whose send was started before
+  // handleSelectConsultation/handleNewChat reset isSending — its pendingTurn is still here and
+  // the reply is still in flight, so it must read (and gate the composer) as busy.
+  const isBusy = isSending || isResumedGenerating || isGeneratingElsewhere;
 
   // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
@@ -613,7 +618,12 @@ export default function ConsultationChat({
   // see ChatGenerationJob.jobId) and do a single refetch once it settles. Guarded on
   // `!isPendingTurnActive` so this never double-subscribes alongside doSend's own
   // sendChatMessageAndWait subscription for a turn THIS mount just sent.
-  const resumedPendingMessageId = !isPendingTurnActive && serverSaysPending ? lastHistoryEntry?.id : undefined;
+  // An optimistic id (see optimistic-messages.ts) means the POST hasn't returned yet — the
+  // originating doSend is still running and will refetch when it settles, so nothing to watch.
+  const resumedPendingMessageId =
+    !isPendingTurnActive && serverSaysPending && !isOptimisticMessageId(lastHistoryEntry?.id)
+      ? lastHistoryEntry?.id
+      : undefined;
   useEffect(() => {
     if (!consultationId || !resumedPendingMessageId) return;
     const unsubscribe = subscribeChatGeneration(resumedPendingMessageId, {
@@ -746,7 +756,7 @@ export default function ConsultationChat({
       new Set(
         (caseConsultations ?? [])
           .map((c) => c.title?.trim())
-          .filter((title): title is string => !!title),
+          .filter((title): title is string => !!title && isSuggestableTitle(title)),
       ),
     );
 
@@ -1069,6 +1079,10 @@ export default function ConsultationChat({
       // persisted — this flag lets those panels show a "generating" state immediately instead
       // of looking empty for however long the turn takes.
       startSending(activeConsultationId);
+      // Persist the prompt into the query cache right away (not just pendingTurn, which dies
+      // on unmount) so leaving and returning mid-generation still finds it — see
+      // appendOptimisticUserMessage's doc comment.
+      const optimisticId = appendOptimisticUserMessage(queryClient, activeConsultationId, opts?.displayText ?? text);
 
       // Kept separate from the displayed bubble text: the stream can carry a trailing
       // [MINDMAP]...[/MINDMAP] block that must never render as raw JSON mid-stream (the API
@@ -1117,6 +1131,9 @@ export default function ConsultationChat({
           onSessionRotated: (rotatedSessionId) => {
             queryClient.setQueryData(chatKeys.session(), { session_id: rotatedSessionId });
           },
+          messagesBefore: messagesBeforeSend,
+          onEnqueued: (messageId) =>
+            resolveOptimisticMessageId(queryClient, activeConsultationId!, optimisticId, messageId),
         },
       );
 
@@ -1140,6 +1157,11 @@ export default function ConsultationChat({
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Drop (or, for a chat:error, replace with the server's FAILED copy of) the optimistic
+      // prompt written above, even if the user has navigated away from this send.
+      if (startedConsultationId) {
+        void queryClient.invalidateQueries({ queryKey: chatKeys.messages(startedConsultationId), refetchType: "all" });
+      }
       if (sendTokenRef.current === myToken) {
         setPendingTurn((prev) => {
           if (!prev) return prev;
@@ -2020,7 +2042,7 @@ export default function ConsultationChat({
                   // own synthetic one, not pendingTurn's, so isSending/isPendingTurnActive (both
                   // local to this instance) don't apply.
                   const isStreamingThis =
-                    ((isSending && isPendingTurnActive) || isResumedGenerating) && i === visibleMessages.length - 1;
+                    ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) && i === visibleMessages.length - 1;
                   const isLastMessage = i === visibleMessages.length - 1;
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next

@@ -325,12 +325,24 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
 export async function sendChatMessageAndWait(
   queryClient: QueryClient,
   args: Parameters<typeof sendChatMessage>[0],
-  handlers?: { onChunk?: (chunk: string) => void; onSessionRotated?: (sessionId: string) => void },
+  handlers?: {
+    onChunk?: (chunk: string) => void
+    onSessionRotated?: (sessionId: string) => void
+    /** The persisted-message count before this turn, when the caller has already put an
+     * optimistic user message in the cache (optimistic-messages.ts) — otherwise the
+     * "grew by two" poll below would be off by one. */
+    messagesBefore?: number
+    /** The POST returned — `messageId` is the real id of the user message just enqueued. */
+    onEnqueued?: (messageId: string) => void
+  },
 ): Promise<{ messageId: string; sessionId: string }> {
   const messagesBefore =
-    queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(args.consultationId))?.length ?? 0
+    handlers?.messagesBefore ??
+    queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(args.consultationId))?.length ??
+    0
 
   const { messageId, sessionId } = await sendChatMessage(args)
+  handlers?.onEnqueued?.(messageId)
 
   await new Promise<void>((resolve, reject) => {
     let settled = false;

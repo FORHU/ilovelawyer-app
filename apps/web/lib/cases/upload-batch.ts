@@ -52,6 +52,8 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
+  mp3: "audio/mpeg",
+  mp4: "video/mp4",
 }
 
 export function resolveContentType(file: File): string {
@@ -66,7 +68,7 @@ export function resolveContentType(file: File): string {
  * `isAllowedFileType`. */
 export const ALLOWED_EXTENSIONS = Object.keys(EXTENSION_CONTENT_TYPES)
 
-export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, JPG, PNG"
+export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, JPG, PNG, MP3, MP4"
 
 export const UNSUPPORTED_FILE_TYPE_MESSAGE = `Unsupported file type. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`
 
