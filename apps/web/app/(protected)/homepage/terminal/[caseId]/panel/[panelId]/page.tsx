@@ -23,7 +23,7 @@ export default function TerminalPanelPopoutPage() {
   const snapshot = useCaseSnapshotQuery(caseId)
 
   return (
-    <div className="dark flex h-screen min-h-0 flex-col bg-background font-['Inter'] text-foreground">
+    <div className="flex h-screen min-h-0 flex-col bg-background font-['Inter'] text-foreground">
       <div className="flex h-10 shrink-0 items-center border-b border-border bg-card px-3">
         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[1.4px] text-foreground uppercase">
           {isValidPanel ? PANEL_TITLES[panelId] : t("loadError")}
@@ -41,8 +41,8 @@ export default function TerminalPanelPopoutPage() {
           </div>
         ) : snapshot.isError || !snapshot.data ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-sm">
-            <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
-            <p className="text-red-400">{t("loadError")}</p>
+            <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
+            <p className="text-destructive">{t("loadError")}</p>
             <button
               type="button"
               onClick={() => snapshot.refetch()}

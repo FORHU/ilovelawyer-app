@@ -893,20 +893,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
-  if (snapshot.isLoading || catalog.isLoading) {
+  // `layout` isn't set until the effect above sees both catalog and workspaces resolved, so the
+  // loading gate has to track workspaces too — otherwise a workspaces fetch that outlasts
+  // catalog/snapshot closes this gate one render early and falls through to the error state below
+  // (`!layout` still true, effect hasn't committed yet) even though nothing has actually failed.
+  if (snapshot.isLoading || catalog.isLoading || workspaces.isLoading || (!layout && !snapshot.isError && !catalog.isError)) {
     return (
-      <div className="dark flex flex-1 flex-col items-center justify-center gap-2 bg-background font-['Inter'] text-sm text-muted-foreground">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-background font-['Inter'] text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         {t("loading")}
       </div>
     )
   }
 
-  if (snapshot.isError || !snapshot.data || !layout) {
+  if (snapshot.isError || catalog.isError || !snapshot.data || !layout) {
     return (
-      <div className="dark flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
-        <AlertCircle className="h-6 w-6 text-red-400" aria-hidden="true" />
-        <p className="text-red-400">{t("loadError")}</p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
+        <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
+        <p className="text-destructive">{t("loadError")}</p>
         <button type="button" onClick={() => snapshot.refetch()} className="text-xs font-semibold uppercase tracking-wider text-brand-gold hover:underline">
           {t("retry")}
         </button>
@@ -927,12 +931,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const maximizedPanel = maximizedId ? layout.panels.find((p) => p.id === maximizedId) : undefined
 
   return (
-    // The Legal Terminal is always the brand's near-black/gold palette (matching the redesign
-    // screenshots), regardless of the user's light/dark theme preference — same intent as
-    // global-header.tsx's always-black chrome, but scoped here via Tailwind's `dark` class
-    // instead of hardcoding every one of the many bg-background/bg-card/border-border tokens
-    // already used across this file, terminal-panels.tsx, and the sidebar.
-    <div ref={rootRef} className="dark relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
+    <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
         {/* Case row */}
         <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
           {/* Inline with the row instead of TerminalSettingsSidebar's own floating trigger —
@@ -966,7 +965,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
             {snapshot.data.case.caseName}
           </h1>
-          <span className="hidden shrink-0 rounded-md border border-orange-400/30 bg-orange-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-orange-400 sm:inline">
+          <span className="hidden shrink-0 rounded-md border border-riskmed/30 bg-riskmed/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-riskmed sm:inline">
             {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
           </span>
           {shouldShowUpdatingAnalysis(refreshJob.data?.status) && (
@@ -1460,7 +1459,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             <ModalOverlay
               onClose={() => setReplaceTarget(null)}
               labelledBy="replace-pane-prompt"
-              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-background/50"
               className="w-72 rounded-lg border border-border bg-card p-3 shadow-2xl focus:outline-none"
             >
               {(close) => (
@@ -1559,7 +1558,7 @@ function PreferenceToggle({
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-brand-gold" : "bg-muted-foreground/30"}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-background dark:bg-foreground shadow transition-transform ${
             checked ? "translate-x-4" : "translate-x-0.5"
           }`}
         />
