@@ -151,6 +151,47 @@ export function useUnarchiveCaseMutation() {
   })
 }
 
+export interface BulkActionResult<T> {
+  succeeded: T[]
+  failed: { id: string; error: string }[]
+}
+
+/** Bulk "Select All" archive from the Active Cases tab — one request carrying every selected id
+ * (see CaseSvc.archiveMany on the backend, which also cascades into each case's documents),
+ * instead of firing N parallel single-item calls. Mirrors useBulkUnarchiveCasesMutation below. */
+export function useBulkArchiveCasesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      apiFetch<BulkActionResult<CaseRecord>>("/api/my-cases/archive", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      result.succeeded.forEach((c) => queryClient.setQueryData(caseKeys.detail(c.id), c))
+    },
+  })
+}
+
+/** Bulk "Select All" restore from the Archived Cases tab — one request carrying every selected id
+ * (see CaseSvc.unarchiveMany on the backend, which also cascades into each case's documents),
+ * instead of firing N parallel single-item calls. */
+export function useBulkUnarchiveCasesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      apiFetch<BulkActionResult<CaseRecord>>("/api/my-cases/unarchive", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+      result.succeeded.forEach((c) => queryClient.setQueryData(caseKeys.detail(c.id), c))
+    },
+  })
+}
+
 export interface UserDocument {
   id: string
   userId: string
@@ -505,6 +546,27 @@ export function useUnarchiveCaseDocumentMutation() {
     onSuccess: (_updated, { documentId, caseId }) => {
       queryClient.setQueryData<UserDocument[]>(caseKeys.archivedTimeline(caseId), (old) =>
         old ? old.filter((d) => d.id !== documentId) : old,
+      )
+      queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+    },
+  })
+}
+
+/** Bulk "Select All" restore from the Archived documents view — one request carrying every
+ * selected id (see DocumentSvc.unarchiveMany on the backend), instead of firing N parallel
+ * single-item calls like the (backend-endpoint-less) bulk archive flow above does. */
+export function useBulkUnarchiveCaseDocumentsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ documentIds }: { documentIds: string[]; caseId: string }) =>
+      apiFetch<BulkActionResult<UserDocument>>("/api/documents/unarchive", {
+        method: "POST",
+        body: JSON.stringify({ ids: documentIds }),
+      }),
+    onSuccess: (result, { caseId }) => {
+      const restoredIds = new Set(result.succeeded.map((d) => d.id))
+      queryClient.setQueryData<UserDocument[]>(caseKeys.archivedTimeline(caseId), (old) =>
+        old ? old.filter((d) => !restoredIds.has(d.id)) : old,
       )
       queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
     },
