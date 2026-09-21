@@ -18,3 +18,7 @@ Three pieces of real new functionality ship alongside the reskin, each decided o
 ## Consequences
 
 This is substantially more than a CSS pass: it touches the existing drag/resize interaction logic, adds a new DnD system for the Panel Library, and requires a spacing/typography pass across every Pane body.
+
+## Amendment: light mode
+
+Terminal originally forced the dark palette unconditionally (a hardcoded `dark` class on its root wrappers) regardless of the user's site-wide theme choice. That's reversed: Terminal now follows the app's `next-themes` state like every other page, using the same semantic tokens (`--background`, `--card`, `--border`, etc.) which already carry both light and dark values. No Terminal-local theme toggle was added — the existing `ThemeToggle` in the global header covers it.
