@@ -265,6 +265,7 @@
   "decisionRuleApplied": "Rule applied",
   "decisionEvidenceFor": "Evidence for",
   "decisionEvidenceAgainst": "Evidence against",
+  "decisionDocumentFallback": "Document",
   "decisionAlternativeConsidered": "Alternative considered",
   "decisionRejectedWhy": "Why rejected",
   "decisionWeighting": "Weighting",
