@@ -72,7 +72,7 @@
   "retry": "Retry",
   "editCase": "Edit {{caseName}}",
   "deleteCase": "Delete {{caseName}}",
-  "deleteConfirm": "Delete \"{{caseName}}\"? This cannot be undone.",
+  "deleteConfirm": "Delete \"{{caseName}}\"? This will permanently delete all documents, files, and other data uploaded to this case. This cannot be undone.",
   "archiveCase": "Archive {{caseName}}",
   "unarchiveCase": "Restore {{caseName}}",
   "archiveCaseCta": "Archive Case",
