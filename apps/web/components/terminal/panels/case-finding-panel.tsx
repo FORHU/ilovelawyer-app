@@ -31,52 +31,48 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
 
   return (
     <PanelBody gap="4">
-      {items.length === 0 ? (
-        <EmptyNote>{t("noFindings")}</EmptyNote>
-      ) : (
-        <PanelRowList>
-          {items.map((node) => {
-            const item = node.data as {
-              label: string
-              notes?: string | null
-              sourceLabel?: string | null
-            }
-            return (
-              <PanelRow key={node.id} className="items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
-                  {item.notes === "AI" && (
-                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
-                      <Sparkles className="h-3 w-3" aria-hidden="true" />
-                      {t("aiGenerated")}
+      <PanelRowList empty={<EmptyNote>{t("noFindings")}</EmptyNote>}>
+        {items.map((node) => {
+          const item = node.data as {
+            label: string
+            notes?: string | null
+            sourceLabel?: string | null
+          }
+          return (
+            <PanelRow key={node.id} className="items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
+                {item.notes === "AI" && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    {t("aiGenerated")}
+                  </span>
+                )}
+                {item.sourceLabel && (
+                  <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <FileText
+                      className="h-3 w-3 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate" title={item.sourceLabel}>
+                      {t("groundedIn", { doc: item.sourceLabel })}
                     </span>
-                  )}
-                  {item.sourceLabel && (
-                    <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <FileText
-                        className="h-3 w-3 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <span className="truncate" title={item.sourceLabel}>
-                        {t("groundedIn", { doc: item.sourceLabel })}
-                      </span>
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => del.mutate(node.refId)}
-                  disabled={del.isPending}
-                  className={dangerIconBtnClass}
-                  aria-label={t("delete")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </PanelRow>
-            )
-          })}
-        </PanelRowList>
-      )}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => del.mutate(node.refId)}
+                disabled={del.isPending}
+                className={dangerIconBtnClass}
+                aria-label={t("delete")}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </PanelRow>
+          )
+        })}
+      </PanelRowList>
       <form
         className="mt-auto flex gap-2"
         onSubmit={(e) => {
@@ -124,42 +120,38 @@ export function CaseFindingPanel({
 
   return (
     <PanelBody gap="4">
-      {items.length === 0 ? (
-        <EmptyNote>{t("noFindings")}</EmptyNote>
-      ) : (
-        <PanelRowList>
-          {items.map((item) => (
-            <PanelRow key={item.id} className="items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
-                {item.notes === "AI" && (
-                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
-                    <Sparkles className="h-3 w-3" aria-hidden="true" />
-                    {t("aiGenerated")}
+      <PanelRowList empty={<EmptyNote>{t("noFindings")}</EmptyNote>}>
+        {items.map((item) => (
+          <PanelRow key={item.id} className="items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
+              {item.notes === "AI" && (
+                <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                  {t("aiGenerated")}
+                </span>
+              )}
+              {item.sourceLabel && (
+                <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate" title={item.sourceLabel}>
+                    {t("groundedIn", { doc: item.sourceLabel })}
                   </span>
-                )}
-                {item.sourceLabel && (
-                  <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate" title={item.sourceLabel}>
-                      {t("groundedIn", { doc: item.sourceLabel })}
-                    </span>
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => del.mutate(item.id)}
-                disabled={del.isPending}
-                className={dangerIconBtnClass}
-                aria-label={t("delete")}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </PanelRow>
-          ))}
-        </PanelRowList>
-      )}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => del.mutate(item.id)}
+              disabled={del.isPending}
+              className={dangerIconBtnClass}
+              aria-label={t("delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </PanelRow>
+        ))}
+      </PanelRowList>
       <form
         className="mt-auto flex gap-2"
         onSubmit={(e) => {

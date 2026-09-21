@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ComponentPropsWithoutRef,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from "react"
@@ -46,12 +47,14 @@ export function MutationError({ show, children }: { show: boolean; children?: Re
   return <p className="text-[11px] text-danger">{children ?? t("genericSaveError")}</p>
 }
 
+// The 3 recurring text roles inside a panel body — every panel should pick one of these instead
+// of hand-picking a bracket size (10/11/12/13px) or a bare text-xs/text-sm. See docs/adr/0013.
+export const labelTextClass = "text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase"
+export const bodyTextClass = "text-[13px] text-foreground"
+export const secondaryTextClass = "text-[13px] text-muted-foreground"
+
 export function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <p className="mb-2 text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase">
-      {children}
-    </p>
-  )
+  return <p className={cn("mb-2", labelTextClass)}>{children}</p>
 }
 
 export function EmptyNote({ children }: { children: ReactNode }) {
@@ -71,12 +74,15 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 // unmount a removed row before any exit tween could play, so a removed key is kept rendered here
 // (in `rendered`, tracked separately from the live `children`) until its own fade-out finishes;
 // only then is it dropped, and Flip smooths the remaining rows into their new positions instead
-// of letting them snap into the vacated space. Known gap: several panels swap their whole
-// `PanelRowList` for an `<EmptyNote>` once the last row is gone (see e.g. witness-panel.tsx) —
-// that parent-level swap unmounts this component outright, so the very last row in a list never
-// gets to play its exit animation. Not worth threading an "animating out" flag through every
-// panel's empty-state check for that one edge case.
-export function PanelRowList({ children }: { children: ReactNode }) {
+// of letting them snap into the vacated space.
+//
+// The empty state lives here too (`empty` prop) rather than in each caller's own
+// `items.length === 0 ? <EmptyNote/> : <PanelRowList>` branch — a parent-level branch like that
+// unmounts this component the instant the source array hits 0, before the last row's own
+// fade-out (above) ever gets to run. Keeping this component mounted and switching to `empty`
+// only once `rendered` itself has drained (i.e. after the exit tween completes) lets the very
+// last row animate out the same way row 2-of-5 does.
+export function PanelRowList({ children, empty }: { children: ReactNode; empty?: ReactNode }) {
   const listRef = useRef<HTMLUListElement>(null)
   const reducedMotion = usePrefersReducedMotion()
   const items = Children.toArray(children).filter(isValidElement) as ReactElement<Record<string, unknown>>[]
@@ -133,6 +139,8 @@ export function PanelRowList({ children }: { children: ReactNode }) {
     flipStateRef.current = null
   }, [rendered])
 
+  if (rendered.length === 0) return <>{empty ?? null}</>
+
   return (
     <ul ref={listRef} className="overflow-hidden rounded-lg border border-border divide-y divide-border">
       {rendered.map((item) => cloneElement(item, { "data-row-key": String(item.key) }))}
@@ -158,8 +166,13 @@ export function PanelRow({
 // Shared root wrapper for every panel body. Density lives here in one place —
 // see High Density Mode in CONTEXT.md / docs/adr/0013-legal-terminal-redesign.md —
 // so a panel author never touches spacing tokens directly.
-const DENSE_GAP = { "3": "gap-1.5", "4": "gap-2.5", "5": "gap-3" } as const
-const NORMAL_GAP = { "3": "gap-3", "4": "gap-4", "5": "gap-5" } as const
+//
+// gap="4" is the default for every panel. gap="3" is reserved for panels that are one long
+// dense list with no sub-sections (Case Reconstruction, Red Team, Team Audit, Decisions) —
+// tighter rhythm reads as a table there, not a form. There is no gap="5": no panel needs looser
+// spacing than the default: extra separation between sections comes from a divider/heading.
+const DENSE_GAP = { "3": "gap-1.5", "4": "gap-2.5" } as const
+const NORMAL_GAP = { "3": "gap-3", "4": "gap-4" } as const
 
 export function PanelBody({
   gap,
@@ -180,6 +193,60 @@ export function PanelBody({
       } text-foreground`}
     >
       {children}
+    </div>
+  )
+}
+
+// The one place every arrangement mode (Free canvas, Columns, Tabs, Focus) builds pane chrome —
+// was duplicated 4x by hand in legal-terminal.tsx before this, one copy per arrangement mode,
+// each with its own flat `rounded-lg border` and no shadow (unlike the rest of the app's real
+// `Card` primitive: rounded-2xl/shadow-md/ring-1 — see packages/ui/src/components/card.tsx).
+//
+// Structure is two nested elements occupying the identical bounding rect, not one, because a
+// `box-shadow` on an `overflow-hidden` element gets clipped: the OUTER element owns
+// position/size (passed in via `className`/`style` from the caller — unchanged from before),
+// the border, ring, and shadow, with no overflow-hidden so a caller's resize handles (which
+// anchor to it with negative-offset absolute positioning) keep working exactly as before. The
+// INNER element sits at `absolute inset-0`, clips content to the same rounded corners, and holds
+// the header + body — both of which can drop their own `rounded-t-*`/`rounded-b-*` classes since
+// this inner clip already handles it.
+export function Pane({
+  className,
+  style,
+  pinned,
+  panelId,
+  flipId,
+  header,
+  children,
+  resizeHandles,
+  ...rest
+}: {
+  className?: string
+  style?: CSSProperties
+  pinned?: boolean
+  panelId?: string
+  flipId?: string
+  header: ReactNode
+  children: ReactNode
+  resizeHandles?: ReactNode
+} & Omit<ComponentPropsWithoutRef<"div">, "className" | "style" | "children">) {
+  return (
+    <div
+      {...rest}
+      data-panel-id={panelId}
+      data-flip-id={flipId}
+      className={cn(
+        "rounded-2xl border bg-card shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10",
+        pinned ? "border-brand-gold/60" : "border-border",
+        className,
+      )}
+      style={style}
+    >
+      <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-2xl">
+        {header}
+        {children}
+      </div>
+      {resizeHandles}
     </div>
   )
 }
