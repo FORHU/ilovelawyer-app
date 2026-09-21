@@ -754,7 +754,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
-  if (snapshot.isLoading || catalog.isLoading) {
+  // `layout` isn't set until the effect above sees both catalog and workspaces resolved, so the
+  // loading gate has to track workspaces too — otherwise a workspaces fetch that outlasts
+  // catalog/snapshot closes this gate one render early and falls through to the error state below
+  // (`!layout` still true, effect hasn't committed yet) even though nothing has actually failed.
+  if (snapshot.isLoading || catalog.isLoading || workspaces.isLoading || (!layout && !snapshot.isError && !catalog.isError)) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-background font-['Inter'] text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -763,7 +767,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     )
   }
 
-  if (snapshot.isError || !snapshot.data || !layout) {
+  if (snapshot.isError || catalog.isError || !snapshot.data || !layout) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background font-['Inter'] text-sm">
         <AlertCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
