@@ -10,7 +10,7 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight, MoreHorizontal, X } from "lucide-react";
+import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,11 +31,9 @@ import {
   type UpdateCasePayload,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pagination } from "@/components/ui/pagination";
 
-// Kept small (rather than shrinking the row/heading spacing) so a full page of rows fits
-// a typical desktop browser window (~900px+ tall) without a page scrollbar — the fixed
-// chrome above the table (heading, search bar, table header) already runs ~520px on its own.
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 15;
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
@@ -551,46 +549,18 @@ export default function CaseManagerDashboard() {
         )}
 
         {!isLoading && !isError && cases.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between gap-4 pt-2">
-            {page > 1 ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-                    {t("pagination.previous")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("pagination.previous")}</TooltipContent>
-              </Tooltip>
-            ) : (
-              <span aria-hidden="true" />
-            )}
-
-            <span className="text-[12px] text-muted-foreground">
-              {t("pagination.pageOf", { page, total: totalPages })}
-              {" | "}
-              {t("caseCountBadge", { count: cases.length })}
-            </span>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  {t("pagination.next")}
-                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("pagination.next")}</TooltipContent>
-            </Tooltip>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            labels={{
+              first: t("pagination.first"),
+              previous: t("pagination.previous"),
+              next: t("pagination.next"),
+              last: t("pagination.last"),
+            }}
+            className="justify-center pt-2"
+          />
         )}
 
         {isSearchEmpty && (

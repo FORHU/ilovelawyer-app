@@ -63,9 +63,10 @@
   },
   "lastUpdated": "Last updated",
   "pagination": {
+    "first": "First page",
     "previous": "Previous",
     "next": "Next",
-    "pageOf": "Page {{page}} of {{total}}"
+    "last": "Last page"
   },
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",
