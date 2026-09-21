@@ -6,6 +6,7 @@ import { Bell, BellOff } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
+import { useMobileNavStore } from "@/lib/store/mobile-nav.store"
 import {
   useNotificationsQuery,
   useUnreadCountQuery,
@@ -22,6 +23,9 @@ export function NotificationBell() {
   const { t } = useTranslation("common")
   const [open, setOpen] = useState(false)
   const router = useRouter()
+  // This bell is also rendered inside GlobalHeader's mobile hamburger drawer, so navigating
+  // away must close that drawer too — otherwise it's left covering the destination page.
+  const closeMobileMenu = useMobileNavStore((s) => s.close)
 
   const unreadCountQuery = useUnreadCountQuery()
   // Only fetches the list once the popover has actually been opened — no point paying for it
@@ -42,6 +46,7 @@ export function NotificationBell() {
   function handleOpenNotification(notification: Notification) {
     if (!notification.isRead) markRead.mutate(notification.id)
     setOpen(false)
+    closeMobileMenu()
     if (notification.link) router.push(notification.link)
   }
 
@@ -133,7 +138,10 @@ export function NotificationBell() {
         <div className="border-t border-border p-1.5">
           <Link
             href="/homepage/notifications"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              closeMobileMenu()
+            }}
             className="block rounded-lg px-2.5 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-primary transition-colors hover:bg-foreground/5"
           >
             {t("notifications.viewAll")}
