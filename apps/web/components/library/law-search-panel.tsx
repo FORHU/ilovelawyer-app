@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, Loader2, Search, X } from "lucide-react"
+import { ArrowRight, ChevronLeft, ChevronRight, Loader2, Search, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/lib/store/auth.store"
 import {
@@ -60,6 +60,12 @@ export function LawSearchPanel() {
   const facetKind = cfg.facetKind(category)
   const canBrowse = cfg.browsable(category)
 
+  // Browse is cursor-paged (no total), so "page N" is an index into the fetched cursor pages.
+  // Keyed by the active filters so changing category/facets snaps back to page 1 without an effect.
+  const filterKey = JSON.stringify([category, caseType, topics, courts])
+  const [pageState, setPageState] = useState({ key: filterKey, index: 0 })
+  const requestedPage = pageState.key === filterKey ? pageState.index : 0
+
   const browse = useLawBrowseInfiniteQuery({
     category,
     caseType: facetKind === "ph-jurisprudence" && caseType ? caseType : undefined,
@@ -109,7 +115,16 @@ export function LawSearchPanel() {
     search.mutate({ category, q })
   }
 
-  const browseItems = browse.data?.pages.flatMap((p) => p.items) ?? []
+  const browsePages = browse.data?.pages ?? []
+  const pageIndex = Math.min(requestedPage, Math.max(0, browsePages.length - 1))
+  const browseItems = browsePages[pageIndex]?.items ?? []
+  const isLastPage = pageIndex >= browsePages.length - 1 && !browse.hasNextPage
+  const goToPage = (index: number) => setPageState({ key: filterKey, index })
+  const goNext = async () => {
+    if (pageIndex + 1 < browsePages.length) return goToPage(pageIndex + 1)
+    const res = await browse.fetchNextPage()
+    if ((res.data?.pages.length ?? 0) > pageIndex + 1) goToPage(pageIndex + 1)
+  }
   const notice = showingSearch ? search.data?.notice : browse.data?.pages[0]?.notice
 
   const renderCard = (item: LawSearchItem) => {
@@ -345,18 +360,42 @@ export function LawSearchPanel() {
                   <div className={cardGridClass}>{browseItems.map(renderCard)}</div>
                 )}
 
-                {browse.hasNextPage && (
-                  <button
-                    type="button"
-                    onClick={() => browse.fetchNextPage()}
-                    disabled={browse.isFetchingNextPage}
-                    className="mx-auto inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:border-foreground/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {browse.isFetchingNextPage && (
-                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                {browseItems.length > 0 && (pageIndex > 0 || !isLastPage) && (
+                  <div className="flex items-center justify-between gap-4 pt-2">
+                    {pageIndex > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => goToPage(pageIndex - 1)}
+                        className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-[11px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:border-foreground/40"
+                      >
+                        <ChevronLeft className="size-3.5" aria-hidden="true" />
+                        {t("lawSearch.pagePrevious")}
+                      </button>
+                    ) : (
+                      <span aria-hidden="true" />
                     )}
-                    {t("lawSearch.loadMore")}
-                  </button>
+
+                    <span className="text-[12px] text-muted-foreground">
+                      {isLastPage
+                        ? t("lawSearch.pageOf", { page: pageIndex + 1, total: browsePages.length })
+                        : t("lawSearch.pageNumber", { page: pageIndex + 1 })}
+                      {" | "}
+                      {t("lawSearch.pageCount", { count: browseItems.length })}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => void goNext()}
+                      disabled={isLastPage || browse.isFetchingNextPage}
+                      className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-[11px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:border-foreground/40 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      {browse.isFetchingNextPage ? (
+                        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      ) : null}
+                      {t("lawSearch.pageNext")}
+                      <ChevronRight className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
                 )}
               </>
             )}

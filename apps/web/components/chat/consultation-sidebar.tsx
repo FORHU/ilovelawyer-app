@@ -8,6 +8,7 @@ import {
   useDeleteConsultationMutation,
 } from "@/lib/chat/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -44,6 +45,7 @@ export default function ConsultationSidebar({
   const { t } = useTranslation("homepage");
   const { data: consultations } = useConsultationsQuery(caseId);
   const organization = useAuthStore((s) => s.organization);
+  const sendingConsultationIds = useSendingConsultationsStore((s) => s.sendingConsultationIds);
   const renameConsultation = useRenameConsultationMutation();
   const deleteConsultation = useDeleteConsultationMutation();
   const asideRef = useRef<HTMLElement>(null);
@@ -100,7 +102,6 @@ export default function ConsultationSidebar({
           <button
             onClick={() => {
               onNewChat();
-              onExpandedChange(false);
               onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
@@ -200,7 +201,6 @@ export default function ConsultationSidebar({
                       <button
                         onClick={() => {
                           onSelectConsultation(c.id);
-                          onExpandedChange(false);
                           onMobileOpenChange(false);
                         }}
                         // Gemini-style pill: the consultation you're currently in gets its own
@@ -215,6 +215,17 @@ export default function ConsultationSidebar({
                     </TooltipTrigger>
                     <TooltipContent side="right">Open this consultation: {label}</TooltipContent>
                   </Tooltip>
+
+                  {/* ChatGPT-style: a spinner beside the title while this consultation's reply is
+                      still generating, so a turn left running in the background (user started a new
+                      consultation or switched away) never looks stalled. */}
+                  {sendingConsultationIds.has(c.id) && (
+                    <Loader2
+                      role="status"
+                      aria-label={t("sidebar.generatingResponse")}
+                      className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground mr-2"
+                    />
+                  )}
 
                   {/* Revealed on hover/focus so the row stays clean the rest of the time;
                       always shown on mobile, where there's no hover state to reveal them. */}
