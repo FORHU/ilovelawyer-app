@@ -3,11 +3,14 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import EditCaseModal from "@/components/cases/edit-case-modal";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
+import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
+import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight, MoreHorizontal, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -21,6 +24,8 @@ import {
   useDeleteCaseMutation,
   useArchiveCaseMutation,
   useUnarchiveCaseMutation,
+  useBulkArchiveCasesMutation,
+  useBulkUnarchiveCasesMutation,
   type CaseRecord,
   type CaseStatus,
   type UpdateCasePayload,
@@ -42,10 +47,24 @@ export default function CaseManagerDashboard() {
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
   const [archivingCase, setArchivingCase] = useState<CaseRecord | null>(null);
+  // Bulk selection — available on both tabs (Active gets bulk archive, Archived gets bulk
+  // restore), scoped to the current page of results (same "select what's on screen" scope as
+  // DocumentFolderBrowser's bulk selection), so it's cleared whenever the page, tab, or search
+  // changes out from under it rather than silently acting on ids no longer visible.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(new Set());
+  const [confirmingBulkArchive, setConfirmingBulkArchive] = useState(false);
+  const [confirmingBulkRestore, setConfirmingBulkRestore] = useState(false);
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedCaseIds(new Set());
+  };
 
   const switchStatusFilter = (next: CaseStatus) => {
     setStatusFilter(next);
     setPage(1);
+    exitSelectMode();
   };
 
   // Debounce so we don't fire a request on every keystroke while searching across
@@ -73,10 +92,54 @@ export default function CaseManagerDashboard() {
     }
   }, [data, page, totalPages]);
 
+  // A selection is scoped to the current page's ids — paging away (or a new search/page of
+  // results replacing them) makes it stale, so drop it rather than let "Select all" silently
+  // point at cases no longer on screen.
+  React.useEffect(() => {
+    exitSelectMode();
+  }, [page, debouncedSearch]);
+
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
   const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
   const { mutateAsync: archiveCase, isPending: isArchiving } = useArchiveCaseMutation();
   const { mutate: unarchiveCase } = useUnarchiveCaseMutation();
+  const { mutateAsync: bulkArchiveCases, isPending: isBulkArchiving } = useBulkArchiveCasesMutation();
+  const { mutateAsync: bulkUnarchiveCases, isPending: isBulkRestoring } = useBulkUnarchiveCasesMutation();
+
+  const toggleCaseSelected = (id: string) => {
+    setSelectedCaseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allCasesSelected = cases.length > 0 && selectedCaseIds.size === cases.length;
+
+  const toggleSelectAllCases = () => {
+    setSelectedCaseIds(allCasesSelected ? new Set() : new Set(cases.map((c) => c.id)));
+  };
+
+  const handleBulkArchive = async () => {
+    const ids = [...selectedCaseIds];
+    const result = await bulkArchiveCases(ids);
+    setConfirmingBulkArchive(false);
+    exitSelectMode();
+    if (result.failed.length > 0) {
+      toast.error(t("archiveCasesError", { count: result.failed.length }));
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    const ids = [...selectedCaseIds];
+    const result = await bulkUnarchiveCases(ids);
+    setConfirmingBulkRestore(false);
+    exitSelectMode();
+    if (result.failed.length > 0) {
+      toast.error(t("restoreCasesError", { count: result.failed.length }));
+    }
+  };
 
   const handleSaveEdit = async (payload: UpdateCasePayload) => {
     if (!editingCase) return;
@@ -198,6 +261,118 @@ export default function CaseManagerDashboard() {
           </div>
         </div>
 
+        {/* Select / bulk-action row — same shape as DocumentFolderBrowser's selection bar
+         * (select-all checkbox + count, Deselect all, action button, Cancel). Active gets bulk
+         * archive, Archived gets bulk restore — see the action button branch below. */}
+        {!isLoading && !isError && cases.length > 0 && (
+          <div
+            className={
+              selectMode
+                ? "flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
+                : "flex items-center justify-end"
+            }
+          >
+            {selectMode ? (
+              <>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={allCasesSelected}
+                      onChange={toggleSelectAllCases}
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
+                    />
+                    {t("selectAllCases")}
+                    <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                      {t("selectedCasesCount", { count: selectedCaseIds.size })}
+                    </span>
+                  </label>
+                  {selectedCaseIds.size > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCaseIds(new Set())}
+                          disabled={isBulkArchiving || isBulkRestoring}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          {t("deselectAllCases")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("deselectAllCases")}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-2.5">
+                  {statusFilter === "ARCHIVED" ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={selectedCaseIds.size === 0 || isBulkRestoring}
+                          onClick={() => setConfirmingBulkRestore(true)}
+                          className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400"
+                        >
+                          {isBulkRestoring ? (
+                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          )}
+                          {t("restoreSelectedCases")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("restoreSelectedCases")}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={selectedCaseIds.size === 0 || isBulkArchiving}
+                          onClick={() => setConfirmingBulkArchive(true)}
+                          className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
+                        >
+                          {isBulkArchiving ? (
+                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          )}
+                          {t("archiveSelectedCases")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("archiveSelectedCases")}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={exitSelectMode}
+                        disabled={isBulkArchiving || isBulkRestoring}
+                        aria-label={t("editModal.cancel")}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
+                      >
+                        <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("editModal.cancel")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSelectMode(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:hover:bg-overlay-hover"
+              >
+                <CheckSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
+                {t("selectCases")}
+              </button>
+            )}
+          </div>
+        )}
+
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -240,14 +415,48 @@ export default function CaseManagerDashboard() {
                   key={c.id}
                   className="group/row flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
                 >
-                  <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
-                    <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
-                      {c.caseName}
-                    </span>
-                    <span className="text-muted-foreground text-[12px] truncate">
-                      {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
-                    </span>
-                  </Link>
+                  {selectMode ? (
+                    <div
+                      role="checkbox"
+                      aria-checked={selectedCaseIds.has(c.id)}
+                      aria-label={t("selectCase", { caseName: c.caseName })}
+                      tabIndex={0}
+                      onClick={() => toggleCaseSelected(c.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleCaseSelected(c.id);
+                        }
+                      }}
+                      className="min-w-0 flex cursor-pointer items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCaseIds.has(c.id)}
+                        readOnly
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 rounded border-border accent-brand-gold"
+                      />
+                      <div className="min-w-0 flex flex-col gap-1">
+                        <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
+                          {c.caseName}
+                        </span>
+                        <span className="text-muted-foreground text-[12px] truncate">
+                          {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
+                      <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
+                        {c.caseName}
+                      </span>
+                      <span className="text-muted-foreground text-[12px] truncate">
+                        {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
+                      </span>
+                    </Link>
+                  )}
 
                   {/* Below md this becomes the card's second row (date, links, and the action
                    * menu on one line); at md+ each `contents` wrapper drops out so date, links,
@@ -480,6 +689,24 @@ export default function CaseManagerDashboard() {
           isArchiving={isArchiving}
           onConfirm={() => void handleConfirmArchive()}
           onClose={() => setArchivingCase(null)}
+        />
+      )}
+
+      {confirmingBulkArchive && (
+        <BulkArchiveCasesModal
+          count={selectedCaseIds.size}
+          isArchiving={isBulkArchiving}
+          onConfirm={() => void handleBulkArchive()}
+          onClose={() => setConfirmingBulkArchive(false)}
+        />
+      )}
+
+      {confirmingBulkRestore && (
+        <BulkRestoreCasesModal
+          count={selectedCaseIds.size}
+          isRestoring={isBulkRestoring}
+          onConfirm={() => void handleBulkRestore()}
+          onClose={() => setConfirmingBulkRestore(false)}
         />
       )}
     </PageShell>

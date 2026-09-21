@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import {
   Archive,
+  ArchiveRestore,
   CheckSquare,
   ChevronLeft,
   ExternalLink,
@@ -19,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import {
   useArchivedCaseDocumentsQuery,
   useArchiveCaseDocumentMutation,
+  useBulkUnarchiveCaseDocumentsMutation,
   useCaseDocumentsQuery,
   useDeleteCaseDocumentMutation,
   useUnarchiveCaseDocumentMutation,
@@ -33,6 +35,7 @@ import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
 import BulkDeleteDocumentsModal from "@/components/cases/bulk-delete-documents-modal"
 import BulkArchiveDocumentsModal from "@/components/cases/bulk-archive-documents-modal"
+import BulkRestoreDocumentsModal from "@/components/cases/bulk-restore-documents-modal"
 import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
 import RestoreDocumentModal from "@/components/cases/restore-document-modal"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
@@ -85,6 +88,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [confirmingBulkArchive, setConfirmingBulkArchive] = useState(false)
   const [isBulkArchiving, setIsBulkArchiving] = useState(false)
+  const [confirmingBulkRestore, setConfirmingBulkRestore] = useState(false)
+  const [isBulkRestoring, setIsBulkRestoring] = useState(false)
   const [archivingDoc, setArchivingDoc] = useState<UserDocument | null>(null)
   const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -106,6 +111,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     isPending: isUnarchiving,
     variables: unarchivingVars,
   } = useUnarchiveCaseDocumentMutation()
+  const { mutateAsync: bulkUnarchiveDocumentsAsync } = useBulkUnarchiveCaseDocumentsMutation()
 
   const upload = (files: File[], category?: string) => {
     const [supported, unsupported] = [
@@ -212,14 +218,21 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const folderDocs =
     view.kind === "folder" ? (documents ?? []).filter((doc) => (doc.category?.trim() || null) === view.name) : []
 
-  const selectableCount = view.kind === "folder" ? folderDocs.length : sortedFolders.length + looseFiles.length
-  const selectedCount = view.kind === "folder" ? selectedDocIds.size : selectedDocIds.size + selectedFolders.size
+  // Archived documents render as one flat grid (no folder grouping — see the archived body
+  // branch below), so their select-all is just every id in `archivedDocuments`, unlike the
+  // active view's folder-aware count.
+  const activeSelectableCount = view.kind === "folder" ? folderDocs.length : sortedFolders.length + looseFiles.length
+  const archivedSelectableCount = archivedDocuments?.length ?? 0
+  const selectableCount = showArchived ? archivedSelectableCount : activeSelectableCount
+  const selectedCount = showArchived || view.kind === "folder" ? selectedDocIds.size : selectedDocIds.size + selectedFolders.size
   const allSelected = selectableCount > 0 && selectedCount === selectableCount
 
   const toggleSelectAll = () => {
     if (allSelected) {
       setSelectedDocIds(new Set())
       setSelectedFolders(new Set())
+    } else if (showArchived) {
+      setSelectedDocIds(new Set((archivedDocuments ?? []).map((d) => d.id)))
     } else if (view.kind === "folder") {
       setSelectedDocIds(new Set(folderDocs.map((d) => d.id)))
     } else {
@@ -267,6 +280,23 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     exitSelectMode()
   }
 
+  // Archived documents have no folders (resolveSelectedDocumentIds' folder union is a no-op here
+  // — selectedFolders never gets populated while showArchived, see toggleSelectAll above), so this
+  // is just selectedDocIds. One request via the backend's bulk endpoint (DocumentSvc.unarchiveMany)
+  // rather than N parallel single-item calls, since this bulk flow — unlike archive/delete above —
+  // was built with that endpoint already in place.
+  const handleBulkRestore = async () => {
+    const ids = resolveSelectedDocumentIds()
+    setIsBulkRestoring(true)
+    const result = await bulkUnarchiveDocumentsAsync({ documentIds: ids, caseId })
+    setIsBulkRestoring(false)
+    setConfirmingBulkRestore(false)
+    exitSelectMode()
+    if (result.failed.length > 0) {
+      toast.error(t("detail.restoreDocumentsError", { count: result.failed.length }))
+    }
+  }
+
   const header = (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
@@ -283,7 +313,10 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
         ) : showArchived ? (
           <button
             type="button"
-            onClick={() => setShowArchived(false)}
+            onClick={() => {
+              exitSelectMode()
+              setShowArchived(false)
+            }}
             aria-label={t("detail.backToActiveDocuments")}
             className="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left text-sm font-semibold text-foreground hover:text-brand-gold"
           >
@@ -402,15 +435,16 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     />
   )
 
-  // A "Select"/"Select all"/"Archive"/"Delete" row above the grid — folders and documents share it
-  // since acting on a folder just means bulk-acting on the documents in it (see
-  // resolveSelectedDocumentIds above). Hidden once there's nothing on screen to select, while a document preview has taken
-  // over the view (that branch returns early below, before this is ever reached), and while
-  // viewing the Archived list — selectableCount/selectedCount are derived from the active
-  // `documents` set, not `archivedDocuments`, so they'd be meaningless there. Active mode gets its
-  // own toolbar surface (border + tinted background) so it reads as a distinct interaction state
-  // rather than a second line of plain body text.
-  const selectionBar = !showArchived && selectableCount > 0 && (
+  // A "Select"/"Select all"/action row above the grid — folders and documents share it since
+  // acting on a folder just means bulk-acting on the documents in it (see
+  // resolveSelectedDocumentIds above). Hidden once there's nothing on screen to select, and while
+  // a document preview has taken over the view (that branch returns early below, before this is
+  // ever reached). Active and Archived share this bar but get different action buttons below
+  // (Archive/Delete vs. Restore) — selectableCount/selectedCount switch source (active `documents`
+  // vs. `archivedDocuments`) based on showArchived, see their derivation above. Active mode gets
+  // its own toolbar surface (border + tinted background) so it reads as a distinct interaction
+  // state rather than a second line of plain body text.
+  const selectionBar = selectableCount > 0 && (
     <div
       className={
         selectMode
@@ -442,7 +476,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   <button
                     type="button"
                     onClick={deselectAll}
-                    disabled={isBulkDeleting || isBulkArchiving}
+                    disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
                     className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -454,48 +488,71 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
-                  onClick={() => setConfirmingBulkArchive(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
-                >
-                  {isBulkArchiving ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  )}
-                  {t("detail.archiveSelected")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
-                  onClick={() => setConfirmingBulkDelete(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400"
-                >
-                  {isBulkDeleting ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  )}
-                  {t("detail.deleteSelected")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
-            </Tooltip>
+            {showArchived ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={selectedCount === 0 || isBulkRestoring}
+                    onClick={() => setConfirmingBulkRestore(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400"
+                  >
+                    {isBulkRestoring ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    )}
+                    {t("detail.restoreSelected")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("detail.restoreSelected")}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                      onClick={() => setConfirmingBulkArchive(true)}
+                      className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
+                    >
+                      {isBulkArchiving ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      {t("detail.archiveSelected")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                      onClick={() => setConfirmingBulkDelete(true)}
+                      className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400"
+                    >
+                      {isBulkDeleting ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      {t("detail.deleteSelected")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={exitSelectMode}
-                  disabled={isBulkDeleting || isBulkArchiving}
+                  disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
                   aria-label={t("editModal.cancel")}
                   className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
                 >
@@ -546,6 +603,9 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               isTogglingExhibit={isUpdating && updatingVars?.documentId === doc.id}
               onToggleArchive={() => setRestoringDoc(doc)}
               isTogglingArchive={isUnarchiving && unarchivingVars?.documentId === doc.id}
+              selectable={selectMode}
+              selected={selectedDocIds.has(doc.id)}
+              onToggleSelect={() => toggleDocSelected(doc.id)}
             />
           ))}
         </div>
@@ -726,6 +786,14 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
           isArchiving={isBulkArchiving}
           onConfirm={handleBulkArchive}
           onClose={() => setConfirmingBulkArchive(false)}
+        />
+      )}
+      {confirmingBulkRestore && (
+        <BulkRestoreDocumentsModal
+          count={resolveSelectedDocumentIds().length}
+          isRestoring={isBulkRestoring}
+          onConfirm={handleBulkRestore}
+          onClose={() => setConfirmingBulkRestore(false)}
         />
       )}
       {archivingDoc && (
