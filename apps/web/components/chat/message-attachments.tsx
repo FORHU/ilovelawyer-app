@@ -34,6 +34,19 @@ export function isImageAttachment(attachment: Pick<MessageAttachment, "mimeType"
   return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
 
+/** mp3 evidence — played with the browser's native <audio> element (a plain src= load, so no
+ * CORS requirement on the presigned URL, same as the <img>/<iframe> previews). */
+export function isAudioAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType?.startsWith("audio/")) return true;
+  return attachment.name.toLowerCase().endsWith(".mp3");
+}
+
+/** mp4 evidence — native <video> element, same reasoning as isAudioAttachment. */
+export function isVideoAttachment(attachment: Pick<MessageAttachment, "mimeType" | "name">): boolean {
+  if (attachment.mimeType?.startsWith("video/")) return true;
+  return attachment.name.toLowerCase().endsWith(".mp4");
+}
+
 /** .docx (OOXML) only — docx-preview parses the zipped XML format Word 2007+ writes, not the
  * legacy binary .doc (Word 97-2003) format, which is a proprietary OLE structure no JS library
  * in this app parses. A .doc falls through to the same Download fallback as xlsx/pptx/etc. */

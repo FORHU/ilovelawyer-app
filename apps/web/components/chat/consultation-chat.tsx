@@ -1891,7 +1891,7 @@ export default function ConsultationChat({
                   </div>
                   {chatInputBar}
                   {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
-                    <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                    <div className="relative z-10 hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
@@ -1901,7 +1901,7 @@ export default function ConsultationChat({
                           // past consultation title or a caller-provided emptyStatePrompts entry),
                           // so a long one must wrap inside the pill instead of forcing it wider
                           // than the viewport.
-                          className="max-w-full whitespace-normal break-words rounded-full border border-border px-4 py-2.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground hover:text-foreground"
+                          className="max-w-full cursor-pointer whitespace-normal break-words rounded-full border border-foreground/25 bg-card px-4 py-2.5 text-[13px] font-medium text-foreground shadow-sm transition-all hover:-translate-y-px hover:border-brand-gold hover:shadow-md dark:bg-white/[0.06] dark:border-white/25"
                         >
                           {prompt}
                         </button>
