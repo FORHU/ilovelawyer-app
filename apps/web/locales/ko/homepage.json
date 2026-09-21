@@ -13,6 +13,8 @@
     "startRecording": "녹음 시작",
     "stopRecording": "녹음 중지",
     "sendMessage": "메시지 보내기",
+    "stopGenerating": "생성 중지",
+    "stopLabel": "중지",
     "defaultAttachmentMessage": "첨부된 문서를 검토해 주세요: {{fileName}}",
     "defaultAttachmentMessageMultiple": "첨부된 문서({{count}}개)를 검토해 주세요.",
     "attachmentUploadError": "하나 이상의 파일을 업로드하지 못했습니다. 다시 시도하거나 제거해 주세요.",
@@ -35,10 +37,13 @@
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "thinking": "가 생각 중입니다",
+  "thinkingFinalizing": "가 분석을 마무리하는 중입니다",
   "message": {
     "copy": "응답 복사",
     "copied": "복사됨!",
-    "copyFailed": "복사하지 못했습니다"
+    "copyFailed": "복사하지 못했습니다",
+    "stopped": "응답이 중지되었습니다",
+    "finalizing": "분석을 마무리하는 중…"
   },
   "caseHub": {
     "linkedCase": "연결된 사건",

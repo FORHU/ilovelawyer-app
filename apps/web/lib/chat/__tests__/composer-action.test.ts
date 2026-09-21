@@ -1,0 +1,43 @@
+import { describe, it, expect } from "vitest"
+import { composerAction, shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "../composer-action"
+
+describe("shouldHoldAnswer", () => {
+  it("holds the text of a reply that is still in flight, so answer, confidence and explanation appear together", () => {
+    expect(shouldHoldAnswer({ isStreaming: true, stopped: false, revealed: false })).toBe(true)
+  })
+
+  it("shows the text once the hold cap has passed, so a slow extra can never hide a finished answer", () => {
+    expect(shouldHoldAnswer({ isStreaming: true, stopped: false, revealed: true })).toBe(false)
+  })
+
+  it("never holds text after Stop - the user asked to keep what had streamed", () => {
+    expect(shouldHoldAnswer({ isStreaming: true, stopped: true, revealed: false })).toBe(false)
+  })
+
+  it("never holds a reply that is not in flight (saved history)", () => {
+    expect(shouldHoldAnswer({ isStreaming: false, stopped: false, revealed: false })).toBe(false)
+  })
+
+  it("has a finite cap", () => {
+    expect(ANSWER_HOLD_CAP_MS).toBeGreaterThan(0)
+    expect(ANSWER_HOLD_CAP_MS).toBeLessThanOrEqual(60_000)
+  })
+})
+
+describe("composerAction", () => {
+  it("is Send when nothing is being generated", () => {
+    expect(composerAction({ isBusy: false, isFinalizing: false })).toBe("send")
+  })
+
+  it("is Stop while the answer is still being written", () => {
+    expect(composerAction({ isBusy: true, isFinalizing: false })).toBe("stop")
+  })
+
+  it("is back to Send once the answer text is complete, even though the turn is still finishing its extras (the composer itself stays disabled by isBusy)", () => {
+    expect(composerAction({ isBusy: true, isFinalizing: true })).toBe("send")
+  })
+
+  it("stays Send when finalizing but no longer busy", () => {
+    expect(composerAction({ isBusy: false, isFinalizing: true })).toBe("send")
+  })
+})
