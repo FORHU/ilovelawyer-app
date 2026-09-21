@@ -293,6 +293,7 @@ function PlannerPanel({
     setFormError(null);
     try {
       await updateAppointment.mutateAsync({ id: appt.id, status });
+      if (editingId === appt.id) resetAppointmentFields();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
     }
