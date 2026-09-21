@@ -58,45 +58,41 @@ export function DamagePanel({
 
   return (
     <PanelBody gap="4">
-      {snapshot.damages.length === 0 ? (
-        <EmptyNote>{t("noDamages")}</EmptyNote>
-      ) : (
-        <>
-          <PanelRowList>
-            {snapshot.damages.map((d) => (
-              <PanelRow key={d.id} className="items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
-                    {t(DAMAGE_CATEGORY_KEYS[d.category])}
-                  </p>
-                  {d.description ? (
-                    <p className="mt-0.5 text-[13px] leading-5 text-foreground">
-                      {d.description}
-                    </p>
-                  ) : null}
-                  {d.amount != null ? (
-                    <p className="mt-1 font-mono text-[13px] text-foreground">
-                      {d.amount.toLocaleString()}
-                    </p>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => del.mutate(d.id)}
-                  disabled={del.isPending}
-                  className={dangerIconBtnClass}
-                  aria-label={t("delete")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </PanelRow>
-            ))}
-          </PanelRowList>
-          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
-            <span>{t("damageTotal")}</span>
-            <span className="font-mono">{displayTotal.toLocaleString()}</span>
-          </div>
-        </>
+      <PanelRowList empty={<EmptyNote>{t("noDamages")}</EmptyNote>}>
+        {snapshot.damages.map((d) => (
+          <PanelRow key={d.id} className="items-start justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                {t(DAMAGE_CATEGORY_KEYS[d.category])}
+              </p>
+              {d.description ? (
+                <p className="mt-0.5 text-[13px] leading-5 text-foreground">
+                  {d.description}
+                </p>
+              ) : null}
+              {d.amount != null ? (
+                <p className="mt-1 font-mono text-[13px] text-foreground">
+                  {d.amount.toLocaleString()}
+                </p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => del.mutate(d.id)}
+              disabled={del.isPending}
+              className={dangerIconBtnClass}
+              aria-label={t("delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </PanelRow>
+        ))}
+      </PanelRowList>
+      {snapshot.damages.length > 0 && (
+        <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
+          <span>{t("damageTotal")}</span>
+          <span className="font-mono">{displayTotal.toLocaleString()}</span>
+        </div>
       )}
       <form
         className="mt-auto flex flex-col gap-2"

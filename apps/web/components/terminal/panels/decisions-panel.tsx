@@ -1,11 +1,11 @@
-import { useState } from "react"
+import { useState, type ComponentPropsWithoutRef } from "react"
 import { useTranslation } from "react-i18next"
 import { MessageSquareWarning, RotateCcw } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail"
 import { useDisputeDecisionMutation, useReactivateDecisionMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DecisionRecord } from "@/lib/terminal/types"
-import { EmptyNote, MutationError, PanelBody, fieldClass, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, fieldClass, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 // The "Why?" behind one conclusion in a legal answer — every rule[].url and evidence*[].docId
 // was already verified against that turn's retrieved sources by chat-wonder-v2-api before this
@@ -24,17 +24,9 @@ export function DecisionsPanel({
   const reactivate = useReactivateDecisionMutation(caseId)
   const decisions = snapshot.decisions ?? []
 
-  if (decisions.length === 0) {
-    return (
-      <PanelBody gap="3">
-        <EmptyNote>{t("noDecisions")}</EmptyNote>
-      </PanelBody>
-    )
-  }
-
   return (
     <PanelBody gap="3">
-      <ul className="space-y-3">
+      <PanelRowList empty={<EmptyNote>{t("noDecisions")}</EmptyNote>}>
         {decisions.map((decision) => (
           <DecisionCard
             key={decision.id}
@@ -46,7 +38,7 @@ export function DecisionsPanel({
             isError={dispute.isError || reactivate.isError}
           />
         ))}
-      </ul>
+      </PanelRowList>
     </PanelBody>
   )
 }
@@ -58,6 +50,7 @@ function DecisionCard({
   onReactivate,
   isPending,
   isError,
+  ...rest
 }: {
   caseId: string
   decision: DecisionRecord
@@ -65,7 +58,7 @@ function DecisionCard({
   onReactivate: () => void
   isPending: boolean
   isError: boolean
-}) {
+} & ComponentPropsWithoutRef<"li">) {
   const { t } = useTranslation("terminal")
   const [disputing, setDisputing] = useState(false)
   const [note, setNote] = useState("")
@@ -74,10 +67,8 @@ function DecisionCard({
   const disputed = decision.status === "DISPUTED"
 
   return (
-    <li
-      className={`rounded-md border px-3 py-2.5 ${disputed ? "border-riskmed/40 bg-riskmed/5" : "border-border"}`}
-    >
-      <div className="flex items-start justify-between gap-2">
+    <PanelRow {...rest} className={`flex-col items-start ${disputed ? "bg-riskmed/5" : ""}`}>
+      <div className="flex w-full items-start justify-between gap-2">
         <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">
           {p.conclusion}
         </p>
@@ -85,18 +76,18 @@ function DecisionCard({
       </div>
 
       {disputed && (
-        <p className="mt-1.5 flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed">
+        <p className="flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed">
           <MessageSquareWarning className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="uppercase">{t("decisionStatusDisputed")}</span>
           {decision.disputeNote ? <span className="normal-case">: {decision.disputeNote}</span> : null}
         </p>
       )}
 
-      <div className="mt-2 space-y-2">
+      <div className="w-full space-y-2">
         <DecisionDetailBody payload={p} />
       </div>
 
-      <div className="mt-2.5 flex items-center justify-end gap-2">
+      <div className="flex w-full items-center justify-end gap-2">
         <button
           type="button"
           onClick={() => setShowAnnotations((s) => !s)}
@@ -167,7 +158,7 @@ function DecisionCard({
       <MutationError show={isError} />
 
       {showAnnotations && (
-        <div className="mt-2.5 border-t border-border pt-2.5">
+        <div className="w-full border-t border-border pt-2.5">
           <AnnotationThread
             caseId={caseId}
             targetType="DECISION"
@@ -175,6 +166,6 @@ function DecisionCard({
           />
         </div>
       )}
-    </li>
+    </PanelRow>
   )
 }
