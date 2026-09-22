@@ -847,15 +847,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setNewLayoutName("")
   }
 
-  // Resets the CURRENT tab's contents back to the default arrangement, in place — previously
-  // this called the backend's /workspaces/reset endpoint, which always *creates* a new
-  // "Default {preset}" row, so every click piled up another duplicate tab instead of resetting
-  // the one you were looking at.
+  // Resets the CURRENT tab's contents back to empty, in place — previously this called the
+  // backend's /workspaces/reset endpoint, which always *creates* a new "Default {preset}" row,
+  // so every click piled up another duplicate tab instead of resetting the one you were
+  // looking at. Resets to an EMPTY board rather than re-applying catalog.data.defaultPreset
+  // (see #303) — the user picks what to add back via the panel library, same as a brand-new
+  // workspace with no saved layout yet.
   const resetCurrentWorkspace = () => {
     if (!catalog.data || !selectedWorkspaceId) return
     setMaximizedId(null)
     const preset = catalog.data.defaultPreset
-    const fallback: WorkspaceLayout = {
+    const emptyLayout: WorkspaceLayout = {
       preset,
       arrangement: "free",
       panels: catalog.data.panels.map((panel, index) => ({
@@ -866,10 +868,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         height: 1,
       })),
     }
-    const defaultLayout = applyPreset(fallback, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
-    lastSavedLayoutRef.current = JSON.stringify(defaultLayout)
-    setLayout(defaultLayout)
-    updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
+    lastSavedLayoutRef.current = JSON.stringify(emptyLayout)
+    setLayout(emptyLayout)
+    updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: emptyLayout })
   }
 
   // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
