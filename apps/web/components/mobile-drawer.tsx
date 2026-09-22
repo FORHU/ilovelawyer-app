@@ -1,8 +1,19 @@
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { cn } from "@workspace/ui/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
+
+/** The drawer panel's own ref, for descendants that need to keep a floating element (e.g. a
+ * Radix Popover) within the panel's narrow bounds instead of the full viewport — see
+ * NotificationBell, which renders inside both this drawer and the full-width desktop header and
+ * needs to behave differently in each. A ref object (not the resolved element) so consumers read
+ * `.current` live when they actually need it (e.g. on popover open) rather than depending on this
+ * context to re-render at the right moment — `undefined` outside any drawer. */
+const MobileDrawerPanelContext = createContext<RefObject<HTMLDivElement | null> | undefined>(undefined);
+export function useMobileDrawerPanel() {
+  return useContext(MobileDrawerPanelContext);
+}
 
 interface MobileDrawerProps {
   open: boolean;
@@ -98,7 +109,9 @@ export function MobileDrawer({
       )}
     >
       <button ref={backdropRef} type="button" aria-label={closeLabel} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div ref={panelRef} className={cn("relative flex h-full flex-col shadow-xl", panelClassName)}>{children}</div>
+      <div ref={panelRef} className={cn("relative flex h-full flex-col shadow-xl", panelClassName)}>
+        <MobileDrawerPanelContext.Provider value={panelRef}>{children}</MobileDrawerPanelContext.Provider>
+      </div>
     </div>
   );
 }
