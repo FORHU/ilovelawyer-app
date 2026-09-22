@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
-import { Building2, FileText, LogOut, Menu, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, Mic, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -11,6 +11,9 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationBellTrigger } from "@/components/notifications/notification-bell-trigger";
+import { NotificationPanel } from "@/components/notifications/notification-panel";
+import { useNotificationBellState } from "@/components/notifications/use-notification-bell-state";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -77,11 +80,11 @@ const USER_MENU_ITEMS = [
 // links straight to the portfolio (Create Case lives inside that page), and Legal
 // Terminal is reached by drilling into a case rather than from top-level nav.
 const MOBILE_NAV_ITEMS = [
-  { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat" },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio" },
-  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library" },
-  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio" },
-  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments" },
+  { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase },
+  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen },
+  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio", icon: Mic },
+  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays },
 ] as const;
 
 export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: GlobalHeaderProps) {
@@ -94,6 +97,11 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
   const closeMobileMenu = useMobileNavStore((s) => s.close);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
+  // Mobile only: tapping the bell (moved up into the profile row) swaps the primary nav list
+  // for the notification list in place, rather than opening a floating popover — the popover
+  // kept fighting Radix's own collision math to stay on-screen inside the narrow drawer panel.
+  const [showMobileNotifications, setShowMobileNotifications] = useState(false);
+  const mobileNotificationState = useNotificationBellState(showMobileNotifications, () => setShowMobileNotifications(false));
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
@@ -128,6 +136,11 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
     return () => window.removeEventListener("resize", handleResize);
   }, [isMobileMenuOpen, closeMobileMenu]);
 
+  // Land back on the primary nav list, not mid-notifications, the next time the drawer opens.
+  useEffect(() => {
+    if (!isMobileMenuOpen) setShowMobileNotifications(false);
+  }, [isMobileMenuOpen]);
+
   // Helper to dynamically toggle active states for the sub-tier workspace links.
   // Active items render bold + a small gold dot beneath the label (added inline where
   // this class is used) instead of just a brightness change, per the redesign. The dot is
@@ -146,17 +159,28 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
   };
 
   const getMobileTabClass = (tabName: string) => {
+    // Same uppercase-tracked "chrome" label style the desktop nav uses (see DESIGN.md — this
+    // app doesn't have a second nav label style), just scaled up for a real touch target: a
+    // full-width row instead of an inline label, bigger text, and a 48px-plus tap height.
+    // rounded-r-lg, not rounded-lg: rounding all four corners on a row that also carries a
+    // left accent border makes that border trace the rounded top/bottom-left corners into a
+    // curved bracket instead of sitting as a flat bar — rounding only the trailing edge keeps
+    // the left border a clean straight line.
     const baseClasses =
-      "relative text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
+      "relative flex items-center gap-3 rounded-r-lg border-l-2 px-3 py-3.5 text-[13px] tracking-[1px] uppercase transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
     if (activeTab === tabName) {
-      return `${baseClasses} text-foreground border-foreground font-bold`;
+      return `${baseClasses} border-foreground bg-accent font-bold text-foreground`;
     }
-    return `${baseClasses} text-muted-foreground border-transparent hover:text-foreground`;
+    return `${baseClasses} border-transparent text-muted-foreground hover:bg-accent/60 hover:text-foreground`;
   };
 
   return (
     <header
-      className={`absolute top-0 left-0 w-full bg-background z-(--z-modal) ${
+      // `fixed`, not `absolute`: this sits inside PageShell's normal-flow wrapper, and most
+      // pages (anything without PageShell's own h-screen/overflow-hidden override, e.g.
+      // Calendar) scroll the whole document rather than an inner panel — `absolute` scrolls
+      // away with that document instead of staying pinned to the viewport.
+      className={`fixed top-0 left-0 w-full bg-background z-(--z-modal) ${
         mobileHeaderMerged ? "lg:border-b lg:border-border" : "border-b border-border"
       }`}
     >
@@ -324,86 +348,122 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         )}
       </div>
 
-      {/* Mobile drawer — a narrow panel sliding in from the right (not a full-width dropdown),
-       * same proportions as the Case Workspace's Topics/Studio drawers: ~80% width capped at
-       * 300px, with a tap-to-close dimmed backdrop behind it. */}
+      {/* Mobile menu — a roomy sheet (not the old 300px-capped sliver that read as a shrunk
+       * desktop dropdown), structured like a native mobile nav: identity up top, primary
+       * destinations as a real icon+label list with full touch targets, utilities and account
+       * links grouped underneath, sign-out pinned to the bottom regardless of content height. */}
       <MobileDrawer
         open={isMobileMenuOpen}
         onClose={closeMobileMenu}
         closeLabel={t("mobileMenu.close")}
         side="right"
-        panelClassName="w-[80%] max-w-[300px] overflow-y-auto border-l border-border bg-background px-4 py-4 shadow-2xl"
+        panelClassName="flex w-[88%] max-w-[380px] flex-col overflow-y-auto border-l border-border bg-background shadow-2xl"
       >
-            <nav className="flex flex-col gap-0.5">
-              {MOBILE_NAV_ITEMS.map((item) => (
-                <Tooltip key={item.tab}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      onClick={closeMobileMenu}
-                      className={getMobileTabClass(item.tab)}
-                    >
-                      <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">{item.tooltip}</TooltipContent>
-                </Tooltip>
-              ))}
-            </nav>
-
-            <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4 text-foreground">
-              <div className="px-3 pb-3">
-                <LanguageSwitcher />
-              </div>
-
-              {user && (
-                <div className="flex items-center justify-between gap-2 px-3 pb-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-foreground">{user.name ?? user.username}</p>
-                    {user.name && <p className="truncate text-[10px] text-muted-foreground">@{user.username}</p>}
-                    <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <NotificationBell />
-                    <ThemeToggle />
-                  </div>
-                </div>
-              )}
-
-              {USER_MENU_ITEMS.map((item) => (
-                <Tooltip key={item.href}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      onClick={closeMobileMenu}
-                      className="flex items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    >
-                      <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                      {t(item.labelKey)}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">{item.tooltip}</TooltipContent>
-                </Tooltip>
-              ))}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={logout.isPending}
-                    onClick={() => {
-                      closeMobileMenu();
-                      logout.mutate();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 py-2.5 pl-3 text-xs uppercase tracking-[1px] text-red-600 dark:text-red-400 transition-colors hover:text-red-700 dark:hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-                    {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="left">Sign out of your account</TooltipContent>
-              </Tooltip>
+        {user && (
+          <div className="flex items-center gap-3 border-b border-border px-5 py-5">
+            <span
+              aria-hidden="true"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold tracking-[0.5px] text-foreground"
+            >
+              {initials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-foreground">{user.name ?? user.username}</p>
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <NotificationBellTrigger
+                  open={showMobileNotifications}
+                  hasUnread={mobileNotificationState.hasUnread}
+                  unreadCount={mobileNotificationState.unreadCount}
+                  isReconnecting={mobileNotificationState.isReconnecting}
+                  onClick={() => setShowMobileNotifications((prev) => !prev)}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {mobileNotificationState.isReconnecting ? t("notifications.reconnecting") : t("notifications.label")}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Tapping the bell above swaps this whole slot for the notification list, in place —
+         * not a floating popover — then back again on a second tap or once a notification/
+         * "view all" navigates away (see the isMobileMenuOpen effect resetting this on close). */}
+        {showMobileNotifications ? (
+          <NotificationPanel
+            className="min-h-0 flex-1"
+            isReconnecting={mobileNotificationState.isReconnecting}
+            hasUnread={mobileNotificationState.hasUnread}
+            isLoading={mobileNotificationState.isLoading}
+            notifications={mobileNotificationState.notifications}
+            onMarkAllRead={mobileNotificationState.onMarkAllRead}
+            markAllReadPending={mobileNotificationState.markAllReadPending}
+            onOpenNotification={mobileNotificationState.handleOpenNotification}
+            onViewAll={mobileNotificationState.handleViewAll}
+          />
+        ) : (
+          <nav className="flex flex-col gap-1 px-3 py-3">
+            {MOBILE_NAV_ITEMS.map((item) => (
+              <Tooltip key={item.tab}>
+                <TooltipTrigger asChild>
+                  <Link href={item.href} onClick={closeMobileMenu} className={getMobileTabClass(item.tab)}>
+                    <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
+                    <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left">{item.tooltip}</TooltipContent>
+              </Tooltip>
+            ))}
+          </nav>
+        )}
+
+        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
+          <LanguageSwitcher />
+          <ThemeToggle />
+        </div>
+
+        <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
+          {USER_MENU_ITEMS.map((item) => (
+            <Tooltip key={item.href}>
+              <TooltipTrigger asChild>
+                <Link
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                  {t(item.labelKey)}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="left">{item.tooltip}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
+        {/* mt-auto pins sign-out to the bottom of the sheet regardless of how much content is
+         * above it — the one destructive action gets its own fixed spot, not just "last in a
+         * scrolling list." */}
+        <div className="mt-auto border-t border-border px-3 py-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={logout.isPending}
+                onClick={() => {
+                  closeMobileMenu();
+                  logout.mutate();
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-danger/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <LogOut className="size-4 shrink-0" aria-hidden="true" />
+                {logout.isPending ? t("userMenu.loggingOut") : t("userMenu.logout")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Sign out of your account</TooltipContent>
+          </Tooltip>
+        </div>
       </MobileDrawer>
     </header>
   );
