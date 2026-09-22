@@ -1,7 +1,7 @@
 // apps/web/components/global-header.tsx
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { Building2, FileText, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
@@ -45,6 +45,26 @@ interface GlobalHeaderProps {
    * page, whose own title row takes over that role instead of stacking a second masthead row
    * underneath a redundant one. Desktop is completely unaffected either way. */
   mobileHeaderMerged?: boolean;
+}
+
+// Renders inside a <Link>'s children — useLinkStatus only reports the pending
+// state of its nearest ancestor Link, so this can't live at GlobalHeader's own
+// level. Gives instant feedback on click rather than leaving the tab visually
+// inert until the target route's JS + data finish loading, which is what
+// invited spam-clicking on slow connections. Two simultaneous signals (a
+// visible pill behind the tab, and the label itself dimming) rather than one
+// subtle one — an 8%-opacity background tint alone turned out to be too
+// faint to register as "something happened" in practice.
+function TabLinkContent({ children }: { children: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+  return (
+    <>
+      {pending && (
+        <span aria-hidden="true" className="absolute -inset-x-2 -inset-y-1.5 rounded-full bg-foreground/15 animate-pulse" />
+      )}
+      <span className={`transition-opacity duration-150 ${pending ? "opacity-50" : ""}`}>{children}</span>
+    </>
+  );
 }
 
 const USER_MENU_ITEMS = [
@@ -127,7 +147,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
   const getMobileTabClass = (tabName: string) => {
     const baseClasses =
-      "text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
+      "relative text-xs tracking-[1px] uppercase py-2.5 pl-3 border-l-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
     if (activeTab === tabName) {
       return `${baseClasses} text-foreground border-foreground font-bold`;
     }
@@ -157,7 +177,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage" className={getSubTabClass("consultation")}>
-                {t("nav.consultation").toUpperCase()}
+                <TabLinkContent>{t("nav.consultation").toUpperCase()}</TabLinkContent>
                 {activeTab === "consultation" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
@@ -170,7 +190,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>
-                {t("nav.cases", { defaultValue: "Cases" }).toUpperCase()}
+                <TabLinkContent>{t("nav.cases", { defaultValue: "Cases" }).toUpperCase()}</TabLinkContent>
                 {isCaseTabActive && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
@@ -180,7 +200,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage/library" className={getSubTabClass("library")}>
-                {t("nav.library").toUpperCase()}
+                <TabLinkContent>{t("nav.library").toUpperCase()}</TabLinkContent>
                 {activeTab === "library" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
@@ -189,7 +209,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>
-                {t("nav.transcription").toUpperCase()}
+                <TabLinkContent>{t("nav.transcription").toUpperCase()}</TabLinkContent>
                 {activeTab === "transcription" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
@@ -198,7 +218,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>
-                {t("nav.calendar").toUpperCase()}
+                <TabLinkContent>{t("nav.calendar").toUpperCase()}</TabLinkContent>
                 {activeTab === "calendar" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
             </TooltipTrigger>
@@ -323,7 +343,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                       onClick={closeMobileMenu}
                       className={getMobileTabClass(item.tab)}
                     >
-                      {t(item.labelKey)}
+                      <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="left">{item.tooltip}</TooltipContent>
