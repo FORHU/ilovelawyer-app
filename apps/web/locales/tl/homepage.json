@@ -13,6 +13,8 @@
     "startRecording": "Simulan ang pagre-record",
     "stopRecording": "Ihinto ang pagre-record",
     "sendMessage": "Ipadala ang mensahe",
+    "stopGenerating": "Ihinto ang pagbuo",
+    "stopLabel": "Ihinto",
     "defaultAttachmentMessage": "Pakisuri ang nakalakip na dokumento: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Pakisuri ang mga nakalakip na dokumento ({{count}}).",
     "attachmentUploadError": "Hindi na-upload ang isa o higit pang file. Subukang muli o alisin ang mga ito.",
@@ -41,7 +43,9 @@
   "message": {
     "copy": "Kopyahin ang sagot",
     "copied": "Nakopya!",
-    "copyFailed": "Hindi nakopya"
+    "copyFailed": "Hindi nakopya",
+    "stopped": "Itinigil ang sagot",
+    "finalizing": "Tinatapos ang pagsusuri…"
   },
   "caseHub": {
     "linkedCase": "Naka-link na kaso",

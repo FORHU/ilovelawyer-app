@@ -60,9 +60,10 @@ function formatTime12h(time: string): string {
 /** Grows a textarea to fit its content (up to the element's own max-height/CSS cap,
  * where the browser's normal overflow scrolling takes back over) instead of staying at
  * its `rows` size and forcing the user to scroll within a tiny box to read what they
- * typed. Used as a ref callback so it re-measures on every render — including when a
- * field is populated programmatically (e.g. opening the edit modal), not just on the
- * "input" event a plain onInput handler would need. */
+ * typed. Called both as a mount-time ref callback (sizes the field when it's populated
+ * programmatically, e.g. opening the edit modal) and from each field's own onChange (a
+ * stable function reference passed as `ref` only fires once, on mount/unmount — it does
+ * NOT re-run on every render, so typing past the initial size needs its own explicit call). */
 function autoGrowTextarea(el: HTMLTextAreaElement | null) {
   if (!el) return;
   el.style.height = "auto";
@@ -292,6 +293,7 @@ function PlannerPanel({
     setEndTime("");
     setDescription("");
     setNotifyEmail("");
+    setCaseId(initialCaseId ?? "");
     setReminderLeadMinutes("");
     setEditingId(null);
   }
@@ -629,7 +631,7 @@ function PlannerPanel({
     </Card>
 
     <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto gap-3 p-5">
         <DialogHeader>
           <DialogTitle>
             {editingNoteId
@@ -640,7 +642,7 @@ function PlannerPanel({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
           {!editingId && !editingNoteId && (
@@ -675,10 +677,13 @@ function PlannerPanel({
                 placeholder={t("notePlaceholder")}
                 aria-label={t("notePlaceholder")}
                 value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH))}
+                onChange={(e) => {
+                  setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH));
+                  autoGrowTextarea(e.currentTarget);
+                }}
                 maxLength={NOTE_MAX_LENGTH}
                 rows={4}
-                className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
               <p className="self-end text-xs text-muted-foreground">
                 {noteBody.length}/{NOTE_MAX_LENGTH}
@@ -691,7 +696,7 @@ function PlannerPanel({
                 placeholder={t("titlePlaceholder")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
               <div className="flex gap-2">
                 <TimePicker value={startTime} onChange={setStartTime} placeholder={t("startTime")} aria-label={t("startTime")} />
@@ -717,7 +722,7 @@ function PlannerPanel({
                 aria-label={t("notifyEmailPlaceholder")}
                 value={notifyEmail}
                 onChange={(e) => setNotifyEmail(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
               <CustomSelect
                 value={caseId}
@@ -745,10 +750,13 @@ function PlannerPanel({
                   ref={autoGrowTextarea}
                   placeholder={t("descriptionPlaceholder")}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+                  onChange={(e) => {
+                    setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH));
+                    autoGrowTextarea(e.currentTarget);
+                  }}
                   maxLength={DESCRIPTION_MAX_LENGTH}
                   rows={2}
-                  className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                 />
                 <p className="self-end text-xs text-muted-foreground">
                   {description.length}/{DESCRIPTION_MAX_LENGTH}
@@ -800,8 +808,18 @@ export default function CalendarPage() {
   const { t } = useTranslation("calendar");
   const searchParams = useSearchParams();
   const initialCaseId = searchParams.get("caseId");
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
+  // Notification links (see EventSvc.create / EventReminderQueue) carry the appointment's own
+  // dateTime as an ISO string so a click lands on that day instead of always today's date.
+  // Only read on mount, matching initialCaseId above — a later change to the URL's `date`
+  // param without a remount (there isn't one, in practice) won't re-trigger this.
+  function initialDateFromParam(): Date {
+    const param = searchParams.get("date");
+    if (!param) return new Date();
+    const parsed = new Date(param);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(() => startOfMonth(initialDateFromParam()));
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(initialDateFromParam);
 
   const from = toDateKey(startOfMonth(currentMonth));
   const to = toDateKey(endOfMonth(currentMonth));

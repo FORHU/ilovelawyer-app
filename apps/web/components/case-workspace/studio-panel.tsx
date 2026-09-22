@@ -76,6 +76,11 @@ interface StudioPanelProps {
    * (never shrinks one the user already dragged past it), and the result stays a normal
    * user-draggable width afterwards. */
   onOpenMindMap?: () => void;
+  /** Same auto-widen-once pattern as onOpenMindMap, for Data Table's 3-column layout — Type
+   * and Detail auto-size to their own (short) content regardless of panel width (see the
+   * table below), so this isn't needed to keep them legible; it's purely so Label's full
+   * paragraph text gets more breathing room to wrap into, rather than a tall, narrow column. */
+  onOpenDataTable?: () => void;
   /** Mind Map needs a consultation to send its generation prompt into. When none is active yet,
    * handleGenerateMindMap creates one on demand (same pattern as ConsultationChat's own
    * ensureConsultationId) and reports the new id back up here so case-workspace.tsx can put it
@@ -105,7 +110,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onOpenDataTable, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -268,6 +273,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     setOpenTile(kind);
     if (!expanded) onExpandedChange(true);
     if (kind === "mindmap") onOpenMindMap?.();
+    if (kind === "dataTable") onOpenDataTable?.();
     if (kind === "audioOverview") restorePlayerBar();
   };
 
@@ -791,20 +797,31 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "dataTable" ? (
             dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">
+                {/* Type and Detail hold short labels ("Weakness", "AI-generated") — Label holds
+                 * a full paragraph. Giving all three equal footing (the previous `w-full` +
+                 * min-width-floor version) meant Label's long content pushed Type and Detail
+                 * down to a sliver regardless of how wide the table was allowed to get. `w-1` +
+                 * `whitespace-nowrap` on the narrow columns is the standard plain-<table> trick
+                 * for the opposite: with nothing constraining their width, table-layout:auto
+                 * sizes each column to its own content, so a non-wrapping column's "natural"
+                 * width is just its longest cell — short and predictable here — and Label (left
+                 * unconstrained) absorbs whatever space is left over and wraps normally. No
+                 * table-wide min-width needed; overflow-x-auto above still catches the rare
+                 * genuinely-long Type/Detail value instead of crushing it. */}
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2 pr-3">{t("workspace.dataTableColType")}</th>
+                      <th className="w-1 py-2 pr-3 whitespace-nowrap">{t("workspace.dataTableColType")}</th>
                       <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
-                      <th className="py-2">{t("workspace.dataTableColDetail")}</th>
+                      <th className="w-1 py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dataTableRows.map((row, i) => (
                       <tr key={i} className="border-b border-border/60 last:border-0">
-                        <td className="py-2 pr-3 align-top text-muted-foreground">{row.type}</td>
+                        <td className="py-2 pr-3 align-top whitespace-nowrap text-muted-foreground">{row.type}</td>
                         <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
-                        <td className="py-2 align-top text-muted-foreground">{row.detail}</td>
+                        <td className="py-2 align-top whitespace-nowrap text-muted-foreground">{row.detail}</td>
                       </tr>
                     ))}
                   </tbody>
