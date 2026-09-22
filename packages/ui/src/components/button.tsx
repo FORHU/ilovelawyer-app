@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -51,10 +52,17 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  isPending = false,
+  disabled,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /** Disables the button and swaps in a spinner while a mutation triggered by
+     * this button is in flight, so a slow connection can't be double-clicked
+     * into a duplicate submission. */
+    isPending?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
@@ -64,8 +72,19 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || isPending}
+      aria-busy={isPending || undefined}
       {...props}
-    />
+    >
+      {isPending ? (
+        <>
+          <Loader2 className="animate-spin" aria-hidden="true" />
+          {children}
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
   )
 }
 
