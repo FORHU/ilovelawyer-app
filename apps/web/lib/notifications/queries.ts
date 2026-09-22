@@ -94,6 +94,12 @@ export function useNotificationSocket() {
       // the Terminal snapshot (which embeds each document's ragStatus) need their own.
       queryClient.invalidateQueries({ queryKey: caseKeys.timelines() })
       queryClient.invalidateQueries({ queryKey: [...terminalKeys.all, "snapshot"] })
+      // useAiJobStatus has NO polling at all — ai-job:* events are its only update path outside
+      // this reconnect. A dropped connection (or a mounted-but-never-truly-remounted page, see
+      // that hook's own comment) could otherwise miss a started/done/failed transition entirely
+      // until something unrelated happens to invalidate it; this prefix covers every case+kind
+      // combination currently mounted.
+      queryClient.invalidateQueries({ queryKey: [...terminalKeys.all, "ai-job"] })
     }
 
     const handleNew = (notification: Notification) => {
