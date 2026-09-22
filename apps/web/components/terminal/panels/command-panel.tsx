@@ -27,11 +27,11 @@ export function CommandPanel({
   const posture = snapshot.case.jurisdiction?.trim() || null
 
   return (
-    <PanelBody gap="5">
+    <PanelBody gap="4">
       {snapshot.case.parties.length > 0 ? (
         <div className="grid grid-cols-2 gap-3">
           {snapshot.case.parties.map((party) => (
-            <div key={party.id} className="rounded-xl border border-border p-3">
+            <div key={party.id} className="rounded-2xl border border-border p-3">
               {party.designation ? (
                 <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
                   {party.designation}
@@ -68,25 +68,21 @@ export function CommandPanel({
             {t("keyIssues")} · {snapshot.risks.length}
           </SectionLabel>
         </div>
-        {snapshot.risks.length === 0 ? (
-          <EmptyNote>{t("noKeyIssues")}</EmptyNote>
-        ) : (
-          <PanelRowList>
-            {snapshot.risks.map((risk) => {
-              const tier = RISK_TIER[risk.severity]
-              return (
-                <PanelRow key={risk.id}>
-                  <Badge tone={tier.tone} shape="pill">
-                    {tier.label}
-                  </Badge>
-                  <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">
-                    {risk.title}
-                  </span>
-                </PanelRow>
-              )
-            })}
-          </PanelRowList>
-        )}
+        <PanelRowList empty={<EmptyNote>{t("noKeyIssues")}</EmptyNote>}>
+          {snapshot.risks.map((risk) => {
+            const tier = RISK_TIER[risk.severity]
+            return (
+              <PanelRow key={risk.id}>
+                <Badge tone={tier.tone} shape="pill">
+                  {tier.label}
+                </Badge>
+                <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">
+                  {risk.title}
+                </span>
+              </PanelRow>
+            )
+          })}
+        </PanelRowList>
         <form
           className="mt-3 flex gap-2"
           onSubmit={(e) => {

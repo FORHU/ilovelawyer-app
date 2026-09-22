@@ -28,71 +28,67 @@ export function LawPanel({
   return (
     <PanelBody gap="4">
       <SectionLabel>{t("citations")}</SectionLabel>
-      {snapshot.law.citations.length === 0 ? (
-        <EmptyNote>{t("noCitations")}</EmptyNote>
-      ) : (
-        <PanelRowList>
-          {snapshot.law.citations.map((citation) => (
-            <PanelRow key={citation.id} className="flex-col items-start gap-1.5">
-              <p className={expandedId === citation.id ? "text-[13px] leading-5" : "line-clamp-3 text-[13px] leading-5"}>
-                {citation.quotedText}
+      <PanelRowList empty={<EmptyNote>{t("noCitations")}</EmptyNote>}>
+        {snapshot.law.citations.map((citation) => (
+          <PanelRow key={citation.id} className="flex-col items-start gap-1.5">
+            <p className={expandedId === citation.id ? "text-[13px] leading-5" : "line-clamp-3 text-[13px] leading-5"}>
+              {citation.quotedText}
+            </p>
+            {citation.quotedText.length > QUOTE_CLAMP_THRESHOLD && (
+              <button
+                type="button"
+                onClick={() => setExpandedId((cur) => (cur === citation.id ? null : citation.id))}
+                className="text-[10px] font-semibold uppercase tracking-wide text-brand-gold hover:underline"
+              >
+                {expandedId === citation.id ? t("showLess") : t("showMore")}
+              </button>
+            )}
+            {citation.citedReference && (
+              <p className="text-[13px] text-muted-foreground">
+                {citation.citedReference}
+                {citation.pinpoint && `, ${citation.pinpoint}`}
               </p>
-              {citation.quotedText.length > QUOTE_CLAMP_THRESHOLD && (
-                <button
-                  type="button"
-                  onClick={() => setExpandedId((cur) => (cur === citation.id ? null : citation.id))}
-                  className="text-[10px] font-semibold uppercase tracking-wide text-brand-gold hover:underline"
-                >
-                  {expandedId === citation.id ? t("showLess") : t("showMore")}
-                </button>
-              )}
-              {citation.citedReference && (
-                <p className="text-xs text-muted-foreground">
-                  {citation.citedReference}
-                  {citation.pinpoint && `, ${citation.pinpoint}`}
+            )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="neutral" shape="pill">
+                {citation.status}
+              </Badge>
+              {citation.propositionType && (
+                <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                  <Quote size={10} />
+                  {t(`propositionType.${citation.propositionType}`)}
                 </p>
               )}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge tone="neutral" shape="pill">
-                  {citation.status}
-                </Badge>
-                {citation.propositionType && (
-                  <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-                    <Quote size={10} />
-                    {t(`propositionType.${citation.propositionType}`)}
-                  </p>
-                )}
-                {citation.pinpoint && (
-                  <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-                    <MapPin size={10} />
-                    {citation.pinpoint}
-                  </p>
-                )}
-              </div>
-              {citation.citedReference &&
-                (citation.resolvedAuthority ? (
-                  <a
-                    href={citation.resolvedAuthority.jurisUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:underline"
-                  >
-                    <Badge tone="success" shape="pill">
-                      <CheckCircle2 size={11} />
-                      {t("authorityVerified")}
-                      <ExternalLink size={10} />
-                    </Badge>
-                  </a>
-                ) : (
-                  <Badge tone="caution" shape="pill">
-                    <AlertTriangle size={11} />
-                    {t("authorityNotVerified")}
+              {citation.pinpoint && (
+                <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+                  <MapPin size={10} />
+                  {citation.pinpoint}
+                </p>
+              )}
+            </div>
+            {citation.citedReference &&
+              (citation.resolvedAuthority ? (
+                <a
+                  href={citation.resolvedAuthority.jurisUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
+                  <Badge tone="success" shape="pill">
+                    <CheckCircle2 size={11} />
+                    {t("authorityVerified")}
+                    <ExternalLink size={10} />
                   </Badge>
-                ))}
-            </PanelRow>
-          ))}
-        </PanelRowList>
-      )}
+                </a>
+              ) : (
+                <Badge tone="caution" shape="pill">
+                  <AlertTriangle size={11} />
+                  {t("authorityNotVerified")}
+                </Badge>
+              ))}
+          </PanelRow>
+        ))}
+      </PanelRowList>
       <form
         className="flex flex-col gap-2"
         onSubmit={(e) => {

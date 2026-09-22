@@ -63,9 +63,10 @@
   },
   "lastUpdated": "Last updated",
   "pagination": {
+    "first": "First page",
     "previous": "Previous",
     "next": "Next",
-    "pageOf": "Page {{page}} of {{total}}"
+    "last": "Last page"
   },
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",
@@ -195,6 +196,8 @@
     "dropToUpload": "Drop to upload",
     "backToFolders": "Back to folders",
     "backToDocuments": "Back to documents",
+    "ragQueued": "Queued",
+    "ragQueuedHint": "File is uploaded and waiting its turn to be indexed.",
     "ragIndexing": "Indexing",
     "ragIndexingHint": "File is uploaded. Chat can search it once indexing finishes.",
     "ragReady": "Ready",
@@ -258,6 +261,7 @@
     "timelineRefreshing": "Refreshing timeline…",
     "timelineEventCount": "{{count}} event(s)",
     "dataTableTile": "Data Table",
+    "needsDocumentsHint": "Upload a document to enable this",
     "dataTableRefreshing": "Refreshing data table…",
     "dataTableFactCount": "{{count}} fact(s)",
     "dataTableEmpty": "No witnesses, damages, deadlines, or findings recorded for this case yet.",

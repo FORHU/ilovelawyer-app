@@ -33,6 +33,8 @@ import { MessageAttachments, type MessageAttachment } from "@/components/chat/me
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -314,10 +316,9 @@ interface ConsultationChatProps {
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
   inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
-   * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
-   * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
-   * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
-   * already-planned changes of its own that this deliberately doesn't preempt. */
+   * instead of collapsing them into placeholder text. Set by the General Consultation page and
+   * Case Workspace's chat; Terminal's Legal Assistant pane still leaves it off and links out to
+   * Case Documents instead (see docs/adr/0012-message-scoped-document-attachments.md). */
   enableFileChips?: boolean;
   /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
    * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
@@ -327,6 +328,20 @@ interface ConsultationChatProps {
    * page or in Case Workspace. */
   panelTitles?: Record<string, string>;
   onJumpToPanel?: (panelId: string) => void;
+}
+
+// Mirrors the alternating user/assistant bubble shapes below so switching
+// into an existing consultation doesn't render a blank pane while its
+// message history fetches.
+function ChatHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4 py-4">
+      <Skeleton className="h-11 w-2/3 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-16 w-3/4 rounded-[18px_18px_18px_4px]" />
+      <Skeleton className="h-9 w-1/2 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-20 w-4/5 rounded-[18px_18px_18px_4px]" />
+    </div>
+  );
 }
 
 export default function ConsultationChat({
@@ -517,6 +532,7 @@ export default function ConsultationChat({
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -2096,7 +2112,7 @@ export default function ConsultationChat({
                   </div>
                   {chatInputBar}
                   {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
-                    <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                    <div className="relative z-10 hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
@@ -2106,7 +2122,7 @@ export default function ConsultationChat({
                           // past consultation title or a caller-provided emptyStatePrompts entry),
                           // so a long one must wrap inside the pill instead of forcing it wider
                           // than the viewport.
-                          className="max-w-full whitespace-normal break-words rounded-full border border-border px-4 py-2.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground hover:text-foreground"
+                          className="max-w-full cursor-pointer whitespace-normal break-words rounded-full border border-foreground/25 bg-card px-4 py-2.5 text-[13px] font-medium text-foreground shadow-sm transition-all hover:-translate-y-px hover:border-brand-gold hover:shadow-md dark:bg-white/[0.06] dark:border-white/25"
                         >
                           {prompt}
                         </button>
@@ -2214,6 +2230,8 @@ export default function ConsultationChat({
                  * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
+                {showHistorySkeleton && <ChatHistorySkeleton />}
+
                 {visibleMessages.length === 0 && !historyLoading && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
@@ -2228,7 +2246,7 @@ export default function ConsultationChat({
                       <React.Fragment key={i}>
                         <div className="flex flex-col items-end gap-2">
                           {m.attachments && m.attachments.length > 0 && (
-                            <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
+                            <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
                           )}
                           {m.content && (
                             <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${

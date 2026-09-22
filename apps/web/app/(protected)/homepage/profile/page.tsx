@@ -17,6 +17,8 @@ import {
   useUpdateCurrentUserMutation,
 } from "@/lib/user/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -62,13 +64,73 @@ function addDays(iso: string, days: number): Date {
   return new Date(new Date(iso).getTime() + days * 24 * 60 * 60 * 1000);
 }
 
+// Mirrors the three real sections below (hero card, Account Information
+// icon-rows, Security icon-rows) so the swap to real content doesn't jump
+// layout. Rarely visible in practice — the protected-route layout already
+// blocks on this same query before any tab can render — but kept for
+// consistency with every other tab's loading convention.
+function ProfileSkeleton() {
+  return (
+    <>
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 p-8 md:p-10 shadow-lg">
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-6">
+          <Skeleton className="h-20 w-20 shrink-0 rounded-full bg-white/10" />
+          <div className="flex-1 flex flex-col gap-2">
+            <Skeleton className="h-6 w-48 bg-white/10" />
+            <Skeleton className="h-3.5 w-32 bg-white/10" />
+            <Skeleton className="h-4 w-56 bg-white/10" />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="px-6 md:px-8 py-5 border-b border-border">
+          <Skeleton className="h-5 w-48" />
+        </div>
+        <div className="flex flex-col divide-y divide-border">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="px-6 md:px-8 py-5 flex gap-4">
+              <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+              <div className="flex-1 flex flex-col gap-2">
+                <Skeleton className="h-2.5 w-20" />
+                <Skeleton className="h-4 w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="px-6 md:px-8 py-5 border-b border-border">
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <div className="flex flex-col divide-y divide-border">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="px-6 md:px-8 py-5 flex items-center justify-between gap-4">
+              <div className="flex gap-4 items-center">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+              </div>
+              <Skeleton className="h-9 w-32 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
 export default function ProfilePage() {
   const { t } = useTranslation("profile");
   // The auth store only ever holds {id, username, email} from login/signup — the
   // full profile (including the display name chosen at signup) lives behind its
   // own endpoint, since login/refresh don't return a user object at all.
   const storeUser = useAuthStore((s) => s.user);
-  const { data: currentUser } = useCurrentUserQuery();
+  const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUserQuery();
+  const showSkeleton = useDelayedLoading(isLoadingCurrentUser);
   const logout = useLogoutMutation();
   const updateName = useUpdateCurrentUserMutation();
   const updateUsername = useUpdateCurrentUserMutation();
@@ -182,6 +244,10 @@ export default function ProfilePage() {
           </p>
         </div>
 
+        {showSkeleton ? (
+          <ProfileSkeleton />
+        ) : (
+          <>
         {/* Identity Hero Card */}
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 p-8 md:p-10 text-white shadow-lg">
           <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
@@ -501,6 +567,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+          </>
+        )}
 
         {/* Danger Zone */}
         <section className="bg-card rounded-xl border border-red-200 dark:border-red-500/30 shadow-sm overflow-hidden">

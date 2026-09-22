@@ -39,7 +39,7 @@ export default function DeleteDocumentModal({ doc, isDeleting, onConfirm, onClos
         </div>
 
         <div className="px-6 py-6 flex gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
           </div>
           <DialogDescription asChild>
@@ -69,7 +69,7 @@ export default function DeleteDocumentModal({ doc, isDeleting, onConfirm, onClos
                 type="button"
                 onClick={onConfirm}
                 disabled={isDeleting}
-                className="inline-flex items-center gap-2 bg-red-600 text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-red-700 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 bg-destructive text-white text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-destructive/90 transition-colors uppercase cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
                 {t("removeDocumentCta")}

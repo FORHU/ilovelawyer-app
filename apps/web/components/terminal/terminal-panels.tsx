@@ -29,7 +29,7 @@ export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
   const { t } = useTranslation("terminal")
   if (risks.length === 0) return null
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs text-red-700 dark:text-red-300">
+    <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <p>
         <span className="font-semibold">{t("fatalBanner")}</span>{" "}

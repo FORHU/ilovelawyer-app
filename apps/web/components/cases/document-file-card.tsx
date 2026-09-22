@@ -142,7 +142,7 @@ export function DocumentFileCard({
         <span className="truncate text-sm text-foreground">{doc.name}</span>
       )}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-        <RagStatusBadge status={doc.ragStatus} />
+        <RagStatusBadge status={doc.ragStatus} documentId={doc.id} />
         {!selectable && (
           <Tooltip>
             <TooltipTrigger asChild>

@@ -26,6 +26,8 @@
   },
   "attachment": {
     "viewFile": "Tingnan ang {{fileName}}",
+    "processingHint": "Pino-proseso pa — sasagot ang AI kapag handa na ang mga file. Tina-transcribe muna ang audio at video, na maaaring abutin ng ilang minuto.",
+    "processingFailed": "Hindi napoproseso ang file na ito, kaya hindi ito mababasa ng AI.",
     "closePreview": "Isara ang preview",
     "openInNewTab": "Buksan sa bagong tab",
     "download": "I-download",
