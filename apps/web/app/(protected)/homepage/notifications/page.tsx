@@ -13,6 +13,29 @@ import {
   useUnreadCountQuery,
   type Notification,
 } from "@/lib/notifications/queries";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { ErrorState } from "@/components/error-state";
+
+// Mirrors NotificationItem's non-dense row shape (7x7 icon circle + title +
+// message + timestamp lines, px-4 py-3.5) so the swap to real rows doesn't
+// jump layout.
+function NotificationListSkeleton() {
+  return (
+    <div className="flex flex-col gap-1">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3 px-4 py-3.5">
+          <Skeleton className="mt-0.5 h-7 w-7 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Skeleton className="h-3 w-2/5" />
+            <Skeleton className="h-2.5 w-4/5" />
+            <Skeleton className="h-2 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function NotificationsPage() {
   const { t } = useTranslation("common");
@@ -20,6 +43,7 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
 
   const notificationsQuery = useInfiniteNotificationsQuery({ unreadOnly });
+  const showSkeleton = useDelayedLoading(notificationsQuery.isLoading);
   const unreadCountQuery = useUnreadCountQuery();
   const markRead = useMarkNotificationReadMutation();
   const markAllRead = useMarkAllNotificationsReadMutation();
@@ -78,8 +102,14 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        {notificationsQuery.isLoading ? (
-          <div className="py-16 text-center text-sm text-muted-foreground">…</div>
+        {showSkeleton ? (
+          <NotificationListSkeleton />
+        ) : notificationsQuery.isError ? (
+          <ErrorState
+            message={t("notifications.loadError", { defaultValue: "Couldn't load notifications." })}
+            retryLabel={t("notifications.retry", { defaultValue: "Retry" })}
+            onRetry={() => notificationsQuery.refetch()}
+          />
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <BellOff className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />

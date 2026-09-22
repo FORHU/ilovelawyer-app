@@ -7,6 +7,8 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
@@ -202,6 +204,26 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 }
 
 /* ==========================================
+   MONTH GRID SKELETON
+   ========================================== */
+// A literal react-day-picker DOM reproduction would be fragile to keep in
+// sync — this matches the fixed-weeks grid's visual weight (6 weeks x 7
+// days) instead, at the same dimensions the real Calendar renders at.
+function CalendarGridSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 p-0.5">
+      {Array.from({ length: 6 }).map((_, week) => (
+        <div key={week} className="flex w-full items-start gap-1">
+          {Array.from({ length: 7 }).map((_, day) => (
+            <Skeleton key={day} className="h-16 flex-1 basis-0 min-w-0 rounded-md" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ==========================================
    PLANNER PANEL (mini calendar + add form + selected day list)
    ========================================== */
 function PlannerPanel({
@@ -213,6 +235,7 @@ function PlannerPanel({
   selectedNotes,
   initialCaseId,
   datesWithItems,
+  isLoadingDay,
 }: {
   selectedDate: Date | undefined;
   currentMonth: Date;
@@ -222,6 +245,7 @@ function PlannerPanel({
   selectedNotes: { id: string; body: string }[];
   initialCaseId: string | null;
   datesWithItems: Set<string>;
+  isLoadingDay: boolean;
 }) {
   const [entryType, setEntryType] = React.useState<"appointment" | "note">("appointment");
   const [title, setTitle] = React.useState("");
@@ -582,7 +606,19 @@ function PlannerPanel({
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
         </p>
-        {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
+        {isLoadingDay ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg border border-border p-2">
+                <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-2.5 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t("nothingScheduledDay")}</p>
         ) : (
           <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
@@ -733,6 +769,7 @@ export default function CalendarPage() {
   const appointments = appointmentsQuery.data ?? [];
   const notesQuery = useNotesQuery(from, to);
   const notes = notesQuery.data ?? [];
+  const showCalendarSkeleton = useDelayedLoading(appointmentsQuery.isLoading || notesQuery.isLoading);
 
   const handleSelectDay = React.useCallback(
     (date: Date) => {
@@ -817,6 +854,7 @@ export default function CalendarPage() {
             selectedNotes={selectedNotes}
             initialCaseId={initialCaseId}
             datesWithItems={datesWithItems}
+            isLoadingDay={showCalendarSkeleton}
           />
 
           {/* Desktop/tablet only — PlannerPanel's own calendar grid + selected-day list above
@@ -855,6 +893,9 @@ export default function CalendarPage() {
               )}
             </CardHeader>
             <CardContent className="p-0 md:px-6 md:pb-6">
+              {showCalendarSkeleton ? (
+                <CalendarGridSkeleton />
+              ) : (
               <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
                 <Calendar
                   mode="single"
@@ -885,6 +926,7 @@ export default function CalendarPage() {
                   className="w-full p-0"
                 />
               </CalendarItemsContext.Provider>
+              )}
             </CardContent>
           </Card>
         </div>

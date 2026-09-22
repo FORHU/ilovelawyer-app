@@ -662,9 +662,10 @@ export default function IlovelawyerTranscriptionDashboard() {
                 <select
                   value={linkedCaseId}
                   onChange={(e) => setLinkedCaseId(e.target.value)}
-                  className="w-full max-w-[220px] rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary sm:w-auto"
+                  disabled={casesQuery.isLoading}
+                  className="w-full max-w-[220px] rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary sm:w-auto disabled:opacity-50"
                 >
-                  <option value="">{t("noCase")}</option>
+                  <option value="">{casesQuery.isLoading ? t("loadingCases", { defaultValue: "Loading cases…" }) : t("noCase")}</option>
                   {cases.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.caseName}
@@ -864,7 +865,7 @@ export default function IlovelawyerTranscriptionDashboard() {
               { value: "", label: t("noCase") },
               ...cases.map((c) => ({ value: c.id, label: c.caseName })),
             ]}
-            placeholder={t("noCase")}
+            placeholder={casesQuery.isLoading ? t("loadingCases", { defaultValue: "Loading cases…" }) : t("noCase")}
             triggerTooltip="Tag new recordings and uploads to this case"
             className="min-w-0 max-w-[150px] shrink-0"
           />
