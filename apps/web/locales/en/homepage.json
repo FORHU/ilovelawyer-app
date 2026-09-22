@@ -26,6 +26,7 @@
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "thinking": "is thinking",
+  "thinkingFinalizing": "is finalizing the analysis",
   "message": {
     "copy": "Copy response",
     "copied": "Copied!",

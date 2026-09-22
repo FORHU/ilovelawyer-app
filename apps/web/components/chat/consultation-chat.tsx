@@ -27,6 +27,8 @@ import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
+import { shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
+import { shouldScrollTranscriptToBottom } from "@/lib/chat/transcript-scroll";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
@@ -596,6 +598,27 @@ export default function ConsultationChat({
   // the reply is still in flight, so it must read (and gate the composer) as busy.
   const isBusy = isSending || isResumedGenerating || isGeneratingElsewhere;
 
+  // The reply text is held back behind the "thinking" placeholder until the whole turn (answer,
+  // confidence, "why this answer") is saved, so they appear together instead of the answer
+  // showing first and the rest popping in once they finish - see shouldHoldAnswer. This is the
+  // safety cap: once answer text has been sitting there for ANSWER_HOLD_CAP_MS, reveal it anyway
+  // and let the extras follow, so one slow or stuck extra can never hide a finished answer.
+  // Reset whenever the held text goes away (turn saved, switched consultations).
+  const lastDisplayedMessage = messages[messages.length - 1];
+  const answerTextPresent =
+    ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) &&
+    lastDisplayedMessage?.role === "assistant" &&
+    Boolean(lastDisplayedMessage.content);
+  const [revealHeldAnswer, setRevealHeldAnswer] = useState(false);
+  useEffect(() => {
+    if (!answerTextPresent) return;
+    const timer = setTimeout(() => setRevealHeldAnswer(true), ANSWER_HOLD_CAP_MS);
+    return () => {
+      clearTimeout(timer);
+      setRevealHeldAnswer(false);
+    };
+  }, [answerTextPresent]);
+
   // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
   // Driven by `history` changing — which now happens via explicit invalidateQueries calls
@@ -821,11 +844,26 @@ export default function ConsultationChat({
     shouldFollowTranscriptRef.current = true;
   }, [consultationKey]);
 
+  // Scrolls to the bottom for the user's own new prompt (and the thinking/research rows under it)
+  // and when a consultation is opened - but never because a reply arrived or finished: the whole
+  // answer (with its confidence and explanation, held together - see shouldHoldAnswer above)
+  // shows up at once, and jumping to its end would skip past its start. See
+  // shouldScrollTranscriptToBottom.
+  const scrollContextRef = useRef({ key: consultationKey, userCount: 0 });
   useEffect(() => {
+    const userCount = messages.filter((m) => m.role === "user").length;
+    const previous = scrollContextRef.current;
+    scrollContextRef.current = { key: consultationKey, userCount };
+    const lastMessage = messages[messages.length - 1];
     const transcript = transcriptRef.current;
-    if (!transcript || !shouldFollowTranscriptRef.current) return;
-    transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
-  }, [messages]);
+    if (!transcript) return;
+    const shouldScroll = shouldScrollTranscriptToBottom({
+      follow: shouldFollowTranscriptRef.current,
+      contextChanged: previous.key !== consultationKey || previous.userCount !== userCount,
+      lastIsReply: lastMessage?.role === "assistant" && Boolean(lastMessage.content),
+    });
+    if (shouldScroll) transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
+  }, [messages, consultationKey]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -2043,6 +2081,7 @@ export default function ConsultationChat({
                   const isStreamingThis =
                     ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) && i === visibleMessages.length - 1;
                   const isLastMessage = i === visibleMessages.length - 1;
+                  const holdAnswer = shouldHoldAnswer({ isStreaming: isStreamingThis, revealed: revealHeldAnswer });
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
                   // to each other in visibleMessages — pull the continuation ones up closer than
@@ -2066,12 +2105,21 @@ export default function ConsultationChat({
                       id={chatInstanceId ? `${chatInstanceId}-chat-msg-${i}` : `chat-msg-${i}`}
                       className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
                     >
-                      {isStreamingThis && !m.content ? (
-                        m.researchSteps && m.researchSteps.length > 0 ? (
-                          <ResearchTraceList steps={m.researchSteps} />
-                        ) : (
-                          <ThinkingIndicator label={t("thinking")} />
-                        )
+                      {isStreamingThis && (!m.content || holdAnswer) ? (
+                        // Before any text: the research trace, or the thinking indicator. Once the
+                        // answer text is here but held (see holdAnswer), the trace stays and the
+                        // indicator switches to "finalizing" so the wait reads as work still in
+                        // progress, not stuck - the answer, its confidence and its "why this
+                        // answer" explanation then all appear together once holdAnswer clears,
+                        // instead of the answer showing first and the rest popping in after.
+                        <>
+                          {m.researchSteps && m.researchSteps.length > 0 && <ResearchTraceList steps={m.researchSteps} />}
+                          {(!(m.researchSteps && m.researchSteps.length > 0) || holdAnswer) && (
+                            <div className={m.researchSteps && m.researchSteps.length > 0 ? "mt-3" : undefined}>
+                              <ThinkingIndicator label={holdAnswer && m.content ? t("thinkingFinalizing") : t("thinking")} />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           {!embedded && !isGroupContinuation && (
