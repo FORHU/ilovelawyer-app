@@ -190,6 +190,10 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
           embedded
           centerContent
           showSuggestedPrompts
+          // Files sent from this chat still land in Documents (Studio), but also show as chips on
+          // the message and are linked to it — so the reply waits for them to finish indexing
+          // instead of answering as if nothing was attached.
+          enableFileChips
           caseId={caseId}
           basePath={basePath}
           emptyStateHeading={caseRecord ? t("chat.emptyHeading", { caseName: caseRecord.caseName }) : undefined}

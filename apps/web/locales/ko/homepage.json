@@ -24,6 +24,8 @@
   },
   "attachment": {
     "viewFile": "{{fileName}} 보기",
+    "processingHint": "아직 처리 중입니다. 파일이 준비되면 AI가 답변합니다. 오디오와 비디오는 먼저 텍스트로 변환되며 몇 분 걸릴 수 있습니다.",
+    "processingFailed": "이 파일을 처리하지 못해 AI가 읽을 수 없습니다.",
     "closePreview": "미리보기 닫기",
     "openInNewTab": "새 탭에서 열기",
     "download": "다운로드",

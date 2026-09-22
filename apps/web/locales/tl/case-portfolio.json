@@ -130,6 +130,7 @@
     "timelineRefreshing": "Nire-refresh ang timeline…",
     "timelineEventCount": "{{count}} (na) kaganapan",
     "dataTableTile": "Data Table",
+    "needsDocumentsHint": "Mag-upload ng dokumento para ma-enable ito",
     "dataTableRefreshing": "Nire-refresh ang data table…",
     "dataTableFactCount": "{{count}} (na) detalye",
     "dataTableEmpty": "Wala pang naitalang testigo, danyos, deadline, o findings para sa case na ito.",
