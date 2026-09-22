@@ -2,13 +2,14 @@
 import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, FileStack, Loader2, Search } from "lucide-react";
+import { ArrowLeft, FileStack, Loader2, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import { useLegalDocumentsQuery } from "@/lib/legal-rag/mutations";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
 import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 20;
 
@@ -160,37 +161,18 @@ function LegalDocumentsPageContent() {
             ))}
 
             {!isLoading && !isError && (data?.total ?? 0) > 0 && (
-              <div className="flex items-center justify-between pt-4">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                      {t("documents.prev")}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Go to the previous page of results</TooltipContent>
-                </Tooltip>
-                <span className="text-xs text-muted-foreground">{t("documents.pageIndicator", { page, totalPages })}</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded-xs"
-                    >
-                      {t("documents.next")}
-                      <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Go to the next page of results</TooltipContent>
-                </Tooltip>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                labels={{
+                  first: t("documents.first"),
+                  previous: t("documents.prev"),
+                  next: t("documents.next"),
+                  last: t("documents.last"),
+                }}
+                className="justify-center pt-4"
+              />
             )}
           </div>
         </section>

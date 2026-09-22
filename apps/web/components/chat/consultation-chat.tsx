@@ -27,10 +27,14 @@ import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
+import { shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
+import { shouldScrollTranscriptToBottom } from "@/lib/chat/transcript-scroll";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -293,10 +297,9 @@ interface ConsultationChatProps {
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
   inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
-   * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
-   * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
-   * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
-   * already-planned changes of its own that this deliberately doesn't preempt. */
+   * instead of collapsing them into placeholder text. Set by the General Consultation page and
+   * Case Workspace's chat; Terminal's Legal Assistant pane still leaves it off and links out to
+   * Case Documents instead (see docs/adr/0012-message-scoped-document-attachments.md). */
   enableFileChips?: boolean;
   /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
    * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
@@ -306,6 +309,20 @@ interface ConsultationChatProps {
    * page or in Case Workspace. */
   panelTitles?: Record<string, string>;
   onJumpToPanel?: (panelId: string) => void;
+}
+
+// Mirrors the alternating user/assistant bubble shapes below so switching
+// into an existing consultation doesn't render a blank pane while its
+// message history fetches.
+function ChatHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4 py-4">
+      <Skeleton className="h-11 w-2/3 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-16 w-3/4 rounded-[18px_18px_18px_4px]" />
+      <Skeleton className="h-9 w-1/2 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-20 w-4/5 rounded-[18px_18px_18px_4px]" />
+    </div>
+  );
 }
 
 export default function ConsultationChat({
@@ -486,6 +503,7 @@ export default function ConsultationChat({
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -596,6 +614,27 @@ export default function ConsultationChat({
   // handleSelectConsultation/handleNewChat reset isSending — its pendingTurn is still here and
   // the reply is still in flight, so it must read (and gate the composer) as busy.
   const isBusy = isSending || isResumedGenerating || isGeneratingElsewhere;
+
+  // The reply text is held back behind the "thinking" placeholder until the whole turn (answer,
+  // confidence, "why this answer") is saved, so they appear together instead of the answer
+  // showing first and the rest popping in once they finish - see shouldHoldAnswer. This is the
+  // safety cap: once answer text has been sitting there for ANSWER_HOLD_CAP_MS, reveal it anyway
+  // and let the extras follow, so one slow or stuck extra can never hide a finished answer.
+  // Reset whenever the held text goes away (turn saved, switched consultations).
+  const lastDisplayedMessage = messages[messages.length - 1];
+  const answerTextPresent =
+    ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) &&
+    lastDisplayedMessage?.role === "assistant" &&
+    Boolean(lastDisplayedMessage.content);
+  const [revealHeldAnswer, setRevealHeldAnswer] = useState(false);
+  useEffect(() => {
+    if (!answerTextPresent) return;
+    const timer = setTimeout(() => setRevealHeldAnswer(true), ANSWER_HOLD_CAP_MS);
+    return () => {
+      clearTimeout(timer);
+      setRevealHeldAnswer(false);
+    };
+  }, [answerTextPresent]);
 
   // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
@@ -822,11 +861,26 @@ export default function ConsultationChat({
     shouldFollowTranscriptRef.current = true;
   }, [consultationKey]);
 
+  // Scrolls to the bottom for the user's own new prompt (and the thinking/research rows under it)
+  // and when a consultation is opened - but never because a reply arrived or finished: the whole
+  // answer (with its confidence and explanation, held together - see shouldHoldAnswer above)
+  // shows up at once, and jumping to its end would skip past its start. See
+  // shouldScrollTranscriptToBottom.
+  const scrollContextRef = useRef({ key: consultationKey, userCount: 0 });
   useEffect(() => {
+    const userCount = messages.filter((m) => m.role === "user").length;
+    const previous = scrollContextRef.current;
+    scrollContextRef.current = { key: consultationKey, userCount };
+    const lastMessage = messages[messages.length - 1];
     const transcript = transcriptRef.current;
-    if (!transcript || !shouldFollowTranscriptRef.current) return;
-    transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
-  }, [messages]);
+    if (!transcript) return;
+    const shouldScroll = shouldScrollTranscriptToBottom({
+      follow: shouldFollowTranscriptRef.current,
+      contextChanged: previous.key !== consultationKey || previous.userCount !== userCount,
+      lastIsReply: lastMessage?.role === "assistant" && Boolean(lastMessage.content),
+    });
+    if (shouldScroll) transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
+  }, [messages, consultationKey]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -1891,7 +1945,7 @@ export default function ConsultationChat({
                   </div>
                   {chatInputBar}
                   {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
-                    <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                    <div className="relative z-10 hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
@@ -1901,7 +1955,7 @@ export default function ConsultationChat({
                           // past consultation title or a caller-provided emptyStatePrompts entry),
                           // so a long one must wrap inside the pill instead of forcing it wider
                           // than the viewport.
-                          className="max-w-full whitespace-normal break-words rounded-full border border-border px-4 py-2.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground hover:text-foreground"
+                          className="max-w-full cursor-pointer whitespace-normal break-words rounded-full border border-foreground/25 bg-card px-4 py-2.5 text-[13px] font-medium text-foreground shadow-sm transition-all hover:-translate-y-px hover:border-brand-gold hover:shadow-md dark:bg-white/[0.06] dark:border-white/25"
                         >
                           {prompt}
                         </button>
@@ -2009,6 +2063,8 @@ export default function ConsultationChat({
                  * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
+                {showHistorySkeleton && <ChatHistorySkeleton />}
+
                 {visibleMessages.length === 0 && !historyLoading && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
@@ -2022,7 +2078,7 @@ export default function ConsultationChat({
                     return (
                       <div key={i} className="flex flex-col items-end gap-2">
                         {m.attachments && m.attachments.length > 0 && (
-                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
+                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
                         )}
                         {m.content && (
                           <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
@@ -2044,6 +2100,7 @@ export default function ConsultationChat({
                   const isStreamingThis =
                     ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) && i === visibleMessages.length - 1;
                   const isLastMessage = i === visibleMessages.length - 1;
+                  const holdAnswer = shouldHoldAnswer({ isStreaming: isStreamingThis, revealed: revealHeldAnswer });
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
                   // to each other in visibleMessages — pull the continuation ones up closer than
@@ -2067,12 +2124,21 @@ export default function ConsultationChat({
                       id={chatInstanceId ? `${chatInstanceId}-chat-msg-${i}` : `chat-msg-${i}`}
                       className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
                     >
-                      {isStreamingThis && !m.content ? (
-                        m.researchSteps && m.researchSteps.length > 0 ? (
-                          <ResearchTraceList steps={m.researchSteps} />
-                        ) : (
-                          <ThinkingIndicator label={t("thinking")} />
-                        )
+                      {isStreamingThis && (!m.content || holdAnswer) ? (
+                        // Before any text: the research trace, or the thinking indicator. Once the
+                        // answer text is here but held (see holdAnswer), the trace stays and the
+                        // indicator switches to "finalizing" so the wait reads as work still in
+                        // progress, not stuck - the answer, its confidence and its "why this
+                        // answer" explanation then all appear together once holdAnswer clears,
+                        // instead of the answer showing first and the rest popping in after.
+                        <>
+                          {m.researchSteps && m.researchSteps.length > 0 && <ResearchTraceList steps={m.researchSteps} />}
+                          {(!(m.researchSteps && m.researchSteps.length > 0) || holdAnswer) && (
+                            <div className={m.researchSteps && m.researchSteps.length > 0 ? "mt-3" : undefined}>
+                              <ThinkingIndicator label={holdAnswer && m.content ? t("thinkingFinalizing") : t("thinking")} />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           {!embedded && !isGroupContinuation && (

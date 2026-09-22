@@ -1,9 +1,11 @@
 "use client"
 import React, { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, ChevronLeft, ChevronRight, Loader2, Search, X } from "lucide-react"
+import { ArrowRight, Loader2, Search, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/lib/store/auth.store"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import {
   type LawCategoryParam,
   type LawCaseType,
@@ -15,6 +17,7 @@ import {
 } from "@/lib/law/queries"
 import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
 import { FilterChipGroup } from "@/components/library/filter-chip-group"
+import { CursorPagination, PAGINATION_WINDOW_HALF, PAGINATION_WINDOW_SIZE } from "@/components/ui/pagination"
 
 function itemTitle(item: LawSearchItem): string {
   return item.case_title ?? item.title ?? ""
@@ -26,6 +29,37 @@ function itemReference(item: LawSearchItem): string | null {
 
 function topicLabel(topic: LawTopic): string {
   return topic.charAt(0).toUpperCase() + topic.slice(1)
+}
+
+// Mirrors renderCard's actual shape below (badge row + year, 3-line title,
+// 2-line snippet, ponente line) so the swap from skeleton to real cards
+// doesn't jump height the way a plain title+subtitle block would.
+function ResultCardGridSkeleton({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-4.5 w-14 rounded-md" />
+              <Skeleton className="h-4 w-10 rounded-md" />
+            </div>
+            <Skeleton className="h-3 w-8" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -53,8 +87,15 @@ export function LawSearchPanel() {
   const [caseType, setCaseType] = useState<LawCaseType | null>(null)
   const [topics, setTopics] = useState<LawTopic[]>([])
   const [courts, setCourts] = useState<UkCourt[]>([])
+  // Tracks only a fetch the user is actually waiting on (clicked Next past the fetched
+  // pages) — kept separate from react-query's own `isFetchingNextPage`, which also flips
+  // on/off for the silent background prefetch below. Wiring the Next button's spinner to
+  // that flag directly made it flicker on every page change, since a prefetch fires right
+  // after almost every navigation.
+  const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
   const search = useLawSearchMutation()
+  const showSearchSkeleton = useDelayedLoading(search.isPending)
   const showingSearch = search.status !== "idle"
   const supported = tenantCode === "PH" || tenantCode === "UK"
   const facetKind = cfg.facetKind(category)
@@ -73,6 +114,26 @@ export function LawSearchPanel() {
     courts: facetKind === "uk-court" ? courts : [],
     enabled: supported && !showingSearch && canBrowse,
   })
+  const showBrowseSkeleton = useDelayedLoading(browse.isPending)
+
+  // The page-number row can only show pages already fetched, and each one depends on the
+  // previous page's cursor, so they can't be fetched in parallel ahead of time. Without this,
+  // pageCount trails one behind `current` on every forward click, so the pagination's sliding
+  // window (see components/ui/pagination.tsx) can only ever show pages up to `current` — it
+  // can never centre the current page the way it does once the true end is known. This keeps
+  // fetching one page at a time until enough are in hand to fill the window centred on
+  // whatever page is currently requested.
+  const browsePageCount = browse.data?.pages.length ?? 0
+  React.useEffect(() => {
+    if (!browse.hasNextPage || browse.isFetchingNextPage) return
+    const desiredPageCount = Math.max(PAGINATION_WINDOW_SIZE, requestedPage + 1 + PAGINATION_WINDOW_HALF)
+    if (browsePageCount < desiredPageCount) {
+      void browse.fetchNextPage()
+    }
+    // `browse` itself is deliberately omitted below — react-query hands back a fresh object
+    // every render, and the primitives already listed capture everything this needs to react to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [browse.hasNextPage, browse.isFetchingNextPage, browsePageCount, requestedPage])
 
   if (!supported) {
     return (
@@ -122,8 +183,13 @@ export function LawSearchPanel() {
   const goToPage = (index: number) => setPageState({ key: filterKey, index })
   const goNext = async () => {
     if (pageIndex + 1 < browsePages.length) return goToPage(pageIndex + 1)
-    const res = await browse.fetchNextPage()
-    if ((res.data?.pages.length ?? 0) > pageIndex + 1) goToPage(pageIndex + 1)
+    setIsNavigatingNext(true)
+    try {
+      const res = await browse.fetchNextPage()
+      if ((res.data?.pages.length ?? 0) > pageIndex + 1) goToPage(pageIndex + 1)
+    } finally {
+      setIsNavigatingNext(false)
+    }
   }
   const notice = showingSearch ? search.data?.notice : browse.data?.pages[0]?.notice
 
@@ -136,7 +202,7 @@ export function LawSearchPanel() {
       <Link
         key={rowId}
         href={`/homepage/library/laws/${item.id}?category=${category}`}
-        className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
+        className="flex h-full min-h-56 flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -193,7 +259,7 @@ export function LawSearchPanel() {
     )
   }
 
-  const cardGridClass = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+  const cardGridClass = "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
 
   return (
     <section className="flex flex-1 flex-col bg-background">
@@ -305,12 +371,7 @@ export function LawSearchPanel() {
         {/* ── Search results ───────────────────────────────────────────── */}
         {showingSearch && (
           <div className="flex flex-col gap-3 text-left">
-            {search.isPending && (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t("lawSearch.searching")}
-              </div>
-            )}
+            {showSearchSkeleton && <ResultCardGridSkeleton className={cardGridClass} />}
 
             {search.isError && (
               <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.error")}</p>
@@ -341,12 +402,7 @@ export function LawSearchPanel() {
         {/* ── Browse list ─────────────────────────────────────────────── */}
         {!showingSearch && canBrowse && (
           <div className="flex flex-col gap-3">
-            {browse.isPending && (
-              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t("lawSearch.searching")}
-              </div>
-            )}
+            {showBrowseSkeleton && <ResultCardGridSkeleton className={cardGridClass} />}
 
             {browse.isError && (
               <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.browseError")}</p>
@@ -361,41 +417,20 @@ export function LawSearchPanel() {
                 )}
 
                 {browseItems.length > 0 && (pageIndex > 0 || !isLastPage) && (
-                  <div className="flex items-center justify-between gap-4 pt-2">
-                    {pageIndex > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => goToPage(pageIndex - 1)}
-                        className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-[11px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:border-foreground/40"
-                      >
-                        <ChevronLeft className="size-3.5" aria-hidden="true" />
-                        {t("lawSearch.pagePrevious")}
-                      </button>
-                    ) : (
-                      <span aria-hidden="true" />
-                    )}
-
-                    <span className="text-[12px] text-muted-foreground">
-                      {isLastPage
-                        ? t("lawSearch.pageOf", { page: pageIndex + 1, total: browsePages.length })
-                        : t("lawSearch.pageNumber", { page: pageIndex + 1 })}
-                      {" | "}
-                      {t("lawSearch.pageCount", { count: browseItems.length })}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => void goNext()}
-                      disabled={isLastPage || browse.isFetchingNextPage}
-                      className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-border px-4 text-[11px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:border-foreground/40 disabled:pointer-events-none disabled:opacity-40"
-                    >
-                      {browse.isFetchingNextPage ? (
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                      ) : null}
-                      {t("lawSearch.pageNext")}
-                      <ChevronRight className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <CursorPagination
+                    pageIndex={pageIndex}
+                    pageCount={browsePages.length}
+                    hasMore={!isLastPage}
+                    isFetchingNext={isNavigatingNext}
+                    onGoToPage={goToPage}
+                    onNext={() => void goNext()}
+                    labels={{
+                      first: t("lawSearch.pageFirst"),
+                      previous: t("lawSearch.pagePrevious"),
+                      next: t("lawSearch.pageNext"),
+                    }}
+                    className="justify-center pt-2"
+                  />
                 )}
               </>
             )}

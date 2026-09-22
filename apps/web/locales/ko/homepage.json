@@ -24,6 +24,8 @@
   },
   "attachment": {
     "viewFile": "{{fileName}} 보기",
+    "processingHint": "아직 처리 중입니다. 파일이 준비되면 AI가 답변합니다. 오디오와 비디오는 먼저 텍스트로 변환되며 몇 분 걸릴 수 있습니다.",
+    "processingFailed": "이 파일을 처리하지 못해 AI가 읽을 수 없습니다.",
     "closePreview": "미리보기 닫기",
     "openInNewTab": "새 탭에서 열기",
     "download": "다운로드",
@@ -35,6 +37,7 @@
   "microphoneError": "녹음하려면 마이크 접근 권한이 필요합니다. 마이크 권한을 허용한 후 다시 시도해 주세요.",
   "sendError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "thinking": "가 생각 중입니다",
+  "thinkingFinalizing": "가 분석을 마무리하는 중입니다",
   "message": {
     "copy": "응답 복사",
     "copied": "복사됨!",

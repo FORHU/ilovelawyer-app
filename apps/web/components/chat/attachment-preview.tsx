@@ -6,6 +6,8 @@ import xlsxPreview from "xlsx-preview";
 import { Download, ExternalLink, FileText, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
+  isAudioAttachment,
+  isVideoAttachment,
   isDocxAttachment,
   isImageAttachment,
   isLegacyDocAttachment,
@@ -57,6 +59,8 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
   const isDocx = isDocxAttachment(attachment);
   const isXlsx = isXlsxAttachment(attachment);
   const isLegacyDoc = isLegacyDocAttachment(attachment);
+  const isAudio = isAudioAttachment(attachment);
+  const isVideo = isVideoAttachment(attachment);
   // Seeded from the initial attachment (which never changes across this component's lifetime —
   // every caller only renders it behind `{x && <AttachmentPreview .../>}`, so a new attachment
   // always remounts rather than updating props) instead of set synchronously inside the render
@@ -77,6 +81,8 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
   const canDocxPreview = isDocx && !!attachment.url && !inlineFailed;
   const canXlsxPreview = isXlsx && !!attachment.url && !inlineFailed;
   const canDocTextPreview = isLegacyDoc && !inlineFailed;
+  const canAudioPreview = isAudio && !!attachment.url && !inlineFailed;
+  const canVideoPreview = isVideo && !!attachment.url && !inlineFailed;
 
   // docx-preview renders imperatively into a live DOM node rather than taking React props, so
   // this fetches the bytes and hands them off once per attachment. Requires the presigned S3
@@ -222,6 +228,28 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
           className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}
         />
+      ) : canVideoPreview ? (
+        <div className="flex h-full items-center justify-center p-4">
+          <video
+            src={attachment.url!}
+            controls
+            preload="metadata"
+            className="max-h-full max-w-full rounded-md"
+            onError={() => setInlineFailed(true)}
+          />
+        </div>
+      ) : canAudioPreview ? (
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+          <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
+          <p className="max-w-full truncate text-sm text-foreground">{attachment.name}</p>
+          <audio
+            src={attachment.url!}
+            controls
+            preload="metadata"
+            className="w-full max-w-sm"
+            onError={() => setInlineFailed(true)}
+          />
+        </div>
       ) : canDocxPreview ? (
         <div className="h-full overflow-y-auto bg-white p-4 sm:p-8">
           {docxLoading && (
@@ -314,7 +342,7 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
           <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
             {t(
-              isPdf || isImage || isDocx || isXlsx || isLegacyDoc
+              isPdf || isImage || isDocx || isXlsx || isLegacyDoc || isAudio || isVideo
                 ? "attachment.previewFailed"
                 : "attachment.previewUnavailable",
             )}

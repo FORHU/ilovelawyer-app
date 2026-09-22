@@ -35,7 +35,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
     playbackDuration,
     playbackRate,
     playerBarDismissed,
-    setPlayerBarDismissed,
+    dismissPlayerBar,
     togglePlayback,
     seek,
     skip,
@@ -134,7 +134,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
           onSeek={seek}
           onSkip={skip}
           onCycleRate={cycleRate}
-          onClose={() => setPlayerBarDismissed(true)}
+          onClose={dismissPlayerBar}
           formatDuration={formatDuration}
         />
       )}

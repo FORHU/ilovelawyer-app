@@ -44,7 +44,7 @@
   "arrangementTabs": "Tabs",
   "arrangementFocus": "Focus",
   "columnCount": "{{count}} columns",
-  "replacePanePrompt": "Columns are full — pick a pane to replace",
+  "replacePanePrompt": "The board is full — pick a pane to replace",
   "replacePane": "Replace",
   "noUnpinnedPanes": "Every visible pane is pinned — unpin one to make room.",
   "pinPane": "Pin pane",

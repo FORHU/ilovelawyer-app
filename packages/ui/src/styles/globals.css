@@ -241,7 +241,15 @@
     }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
+    /* No overflow-x here (html's own overflow-x: hidden above already fully clips
+       horizontal overflow for the whole page, since it's an ancestor of body). Setting
+       one axis on body without the other forces the browser to auto-upgrade the unset
+       overflow-y from its initial `visible` to `auto` (CSS Overflow spec) — silently
+       turning body into its own scroll container even though it never actually shows a
+       scrollbar (html's overflow-y: auto above is what really scrolls). Every
+       `position: sticky` element in the app then sticks relative to body's scrollport
+       instead of the real viewport, and since body just gets carried along by html's
+       scroll, the sticky element scrolls away with the page instead of staying pinned. */
     overscroll-behavior-x: none;
     }
   /* react-remove-scroll (used by every Radix popup — Select, Dialog, DropdownMenu, ...) injects
