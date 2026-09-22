@@ -110,36 +110,50 @@ export default function TerminalSettingsSidebar({
                 {panels.map((panel) => {
                   const onScreen = visibleSet.has(panel.id)
                   const badge = panelBadges[panel.id]
+                  const row = (
+                    <button
+                      type="button"
+                      data-panel-library-id={panel.id}
+                      draggable={!onScreen}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/x-panel-id", panel.id)
+                        onPanelDragStart?.(panel.id)
+                      }}
+                      onDragEnd={onPanelDragEnd}
+                      onClick={() => {
+                        if (onScreen) return
+                        onAddPanel(panel.id)
+                        if (isMobile) onMobileOpenChange(false)
+                      }}
+                      className={`flex w-full items-center gap-2 rounded-md border border-transparent px-2.5 py-2 text-left text-[13px] transition-colors ${
+                        onScreen
+                          ? "cursor-default text-foreground"
+                          : "cursor-grab text-foreground hover:border-border hover:bg-muted dark:hover:bg-overlay-hover active:cursor-grabbing"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
+                      <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge ?? "—"}</span>
+                      {onScreen ? (
+                        <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
+                      )}
+                    </button>
+                  )
                   return (
                     <li key={panel.id}>
-                      <button
-                        type="button"
-                        data-panel-library-id={panel.id}
-                        draggable={!onScreen}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("text/x-panel-id", panel.id)
-                          onPanelDragStart?.(panel.id)
-                        }}
-                        onDragEnd={onPanelDragEnd}
-                        onClick={() => {
-                          if (onScreen) return
-                          onAddPanel(panel.id)
-                          if (isMobile) onMobileOpenChange(false)
-                        }}
-                        className={`flex w-full items-center gap-2 rounded-md border border-transparent px-2.5 py-2 text-left text-[13px] transition-colors ${
-                          onScreen
-                            ? "cursor-default text-foreground"
-                            : "cursor-grab text-foreground hover:border-border hover:bg-muted dark:hover:bg-overlay-hover active:cursor-grabbing"
-                        }`}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
-                        <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge ?? "—"}</span>
-                        {onScreen ? (
-                          <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
-                        ) : (
-                          <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-                        )}
-                      </button>
+                      {/* This row can't add-on-click once a panel is already on screen (see
+                       * the onClick guard above), so it's easy to read the checkmark as inert
+                       * status with no way back — the tooltip is the only place that tells you
+                       * removal still exists, just via the pane's own close (X) in the grid. */}
+                      {onScreen ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>{row}</TooltipTrigger>
+                          <TooltipContent side="right">{t("removePaneHint")}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        row
+                      )}
                     </li>
                   )
                 })}

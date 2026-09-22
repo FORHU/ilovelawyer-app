@@ -54,6 +54,7 @@
   "comingSoon": "Coming soon",
   "paneLibrarySearch": "Search {{count}} panes",
   "alreadyOnLayout": "On this layout",
+  "removePaneHint": "Para alisin, gamitin ang × sa pane mismo",
   "categoryFacts": "Facts",
   "categoryLaw": "Law",
   "categoryStrategy": "Strategy",
