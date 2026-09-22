@@ -650,11 +650,13 @@ export default function ConsultationChat({
   const isBusy = isSending || isResumedGenerating || isGeneratingElsewhere;
 
   // The reply text is held back behind the "thinking" placeholder until the whole turn (answer,
-  // confidence, "why this answer") is saved, so they appear together - see shouldHoldAnswer. This
-  // is the safety cap: once answer text has been sitting there for ANSWER_HOLD_CAP_MS, reveal it
-  // anyway and let the extras follow. Every send here carries the legal tag, so Chat Wonder
-  // delivers the answer text in one block at the end (not token by token) - nothing to stream
-  // is lost by holding it. Reset whenever the held text goes away (turn saved, stopped, switched).
+  // confidence, "why this answer") is saved, so they appear together instead of the answer
+  // showing first and the rest popping in once they finish - see shouldHoldAnswer. This is the
+  // safety cap: once answer text has been sitting there for ANSWER_HOLD_CAP_MS, reveal it anyway
+  // and let the extras follow, so one slow or stuck extra can never hide a finished answer. Every
+  // send here carries the legal tag, so Chat Wonder delivers the answer text in one block at the
+  // end (not token by token) - nothing to stream is lost by holding it. Reset whenever the held
+  // text goes away (turn saved, stopped, switched consultations).
   const lastDisplayedMessage = messages[messages.length - 1];
   const answerTextPresent =
     ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) &&
@@ -900,7 +902,8 @@ export default function ConsultationChat({
 
   // Scrolls to the bottom for the user's own new prompt (and the thinking/research rows under it)
   // and when a consultation is opened - but never because a reply arrived or finished: the whole
-  // answer shows up at once, and jumping to its end would skip past its start. See
+  // answer (with its confidence and explanation, held together - see shouldHoldAnswer above)
+  // shows up at once, and jumping to its end would skip past its start. See
   // shouldScrollTranscriptToBottom.
   const scrollContextRef = useRef({ key: consultationKey, userCount: 0 });
   useEffect(() => {
@@ -2309,12 +2312,15 @@ export default function ConsultationChat({
                       ) : isStreamingThis && (!m.content || holdAnswer) ? (
                         // Before any text: the research trace, or the thinking indicator. Once the
                         // answer text is here but held (see holdAnswer), the trace stays and the
-                        // indicator switches to "finalizing" so the wait reads as work in progress.
+                        // indicator switches to "finalizing" so the wait reads as work still in
+                        // progress, not stuck - the answer, its confidence and its "why this
+                        // answer" explanation then all appear together once holdAnswer clears,
+                        // instead of the answer showing first and the rest popping in after.
                         <>
                           {m.researchSteps && m.researchSteps.length > 0 && <ResearchTraceList steps={m.researchSteps} />}
                           {(!(m.researchSteps && m.researchSteps.length > 0) || holdAnswer) && (
                             <div className={m.researchSteps && m.researchSteps.length > 0 ? "mt-3" : undefined}>
-                              <ThinkingIndicator label={holdAnswer && m.content ? t("thinking finalizing") : t("thinking")} />
+                              <ThinkingIndicator label={holdAnswer && m.content ? t("thinkingFinalizing") : t("thinking")} />
                             </div>
                           )}
                         </>

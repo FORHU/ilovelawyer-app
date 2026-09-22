@@ -18,9 +18,9 @@ describe("shouldHoldAnswer", () => {
     expect(shouldHoldAnswer({ isStreaming: false, stopped: false, revealed: false })).toBe(false)
   })
 
-  it("has a finite cap", () => {
-    expect(ANSWER_HOLD_CAP_MS).toBeGreaterThan(0)
-    expect(ANSWER_HOLD_CAP_MS).toBeLessThanOrEqual(60_000)
+  it("has a finite cap that stays at/above the API's own structured-data wait budget, so the cap can never fire before the API could have finished (see ANSWER_HOLD_CAP_MS's doc comment / ilovelawyer-api's STRUCTURED_DATA_WAIT_MS)", () => {
+    const API_STRUCTURED_DATA_WAIT_MS = 60_000
+    expect(ANSWER_HOLD_CAP_MS).toBeGreaterThanOrEqual(API_STRUCTURED_DATA_WAIT_MS)
   })
 })
 
