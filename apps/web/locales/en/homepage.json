@@ -13,6 +13,8 @@
     "startRecording": "Start recording",
     "stopRecording": "Stop recording",
     "sendMessage": "Send message",
+    "stopGenerating": "Stop generating",
+    "stopLabel": "Stop",
     "send": "Send",
     "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
@@ -30,7 +32,9 @@
   "message": {
     "copy": "Copy response",
     "copied": "Copied!",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "stopped": "Response stopped",
+    "finalizing": "Finishing analysis…"
   },
   "attachment": {
     "viewFile": "View {{fileName}}",
