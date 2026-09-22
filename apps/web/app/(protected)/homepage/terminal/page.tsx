@@ -4,9 +4,33 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
-import { Search, Plus, Briefcase, Loader2, AlertCircle } from "lucide-react";
+import { Search, Plus, Briefcase } from "lucide-react";
 import { useCasesQuery } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { ErrorState } from "@/components/error-state";
+
+// Mirrors the real case-card grid below (title, parties, updated-date footer)
+// so the swap from skeleton to real cards doesn't jump layout.
+function CaseCardGridSkeleton() {
+  return (
+    <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-6 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+          <div className="border-t border-border pt-5 mt-8 flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 export default function TerminalLandingPage() {
   const { t } = useTranslation("terminal");
@@ -19,7 +43,8 @@ export default function TerminalLandingPage() {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery(1, 20, debouncedSearch);
+  const { data, isLoading: isFetching, isError, refetch } = useCasesQuery(1, 20, debouncedSearch);
+  const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
 
   return (
@@ -50,31 +75,9 @@ export default function TerminalLandingPage() {
           </div>
         </section>
 
-        {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t("landing.loading")}
-          </div>
-        )}
+        {isLoading && <CaseCardGridSkeleton />}
 
-        {isError && (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
-            <p className="text-sm text-red-600">{t("landing.loadError")}</p>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => refetch()}
-                  className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-                >
-                  {t("landing.retry")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("landing.retry")}</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
+        {isError && <ErrorState message={t("landing.loadError")} retryLabel={t("landing.retry")} onRetry={() => refetch()} />}
 
         {!isLoading && !isError && (
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">

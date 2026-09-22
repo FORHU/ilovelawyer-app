@@ -10,7 +10,7 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X } from "lucide-react";
+import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,6 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { ErrorState } from "@/components/error-state";
 import {
   useCasesQuery,
   useUpdateCaseMutation,
@@ -34,6 +37,32 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 15;
+
+// Mirrors the real row grid below (name/parties, updated date, open-in links,
+// action menu) so the swap from skeleton to real rows doesn't jump layout.
+function CaseListSkeleton() {
+  return (
+    <div className="md:min-w-[760px]">
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4"
+        >
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </div>
+          <Skeleton className="h-3 w-20" />
+          <div className="hidden md:flex items-center gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-8 rounded-full justify-self-end" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
@@ -77,7 +106,8 @@ export default function CaseManagerDashboard() {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
+  const { data, isLoading: isFetching, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
+  const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
@@ -371,31 +401,9 @@ export default function CaseManagerDashboard() {
           </div>
         )}
 
-        {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t("loading")}
-          </div>
-        )}
+        {isLoading && <CaseListSkeleton />}
 
-        {isError && (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
-            <p className="text-sm text-red-600">{t("loadError")}</p>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => refetch()}
-                  className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-                >
-                  {t("retry")}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Retry loading your cases</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
+        {isError && <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => refetch()} />}
 
         {!isLoading && !isError && cases.length > 0 && (
           <div className="md:overflow-x-auto lg:overflow-visible">
