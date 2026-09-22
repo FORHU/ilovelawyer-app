@@ -134,9 +134,17 @@ export default function TerminalSettingsSidebar({
                       <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
                       {/* An em-dash placeholder here (badge ?? "—") used to sit right before the
                        * Plus/checkmark icon on every row without a badge — easy to misread as a
-                       * second "-" control paired with the "+" (see #301). Badge text only
-                       * renders when there's a real one to show. */}
-                      {badge && <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge}</span>}
+                       * second "-" control paired with the "+" (see #301). "Empty" spells out
+                       * the same "nothing here yet" meaning in words instead of a symbol that
+                       * can be read as a button, and is styled apart from a real badge so it
+                       * doesn't read as live status either. */}
+                      <span
+                        className={`shrink-0 whitespace-nowrap text-[10.5px] ${
+                          badge ? "text-muted-foreground" : "text-muted-foreground/60 italic"
+                        }`}
+                      >
+                        {badge ?? t("paneEmptyBadge")}
+                      </span>
                       {onScreen ? (
                         <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
                       ) : (

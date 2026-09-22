@@ -55,6 +55,7 @@
   "paneLibrarySearch": "Search {{count}} panes",
   "alreadyOnLayout": "On this layout",
   "removePaneHint": "제거하려면 패널 자체의 ×를 사용하세요",
+  "paneEmptyBadge": "비어 있음",
   "categoryFacts": "Facts",
   "categoryLaw": "Law",
   "categoryStrategy": "Strategy",

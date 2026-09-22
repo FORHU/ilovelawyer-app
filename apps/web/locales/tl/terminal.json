@@ -55,6 +55,7 @@
   "paneLibrarySearch": "Search {{count}} panes",
   "alreadyOnLayout": "On this layout",
   "removePaneHint": "Para alisin, gamitin ang × sa pane mismo",
+  "paneEmptyBadge": "Walang laman",
   "categoryFacts": "Facts",
   "categoryLaw": "Law",
   "categoryStrategy": "Strategy",

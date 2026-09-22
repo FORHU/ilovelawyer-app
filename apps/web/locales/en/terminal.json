@@ -55,6 +55,7 @@
   "paneLibrarySearch": "Search {{count}} panes",
   "alreadyOnLayout": "On this layout",
   "removePaneHint": "To remove it, use the × on the pane itself",
+  "paneEmptyBadge": "Empty",
   "categoryFacts": "Facts",
   "categoryLaw": "Law",
   "categoryStrategy": "Strategy",
