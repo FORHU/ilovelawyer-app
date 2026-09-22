@@ -61,6 +61,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
+import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
@@ -230,6 +231,11 @@ function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): Wor
 
 export default function LegalTerminal({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
+  // Joined once here, at the Terminal's root — every useAiJobStatus(caseId, kind) call below
+  // (and any panel that adds one later) shares this single case:<caseId> room membership rather
+  // than each subscribing independently. See useCaseRoom's doc comment for why AI generation
+  // jobs need a case-wide room instead of the per-user one the socket already joins on connect.
+  useCaseRoom(caseId)
   const catalog = useTerminalCatalogQuery()
   const workspaces = useTerminalWorkspacesQuery(caseId)
   const snapshot = useCaseSnapshotQuery(caseId)
