@@ -37,6 +37,7 @@
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
+  "thinkingFinalizing": "ay tinatapos ang pagsusuri",
   "message": {
     "copy": "Kopyahin ang sagot",
     "copied": "Nakopya!",
