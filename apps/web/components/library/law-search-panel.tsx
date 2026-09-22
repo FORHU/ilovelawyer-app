@@ -4,6 +4,8 @@ import Link from "next/link"
 import { ArrowRight, Loader2, Search, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/lib/store/auth.store"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import {
   type LawCategoryParam,
   type LawCaseType,
@@ -27,6 +29,37 @@ function itemReference(item: LawSearchItem): string | null {
 
 function topicLabel(topic: LawTopic): string {
   return topic.charAt(0).toUpperCase() + topic.slice(1)
+}
+
+// Mirrors renderCard's actual shape below (badge row + year, 3-line title,
+// 2-line snippet, ponente line) so the swap from skeleton to real cards
+// doesn't jump height the way a plain title+subtitle block would.
+function ResultCardGridSkeleton({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-4.5 w-14 rounded-md" />
+              <Skeleton className="h-4 w-10 rounded-md" />
+            </div>
+            <Skeleton className="h-3 w-8" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+          </div>
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -62,6 +95,7 @@ export function LawSearchPanel() {
   const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
   const search = useLawSearchMutation()
+  const showSearchSkeleton = useDelayedLoading(search.isPending)
   const showingSearch = search.status !== "idle"
   const supported = tenantCode === "PH" || tenantCode === "UK"
   const facetKind = cfg.facetKind(category)
@@ -80,6 +114,7 @@ export function LawSearchPanel() {
     courts: facetKind === "uk-court" ? courts : [],
     enabled: supported && !showingSearch && canBrowse,
   })
+  const showBrowseSkeleton = useDelayedLoading(browse.isPending)
 
   // The page-number row can only show pages already fetched, and each one depends on the
   // previous page's cursor, so they can't be fetched in parallel ahead of time. Without this,
@@ -336,12 +371,7 @@ export function LawSearchPanel() {
         {/* ── Search results ───────────────────────────────────────────── */}
         {showingSearch && (
           <div className="flex flex-col gap-3 text-left">
-            {search.isPending && (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t("lawSearch.searching")}
-              </div>
-            )}
+            {showSearchSkeleton && <ResultCardGridSkeleton className={cardGridClass} />}
 
             {search.isError && (
               <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.error")}</p>
@@ -372,12 +402,7 @@ export function LawSearchPanel() {
         {/* ── Browse list ─────────────────────────────────────────────── */}
         {!showingSearch && canBrowse && (
           <div className="flex flex-col gap-3">
-            {browse.isPending && (
-              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {t("lawSearch.searching")}
-              </div>
-            )}
+            {showBrowseSkeleton && <ResultCardGridSkeleton className={cardGridClass} />}
 
             {browse.isError && (
               <p className="text-sm text-red-600 dark:text-red-400">{t("lawSearch.browseError")}</p>
