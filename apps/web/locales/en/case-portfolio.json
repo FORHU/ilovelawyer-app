@@ -196,6 +196,8 @@
     "dropToUpload": "Drop to upload",
     "backToFolders": "Back to folders",
     "backToDocuments": "Back to documents",
+    "ragQueued": "Queued",
+    "ragQueuedHint": "File is uploaded and waiting its turn to be indexed.",
     "ragIndexing": "Indexing",
     "ragIndexingHint": "File is uploaded. Chat can search it once indexing finishes.",
     "ragReady": "Ready",
