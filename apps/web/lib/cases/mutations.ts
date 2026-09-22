@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
+import { useNotificationSocketStatus } from "@/lib/notifications/queries"
 import {
   CONFIRM_BATCH_SIZE,
   chunk,
@@ -422,13 +423,17 @@ export function useUploadDocumentsMutation() {
 
       return { confirmed, failed, succeededFiles }
     },
-      // Splice the confirmed batch straight into the cache rather than forcing a refetch
-      // right after the POST that already returned every document we'd get back from one.
+      // Splice the confirmed batch into the cache so the rows show instantly, then refetch once.
+      // The refetch is not redundant: confirm runs per batch, so an early batch's documents can
+      // finish extracting (and push document:ready, see document-socket.ts) BEFORE this runs —
+      // and the spliced rows carry the ragStatus from their confirm response (PENDING), which
+      // would overwrite that event and leave the badge stuck now that polling is a slow fallback.
     onSuccess: ({ confirmed }, { caseId, consultationId }) => {
       if (caseId && confirmed.length > 0) {
         queryClient.setQueryData<UserDocument[]>(caseKeys.timeline(caseId), (old) =>
           old ? [...confirmed, ...old] : old,
         )
+        queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
       }
       if (consultationId && confirmed.length > 0) {
         queryClient.invalidateQueries({ queryKey: chatKeys.documents(consultationId) })
@@ -437,19 +442,33 @@ export function useUploadDocumentsMutation() {
   })
 }
 
-function refetchWhileIndexing(query: { state: { data?: UserDocument[] } }) {
-  return query.state.data?.some((doc) => doc.ragStatus === "PENDING") ? 4000 : false
+// While the shared socket is connected, ilovelawyer-api pushes document:started/ready/failed as
+// the extraction queue works (see document-socket.ts), so polling is only a safety net — for a
+// teammate's upload (pushes go to the uploader's room only), a missed event, or a second API
+// instance. Without a socket it's the only signal, so it keeps the original 4s cadence.
+const INDEXING_POLL_SOCKET_MS = 30_000
+const INDEXING_POLL_NO_SOCKET_MS = 4_000
+
+function refetchWhileIndexing(socketConnected: boolean) {
+  return (query: { state: { data?: UserDocument[] } }) =>
+    query.state.data?.some((doc) => doc.ragStatus === "PENDING")
+      ? socketConnected
+        ? INDEXING_POLL_SOCKET_MS
+        : INDEXING_POLL_NO_SOCKET_MS
+      : false
 }
 
 /** Lists the documents attached to a case. Uploading (useUploadCaseDocumentMutation)
  * invalidates `caseKeys.timeline(caseId)`, so this refetches automatically afterward.
- * Polls while any row is PENDING so the indexing badge flips to ready without a reload. */
+ * The indexing badge flips to ready from document:* socket events; while any row is PENDING
+ * this also polls as a fallback (see refetchWhileIndexing). */
 export function useCaseDocumentsQuery(caseId: string) {
+  const socketConnected = useNotificationSocketStatus() === "connected"
   return useQuery({
     queryKey: caseKeys.timeline(caseId),
     queryFn: () => apiFetch<UserDocument[]>(`/api/documents?caseId=${caseId}`),
     enabled: !!caseId,
-    refetchInterval: refetchWhileIndexing,
+    refetchInterval: refetchWhileIndexing(socketConnected),
   })
 }
 
@@ -464,11 +483,12 @@ export function useArchivedCaseDocumentsQuery(caseId: string, enabled = true) {
 }
 
 export function useConsultationDocumentsQuery(consultationId: string | undefined) {
+  const socketConnected = useNotificationSocketStatus() === "connected"
   return useQuery({
     queryKey: chatKeys.documents(consultationId ?? ""),
     queryFn: () => apiFetch<UserDocument[]>(`/api/documents?consultationId=${consultationId}`),
     enabled: !!consultationId,
-    refetchInterval: refetchWhileIndexing,
+    refetchInterval: refetchWhileIndexing(socketConnected),
   })
 }
 
