@@ -125,6 +125,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const caseDocumentsQuery = useCaseDocumentsQuery(caseId);
   const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
   const documentCount = caseDocumentsQuery.data?.length ?? 0;
+  // Timeline and Data Table are populated from document analysis — nothing to show (or refresh)
+  // until at least one document exists.
+  const noDocuments = documentCount === 0;
   const indexingDocumentCount = caseDocumentsQuery.data?.filter((doc) => doc.ragStatus === "PENDING").length ?? 0;
   const documentsNote =
     documentCount === 0
@@ -538,6 +541,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     : undefined
               }
               expanded={expanded}
+              disabled={noDocuments}
+              disabledHint={t("workspace.needsDocumentsHint")}
               onClick={() => {
                 void timelineQuery.refetch();
                 openStudioTile("timeline");
@@ -558,6 +563,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     : undefined
               }
               expanded={expanded}
+              disabled={noDocuments}
+              disabledHint={t("workspace.needsDocumentsHint")}
               onClick={() => {
                 void snapshotQuery.refetch();
                 openStudioTile("dataTable");
@@ -610,7 +617,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("mindmap")}
                   />
                 )}
-                {(timelineEventCount > 0 || timelineQuery.isFetching) && (
+                {!noDocuments && (timelineEventCount > 0 || timelineQuery.isFetching) && (
                   <ResultRow
                     icon={timelineQuery.isFetching ? Loader2 : Clock}
                     iconSpinning={timelineQuery.isFetching}
@@ -623,7 +630,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("timeline")}
                   />
                 )}
-                {(dataTableRows.length > 0 || snapshotQuery.isFetching) && (
+                {!noDocuments && (dataTableRows.length > 0 || snapshotQuery.isFetching) && (
                   <ResultRow
                     icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
                     iconSpinning={snapshotQuery.isFetching}

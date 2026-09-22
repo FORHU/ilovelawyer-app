@@ -293,10 +293,9 @@ interface ConsultationChatProps {
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
   inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
-   * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
-   * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
-   * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
-   * already-planned changes of its own that this deliberately doesn't preempt. */
+   * instead of collapsing them into placeholder text. Set by the General Consultation page and
+   * Case Workspace's chat; Terminal's Legal Assistant pane still leaves it off and links out to
+   * Case Documents instead (see docs/adr/0012-message-scoped-document-attachments.md). */
   enableFileChips?: boolean;
   /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
    * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
@@ -2022,7 +2021,7 @@ export default function ConsultationChat({
                     return (
                       <div key={i} className="flex flex-col items-end gap-2">
                         {m.attachments && m.attachments.length > 0 && (
-                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
+                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
                         )}
                         {m.content && (
                           <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${

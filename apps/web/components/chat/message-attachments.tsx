@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip } from "lucide-react";
+import { AlertCircle, Loader2, Paperclip } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 /** A Case Document shown as a chip on the message it was sent with — see
@@ -85,26 +85,51 @@ export function isLegacyDocAttachment(attachment: Pick<MessageAttachment, "mimeT
 interface MessageAttachmentsProps {
   attachments: MessageAttachment[];
   onSelect: (attachment: MessageAttachment) => void;
+  /** Indexing status per document id (see consultation-chat.tsx's ragStatusById). The AI only
+   * reads READY documents — a PENDING one (audio/video transcribing, PDFs still indexing) is
+   * invisible to it, so the chip and a hint below make that visible instead of leaving the user
+   * to wonder why the reply says no files are attached. Omitted → no status UI. */
+  ragStatusById?: Map<string, "PENDING" | "READY" | "FAILED" | undefined>;
 }
 
-export function MessageAttachments({ attachments, onSelect }: MessageAttachmentsProps) {
+export function MessageAttachments({ attachments, onSelect, ragStatusById }: MessageAttachmentsProps) {
   const { t } = useTranslation("homepage");
+  const statusOf = (attachment: MessageAttachment) => ragStatusById?.get(attachment.id);
+  const anyPending = attachments.some((a) => statusOf(a) === "PENDING");
+  const anyFailed = attachments.some((a) => statusOf(a) === "FAILED");
 
   return (
-    <div className="flex flex-wrap justify-end gap-2 max-w-[80%]">
-      {attachments.map((attachment) => (
-        <button
-          key={attachment.id}
-          type="button"
-          onClick={() => onSelect(attachment)}
-          disabled={!attachment.url}
-          aria-label={t("attachment.viewFile", { fileName: attachment.name })}
-          className="flex max-w-[240px] items-center gap-2 rounded-full border border-border bg-card px-3 py-[5px] text-left text-[12px] text-foreground/85 transition-colors hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-default disabled:opacity-60"
-        >
-          <Paperclip className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
-          <span className="truncate font-['Inter']">{attachment.name}</span>
-        </button>
-      ))}
+    <div className="flex max-w-[80%] flex-col items-end gap-1.5">
+      <div className="flex flex-wrap justify-end gap-2">
+        {attachments.map((attachment) => {
+          const status = statusOf(attachment);
+          return (
+            <button
+              key={attachment.id}
+              type="button"
+              onClick={() => onSelect(attachment)}
+              disabled={!attachment.url}
+              aria-label={t("attachment.viewFile", { fileName: attachment.name })}
+              className="flex max-w-[240px] items-center gap-2 rounded-full border border-border bg-card px-3 py-[5px] text-left text-[12px] text-foreground/85 transition-colors hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-default disabled:opacity-60"
+            >
+              {status === "PENDING" ? (
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin opacity-60" aria-hidden="true" />
+              ) : status === "FAILED" ? (
+                <AlertCircle className="h-3 w-3 shrink-0 text-red-500" aria-hidden="true" />
+              ) : (
+                <Paperclip className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
+              )}
+              <span className="truncate font-['Inter']">{attachment.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      {anyPending && (
+        <p className="text-right font-['Inter'] text-[11px] leading-4 text-muted-foreground">{t("attachment.processingHint")}</p>
+      )}
+      {anyFailed && (
+        <p className="text-right font-['Inter'] text-[11px] leading-4 text-red-500">{t("attachment.processingFailed")}</p>
+      )}
     </div>
   );
 }
