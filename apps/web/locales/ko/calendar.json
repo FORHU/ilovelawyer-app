@@ -1,6 +1,7 @@
 {
   "title": "캘린더",
   "subtitle": "심리, 마감일, 사건 메모를 한곳에서 관리하세요.",
+  "monthAppointmentCount": "이번 달 약속 {{count}}건",
   "nothingScheduledMonth": "이번 달에는 예정된 일정이 없습니다.",
   "nothingScheduledDay": "이 날짜에는 예정된 일정이 없습니다.",
   "selectDay": "날짜 선택",
@@ -41,6 +42,8 @@
   },
   "addAppointment": "약속 추가",
   "addNote": "메모 추가",
+  "addEntryTooltip": "약속 또는 메모 추가",
+  "cancel": "취소",
   "errors": {
     "titleRequired": "제목은 필수입니다.",
     "timeRequired": "시작 및 종료 시간이 필요합니다.",

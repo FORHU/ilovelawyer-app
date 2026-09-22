@@ -34,7 +34,7 @@ export function UkHeroSection() {
   }, [index, reduce]);
 
   return (
-    <section id="hero" className="relative h-[92vh] min-h-[620px] flex items-end overflow-hidden bg-brand-navy-950">
+    <section id="hero" className="relative h-[92dvh] min-h-[620px] flex items-end overflow-hidden bg-brand-navy-950">
       {heroVideos.map((src, i) => (
         <motion.div
           key={src}

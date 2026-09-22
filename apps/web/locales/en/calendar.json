@@ -1,6 +1,8 @@
 {
   "title": "Calendar",
   "subtitle": "Track hearings, deadlines, and case notes in one place.",
+  "monthAppointmentCount_one": "{{count}} appointment this month",
+  "monthAppointmentCount_other": "{{count}} appointments this month",
   "nothingScheduledMonth": "Nothing scheduled this month yet.",
   "nothingScheduledDay": "Nothing scheduled for this day yet.",
   "selectDay": "Select a day",
@@ -41,6 +43,8 @@
   },
   "addAppointment": "Add Appointment",
   "addNote": "Add Note",
+  "addEntryTooltip": "Add an appointment or note",
+  "cancel": "Cancel",
   "errors": {
     "titleRequired": "Title is required.",
     "timeRequired": "Start and end time are required.",

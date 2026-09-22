@@ -47,7 +47,7 @@ export function FirmQuoteSection() {
   const quote = quotes[displayed] ?? quotes[0]!;
 
   return (
-    <section ref={sectionRef} id="testimonials" className="relative w-full h-[82vh] min-h-[560px] overflow-hidden">
+    <section ref={sectionRef} id="testimonials" className="relative w-full h-[82dvh] min-h-[560px] overflow-hidden">
       <motion.div
         className="absolute inset-0 bg-cover"
         style={{ backgroundImage: `url('${firmWorkspaceImage}')`, backgroundPositionX: "50%", backgroundPositionY }}
