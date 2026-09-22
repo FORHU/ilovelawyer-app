@@ -9,6 +9,7 @@ import { ResizeHandle } from "@/components/case-workspace/resize-handle";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { useResizableWidth } from "@/lib/case-workspace/use-resizable-width";
 import { useCaseQuery } from "@/lib/cases/mutations";
+import { useCaseRoom } from "@/lib/cases/case-room";
 
 interface CaseWorkspaceProps {
   caseId: string;
@@ -51,6 +52,14 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const searchParams = useSearchParams();
   const activeConsultationId = searchParams.get("c");
   const { data: caseRecord } = useCaseQuery(caseId);
+  // StudioPanel's tiles (Mind Map, Timeline) poll their AiGenerationJob status via
+  // useAiJobStatus, which is purely event-driven after its first fetch — it relies entirely on
+  // the ai-job:started/done/failed push to case:<caseId>, not on any poll. That push only reaches
+  // a browser tab that actually joined the room (see joinCaseRoom's "recipients" ack) — previously
+  // only LegalTerminal mounted useCaseRoom, so a job kicked off from here (Case Workspace) finished
+  // server-side but the room had 0 subscribers, leaving the tile's spinner stuck forever until an
+  // unrelated refetch happened to land. Mounted once here, high up, same as LegalTerminal's own.
+  useCaseRoom(caseId);
   // Studio tiles (Mind Map) that need a consultation but don't have one yet create one
   // on demand and report the new id back here, so the URL (and every sibling reading
   // activeConsultationId off it — ThreadPicker, ConsultationChat) picks it up the same

@@ -1,11 +1,17 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { useCreateTimelineMutation, useUpdateTimelineMutation } from "@/lib/terminal/mutations"
-import { useGraphViewQuery } from "@/lib/graph-view/mutations"
+import {
+  terminalKeys,
+  useAiJobStatus,
+  useCreateTimelineMutation,
+  useGenerateTimelineMutation,
+  useUpdateTimelineMutation,
+} from "@/lib/terminal/mutations"
+import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 
 interface CalendarEvent {
   id: string
@@ -69,7 +75,18 @@ function toDateTimeLocalValue(date: string, time: string) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString()
 }
 
-export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill?: boolean }) {
+export function CaseTimelineView({
+  caseId,
+  fill = true,
+  // Studio panel (studio-panel.tsx) puts its own Generate control in the tile's header, next to
+  // the "Timeline" breadcrumb, instead of this content-area button — Legal Terminal's Evidence
+  // panel and the chat's embedded timeline tab have no equivalent header slot, so they keep it.
+  hideGenerateButton = false,
+}: {
+  caseId: string
+  fill?: boolean
+  hideGenerateButton?: boolean
+}) {
   const { t } = useTranslation("homepage")
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
@@ -79,6 +96,35 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
   })
   const create = useCreateTimelineMutation(caseId)
   const update = useUpdateTimelineMutation(caseId)
+  const queryClient = useQueryClient()
+  const generate = useGenerateTimelineMutation(caseId)
+  const generateStatus = useAiJobStatus(caseId, "timelineGenerate")
+  // Automatic generation runs as one step inside a document upload's post-extraction
+  // "caseRefresh" job (queues/case-post-extraction.ts), not under "timelineGenerate" — both kinds
+  // feed this same "is it generating right now" flag, or an upload-triggered run never shows the
+  // "Generating…" state here despite genuinely being in progress.
+  const caseRefreshStatus = useAiJobStatus(caseId, "caseRefresh")
+  const isGenerating = generateStatus.data?.status === "IN_PROGRESS" || caseRefreshStatus.data?.status === "IN_PROGRESS"
+
+  // useAiJobStatus only auto-invalidates the case snapshot on an IN_PROGRESS -> DONE transition —
+  // this panel reads the timeline via graph-view, not the snapshot, so it refetches those itself.
+  const prevGenerateStatus = useRef(generateStatus.data?.status)
+  useEffect(() => {
+    if (prevGenerateStatus.current === "IN_PROGRESS" && generateStatus.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevGenerateStatus.current = generateStatus.data?.status
+  }, [generateStatus.data?.status, caseId, queryClient])
+
+  const prevCaseRefreshStatus = useRef(caseRefreshStatus.data?.status)
+  useEffect(() => {
+    if (prevCaseRefreshStatus.current === "IN_PROGRESS" && caseRefreshStatus.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevCaseRefreshStatus.current = caseRefreshStatus.data?.status
+  }, [caseRefreshStatus.data?.status, caseId, queryClient])
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -131,12 +177,40 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
 
   const isLoading = timeline.isLoading || calendar.isLoading
   const isError = timeline.isError || calendar.isError
-  const years = new Set(dated.map((item) => yearOf(item.at as Date)))
-  const showYearHeaders = years.size > 1
+
+  // `dated` is already sorted ascending, so the same year only ever appears in consecutive
+  // runs — no need to bucket by a Map. Always grouped (not just when the case spans more than
+  // one year) so every year gets its own header row, same as a day divider in an activity feed.
+  const yearGroups: { year: number; items: TimelineRow[] }[] = []
+  dated.forEach((item) => {
+    const year = yearOf(item.at as Date)
+    const last = yearGroups[yearGroups.length - 1]
+    if (last && last.year === year) last.items.push(item)
+    else yearGroups.push({ year, items: [item] })
+  })
 
   return (
     <div className={fill ? "flex h-full min-h-0 flex-col overflow-y-auto" : "flex flex-col"}>
       <div className={`mx-auto flex w-full max-w-xl flex-1 flex-col ${fill ? "px-5 py-6 sm:px-8" : "px-0 pt-1 pb-2"}`}>
+        {!hideGenerateButton ? (
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              disabled={isGenerating || generate.isPending}
+              onClick={() => generate.mutate()}
+              className="h-8 shrink-0 rounded-full border border-border bg-muted px-3.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
+            >
+              {isGenerating || generate.isPending
+                ? t("timeline.generating", { defaultValue: "Generating…" })
+                : t("timeline.generate", { defaultValue: "Generate timeline" })}
+            </button>
+            {generateStatus.data?.status === "FAILED" ? (
+              <span className="text-[11px] text-red-500">
+                {t("timeline.generateError", { defaultValue: "Last generation failed." })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {isLoading ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
             {t("timeline.loading", { defaultValue: "Loading timeline…" })}
@@ -152,103 +226,98 @@ export function CaseTimelineView({ caseId, fill = true }: { caseId: string; fill
             })}
           </p>
         ) : (
-          <div className="flex flex-col gap-10">
-            {dated.length > 0 ? (
-              <ol className="relative">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-3.5 bottom-8 w-px bg-border"
-                  style={{ left: "calc(5.25rem + 0.875rem)", transform: "translateX(-50%)" }}
-                />
-                {dated.map((item, index) => {
-                  const at = item.at as Date
-                  const year = yearOf(at)
-                  const previous = dated[index - 1]
-                  const prevYear = previous?.at ? yearOf(previous.at) : null
-                  const showYear = showYearHeaders && year !== prevYear
-                  const caption = formatCaptionDate(at)
+          <div className="mb-8 flex flex-col gap-10">
+            {yearGroups.length > 0
+              ? yearGroups.map((group) => (
+                  <div key={group.year} className="flex flex-col">
+                    {/* Year header — a centered divider label, same shape as a day divider in an
+                     * activity feed ("Today"/"Yesterday"), always shown (one per year, not only
+                     * when the case spans more than one). */}
+                    <div className="mb-4 flex items-center gap-3">
+                      <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                      <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {group.year}
+                      </span>
+                      <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                    </div>
+                    <ol className="relative flex flex-col gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-2 bottom-2 left-[7px] w-px bg-border"
+                      />
+                      {group.items.map((item) => {
+                        const at = item.at as Date
+                        const caption = formatCaptionDate(at)
+                        const isEditing = editingId === item.id
 
-                  return (
-                    <li key={item.id}>
-                      {showYear ? (
-                        <p className="grid grid-cols-[5.25rem_1.75rem_minmax(0,1fr)] items-center pb-3 pt-2 first:pt-0">
-                          <span />
-                          <span />
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            {year}
-                          </span>
-                        </p>
-                      ) : null}
-                      <div className="grid grid-cols-[5.25rem_1.75rem_minmax(0,1fr)] items-start">
-                        <div className="flex flex-col items-end gap-1 pr-3">
-                          <span className="inline-flex h-7 min-w-[3.75rem] shrink-0 items-center justify-end text-[11px] font-semibold uppercase tracking-[1px] tabular-nums text-muted-foreground">
-                            {formatBadge(at)}
-                          </span>
-                          {item.rawId && editingId !== item.id ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingId(item.id)
-                                setEditDate(toDateInputValue(at))
-                              }}
-                              className="text-[10px] font-medium text-muted-foreground hover:underline"
-                            >
-                              {t("timeline.editDate", { defaultValue: "Edit date" })}
-                            </button>
-                          ) : null}
-                          {item.rawId && editingId === item.id ? (
-                            <div className="flex flex-col items-end gap-1">
-                              <input
-                                type="date"
-                                value={editDate}
-                                onChange={(e) => setEditDate(e.target.value)}
-                                className="h-7 w-[7.5rem] rounded-lg border border-border bg-muted px-1.5 text-[11px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={update.isPending || !editDate}
-                                  onClick={() => {
-                                    update.mutate(
-                                      { id: item.rawId as string, occurredOn: new Date(`${editDate}T00:00:00Z`).toISOString() },
-                                      { onSuccess: () => setEditingId(null) },
-                                    )
-                                  }}
-                                  className="text-[10px] font-semibold text-brand-gold hover:underline disabled:opacity-50"
-                                >
-                                  {t("timeline.save", { defaultValue: "Save" })}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingId(null)}
-                                  className="text-[10px] font-medium text-muted-foreground hover:underline"
-                                >
-                                  {t("timeline.cancel", { defaultValue: "Cancel" })}
-                                </button>
+                        return (
+                          <li key={item.id} className="relative pl-6">
+                            <span
+                              className={`absolute left-0 top-4 z-10 size-[15px] rounded-full ring-4 ring-background ${dotClass(dated.indexOf(item), dated.length)}`}
+                            />
+                            <div className="rounded-xl border border-border bg-muted/40 p-3.5 transition-colors hover:border-brand-gold/30">
+                              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                                <p className="text-[14px] font-semibold leading-5 text-foreground">{item.title}</p>
+                                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.5px] tabular-nums text-muted-foreground">
+                                  {formatBadge(at)}
+                                </span>
                               </div>
+                              {caption ? (
+                                <p className="mt-0.5 text-[11px] text-muted-foreground/70">{caption}</p>
+                              ) : null}
+                              {item.description ? (
+                                <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
+                              ) : null}
+                              {item.rawId && !isEditing ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingId(item.id)
+                                    setEditDate(toDateInputValue(at))
+                                  }}
+                                  className="mt-2 text-[10px] font-medium text-muted-foreground hover:underline"
+                                >
+                                  {t("timeline.editDate", { defaultValue: "Edit date" })}
+                                </button>
+                              ) : null}
+                              {item.rawId && isEditing ? (
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <input
+                                    type="date"
+                                    value={editDate}
+                                    onChange={(e) => setEditDate(e.target.value)}
+                                    className="h-7 w-[7.5rem] rounded-lg border border-border bg-muted px-1.5 text-[11px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={update.isPending || !editDate}
+                                    onClick={() => {
+                                      update.mutate(
+                                        { id: item.rawId as string, occurredOn: new Date(`${editDate}T00:00:00Z`).toISOString() },
+                                        { onSuccess: () => setEditingId(null) },
+                                      )
+                                    }}
+                                    className="text-[10px] font-semibold text-brand-gold hover:underline disabled:opacity-50"
+                                  >
+                                    {t("timeline.save", { defaultValue: "Save" })}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingId(null)}
+                                    className="text-[10px] font-medium text-muted-foreground hover:underline"
+                                  >
+                                    {t("timeline.cancel", { defaultValue: "Cancel" })}
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
-                          ) : null}
-                        </div>
-                        <div className="relative flex justify-center pt-2">
-                          <span
-                            className={`relative z-10 size-3 rounded-full ring-[5px] ring-background ${dotClass(index, dated.length)}`}
-                          />
-                        </div>
-                        <div className="min-w-0 pb-7 pl-3">
-                          <p className="text-[15px] font-semibold leading-7 text-foreground">{item.title}</p>
-                          {caption ? (
-                            <p className="text-[12px] leading-4 text-muted-foreground/80">{caption}</p>
-                          ) : null}
-                          {item.description ? (
-                            <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            ) : null}
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </div>
+                ))
+              : null}
 
             {undated.length > 0 ? (
               <section>
