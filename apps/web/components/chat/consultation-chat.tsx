@@ -31,6 +31,8 @@ import { MessageAttachments, type MessageAttachment } from "@/components/chat/me
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -308,6 +310,20 @@ interface ConsultationChatProps {
   onJumpToPanel?: (panelId: string) => void;
 }
 
+// Mirrors the alternating user/assistant bubble shapes below so switching
+// into an existing consultation doesn't render a blank pane while its
+// message history fetches.
+function ChatHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4 py-4">
+      <Skeleton className="h-11 w-2/3 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-16 w-3/4 rounded-[18px_18px_18px_4px]" />
+      <Skeleton className="h-9 w-1/2 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-20 w-4/5 rounded-[18px_18px_18px_4px]" />
+    </div>
+  );
+}
+
 export default function ConsultationChat({
   basePath,
   caseId,
@@ -486,6 +502,7 @@ export default function ConsultationChat({
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -2009,6 +2026,8 @@ export default function ConsultationChat({
                  * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
+                {showHistorySkeleton && <ChatHistorySkeleton />}
+
                 {visibleMessages.length === 0 && !historyLoading && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
