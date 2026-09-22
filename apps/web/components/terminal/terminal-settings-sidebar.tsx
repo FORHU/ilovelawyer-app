@@ -132,7 +132,11 @@ export default function TerminalSettingsSidebar({
                       }`}
                     >
                       <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
-                      <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge ?? "—"}</span>
+                      {/* An em-dash placeholder here (badge ?? "—") used to sit right before the
+                       * Plus/checkmark icon on every row without a badge — easy to misread as a
+                       * second "-" control paired with the "+" (see #301). Badge text only
+                       * renders when there's a real one to show. */}
+                      {badge && <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge}</span>}
                       {onScreen ? (
                         <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
                       ) : (
