@@ -54,6 +54,7 @@
   "comingSoon": "Coming soon",
   "paneLibrarySearch": "Search {{count}} panes",
   "alreadyOnLayout": "On this layout",
+  "removeFromLayout": "Remove from layout",
   "categoryFacts": "Facts",
   "categoryLaw": "Law",
   "categoryStrategy": "Strategy",

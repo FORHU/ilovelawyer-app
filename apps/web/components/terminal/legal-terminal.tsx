@@ -1144,6 +1144,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           visiblePanelIds={visiblePanels.map((p) => p.id)}
           panelBadges={panelBadges}
           onAddPanel={requestAddPanel}
+          onRemovePanel={hidePanel}
           onPanelDragStart={beginPanelDrag}
           onPanelDragEnd={() => setDragPreview(null)}
         />

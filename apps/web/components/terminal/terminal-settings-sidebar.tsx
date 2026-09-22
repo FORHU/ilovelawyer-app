@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { CircleCheck, PanelLeft, PanelLeftClose, Plus, Search, X } from "lucide-react"
+import { CircleCheck, Minus, PanelLeft, PanelLeftClose, Plus, Search, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { MobileDrawer } from "@/components/mobile-drawer"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
@@ -23,6 +23,7 @@ interface TerminalSettingsSidebarProps {
   // computePanelBadges in legal-terminal.tsx). Absent entries render no badge.
   panelBadges: Partial<Record<PanelId, string>>
   onAddPanel: (id: PanelId) => void
+  onRemovePanel: (id: PanelId) => void
   onPanelDragStart?: (id: PanelId) => void
   onPanelDragEnd?: () => void
 }
@@ -36,6 +37,7 @@ export default function TerminalSettingsSidebar({
   visiblePanelIds,
   panelBadges,
   onAddPanel,
+  onRemovePanel,
   onPanelDragStart,
   onPanelDragEnd,
 }: TerminalSettingsSidebarProps) {
@@ -112,34 +114,53 @@ export default function TerminalSettingsSidebar({
                   const badge = panelBadges[panel.id]
                   return (
                     <li key={panel.id}>
-                      <button
-                        type="button"
-                        data-panel-library-id={panel.id}
-                        draggable={!onScreen}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("text/x-panel-id", panel.id)
-                          onPanelDragStart?.(panel.id)
-                        }}
-                        onDragEnd={onPanelDragEnd}
-                        onClick={() => {
-                          if (onScreen) return
-                          onAddPanel(panel.id)
-                          if (isMobile) onMobileOpenChange(false)
-                        }}
-                        className={`flex w-full items-center gap-2 rounded-md border border-transparent px-2.5 py-2 text-left text-[13px] transition-colors ${
-                          onScreen
-                            ? "cursor-default text-foreground"
-                            : "cursor-grab text-foreground hover:border-border hover:bg-muted dark:hover:bg-overlay-hover active:cursor-grabbing"
+                      <div
+                        className={`flex w-full items-center gap-1 rounded-md border border-transparent px-2.5 py-2 text-[13px] transition-colors ${
+                          onScreen ? "text-foreground" : "text-foreground hover:border-border hover:bg-muted dark:hover:bg-overlay-hover"
                         }`}
                       >
-                        <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
-                        <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge ?? "—"}</span>
+                        <button
+                          type="button"
+                          data-panel-library-id={panel.id}
+                          draggable={!onScreen}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData("text/x-panel-id", panel.id)
+                            onPanelDragStart?.(panel.id)
+                          }}
+                          onDragEnd={onPanelDragEnd}
+                          onClick={() => {
+                            if (onScreen) return
+                            onAddPanel(panel.id)
+                            if (isMobile) onMobileOpenChange(false)
+                          }}
+                          className={`flex min-w-0 flex-1 items-center gap-2 text-left ${
+                            onScreen ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                          }`}
+                        >
+                          <span className="min-w-0 flex-1 truncate">{PANEL_TITLES[panel.id] ?? panel.label}</span>
+                          <span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{badge ?? "—"}</span>
+                        </button>
+                        {onScreen && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => onRemovePanel(panel.id)}
+                                aria-label={t("removeFromLayout")}
+                                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400"
+                              >
+                                <Minus className="h-3.5 w-3.5" aria-hidden="true" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">{t("removeFromLayout")}</TooltipContent>
+                          </Tooltip>
+                        )}
                         {onScreen ? (
                           <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
                         ) : (
                           <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />
                         )}
-                      </button>
+                      </div>
                     </li>
                   )
                 })}
