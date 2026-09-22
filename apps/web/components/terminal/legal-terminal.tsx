@@ -116,6 +116,10 @@ const COLUMN_COUNT_OPTIONS = [2, 3, 4]
 // How many panes a single column can stack before it's "full" and adding another pane
 // requires replacing one instead.
 const MAX_PANES_PER_COLUMN = 3
+// Hard ceiling on visible panes regardless of arrangement mode — Free/Tabs/Focus had no cap
+// at all before this, letting the board cascade into an unusable stack of overlapping panes
+// (see #297). Applies on top of (not instead of) Columns' own per-column cap above.
+const MAX_PANES = 10
 
 const MIN_FR = 0.18
 const PANE_GAP_PX = 6
@@ -504,11 +508,28 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const setTabsActiveA = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveA: id } : prev))
   const setTabsActiveB = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveB: id } : prev))
 
+  // Every entry point that can bring a NEW pane onto the board (sidebar add/drag, or a drop
+  // onto the Free canvas / a Tabs or Focus slot) must check this first — showPanelAt itself
+  // can't own the check since replacePaneInColumns also calls it to finish a swap, where the
+  // outgoing pane's hidePanel() hasn't flushed to `visiblePanels` yet and would look like it's
+  // still occupying a slot. Opens the same replace picker Columns mode already uses instead of
+  // silently doing nothing, so hitting the cap always gives the user a way forward. Returns
+  // true when the add was blocked.
+  const blockIfOverPaneLimit = (id: PanelId): boolean => {
+    const alreadyVisible = visiblePanels.some((p) => p.id === id)
+    if (!alreadyVisible && visiblePanels.length >= MAX_PANES) {
+      setReplaceTarget(id)
+      return true
+    }
+    return false
+  }
+
   // Adding a pane goes through the ordinary cascade placement in every mode except Columns,
   // where it either auto-joins the least-full column or — if every column is already at
   // MAX_PANES_PER_COLUMN — opens the replace picker instead of silently growing past the grid.
   const requestAddPanel = (id: PanelId) => {
     if (!layout) return
+    if (blockIfOverPaneLimit(id)) return
     if (arrangement !== "columns") {
       showPanelAt(id)
       return
@@ -1205,6 +1226,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 e.preventDefault()
                 const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
                 if (!id) return
+                if (blockIfOverPaneLimit(id)) {
+                  setDragPreview(null)
+                  return
+                }
                 const bounds = e.currentTarget.getBoundingClientRect()
                 const width = 0.32
                 const height = 0.32
@@ -1353,7 +1378,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
-              onDrop={(id) => showPanelAt(id)}
+              onDrop={(id) => {
+                if (blockIfOverPaneLimit(id)) return
+                showPanelAt(id)
+              }}
               onDragPreview={updateDragPreview}
             />
           )}
@@ -1373,7 +1401,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
-              onDrop={(id) => showPanelAt(id)}
+              onDrop={(id) => {
+                if (blockIfOverPaneLimit(id)) return
+                showPanelAt(id)
+              }}
               onDragPreview={updateDragPreview}
             />
           )}
