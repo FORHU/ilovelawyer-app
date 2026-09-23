@@ -421,6 +421,7 @@ function PlannerPanel({
           title: title.trim(),
           date,
           startTime: normalizedStart,
+          endTime: normalizedEnd,
           description: description.trim(),
           notifyEmail: notifyEmail.trim(),
           caseId,

@@ -425,7 +425,6 @@ export function LawSearchPanel() {
                     onGoToPage={goToPage}
                     onNext={() => void goNext()}
                     labels={{
-                      first: t("lawSearch.pageFirst"),
                       previous: t("lawSearch.pagePrevious"),
                       next: t("lawSearch.pageNext"),
                     }}

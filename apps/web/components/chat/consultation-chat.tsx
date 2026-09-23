@@ -511,6 +511,14 @@ export default function ConsultationChat({
   // the send settles or the user explicitly navigates elsewhere. State (not a ref) since
   // it has to affect what gets rendered.
   const [pendingUrlConsultationId, setPendingUrlConsultationId] = useState<string | null>(null);
+  // Whether the composer's textarea currently spans more than one line — see the auto-grow
+  // effect below, which sets it, and the composer row further down, which reads it to decide
+  // whether attach/voice/send drop onto their own row below the text (like the narrow-viewport
+  // layout already does) instead of sharing a row with it. Sharing a row works fine for a short
+  // prompt, but for a long one no vertical alignment of the buttons within that row (centered,
+  // top, or bottom) avoids the buttons ending up level with — and crowding — the text, so once
+  // it's multi-line the buttons need their own row instead, not just a different alignment.
+  const [isComposerMultiline, setIsComposerMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const shouldFollowTranscriptRef = useRef(true);
@@ -878,6 +886,9 @@ export default function ConsultationChat({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+    // A single line (leading-6 + the textarea's own py-1.5) renders at 36px in both the
+    // embedded and non-embedded variants — anything taller means it has wrapped past one line.
+    setIsComposerMultiline(el.scrollHeight > 40);
   }, [inputMessage]);
 
   // The transcript, rather than the page, owns scrolling. Follow new/streaming content only
@@ -1600,22 +1611,39 @@ export default function ConsultationChat({
         )}
 
         {/* Auto-growing textarea so multi-line input actually wraps, like Gemini's input.
-         * items-center (not items-end) so the round attach/voice/send buttons stay vertically
-         * centered against whatever height the textarea actually renders at, matching the
-         * pill-shaped card's own vertical center — items-end instead bottom-aligns them,
-         * which visibly drifts off-center against a single-line (or otherwise short) textarea.
+         * Non-embedded: below `sm` this always wraps into two rows — the textarea's basis-full
+         * forces it to claim the whole row width, pushing attach/voice/send onto a shared second
+         * line below it via ordinary flex-wrap. At `sm`+ with a short (single-line) prompt, the
+         * textarea's flex-1 instead lets it share one row with the buttons for a compact pill
+         * look. Embedded ignores that `sm` viewport check entirely (a Case Workspace/Terminal
+         * pane can be narrow regardless of the browser window), so it's driven purely by
+         * isComposerMultiline below instead of a breakpoint.
          *
-         * Below `sm`, this wraps into two rows instead — the textarea's basis-full forces it
-         * to claim the whole row width (so wrapped text actually uses the full row instead of
-         * stopping short with dead space before wherever the controls happen to sit), which
-         * pushes attach/voice/send onto a shared second line via ordinary flex-wrap (they're
-         * small enough to share that second line together rather than each getting their own).
-         * Each child's own order class (plain below `sm`, sm:order- above it) restores the
-         * original single-row sequence — attach, textarea, voice, send — at `sm` and up,
-         * where flex-nowrap keeps it one row again. */}
-        <div className={embedded ? "flex items-center gap-1.5" : "flex flex-wrap sm:flex-nowrap items-center gap-1.5"}>
+         * isComposerMultiline forces that same wrapped, two-row layout once the prompt actually
+         * grows past one line (at `sm`+ too, for the non-embedded case) — sharing a row with the
+         * buttons was tried first (aligning them to the row's center, end, then start in turn),
+         * but whichever edge the buttons anchor to, they end up level with part of a long
+         * prompt's text, which reads as the buttons crowding the text. Giving them their own row
+         * below avoids that regardless of how tall the prompt gets. Each non-embedded child's
+         * own order class (plain below `sm` or when isComposerMultiline, sm:order- otherwise)
+         * restores the single-row sequence — attach, textarea, voice, send — only for that
+         * compact `sm`+ short-prompt case; embedded doesn't need this since its buttons are all
+         * order-3 regardless; the textarea's default order already sorts it first. */}
+        <div
+          className={
+            embedded
+              ? `flex items-start gap-1.5 ${isComposerMultiline ? "flex-wrap" : ""}`
+              : `flex flex-wrap items-start gap-1.5 ${isComposerMultiline ? "" : "sm:flex-nowrap"}`
+          }
+        >
           {!isRecording && !transcribingId && (
-            <div className="relative min-w-0 basis-full sm:flex-1 order-1 sm:order-2">
+            <div
+              className={
+                embedded
+                  ? `relative min-w-0 ${isComposerMultiline ? "basis-full" : "flex-1"}`
+                  : `relative min-w-0 basis-full order-1 ${isComposerMultiline ? "" : "sm:flex-1 sm:order-2"}`
+              }
+            >
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -1658,14 +1686,18 @@ export default function ConsultationChat({
               />
               {/* Visible stand-in for the (now transparent) native placeholder — truncate
                   reliably applies overflow/ellipsis on a plain span, unlike on a textarea's
-                  ::placeholder. Mirrors the textarea's own padding/font so it lines up exactly
-                  where typed text would start; pointer-events-none so clicks reach the textarea
-                  underneath, and it's hidden the instant there's real input. */}
+                  ::placeholder. Mirrors the textarea's own padding so it lines up exactly where
+                  typed text would start; pointer-events-none so clicks reach the textarea
+                  underneath, and it's hidden the instant there's real input.
+                  Its font-size drops below `sm` (independent of the actual typed-text size
+                  above) since the full placeholder copy is long enough to still get clipped by
+                  `truncate` at 15px on a phone-width row — shrinking just this overlay lets the
+                  whole sentence fit on one line without touching real input sizing. */}
               {!inputMessage && (
                 <span
                   aria-hidden="true"
                   className={`pointer-events-none select-none absolute inset-0 truncate leading-6 font-['Inter'] text-muted-foreground ${
-                    embedded ? "px-2 py-1.5 text-base sm:text-[13px]" : "px-1 py-1.5 text-[15px]"
+                    embedded ? "px-2 py-1.5 text-base sm:text-[13px]" : "px-1 py-1.5 text-[13px] sm:text-[15px]"
                   }`}
                 >
                   {inputPlaceholder ?? t("input.placeholder")}
@@ -1742,7 +1774,12 @@ export default function ConsultationChat({
                   voiceLabel={t("input.voiceLabel", { defaultValue: "Voice" })}
                   stopLabel={t("input.stopRecording")}
                   cancelLabel={t("input.cancelRecording", { defaultValue: "Cancel recording" })}
-                  className="order-3"
+                  // ml-auto pushes this (and the send/stop button right after it) to the far
+                  // right of the row it wraps onto once isComposerMultiline is true, leaving
+                  // attach (and the files link) at the far left — same trick as the non-embedded
+                  // composer below. A no-op on the single-line row, where the textarea's own
+                  // flex-1 already soaks up all the free space.
+                  className="order-3 ml-auto"
                 />
               )}
 
@@ -1785,9 +1822,9 @@ export default function ConsultationChat({
           ) : (
             <>
               {/* Hidden while dictating or transcribing — VoiceDictate (recording state) or
-                  the transcribing row above takes over the composer instead. Plain order
-                  below `sm` (row 2, after the textarea's basis-full row), sm:order-1
-                  (leftmost) once flex-nowrap makes it one row again. */}
+                  the transcribing row above takes over the composer instead. Plain order below
+                  `sm` or while isComposerMultiline (row 2, after the textarea's basis-full row),
+                  sm:order-1 (leftmost) only for the compact `sm`+ short-prompt single-row case. */}
               {!isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1796,7 +1833,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
-                      className="order-2 sm:order-1 w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
+                      className={`order-2 ${isComposerMultiline ? "" : "sm:order-1"} w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none`}
                     >
                       <Plus className="w-4 h-4" aria-hidden="true" />
                     </button>

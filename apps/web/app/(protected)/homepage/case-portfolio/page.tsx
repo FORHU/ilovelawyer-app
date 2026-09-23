@@ -565,7 +565,6 @@ export default function CaseManagerDashboard() {
             totalPages={totalPages}
             onPageChange={setPage}
             labels={{
-              first: t("pagination.first"),
               previous: t("pagination.previous"),
               next: t("pagination.next"),
               last: t("pagination.last"),
