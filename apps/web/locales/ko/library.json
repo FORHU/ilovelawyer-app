@@ -135,6 +135,7 @@
     "dateEnacted": "제정일",
     "document": "문서",
     "detailUnavailable": "이 문서의 전체 세부 정보를 지금 불러올 수 없습니다. 확보된 내용만 표시합니다.",
+    "documentTextUnavailable": "이 문서의 전문은 아직 제공되지 않습니다 — 아래 요약을 대신 표시합니다.",
     "summary": "요약",
     "purpose": "목적",
     "affectedLaws": "영향받는 법률 및 개정",

@@ -136,6 +136,7 @@
     "dateEnacted": "Date enacted",
     "document": "Document",
     "detailUnavailable": "The full detail for this document couldn't be loaded right now. Showing what we have.",
+    "documentTextUnavailable": "The full text of this document isn't available yet — showing the summary below.",
     "summary": "Summary",
     "purpose": "Purpose",
     "affectedLaws": "Affected laws & amendments",

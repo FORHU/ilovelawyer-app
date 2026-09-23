@@ -6,6 +6,7 @@ import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { PageShell } from "@/components/page-shell"
 import { LawPdfViewer } from "@/components/library/law-pdf-viewer"
+import { LawFullTextViewer } from "@/components/library/law-full-text-viewer"
 import {
   type LawCategoryParam,
   type LawDocument,
@@ -98,13 +99,20 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
   const { item, detail } = doc
   const isRa = cfg.isLegislation(item.dataset)
   const isUk = tenantCode === "UK"
-  // legislation.gov.uk and the TNA judgment site both send X-Frame-Options: DENY, so their PDFs
-  // can't be iframed directly — UK docs load through our same-origin `/api/law/:id/pdf` proxy.
-  // PH keeps using juris.ph's `pdf_url` (juris.ph allows framing). The proxy 502s (blank frame +
-  // "open in a new tab" link) if the upstream is unreachable.
-  const pdfSrc = isUk ? `${API_BASE_URL}/api/law/${item.stored_id}/pdf` : item.pdf_url
+  // Several upstreams (legislation.gov.uk, the TNA judgment site, and juris.ph itself for PH
+  // jurisprudence/republic-acts) send X-Frame-Options/CSP headers that block framing outright —
+  // a direct top-level link to the same URL (pdfSourceLink, below) opens fine, but as an
+  // <iframe src> it renders blank. Every document loads through our same-origin
+  // `/api/law/:id/pdf` proxy instead, which re-serves the bytes without those headers. The proxy
+  // 502s (blank frame + "open in a new tab" link) if the upstream is unreachable.
+  const pdfSrc = `${API_BASE_URL}/api/law/${item.stored_id}/pdf`
   const pdfSourceLink = item.pdf_url || item.source_url || item.juris_url
   const hasPdf = isUk || !!item.pdf_url
+  // Fallback for the common PH case: no framable PDF (every Republic Act, plus any decision
+  // juris.ph didn't supply a source_pdf_url for) but a PDF-extracted full text is available —
+  // see LawSvc.ensureFullText. UK never populates full_text; it always has the /pdf proxy instead.
+  const hasFullText = !hasPdf && !isUk && !!item.full_text
+  const hasDocument = hasPdf || hasFullText
 
   const sections = isRa ? (
     <>
@@ -251,7 +259,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
        * Used to sit side by side sharing the row's width with the document; moved to a
        * stacked layout instead so the document (the thing people actually came to read) gets
        * the page's full width rather than splitting it with a sidebar. */}
-      {hasPdf ? (
+      {hasDocument ? (
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {sections}
@@ -276,12 +284,21 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
               {t("lawDoc.document")}
             </h2>
             <div className="min-h-0 flex-1">
-              <LawPdfViewer url={pdfSrc!} sourceUrl={pdfSourceLink} />
+              {hasPdf ? (
+                <LawPdfViewer url={pdfSrc} sourceUrl={pdfSourceLink} />
+              ) : (
+                <LawFullTextViewer text={item.full_text!} sourceUrl={pdfSourceLink} />
+              )}
             </div>
           </section>
         </div>
       ) : (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+          {!isUk && (
+            <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+              {t("lawDoc.documentTextUnavailable")}
+            </p>
+          )}
           {sections}
           {detail.keywords.length > 0 && (
             <Card label={t("lawDoc.keywords")}>
