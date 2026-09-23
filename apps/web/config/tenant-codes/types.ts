@@ -45,6 +45,8 @@ export interface TenantCodeConfig {
    * following the same philosophy as `ui`. */
   landingAssets: {
     heroVideos: [string, string, string]
+    /** Poster frames shown before each hero video's first frame decodes. */
+    heroPosters: [string, string, string]
     firmWorkspace: string
   }
   ui: {

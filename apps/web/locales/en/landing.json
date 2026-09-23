@@ -4,14 +4,17 @@
       "capabilities": "Capabilities",
       "legalTerminal": "Legal Terminal",
       "firms": "Firms",
-      "resources": "Resources"
+      "resources": "Resources",
+      "twoJurisdictions": "Two jurisdictions"
     },
     "signIn": "Sign In",
     "requestDemo": "Request Demo",
     "getStarted": "Get Started",
     "goToDashboard": "Go to Dashboard",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "searchPlaceholder": "Ask a legal question",
+    "searchLabel": "Ask a legal question"
   },
   "hero": {
     "ctaPrimary": "Start Free Consultation",

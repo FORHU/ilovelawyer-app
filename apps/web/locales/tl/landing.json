@@ -4,14 +4,17 @@
       "capabilities": "Mga Kakayahan",
       "legalTerminal": "Legal Terminal",
       "firms": "Mga Law Firm",
-      "resources": "Mga Resource"
+      "resources": "Mga Resource",
+      "twoJurisdictions": "Dalawang hurisdiksyon"
     },
     "signIn": "Mag-sign In",
     "requestDemo": "Humiling ng Demo",
     "getStarted": "Magsimula",
     "goToDashboard": "Pumunta sa Dashboard",
     "openMenu": "Buksan ang menu",
-    "closeMenu": "Isara ang menu"
+    "closeMenu": "Isara ang menu",
+    "searchPlaceholder": "Magtanong ng legal na tanong",
+    "searchLabel": "Magtanong ng legal na tanong"
   },
   "hero": {
     "ctaPrimary": "Simulan ang Libreng Konsultasyon",
