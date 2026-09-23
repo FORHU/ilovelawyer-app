@@ -32,7 +32,9 @@ interface CaseRoomSocket {
   emit(event: "case:subscribe", payload: { caseId: string }, ack: (res?: { ok: boolean; error?: string }) => void): void
   emit(event: "case:unsubscribe", payload: { caseId: string }): void
   on(event: "connect", handler: () => void): void
+  on(event: "disconnect", handler: () => void): void
   off(event: "connect", handler: () => void): void
+  off(event: "disconnect", handler: () => void): void
 }
 
 /**
@@ -47,6 +49,16 @@ interface CaseRoomSocket {
  * room membership doesn't survive a dropped connection even though the client-side Socket object
  * does — a join made only once would silently stop working after any reconnect without this.
  *
+ * Also clears the local "subscribed" flag on a raw disconnect (network blip, laptop sleep, a
+ * backgrounded tab the browser suspends), not just on explicit cleanup — without this, the flag
+ * stays stale-true for the whole time the connection is actually down, so the reconnect's
+ * subscribe-ack later calls setSubscribed(caseId, true) against a flag that's already true: a
+ * no-op that never notifies listeners. That silently breaks useAiJobStatus's own "just came back
+ * live" reconciliation, which only re-syncs on a genuine false->true transition — a generation
+ * job that finished while the connection was down would otherwise stay stuck showing
+ * IN_PROGRESS/"Generating…" indefinitely, since nothing else would ever prompt a refetch for a
+ * component that never unmounted.
+ *
  * Returns the cleanup: stops re-subscribing on reconnect, tells the server to leave the room, and
  * clears the local "subscribed" flag.
  */
@@ -56,12 +68,15 @@ export function joinCaseRoom(socket: CaseRoomSocket, caseId: string): () => void
       setSubscribed(caseId, res?.ok === true)
     })
   }
+  const handleDisconnect = () => setSubscribed(caseId, false)
 
   if (socket.connected) subscribe()
   socket.on("connect", subscribe)
+  socket.on("disconnect", handleDisconnect)
 
   return () => {
     socket.off("connect", subscribe)
+    socket.off("disconnect", handleDisconnect)
     socket.emit("case:unsubscribe", { caseId })
     setSubscribed(caseId, false)
   }
