@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Pause, Play } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { EASE_EXPO_OUT, LANDING_DURATIONS, LANDING_STAGGERS } from "@/lib/landing/motion-tokens";
+import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render identical hero markup/motion, differing only in tenant asset paths and
@@ -17,6 +18,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 // two hand-copied files.
 
 const SLIDE_KEYS = ["slideOne", "slideTwo", "slideThree"] as const;
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#221f1a]";
 
 const lineVariants = {
   hidden: { y: "110%", opacity: 0 },
@@ -43,9 +45,12 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const tCtx = tenantCode === "UK" ? { context: "UK" } : undefined;
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const { heroVideos, heroPosters } = getTenantCodeConfig(tenantCode).landingAssets;
 
+  // Loads/restarts the active slide's video. Deliberately excludes `paused` — toggling pause
+  // shouldn't rewind the current slide back to frame 0, only the separate effect below does.
   useEffect(() => {
     const active = videoRefs.current[index];
     if (!active) return;
@@ -53,10 +58,18 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
       if (v && i !== index) v.pause();
     });
     if (active.preload !== "auto") active.preload = "auto";
-    if (reduce) return;
     active.currentTime = 0;
-    void active.play();
+    if (!reduce && !paused) void active.play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, reduce]);
+
+  // Handoff accessibility note: a pause control for the hero videos.
+  useEffect(() => {
+    const active = videoRefs.current[index];
+    if (!active) return;
+    if (paused || reduce) active.pause();
+    else void active.play();
+  }, [paused, reduce, index]);
 
   const advance = () => setIndex((i) => (i + 1) % SLIDE_KEYS.length);
 
@@ -146,7 +159,7 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               <TooltipTrigger asChild>
                 <Link
                   href="/signup"
-                  className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-brand-gold/85 transition-colors duration-200"
+                  className={`bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
                 >
                   {t("hero.ctaPrimary")}
                   <ArrowUpRight size={14} />
@@ -158,7 +171,7 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               <TooltipTrigger asChild>
                 <a
                   href="#capabilities"
-                  className="text-white border border-white/40 text-xs tracking-[1.2px] uppercase px-8 py-4 rounded-full hover:border-white transition-colors duration-200 inline-flex items-center"
+                  className={`text-white border border-white/40 text-xs tracking-[1.2px] uppercase px-8 py-4 rounded-full hover:border-white transition-colors duration-200 inline-flex items-center ${FOCUS_RING}`}
                 >
                   {t("hero.ctaExplore")}
                 </a>
@@ -178,14 +191,31 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
         &rsaquo;
       </button>
 
-      <motion.div
-        aria-hidden
-        className="absolute left-8 bottom-7 z-10 text-white text-3xl font-thin"
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={paused ? t("hero.playVideo") : t("hero.pauseVideo")}
+            aria-pressed={paused}
+            onClick={() => setPaused((p) => !p)}
+            className="absolute right-6 md:right-16 bottom-7 z-10 p-1.5 text-white opacity-80 hover:opacity-100 transition-opacity duration-200 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            {paused ? <Play size={16} aria-hidden /> : <Pause size={16} aria-hidden />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{paused ? t("hero.playVideo") : t("hero.pauseVideo")}</TooltipContent>
+      </Tooltip>
+
+      <motion.button
+        type="button"
+        aria-label={t("hero.scrollDown")}
+        onClick={() => smoothScrollToHash("#capabilities")}
+        className={`absolute left-8 bottom-7 z-10 text-white text-3xl font-thin rounded-full ${FOCUS_RING}`}
         animate={reduce ? {} : { y: [0, -6, 0] }}
         transition={reduce ? {} : { duration: 3.9, repeat: Infinity, ease: "easeInOut" }}
       >
         &darr;
-      </motion.div>
+      </motion.button>
     </section>
   );
 }

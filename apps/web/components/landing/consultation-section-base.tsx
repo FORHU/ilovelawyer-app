@@ -76,7 +76,7 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
               <Link
                 href={loginHref}
                 onClick={(e) => void handleCtaClick(e)}
-                className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-brand-gold text-brand-navy-950 hover:bg-brand-gold/85 transition-colors duration-200"
+                className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-brand-gold text-brand-navy-950 hover:bg-brand-gold/85 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
               >
                 {t("consultation.cta")}
               </Link>

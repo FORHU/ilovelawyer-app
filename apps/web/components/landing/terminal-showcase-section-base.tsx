@@ -58,7 +58,7 @@ export function TerminalShowcaseSectionBase() {
             <Link
               href={loginHref}
               onClick={(e) => void handleCtaClick(e)}
-              className="text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-white text-[#0b0b0b] hover:opacity-85 transition-opacity duration-200"
+              className="text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-white text-[#0b0b0b] hover:opacity-85 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
             >
               {t("terminal.cta")}
             </Link>
@@ -73,7 +73,7 @@ export function TerminalShowcaseSectionBase() {
             <TooltipTrigger asChild>
               <Link
                 href="/signup"
-                className="group flex-1 min-w-0 min-h-[480px] rounded-3xl overflow-hidden relative bg-cover bg-center transition-[flex-grow] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] hover:flex-[2.4]"
+                className="group flex-1 min-w-0 min-h-[480px] rounded-3xl overflow-hidden relative bg-cover bg-center transition-[flex-grow] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)] hover:flex-[2.4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
                 style={{ backgroundImage: `url('${TEXTURES[key]}')` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/70 p-7 flex flex-col">

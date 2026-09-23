@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { StickyFooterReveal } from "@/components/landing/sticky-footer-reveal";
+import { FooterRevealPortal } from "@/components/landing/footer-reveal-portal";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render the same footer shell (see hero-section-base.tsx for why this is one
@@ -76,7 +76,7 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const year = new Date().getFullYear();
 
   return (
-    <StickyFooterReveal>
+    <FooterRevealPortal>
       <footer id="footer" className="bg-brand-navy-900 text-white py-16 px-6 md:px-16">
         <div className="max-w-[1440px] mx-auto">
           <Link
@@ -112,6 +112,6 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
           </div>
         </div>
       </footer>
-    </StickyFooterReveal>
+    </FooterRevealPortal>
   );
 }
