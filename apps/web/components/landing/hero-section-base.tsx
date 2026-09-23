@@ -119,8 +119,13 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
           ) : (
             <AnimatePresence mode="popLayout">
               <div key={index} className="flex flex-col gap-2">
+                {/* Asymmetric mask padding below: leading-[0.95] on the h1 is tighter than this
+                    serif's descenders (the "g" in "get" was clipped by the animation mask), so
+                    the mask gets extra room at the bottom only. The matching negative margins
+                    cancel both paddings back out of the layout flow, so this doesn't shift the
+                    gap between the two headline lines. */}
                 {(["line1", "line2"] as const).map((lineKey, i) => (
-                  <div key={lineKey} className="overflow-hidden py-[0.2em] -my-[0.2em]">
+                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.4em] -mt-[0.2em] -mb-[0.4em]">
                     <motion.h1
                       custom={i}
                       initial="hidden"
