@@ -1,3 +1,13 @@
+/** What the composer's action button should be. "stop" only while the AI is still WRITING the
+ * answer. Once the answer text has fully streamed but the turn is still finishing its extras
+ * (timeline, mind map, reasoning, decisions - see ilovelawyer-api's chat:answer-complete), there
+ * is nothing left to stop that the user can see, so it shows the (still disabled) Send button
+ * instead of a Stop that looks like the answer is still generating. Send stays disabled until the
+ * turn is fully saved: a new prompt sent earlier could land before the unfinished reply. */
+export function composerAction({ isBusy, isFinalizing }: { isBusy: boolean; isFinalizing: boolean }): "send" | "stop" {
+  return isBusy && !isFinalizing ? "stop" : "send"
+}
+
 /** How long a finished answer is held back while the rest of its turn (confidence, "why this
  * answer", timeline, mind map) is still being produced. The answer, its confidence and its
  * explanation then appear together instead of the answer showing first and the rest popping in
@@ -16,13 +26,16 @@ export const ANSWER_HOLD_CAP_MS = 65_000
  * of showing its text yet, so the answer, its confidence badge and its "why this answer"
  * explanation all render together in one pass instead of the answer appearing first and the
  * rest popping in once they finish generating/saving. See ANSWER_HOLD_CAP_MS for the safety
- * cap that still reveals `revealed` after a bounded wait. */
+ * cap that still reveals `revealed` after a bounded wait. Never held after a Stop - the user
+ * asked to see what had streamed. */
 export function shouldHoldAnswer({
   isStreaming,
+  stopped,
   revealed,
 }: {
   isStreaming: boolean
+  stopped: boolean
   revealed: boolean
 }): boolean {
-  return isStreaming && !revealed
+  return isStreaming && !stopped && !revealed
 }

@@ -3,6 +3,8 @@ import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
+import { getNotificationSocket } from "@/lib/notifications/socket"
+import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
 import type {
   Annotation,
   AnnotationKind,
@@ -76,38 +78,49 @@ export interface AiJobStatus {
   error: string | null
 }
 
-const AI_JOB_POLL_MS = 3000
-// Idle heartbeat while no job is IN_PROGRESS — deliberately not `false`/no-poll. staleTime 0
-// (below) only refetches fresh on a genuine unmount+remount, but Next's client-side router can
-// reuse an already-rendered page across a soft navigation (e.g. Workspace -> Terminal for the
-// same case) without actually remounting this hook — no mount event fires, so nothing would
-// ever re-check status until this heartbeat does. Observed directly: a lawyer uploading/deleting
-// a document in the Workspace, then navigating straight to the Terminal, saw a caseRefresh job
-// that was genuinely IN_PROGRESS server-side sit unnoticed here until a hard browser refresh.
-// 15s bounds how late "Updating analysis…" can appear after a background job actually starts,
-// independent of whatever Next's navigation caching happens to do.
-const AI_JOB_IDLE_POLL_MS = 15_000
+/** ai-job:started/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
+ * (lib/socket.ts), pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), the single
+ * choke point every one of AiGenerationQueue's 8 kinds (including the auto-triggered
+ * casePostExtraction, which resolves to the "caseRefresh" lock kind) funnels through. */
+interface AiJobSocketPayload {
+  caseId: string
+  kind: AiGenerationKind
+  status: AiJobStatus["status"]
+  startedAt: string
+  finishedAt: string | null
+  error: string | null
+}
 
-/** Polls whether a Generate/Refresh/Scan action is currently running for this case, regardless
- * of who triggered it or when — a page refresh mid-generation otherwise looks idle even though
- * the server-side call is still going (see AiGenerationJob). Always enabled while mounted, not
- * just after a click, so a fresh page load immediately shows the real state. Invalidates the
- * snapshot query the moment status flips to DONE, so a viewer who didn't click Generate
- * themselves (a second tab, or one who refreshed mid-run) still sees the fresh content land
- * without a manual refresh — every current caller wants this, so it's built in rather than left
- * as an opt-in callback.
+const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:done", "ai-job:failed"] as const
+
+/** Whether a Generate/Refresh/Scan action is currently running for this case, regardless of who
+ * triggered it or when — a page refresh mid-generation otherwise looks idle even though the
+ * server-side call is still going (see AiGenerationJob). Always enabled while mounted, not just
+ * after a click, so a fresh page load immediately shows the real state. Invalidates the snapshot
+ * query the moment status flips to DONE, so a viewer who didn't click Generate themselves (a
+ * second tab, or one who refreshed mid-run) still sees the fresh content land without a manual
+ * refresh — every current caller wants this, so it's built in rather than left as an opt-in
+ * callback.
  *
- * staleTime 0 opts out of the app's 5-minute default (see providers.tsx) for the case where this
- * genuinely does remount fresh. The AI_JOB_IDLE_POLL_MS heartbeat below is the backstop for when
- * it doesn't — see that constant's comment. */
+ * No polling. One fetch on mount (staleTime 0 opts out of the app's 5-minute default — see
+ * providers.tsx), then purely event-driven: ai-job:started/done/failed (AI_JOB_SOCKET_EVENTS,
+ * pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), see useCaseRoom) patches this
+ * query's cache directly, on EVERY viewer of this case's Terminal — not just whoever clicked
+ * Generate/Refresh. Two non-polling reconciliation paths cover what a poll used to catch:
+ *   1. Below — a fresh refetch the moment this case's room join is confirmed, closing the gap
+ *      between the initial fetch (which can race a job that started a moment earlier) and the
+ *      socket actually being ready to receive events for it.
+ *   2. useNotificationSocket's reconnect handler invalidates every mounted ai-job query — a
+ *      dropped/reconnected socket, or a Next soft navigation that reuses this page without truly
+ *      remounting it, refetches once on that event instead of on a timer. */
 export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   const queryClient = useQueryClient()
+  const pushLive = useIsCaseRoomSubscribed(caseId)
   const query = useQuery({
     queryKey: terminalKeys.aiJob(caseId, kind),
     queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
     enabled: !!caseId,
     staleTime: 0,
-    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_POLL_MS : AI_JOB_IDLE_POLL_MS),
   })
 
   const prevStatus = useRef(query.data?.status)
@@ -117,6 +130,34 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
     }
     prevStatus.current = query.data?.status
   }, [query.data?.status, caseId, queryClient])
+
+  const wasPushLive = useRef(pushLive)
+  useEffect(() => {
+    if (!wasPushLive.current && pushLive) {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, kind) })
+    }
+    wasPushLive.current = pushLive
+  }, [pushLive, caseId, kind, queryClient])
+
+  useEffect(() => {
+    if (!caseId) return
+    const socket = getNotificationSocket()
+
+    const onEvent = (payload: AiJobSocketPayload) => {
+      if (payload.caseId !== caseId || payload.kind !== kind) return
+      queryClient.setQueryData<AiJobStatus>(terminalKeys.aiJob(caseId, kind), {
+        status: payload.status,
+        startedAt: payload.startedAt,
+        finishedAt: payload.finishedAt,
+        error: payload.error,
+      })
+    }
+
+    AI_JOB_SOCKET_EVENTS.forEach((event) => socket.on(event, onEvent))
+    return () => {
+      AI_JOB_SOCKET_EVENTS.forEach((event) => socket.off(event, onEvent))
+    }
+  }, [caseId, kind, queryClient])
 
   return query
 }
