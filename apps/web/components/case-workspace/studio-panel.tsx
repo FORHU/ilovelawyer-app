@@ -14,6 +14,7 @@ import type { DecisionRecordPayload, FindingCategory } from "@/lib/terminal/type
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
+import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
@@ -128,8 +129,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [generateError, setGenerateError] = useState(false);
   // Collapsed by default — a sub-section of the Decisions tile (ilovelawyer-api#119's replay),
   // not its own tile, since it's turn-scoped the same way a decision is and would otherwise
-  // compete with Decisions for the same "this turn's reasoning" attention.
-  const [researchStepsOpen, setResearchStepsOpen] = useState(false);
+  // compete with Decisions for the same "this turn's reasoning" attention. Keyed by promptIndex
+  // (Map, same idiom as decisionOverrides below) rather than one shared boolean, now that several
+  // prompts' decision groups can be open at once — a single flag would otherwise toggle every
+  // group's research steps in lockstep instead of each independently.
+  const [researchStepsOverrides, setResearchStepsOverrides] = useState<Map<number, boolean>>(() => new Map());
+  const isResearchStepsOpen = (promptIndex: number) => researchStepsOverrides.get(promptIndex) ?? false;
+  const toggleResearchSteps = (promptIndex: number) =>
+    setResearchStepsOverrides((prev) => new Map(prev).set(promptIndex, !isResearchStepsOpen(promptIndex)));
   const mindMapJob = useAiJobStatus(caseId, "mindMap");
   // Combines this tab's own in-flight request with the persisted job status, so a job kicked
   // off from another tab (or this one, before a refresh) still shows as generating here too.
@@ -275,22 +282,24 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   // Decision Records are already-there data (this thread's own audited turns), not something to
   // generate/refresh — same "open directly" shape as Documents, not the generate-then-result-row
-  // shape the other tiles use. Scoped to the latest turn that has any, walked the same way
-  // mindMapUpdatedAt is above — not the case-wide list (that's Legal Terminal's Decisions panel,
-  // read via useCaseSnapshotQuery, left untouched by this tile).
-  const latestDecisionsMessage = useMemo(() => {
-    const list = history ?? [];
-    for (let i = list.length - 1; i >= 0; i--) {
-      if ((list[i]?.decisionRecords?.records.length ?? 0) > 0) return list[i];
-    }
-    return undefined;
-  }, [history]);
-  const latestDecisionRecords = latestDecisionsMessage?.decisionRecords?.records;
-  // Persisted replay (ilovelawyer-api#119) of that same turn's research/verification trace —
-  // paired to whichever message the Decisions tile is already showing rather than independently
-  // "whichever turn has research steps," so the two stay about the same turn. Absent when that
-  // turn made no tool calls, same as everywhere else this field shows up.
-  const latestResearchSteps = latestDecisionsMessage?.researchSteps?.steps;
+  // shape the other tiles use. Every prompt that produced any, grouped and dropdown-able (same
+  // shared grouping Sources panel uses — see use-topic-navigator.ts's decisionGroups) — not the
+  // case-wide list (that's Legal Terminal's Decisions panel, read via useCaseSnapshotQuery, left
+  // untouched by this tile). Each group carries its own researchSteps (ilovelawyer-api#119's
+  // persisted replay of that same turn's research/verification trace), absent when that turn made
+  // no tool calls, same as everywhere else this field shows up.
+  const { decisionGroups } = useTopicNavigator(consultationId);
+  const decisionGroupsNewestFirst = useMemo(() => [...decisionGroups].reverse(), [decisionGroups]);
+  // Newest prompt open by default, same "only an explicit toggle is stored" idiom as
+  // TopicNavigatorList's own `overrides` (topic-navigator.tsx) and Sources panel's decision
+  // groups (sources-panel.tsx) — kept consistent across all three so a lawyer doesn't have to
+  // learn a different expand/collapse behavior per panel.
+  const [decisionOverrides, setDecisionOverrides] = useState<Map<number, boolean>>(() => new Map());
+  const latestDecisionPromptIndex = decisionGroups[decisionGroups.length - 1]?.promptIndex ?? null;
+  const isDecisionGroupOpen = (promptIndex: number) =>
+    decisionOverrides.get(promptIndex) ?? promptIndex === latestDecisionPromptIndex;
+  const toggleDecisionGroup = (promptIndex: number) =>
+    setDecisionOverrides((prev) => new Map(prev).set(promptIndex, !isDecisionGroupOpen(promptIndex)));
 
   const openStudioTile = (kind: StudioTileKind) => {
     setOpenTile(kind);
@@ -599,7 +608,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             {hasPrompt && (<StudioTile
               icon={Scale}
               label={t("workspace.decisionsTile")}
-              note={latestDecisionRecords ? t("workspace.decisionsNoteCount", { count: latestDecisionRecords.length }) : undefined}
+              note={
+                decisionGroups.length > 0
+                  ? t("workspace.decisionsNoteCount", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
+                  : undefined
+              }
               expanded={expanded}
               onClick={() => openStudioTile("decisions")}
             />)}
@@ -692,36 +705,65 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           {openTile === "documents" ? (
             <DocumentFolderBrowser caseId={caseId} variant="full" />
           ) : openTile === "decisions" ? (
-            latestDecisionRecords ? (
-              <div className="flex flex-col gap-3">
-                <ul className="space-y-3">
-                  {latestDecisionRecords.map((record, i) => (
-                    <DecisionRecordCard key={record.anchor || i} payload={record} />
-                  ))}
-                </ul>
-                {latestResearchSteps && latestResearchSteps.length > 0 && (
-                  <div className="rounded-md border border-border px-3 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setResearchStepsOpen((v) => !v)}
-                      className="flex w-full items-center justify-between gap-2 text-left"
-                    >
-                      <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
-                        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        {t("workspace.researchStepsTile")}
-                      </span>
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${researchStepsOpen ? "" : "-rotate-90"}`}
-                        aria-hidden="true"
-                      />
-                    </button>
-                    {researchStepsOpen && (
-                      <div className="mt-2.5 border-t border-border pt-2.5">
-                        <ResearchTraceList steps={latestResearchSteps} variant="replay" />
-                      </div>
-                    )}
-                  </div>
-                )}
+            decisionGroupsNewestFirst.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {decisionGroupsNewestFirst.map((group) => {
+                  const isOpen = isDecisionGroupOpen(group.promptIndex);
+                  const researchStepsOpen = isResearchStepsOpen(group.promptIndex);
+                  return (
+                    <div key={group.promptIndex} className="rounded-md border border-border">
+                      <button
+                        type="button"
+                        onClick={() => toggleDecisionGroup(group.promptIndex)}
+                        aria-expanded={isOpen}
+                        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left"
+                      >
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-foreground" title={group.promptTitle}>
+                          {group.promptTitle || "Untitled prompt"}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {t("workspace.decisionsNoteCount", { count: group.records.length })}
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="flex flex-col gap-3 border-t border-border px-3 py-2.5">
+                          <ul className="space-y-3">
+                            {group.records.map((record, i) => (
+                              <DecisionRecordCard key={record.anchor || i} payload={record} />
+                            ))}
+                          </ul>
+                          {group.researchSteps && group.researchSteps.length > 0 && (
+                            <div className="rounded-md border border-border px-3 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => toggleResearchSteps(group.promptIndex)}
+                                className="flex w-full items-center justify-between gap-2 text-left"
+                              >
+                                <span className="flex items-center gap-1.5 text-[12px] font-medium text-foreground">
+                                  <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                  {t("workspace.researchStepsTile")}
+                                </span>
+                                <ChevronDown
+                                  className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${researchStepsOpen ? "" : "-rotate-90"}`}
+                                  aria-hidden="true"
+                                />
+                              </button>
+                              {researchStepsOpen && (
+                                <div className="mt-2.5 border-t border-border pt-2.5">
+                                  <ResearchTraceList steps={group.researchSteps} variant="replay" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="flex h-full items-center justify-center text-sm text-muted-foreground">

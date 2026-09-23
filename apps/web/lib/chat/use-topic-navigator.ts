@@ -3,6 +3,7 @@ import { useMessagesQuery } from "@/lib/chat/mutations";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
+import type { TraceStep } from "@/lib/chat/mind-map-parser";
 
 export interface TopicNavigatorItem {
   /** Index into ConsultationChat's own visibleMessages — matches the `chat-msg-${index}` id
@@ -21,6 +22,21 @@ export interface TopicNavigatorGroup {
   topics: TopicNavigatorItem[];
 }
 
+/** One turn's Decision Records, grouped under the user prompt that produced them — same
+ * "prompt -> its stuff" shape as TopicNavigatorGroup, for callers (SourcesPanel, Studio's
+ * Decisions tile) that want every turn's decisions, not just the latest (see `latestDecisions`
+ * below for that narrower case). `index` is the visibleMessages index of the assistant message
+ * that actually carries `records` — same id this group's own decisionAnchorElementId/
+ * evidenceQuoteElementId calls should key off, so two different turns can never collide on the
+ * same element id even when both have, say, a "record 0, evidenceFor 0". */
+export interface DecisionNavigatorGroup {
+  promptIndex: number;
+  promptTitle: string;
+  index: number;
+  records: DecisionRecordPayload[];
+  researchSteps: TraceStep[] | undefined;
+}
+
 /** DOM id of one decision's highlighted anchor span inside a reply bubble (see
  * assistant-message.tsx's highlightAnchorsAndQuotes, which sets this same id) — `decisionIndex`
  * is that message's own `decisions` array index, matching `m.decisions`/`decisionRecords.records`
@@ -32,20 +48,26 @@ export function decisionAnchorElementId(messageIndex: number, decisionIndex: num
 }
 
 /** DOM id of one piece of evidence's highlighted (yellow) quote span, wherever in the reply it
- * actually appears — unlike decisionAnchorElementId, this is NOT scoped to one message, because
- * a split reply only attaches its decisions to the *last* topic bubble (see chat.service.ts's
- * persistAssistantTurn) while the quoted sentence itself can live in any earlier sibling. Every
- * bubble in a split reply gets offered the same full quote list (ConsultationChat's doSend) and
- * each independently highlights whichever quotes actually match its own text — so the id only
- * needs to name the evidence item, not a message. `recordIndex`/`indexInDirection` mirror
- * SourcesPanel's own flatMap order over `latestDecisions.records[recordIndex].evidenceFor` /
- * `.evidenceAgainst`, so both sides agree without either hardcoding the other's iteration. */
+ * actually appears — unlike decisionAnchorElementId, it's not scoped to one specific bubble
+ * *within* a turn, because a split reply only attaches its decisions to the *last* topic bubble
+ * (see chat.service.ts's persistAssistantTurn) while the quoted sentence itself can live in any
+ * earlier sibling. Every bubble belonging to that turn gets offered the same quote list
+ * (ConsultationChat's doSend) and each independently highlights whichever quotes actually match
+ * its own text. `messageIndex` IS still required, though — it's the turn's own decisions-bearing
+ * message index (DecisionNavigatorGroup.index / latestDecisions.index), included so two different
+ * turns whose evidence happens to land on the same `recordIndex`/`indexInDirection` (e.g. both
+ * have a "record 0, evidenceFor 0") never compute the same id — SourcesPanel now renders every
+ * turn's decisions, not just the latest, and a collision there would silently jump/highlight the
+ * wrong turn's quote. `recordIndex`/`indexInDirection` mirror SourcesPanel's own flatMap order
+ * over `records[recordIndex].evidenceFor`/`.evidenceAgainst`, so both sides agree without either
+ * hardcoding the other's iteration. */
 export function evidenceQuoteElementId(
+  messageIndex: number,
   recordIndex: number,
   direction: "for" | "against",
   indexInDirection: number,
 ): string {
-  return `evidence-quote-${recordIndex}-${direction}-${indexInDirection}`;
+  return `evidence-quote-${messageIndex}-${recordIndex}-${direction}-${indexInDirection}`;
 }
 
 /** Derives "topics across every split AI reply" for a consultation straight from persisted
@@ -109,18 +131,71 @@ export function useTopicNavigator(
     return result.filter((g) => g.topics.length > 0);
   }, [visibleMessages]);
 
+  // Same "prompt -> its stuff" grouping as `groups` above, but for Decision Records instead of
+  // split-reply topics — every turn that produced any, in chronological (oldest-first) order, not
+  // just the latest one (see `latestDecisions` below for the narrower single-turn case that
+  // predates this and still backs the in-chat quote/anchor highlighting). A turn's decisions only
+  // ever live on one message (the last topic bubble of a split reply — see
+  // chat.service.ts's persistAssistantTurn), so each prompt contributes at most one group.
+  const decisionGroups = useMemo<DecisionNavigatorGroup[]>(() => {
+    const result: DecisionNavigatorGroup[] = [];
+    let currentPrompt: { promptIndex: number; promptTitle: string } | null = null;
+    visibleMessages.forEach((m, index) => {
+      if (m.role === "user") {
+        currentPrompt = { promptIndex: index, promptTitle: m.content.trim() };
+        return;
+      }
+      const records = m.decisionRecords?.records;
+      if (!currentPrompt || !records?.length) return;
+      result.push({ ...currentPrompt, index, records, researchSteps: m.researchSteps?.steps });
+    });
+    return result;
+  }, [visibleMessages]);
+
   const topics = useMemo<TopicNavigatorItem[]>(() => groups.flatMap((g) => g.topics), [groups]);
 
-  // Same "walk visibleMessages backward" shape as Case Workspace's Decisions Studio tile
-  // (studio-panel.tsx's latestDecisionsMessage), but computed against this hook's *filtered*
-  // visibleMessages instead of raw history — SourcesPanel needs the index to double as a
-  // `chat-msg-${index}` scroll target, and only visibleMessages' numbering lines up with that id.
-  const latestDecisionsIndex = useMemo(() => {
-    for (let i = visibleMessages.length - 1; i >= 0; i--) {
-      if ((visibleMessages[i]?.decisionRecords?.records.length ?? 0) > 0) return i;
-    }
-    return -1;
+  // Effective ordering time for a message: a user message's own createdAt (set synchronously
+  // when the request is accepted, so it always tracks true submission order); an assistant
+  // message's PARENT's createdAt instead of its own, since the reply's createdAt is only set
+  // once generation finishes and can land out of submission order once two turns for this
+  // consultation run concurrently (no per-consultation lock exists on the chat-generation queue)
+  // — see chat.repository.ts's findLatestAssistantMessage for the equivalent fix on the Related
+  // Cases side. Falls back to the message's own createdAt if its parent isn't in visibleMessages
+  // (shouldn't happen for a legal-persona reply, but degrades gracefully rather than throwing).
+  const messageById = useMemo(() => {
+    const map = new Map<string, (typeof visibleMessages)[number]>();
+    visibleMessages.forEach((m) => map.set(m.id, m));
+    return map;
   }, [visibleMessages]);
+  const effectiveTime = useCallback(
+    (m: (typeof visibleMessages)[number]): number => {
+      if (m.role !== "assistant" || !m.parentMessageId) return new Date(m.createdAt).getTime();
+      const parent = messageById.get(m.parentMessageId);
+      return new Date((parent ?? m).createdAt).getTime();
+    },
+    [messageById],
+  );
+
+  // Finds the message with the greatest *effective* time (not array position, which can be
+  // scrambled by the same race effectiveTime corrects for) — computed against this hook's
+  // *filtered* visibleMessages instead of raw history, since SourcesPanel needs the index to
+  // double as a `chat-msg-${index}` scroll target and only visibleMessages' numbering lines up
+  // with that id. Case Workspace's Decisions Studio tile (studio-panel.tsx's
+  // latestDecisionsMessage) has its own, separate copy of the older array-position version of
+  // this — not fixed here, out of scope for the Sources Panel bug this addresses.
+  const latestDecisionsIndex = useMemo(() => {
+    let bestIndex = -1;
+    let bestTime = -Infinity;
+    visibleMessages.forEach((m, i) => {
+      if ((m.decisionRecords?.records.length ?? 0) === 0) return;
+      const t = effectiveTime(m);
+      if (t > bestTime) {
+        bestTime = t;
+        bestIndex = i;
+      }
+    });
+    return bestIndex;
+  }, [visibleMessages, effectiveTime]);
   const latestDecisionsRecords = latestDecisionsIndex >= 0 ? visibleMessages[latestDecisionsIndex]!.decisionRecords!.records : undefined;
   const latestDecisions: { index: number; records: DecisionRecordPayload[] } | null =
     latestDecisionsRecords ? { index: latestDecisionsIndex, records: latestDecisionsRecords } : null;
@@ -129,11 +204,18 @@ export function useTopicNavigator(
   // consultation's latest turn," with no per-item anchor of its own, so SourcesPanel jumps any
   // related-case row here rather than to a specific sentence.
   const latestAssistantIndex = useMemo(() => {
-    for (let i = visibleMessages.length - 1; i >= 0; i--) {
-      if (visibleMessages[i]?.role === "assistant") return i;
-    }
-    return null;
-  }, [visibleMessages]);
+    let bestIndex: number | null = null;
+    let bestTime = -Infinity;
+    visibleMessages.forEach((m, i) => {
+      if (m.role !== "assistant") return;
+      const t = effectiveTime(m);
+      if (t > bestTime) {
+        bestTime = t;
+        bestIndex = i;
+      }
+    });
+    return bestIndex;
+  }, [visibleMessages, effectiveTime]);
   const messageId = useCallback((index: number) => (instanceId ? `${instanceId}-chat-msg-${index}` : `chat-msg-${index}`), [instanceId]);
 
   const scrollToTopic = useCallback((index: number) => {
@@ -194,6 +276,7 @@ export function useTopicNavigator(
   return {
     topics,
     groups,
+    decisionGroups,
     activeIndex,
     scrollToTopic,
     scrollToElementId,

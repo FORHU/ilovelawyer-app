@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, ChevronRight, Gavel, CheckCircle2, ExternalLink, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, ChevronRight, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
@@ -53,18 +53,23 @@ interface SourcesPanelProps {
 export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { t: tTerminal } = useTranslation("terminal");
-  const { groups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestDecisions, latestAssistantIndex } =
+  const { groups, decisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
     useTopicNavigator(activeConsultationId);
   const { data: relatedCasesData } = useRelatedCasesQuery(activeConsultationId ?? undefined);
   const relatedCases = relatedCasesData?.relatedCases ?? [];
   // Collapsed by default — Topics is the demoted, secondary section now that Evidence/
   // Authorities are the panel's primary content (see the module doc comment above).
   const [topicsOpen, setTopicsOpen] = useState(false);
-  // Evidence For/Against open by default (they're the panel's primary content), but each
-  // collapses independently — a turn with a long evidence list otherwise pushes Authorities and
-  // Topics out of view entirely.
-  const [evidenceForOpen, setEvidenceForOpen] = useState(true);
-  const [evidenceAgainstOpen, setEvidenceAgainstOpen] = useState(true);
+  // Newest prompt's decisions open by default, older prompts collapsed — same "only an explicit
+  // toggle is stored, openness otherwise derives from latest" idiom as TopicNavigatorList's own
+  // `overrides` (topic-navigator.tsx), so a new turn arriving auto-opens without disturbing a
+  // toggle the user already made on an earlier prompt.
+  const [decisionOverrides, setDecisionOverrides] = useState<Map<number, boolean>>(() => new Map());
+  const latestDecisionPromptIndex = decisionGroups[decisionGroups.length - 1]?.promptIndex ?? null;
+  const isDecisionGroupOpen = (promptIndex: number) =>
+    decisionOverrides.get(promptIndex) ?? promptIndex === latestDecisionPromptIndex;
+  const toggleDecisionGroup = (promptIndex: number) =>
+    setDecisionOverrides((prev) => new Map(prev).set(promptIndex, !isDecisionGroupOpen(promptIndex)));
   const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const setActiveHighlight = useActiveHighlightStore((s) => s.setActiveHighlight);
 
@@ -93,30 +98,34 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   // stacking): only an evidence-quote id ever actually renders yellow from this (see
   // assistant-message.tsx), a decision-anchor id here is a no-op for highlighting, since that
   // span already has its own permanent dotted-underline styling, unrelated to this on-click one.
-  const handleJumpToElement = (id: string) => {
-    if (!latestDecisions) return;
+  // `messageIndex` is the specific turn's own decisions-bearing message (DecisionNavigatorGroup.
+  // index), not always the latest turn — every prompt's decisions render here now, each jumping
+  // to its own bubble rather than always the newest one.
+  const handleJumpToElement = (id: string, messageIndex: number) => {
     setActiveHighlight(id);
-    const messageIndex = latestDecisions.index;
     if (!onBeforeJump) return scrollToElementId(id, messageIndex);
     onBeforeJump(messageIndex);
     requestAnimationFrame(() => requestAnimationFrame(() => scrollToElementId(id, messageIndex)));
   };
 
-  // Flattened across every decision record on the latest turn that produced any — this panel
-  // shows "what backs this whole reply" as one list, not grouped per-conclusion the way the
-  // Decisions Studio tile (studio-panel.tsx) or the chat "Why?" drawer do. Each item keeps its
-  // originating record's index (`ri`) — and, for evidence, its index within that record's own
-  // evidenceFor/evidenceAgainst (`ei`) — matching decisionAnchorElementId/evidenceQuoteElementId's
-  // numbering exactly (same arrays, read straight off the message, never re-sorted), so a click
-  // lands on that specific decision's anchor, or that specific piece of evidence's own quote.
-  const evidenceFor =
-    latestDecisions?.records.flatMap((r, ri) => r.evidenceFor.map((ev, ei) => ({ ev, ri, ei }))) ?? [];
-  const evidenceAgainst =
-    latestDecisions?.records.flatMap((r, ri) => r.evidenceAgainst.map((ev, ei) => ({ ev, ri, ei }))) ?? [];
-  const rules = latestDecisions?.records.flatMap((r, ri) => r.rule.map((rule) => ({ rule, ri }))) ?? [];
+  // Flattens one turn's decision records into the same "what backs this reply" evidence/rule rows
+  // the panel has always shown, just scoped to one DecisionNavigatorGroup instead of always the
+  // latest turn. Each item keeps its originating record's index (`ri`) — and, for evidence, its
+  // index within that record's own evidenceFor/evidenceAgainst (`ei`) — matching
+  // decisionAnchorElementId/evidenceQuoteElementId's numbering exactly (same arrays, read straight
+  // off the message, never re-sorted), so a click lands on that specific decision's anchor, or
+  // that specific piece of evidence's own quote.
+  const flattenDecisionGroup = (group: (typeof decisionGroups)[number]) => ({
+    evidenceFor: group.records.flatMap((r, ri) => r.evidenceFor.map((ev, ei) => ({ ev, ri, ei }))),
+    evidenceAgainst: group.records.flatMap((r, ri) => r.evidenceAgainst.map((ev, ei) => ({ ev, ri, ei }))),
+    rules: group.records.flatMap((r, ri) => r.rule.map((rule) => ({ rule, ri }))),
+  });
 
-  const hasEvidence = evidenceFor.length > 0 || evidenceAgainst.length > 0;
-  const hasAuthorities = rules.length > 0 || relatedCases.length > 0;
+  const decisionGroupsNewestFirst = [...decisionGroups].reverse();
+  const totalDecisionRecords = decisionGroups.reduce((sum, g) => sum + g.records.length, 0);
+
+  const hasEvidence = decisionGroups.length > 0;
+  const hasAuthorities = relatedCases.length > 0;
   const hasAnything = hasEvidence || hasAuthorities || topics.length > 0;
 
   return (
@@ -180,24 +189,11 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                   }}
                 />
               )}
-              {evidenceFor.length > 0 && (
+              {hasEvidence && (
                 <CollapsedSectionIcon
-                  icon={ThumbsUp}
-                  label={`${tTerminal("decisionEvidenceFor")} · ${evidenceFor.length}`}
-                  onClick={() => {
-                    onExpandedChange(true);
-                    setEvidenceForOpen(true);
-                  }}
-                />
-              )}
-              {evidenceAgainst.length > 0 && (
-                <CollapsedSectionIcon
-                  icon={ThumbsDown}
-                  label={`${tTerminal("decisionEvidenceAgainst")} · ${evidenceAgainst.length}`}
-                  onClick={() => {
-                    onExpandedChange(true);
-                    setEvidenceAgainstOpen(true);
-                  }}
+                  icon={Scale}
+                  label={`${t("workspace.decisionsTile")} · ${totalDecisionRecords}`}
+                  onClick={() => onExpandedChange(true)}
                 />
               )}
               {hasAuthorities && (
@@ -242,96 +238,108 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
               </div>
 
               {hasEvidence && (
-                <div className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
-                  {evidenceFor.length > 0 && (
-                    <div>
-                      <SectionToggle
-                        label={tTerminal("decisionEvidenceFor")}
-                        count={evidenceFor.length}
-                        open={evidenceForOpen}
-                        onToggle={() => setEvidenceForOpen((v) => !v)}
-                      />
-                      {evidenceForOpen && (
-                        <ul className="mt-1.5 space-y-1.5">
-                          {evidenceFor.map(({ ev, ri, ei }, i) => {
-                            const id = evidenceQuoteElementId(ri, "for", ei);
-                            return (
-                              <EvidenceItem
-                                key={i}
-                                evidence={ev}
-                                onClick={() => handleJumpToElement(id)}
-                                active={id === activeHighlightId}
-                              />
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-                  {evidenceAgainst.length > 0 && (
-                    <div>
-                      <SectionToggle
-                        label={tTerminal("decisionEvidenceAgainst")}
-                        count={evidenceAgainst.length}
-                        open={evidenceAgainstOpen}
-                        onToggle={() => setEvidenceAgainstOpen((v) => !v)}
-                      />
-                      {evidenceAgainstOpen && (
-                        <ul className="mt-1.5 space-y-1.5">
-                          {evidenceAgainst.map(({ ev, ri, ei }, i) => {
-                            const id = evidenceQuoteElementId(ri, "against", ei);
-                            return (
-                              <EvidenceItem
-                                key={i}
-                                evidence={ev}
-                                onClick={() => handleJumpToElement(id)}
-                                active={id === activeHighlightId}
-                              />
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  )}
+                <div className="flex flex-col gap-1 border-t border-border pt-3 first:border-0 first:pt-0">
+                  <Label>{t("workspace.decisionsTile")}</Label>
+                  <div className="space-y-1">
+                    {decisionGroupsNewestFirst.map((group) => {
+                      const isOpen = isDecisionGroupOpen(group.promptIndex);
+                      const { evidenceFor, evidenceAgainst, rules } = flattenDecisionGroup(group);
+                      return (
+                        <div key={group.promptIndex}>
+                          <button
+                            type="button"
+                            onClick={() => toggleDecisionGroup(group.promptIndex)}
+                            aria-expanded={isOpen}
+                            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground dark:hover:bg-overlay-hover"
+                          >
+                            <ChevronDown
+                              className={`h-3 w-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`}
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" title={group.promptTitle}>
+                              {group.promptTitle || "Untitled prompt"}
+                            </span>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">
+                              {t("workspace.decisionsNoteCount", { count: group.records.length })}
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="space-y-2.5 py-1.5 pl-4">
+                              {evidenceFor.length > 0 && (
+                                <div>
+                                  <SubLabel>{tTerminal("decisionEvidenceFor")} · {evidenceFor.length}</SubLabel>
+                                  <ul className="mt-1.5 space-y-1.5">
+                                    {evidenceFor.map(({ ev, ri, ei }, i) => {
+                                      const id = evidenceQuoteElementId(group.index, ri, "for", ei);
+                                      return (
+                                        <EvidenceItem
+                                          key={i}
+                                          evidence={ev}
+                                          onClick={() => handleJumpToElement(id, group.index)}
+                                          active={id === activeHighlightId}
+                                        />
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              )}
+                              {evidenceAgainst.length > 0 && (
+                                <div>
+                                  <SubLabel>{tTerminal("decisionEvidenceAgainst")} · {evidenceAgainst.length}</SubLabel>
+                                  <ul className="mt-1.5 space-y-1.5">
+                                    {evidenceAgainst.map(({ ev, ri, ei }, i) => {
+                                      const id = evidenceQuoteElementId(group.index, ri, "against", ei);
+                                      return (
+                                        <EvidenceItem
+                                          key={i}
+                                          evidence={ev}
+                                          onClick={() => handleJumpToElement(id, group.index)}
+                                          active={id === activeHighlightId}
+                                        />
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              )}
+                              {rules.length > 0 && (
+                                <div>
+                                  <SubLabel>{t("workspace.sourcesAuthorities")} · {rules.length}</SubLabel>
+                                  <ul className="mt-1.5 space-y-1">
+                                    {rules.map(({ rule, ri }, i) => {
+                                      const id = decisionAnchorElementId(group.index, ri);
+                                      return (
+                                        <RuleItem
+                                          key={i}
+                                          rule={rule}
+                                          onClick={() => handleJumpToElement(id, group.index)}
+                                          active={id === activeHighlightId}
+                                        />
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              {hasAuthorities && (
+              {relatedCases.length > 0 && (
                 <div className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
-                  <Label>{t("workspace.sourcesAuthorities")}</Label>
-                  {rules.length > 0 && (
-                    <ul className="space-y-1">
-                      {rules.map(({ rule, ri }, i) => {
-                        const id = decisionAnchorElementId(latestDecisions!.index, ri);
-                        return (
-                          <RuleItem
-                            key={i}
-                            rule={rule}
-                            onClick={() => handleJumpToElement(id)}
-                            active={id === activeHighlightId}
-                          />
-                        );
-                      })}
-                    </ul>
-                  )}
-                  {relatedCases.length > 0 && (
-                    <div>
-                      {rules.length > 0 && (
-                        <p className="mb-1 mt-1 text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
-                          {t("workspace.relatedTab")}
-                        </p>
-                      )}
-                      <ul className="space-y-1.5">
-                        {relatedCases.map((rc, i) => (
-                          <RelatedCaseRow
-                            key={i}
-                            relatedCase={rc}
-                            onClick={latestAssistantIndex !== null ? () => handleJump(latestAssistantIndex) : undefined}
-                          />
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <Label>{t("workspace.relatedTab")}</Label>
+                  <ul className="space-y-1.5">
+                    {relatedCases.map((rc, i) => (
+                      <RelatedCaseRow
+                        key={i}
+                        relatedCase={rc}
+                        onClick={latestAssistantIndex !== null ? () => handleJump(latestAssistantIndex) : undefined}
+                      />
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -406,6 +414,13 @@ function SectionToggle({
       )}
     </button>
   );
+}
+
+// A static (non-clickable) sub-heading, one rung below SectionToggle — used inside an already-
+// expanded decision-group dropdown, where Evidence For/Against/Authorities don't need their own
+// second level of collapsing on top of the group's own toggle.
+function SubLabel({ children }: { children: ReactNode }) {
+  return <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">{children}</p>;
 }
 
 // Related Cases (useRelatedCasesQuery) have no per-item sentence anchor the way Decision Record

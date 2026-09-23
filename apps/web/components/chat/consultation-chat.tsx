@@ -808,12 +808,14 @@ export default function ConsultationChat({
   // handful of short strings, and AssistantMessage no-ops (no highlight) wherever none match.
   const evidenceQuoteHighlights = useMemo(() => {
     const targets: { id: string; text: string }[] = [];
-    (latestDecisions?.records ?? []).forEach((record, ri) => {
+    if (!latestDecisions) return targets;
+    const messageIndex = latestDecisions.index;
+    latestDecisions.records.forEach((record, ri) => {
       record.evidenceFor.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "for", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "for", ei), text: ev.quote });
       });
       record.evidenceAgainst.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "against", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "against", ei), text: ev.quote });
       });
     });
     return targets;

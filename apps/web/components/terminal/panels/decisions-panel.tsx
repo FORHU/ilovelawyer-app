@@ -1,6 +1,6 @@
 import { useState, type ComponentPropsWithoutRef } from "react"
 import { useTranslation } from "react-i18next"
-import { MessageSquareWarning, RotateCcw } from "lucide-react"
+import { MessageSquare, MessageSquareWarning, RotateCcw } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail"
 import { useDisputeDecisionMutation, useReactivateDecisionMutation } from "@/lib/terminal/mutations"
@@ -74,6 +74,18 @@ function DecisionCard({
         </p>
         <DecisionConfidenceBadge confidence={p.confidence} />
       </div>
+
+      {decision.sourcePrompt && (
+        <p
+          className="flex w-full items-start gap-1 text-[11px] text-muted-foreground"
+          title={decision.sourcePrompt.content}
+        >
+          <MessageSquare className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">
+            {t("decisionSourcePrompt", { prompt: decision.sourcePrompt.content })}
+          </span>
+        </p>
+      )}
 
       {disputed && (
         <p className="flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed">
