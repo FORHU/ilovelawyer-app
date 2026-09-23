@@ -435,6 +435,13 @@ export async function sendChatMessageAndWait(
       // grows by two, and must still read as cancelled, not done.
       if (history?.some((m) => m.id === messageId && m.replyStatus === "CANCELLED")) {
         finish(new ChatGenerationCancelledError());
+      } else if (history?.some((m) => m.id === messageId && m.replyStatus === "FAILED")) {
+        // A FAILED turn only ever updates the user message (see ChatMessage.replyStatus) —
+        // no assistant reply is persisted, so the "grew by two" check below would never fire
+        // on its own. Without this, a missed chat:error (e.g. the socket dropping while the
+        // tab was backgrounded) left this promise — and doSend's isSending/spinner — hung
+        // forever with no way to retry.
+        finish(new Error("Generation failed"));
       } else if ((history?.length ?? 0) >= messagesBefore + 2) finish();
     }, 1500);
 

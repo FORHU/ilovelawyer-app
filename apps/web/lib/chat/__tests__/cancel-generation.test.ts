@@ -134,6 +134,24 @@ describe("sendChatMessageAndWait — stopping", () => {
     await assertion
   })
 
+  it("notices a missed chat:error from the polled history (FAILED never grows history by two)", async () => {
+    vi.useFakeTimers()
+    const queryClient = new QueryClient()
+    queryClient.setQueryData<ChatMessage[]>(chatKeys.messages(CONSULTATION), [userMessage("PENDING")])
+    const pending = sendChatMessageAndWait(queryClient, sendArgs, { messagesBefore: 0 })
+    const assertion = expect(pending).rejects.toBeInstanceOf(Error)
+    await vi.advanceTimersByTimeAsync(0)
+
+    // The socket's chat:error was missed (e.g. dropped while the tab was backgrounded) — only
+    // the server's durable FAILED status shows up, via a later refetch. No assistant message is
+    // ever added, so history never grows by two: without a dedicated FAILED check this promise
+    // would never settle.
+    queryClient.setQueryData<ChatMessage[]>(chatKeys.messages(CONSULTATION), [userMessage("FAILED")])
+    await vi.advanceTimersByTimeAsync(1600)
+
+    await assertion
+  })
+
   it("a normal completion is unchanged: chat:done resolves, and the poll still resolves on a DONE turn", async () => {
     vi.useFakeTimers()
     const queryClient = new QueryClient()
