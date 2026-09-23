@@ -27,9 +27,9 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 // cookie/header carries the in-app language choice to the server).
 const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
   UK: {
-    title: "ilovelawyer UK — AI Legal Intelligence for Solicitors",
+    title: "ilovelawyer UK — AI Legal Intelligence for Lawyers",
     description:
-      "Case management, AI consultation with cited UK precedent, and a Legal Terminal built for solicitors and barristers.",
+      "Case management, AI consultation with cited UK precedent, and a Legal Terminal built for practicing lawyers.",
   },
   PH: {
     title: "ilovelawyer — AI Legal Intelligence for Philippine Lawyers",
