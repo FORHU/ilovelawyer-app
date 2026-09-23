@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { featureIcons } from "@/components/landing/feature-icons";
+import { useNoHover } from "@/lib/landing/use-no-hover";
 
 // Handoff §3 icon set, mapped onto this grid's 15 real (already-shipped) capabilities in
 // the same order as the `capabilities.items` i18n array. "Case Reconstruction" has no
@@ -43,12 +44,13 @@ export function CapabilitiesSection() {
   const router = useRouter();
   const labels = t("capabilities.items", { returnObjects: true }) as string[];
   const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const noHover = useNoHover();
 
   const handleEnter = (hoveredIndex: number) => {
     // Handoff: disable the magnetic hover on touch — devices with no real hover capability
     // fire mouseenter on tap, which would otherwise leave neighboring tiles permanently
     // shifted until another tile is tapped.
-    if (!window.matchMedia("(hover: hover)").matches) return;
+    if (noHover) return;
     const hovered = cardRefs.current[hoveredIndex];
     if (!hovered) return;
     const hr = hovered.getBoundingClientRect();

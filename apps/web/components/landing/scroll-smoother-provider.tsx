@@ -40,6 +40,9 @@ export function ScrollSmootherProvider({ children }: { children: ReactNode }) {
         // per-frame lerp constant (ScrollSmoother's `smooth` is a smoothing duration in
         // seconds, a different unit) — tune after a visual check if it reads too heavy/light.
         smooth: 0.6,
+        // Explicit, though it's ScrollSmoother's own default — the handoff's "disable
+        // scroll hijack on touch" requirement, spelled out rather than left implicit.
+        smoothTouch: false,
       });
       return () => smoother.kill();
     },
