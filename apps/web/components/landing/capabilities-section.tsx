@@ -45,6 +45,10 @@ export function CapabilitiesSection() {
   const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   const handleEnter = (hoveredIndex: number) => {
+    // Handoff: disable the magnetic hover on touch — devices with no real hover capability
+    // fire mouseenter on tap, which would otherwise leave neighboring tiles permanently
+    // shifted until another tile is tapped.
+    if (!window.matchMedia("(hover: hover)").matches) return;
     const hovered = cardRefs.current[hoveredIndex];
     if (!hovered) return;
     const hr = hovered.getBoundingClientRect();
@@ -104,7 +108,7 @@ export function CapabilitiesSection() {
             <TooltipTrigger asChild>
               <Link
                 href="/signup"
-                className="shrink-0 border-b-2 border-white pb-1.5 hover:opacity-70 transition-opacity duration-200"
+                className="shrink-0 border-b-2 border-white pb-1.5 hover:opacity-70 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950 rounded-xs"
               >
                 <span className="text-white text-xs tracking-[1.2px] uppercase font-semibold">
                   {t("capabilities.explorePlatform")}
@@ -127,7 +131,7 @@ export function CapabilitiesSection() {
                   onMouseEnter={() => handleEnter(i)}
                   onMouseLeave={handleLeave}
                   onClick={(e) => void handleClick(e, route)}
-                  className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform"
+                  className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950"
                 >
                   <span className="w-12 h-12 rounded-full border border-white/35 flex items-center justify-center text-white transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
                     <Icon width={22} height={22} strokeWidth={1.6} />

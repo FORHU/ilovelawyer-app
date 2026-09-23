@@ -24,6 +24,7 @@ const OVER_HERO_INK = "text-white group-hover:text-[#1a1a1a] [text-shadow:0_1px_
 const OVER_HERO_BORDER = "border-white/75 group-hover:border-[#1a1a1a]/20";
 const SOLID_INK = "text-[#1a1a1a]";
 const SOLID_BORDER = "border-[#1a1a1a]/20";
+const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]";
 
 export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   const { t } = useTranslation("landing");
@@ -69,7 +70,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
         <form
           role="search"
           onSubmit={(e) => e.preventDefault()}
-          className={`flex items-center gap-2 flex-1 max-w-[220px] rounded-[45px] border px-[15px] py-2.5 ${BORDER_INK}`}
+          className={`flex items-center gap-2 flex-1 max-w-[220px] rounded-[45px] border px-[15px] py-2.5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-current/60 ${BORDER_INK}`}
         >
           <Search size={12} className="shrink-0 opacity-70" aria-hidden />
           <label className="sr-only" htmlFor="landing-nav-search">
@@ -88,7 +89,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
             <TooltipTrigger asChild>
               <Link
                 href="/homepage"
-                className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+                className={`bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
               >
                 {t("navbar.goToDashboard")}
               </Link>
@@ -101,7 +102,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <TooltipTrigger asChild>
                 <Link
                   href="/login"
-                  className={`text-xs tracking-[1.2px] uppercase border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK}`}
+                  className={`text-xs tracking-[1.2px] uppercase border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK} ${FOCUS_RING}`}
                 >
                   {t("navbar.signIn")}
                 </Link>
@@ -112,7 +113,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <TooltipTrigger asChild>
                 <Link
                   href="/signup"
-                  className={`text-xs tracking-[1.2px] uppercase font-semibold border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK}`}
+                  className={`text-xs tracking-[1.2px] uppercase font-semibold border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK} ${FOCUS_RING}`}
                 >
                   {t("navbar.requestDemo")}
                 </Link>
@@ -146,7 +147,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
                 key={link.key}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="text-xs tracking-[1px] uppercase text-white/70 hover:text-white transition-colors duration-200"
+                className={`text-xs tracking-[1px] uppercase text-white/70 hover:text-white transition-colors duration-200 rounded-xs ${FOCUS_RING}`}
               >
                 {t(`navbar.links.${link.key}`)}
               </a>
@@ -160,7 +161,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <Link
                 href="/homepage"
                 onClick={() => setMobileOpen(false)}
-                className="flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+                className={`flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
               >
                 {t("navbar.goToDashboard")}
               </Link>
@@ -169,14 +170,14 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="flex-1 border border-white/40 text-white text-xs px-4 py-3 text-center rounded-full hover:border-white transition-colors duration-200"
+                  className={`flex-1 border border-white/40 text-white text-xs px-4 py-3 text-center rounded-full hover:border-white transition-colors duration-200 ${FOCUS_RING}`}
                 >
                   {t("navbar.signIn")}
                 </Link>
                 <Link
                   href="/signup"
                   onClick={() => setMobileOpen(false)}
-                  className="flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+                  className={`flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
                 >
                   {t("navbar.getStarted")}
                 </Link>

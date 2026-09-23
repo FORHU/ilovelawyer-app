@@ -35,7 +35,9 @@
       "subtext": "Pinapanatili ng Case Workspace ang mga source, chat, at work product sa iisang screen."
     },
     "slideLabel": "Slide {{number}}",
-    "nextSlide": "Susunod na slide"
+    "nextSlide": "Susunod na slide",
+    "pauseVideo": "I-pause ang background video",
+    "playVideo": "I-play ang background video"
   },
   "capabilities": {
     "heading": "Bawat feature na dala ng ilovelawyer",

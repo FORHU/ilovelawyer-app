@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { LandingNavbar } from "@/components/landing/navbar";
+import { ScrollSmootherProvider } from "@/components/landing/scroll-smoother-provider";
 import { NeutralLandingSplash } from "@/components/landing/neutral-splash";
 import { CapabilitiesSection } from "@/components/landing/capabilities-section";
 import { HeroSection } from "@/components/landing/ph/hero-section";
@@ -101,15 +102,19 @@ export default async function LandingPage() {
     return (
       <div className="flex flex-col min-h-screen w-full bg-background">
         <LandingNavbar />
-        <main className="flex-1">
-          <UkHeroSection />
-          <CapabilitiesSection />
-          <UkFirmQuoteSection />
-          <UkTerminalShowcaseSection />
-          <UkConsultationSection />
-          <UkFirmsSection />
-        </main>
-        <UkLandingFooter />
+        {/* ScrollSmootherProvider wraps everything that scrolls with the page — the fixed
+            navbar above stays outside it on purpose, see the provider's own comment. */}
+        <ScrollSmootherProvider>
+          <main className="flex-1">
+            <UkHeroSection />
+            <CapabilitiesSection />
+            <UkFirmQuoteSection />
+            <UkTerminalShowcaseSection />
+            <UkConsultationSection />
+            <UkFirmsSection />
+          </main>
+          <UkLandingFooter />
+        </ScrollSmootherProvider>
       </div>
     );
   }
@@ -117,15 +122,17 @@ export default async function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen w-full bg-background">
       <LandingNavbar />
-      <main className="flex-1">
-        <HeroSection />
-        <CapabilitiesSection />
-        <FirmQuoteSection />
-        <TerminalShowcaseSection />
-        <ConsultationSection />
-        <FirmsSection />
-      </main>
-      <LandingFooter />
+      <ScrollSmootherProvider>
+        <main className="flex-1">
+          <HeroSection />
+          <CapabilitiesSection />
+          <FirmQuoteSection />
+          <TerminalShowcaseSection />
+          <ConsultationSection />
+          <FirmsSection />
+        </main>
+        <LandingFooter />
+      </ScrollSmootherProvider>
     </div>
   );
 }
