@@ -1,46 +1,34 @@
 "use client";
 
 import { useRef } from "react";
+import type { SVGProps } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  AudioLines,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  FolderOpen,
-  GitBranch,
-  MessageSquare,
-  Mic,
-  Network,
-  PanelsTopLeft,
-  Shield,
-  Terminal,
-  UserCircle,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
+import { featureIcons } from "@/components/landing/feature-icons";
 
-const CAPABILITIES: { Icon: LucideIcon; route: string }[] = [
-  { Icon: UserCircle, route: "/homepage/profile" },
-  { Icon: Users, route: "/homepage/organization" },
-  { Icon: MessageSquare, route: "/homepage" },
-  { Icon: FolderOpen, route: "/homepage/case-portfolio" },
-  { Icon: PanelsTopLeft, route: "/homepage/case-portfolio" },
-  { Icon: Terminal, route: "/homepage/terminal" },
-  { Icon: BookOpen, route: "/homepage/library" },
-  { Icon: Mic, route: "/homepage/transcription" },
-  { Icon: Calendar, route: "/homepage/calendar" },
-  { Icon: Network, route: "/homepage/terminal" },
+// Handoff §3 icon set, mapped onto this grid's 15 real (already-shipped) capabilities in
+// the same order as the `capabilities.items` i18n array. "Case Reconstruction" has no
+// counterpart in the handoff's icon set, so it keeps its existing lucide icon.
+const CAPABILITIES: { Icon: React.ElementType<SVGProps<SVGSVGElement>>; route: string }[] = [
+  { Icon: featureIcons.accountsSignIn, route: "/homepage/profile" },
+  { Icon: featureIcons.firmsTeams, route: "/homepage/organization" },
+  { Icon: featureIcons.aiLegalConsultation, route: "/homepage" },
+  { Icon: featureIcons.caseFiles, route: "/homepage/case-portfolio" },
+  { Icon: featureIcons.caseWorkspace, route: "/homepage/case-portfolio" },
+  { Icon: featureIcons.legalTerminal, route: "/homepage/terminal" },
+  { Icon: featureIcons.researchLibrary, route: "/homepage/library" },
+  { Icon: featureIcons.transcription, route: "/homepage/transcription" },
+  { Icon: featureIcons.calendar, route: "/homepage/calendar" },
+  { Icon: featureIcons.visualStrategyMap, route: "/homepage/terminal" },
   { Icon: GitBranch, route: "/homepage/terminal" },
-  { Icon: Shield, route: "/homepage/terminal" },
-  { Icon: AudioLines, route: "/homepage/terminal" },
-  { Icon: CheckCircle2, route: "/homepage/terminal" },
-  { Icon: AlertTriangle, route: "/homepage/terminal" },
+  { Icon: featureIcons.redTeam, route: "/homepage/terminal" },
+  { Icon: featureIcons.audioOverview, route: "/homepage/terminal" },
+  { Icon: featureIcons.citationChecking, route: "/homepage/terminal" },
+  { Icon: featureIcons.contradictionScan, route: "/homepage/terminal" },
 ];
 
 const REPEL_RADIUS = 130;
@@ -101,14 +89,14 @@ export function CapabilitiesSection() {
   };
 
   return (
-    <section id="capabilities" className="relative bg-background py-24 px-6 md:px-16">
+    <section id="capabilities" className="relative bg-brand-navy-950 py-24 px-6 md:px-16">
       <div className="max-w-360 mx-auto">
         <div className="flex items-end justify-between gap-8 pb-16 flex-wrap">
           <div>
-            <h2 className="font-['Libre_Caslon_Text'] text-foreground text-[clamp(30px,3.4vw,46px)] font-normal leading-[1.15]">
+            <h2 className="font-display text-white text-[clamp(30px,3.4vw,46px)] font-normal leading-[1.15]">
               {t("capabilities.heading")}
             </h2>
-            <p className="text-muted-foreground text-base mt-4 max-w-[560px] leading-[1.6]">
+            <p className="text-white/75 text-base mt-4 max-w-[560px] leading-[1.6]">
               {t("capabilities.subheading")}
             </p>
           </div>
@@ -116,9 +104,9 @@ export function CapabilitiesSection() {
             <TooltipTrigger asChild>
               <Link
                 href="/signup"
-                className="shrink-0 border-b-2 border-foreground pb-1.5 hover:opacity-70 transition-opacity duration-200"
+                className="shrink-0 border-b-2 border-white pb-1.5 hover:opacity-70 transition-opacity duration-200"
               >
-                <span className="text-foreground text-xs tracking-[1.2px] uppercase font-semibold">
+                <span className="text-white text-xs tracking-[1.2px] uppercase font-semibold">
                   {t("capabilities.explorePlatform")}
                 </span>
               </Link>
@@ -141,10 +129,10 @@ export function CapabilitiesSection() {
                   onClick={(e) => void handleClick(e, route)}
                   className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform"
                 >
-                  <span className="w-12 h-12 rounded-full border border-border flex items-center justify-center text-foreground transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
-                    <Icon size={22} strokeWidth={1.6} />
+                  <span className="w-12 h-12 rounded-full border border-white/35 flex items-center justify-center text-white transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
+                    <Icon width={22} height={22} strokeWidth={1.6} />
                   </span>
-                  <span className="text-foreground text-[13px]">{labels[i]}</span>
+                  <span className="text-white text-[13px]">{labels[i]}</span>
                 </Link>
               </TooltipTrigger>
               <TooltipContent>{t("capabilities.tileTooltip")}</TooltipContent>
