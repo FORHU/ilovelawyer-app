@@ -4,8 +4,7 @@
       "capabilities": "Capabilities",
       "legalTerminal": "Legal Terminal",
       "firms": "Firms",
-      "resources": "Resources",
-      "twoJurisdictions": "Two jurisdictions"
+      "resources": "Resources"
     },
     "signIn": "Sign In",
     "requestDemo": "Request Demo",

@@ -55,9 +55,6 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
             <TooltipContent>{link.tooltip}</TooltipContent>
           </Tooltip>
         ))}
-        <span className={`ml-1 px-[15px] py-2.5 rounded-full border whitespace-nowrap ${BORDER_INK}`}>
-          {t("navbar.links.twoJurisdictions")}
-        </span>
       </nav>
 
       <Link
