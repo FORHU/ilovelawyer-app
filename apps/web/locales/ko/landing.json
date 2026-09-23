@@ -37,7 +37,8 @@
     "slideLabel": "슬라이드 {{number}}",
     "nextSlide": "다음 슬라이드",
     "pauseVideo": "배경 동영상 일시정지",
-    "playVideo": "배경 동영상 재생"
+    "playVideo": "배경 동영상 재생",
+    "scrollDown": "기능 섹션으로 스크롤"
   },
   "capabilities": {
     "heading": "ilovelawyer가 제공하는 모든 기능",

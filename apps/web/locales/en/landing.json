@@ -37,7 +37,8 @@
     "slideLabel": "Slide {{number}}",
     "nextSlide": "Next slide",
     "pauseVideo": "Pause background video",
-    "playVideo": "Play background video"
+    "playVideo": "Play background video",
+    "scrollDown": "Scroll to capabilities"
   },
   "capabilities": {
     "heading": "Every feature ilovelawyer ships",

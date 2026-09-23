@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { EASE_EXPO_OUT, LANDING_DURATIONS, LANDING_STAGGERS } from "@/lib/landing/motion-tokens";
+import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render identical hero markup/motion, differing only in tenant asset paths and
@@ -205,14 +206,16 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
         <TooltipContent>{paused ? t("hero.playVideo") : t("hero.pauseVideo")}</TooltipContent>
       </Tooltip>
 
-      <motion.div
-        aria-hidden
-        className="absolute left-8 bottom-7 z-10 text-white text-3xl font-thin"
+      <motion.button
+        type="button"
+        aria-label={t("hero.scrollDown")}
+        onClick={() => smoothScrollToHash("#capabilities")}
+        className={`absolute left-8 bottom-7 z-10 text-white text-3xl font-thin rounded-full ${FOCUS_RING}`}
         animate={reduce ? {} : { y: [0, -6, 0] }}
         transition={reduce ? {} : { duration: 3.9, repeat: Infinity, ease: "easeInOut" }}
       >
         &darr;
-      </motion.div>
+      </motion.button>
     </section>
   );
 }

@@ -7,12 +7,15 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 
 const NAV_LINKS = [
   { key: "capabilities", href: "#capabilities", tooltip: "See every feature the platform ships" },
   { key: "legalTerminal", href: "#control", tooltip: "Preview the Legal Terminal workspace" },
   { key: "firms", href: "#business", tooltip: "How firms and teams work in ilovelawyer" },
-  { key: "resources", href: "#footer", tooltip: "Help centre, support and legal resources" },
+  // The footer is `position: fixed` (see footer-reveal-portal.tsx) — #footer-spacer is the
+  // actual scroll target, not the footer element itself.
+  { key: "resources", href: "#footer-spacer", tooltip: "Help centre, support and legal resources" },
 ] as const;
 
 // Transparent-over-hero at rest, frosted on hover of the header itself (handoff §1) — one
@@ -48,6 +51,10 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
             <TooltipTrigger asChild>
               <a
                 href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  smoothScrollToHash(link.href);
+                }}
                 className="px-2 py-1 opacity-100 hover:opacity-62 transition-opacity duration-200 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/60"
               >
                 {t(`navbar.links.${link.key}`)}
@@ -146,7 +153,11 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <a
                 key={link.key}
                 href={link.href}
-                onClick={() => setMobileOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileOpen(false);
+                  smoothScrollToHash(link.href);
+                }}
                 className={`text-xs tracking-[1px] uppercase text-white/70 hover:text-white transition-colors duration-200 rounded-xs ${FOCUS_RING}`}
               >
                 {t(`navbar.links.${link.key}`)}
