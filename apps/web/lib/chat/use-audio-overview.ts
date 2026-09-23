@@ -11,6 +11,7 @@ import {
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
 import { useAiJobStatus } from "@/lib/terminal/mutations";
+import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 
 /** Script generation → Polly render polling → playable URL, shared by every surface that offers
  * Audio Overview (Case Workspace's Studio panel, the Legal Terminal's Audio Overview panel).
@@ -20,6 +21,14 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
   const { data: session } = useChatSessionQuery();
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
   const queryClient = useQueryClient();
+  // The composer (or Mind Map generation) may already have a turn in flight for this exact
+  // consultation — both share one Chat Wonder session per consultation, and firing a second
+  // concurrent turn onto it silently orphans one of them (see docs/adr on the session-collision
+  // bug). This is the same cross-panel "is this consultation busy" flag consultation-chat.tsx's
+  // own composer already gates its send on.
+  const isConsultationBusy = useSendingConsultationsStore((s) =>
+    consultationId ? s.sendingConsultationIds.has(consultationId) : false,
+  );
 
   const activeAudioOverviewMessage = useMemo<ChatMessage | undefined>(() => {
     const list = history ?? [];
@@ -91,7 +100,7 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
   // Auto-chains straight into rendering once the script lands — script generation and audio
   // rendering are one click from the caller's point of view.
   const generateScript = useCallback(async () => {
-    if (!consultationId || !session || isGeneratingScript) return;
+    if (!consultationId || !session || isGeneratingScript || isConsultationBusy) return;
     setIsGeneratingScript(true);
     setGenerateScriptError(false);
     try {
@@ -113,7 +122,7 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
     } finally {
       setIsGeneratingScript(false);
     }
-  }, [consultationId, session, isGeneratingScript, caseId, queryClient, triggerAudioRender]);
+  }, [consultationId, session, isGeneratingScript, isConsultationBusy, caseId, queryClient, triggerAudioRender]);
 
   const regenerateAudio = useCallback(() => {
     if (!audioOverviewMessageId) return;
@@ -124,6 +133,7 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
     session,
     activeAudioOverviewMessage,
     isGeneratingScript,
+    isConsultationBusy,
     generateScriptError,
     generateScript,
     audioRendering,

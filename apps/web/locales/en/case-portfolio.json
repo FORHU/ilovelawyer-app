@@ -264,6 +264,7 @@
     "timelineEventCount": "{{count}} event(s)",
     "dataTableTile": "Data Table",
     "needsDocumentsHint": "Upload a document to enable this",
+    "replyInProgressHint": "Wait for the current reply to finish",
     "dataTableRefreshing": "Refreshing data table…",
     "dataTableFactCount": "{{count}} fact(s)",
     "dataTableEmpty": "No witnesses, damages, deadlines, or findings recorded for this case yet.",

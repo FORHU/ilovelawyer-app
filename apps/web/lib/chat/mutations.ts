@@ -158,20 +158,26 @@ export function useDeleteConsultationMutation() {
   })
 }
 
-/** No interval-based polling — a generating reply's live progress comes from Socket.IO
- * (chat:started/chat:chunk/chat:done/chat:error, see subscribeChatGeneration) instead of
- * refetching this on a timer. `replyStatus: "PENDING"`/`pendingReplyContent` on the last
- * message are still the durable, server-side ground truth consultation-chat.tsx reads to
- * render a "still generating" state after a cold load or remount (they just aren't polled for
- * anymore — a subscribeChatGeneration(pendingMessage.id, ...) subscription is what notices the
- * turn finishing and triggers the one-shot refetch instead). The socket's own "on (re)connect,
- * invalidate chat queries once" handling (useNotificationSocket) is the fallback for events
- * missed while disconnected, plus React Query's normal refetchOnMount/refetchOnWindowFocus. */
+/** A generating reply's live progress comes from Socket.IO (chat:started/chat:chunk/chat:done/
+ * chat:error, see subscribeChatGeneration) — that's the fast path and stays the primary way this
+ * updates. But that push can be missed (a dropped connection while backgrounded, or this exact
+ * consultation not being the active query when the socket reconnects — see useNotificationSocket),
+ * and nothing else was re-asking the server when it was. `refetchInterval` below is the real,
+ * server-truth fallback for that gap: active ONLY while the last known message is still PENDING,
+ * so this stays a no-op (no interval at all) the rest of the time. `replyStatus: "PENDING"`/
+ * `pendingReplyContent` on the last message are the durable ground truth consultation-chat.tsx
+ * reads to render a "still generating" state after a cold load or remount; this interval is what
+ * keeps that state from being able to hang indefinitely on a missed push. */
 export function useMessagesQuery(consultationId: string | undefined) {
   return useQuery({
     queryKey: chatKeys.messages(consultationId ?? ""),
     queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
     enabled: !!consultationId,
+    refetchInterval: (query) => {
+      const messages = query.state.data as ChatMessage[] | undefined
+      const last = messages?.filter((m) => m.role !== "system").at(-1)
+      return last?.role === "user" && last.replyStatus === "PENDING" ? 3000 : false
+    },
   })
 }
 
@@ -419,8 +425,10 @@ export async function sendChatMessageAndWait(
       onCancelled: () => finish(new ChatGenerationCancelledError()),
     });
 
-    // Same 1500ms cadence as useMessagesQuery's own pollWhilePending refetch — piggybacks on
-    // that same query cache rather than issuing a second, redundant fetch.
+    // Piggybacks on the query cache rather than issuing its own fetch — useMessagesQuery's own
+    // refetchInterval (while the turn is PENDING) is what actually keeps this cache current if
+    // the socket events above are missed; this just re-checks it on a tighter cadence so
+    // sendChatMessageAndWait's own callers don't wait a full refetchInterval tick to notice.
     const pollTimer = setInterval(() => {
       const history = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(args.consultationId));
       // Checked before the "grew by two" test: a stopped turn with a saved partial reply also
