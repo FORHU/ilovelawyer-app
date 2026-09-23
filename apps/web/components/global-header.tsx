@@ -2,7 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, Mic, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -83,7 +83,6 @@ const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen },
-  { tab: "transcription", labelKey: "nav.transcription", href: "/homepage/transcription", tooltip: "Record and transcribe audio", icon: Mic },
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays },
 ] as const;
 
@@ -229,15 +228,6 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               </Link>
             </TooltipTrigger>
             <TooltipContent>Browse the legal research library</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link href="/homepage/transcription" className={getSubTabClass("transcription")}>
-                <TabLinkContent>{t("nav.transcription").toUpperCase()}</TabLinkContent>
-                {activeTab === "transcription" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>Record and transcribe audio</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
