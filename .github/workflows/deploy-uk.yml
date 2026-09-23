@@ -10,6 +10,8 @@ name: Deploy UK
 #     Run Command, with the runtime env file carried in Parameter Store.
 
 on:
+  push:
+      branches: [main]
   workflow_dispatch:
     inputs:
       ref:
@@ -38,7 +40,7 @@ jobs:
     # Native arm64 — matches Graviton EC2. Do not build linux/arm64 via QEMU on
     # ubuntu-latest; pnpm/next under emulation looks stuck and can take hours.
     runs-on: ubuntu-24.04-arm
-    environment: uk
+    environment: production
 
     permissions:
       id-token: write

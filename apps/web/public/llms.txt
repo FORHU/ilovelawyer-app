@@ -1,0 +1,29 @@
+# ilovelawyer
+
+> AI legal intelligence platform for lawyers: case management, AI consultation with cited case law, and a Legal Terminal — currently serving the Philippines and the United Kingdom as separate jurisdiction-specific sites.
+
+ilovelawyer is a software application — not a law firm or legal service provider — used by legal professionals to manage cases, research case law, and consult an AI assistant grounded in verified, citation-checked sources.
+
+## Capabilities
+
+- **AI legal consultation** — ask a question, get a cited answer streamed in as it's written, with related case law listed alongside (title, citation, source link, excerpt, vetted/unvetted marker). Attach a document and the assistant searches inside it.
+- **Case Workspace** — a per-case screen combining Sources, Chat, and work product (Studio) in one view. Studio generates on-demand artifacts from the case's chat and documents:
+  - **Mind Map** — a visual map of the case's issues, claims, and relationships.
+  - **Timeline** — a chronological view of case events and key dates.
+  - **Data Table** — a structured table of facts extracted from case materials.
+  - **Audio Overview** — two AI hosts discuss the case aloud.
+  - **Case Brief** — a downloadable Word/PDF brief generated from the case's current snapshot.
+- **Legal Terminal** — a configurable litigation cockpit: arrange up to nineteen panes of case intelligence, save the layout, reload it on any machine. Panes include:
+  - **Red Team** — surfaces the argument the opposing side will likely make against a given position.
+  - **Case Reconstruction** — separates client, court, and opposing narratives of the same case.
+  - **Decisions** — tracks conclusions the AI has reached, the rule applied, and the evidence for/against each.
+  - **Visual Strategy Map**, **Mind Map**, **Timeline**, and others.
+- **Research library** — searchable case law and statutory/legislative sources, with citation checking so every quoted authority is verified against a real source document (reduces hallucinated citations).
+- **Contradiction scan** — flags inconsistencies across a case's documents and testimony.
+- **Case files, transcription, and calendar** — document management, transcription, and deadline/calendar tracking tied to each case.
+- **Firms & teams** — multi-user firm accounts (Solo/Professional/Enterprise plans), role-based invites (Owner/Admin/Member).
+
+## Sites
+
+- [ilovelawyer Philippines](https://ph.ilovelawyer.com/): the above, with cited Philippine jurisprudence, a Philippine statutory code library, and full deadline tracking.
+- [ilovelawyer UK](https://uk.ilovelawyer.com/): the above, with cited UK precedent (England and Wales, Scotland, Northern Ireland), live case law/legislation search (TNA Find Case Law, legislation.gov.uk), and provisional CPR deadline tracking (dual-attorney-confirmation gated).

@@ -93,7 +93,7 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               <TooltipTrigger asChild>
                 <Link
                   href="/signup"
-                  className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-white text-[#0b0b0b] hover:opacity-85 transition-opacity duration-200"
+                  className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-white text-[#0b0b0b] hover:opacity-85 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
                 >
                   {t("firms.teamsCta")}
                 </Link>
