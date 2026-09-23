@@ -95,6 +95,7 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   audioOverview: "Audio Overview",
   decisions: "Decisions",
   theories: "Theories",
+  verification: "Verification",
 }
 
 const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }[] = [
