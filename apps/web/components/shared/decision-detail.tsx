@@ -23,7 +23,7 @@ export function DecisionConfidenceBadge({ confidence }: { confidence: DecisionRe
 
 export function Label({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">{children}</p>
+    <p className="mb-2 text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">{children}</p>
   )
 }
 
@@ -57,21 +57,23 @@ export function EvidenceItem({
             }
           : undefined
       }
-      className={`text-[12px] leading-4 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
+      className={`text-[12px] leading-5 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-start gap-1.5">
         {evidence.verified ? (
-          <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
+          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />
         ) : (
-          <XCircle className="h-3 w-3 shrink-0 text-red-400" aria-hidden="true" aria-label={t("decisionUnverified")} />
+          <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-400" aria-hidden="true" aria-label={t("decisionUnverified")} />
         )}
-        <span className="font-medium text-foreground">
-          {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
+        <span>
+          <span className="font-medium text-foreground">
+            {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
+          </span>
+          {evidence.pinpoint && <span className="text-muted-foreground"> · {evidence.pinpoint}</span>}
         </span>
-        {evidence.pinpoint && <span className="text-muted-foreground">· {evidence.pinpoint}</span>}
       </div>
       {evidence.quote && (
-        <blockquote className="mt-0.5 ml-4 flex items-start gap-1 border-l-2 border-border pl-2 italic">
+        <blockquote className="mt-1.5 ml-4.5 flex items-start gap-1.5 border-l-2 border-border pl-2.5 italic">
           <Quote className="mt-0.5 h-2.5 w-2.5 shrink-0" aria-hidden="true" />
           {evidence.quote}
         </blockquote>
@@ -135,7 +137,7 @@ export function RuleItem({
 
 function AlternativeItem({ alternative, rejectedWhyLabel }: { alternative: DecisionAlternative; rejectedWhyLabel: string }) {
   return (
-    <li className="text-[12px] leading-4 text-muted-foreground">
+    <li className="text-[12px] leading-5 text-muted-foreground">
       <span className="text-foreground">{alternative.position}</span>
       {" — "}
       <span className="italic">
@@ -168,11 +170,15 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
   const wouldChangeIf = Array.isArray(payload.wouldChangeIf) ? payload.wouldChangeIf : []
 
   return (
-    <>
+    // `@container`: the evidence-for/against grid below needs to react to this component's own
+    // rendered width, not the browser viewport — this body renders inside resizable desktop
+    // panels (Legal Terminal) as well as the mobile Studio tab, where a viewport-based `sm:`
+    // breakpoint would force two columns even while its actual box is a few hundred px wide.
+    <div className="@container space-y-4">
       {rules.length > 0 && (
         <div>
           <Label>{t("decisionRuleApplied")}</Label>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {rules.map((rule, i) => (
               <RuleItem key={i} rule={rule} />
             ))}
@@ -181,11 +187,11 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
       )}
 
       {(evidenceFor.length > 0 || evidenceAgainst.length > 0) && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 @sm:grid-cols-2">
           {evidenceFor.length > 0 && (
             <div>
               <Label>{t("decisionEvidenceFor")}</Label>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2.5">
                 {evidenceFor.map((ev, i) => (
                   <EvidenceItem key={i} evidence={ev} />
                 ))}
@@ -195,7 +201,7 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
           {evidenceAgainst.length > 0 && (
             <div>
               <Label>{t("decisionEvidenceAgainst")}</Label>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2.5">
                 {evidenceAgainst.map((ev, i) => (
                   <EvidenceItem key={i} evidence={ev} />
                 ))}
@@ -208,7 +214,7 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
       {alternatives.length > 0 && (
         <div>
           <Label>{t("decisionAlternativeConsidered")}</Label>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {alternatives.map((alt, i) => (
               <AlternativeItem key={i} alternative={alt} rejectedWhyLabel={t("decisionRejectedWhy")} />
             ))}
@@ -217,21 +223,25 @@ export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload
       )}
 
       {payload.weighting && (
-        <p className="text-[12px] leading-4 text-muted-foreground">
+        <p className="text-[12px] leading-5 text-muted-foreground">
           <span className="font-semibold text-foreground">{t("decisionWeighting")}: </span>
           {payload.weighting}
         </p>
       )}
 
       {wouldChangeIf.length > 0 && (
-        <p className="flex items-start gap-1.5 text-[12px] leading-4 text-muted-foreground">
+        <div className="flex items-start gap-1.5 text-[12px] leading-5 text-muted-foreground">
           <Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>
-            <span className="font-semibold text-foreground">{t("decisionWouldChangeIf")}: </span>
-            {wouldChangeIf.join("; ")}
-          </span>
-        </p>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-foreground">{t("decisionWouldChangeIf")}:</span>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              {wouldChangeIf.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
-    </>
+    </div>
   )
 }

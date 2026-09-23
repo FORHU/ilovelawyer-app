@@ -145,7 +145,6 @@
     "removeDocumentConfirm": "Remove \"{{documentName}}\" from this case? This cannot be undone.",
     "selectItems": "Select",
     "selectAll": "Select all",
-    "deselectAll": "Deselect all",
     "selectedCount_one": "{{count}} selected",
     "selectedCount_other": "{{count}} selected",
     "deleteSelected": "Delete",
