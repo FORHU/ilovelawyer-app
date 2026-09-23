@@ -166,7 +166,6 @@ function LegalDocumentsPageContent() {
                 totalPages={totalPages}
                 onPageChange={setPage}
                 labels={{
-                  first: t("documents.first"),
                   previous: t("documents.prev"),
                   next: t("documents.next"),
                   last: t("documents.last"),

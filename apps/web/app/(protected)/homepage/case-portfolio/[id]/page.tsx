@@ -364,8 +364,13 @@ function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOp
             {isDocsLoading ? (
               <LoadingRow className="px-5 py-4" />
             ) : documents && documents.length > 0 ? (
-              <div className="flex flex-col">
-                {documents.slice(0, 6).map((doc) => (
+              // Was capped to the first 6 with no way to reach the rest, so the header's real
+              // total (documents.length) never matched what was actually visible below it.
+              // Scrolling the full list here (instead of paging it) keeps this a lightweight
+              // preview card rather than turning it into a second document manager — "Manage in
+              // Workspace" above is still where full management (delete, re-upload, etc.) lives.
+              <div className="flex flex-col max-h-76 overflow-y-auto">
+                {documents.map((doc) => (
                   <div key={doc.id} className="flex items-center gap-3 px-5 py-3 border-t border-border first:border-t-0 text-[13px]">
                     <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                     <span className="flex-1 min-w-0 truncate">{doc.name}</span>

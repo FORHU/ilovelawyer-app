@@ -391,8 +391,9 @@ export function useUploadDocumentsMutation() {
 
         const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
           const { uploadUrl, key } = items[i]!
-          await putFileToS3(uploadUrl, file, contentTypes[i]!)
-          return { file, key }
+          const contentType = contentTypes[i]!
+          await putFileToS3(uploadUrl, file, contentType)
+          return { file, key, contentType }
         })
 
         const succeeded = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
@@ -405,10 +406,19 @@ export function useUploadDocumentsMutation() {
         if (succeeded.length === 0) continue
 
         try {
+          // fileSize/contentType weren't sent here previously, so a document attached this way
+          // (rather than through useUploadCaseDocumentsMutation's /documents endpoint, which
+          // already sent both via metaData) always landed with no fileSize — the file list then
+          // shows "—" for it forever, since nothing ever backfills it after the fact.
           const docs = await apiFetch<UserDocument[]>("/api/documents", {
             method: "POST",
             body: JSON.stringify({
-              items: succeeded.map(({ file, key }) => ({ key, name: file.name })),
+              items: succeeded.map(({ file, key, contentType }) => ({
+                key,
+                name: file.name,
+                contentType,
+                fileSize: file.size,
+              })),
               caseId,
               consultationId,
             }),

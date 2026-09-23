@@ -17,7 +17,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2 } from 'lucide-react';
+import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { MindMapProps } from './types';
 import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor, fixedNodeDescription } from './constants';
 import ReactMarkdown from 'react-markdown';
@@ -640,6 +640,24 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       </div>
 
       <div className="absolute top-4 right-4 z-(--z-canvas-overlay) pointer-events-auto flex items-center gap-2">
+        {/* Regenerate lives here (not just the stale-only badge below) because this toolbar is
+         * the only chrome still visible once "Full" takes the map into the browser's native
+         * fullscreen — the panel header's own regenerate button (studio-panel.tsx) is an
+         * ancestor outside the fullscreened element, so it disappears entirely in that mode.
+         * Reachable regardless of staleness; the stale badge below is just a louder, more urgent
+         * version of the same action for when the case has moved on since this map generated. */}
+        {onRegenerate && !isStale && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={regenerating}
+            title="Regenerate mind map"
+            className={MIND_MAP_CHROME.accentBtn}
+          >
+            {regenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            <span>{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
+          </button>
+        )}
         {isStale && (
           <button
             type="button"

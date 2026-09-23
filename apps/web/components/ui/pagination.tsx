@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsRight, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 // Shared by CursorPagination's consumers: to keep the window below actually centered
@@ -44,7 +44,6 @@ interface PaginationProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   labels: {
-    first: string;
     previous: string;
     next: string;
     last: string;
@@ -71,22 +70,7 @@ export function Pagination({ page, totalPages, onPageChange, labels, className }
   const mobileRange = new Set(buildPageWindow(page, totalPages, true, 3));
 
   return (
-    <nav aria-label="Pagination" className={`flex items-center gap-1 sm:gap-1.5 sm:flex-wrap ${className ?? ""}`}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={labels.first}
-            disabled={page === 1}
-            onClick={() => onPageChange(1)}
-            className={`${buttonBase} max-sm:hidden`}
-          >
-            <ChevronsLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{labels.first}</TooltipContent>
-      </Tooltip>
-
+    <nav aria-label="Pagination" className={`flex items-center gap-1 sm:gap-2 sm:flex-wrap ${className ?? ""}`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -108,7 +92,7 @@ export function Pagination({ page, totalPages, onPageChange, labels, className }
           type="button"
           aria-current={item === page ? "page" : undefined}
           onClick={() => onPageChange(item)}
-          className={`${item === page ? numberButtonActive : numberButtonBase}${mobileRange.has(item) ? "" : " max-sm:hidden"}`}
+          className={`${item === page ? numberButtonActive : numberButtonBase} mx-0.5${mobileRange.has(item) ? "" : " max-sm:hidden"}`}
         >
           {item}
         </button>
@@ -171,7 +155,6 @@ interface CursorPaginationProps {
   onGoToPage: (pageIndex: number) => void;
   onNext: () => void;
   labels: {
-    first: string;
     previous: string;
     next: string;
   };
@@ -198,22 +181,7 @@ export function CursorPagination({
   const mobileRange = new Set(buildCursorWindow(pageIndex + 1, pageCount, hasMore, 3));
 
   return (
-    <nav aria-label="Pagination" className={`flex items-center gap-1 sm:gap-1.5 sm:flex-wrap ${className ?? ""}`}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={labels.first}
-            disabled={pageIndex === 0}
-            onClick={() => onGoToPage(0)}
-            className={`${buttonBase} max-sm:hidden`}
-          >
-            <ChevronsLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{labels.first}</TooltipContent>
-      </Tooltip>
-
+    <nav aria-label="Pagination" className={`flex items-center gap-1 sm:gap-2 sm:flex-wrap ${className ?? ""}`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -236,7 +204,7 @@ export function CursorPagination({
           aria-current={item === pageIndex + 1 ? "page" : undefined}
           disabled={item > pageCount}
           onClick={() => onGoToPage(item - 1)}
-          className={`${item === pageIndex + 1 ? numberButtonActive : numberButtonBase}${mobileRange.has(item) ? "" : " max-sm:hidden"}`}
+          className={`${item === pageIndex + 1 ? numberButtonActive : numberButtonBase} mx-0.5${mobileRange.has(item) ? "" : " max-sm:hidden"}`}
         >
           {item}
         </button>

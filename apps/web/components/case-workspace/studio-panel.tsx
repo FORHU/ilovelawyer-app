@@ -603,10 +603,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               expanded={expanded}
               onClick={() => openStudioTile("decisions")}
             />)}
-            {/* Triggers a (re)generation in place — it does not open the detail view. Once
-             * something exists (or is generating), the result row below is what opens it; this
-             * tile is purely the "make/remake one" action, same as the header's regenerate
-             * button when the detail view happens to already be open. */}
+            {/* Same "open directly" shape as Documents/Timeline/Data Table below — opens the
+             * detail view if a map already exists, otherwise triggers the first generation (the
+             * view itself has its own Regenerate control once something's there, same as the
+             * header's regenerate button). While generating, the tile is disabled, so the only
+             * way to watch it finish is the detail view already open. */}
             {hasPrompt && (<StudioTile
               icon={isGenerating ? Loader2 : Workflow}
               iconSpinning={isGenerating}
@@ -615,7 +616,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               expanded={expanded}
               disabled={isGenerating || isMindMapConsultationBusy}
               disabledHint={isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
-              onClick={() => void handleGenerateMindMap()}
+              onClick={() => (activeMindMap ? openStudioTile("mindmap") : void handleGenerateMindMap())}
             />)}
             {/* Unlike Mind Map above, this opens the detail view directly — same "already-there
              * data" shape as Documents/Decisions — rather than triggering a generation. The tile
@@ -683,52 +684,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               onClick={() => openStudioTile("caseBrief")}
             />
           </div>
-
-          {/* Result of clicking a tile above — persists here once a tile actually has something
-           * to show (generated/generating, or fetched data), so it stays reachable without
-           * re-opening the tile grid. */}
-          {expanded &&
-            ((consultationId && (isGenerating || activeMindMap)) ||
-              dataTableRows.length > 0 ||
-              snapshotQuery.isFetching ||
-              (audioConsultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
-              <div className="flex flex-col gap-1.5 border-t border-border pt-3">
-                <span className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
-                  {t("workspace.results")}
-                </span>
-                {consultationId && (isGenerating || activeMindMap) && (
-                  <ResultRow
-                    icon={isGenerating ? Loader2 : Workflow}
-                    iconSpinning={isGenerating}
-                    title={t("workspace.mindMapTile")}
-                    subtitle={mindMapStatusLabel}
-                    onClick={() => openStudioTile("mindmap")}
-                  />
-                )}
-                {!noDocuments && (dataTableRows.length > 0 || snapshotQuery.isFetching) && (
-                  <ResultRow
-                    icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
-                    iconSpinning={snapshotQuery.isFetching}
-                    title={t("workspace.dataTableTile")}
-                    subtitle={
-                      snapshotQuery.isFetching
-                        ? t("workspace.dataTableRefreshing")
-                        : t("workspace.dataTableFactCount", { count: dataTableRows.length })
-                    }
-                    onClick={() => openStudioTile("dataTable")}
-                  />
-                )}
-                {audioConsultationId &&
-                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending || activeAudioOverviewMessage) && (
-                  <ResultRow
-                    icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending ? Loader2 : AudioLines}
-                    iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending}
-                    title={t("workspace.audioOverviewTile")}
-                    subtitle={audioOverviewStatusLabel}
-                    onClick={() => openStudioTile("audioOverview")}
-                  />)}
-              </div>
-            )}
         </div>
       )}
 
@@ -982,35 +937,6 @@ function DecisionRecordCard({ payload }: { payload: DecisionRecordPayload }) {
         <DecisionDetailBody payload={payload} />
       </div>
     </li>
-  );
-}
-
-function ResultRow({
-  icon: Icon,
-  iconSpinning = false,
-  title,
-  subtitle,
-  onClick,
-}: {
-  icon: typeof Workflow;
-  iconSpinning?: boolean;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40 hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
-    >
-      <Icon className={`h-4 w-4 shrink-0 text-brand-gold ${iconSpinning ? "animate-spin" : ""}`} aria-hidden="true" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-foreground">{title}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{subtitle}</span>
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-    </button>
   );
 }
 

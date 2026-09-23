@@ -8,7 +8,6 @@ export interface Appointment {
   title: string
   date: string
   startTime: string
-  /** The backend Event model has no end-time/duration field yet — always null until it ships (see CONTEXT.md pending). */
   endTime: string | null
   description: string | null
   /** Address the appointment confirmation email is also sent to, if one was given. */
@@ -26,7 +25,6 @@ export interface CreateAppointmentPayload {
   title: string
   date: string
   startTime: string
-  /** Collected in the UI but not sent to the backend — no field exists to store it yet. */
   endTime?: string
   description?: string
   /** Optional recipient (e.g. a client) who should also get the confirmation email, in addition to the account owner. */
@@ -43,6 +41,8 @@ export interface UpdateAppointmentPayload {
   /** Both required together to change the appointment's date/time. */
   date?: string
   startTime?: string
+  /** Sent together with date/startTime whenever either changes — see mutationFn below. */
+  endTime?: string
   description?: string
   notifyEmail?: string
   /** Empty string clears the linked case. */
@@ -73,6 +73,7 @@ interface BackendEvent {
   id: string
   title: string
   dateTime: string
+  endDateTime: string | null
   notes: string | null
   clientEmail: string | null
   caseId: string | null
@@ -95,7 +96,7 @@ function toAppointment(event: BackendEvent): Appointment {
     title: event.title,
     date: format(dt, "yyyy-MM-dd"),
     startTime: format(dt, "HH:mm"),
-    endTime: null,
+    endTime: event.endDateTime ? format(new Date(event.endDateTime), "HH:mm") : null,
     description: event.notes,
     notifyEmail: event.clientEmail,
     caseId: event.caseId ?? null,
@@ -129,12 +130,19 @@ export function useCreateAppointmentMutation() {
       // raw, untranslated V8 message "Invalid time value" instead of a readable one.
       const normalizedStartTime = normalizeTimeString(payload.startTime)
       if (!normalizedStartTime) throw new Error(`Invalid start time: "${payload.startTime}"`)
+      // Same defensive normalization as startTime above — the form already validates this, but
+      // an unparseable endTime would otherwise reach `new Date(...).toISOString()` below and
+      // throw a raw engine error instead of a readable one. Unlike startTime, endTime is
+      // optional, so only normalize (and send) it when one was actually given.
+      const normalizedEndTime = payload.endTime ? normalizeTimeString(payload.endTime) : undefined
+      if (payload.endTime && !normalizedEndTime) throw new Error(`Invalid end time: "${payload.endTime}"`)
 
       const { event } = await apiFetch<{ event: BackendEvent }>("/api/events", {
         method: "POST",
         body: JSON.stringify({
           title: payload.title,
           dateTime: new Date(`${payload.date}T${normalizedStartTime}`).toISOString(),
+          endDateTime: normalizedEndTime ? new Date(`${payload.date}T${normalizedEndTime}`).toISOString() : undefined,
           notes: payload.description,
           clientEmail: payload.notifyEmail,
           caseId: payload.caseId,
@@ -163,6 +171,10 @@ export function useUpdateAppointmentMutation() {
       if (payload.title !== undefined) body.title = payload.title
       if (payload.date && payload.startTime) {
         body.dateTime = new Date(`${payload.date}T${payload.startTime}`).toISOString()
+        // Same date as startTime (the form only supports same-day appointments) — sent whenever
+        // date/startTime change since both together are what page.tsx's form always submits,
+        // clearing it (null) if the field was left empty.
+        body.endDateTime = payload.endTime ? new Date(`${payload.date}T${payload.endTime}`).toISOString() : null
       }
       if (payload.description !== undefined) body.notes = payload.description
       if (payload.notifyEmail !== undefined) body.clientEmail = payload.notifyEmail
