@@ -12,16 +12,22 @@ export type TenantCode = "PH" | "UK"
  * own `next.config.ts` `allowedDevOrigins` already anticipated before this feature was built
  * (that's what this environment's hosts file actually points at), and `ph.localhost` (browsers
  * resolve any `*.localhost` subdomain to 127.0.0.1 without a hosts file entry, so this needs no
- * local setup) — plus the `.com` production form. Port is stripped before matching, so `:3002`
- * works on any of them.
+ * local setup) — plus the `.com` production form, the `-dev.ilovelawyer.com` hosted dev
+ * environment, and its `-dev.ilovelawyer.local` local-dev counterpart (`ph-dev.ilovelawyer.com` /
+ * `uk-dev.ilovelawyer.com` / `ph-dev.ilovelawyer.local` / `uk-dev.ilovelawyer.local`). Port is
+ * stripped before matching, so `:3002` works on any of them.
  */
 const HOST_TENANT_CODE_MAP: Record<string, TenantCode> = {
   "ph.ilovelawyer.com": "PH",
+  "ph-dev.ilovelawyer.com": "PH",
   "ph.ilovelawyer.local": "PH",
+  "ph-dev.ilovelawyer.local": "PH",
   "ph.ilovelawyer": "PH",
   "ph.localhost": "PH",
   "uk.ilovelawyer.com": "UK",
+  "uk-dev.ilovelawyer.com": "UK",
   "uk.ilovelawyer.local": "UK",
+  "uk-dev.ilovelawyer.local": "UK",
   "uk.ilovelawyer": "UK",
   "uk.localhost": "UK",
 }
@@ -46,12 +52,14 @@ export function protocolForHost(host: string): "http" | "https" {
 
 /** The target host for a given Tenant code, used by the tenant switcher and the
  * domain-mismatch redirect. Preserves whichever convention `currentHost` is already using
- * (`.com`, `.local:port`, or the bare `.ilovelawyer:port` dev form) by swapping only the
- * `ph`/`uk`/`app` prefix, rather than assuming one fixed shape — so it works regardless of which
- * of the recognized host conventions the browser is currently on, including the bare apex
- * (no prefix to strip) and `app.` (no longer exempt from the mismatch redirect — see
- * app/(protected)/layout.tsx). */
+ * (`.com`, `-dev.ilovelawyer.com`, `.local:port`, or the bare `.ilovelawyer:port` dev form) by
+ * swapping only the `ph`/`uk`/`app` prefix (keeping a trailing `-dev` if present), rather than
+ * assuming one fixed shape — so it works regardless of which of the recognized host conventions
+ * the browser is currently on, including the bare apex (no prefix to strip) and `app.` (no
+ * longer exempt from the mismatch redirect — see app/(protected)/layout.tsx). */
 export function hostForTenantCode(tenantCode: TenantCode, currentHost: string): string {
-  const suffix = currentHost.replace(/^(ph|uk|app)\./i, "")
-  return `${tenantCode.toLowerCase()}.${suffix}`
+  const prefixMatch = currentHost.match(/^(?:ph|uk|app)(-dev)?\./i)
+  const devSuffix = prefixMatch?.[1] ?? ""
+  const suffix = currentHost.replace(/^(?:ph|uk|app)(?:-dev)?\./i, "")
+  return `${tenantCode.toLowerCase()}${devSuffix}.${suffix}`
 }

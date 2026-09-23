@@ -24,7 +24,17 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
-  allowedDevOrigins: ["192.168.1.29", "ph.ilovelawyer", "uk.ilovelawyer", "ph.ilovelawyer.local", "uk.ilovelawyer.local", "ph.localhost", "uk.localhost"],
+  allowedDevOrigins: [
+    "192.168.1.29",
+    "ph.ilovelawyer",
+    "uk.ilovelawyer",
+    "ph.ilovelawyer.local",
+    "uk.ilovelawyer.local",
+    "ph-dev.ilovelawyer.local",
+    "uk-dev.ilovelawyer.local",
+    "ph.localhost",
+    "uk.localhost",
+  ],
   // Pin the workspace root to this pnpm workspace so Turbopack doesn't infer it
   // from the unrelated package-lock.json at the parent forhu-project/ directory.
   turbopack: {
