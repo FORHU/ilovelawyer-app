@@ -2,6 +2,7 @@ import { CheckCircle2, ExternalLink, Info, Quote, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@workspace/ui/components/badge"
 import type { DecisionAlternative, DecisionEvidence, DecisionRecordPayload, DecisionRule } from "@/lib/terminal/types"
+import { displayDocumentLabel } from "@/lib/chat/document-label"
 
 export const CONFIDENCE_KEYS: Record<DecisionRecordPayload["confidence"], string> = {
   high: "decisionConfidenceHigh",
@@ -64,7 +65,9 @@ export function EvidenceItem({
         ) : (
           <XCircle className="h-3 w-3 shrink-0 text-red-400" aria-hidden="true" aria-label={t("decisionUnverified")} />
         )}
-        <span className="font-medium text-foreground">{evidence.doc}</span>
+        <span className="font-medium text-foreground">
+          {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
+        </span>
         {evidence.pinpoint && <span className="text-muted-foreground">· {evidence.pinpoint}</span>}
       </div>
       {evidence.quote && (
