@@ -694,7 +694,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "decisions" ? (
             latestDecisionRecords ? (
               <div className="flex flex-col gap-3">
-                <ul className="space-y-3">
+                <ul className="space-y-4">
                   {latestDecisionRecords.map((record, i) => (
                     <DecisionRecordCard key={record.anchor || i} payload={record} />
                   ))}
@@ -928,12 +928,16 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 // case-linked consultations), so there's no case-level row here to dispute against yet.
 function DecisionRecordCard({ payload }: { payload: DecisionRecordPayload }) {
   return (
-    <li className="rounded-md border border-border px-3 py-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">{payload.conclusion}</p>
+    <li className="@container rounded-lg border border-border px-4 py-4">
+      {/* Stacked (badge above, full-width text) below the container's own `@sm` — not the
+       * viewport's — since this renders inside both the mobile Studio tab and a resizable
+       * desktop panel that can be narrower than the viewport implies. Side-by-side once there's
+       * room; `flex-col-reverse` keeps the badge visually first without reordering the DOM. */}
+      <div className="flex flex-col-reverse items-start gap-1.5 @sm:flex-row @sm:items-start @sm:justify-between @sm:gap-3">
+        <p className="leading-5 font-medium text-foreground @sm:flex-1">{payload.conclusion}</p>
         <DecisionConfidenceBadge confidence={payload.confidence} />
       </div>
-      <div className="mt-2 space-y-2">
+      <div className="mt-3">
         <DecisionDetailBody payload={payload} />
       </div>
     </li>

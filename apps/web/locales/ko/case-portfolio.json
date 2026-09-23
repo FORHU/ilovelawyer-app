@@ -54,7 +54,6 @@
     "removeDocumentConfirm": "이 사건에서 \"{{documentName}}\"을(를) 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "selectItems": "선택",
     "selectAll": "전체 선택",
-    "deselectAll": "선택 해제",
     "selectedCount_one": "{{count}}개 선택됨",
     "selectedCount_other": "{{count}}개 선택됨",
     "deleteSelected": "삭제",
