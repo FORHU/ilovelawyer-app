@@ -112,7 +112,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <TooltipTrigger asChild>
                 <Link
                   href="/signup"
-                  className="bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200"
+                  className={`text-xs tracking-[1.2px] uppercase font-semibold border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK}`}
                 >
                   {t("navbar.requestDemo")}
                 </Link>
