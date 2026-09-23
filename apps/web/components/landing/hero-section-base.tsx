@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowUpRight, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -153,32 +152,6 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               <span aria-hidden>→</span>
             </motion.p>
           </AnimatePresence>
-
-          <div className="flex flex-wrap items-center gap-6 pt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/signup"
-                  className={`bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
-                >
-                  {t("hero.ctaPrimary")}
-                  <ArrowUpRight size={14} />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Create your free ilovelawyer account</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href="#capabilities"
-                  className={`text-white border border-white/40 text-xs tracking-[1.2px] uppercase px-8 py-4 rounded-full hover:border-white transition-colors duration-200 inline-flex items-center ${FOCUS_RING}`}
-                >
-                  {t("hero.ctaExplore")}
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>Jump down to see what the platform can do</TooltipContent>
-            </Tooltip>
-          </div>
         </div>
       </div>
 

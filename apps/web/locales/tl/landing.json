@@ -7,7 +7,6 @@
       "resources": "Mga Resource"
     },
     "signIn": "Mag-sign In",
-    "requestDemo": "Humiling ng Demo",
     "getStarted": "Magsimula",
     "goToDashboard": "Pumunta sa Dashboard",
     "openMenu": "Buksan ang menu",
@@ -16,8 +15,6 @@
     "searchLabel": "Magtanong ng legal na tanong"
   },
   "hero": {
-    "ctaPrimary": "Simulan ang Libreng Konsultasyon",
-    "ctaExplore": "Galugarin ang Platform",
     "slideOne": {
       "line1": "Kung saan",
       "line2": "nililinaw ang mga kaso",

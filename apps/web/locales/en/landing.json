@@ -7,7 +7,6 @@
       "resources": "Resources"
     },
     "signIn": "Sign In",
-    "requestDemo": "Request Demo",
     "getStarted": "Get Started",
     "goToDashboard": "Go to Dashboard",
     "openMenu": "Open menu",
@@ -16,8 +15,6 @@
     "searchLabel": "Ask a legal question"
   },
   "hero": {
-    "ctaPrimary": "Start Free Consultation",
-    "ctaExplore": "Explore the Platform",
     "slideOne": {
       "line1": "Where cases",
       "line2": "get clarity",

@@ -7,7 +7,6 @@
       "resources": "리소스"
     },
     "signIn": "로그인",
-    "requestDemo": "데모 요청",
     "getStarted": "시작하기",
     "goToDashboard": "대시보드로 이동",
     "openMenu": "메뉴 열기",
@@ -16,8 +15,6 @@
     "searchLabel": "법률 질문하기"
   },
   "hero": {
-    "ctaPrimary": "무료 상담 시작하기",
-    "ctaExplore": "플랫폼 살펴보기",
     "slideOne": {
       "line1": "사건이",
       "line2": "명확해지는 곳",
