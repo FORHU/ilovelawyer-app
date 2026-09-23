@@ -7,11 +7,14 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Calendar } from "@workspace/ui/components/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, Clock, Pencil, RotateCw, StickyNote, Trash2, Undo2, X } from "lucide-react";
+import { AlertCircle, Ban, Clock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TimePicker } from "@/components/calendar/time-picker";
 import {
@@ -54,6 +57,19 @@ function formatTime12h(time: string): string {
   return format(parse(time, "HH:mm", new Date()), "h:mm a");
 }
 
+/** Grows a textarea to fit its content (up to the element's own max-height/CSS cap,
+ * where the browser's normal overflow scrolling takes back over) instead of staying at
+ * its `rows` size and forcing the user to scroll within a tiny box to read what they
+ * typed. Called both as a mount-time ref callback (sizes the field when it's populated
+ * programmatically, e.g. opening the edit modal) and from each field's own onChange (a
+ * stable function reference passed as `ref` only fires once, on mount/unmount — it does
+ * NOT re-run on every render, so typing past the initial size needs its own explicit call). */
+function autoGrowTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 /* ==========================================
    MONTH GRID DAY CELL (appointments)
    ========================================== */
@@ -87,7 +103,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
       disabled={props.disabled}
       className={cn(
         "flex w-full min-w-0 flex-col items-start gap-1 overflow-hidden rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent dark:hover:bg-overlay-hover disabled:pointer-events-none disabled:opacity-40",
-        modifiers.outside ? "border-border/50 text-muted-foreground" : "border-border",
+        modifiers.outside ? "border-border/50 text-gray-500 dark:text-gray-400" : "border-border",
         isPast && !modifiers.outside && "bg-muted/30",
         isSelected && "border-primary bg-primary/10",
         className
@@ -100,7 +116,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
         className={cn(
           "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium",
           modifiers.today && "bg-primary font-bold text-primary-foreground",
-          isPast && "bg-muted text-muted-foreground"
+          isPast && "bg-muted text-gray-500 dark:text-gray-400"
         )}
       >
         {day.date.getDate()}
@@ -202,6 +218,26 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 }
 
 /* ==========================================
+   MONTH GRID SKELETON
+   ========================================== */
+// A literal react-day-picker DOM reproduction would be fragile to keep in
+// sync — this matches the fixed-weeks grid's visual weight (6 weeks x 7
+// days) instead, at the same dimensions the real Calendar renders at.
+function CalendarGridSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 p-0.5">
+      {Array.from({ length: 6 }).map((_, week) => (
+        <div key={week} className="flex w-full items-start gap-1">
+          {Array.from({ length: 7 }).map((_, day) => (
+            <Skeleton key={day} className="h-16 flex-1 basis-0 min-w-0 rounded-md" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ==========================================
    PLANNER PANEL (mini calendar + add form + selected day list)
    ========================================== */
 function PlannerPanel({
@@ -213,6 +249,7 @@ function PlannerPanel({
   selectedNotes,
   initialCaseId,
   datesWithItems,
+  isLoadingDay,
 }: {
   selectedDate: Date | undefined;
   currentMonth: Date;
@@ -222,6 +259,7 @@ function PlannerPanel({
   selectedNotes: { id: string; body: string }[];
   initialCaseId: string | null;
   datesWithItems: Set<string>;
+  isLoadingDay: boolean;
 }) {
   const [entryType, setEntryType] = React.useState<"appointment" | "note">("appointment");
   const [title, setTitle] = React.useState("");
@@ -235,6 +273,7 @@ function PlannerPanel({
   const [formError, setFormError] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
   const { t } = useTranslation("calendar");
 
   const createAppointment = useCreateAppointmentMutation();
@@ -254,6 +293,7 @@ function PlannerPanel({
     setEndTime("");
     setDescription("");
     setNotifyEmail("");
+    setCaseId(initialCaseId ?? "");
     setReminderLeadMinutes("");
     setEditingId(null);
   }
@@ -261,6 +301,23 @@ function PlannerPanel({
   function resetNoteFields() {
     setNoteBody("");
     setEditingNoteId(null);
+  }
+
+  function openCreateModal() {
+    setFormError(null);
+    resetAppointmentFields();
+    resetNoteFields();
+    setEntryType("appointment");
+    setModalOpen(true);
+  }
+
+  function handleModalOpenChange(open: boolean) {
+    setModalOpen(open);
+    if (!open) {
+      setFormError(null);
+      resetAppointmentFields();
+      resetNoteFields();
+    }
   }
 
   function startEdit(appt: Appointment) {
@@ -275,6 +332,7 @@ function PlannerPanel({
     setNotifyEmail(appt.notifyEmail ?? "");
     setCaseId(appt.caseId ?? "");
     setReminderLeadMinutes(appt.reminderLeadMinutes ? String(appt.reminderLeadMinutes) : "");
+    setModalOpen(true);
   }
 
   function startEditNote(note: { id: string; body: string }) {
@@ -283,6 +341,7 @@ function PlannerPanel({
     resetAppointmentFields();
     setEditingNoteId(note.id);
     setNoteBody(note.body.slice(0, NOTE_MAX_LENGTH));
+    setModalOpen(true);
   }
 
   async function setAppointmentStatus(appt: Appointment, status: string) {
@@ -322,6 +381,7 @@ function PlannerPanel({
           await createNote.mutateAsync({ date, body: noteBody.trim() });
         }
         resetNoteFields();
+        setModalOpen(false);
       } catch (err) {
         setFormError(err instanceof Error ? err.message : t("errors.noteSaveFailed"));
       }
@@ -380,12 +440,14 @@ function PlannerPanel({
         });
       }
       resetAppointmentFields();
+      setModalOpen(false);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("errors.appointmentSaveFailed"));
     }
   }
 
   return (
+    <>
     <Card className="w-full shrink-0 backdrop-blur-sm lg:w-[340px]" size="sm">
       <CardContent className="flex flex-col gap-4">
         <Calendar
@@ -397,192 +459,50 @@ function PlannerPanel({
           fixedWeeks
           modifiers={{ past: isPastDay, hasEvents: (date) => datesWithItems.has(toDateKey(date)) }}
           modifiersClassNames={{
-            past: "rounded-(--cell-radius) bg-muted text-muted-foreground data-[selected=true]:rounded-none",
+            past: "rounded-(--cell-radius) bg-muted text-gray-500 dark:text-gray-400 data-[selected=true]:rounded-none",
           }}
           classNames={{
             today: "rounded-(--cell-radius) bg-accent text-accent-foreground data-[selected=true]:rounded-none",
           }}
           className="mx-auto p-0 [--cell-size:--spacing(8)]"
         />
-
-        <div className="border-t border-border pt-4">
-          {editingId || editingNoteId ? (
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {editingNoteId ? t("editingNote") : t("editingAppointment")}
-              </p>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetAppointmentFields();
-                      resetNoteFields();
-                      setFormError(null);
-                    }}
-                    className="text-muted-foreground hover:text-foreground"
-                    aria-label={t("cancelEdit")}
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("cancelEdit")}</TooltipContent>
-              </Tooltip>
-            </div>
-          ) : isPastSelected ? null : (
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Add to {selectedDate ? format(selectedDate, "MMM d, yyyy") : "…"}
-            </p>
-          )}
-
-          {!editingId && !editingNoteId && isPastSelected ? null : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-              {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
-
-              {!editingId && !editingNoteId && (
-                <div className="flex gap-1 rounded-md border border-border p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setEntryType("appointment")}
-                    className={cn(
-                      "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                      entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
-                    )}
-                  >
-                    {t("appointment")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEntryType("note")}
-                    className={cn(
-                      "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
-                      entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
-                    )}
-                  >
-                    {t("note")}
-                  </button>
-                </div>
-              )}
-
-              {entryType === "note" ? (
-                <div className="flex flex-col gap-1">
-                  <textarea
-                    placeholder={t("notePlaceholder")}
-                    aria-label={t("notePlaceholder")}
-                    value={noteBody}
-                    onChange={(e) => setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH))}
-                    maxLength={NOTE_MAX_LENGTH}
-                    rows={4}
-                    className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
-                  <p className="self-end text-xs text-muted-foreground">
-                    {noteBody.length}/{NOTE_MAX_LENGTH}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder={t("titlePlaceholder")}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
-                  <div className="flex gap-2">
-                    <TimePicker value={startTime} onChange={setStartTime} placeholder={t("startTime")} aria-label={t("startTime")} />
-                    <TimePicker value={endTime} onChange={setEndTime} placeholder={t("endTime")} aria-label={t("endTime")} />
-                  </div>
-                  {(() => {
-                    // Guidance shown in our own styling instead of a `min` attribute — a `min` on
-                    // the end-time input works, but Chrome pops up its own native constraint
-                    // bubble ("Value must be X or later") mid-edit, outside the app's control and
-                    // inconsistent with the rest of the UI. This is purely informational; the
-                    // actual enforcement still happens via the endAfterStart check on submit.
-                    const normalizedStartHint = normalizeTimeString(startTime);
-                    if (!normalizedStartHint) return null;
-                    return (
-                      <p className="text-xs text-muted-foreground">
-                        {t("endTimeHint", { time: formatTime12h(normalizedStartHint) })}
-                      </p>
-                    );
-                  })()}
-                  <input
-                    type="email"
-                    placeholder={t("notifyEmailPlaceholder")}
-                    aria-label={t("notifyEmailPlaceholder")}
-                    value={notifyEmail}
-                    onChange={(e) => setNotifyEmail(e.target.value)}
-                    className="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                  />
-                  <CustomSelect
-                    value={caseId}
-                    onChange={setCaseId}
-                    options={[
-                      { value: "", label: t("noCase") },
-                      ...cases.map((c) => ({ value: c.id, label: c.caseName })),
-                    ]}
-                  />
-                  <CustomSelect
-                    value={reminderLeadMinutes}
-                    onChange={setReminderLeadMinutes}
-                    triggerTooltip={t("reminderLabel")}
-                    options={[
-                      { value: "", label: t("reminderNone") },
-                      { value: "1440", label: t("reminder1Day") },
-                      { value: "2880", label: t("reminder2Days") },
-                      { value: "4320", label: t("reminder3Days") },
-                      { value: "7200", label: t("reminder5Days") },
-                      { value: "10080", label: t("reminder1Week") },
-                    ]}
-                  />
-                  <div className="flex flex-col gap-1">
-                    <textarea
-                      placeholder={t("descriptionPlaceholder")}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
-                      maxLength={DESCRIPTION_MAX_LENGTH}
-                      rows={2}
-                      className="w-full resize-none rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                    />
-                    <p className="self-end text-xs text-muted-foreground">
-                      {description.length}/{DESCRIPTION_MAX_LENGTH}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button type="submit" disabled={!selectedDate || isSubmitting} className="w-full">
-                    {isSubmitting
-                      ? t("saving")
-                      : editingId || editingNoteId
-                        ? t("saveChanges")
-                        : entryType === "note"
-                          ? t("addNote")
-                          : t("addAppointment")}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {editingId
-                    ? "Save changes to this appointment"
-                    : editingNoteId
-                      ? "Save changes to this note"
-                      : entryType === "note"
-                        ? "Save this note to the selected day"
-                        : "Save this appointment to the selected day"}
-                </TooltipContent>
-              </Tooltip>
-            </form>
-          )}
-        </div>
       </CardContent>
 
       <CardFooter className="flex flex-col items-stretch gap-2 border-t">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Select a day"}
-        </p>
-        {selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+            {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("selectDay")}
+          </p>
+          {!isPastSelected && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  disabled={!selectedDate}
+                  className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-overlay-hover"
+                  aria-label={t("addEntryTooltip")}
+                >
+                  <Plus className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("addEntryTooltip")}</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+        {isLoadingDay ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-lg border border-border p-2">
+                <Skeleton className="h-6 w-6 shrink-0 rounded-full" />
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-2.5 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : selectedAppointments.length === 0 && selectedNotes.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t("nothingScheduledDay")}</p>
         ) : (
           <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
@@ -593,7 +513,7 @@ function PlannerPanel({
                 <li
                   key={appt.id}
                   className={cn(
-                    "flex flex-col gap-1.5 rounded-md px-2.5 py-1.5 text-xs",
+                    "flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs",
                     isCancelled
                       ? "bg-red-50 text-red-900 dark:bg-red-500/10 dark:text-red-300"
                       : isDone
@@ -601,27 +521,25 @@ function PlannerPanel({
                         : "bg-blue-50 text-blue-900 dark:bg-blue-500/15 dark:text-blue-300"
                   )}
                 >
-                  <div className="flex items-start gap-2">
-                    <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn("font-medium", isCancelled && "line-through")}>
-                        {appt.title}
-                        {isCancelled && <span className="ml-1.5 font-normal">({t("statusCancelled")})</span>}
-                        {isDone && <span className="ml-1.5 font-normal">({t("statusDone")})</span>}
-                      </p>
-                      <p
-                        className={cn(
-                          isCancelled ? "text-red-700 dark:text-red-300" : isDone ? "text-green-700 dark:text-green-300" : "text-blue-700 dark:text-blue-300"
-                        )}
-                      >
-                        {appt.endTime
-                          ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
-                          : formatTime12h(appt.startTime)}
-                      </p>
-                      {appt.description && <p className="mt-0.5 line-clamp-4 break-words">{appt.description}</p>}
-                    </div>
+                  <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("font-medium", isCancelled && "line-through")}>
+                      {appt.title}
+                      {isCancelled && <span className="ml-1.5 font-normal">({t("statusCancelled")})</span>}
+                      {isDone && <span className="ml-1.5 font-normal">({t("statusDone")})</span>}
+                    </p>
+                    <p
+                      className={cn(
+                        isCancelled ? "text-red-700 dark:text-red-300" : isDone ? "text-green-700 dark:text-green-300" : "text-blue-700 dark:text-blue-300"
+                      )}
+                    >
+                      {appt.endTime
+                        ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
+                        : formatTime12h(appt.startTime)}
+                    </p>
+                    {appt.description && <p className="mt-0.5 line-clamp-4 break-words">{appt.description}</p>}
                   </div>
-                  <div className="flex items-center gap-0.5 pl-5">
+                  <div className="flex shrink-0 items-center gap-0.5">
                     {isCancelled ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -631,7 +549,7 @@ function PlannerPanel({
                             className="rounded p-1 hover:bg-black/5 dark:hover:bg-white/10"
                             aria-label={t("restore")}
                           >
-                            <Undo2 className="size-3.5" />
+                            <RotateCcw className="size-3.5" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>{t("restore")}</TooltipContent>
@@ -673,13 +591,11 @@ function PlannerPanel({
             {selectedNotes.map((note) => (
               <li
                 key={note.id}
-                className="flex flex-col gap-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300"
+                className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-500/15 dark:text-amber-300"
               >
-                <div className="flex items-start gap-2">
-                  <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                  <p className="min-w-0 flex-1 line-clamp-4 break-words">{note.body}</p>
-                </div>
-                <div className="flex items-center gap-0.5 pl-5">
+                <StickyNote className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                <p className="min-w-0 flex-1 line-clamp-4 break-words">{note.body}</p>
+                <div className="flex shrink-0 items-center gap-0.5">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -713,6 +629,175 @@ function PlannerPanel({
         )}
       </CardFooter>
     </Card>
+
+    <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto gap-3 p-5">
+        <DialogHeader>
+          <DialogTitle>
+            {editingNoteId
+              ? t("editingNote")
+              : editingId
+                ? t("editingAppointment")
+                : t("addTo", { date: selectedDate ? format(selectedDate, "MMM d, yyyy") : "" })}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+          {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
+
+          {!editingId && !editingNoteId && (
+            <div className="flex gap-1 rounded-md border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setEntryType("appointment")}
+                className={cn(
+                  "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                  entryType === "appointment" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
+                )}
+              >
+                {t("appointment")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEntryType("note")}
+                className={cn(
+                  "flex-1 rounded-sm py-1 text-xs font-medium transition-colors",
+                  entryType === "note" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent dark:hover:bg-overlay-hover"
+                )}
+              >
+                {t("note")}
+              </button>
+            </div>
+          )}
+
+          {entryType === "note" ? (
+            <div className="flex flex-col gap-1">
+              <textarea
+                ref={autoGrowTextarea}
+                placeholder={t("notePlaceholder")}
+                aria-label={t("notePlaceholder")}
+                value={noteBody}
+                onChange={(e) => {
+                  setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH));
+                  autoGrowTextarea(e.currentTarget);
+                }}
+                maxLength={NOTE_MAX_LENGTH}
+                rows={4}
+                className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              <p className="self-end text-xs text-muted-foreground">
+                {noteBody.length}/{NOTE_MAX_LENGTH}
+              </p>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder={t("titlePlaceholder")}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              <div className="flex gap-2">
+                <TimePicker value={startTime} onChange={setStartTime} placeholder={t("startTime")} aria-label={t("startTime")} />
+                <TimePicker value={endTime} onChange={setEndTime} placeholder={t("endTime")} aria-label={t("endTime")} />
+              </div>
+              {(() => {
+                // Guidance shown in our own styling instead of a `min` attribute — a `min` on
+                // the end-time input works, but Chrome pops up its own native constraint
+                // bubble ("Value must be X or later") mid-edit, outside the app's control and
+                // inconsistent with the rest of the UI. This is purely informational; the
+                // actual enforcement still happens via the endAfterStart check on submit.
+                const normalizedStartHint = normalizeTimeString(startTime);
+                if (!normalizedStartHint) return null;
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    {t("endTimeHint", { time: formatTime12h(normalizedStartHint) })}
+                  </p>
+                );
+              })()}
+              <input
+                type="email"
+                placeholder={t("notifyEmailPlaceholder")}
+                aria-label={t("notifyEmailPlaceholder")}
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+              <CustomSelect
+                value={caseId}
+                onChange={setCaseId}
+                options={[
+                  { value: "", label: t("noCase") },
+                  ...cases.map((c) => ({ value: c.id, label: c.caseName })),
+                ]}
+              />
+              <CustomSelect
+                value={reminderLeadMinutes}
+                onChange={setReminderLeadMinutes}
+                triggerTooltip={t("reminderLabel")}
+                options={[
+                  { value: "", label: t("reminderNone") },
+                  { value: "1440", label: t("reminder1Day") },
+                  { value: "2880", label: t("reminder2Days") },
+                  { value: "4320", label: t("reminder3Days") },
+                  { value: "7200", label: t("reminder5Days") },
+                  { value: "10080", label: t("reminder1Week") },
+                ]}
+              />
+              <div className="flex flex-col gap-1">
+                <textarea
+                  ref={autoGrowTextarea}
+                  placeholder={t("descriptionPlaceholder")}
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH));
+                    autoGrowTextarea(e.currentTarget);
+                  }}
+                  maxLength={DESCRIPTION_MAX_LENGTH}
+                  rows={2}
+                  className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
+                <p className="self-end text-xs text-muted-foreground">
+                  {description.length}/{DESCRIPTION_MAX_LENGTH}
+                </p>
+              </div>
+            </>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                {t("cancel")}
+              </Button>
+            </DialogClose>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="submit" disabled={!selectedDate || isSubmitting}>
+                  {isSubmitting
+                    ? t("saving")
+                    : editingId || editingNoteId
+                      ? t("saveChanges")
+                      : entryType === "note"
+                        ? t("addNote")
+                        : t("addAppointment")}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {editingId
+                  ? "Save changes to this appointment"
+                  : editingNoteId
+                    ? "Save changes to this note"
+                    : entryType === "note"
+                      ? "Save this note to the selected day"
+                      : "Save this appointment to the selected day"}
+              </TooltipContent>
+            </Tooltip>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
@@ -723,8 +808,18 @@ export default function CalendarPage() {
   const { t } = useTranslation("calendar");
   const searchParams = useSearchParams();
   const initialCaseId = searchParams.get("caseId");
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
+  // Notification links (see EventSvc.create / EventReminderQueue) carry the appointment's own
+  // dateTime as an ISO string so a click lands on that day instead of always today's date.
+  // Only read on mount, matching initialCaseId above — a later change to the URL's `date`
+  // param without a remount (there isn't one, in practice) won't re-trigger this.
+  function initialDateFromParam(): Date {
+    const param = searchParams.get("date");
+    if (!param) return new Date();
+    const parsed = new Date(param);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(() => startOfMonth(initialDateFromParam()));
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(initialDateFromParam);
 
   const from = toDateKey(startOfMonth(currentMonth));
   const to = toDateKey(endOfMonth(currentMonth));
@@ -733,6 +828,7 @@ export default function CalendarPage() {
   const appointments = appointmentsQuery.data ?? [];
   const notesQuery = useNotesQuery(from, to);
   const notes = notesQuery.data ?? [];
+  const showCalendarSkeleton = useDelayedLoading(appointmentsQuery.isLoading || notesQuery.isLoading);
 
   const handleSelectDay = React.useCallback(
     (date: Date) => {
@@ -802,9 +898,15 @@ export default function CalendarPage() {
   return (
     <PageShell activeTab="calendar">
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-24">
-        <div className="mb-8 flex flex-col gap-2">
-          <h1 className="font-['Libre_Caslon_Text'] text-4xl text-foreground">Calendar</h1>
-          <p className="max-w-xl text-base text-muted-foreground">Track hearings and deadlines in one place.</p>
+        <div className="mb-8 flex flex-col gap-3.5">
+          <span className="flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />
+            {t("monthAppointmentCount", { count: appointments.length })}
+          </span>
+          <h1 className="font-['Libre_Caslon_Text'] text-[23px] sm:text-[clamp(34px,3.6vw,48px)] font-light leading-none tracking-[-0.02em] text-foreground">
+            {t("title")}
+          </h1>
+          <p className="max-w-[520px] text-[13px] text-muted-foreground leading-relaxed sm:text-[15px]">{t("subtitle")}</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -817,6 +919,7 @@ export default function CalendarPage() {
             selectedNotes={selectedNotes}
             initialCaseId={initialCaseId}
             datesWithItems={datesWithItems}
+            isLoadingDay={showCalendarSkeleton}
           />
 
           {/* Desktop/tablet only — PlannerPanel's own calendar grid + selected-day list above
@@ -855,6 +958,9 @@ export default function CalendarPage() {
               )}
             </CardHeader>
             <CardContent className="p-0 md:px-6 md:pb-6">
+              {showCalendarSkeleton ? (
+                <CalendarGridSkeleton />
+              ) : (
               <CalendarItemsContext.Provider value={{ itemsByDate, selectedDate, onSelectDay: handleSelectDay }}>
                 <Calendar
                   mode="single"
@@ -885,6 +991,7 @@ export default function CalendarPage() {
                   className="w-full p-0"
                 />
               </CalendarItemsContext.Provider>
+              )}
             </CardContent>
           </Card>
         </div>

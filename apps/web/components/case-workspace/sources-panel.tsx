@@ -412,7 +412,41 @@ function SectionToggle({
 // treatment as EvidenceItem/RuleItem's `verified`; unvetted rows just omit the icon rather than
 // showing a red X — "not vetted" isn't a defect the way unverified evidence would be, just a
 // lower-confidence citation.
+const LEGISLATION_TYPES: Record<string, string> = {
+  ukpga: "Act",
+  uksi: "SI",
+  asp: "Act of the Scottish Parliament",
+  anaw: "Act of the Welsh Assembly",
+  asc: "Act of Senedd Cymru",
+  nia: "Northern Ireland Act",
+  ukla: "Local Act",
+  wsi: "Welsh SI",
+  ssi: "Scottish SI",
+};
+
+// Chat Wonder sometimes returns a related item with only a `url` (title, case_number and
+// ra_number all null), which rendered as a blank link. Derive a readable label from the URL so
+// the row is still identifiable — legislation.gov.uk paths encode type/year/number/section.
+function relatedCaseLabel(rc: RelatedCase): string {
+  const named = [rc.title, rc.case_number, rc.ra_number].find((v) => typeof v === "string" && v.trim());
+  if (named) return named.trim();
+  if (!rc.url) return "";
+  try {
+    const u = new URL(rc.url);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (u.hostname.endsWith("legislation.gov.uk") && parts.length >= 3) {
+      const [type, year, number, kind, section] = parts;
+      const label = `${LEGISLATION_TYPES[type!] ?? type!.toUpperCase()} ${year}/${number}`;
+      return kind === "section" && section ? `${label}, section ${section}` : label;
+    }
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname === "/" ? "" : u.pathname}`;
+  } catch {
+    return rc.url;
+  }
+}
+
 function RelatedCaseRow({ relatedCase, onClick }: { relatedCase: RelatedCase; onClick?: () => void }) {
+  const label = relatedCaseLabel(relatedCase);
   return (
     <li
       role={onClick ? "button" : undefined}
@@ -441,13 +475,11 @@ function RelatedCaseRow({ relatedCase, onClick }: { relatedCase: RelatedCase; on
             onClick={(e) => e.stopPropagation()}
             className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground underline decoration-dotted hover:text-brand-gold"
           >
-            <span className="truncate">{relatedCase.title ?? relatedCase.case_number ?? relatedCase.ra_number}</span>
+            <span className="truncate">{label}</span>
             <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
           </a>
         ) : (
-          <span className="truncate font-medium text-foreground">
-            {relatedCase.title ?? relatedCase.case_number ?? relatedCase.ra_number}
-          </span>
+          <span className="truncate font-medium text-foreground">{label}</span>
         )}
       </div>
       {relatedCase.snippet && <p className="mt-0.5 ml-4 line-clamp-2 italic">{relatedCase.snippet}</p>}

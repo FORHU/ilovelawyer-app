@@ -10,7 +10,7 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, ListX, Loader2, AlertCircle, Pencil, Trash2, ArrowUpRight, ChevronLeft, ChevronRight, MoreHorizontal, X } from "lucide-react";
+import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,6 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { ErrorState } from "@/components/error-state";
 import {
   useCasesQuery,
   useUpdateCaseMutation,
@@ -31,11 +34,35 @@ import {
   type UpdateCasePayload,
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Pagination } from "@/components/ui/pagination";
 
-// Kept small (rather than shrinking the row/heading spacing) so a full page of rows fits
-// a typical desktop browser window (~900px+ tall) without a page scrollbar — the fixed
-// chrome above the table (heading, search bar, table header) already runs ~520px on its own.
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 15;
+
+// Mirrors the real row grid below (name/parties, updated date, open-in links,
+// action menu) so the swap from skeleton to real rows doesn't jump layout.
+function CaseListSkeleton() {
+  return (
+    <div className="md:min-w-[760px]">
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4"
+        >
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-3/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </div>
+          <Skeleton className="h-3 w-20" />
+          <div className="hidden md:flex items-center gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-8 rounded-full justify-self-end" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CaseManagerDashboard() {
   const { t } = useTranslation("case-portfolio");
@@ -79,7 +106,8 @@ export default function CaseManagerDashboard() {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
+  const { data, isLoading: isFetching, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
+  const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
@@ -204,7 +232,7 @@ export default function CaseManagerDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          <div className="relative w-full sm:max-w-80 flex items-center">
+            <div className="relative w-full sm:max-w-80 flex items-center">
             <span className="absolute left-4 text-muted-foreground">
               <Search className="w-4 h-4" />
             </span>
@@ -212,11 +240,26 @@ export default function CaseManagerDashboard() {
              * restores the original compact desktop size once that's no longer a risk. */}
             <input
               type="text"
-              className="w-full bg-card border border-border rounded-full h-11 sm:h-10 pl-11 pr-4 outline-none font-['Inter'] text-base sm:text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
+              className="w-full bg-card border border-border rounded-full h-11 sm:h-10 pl-11 pr-9 outline-none font-['Inter'] text-base sm:text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-colors"
               placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Clear search</TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           {/* bg-card/bg-muted collapse to the same flat --background in dark mode (see
@@ -259,145 +302,111 @@ export default function CaseManagerDashboard() {
               <TooltipContent>Show archived cases</TooltipContent>
             </Tooltip>
           </div>
-        </div>
 
-        {/* Select / bulk-action row — same shape as DocumentFolderBrowser's selection bar
-         * (select-all checkbox + count, Deselect all, action button, Cancel). Active gets bulk
-         * archive, Archived gets bulk restore — see the action button branch below. */}
-        {!isLoading && !isError && cases.length > 0 && (
-          <div
-            className={
-              selectMode
-                ? "flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
-                : "flex items-center justify-end"
-            }
-          >
-            {selectMode ? (
-              <>
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={allCasesSelected}
-                      onChange={toggleSelectAllCases}
-                      className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
-                    />
-                    {t("selectAllCases")}
-                    <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                      {t("selectedCasesCount", { count: selectedCaseIds.size })}
-                    </span>
-                  </label>
-                  {selectedCaseIds.size > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedCaseIds(new Set())}
-                          disabled={isBulkArchiving || isBulkRestoring}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
-                          {t("deselectAllCases")}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t("deselectAllCases")}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-2.5">
-                  {statusFilter === "ARCHIVED" ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={selectedCaseIds.size === 0 || isBulkRestoring}
-                          onClick={() => setConfirmingBulkRestore(true)}
-                          className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400"
-                        >
-                          {isBulkRestoring ? (
-                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          )}
-                          {t("restoreSelectedCases")}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t("restoreSelectedCases")}</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={selectedCaseIds.size === 0 || isBulkArchiving}
-                          onClick={() => setConfirmingBulkArchive(true)}
-                          className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
-                        >
-                          {isBulkArchiving ? (
-                            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          )}
-                          {t("archiveSelectedCases")}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t("archiveSelectedCases")}</TooltipContent>
-                    </Tooltip>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={exitSelectMode}
-                        disabled={isBulkArchiving || isBulkRestoring}
-                        aria-label={t("editModal.cancel")}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
-                      >
-                        <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("editModal.cancel")}</TooltipContent>
-                  </Tooltip>
-                </div>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSelectMode(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:hover:bg-overlay-hover"
-              >
-                <CheckSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
-                {t("selectCases")}
-              </button>
-            )}
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            {t("loading")}
-          </div>
-        )}
-
-        {isError && (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <AlertCircle className="h-6 w-6 text-red-600" aria-hidden="true" />
-            <p className="text-sm text-red-600">{t("loadError")}</p>
+          {/* Grouped with the status toggle as a sibling, not off on its own — both are
+           * compact enough to wrap onto the same line together once the (full-width-on-
+           * mobile) search box above has taken its own line. The full bulk-action bar below
+           * (checkbox/count/archive/cancel) is different enough — and wide enough — that it
+           * still expands into its own row instead of joining this cluster. */}
+          {!isLoading && !isError && cases.length > 0 && !selectMode && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => refetch()}
-                  className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+                  onClick={() => setSelectMode(true)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:hover:bg-overlay-hover"
                 >
-                  {t("retry")}
+                  <CheckSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  {t("selectCases")}
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Retry loading your cases</TooltipContent>
+              <TooltipContent>{t("selectCases")}</TooltipContent>
             </Tooltip>
+          )}
+        </div>
+
+        {/* Bulk-action bar — select-all checkbox + count, action button, Cancel. Active gets
+         * bulk archive, Archived gets bulk restore — see the action button branch below.
+         * No separate "Deselect all" — the select-all checkbox already does that (unchecking
+         * it clears the selection), so a second control for the same thing was redundant; the
+         * archive/restore button now sits in the space that freed up, back on the one row.
+         * Cancel (X) is pinned to the card's own top-right corner rather than sitting inline. */}
+        {!isLoading && !isError && cases.length > 0 && selectMode && (
+          <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 pr-9 dark:bg-overlay-hover/40">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={exitSelectMode}
+                  disabled={isBulkArchiving || isBulkRestoring}
+                  aria-label={t("editModal.cancel")}
+                  className="absolute top-2 right-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
+                >
+                  <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("editModal.cancel")}</TooltipContent>
+            </Tooltip>
+
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
+              <input
+                type="checkbox"
+                checked={allCasesSelected}
+                onChange={toggleSelectAllCases}
+                className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
+              />
+              {t("selectAllCases")}
+              <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                {t("selectedCasesCount", { count: selectedCaseIds.size })}
+              </span>
+            </label>
+            <div className="flex shrink-0 items-center">
+              {statusFilter === "ARCHIVED" ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={selectedCaseIds.size === 0 || isBulkRestoring}
+                      onClick={() => setConfirmingBulkRestore(true)}
+                      className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400"
+                    >
+                      {isBulkRestoring ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      {t("restoreSelectedCases")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("restoreSelectedCases")}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={selectedCaseIds.size === 0 || isBulkArchiving}
+                      onClick={() => setConfirmingBulkArchive(true)}
+                      className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
+                    >
+                      {isBulkArchiving ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      )}
+                      {t("archiveSelectedCases")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("archiveSelectedCases")}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         )}
+
+        {isLoading && <CaseListSkeleton />}
+
+        {isError && <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => refetch()} />}
 
         {!isLoading && !isError && cases.length > 0 && (
           <div className="md:overflow-x-auto lg:overflow-visible">
@@ -551,46 +560,18 @@ export default function CaseManagerDashboard() {
         )}
 
         {!isLoading && !isError && cases.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between gap-4 pt-2">
-            {page > 1 ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-                    {t("pagination.previous")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("pagination.previous")}</TooltipContent>
-              </Tooltip>
-            ) : (
-              <span aria-hidden="true" />
-            )}
-
-            <span className="text-[12px] text-muted-foreground">
-              {t("pagination.pageOf", { page, total: totalPages })}
-              {" | "}
-              {t("caseCountBadge", { count: cases.length })}
-            </span>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                >
-                  {t("pagination.next")}
-                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("pagination.next")}</TooltipContent>
-            </Tooltip>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            labels={{
+              first: t("pagination.first"),
+              previous: t("pagination.previous"),
+              next: t("pagination.next"),
+              last: t("pagination.last"),
+            }}
+            className="justify-center pt-2"
+          />
         )}
 
         {isSearchEmpty && (

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -24,6 +24,8 @@ import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { appendOptimisticUserMessage, resolveOptimisticMessageId, isOptimisticMessageId } from "@/lib/chat/optimistic-messages";
 import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
+import { composerAction, shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
+import { shouldScrollTranscriptToBottom } from "@/lib/chat/transcript-scroll";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
@@ -31,6 +33,8 @@ import { MessageAttachments, type MessageAttachment } from "@/components/chat/me
 import FilePreviewModal from "@/components/chat/file-preview-modal";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import {
   useChatSessionQuery,
   useConsultationsQuery,
@@ -39,6 +43,8 @@ import {
   useRelatedCasesQuery,
   sendChatMessageAndWait,
   subscribeChatGeneration,
+  cancelChatGeneration,
+  ChatGenerationCancelledError,
   type ChatMessage,
   type MessageReasoning,
 } from "@/lib/chat/mutations";
@@ -68,6 +74,16 @@ const TRANSCRIBE_STAGE_COPY: Partial<Record<TranscriptionStatus, { key: string; 
   starting: { key: "input.transcribeStarting", defaultValue: "Starting transcription…" },
   in_progress: { key: "input.transcribing", defaultValue: "Transcribing…" },
 };
+
+/** Shown under a reply the user stopped (the composer's Stop button). */
+function StoppedNotice({ label, compact }: { label: string; compact?: boolean }) {
+  return (
+    <div role="status" className={`mt-2 flex items-center gap-1.5 text-muted-foreground ${compact ? "text-[11px]" : "text-[12px]"}`}>
+      <Square className="h-3 w-3 fill-current" aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 interface DisplayMessage {
   role: "user" | "assistant";
@@ -99,6 +115,13 @@ interface DisplayMessage {
   /** This turn's "why this answer" explanation — see ReasoningPanel. Same timing caveat as
    * `decisions`: empty while still streaming, only present once the persisted message loads. */
   reasoning?: MessageReasoning;
+  /** Assistant message only: the user pressed Stop, so this reply is whatever had streamed by
+   * then (possibly nothing). Shows a "Response stopped" notice under it. Live, this is set by
+   * handleStop; once persisted it is derived from the preceding user message's replyStatus. */
+  stopped?: boolean;
+  /** User message only: its reply was stopped before any text streamed, so there is no assistant
+   * message to hang the "Response stopped" notice on — it renders right under this bubble. */
+  replyStopped?: boolean;
 }
 
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
@@ -293,10 +316,9 @@ interface ConsultationChatProps {
   /** Overrides the composer placeholder. Terminal panes pass a shorter prompt. */
   inputPlaceholder?: string;
   /** Shows uploaded files as clickable chips on the message they were sent with (ChatGPT-style),
-   * instead of collapsing them into placeholder text. General Consultation page only — Case Chat
-   * intentionally doesn't set this (see docs/adr/0012-message-scoped-document-attachments.md);
-   * Case Documents already have a dedicated surface (case-details-panel.tsx) with separate,
-   * already-planned changes of its own that this deliberately doesn't preempt. */
+   * instead of collapsing them into placeholder text. Set by the General Consultation page and
+   * Case Workspace's chat; Terminal's Legal Assistant pane still leaves it off and links out to
+   * Case Documents instead (see docs/adr/0012-message-scoped-document-attachments.md). */
   enableFileChips?: boolean;
   /** Terminal-only "jump to panel" link under a split reply's topic (see ChatPanel in
    * terminal-panels.tsx). Both must be supplied together — panelTitles is the real PanelId→title
@@ -306,6 +328,20 @@ interface ConsultationChatProps {
    * page or in Case Workspace. */
   panelTitles?: Record<string, string>;
   onJumpToPanel?: (panelId: string) => void;
+}
+
+// Mirrors the alternating user/assistant bubble shapes below so switching
+// into an existing consultation doesn't render a blank pane while its
+// message history fetches.
+function ChatHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4 py-4">
+      <Skeleton className="h-11 w-2/3 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-16 w-3/4 rounded-[18px_18px_18px_4px]" />
+      <Skeleton className="h-9 w-1/2 self-end rounded-[18px_18px_4px_18px]" />
+      <Skeleton className="h-20 w-4/5 rounded-[18px_18px_18px_4px]" />
+    </div>
+  );
 }
 
 export default function ConsultationChat({
@@ -455,6 +491,16 @@ export default function ConsultationChat({
   // send belongs to, so a stale in-flight stream can recognize it's been abandoned and
   // stop writing chunks into whatever consultation is now on screen.
   const sendTokenRef = useRef(0);
+  // The in-flight doSend's abort handle, so the Stop button can end its wait (and, through it,
+  // ask the API to stop the turn) - null when nothing is being sent from this mount.
+  const sendAbortRef = useRef<AbortController | null>(null);
+  // Stop was pressed and the API call / refetch it triggers hasn't finished - the Stop button
+  // shows as busy meanwhile instead of accepting a second click.
+  const [isStopping, setIsStopping] = useState(false);
+  // The answer text has fully streamed but the turn is still finishing its extras (timeline,
+  // mind map, reasoning, decisions) and saving - see composerAction. Set by chat:answer-complete,
+  // cleared when the send settles or is abandoned.
+  const [isFinalizing, setIsFinalizing] = useState(false);
   // Set right after a first-message send creates a brand-new consultation, to the id it
   // was just given — before `router.push(...?c=<id>)`'s URL change has actually landed in
   // `consultationId` (that takes an extra render). Without this, `consultationKey` below
@@ -486,6 +532,7 @@ export default function ConsultationChat({
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
   const { data: caseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
@@ -528,9 +575,14 @@ export default function ConsultationChat({
       consultationId
         ? (history ?? [])
             .filter((m) => m.role !== "system")
-            .map((m) => ({
+            .map((m, i, visible) => ({
               role: m.role as "user" | "assistant",
               content: m.content,
+              // A stopped turn keeps the user message (replyStatus CANCELLED) and, if any text
+              // had streamed, a partial assistant reply right after it - see the API's
+              // ChatSvc.cancelChatGeneration.
+              stopped: m.role === "assistant" && visible[i - 1]?.role === "user" && visible[i - 1]?.replyStatus === "CANCELLED",
+              replyStopped: m.role === "user" && m.replyStatus === "CANCELLED" && visible[i + 1]?.role !== "assistant",
               // Empty on messages sent before the backend shipped message-scoped attachments
               // (handoff doc §5) — falls back to no chips for those, same as today.
               attachments: enableFileChips
@@ -597,6 +649,29 @@ export default function ConsultationChat({
   // the reply is still in flight, so it must read (and gate the composer) as busy.
   const isBusy = isSending || isResumedGenerating || isGeneratingElsewhere;
 
+  // The reply text is held back behind the "thinking" placeholder until the whole turn (answer,
+  // confidence, "why this answer") is saved, so they appear together instead of the answer
+  // showing first and the rest popping in once they finish - see shouldHoldAnswer. This is the
+  // safety cap: once answer text has been sitting there for ANSWER_HOLD_CAP_MS, reveal it anyway
+  // and let the extras follow, so one slow or stuck extra can never hide a finished answer. Every
+  // send here carries the legal tag, so Chat Wonder delivers the answer text in one block at the
+  // end (not token by token) - nothing to stream is lost by holding it. Reset whenever the held
+  // text goes away (turn saved, stopped, switched consultations).
+  const lastDisplayedMessage = messages[messages.length - 1];
+  const answerTextPresent =
+    ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) &&
+    lastDisplayedMessage?.role === "assistant" &&
+    Boolean(lastDisplayedMessage.content);
+  const [revealHeldAnswer, setRevealHeldAnswer] = useState(false);
+  useEffect(() => {
+    if (!answerTextPresent) return;
+    const timer = setTimeout(() => setRevealHeldAnswer(true), ANSWER_HOLD_CAP_MS);
+    return () => {
+      clearTimeout(timer);
+      setRevealHeldAnswer(false);
+    };
+  }, [answerTextPresent]);
+
   // Once the persisted history is at least as long as the optimistic buffer, hand the
   // transcript back to it and refresh the related-cases panel that persisted alongside it.
   // Driven by `history` changing — which now happens via explicit invalidateQueries calls
@@ -632,6 +707,9 @@ export default function ConsultationChat({
         queryClient.invalidateQueries({ queryKey: chatKeys.relatedCases(consultationId) });
       },
       onError: () => {
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
+      },
+      onCancelled: () => {
         queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
       },
     });
@@ -822,11 +900,26 @@ export default function ConsultationChat({
     shouldFollowTranscriptRef.current = true;
   }, [consultationKey]);
 
+  // Scrolls to the bottom for the user's own new prompt (and the thinking/research rows under it)
+  // and when a consultation is opened - but never because a reply arrived or finished: the whole
+  // answer (with its confidence and explanation, held together - see shouldHoldAnswer above)
+  // shows up at once, and jumping to its end would skip past its start. See
+  // shouldScrollTranscriptToBottom.
+  const scrollContextRef = useRef({ key: consultationKey, userCount: 0 });
   useEffect(() => {
+    const userCount = messages.filter((m) => m.role === "user").length;
+    const previous = scrollContextRef.current;
+    scrollContextRef.current = { key: consultationKey, userCount };
+    const lastMessage = messages[messages.length - 1];
     const transcript = transcriptRef.current;
-    if (!transcript || !shouldFollowTranscriptRef.current) return;
-    transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
-  }, [messages]);
+    if (!transcript) return;
+    const shouldScroll = shouldScrollTranscriptToBottom({
+      follow: shouldFollowTranscriptRef.current,
+      contextChanged: previous.key !== consultationKey || previous.userCount !== userCount,
+      lastIsReply: lastMessage?.role === "assistant" && Boolean(lastMessage.content),
+    });
+    if (shouldScroll) transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
+  }, [messages, consultationKey]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -834,6 +927,7 @@ export default function ConsultationChat({
     resolvedConsultationIdRef.current = null;
     consultationCreationRef.current = null;
     setIsSending(false);
+    setIsFinalizing(false);
     setActiveTab("chat");
     navigateToConsultation(null);
   };
@@ -845,6 +939,7 @@ export default function ConsultationChat({
     resolvedConsultationIdRef.current = null;
     consultationCreationRef.current = null;
     setIsSending(false);
+    setIsFinalizing(false);
     setActiveTab("chat");
     navigateToConsultation(id);
   };
@@ -1048,6 +1143,14 @@ export default function ConsultationChat({
     // sanity-check the post-send refetch before trusting it over pendingTurn (see there).
     const messagesBeforeSend = baseMessages.length;
 
+    // Ended by handleStop. cancelRequest is the API call that actually stops the turn - issued
+    // as soon as both the Stop press and the message id (only known once the POST returns) exist,
+    // in whichever order they happen.
+    const abort = new AbortController();
+    sendAbortRef.current = abort;
+    let cancelRequest: Promise<unknown> | null = null;
+
+    setIsFinalizing(false);
     setIsSending(true);
     setPendingTurn({
       key: turnKey,
@@ -1075,6 +1178,12 @@ export default function ConsultationChat({
         setPendingTurn((prev) => (prev && prev.key === turnKey ? { ...prev, key: activeConsultationId! } : prev));
       }
       startedConsultationId = activeConsultationId;
+      let enqueuedMessageId: string | null = null;
+      const requestServerCancel = () => {
+        if (cancelRequest || !enqueuedMessageId) return;
+        cancelRequest = cancelChatGeneration(activeConsultationId!, enqueuedMessageId);
+      };
+      abort.signal.addEventListener("abort", requestServerCancel, { once: true });
       // A topic breakdown (see TopicNavigator/SourcesPanel) can only exist once this turn is
       // persisted — this flag lets those panels show a "generating" state immediately instead
       // of looking empty for however long the turn takes.
@@ -1113,7 +1222,9 @@ export default function ConsultationChat({
         },
         {
           onChunk: (chunk) => {
-            if (sendTokenRef.current !== myToken) return;
+            // After Stop the bubble is frozen at what the user saw; a chunk already in flight
+            // must not extend it (the API saved the partial reply at the same point).
+            if (sendTokenRef.current !== myToken || abort.signal.aborted) return;
             rawAccumulated += chunk;
             const displayContent = stripStructuredBlocks(rawAccumulated);
             const mindMap = extractMindMap(rawAccumulated);
@@ -1132,8 +1243,16 @@ export default function ConsultationChat({
             queryClient.setQueryData(chatKeys.session(), { session_id: rotatedSessionId });
           },
           messagesBefore: messagesBeforeSend,
-          onEnqueued: (messageId) =>
-            resolveOptimisticMessageId(queryClient, activeConsultationId!, optimisticId, messageId),
+          signal: abort.signal,
+          onAnswerComplete: () => {
+            if (sendTokenRef.current === myToken && !abort.signal.aborted) setIsFinalizing(true);
+          },
+          onEnqueued: (messageId) => {
+            enqueuedMessageId = messageId;
+            resolveOptimisticMessageId(queryClient, activeConsultationId!, optimisticId, messageId);
+            // Stop was pressed before the POST came back - the turn exists now, so stop it.
+            if (abort.signal.aborted) requestServerCancel();
+          },
         },
       );
 
@@ -1156,6 +1275,26 @@ export default function ConsultationChat({
         setPendingTurn(null);
       }
     } catch (error) {
+      if (error instanceof ChatGenerationCancelledError) {
+        // Stopped - by this mount's Stop button, or another tab's. Not a failure: no error copy.
+        // Wait for the API to confirm (it saves the partial reply), then let the persisted
+        // history - which now carries the user message as CANCELLED and any partial reply, so
+        // it renders "Response stopped" by itself - replace the local buffer. If the cancel call
+        // itself failed the turn may still be running: the refetch shows the server's truth
+        // (still PENDING -> the resumed "generating" state, with Stop available again).
+        try {
+          await cancelRequest;
+        } catch (cancelError) {
+          console.error("Failed to stop generation:", cancelError);
+        }
+        if (startedConsultationId) {
+          await queryClient
+            .invalidateQueries({ queryKey: chatKeys.messages(startedConsultationId), refetchType: "all" })
+            .catch(() => {});
+        }
+        if (sendTokenRef.current === myToken) setPendingTurn(null);
+        return;
+      }
       console.error("Failed to send message:", error);
       // Drop (or, for a chat:error, replace with the server's FAILED copy of) the optimistic
       // prompt written above, even if the user has navigated away from this send.
@@ -1172,10 +1311,53 @@ export default function ConsultationChat({
       }
     } finally {
       if (startedConsultationId) stopSending(startedConsultationId);
+      if (sendAbortRef.current === abort) sendAbortRef.current = null;
+      setIsStopping(false);
+      setIsFinalizing(false);
       if (sendTokenRef.current === myToken) {
         setIsSending(false);
         setPendingUrlConsultationId(null);
       }
+    }
+  };
+
+  // The id of a turn that is generating but not owned by a doSend in THIS mount (a page reload
+  // mid-generation, or another tab): its user message is the trailing history entry, PENDING.
+  // An optimistic id means that message's own POST hasn't returned yet - nothing to stop by id.
+  const resumedStoppableMessageId =
+    isResumedGenerating && serverSaysPending && !isOptimisticMessageId(lastHistoryEntry?.id)
+      ? lastHistoryEntry?.id
+      : undefined;
+  const canStop = isSending ? sendAbortRef.current !== null : Boolean(resumedStoppableMessageId);
+
+  const handleStop = async () => {
+    if (isStopping || !canStop) return;
+    setIsStopping(true);
+
+    const abort = sendAbortRef.current;
+    if (isSending && abort) {
+      // This mount's own send: freeze the bubble at what has streamed so far right away, then
+      // ending the wait hands over to doSend's cancelled branch (API call, refetch, cleanup).
+      setPendingTurn((prev) => {
+        if (!prev || prev.key !== consultationKey) return prev;
+        const nextMessages = [...prev.messages];
+        const last = nextMessages[nextMessages.length - 1];
+        if (last?.role === "assistant") nextMessages[nextMessages.length - 1] = { ...last, stopped: true };
+        return { ...prev, messages: nextMessages };
+      });
+      abort.abort();
+      return;
+    }
+
+    try {
+      if (consultationId && resumedStoppableMessageId) {
+        await cancelChatGeneration(consultationId, resumedStoppableMessageId);
+        await queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId), refetchType: "all" });
+      }
+    } catch (error) {
+      console.error("Failed to stop generation:", error);
+    } finally {
+      setIsStopping(false);
     }
   };
 
@@ -1564,7 +1746,27 @@ export default function ConsultationChat({
                 />
               )}
 
-              {!isRecording && !transcribingId && (
+              {!isRecording && !transcribingId && (composerAction({ isBusy, isFinalizing }) === "stop" ? (
+                // While a reply is generating the composer's action becomes Stop, in the Send slot.
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void handleStop()}
+                      disabled={!canStop || isStopping}
+                      aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                    >
+                      {isStopping ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.stopGenerating", { defaultValue: "Stop generating" })}</TooltipContent>
+                </Tooltip>
+              ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -1578,7 +1780,7 @@ export default function ConsultationChat({
                   </TooltipTrigger>
                   <TooltipContent>{t("input.sendMessage")}</TooltipContent>
                 </Tooltip>
-              )}
+              ))}
             </>
           ) : (
             <>
@@ -1627,7 +1829,29 @@ export default function ConsultationChat({
                 />
               )}
 
-              {!isRecording && !transcribingId && (
+              {!isRecording && !transcribingId && (composerAction({ isBusy, isFinalizing }) === "stop" ? (
+                // While a reply is generating the composer's action becomes Stop - the same pill
+                // in the same slot, so it can't be missed or mis-clicked for Send.
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void handleStop()}
+                      disabled={!canStop || isStopping}
+                      aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
+                      className="order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                    >
+                      <span className="hidden sm:inline">{t("input.stopLabel", { defaultValue: "Stop" })}</span>
+                      {isStopping ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("input.stopGenerating", { defaultValue: "Stop generating" })}</TooltipContent>
+                </Tooltip>
+              ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -1645,7 +1869,7 @@ export default function ConsultationChat({
                   </TooltipTrigger>
                   <TooltipContent>{t("input.sendMessage")}</TooltipContent>
                 </Tooltip>
-              )}
+              ))}
             </>
           )}
         </div>
@@ -1891,7 +2115,7 @@ export default function ConsultationChat({
                   </div>
                   {chatInputBar}
                   {shouldShowSuggestedPrompts && suggestedPrompts.length > 0 && (
-                    <div className="hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
+                    <div className="relative z-10 hidden sm:flex flex-wrap items-center justify-center gap-2 max-w-3xl px-2">
                       {suggestedPrompts.map((prompt) => (
                         <button
                           key={prompt}
@@ -1901,7 +2125,7 @@ export default function ConsultationChat({
                           // past consultation title or a caller-provided emptyStatePrompts entry),
                           // so a long one must wrap inside the pill instead of forcing it wider
                           // than the viewport.
-                          className="max-w-full whitespace-normal break-words rounded-full border border-border px-4 py-2.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground hover:text-foreground"
+                          className="max-w-full cursor-pointer whitespace-normal break-words rounded-full border border-foreground/25 bg-card px-4 py-2.5 text-[13px] font-medium text-foreground shadow-sm transition-all hover:-translate-y-px hover:border-brand-gold hover:shadow-md dark:bg-white/[0.06] dark:border-white/25"
                         >
                           {prompt}
                         </button>
@@ -2009,6 +2233,8 @@ export default function ConsultationChat({
                  * covers embedded's "no consultation yet" case, now that isEmptyChatLanding
                  * excludes embedded — emptyStateHeading isn't dropped, just shown inline here
                  * instead of in the (non-embedded-only) centered landing above. */}
+                {showHistorySkeleton && <ChatHistorySkeleton />}
+
                 {visibleMessages.length === 0 && !historyLoading && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
@@ -2020,18 +2246,27 @@ export default function ConsultationChat({
                 {visibleMessages.map((m, i) => {
                   if (m.role === "user") {
                     return (
-                      <div key={i} className="flex flex-col items-end gap-2">
-                        {m.attachments && m.attachments.length > 0 && (
-                          <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} />
-                        )}
-                        {m.content && (
-                          <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
-                            embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
-                          }`}>
-                            {m.content}
+                      <React.Fragment key={i}>
+                        <div className="flex flex-col items-end gap-2">
+                          {m.attachments && m.attachments.length > 0 && (
+                            <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
+                          )}
+                          {m.content && (
+                            <div className={`max-w-[80%] rounded-[18px_18px_4px_18px] border border-border bg-muted font-['Inter'] whitespace-pre-wrap break-words text-foreground ${
+                              embedded ? "px-3 py-2 text-[13px] leading-5" : "px-4 py-3 text-[15px] leading-6"
+                            }`}>
+                              {m.content}
+                            </div>
+                          )}
+                        </div>
+                        {/* Stopped before a single word streamed: no assistant message exists to
+                            carry the notice, so it sits right under the prompt instead. */}
+                        {m.replyStopped && (
+                          <div className={embedded ? "px-1" : "px-4"}>
+                            <StoppedNotice label={t("message.stopped", { defaultValue: "Response stopped" })} compact={embedded} />
                           </div>
                         )}
-                      </div>
+                      </React.Fragment>
                     );
                   }
 
@@ -2044,6 +2279,11 @@ export default function ConsultationChat({
                   const isStreamingThis =
                     ((isPendingTurnActive && (isSending || isGeneratingElsewhere)) || isResumedGenerating) && i === visibleMessages.length - 1;
                   const isLastMessage = i === visibleMessages.length - 1;
+                  const holdAnswer = shouldHoldAnswer({
+                    isStreaming: isStreamingThis,
+                    stopped: Boolean(m.stopped),
+                    revealed: revealHeldAnswer,
+                  });
 
                   // Sibling topic bubbles of one split answer (see MessageGroup) sit right next
                   // to each other in visibleMessages — pull the continuation ones up closer than
@@ -2067,12 +2307,23 @@ export default function ConsultationChat({
                       id={chatInstanceId ? `${chatInstanceId}-chat-msg-${i}` : `chat-msg-${i}`}
                       className={`w-full rounded-2xl ${embedded ? "px-1 py-1 text-foreground" : "px-4 py-3"} ${isGroupContinuation ? "-mt-3" : ""}`}
                     >
-                      {isStreamingThis && !m.content ? (
-                        m.researchSteps && m.researchSteps.length > 0 ? (
-                          <ResearchTraceList steps={m.researchSteps} />
-                        ) : (
-                          <ThinkingIndicator label={t("thinking")} />
-                        )
+                      {m.stopped && !m.content ? (
+                        <StoppedNotice label={t("message.stopped", { defaultValue: "Response stopped" })} compact={embedded} />
+                      ) : isStreamingThis && (!m.content || holdAnswer) ? (
+                        // Before any text: the research trace, or the thinking indicator. Once the
+                        // answer text is here but held (see holdAnswer), the trace stays and the
+                        // indicator switches to "finalizing" so the wait reads as work still in
+                        // progress, not stuck - the answer, its confidence and its "why this
+                        // answer" explanation then all appear together once holdAnswer clears,
+                        // instead of the answer showing first and the rest popping in after.
+                        <>
+                          {m.researchSteps && m.researchSteps.length > 0 && <ResearchTraceList steps={m.researchSteps} />}
+                          {(!(m.researchSteps && m.researchSteps.length > 0) || holdAnswer) && (
+                            <div className={m.researchSteps && m.researchSteps.length > 0 ? "mt-3" : undefined}>
+                              <ThinkingIndicator label={holdAnswer && m.content ? t("thinkingFinalizing") : t("thinking")} />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <>
                           {!embedded && !isGroupContinuation && (
@@ -2133,6 +2384,17 @@ export default function ConsultationChat({
                                 failedLabel={t("message.copyFailed", { defaultValue: "Couldn't copy" })}
                                 compact={embedded}
                               />
+                            </div>
+                          )}
+                          {m.stopped && (
+                            <StoppedNotice label={t("message.stopped", { defaultValue: "Response stopped" })} compact={embedded} />
+                          )}
+                          {/* The answer above is complete; the analysis around it (sources, reasoning,
+                              decisions) is still being finished and saved, so Send stays disabled. */}
+                          {isLastMessage && isSending && isFinalizing && (
+                            <div role="status" className={`mt-2 flex items-center gap-1.5 text-muted-foreground ${embedded ? "text-[11px]" : "text-[12px]"}`}>
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                              <span>{t("message.finalizing", { defaultValue: "Finishing analysis…" })}</span>
                             </div>
                           )}
                         </>

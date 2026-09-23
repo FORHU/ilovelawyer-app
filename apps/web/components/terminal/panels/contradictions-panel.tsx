@@ -53,50 +53,46 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
       </button>
       <MutationError show={scan.isError} />
 
-      {contradictions.length === 0 ? (
-        <EmptyNote>{t("noContradictions")}</EmptyNote>
-      ) : (
-        <div>
-          <SectionLabel>{t("contradictions")}</SectionLabel>
-          <PanelRowList>
-            {contradictions.map((edge) => {
-              const metadata = edge.metadata as {
-                kind: string
-                factKey: string
-                leftValue: string
-                rightValue: string
-                leftExcerpt: string
-                rightExcerpt: string
-              }
-              return (
-                <PanelRow key={edge.id} className="flex-col items-start gap-1.5">
-                  <div className="flex w-full items-center gap-2">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-riskmed" aria-hidden="true" />
-                    <p className="min-w-0 flex-1 font-mono text-[12px] text-riskmed">
-                      {contradictionHeadline(metadata)}
-                    </p>
-                    {/* Substitutes the mock's fabricated "Direct/Inferential" tag with the real
-                     * contradiction-kind field instead of inventing a classification. */}
-                    <Badge tone="neutral" shape="pill">
-                      {metadata.kind}
-                    </Badge>
-                  </div>
-                  {metadata.leftExcerpt ? (
-                    <p className="text-[12px] leading-5 text-foreground/80">
-                      “{metadata.leftExcerpt}”
-                    </p>
-                  ) : null}
-                  {metadata.rightExcerpt ? (
-                    <p className="text-[12px] leading-5 text-muted-foreground">
-                      “{metadata.rightExcerpt}”
-                    </p>
-                  ) : null}
-                </PanelRow>
-              )
-            })}
-          </PanelRowList>
-        </div>
-      )}
+      <div>
+        <SectionLabel>{t("contradictions")}</SectionLabel>
+        <PanelRowList empty={<EmptyNote>{t("noContradictions")}</EmptyNote>}>
+          {contradictions.map((edge) => {
+            const metadata = edge.metadata as {
+              kind: string
+              factKey: string
+              leftValue: string
+              rightValue: string
+              leftExcerpt: string
+              rightExcerpt: string
+            }
+            return (
+              <PanelRow key={edge.id} className="flex-col items-start gap-1.5">
+                <div className="flex w-full items-center gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-riskmed" aria-hidden="true" />
+                  <p className="min-w-0 flex-1 font-mono text-[13px] text-riskmed">
+                    {contradictionHeadline(metadata)}
+                  </p>
+                  {/* Substitutes the mock's fabricated "Direct/Inferential" tag with the real
+                   * contradiction-kind field instead of inventing a classification. */}
+                  <Badge tone="neutral" shape="pill">
+                    {metadata.kind}
+                  </Badge>
+                </div>
+                {metadata.leftExcerpt ? (
+                  <p className="text-[13px] leading-5 text-foreground/80">
+                    “{metadata.leftExcerpt}”
+                  </p>
+                ) : null}
+                {metadata.rightExcerpt ? (
+                  <p className="text-[13px] leading-5 text-muted-foreground">
+                    “{metadata.rightExcerpt}”
+                  </p>
+                ) : null}
+              </PanelRow>
+            )
+          })}
+        </PanelRowList>
+      </div>
     </PanelBody>
   )
 }

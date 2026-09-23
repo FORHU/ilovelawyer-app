@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search } from "lucide-react";
+import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search, Play } from "lucide-react";
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { MindMap } from "@/components/chat/mind-map";
@@ -11,7 +11,7 @@ import { DocumentFolderBrowser } from "@/components/cases/document-folder-browse
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
-import { AudioOverviewMiniPlayer, AudioOverviewPlayerBar } from "@/components/audio-overview-player";
+import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
@@ -76,6 +76,11 @@ interface StudioPanelProps {
    * (never shrinks one the user already dragged past it), and the result stays a normal
    * user-draggable width afterwards. */
   onOpenMindMap?: () => void;
+  /** Same auto-widen-once pattern as onOpenMindMap, for Data Table's 3-column layout — Type
+   * and Detail auto-size to their own (short) content regardless of panel width (see the
+   * table below), so this isn't needed to keep them legible; it's purely so Label's full
+   * paragraph text gets more breathing room to wrap into, rather than a tall, narrow column. */
+  onOpenDataTable?: () => void;
   /** Mind Map needs a consultation to send its generation prompt into. When none is active yet,
    * handleGenerateMindMap creates one on demand (same pattern as ConsultationChat's own
    * ensureConsultationId) and reports the new id back up here so case-workspace.tsx can put it
@@ -105,7 +110,7 @@ interface StudioPanelProps {
  * something to generate/refresh, so its tile opens the detail view directly — the same
  * DocumentFolderBrowser this used to render in the (now Related-Cases-only) Sources panel,
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
-export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
+export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onOpenDataTable, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
@@ -125,6 +130,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const caseDocumentsQuery = useCaseDocumentsQuery(caseId);
   const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
   const documentCount = caseDocumentsQuery.data?.length ?? 0;
+  // Timeline and Data Table are populated from document analysis — nothing to show (or refresh)
+  // until at least one document exists.
+  const noDocuments = documentCount === 0;
   const indexingDocumentCount = caseDocumentsQuery.data?.filter((doc) => doc.ragStatus === "PENDING").length ?? 0;
   const documentsNote =
     documentCount === 0
@@ -185,6 +193,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // background the moment a consultation exists — see the auto-generate effect below — and the
   // collapsed tile itself can show a "Generating…" spinner before the user ever opens it.
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
+  // Decisions, Mind Map and Audio Overview are all derived from the conversation — hidden until
+  // the lawyer has sent a first prompt, so there's nothing to open that would just be empty.
+  const hasPrompt = (history?.length ?? 0) > 0;
   const activeMindMap = useMemo(
     () => getActiveMindMap((history ?? []).map((m) => ({ mindMap: m.mindMap?.data }))),
     [history],
@@ -226,6 +237,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     setOpenTile(kind);
     if (!expanded) onExpandedChange(true);
     if (kind === "mindmap") onOpenMindMap?.();
+    if (kind === "dataTable") onOpenDataTable?.();
+    if (kind === "audioOverview") restorePlayerBar();
   };
 
   const createConsultation = useCreateConsultationMutation();
@@ -270,6 +283,21 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // consultation-chat.tsx for why: every case was showing the same generic strategy outline
   // without the lawyer having asked for it). The CTA buttons below are the only trigger now.
 
+  // The Audio Overview lives on a consultation's messages, but the active consultation is only the
+  // `?c=` URL param — leaving the case and coming back (or opening it fresh) drops it, so the
+  // generated overview looked lost and had to be regenerated. Remember which consultation last
+  // held this case's overview and fall back to it when the URL has none.
+  const audioConsultationKey = `audio-overview-consultation:${caseId}`;
+  const [storedAudioConsultationId, setStoredAudioConsultationId] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setStoredAudioConsultationId(localStorage.getItem(audioConsultationKey));
+    } catch {
+      setStoredAudioConsultationId(null);
+    }
+  }, [audioConsultationKey]);
+  const audioConsultationId = consultationId ?? storedAudioConsultationId;
+
   // Script generation → Polly render polling → playable URL — shared with the Legal
   // Terminal's Audio Overview panel via useAudioOverview (lib/chat/use-audio-overview.ts).
   const {
@@ -282,8 +310,16 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     renderedAudioUrl,
     regenerateAudio: handleGenerateAudioOverviewAudio,
     isGeneratingAudio: generateAudioOverviewAudioPending,
-  } = useAudioOverview(consultationId, caseId);
+  } = useAudioOverview(audioConsultationId, caseId);
   const audioOverviewMessageId = activeAudioOverviewMessage?.id;
+  useEffect(() => {
+    if (!audioConsultationId || !activeAudioOverviewMessage) return;
+    try {
+      localStorage.setItem(audioConsultationKey, audioConsultationId);
+    } catch {
+      // storage unavailable — fallback just won't survive a reload
+    }
+  }, [audioConsultationId, activeAudioOverviewMessage, audioConsultationKey]);
   const audioOverviewStatusLabel =
     isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending
       ? isGeneratingAudioOverview
@@ -298,13 +334,22 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     playbackDuration,
     playbackRate,
     playerBarDismissed,
-    setPlayerBarDismissed,
+    dismissPlayerBar,
+    restorePlayerBar,
     togglePlayback: toggleAudioOverviewPlayback,
     seek: seekAudioOverview,
     skip: skipAudioOverview,
     cycleRate: cycleAudioOverviewRate,
     formatDuration,
   } = useAudioOverviewPlayer(renderedAudioUrl, audioOverviewMessageId);
+
+  // Playback belongs to the Audio Overview view only — leaving it (back arrow, another tile, or
+  // collapsing the panel) stops the audio rather than leaving a hidden player running.
+  const inAudioOverview = expanded && openTile === "audioOverview";
+  useEffect(() => {
+    if (!inAudioOverview) dismissPlayerBar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inAudioOverview]);
 
   const tileLabel =
     openTile === "documents"
@@ -338,7 +383,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         }`}
       >
         {expanded && (
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
             {openTile && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -385,6 +430,46 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <TooltipContent side="left">{t("workspace.mindMapRegenerateCta")}</TooltipContent>
           </Tooltip>
         )}
+        {expanded && openTile === "audioOverview" && audioConsultationId && activeAudioOverviewMessage && (
+          <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => void handleGenerateAudioOverviewScript()}
+                disabled={!session || isGeneratingAudioOverview}
+                aria-label={t("workspace.audioOverviewGenerateCta")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+              >
+                {isGeneratingAudioOverview ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t("workspace.audioOverviewGenerateCta")}</TooltipContent>
+          </Tooltip>
+          {renderedAudioUrl && playerBarDismissed && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    restorePlayerBar();
+                    toggleAudioOverviewPlayback();
+                  }}
+                  aria-label={t("workspace.audioOverviewTile")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-brand-gold transition-colors hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left">{t("workspace.audioOverviewTile")}</TooltipContent>
+            </Tooltip>
+          )}
+          </div>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -427,18 +512,18 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             />
             {/* Same "already-there data, open directly" shape as Documents above — Decision
              * Records are produced automatically per legal chat turn, nothing to generate here. */}
-            <StudioTile
+            {hasPrompt && (<StudioTile
               icon={Scale}
               label={t("workspace.decisionsTile")}
               note={latestDecisionRecords ? t("workspace.decisionsNoteCount", { count: latestDecisionRecords.length }) : undefined}
               expanded={expanded}
               onClick={() => openStudioTile("decisions")}
-            />
+            />)}
             {/* Triggers a (re)generation in place — it does not open the detail view. Once
              * something exists (or is generating), the result row below is what opens it; this
              * tile is purely the "make/remake one" action, same as the header's regenerate
              * button when the detail view happens to already be open. */}
-            <StudioTile
+            {hasPrompt && (<StudioTile
               icon={isGenerating ? Loader2 : Workflow}
               iconSpinning={isGenerating}
               label={isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
@@ -446,7 +531,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               expanded={expanded}
               disabled={isGenerating}
               onClick={() => void handleGenerateMindMap()}
-            />
+            />)}
             {/* Same idea as the Mind Map tile above: triggers a refetch in place rather than
              * opening the view. Timeline has no "generate" step (it's live case data, not an
              * AI artifact), so "refresh" is this tile's equivalent action. */}
@@ -462,8 +547,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     : undefined
               }
               expanded={expanded}
-              disabled={timelineQuery.isFetching}
-              onClick={() => void timelineQuery.refetch()}
+              disabled={noDocuments}
+              disabledHint={t("workspace.needsDocumentsHint")}
+              onClick={() => {
+                void timelineQuery.refetch();
+                openStudioTile("timeline");
+              }}
             />
             {/* Same pattern again: Witnesses/Damages/Deadlines/Findings are lawyer-entered or
              * Refresh-Analysis-populated data, not something to generate on click — so this tile
@@ -480,20 +569,26 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     : undefined
               }
               expanded={expanded}
-              disabled={snapshotQuery.isFetching}
-              onClick={() => void snapshotQuery.refetch()}
+              disabled={noDocuments}
+              disabledHint={t("workspace.needsDocumentsHint")}
+              onClick={() => {
+                void snapshotQuery.refetch();
+                openStudioTile("dataTable");
+              }}
             />
             {/* Same tile/result-row split as Mind Map, but deliberately no auto-generate-on-mount
              * effect — see activeAudioOverviewMessage's comment above for why. */}
-            <StudioTile
+            {(hasPrompt || activeAudioOverviewMessage) && (<StudioTile
               icon={isGeneratingAudioOverview ? Loader2 : AudioLines}
               iconSpinning={isGeneratingAudioOverview}
               label={isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewTile")}
               note={isGeneratingAudioOverview ? undefined : audioOverviewStatusLabel || undefined}
               expanded={expanded}
               disabled={isGeneratingAudioOverview}
-              onClick={() => void handleGenerateAudioOverviewScript()}
-            />
+              onClick={() =>
+                activeAudioOverviewMessage ? openStudioTile("audioOverview") : void handleGenerateAudioOverviewScript()
+              }
+            />)}
             {/* Same pattern as Documents above: opens the inline detail view directly rather
              * than generating in place first — CaseBriefContent handles generating the preview
              * once opened. */}
@@ -514,7 +609,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               timelineQuery.isFetching ||
               dataTableRows.length > 0 ||
               snapshotQuery.isFetching ||
-              (consultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
+              (audioConsultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
               <div className="flex flex-col gap-1.5 border-t border-border pt-3">
                 <span className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
                   {t("workspace.results")}
@@ -528,7 +623,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("mindmap")}
                   />
                 )}
-                {(timelineEventCount > 0 || timelineQuery.isFetching) && (
+                {!noDocuments && (timelineEventCount > 0 || timelineQuery.isFetching) && (
                   <ResultRow
                     icon={timelineQuery.isFetching ? Loader2 : Clock}
                     iconSpinning={timelineQuery.isFetching}
@@ -541,7 +636,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("timeline")}
                   />
                 )}
-                {(dataTableRows.length > 0 || snapshotQuery.isFetching) && (
+                {!noDocuments && (dataTableRows.length > 0 || snapshotQuery.isFetching) && (
                   <ResultRow
                     icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
                     iconSpinning={snapshotQuery.isFetching}
@@ -554,27 +649,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     onClick={() => openStudioTile("dataTable")}
                   />
                 )}
-                {consultationId &&
-                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending || activeAudioOverviewMessage) &&
-                  (renderedAudioUrl ? (
-                    <AudioOverviewMiniPlayer
-                      title={t("workspace.audioOverviewTile")}
-                      isPlaying={isPlaying}
-                      currentTime={playbackTime}
-                      duration={playbackDuration}
-                      onTogglePlay={toggleAudioOverviewPlayback}
-                      onOpen={() => openStudioTile("audioOverview")}
-                      formatDuration={formatDuration}
-                    />
-                  ) : (
-                    <ResultRow
-                      icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending ? Loader2 : AudioLines}
-                      iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending}
-                      title={t("workspace.audioOverviewTile")}
-                      subtitle={audioOverviewStatusLabel}
-                      onClick={() => openStudioTile("audioOverview")}
-                    />
-                  ))}
+                {audioConsultationId &&
+                  (isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending || activeAudioOverviewMessage) && (
+                  <ResultRow
+                    icon={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending ? Loader2 : AudioLines}
+                    iconSpinning={isGeneratingAudioOverview || audioRendering || generateAudioOverviewAudioPending}
+                    title={t("workspace.audioOverviewTile")}
+                    subtitle={audioOverviewStatusLabel}
+                    onClick={() => openStudioTile("audioOverview")}
+                  />)}
               </div>
             )}
         </div>
@@ -674,20 +757,31 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "dataTable" ? (
             dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">
+                {/* Type and Detail hold short labels ("Weakness", "AI-generated") — Label holds
+                 * a full paragraph. Giving all three equal footing (the previous `w-full` +
+                 * min-width-floor version) meant Label's long content pushed Type and Detail
+                 * down to a sliver regardless of how wide the table was allowed to get. `w-1` +
+                 * `whitespace-nowrap` on the narrow columns is the standard plain-<table> trick
+                 * for the opposite: with nothing constraining their width, table-layout:auto
+                 * sizes each column to its own content, so a non-wrapping column's "natural"
+                 * width is just its longest cell — short and predictable here — and Label (left
+                 * unconstrained) absorbs whatever space is left over and wraps normally. No
+                 * table-wide min-width needed; overflow-x-auto above still catches the rare
+                 * genuinely-long Type/Detail value instead of crushing it. */}
                 <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-2 pr-3">{t("workspace.dataTableColType")}</th>
+                      <th className="w-1 py-2 pr-3 whitespace-nowrap">{t("workspace.dataTableColType")}</th>
                       <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
-                      <th className="py-2">{t("workspace.dataTableColDetail")}</th>
+                      <th className="w-1 py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dataTableRows.map((row, i) => (
                       <tr key={i} className="border-b border-border/60 last:border-0">
-                        <td className="py-2 pr-3 align-top text-muted-foreground">{row.type}</td>
+                        <td className="py-2 pr-3 align-top whitespace-nowrap text-muted-foreground">{row.type}</td>
                         <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
-                        <td className="py-2 align-top text-muted-foreground">{row.detail}</td>
+                        <td className="py-2 align-top whitespace-nowrap text-muted-foreground">{row.detail}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -698,7 +792,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 {t("workspace.dataTableEmpty")}
               </p>
             )
-          ) : consultationId ? (
+          ) : audioConsultationId ? (
             activeAudioOverviewMessage ? (
               <div className="flex h-full flex-col gap-3">
                 {audioRenderError && (
@@ -769,7 +863,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         </div>
       )}
 
-      {expanded && renderedAudioUrl && !playerBarDismissed && (
+      {expanded && openTile === "audioOverview" && renderedAudioUrl && !playerBarDismissed && (
         <AudioOverviewPlayerBar
           title={t("workspace.audioOverviewTile")}
           isPlaying={isPlaying}
@@ -780,7 +874,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onSeek={seekAudioOverview}
           onSkip={skipAudioOverview}
           onCycleRate={cycleAudioOverviewRate}
-          onClose={() => setPlayerBarDismissed(true)}
+          onClose={dismissPlayerBar}
           formatDuration={formatDuration}
         />
       )}

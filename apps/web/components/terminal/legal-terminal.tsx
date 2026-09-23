@@ -38,6 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
+import { Pane } from "@/components/terminal/panel-kit"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import {
@@ -60,6 +61,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
+import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
@@ -115,6 +117,10 @@ const COLUMN_COUNT_OPTIONS = [2, 3, 4]
 // How many panes a single column can stack before it's "full" and adding another pane
 // requires replacing one instead.
 const MAX_PANES_PER_COLUMN = 3
+// Hard ceiling on visible panes regardless of arrangement mode — Free/Tabs/Focus had no cap
+// at all before this, letting the board cascade into an unusable stack of overlapping panes
+// (see #297). Applies on top of (not instead of) Columns' own per-column cap above.
+const MAX_PANES = 10
 
 const MIN_FR = 0.18
 const PANE_GAP_PX = 6
@@ -225,6 +231,11 @@ function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): Wor
 
 export default function LegalTerminal({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
+  // Joined once here, at the Terminal's root — every useAiJobStatus(caseId, kind) call below
+  // (and any panel that adds one later) shares this single case:<caseId> room membership rather
+  // than each subscribing independently. See useCaseRoom's doc comment for why AI generation
+  // jobs need a case-wide room instead of the per-user one the socket already joins on connect.
+  useCaseRoom(caseId)
   const catalog = useTerminalCatalogQuery()
   const workspaces = useTerminalWorkspacesQuery(caseId)
   const snapshot = useCaseSnapshotQuery(caseId)
@@ -503,11 +514,28 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const setTabsActiveA = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveA: id } : prev))
   const setTabsActiveB = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveB: id } : prev))
 
+  // Every entry point that can bring a NEW pane onto the board (sidebar add/drag, or a drop
+  // onto the Free canvas / a Tabs or Focus slot) must check this first — showPanelAt itself
+  // can't own the check since replacePaneInColumns also calls it to finish a swap, where the
+  // outgoing pane's hidePanel() hasn't flushed to `visiblePanels` yet and would look like it's
+  // still occupying a slot. Opens the same replace picker Columns mode already uses instead of
+  // silently doing nothing, so hitting the cap always gives the user a way forward. Returns
+  // true when the add was blocked.
+  const blockIfOverPaneLimit = (id: PanelId): boolean => {
+    const alreadyVisible = visiblePanels.some((p) => p.id === id)
+    if (!alreadyVisible && visiblePanels.length >= MAX_PANES) {
+      setReplaceTarget(id)
+      return true
+    }
+    return false
+  }
+
   // Adding a pane goes through the ordinary cascade placement in every mode except Columns,
   // where it either auto-joins the least-full column or — if every column is already at
   // MAX_PANES_PER_COLUMN — opens the replace picker instead of silently growing past the grid.
   const requestAddPanel = (id: PanelId) => {
     if (!layout) return
+    if (blockIfOverPaneLimit(id)) return
     if (arrangement !== "columns") {
       showPanelAt(id)
       return
@@ -846,15 +874,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setNewLayoutName("")
   }
 
-  // Resets the CURRENT tab's contents back to the default arrangement, in place — previously
-  // this called the backend's /workspaces/reset endpoint, which always *creates* a new
-  // "Default {preset}" row, so every click piled up another duplicate tab instead of resetting
-  // the one you were looking at.
+  // Resets the CURRENT tab's contents back to empty, in place — previously this called the
+  // backend's /workspaces/reset endpoint, which always *creates* a new "Default {preset}" row,
+  // so every click piled up another duplicate tab instead of resetting the one you were
+  // looking at. Resets to an EMPTY board rather than re-applying catalog.data.defaultPreset
+  // (see #303) — the user picks what to add back via the panel library, same as a brand-new
+  // workspace with no saved layout yet.
   const resetCurrentWorkspace = () => {
     if (!catalog.data || !selectedWorkspaceId) return
     setMaximizedId(null)
     const preset = catalog.data.defaultPreset
-    const fallback: WorkspaceLayout = {
+    const emptyLayout: WorkspaceLayout = {
       preset,
       arrangement: "free",
       panels: catalog.data.panels.map((panel, index) => ({
@@ -865,10 +895,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         height: 1,
       })),
     }
-    const defaultLayout = applyPreset(fallback, preset, catalog.data.panels.filter((p) => p.available).map((p) => p.id))
-    lastSavedLayoutRef.current = JSON.stringify(defaultLayout)
-    setLayout(defaultLayout)
-    updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: defaultLayout })
+    lastSavedLayoutRef.current = JSON.stringify(emptyLayout)
+    setLayout(emptyLayout)
+    updateWorkspace.mutate({ id: selectedWorkspaceId, preset, layoutJson: emptyLayout })
   }
 
   // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
@@ -1204,6 +1233,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 e.preventDefault()
                 const id = e.dataTransfer.getData("text/x-panel-id") as PanelId
                 if (!id) return
+                if (blockIfOverPaneLimit(id)) {
+                  setDragPreview(null)
+                  return
+                }
                 const bounds = e.currentTarget.getBoundingClientRect()
                 const width = 0.32
                 const height = 0.32
@@ -1233,14 +1266,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 const isDragging = draggingId === panel.id
                 const isPinned = !!panel.pinned
                 return (
-                  <div
+                  <Pane
                     key={panel.id}
-                    data-panel-id={panel.id}
-                    data-flip-id={panel.id}
+                    panelId={panel.id}
+                    flipId={panel.id}
+                    pinned={isPinned}
                     data-panel-labels={panelLabels ? "on" : "off"}
-                    className={`terminal-pane absolute flex min-h-0 min-w-0 flex-col contain-layout rounded-lg border bg-card ${
-                      isPinned ? "border-brand-gold/60" : "border-border"
-                    } ${isDragging ? "shadow-lg ring-1 ring-brand-gold/50" : ""}`}
+                    className={`terminal-pane absolute contain-layout ${isDragging ? "shadow-xl ring-brand-gold/50" : ""}`}
                     style={{
                       left: `calc(${rect.x * 100}% + ${PANE_GAP_PX}px)`,
                       top: `calc(${rect.y * 100}% + ${PANE_GAP_PX}px)`,
@@ -1249,63 +1281,67 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       zIndex: isDragging ? 80 : panel.order + 1,
                     }}
                     onPointerDown={() => bringToFront(panel.id)}
+                    header={
+                      <div
+                        role={isPinned ? undefined : "button"}
+                        tabIndex={isPinned ? undefined : 0}
+                        aria-label={isPinned ? undefined : t("dragHint")}
+                        onPointerDown={isPinned ? undefined : (e) => onHeaderPointerDown(panel, e)}
+                        onPointerMove={isPinned ? undefined : onHeaderPointerMove}
+                        onPointerUp={isPinned ? undefined : onHeaderPointerUp}
+                        onPointerCancel={isPinned ? undefined : onHeaderPointerUp}
+                        onLostPointerCapture={isPinned ? undefined : onHeaderPointerUp}
+                        onKeyDown={isPinned ? undefined : (e) => onHeaderKeyDown(panel, e)}
+                        className={`terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset ${
+                          isPinned ? "" : "cursor-grab active:cursor-grabbing"
+                        }`}
+                        title={isPinned ? t("pinnedHint") : t("dragHint")}
+                      >
+                        <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                          {label}
+                        </span>
+                        <PaneHeaderActions
+                          t={t}
+                          isMaximized={false}
+                          onToggleMaximize={() => toggleMaximize(panel.id)}
+                          onHide={() => hidePanel(panel.id)}
+                          onPopOut={() => popOutPanel(panel.id)}
+                          pinned={isPinned}
+                          onTogglePin={() => patchPanel(panel.id, { pinned: !isPinned })}
+                        />
+                      </div>
+                    }
+                    resizeHandles={
+                      !isPinned && (
+                        <>
+                          <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "n")} t={t} />
+                          <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "s")} t={t} />
+                          <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                          <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                          <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                          <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                          <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
+                          <ResizeHandle
+                            edge={{ s: true, e: true }}
+                            className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
+                            panel={panel}
+                            onDown={onResizePointerDown}
+                            onMove={onResizePointerMove}
+                            onUp={onResizePointerUp}
+                            onKeyDown={onResizeKeyDown}
+                            t={t}
+                          >
+                            <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
+                          </ResizeHandle>
+                        </>
+                      )
+                    }
                   >
-                    <div
-                      role={isPinned ? undefined : "button"}
-                      tabIndex={isPinned ? undefined : 0}
-                      aria-label={isPinned ? undefined : t("dragHint")}
-                      onPointerDown={isPinned ? undefined : (e) => onHeaderPointerDown(panel, e)}
-                      onPointerMove={isPinned ? undefined : onHeaderPointerMove}
-                      onPointerUp={isPinned ? undefined : onHeaderPointerUp}
-                      onPointerCancel={isPinned ? undefined : onHeaderPointerUp}
-                      onLostPointerCapture={isPinned ? undefined : onHeaderPointerUp}
-                      onKeyDown={isPinned ? undefined : (e) => onHeaderKeyDown(panel, e)}
-                      className={`terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-inset ${
-                        isPinned ? "" : "cursor-grab active:cursor-grabbing"
-                      }`}
-                      title={isPinned ? t("pinnedHint") : t("dragHint")}
-                    >
-                      <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
-                        {label}
-                      </span>
-                      <PaneHeaderActions
-                        t={t}
-                        isMaximized={false}
-                        onToggleMaximize={() => toggleMaximize(panel.id)}
-                        onHide={() => hidePanel(panel.id)}
-                        onPopOut={() => popOutPanel(panel.id)}
-                        pinned={isPinned}
-                        onTogglePin={() => patchPanel(panel.id, { pinned: !isPinned })}
-                      />
-                    </div>
-                    <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
+                    <div className="min-h-0 flex-1 overflow-hidden bg-card">
                       <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot.data} onJumpToPanel={jumpToPanel} />
                     </div>
-                    {!isPinned && (
-                      <>
-                        <ResizeHandle edge={{ n: true }} className="absolute -top-1 left-3 right-3 z-20 h-2 cursor-n-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "n")} t={t} />
-                        <ResizeHandle edge={{ s: true }} className="absolute -bottom-1 left-3 right-3 z-20 h-2 cursor-s-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} onFitToContent={() => fitPaneHeightToContent(panel, "s")} t={t} />
-                        <ResizeHandle edge={{ e: true }} className="absolute -right-1 top-3 bottom-3 z-20 w-2 cursor-e-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle edge={{ w: true }} className="absolute -left-1 top-3 bottom-3 z-20 w-2 cursor-w-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle edge={{ n: true, w: true }} className="absolute -left-1 -top-1 z-30 h-3 w-3 cursor-nw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle edge={{ n: true, e: true }} className="absolute -right-1 -top-1 z-30 h-3 w-3 cursor-ne-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle edge={{ s: true, w: true }} className="absolute -bottom-1 -left-1 z-30 h-3 w-3 cursor-sw-resize" panel={panel} onDown={onResizePointerDown} onMove={onResizePointerMove} onUp={onResizePointerUp} onKeyDown={onResizeKeyDown} t={t} />
-                        <ResizeHandle
-                          edge={{ s: true, e: true }}
-                          className="absolute -bottom-0.5 -right-0.5 z-30 flex h-4 w-4 cursor-se-resize items-end justify-end p-0.5"
-                          panel={panel}
-                          onDown={onResizePointerDown}
-                          onMove={onResizePointerMove}
-                          onUp={onResizePointerUp}
-                          onKeyDown={onResizeKeyDown}
-                          t={t}
-                        >
-                          <span className="h-2 w-2 rounded-sm border-b-2 border-r-2 border-muted-foreground/70" aria-hidden="true" />
-                        </ResizeHandle>
-                      </>
-                    )}
-                  </div>
+                  </Pane>
                 )
               })}
             </div>
@@ -1349,7 +1385,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
-              onDrop={(id) => showPanelAt(id)}
+              onDrop={(id) => {
+                if (blockIfOverPaneLimit(id)) return
+                showPanelAt(id)
+              }}
               onDragPreview={updateDragPreview}
             />
           )}
@@ -1369,7 +1408,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               onPopOut={popOutPanel}
               onJumpToPanel={jumpToPanel}
               t={t}
-              onDrop={(id) => showPanelAt(id)}
+              onDrop={(id) => {
+                if (blockIfOverPaneLimit(id)) return
+                showPanelAt(id)
+              }}
               onDragPreview={updateDragPreview}
             />
           )}
@@ -2094,28 +2136,31 @@ function ColumnStack({
     <div ref={stackRef} className="flex min-h-0 flex-1 flex-col gap-1.5">
       {panels.map((panel, index) => (
         <div key={panel.id} className="relative flex min-h-0 min-w-0 flex-col" style={{ flex: `${heights[index]} 0 0%` }}>
-          <div
-            data-flip-id={panel.id}
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card ${panel.pinned ? "border-brand-gold/60" : "border-border"}`}
+          <Pane
+            flipId={panel.id}
+            pinned={!!panel.pinned}
+            className="relative min-h-0 flex-1"
+            header={
+              <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+                <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
+                  {labelFor(panel)}
+                </span>
+                <PaneHeaderActions
+                  t={t}
+                  isMaximized={false}
+                  onToggleMaximize={() => onToggleMaximize(panel.id)}
+                  onHide={() => onHide(panel.id)}
+                  onPopOut={() => onPopOut(panel.id)}
+                  pinned={!!panel.pinned}
+                  onTogglePin={() => onPatchPanel(panel.id, { pinned: !panel.pinned })}
+                />
+              </div>
+            }
           >
-            <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
-              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
-                {labelFor(panel)}
-              </span>
-              <PaneHeaderActions
-                t={t}
-                isMaximized={false}
-                onToggleMaximize={() => onToggleMaximize(panel.id)}
-                onHide={() => onHide(panel.id)}
-                onPopOut={() => onPopOut(panel.id)}
-                pinned={!!panel.pinned}
-                onTogglePin={() => onPatchPanel(panel.id, { pinned: !panel.pinned })}
-              />
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
+            <div className="min-h-0 flex-1 overflow-hidden bg-card">
               <TerminalPanelBody panelId={panel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
             </div>
-          </div>
+          </Pane>
           {index < panels.length - 1 && (
             <div
               role="separator"
@@ -2228,23 +2273,23 @@ function TabsArrangement({
         const activeId = actives[groupIndex] && group.some((p) => p.id === actives[groupIndex]) ? actives[groupIndex] : group[0]?.id
         const activePanel = group.find((p) => p.id === activeId)
         return (
-          <div
+          <Pane
             key={groupIndex}
             // Tabs has no single per-panel box the way Free/Columns/Focus do (the header is a
             // shared tab strip, only the active tab's body swaps) — this container stands in for
             // "the active panel's box" during an arrangement-switch Flip, closest available
             // analog. Inactive tabs in this group have no box at all and just fade in/out.
-            data-flip-id={activePanel?.id}
-            className="relative flex min-h-0 min-w-[200px] flex-col overflow-hidden rounded-lg border border-border bg-card"
+            flipId={activePanel?.id}
+            className="relative min-h-0 min-w-[200px]"
             style={{ flex: `${widths[groupIndex]} 0 0%` }}
             onDragOver={(e) => {
               e.preventDefault()
               onDragPreview?.(e)
             }}
             onDrop={(e) => onGroupDrop(groupIndex, e)}
-          >
-            <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
-              {group.map((panel) => {
+            header={
+              <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
+                {group.map((panel) => {
                 const active = panel.id === activePanel?.id
                 const isPinned = !!panel.pinned
                 return (
@@ -2290,49 +2335,53 @@ function TabsArrangement({
                     </button>
                   </div>
                 )
-              })}
-              {activePanel && (
-                <div className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
-                  <button
-                    type="button"
-                    onClick={() => onPopOut(activePanel.id)}
-                    className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                    aria-label={t("popOutPane")}
-                  >
-                    <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onToggleMaximize(activePanel.id)}
-                    className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                    aria-label={t("maximizePane")}
-                  >
-                    <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </div>
+                })}
+                {activePanel && (
+                  <div className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
+                    <button
+                      type="button"
+                      onClick={() => onPopOut(activePanel.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                      aria-label={t("popOutPane")}
+                    >
+                      <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onToggleMaximize(activePanel.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                      aria-label={t("maximizePane")}
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            }
+            resizeHandles={
+              groupIndex === 0 && (
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t("resizeTabGroups")}
+                  tabIndex={0}
+                  onPointerDown={onSplitDown}
+                  onPointerMove={onSplitMove}
+                  onPointerUp={onSplitUp}
+                  onPointerCancel={onSplitUp}
+                  onLostPointerCapture={onSplitUp}
+                  onKeyDown={onSplitKeyDown}
+                  className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
+                />
+              )
+            }
+          >
             <div className="min-h-0 flex-1 overflow-hidden bg-card">
               {activePanel && (
                 <AnimatedPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
               )}
             </div>
-            {groupIndex === 0 && (
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                aria-label={t("resizeTabGroups")}
-                tabIndex={0}
-                onPointerDown={onSplitDown}
-                onPointerMove={onSplitMove}
-                onPointerUp={onSplitUp}
-                onPointerCancel={onSplitUp}
-                onLostPointerCapture={onSplitUp}
-                onKeyDown={onSplitKeyDown}
-                className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
-              />
-            )}
-          </div>
+          </Pane>
         )
       })}
     </div>
@@ -2378,11 +2427,13 @@ function FocusArrangement({
       style={{ gridTemplateColumns: "minmax(280px,1.4fr) 260px minmax(260px,1fr)" }}
       {...dropHandlers(onDrop, onDragPreview)}
     >
-      <div data-flip-id={focusPanel?.id} className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-        {focusPanel && (
-          <>
-            <div className="terminal-pane-header flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
-              <span className="min-w-0 flex-1 truncate font-['Libre_Caslon_Text'] text-sm text-foreground">{labelFor(focusPanel)}</span>
+      <Pane
+        flipId={focusPanel?.id}
+        className="relative min-h-0"
+        header={
+          focusPanel && (
+            <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+              <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor(focusPanel)}</span>
               <PaneHeaderActions
                 t={t}
                 isMaximized={false}
@@ -2391,12 +2442,13 @@ function FocusArrangement({
                 onPopOut={() => onPopOut(focusPanel.id)}
               />
             </div>
-            <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              <AnimatedPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
-            </div>
-          </>
-        )}
-      </div>
+          )
+        }
+      >
+        <div className="min-h-0 flex-1 overflow-hidden bg-card">
+          {focusPanel && <AnimatedPanelBody panelId={focusPanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />}
+        </div>
+      </Pane>
       <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
         {stackRest.map((panel) => {
           const summary = stackSummaries[panel.id] ?? panelBadges[panel.id]
@@ -2405,7 +2457,7 @@ function FocusArrangement({
               key={panel.id}
               type="button"
               onClick={() => onFocus(panel.id)}
-              className="flex flex-col gap-1 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40"
+              className="flex flex-col gap-1 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40"
             >
               <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground">{labelFor(panel)}</span>
               {summary && <span className="line-clamp-2 text-[11px] leading-4 text-muted-foreground">{summary}</span>}
@@ -2413,26 +2465,31 @@ function FocusArrangement({
           )
         })}
       </div>
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-brand-gold/35 bg-card">
-        <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor({ id: "chat" })}</span>
-          {/* No pop-out here either — anchored means a permanent fixture (see the file doc
-              comment above): pop-out would hide it from the main grid, but this column ignores
-              visibility and always renders "chat" regardless, so the panel would stay put while
-              a redundant, confusing duplicate opened in a new window. */}
-          <button
-            type="button"
-            onClick={() => onToggleMaximize("chat")}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-            aria-label={t("maximizePane")}
-          >
-            <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </div>
+      <Pane
+        pinned
+        className="relative min-h-0"
+        header={
+          <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor({ id: "chat" })}</span>
+            {/* No pop-out here either — anchored means a permanent fixture (see the file doc
+                comment above): pop-out would hide it from the main grid, but this column ignores
+                visibility and always renders "chat" regardless, so the panel would stay put while
+                a redundant, confusing duplicate opened in a new window. */}
+            <button
+              type="button"
+              onClick={() => onToggleMaximize("chat")}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+              aria-label={t("maximizePane")}
+            >
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        }
+      >
         <div className="min-h-0 flex-1 overflow-hidden bg-card">
           <TerminalPanelBody panelId="chat" caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
         </div>
-      </div>
+      </Pane>
     </div>
   )
 }

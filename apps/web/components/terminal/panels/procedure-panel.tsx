@@ -156,7 +156,7 @@ export function ProcedurePanel({
   const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
 
   return (
-    <PanelBody gap="5">
+    <PanelBody gap="4">
       <div>
         <SectionLabel>{t("recommendedApproach")}</SectionLabel>
         {approachItems.length > 0 ? (
@@ -281,11 +281,8 @@ export function ProcedurePanel({
             </Badge>
           )}
         </div>
-        {snapshot.procedure.deadlines.length === 0 ? (
-          <EmptyNote>{t("computeDeadline")}</EmptyNote>
-        ) : (
-          <PanelRowList>
-            {snapshot.procedure.deadlines.map((deadline) => {
+        <PanelRowList empty={<EmptyNote>{t("computeDeadline")}</EmptyNote>}>
+          {snapshot.procedure.deadlines.map((deadline) => {
               const confirms = (deadline.confirmations ?? []).filter(
                 (c) => c.confirmed
               ).length
@@ -333,9 +330,8 @@ export function ProcedurePanel({
                   </div>
                 </PanelRow>
               )
-            })}
-          </PanelRowList>
-        )}
+          })}
+        </PanelRowList>
         <form
           className="mt-3 flex flex-col gap-2"
           onSubmit={(e) => {

@@ -39,6 +39,14 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
     }
   };
 
+  // Closing the bar is "stop listening" — hiding it alone left the hidden <audio> playing with no
+  // control left to pause it. Position is saved by onPause, so reopening resumes from here.
+  const dismissPlayerBar = () => {
+    audioRef.current?.pause();
+    setPlayerBarDismissed(true);
+  };
+  const restorePlayerBar = () => setPlayerBarDismissed(false);
+
   const togglePlayback = () => {
     const el = audioRef.current;
     if (!el) return;
@@ -124,7 +132,8 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
     playbackDuration,
     playbackRate,
     playerBarDismissed,
-    setPlayerBarDismissed,
+    dismissPlayerBar,
+    restorePlayerBar,
     togglePlayback,
     seek,
     skip,

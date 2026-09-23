@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  AlertCircle,
   AlertTriangle,
   Briefcase,
   Building2,
@@ -21,6 +20,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { ErrorState } from "@/components/error-state";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -60,6 +62,25 @@ function getInitials(value: string): string {
   return `${first[0]}${second[0]}`.toUpperCase();
 }
 
+// Mirrors a real member row (9x9 avatar circle + name/email 2-line + role
+// badge) so the swap to real rows doesn't jump layout.
+function MemberListSkeleton() {
+  return (
+    <div className="flex flex-col divide-y divide-border">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="px-6 md:px-8 py-4 flex items-center gap-4">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OrganizationPage() {
   const { t } = useTranslation("organization");
   const organization = useAuthStore((s) => s.organization);
@@ -67,6 +88,7 @@ export default function OrganizationPage() {
   const setOrganization = useAuthStore((s) => s.setOrganization);
 
   const membersQuery = useOrganizationMembersQuery(organization?.id ?? "");
+  const showMembersSkeleton = useDelayedLoading(membersQuery.isLoading);
   const inviteMutation = useInviteMemberMutation(organization?.id ?? "");
   const leaveMutation = useLeaveOrganizationMutation(organization?.id ?? "");
   const changeRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
@@ -670,25 +692,10 @@ export default function OrganizationPage() {
                 <p className="text-[13px] text-muted-foreground mt-0.5">{t("members.subheading")}</p>
               </div>
 
-              {membersQuery.isLoading ? (
-                <div className="px-6 md:px-8 py-8 flex items-center gap-2 text-muted-foreground text-[14px]">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  {t("members.loading")}
-                </div>
+              {showMembersSkeleton ? (
+                <MemberListSkeleton />
               ) : membersQuery.isError ? (
-                <div className="px-6 md:px-8 py-8 flex items-center justify-between gap-4 text-[14px]">
-                  <span className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                    <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                    {t("members.error")}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => membersQuery.refetch()}
-                    className="cursor-pointer text-[12px] font-semibold uppercase tracking-wider text-amber-600 dark:text-brand-gold hover:underline"
-                  >
-                    {t("members.retry")}
-                  </button>
-                </div>
+                <ErrorState message={t("members.error")} retryLabel={t("members.retry")} onRetry={() => membersQuery.refetch()} />
               ) : (
                 <div className="flex flex-col divide-y divide-border">
                   {membersQuery.data?.map((member) => (

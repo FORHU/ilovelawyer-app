@@ -247,30 +247,41 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
         </p>
       )}
 
-      {/* ── Body: document (left) + sections (right, each a card) ─────────── */}
-      <div
-        className={
-          hasPdf
-            ? "grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start"
-            : "flex flex-col"
-        }
-      >
-        {hasPdf && (
-          <div className="lg:sticky lg:top-20">
-            <section className="flex h-[75vh] flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:h-[calc(100vh-7rem)]">
-              <h2 className="px-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                {t("lawDoc.document")}
-              </h2>
-              <div className="min-h-0 flex-1">
-                <LawPdfViewer url={pdfSrc!} sourceUrl={pdfSourceLink} />
-              </div>
-            </section>
+      {/* ── Body: sections (above, in a card grid) + document (below, full width) ──
+       * Used to sit side by side sharing the row's width with the document; moved to a
+       * stacked layout instead so the document (the thing people actually came to read) gets
+       * the page's full width rather than splitting it with a sidebar. */}
+      {hasPdf ? (
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {sections}
+            {detail.keywords.length > 0 && (
+              <Card label={t("lawDoc.keywords")}>
+                <div className="flex flex-wrap gap-1.5">
+                  {detail.keywords.map((k) => (
+                    <span
+                      key={k}
+                      className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
-        )}
 
-        <div
-          className={`flex flex-col gap-4 ${hasPdf ? "" : "mx-auto w-full max-w-3xl"}`}
-        >
+          <section className="flex h-[75vh] flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:h-[calc(100vh-7rem)]">
+            <h2 className="px-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              {t("lawDoc.document")}
+            </h2>
+            <div className="min-h-0 flex-1">
+              <LawPdfViewer url={pdfSrc!} sourceUrl={pdfSourceLink} />
+            </div>
+          </section>
+        </div>
+      ) : (
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           {sections}
           {detail.keywords.length > 0 && (
             <Card label={t("lawDoc.keywords")}>
@@ -287,7 +298,7 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
             </Card>
           )}
         </div>
-      </div>
+      )}
 
       <p className="border-t border-border pt-4 text-xs text-muted-foreground">
         {doc.notice}

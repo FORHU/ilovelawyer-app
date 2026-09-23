@@ -1,7 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { notificationKeys, chatKeys } from "@/lib/query-keys"
+import { notificationKeys, chatKeys, caseKeys } from "@/lib/query-keys"
+import { registerDocumentSocketHandlers } from "@/lib/cases/document-socket"
+import { terminalKeys } from "@/lib/terminal/mutations"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { Consultation } from "@/lib/chat/mutations"
@@ -66,6 +68,9 @@ export function useNotificationsQuery(options?: { limit?: number; enabled?: bool
  * `invalidateQueries`'s default `refetchType: "active"` means only currently-mounted queries
  * actually refetch, so this is a no-op for any consultation nobody's looking at.
  *
+ * `document:started/ready/failed/retrying` (Case Document extraction queue) patch the cached
+ * document lists in place — see registerDocumentSocketHandlers in lib/cases/document-socket.ts.
+ *
  * `chat:title-updated` patches every cached consultations list directly (same reasoning as
  * `notification:new` below) — title generation usually finishes in 1-2s, well before the AI
  * reply itself, so waiting for the end-of-turn refetch to show it made the sidebar/header title
@@ -84,6 +89,17 @@ export function useNotificationSocket() {
     const handleConnect = () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all })
       queryClient.invalidateQueries({ queryKey: chatKeys.all })
+      // Same "gap in the connection" reasoning for document:* events (see document-socket.ts):
+      // chatKeys.all above already covers a consultation's documents; case document lists and
+      // the Terminal snapshot (which embeds each document's ragStatus) need their own.
+      queryClient.invalidateQueries({ queryKey: caseKeys.timelines() })
+      queryClient.invalidateQueries({ queryKey: [...terminalKeys.all, "snapshot"] })
+      // useAiJobStatus has NO polling at all — ai-job:* events are its only update path outside
+      // this reconnect. A dropped connection (or a mounted-but-never-truly-remounted page, see
+      // that hook's own comment) could otherwise miss a started/done/failed transition entirely
+      // until something unrelated happens to invalidate it; this prefix covers every case+kind
+      // combination currently mounted.
+      queryClient.invalidateQueries({ queryKey: [...terminalKeys.all, "ai-job"] })
     }
 
     const handleNew = (notification: Notification) => {
@@ -121,12 +137,14 @@ export function useNotificationSocket() {
     socket.on("connect", handleConnect)
     socket.on("notification:new", handleNew)
     socket.on("chat:title-updated", handleTitleUpdated)
+    const unregisterDocumentHandlers = registerDocumentSocketHandlers(socket, queryClient)
     socket.connect()
 
     return () => {
       socket.off("connect", handleConnect)
       socket.off("notification:new", handleNew)
       socket.off("chat:title-updated", handleTitleUpdated)
+      unregisterDocumentHandlers()
       socket.disconnect()
     }
   }, [accessToken, queryClient])

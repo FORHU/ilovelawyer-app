@@ -94,7 +94,7 @@ export interface ChatMessage {
    * refetchInterval and consultation-chat.tsx's post-refresh "still generating" bubble —
    * durable, server-side truth for that state instead of relying on in-memory client flags
    * that a full page reload wipes. */
-  replyStatus?: "PENDING" | "DONE" | "FAILED" | null
+  replyStatus?: "PENDING" | "DONE" | "FAILED" | "CANCELLED" | null
   /** The reply's raw accumulated text as of the last checkpoint, while replyStatus is still
    * PENDING — see Message.pendingReplyContent's doc comment. Null once DONE/FAILED. */
   pendingReplyContent?: string | null
@@ -242,6 +242,35 @@ export async function sendChatMessage({
   })
 }
 
+export interface CancelChatMessageResult {
+  messageId: string
+  /** The turn's status after the call — "CANCELLED" if this call stopped it, otherwise whatever
+   * it already was (DONE/FAILED/CANCELLED): stopping a finished turn is a harmless no-op. */
+  replyStatus: "PENDING" | "DONE" | "FAILED" | "CANCELLED" | null
+  /** The partial reply saved as a normal assistant message — absent if nothing had streamed. */
+  assistantMessageId?: string
+}
+
+/** Stops a turn that is still generating (the composer's Stop button). The API flips the turn to
+ * CANCELLED, saves whatever had streamed so far as the reply, and stops the worker — see
+ * ilovelawyer-api's ChatSvc.cancelChatGeneration. Idempotent. */
+export function cancelChatGeneration(consultationId: string, messageId: string): Promise<CancelChatMessageResult> {
+  return apiFetch<CancelChatMessageResult>(`/api/chat/consultations/${consultationId}/messages/${messageId}/cancel`, {
+    method: "POST",
+  })
+}
+
+/** What sendChatMessageAndWait rejects with when the turn was stopped (by this tab's Stop button,
+ * another tab's, or a poll noticing replyStatus CANCELLED) — distinct from a failure, so
+ * ConsultationChat can show "Response stopped" instead of an error. Other callers just see a
+ * rejected promise, same as any turn that didn't complete. */
+export class ChatGenerationCancelledError extends Error {
+  constructor() {
+    super("Generation cancelled")
+    this.name = "ChatGenerationCancelledError"
+  }
+}
+
 export interface ChatGenerationHandlers {
   /** The worker (ilovelawyer-api's ChatGenerationQueue) confirmed the job is real and is about
    * to start RAG/AI generation — fires before the first chat:chunk. Purely a live-UX signal
@@ -250,6 +279,11 @@ export interface ChatGenerationHandlers {
   onChunk?: (chunk: string) => void
   onDone?: (assistantMessageId: string) => void
   onError?: (message: string) => void
+  /** The answer text has fully streamed (chat:answer-complete) but the turn is still finishing
+   * its extras (timeline, mind map, reasoning, decisions) before chat:done - see composerAction. */
+  onAnswerComplete?: () => void
+  /** The turn was stopped (chat:cancelled) — from this tab or any other. */
+  onCancelled?: () => void
   /** ilovelawyer-api rotated the Chat Wonder session_id mid-generation (an "Unknown session"
    * retry) — callers should update their cached session_id so the next send doesn't repeat
    * the same failed-then-retried round trip. Rare: only fires when this exact job hit that
@@ -288,6 +322,12 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
   const onError = (payload: { messageId: string; message: string }) => {
     if (payload.messageId === messageId) handlers.onError?.(payload.message)
   }
+  const onCancelled = (payload: { messageId: string }) => {
+    if (payload.messageId === messageId) handlers.onCancelled?.()
+  }
+  const onAnswerComplete = (payload: { messageId: string }) => {
+    if (payload.messageId === messageId) handlers.onAnswerComplete?.()
+  }
   const onSessionRotated = (payload: { messageId: string; sessionId: string }) => {
     if (payload.messageId === messageId) handlers.onSessionRotated?.(payload.sessionId)
   }
@@ -296,6 +336,8 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
   socket.on("chat:chunk", onChunk)
   socket.on("chat:done", onDone)
   socket.on("chat:error", onError)
+  socket.on("chat:cancelled", onCancelled)
+  socket.on("chat:answer-complete", onAnswerComplete)
   socket.on("chat:session-rotated", onSessionRotated)
 
   return () => {
@@ -303,6 +345,8 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
     socket.off("chat:chunk", onChunk)
     socket.off("chat:done", onDone)
     socket.off("chat:error", onError)
+    socket.off("chat:cancelled", onCancelled)
+    socket.off("chat:answer-complete", onAnswerComplete)
     socket.off("chat:session-rotated", onSessionRotated)
   }
 }
@@ -317,7 +361,10 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
  * miss events; polling against the DB can't.
  *
  * Rejects (with the server's failure message) if the turn ends in chat:error — callers get
- * their existing try/catch's error handling for free instead of needing their own.
+ * their existing try/catch's error handling for free instead of needing their own. Rejects with
+ * ChatGenerationCancelledError if the turn is stopped instead: via `handlers.signal` (this
+ * caller's own Stop button), a chat:cancelled event (another tab's Stop), or the poll below
+ * seeing the user message's replyStatus flip to CANCELLED (a missed event).
  *
  * `queryClient` isn't read from a hook here since this also has to be callable from a plain
  * async callback (ConsultationChat's doSend) — pass the one from the caller's own
@@ -328,12 +375,18 @@ export async function sendChatMessageAndWait(
   handlers?: {
     onChunk?: (chunk: string) => void
     onSessionRotated?: (sessionId: string) => void
+    /** The answer text is complete; extras and saving are still to come (see subscribeChatGeneration). */
+    onAnswerComplete?: () => void
     /** The persisted-message count before this turn, when the caller has already put an
      * optimistic user message in the cache (optimistic-messages.ts) — otherwise the
      * "grew by two" poll below would be off by one. */
     messagesBefore?: number
     /** The POST returned — `messageId` is the real id of the user message just enqueued. */
     onEnqueued?: (messageId: string) => void
+    /** Aborting stops waiting (rejects with ChatGenerationCancelledError) — it does NOT stop the
+     * turn on the server by itself; the caller pairs it with cancelChatGeneration. Works before
+     * the POST returns too: the wait then ends as soon as the message is enqueued. */
+    signal?: AbortSignal
   },
 ): Promise<{ messageId: string; sessionId: string }> {
   const messagesBefore =
@@ -344,6 +397,7 @@ export async function sendChatMessageAndWait(
   const { messageId, sessionId } = await sendChatMessage(args)
   handlers?.onEnqueued?.(messageId)
 
+  const signal = handlers?.signal
   await new Promise<void>((resolve, reject) => {
     let settled = false;
     const finish = (err?: Error) => {
@@ -351,6 +405,7 @@ export async function sendChatMessageAndWait(
       settled = true;
       unsubscribe();
       clearInterval(pollTimer);
+      signal?.removeEventListener("abort", onAbort);
       if (err) reject(err);
       else resolve();
     };
@@ -358,16 +413,26 @@ export async function sendChatMessageAndWait(
     const unsubscribe = subscribeChatGeneration(messageId, {
       onChunk: handlers?.onChunk,
       onSessionRotated: handlers?.onSessionRotated,
+      onAnswerComplete: handlers?.onAnswerComplete,
       onDone: () => finish(),
       onError: (message) => finish(new Error(message)),
+      onCancelled: () => finish(new ChatGenerationCancelledError()),
     });
 
     // Same 1500ms cadence as useMessagesQuery's own pollWhilePending refetch — piggybacks on
     // that same query cache rather than issuing a second, redundant fetch.
     const pollTimer = setInterval(() => {
       const history = queryClient.getQueryData<ChatMessage[]>(chatKeys.messages(args.consultationId));
-      if ((history?.length ?? 0) >= messagesBefore + 2) finish();
+      // Checked before the "grew by two" test: a stopped turn with a saved partial reply also
+      // grows by two, and must still read as cancelled, not done.
+      if (history?.some((m) => m.id === messageId && m.replyStatus === "CANCELLED")) {
+        finish(new ChatGenerationCancelledError());
+      } else if ((history?.length ?? 0) >= messagesBefore + 2) finish();
     }, 1500);
+
+    const onAbort = () => finish(new ChatGenerationCancelledError());
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
   });
 
   return { messageId, sessionId };

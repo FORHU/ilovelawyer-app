@@ -13,6 +13,8 @@
     "startRecording": "Start recording",
     "stopRecording": "Stop recording",
     "sendMessage": "Send message",
+    "stopGenerating": "Stop generating",
+    "stopLabel": "Stop",
     "send": "Send",
     "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
@@ -26,13 +28,18 @@
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "thinking": "is thinking",
+  "thinkingFinalizing": "is finalizing the analysis",
   "message": {
     "copy": "Copy response",
     "copied": "Copied!",
-    "copyFailed": "Couldn't copy"
+    "copyFailed": "Couldn't copy",
+    "stopped": "Response stopped",
+    "finalizing": "Finishing analysis…"
   },
   "attachment": {
     "viewFile": "View {{fileName}}",
+    "processingHint": "Still processing — the AI will reply once these files are ready. Audio and video are transcribed first, which can take a few minutes.",
+    "processingFailed": "Couldn't process this file, so the AI can't read it.",
     "closePreview": "Close preview",
     "openInNewTab": "Open in new tab",
     "download": "Download",

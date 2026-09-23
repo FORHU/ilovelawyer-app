@@ -123,7 +123,10 @@ function Calendar({
           defaultClassNames.today
         ),
         outside: cn(
-          "text-muted-foreground aria-selected:text-muted-foreground",
+          // text-muted-foreground alone is under 3.3:1 against a white background in light
+          // mode (fails WCAG AA) — these explicit shades keep outside-month days legibly
+          // "dimmed" rather than washed out, in both themes.
+          "text-gray-500 aria-selected:text-gray-500 dark:text-gray-400 dark:aria-selected:text-gray-400",
           defaultClassNames.outside
         ),
         disabled: cn(

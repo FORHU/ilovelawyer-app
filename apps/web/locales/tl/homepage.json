@@ -13,6 +13,8 @@
     "startRecording": "Simulan ang pagre-record",
     "stopRecording": "Ihinto ang pagre-record",
     "sendMessage": "Ipadala ang mensahe",
+    "stopGenerating": "Ihinto ang pagbuo",
+    "stopLabel": "Ihinto",
     "defaultAttachmentMessage": "Pakisuri ang nakalakip na dokumento: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Pakisuri ang mga nakalakip na dokumento ({{count}}).",
     "attachmentUploadError": "Hindi na-upload ang isa o higit pang file. Subukang muli o alisin ang mga ito.",
@@ -24,6 +26,8 @@
   },
   "attachment": {
     "viewFile": "Tingnan ang {{fileName}}",
+    "processingHint": "Pino-proseso pa — sasagot ang AI kapag handa na ang mga file. Tina-transcribe muna ang audio at video, na maaaring abutin ng ilang minuto.",
+    "processingFailed": "Hindi napoproseso ang file na ito, kaya hindi ito mababasa ng AI.",
     "closePreview": "Isara ang preview",
     "openInNewTab": "Buksan sa bagong tab",
     "download": "I-download",
@@ -35,10 +39,13 @@
   "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
   "sendError": "May nagkamali. Pakisubukang muli.",
   "thinking": "ay nag-iisip",
+  "thinkingFinalizing": "ay tinatapos ang pagsusuri",
   "message": {
     "copy": "Kopyahin ang sagot",
     "copied": "Nakopya!",
-    "copyFailed": "Hindi nakopya"
+    "copyFailed": "Hindi nakopya",
+    "stopped": "Itinigil ang sagot",
+    "finalizing": "Tinatapos ang pagsusuri…"
   },
   "caseHub": {
     "linkedCase": "Naka-link na kaso",
