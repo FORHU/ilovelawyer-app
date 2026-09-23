@@ -1,12 +1,5 @@
 import { Logo } from "@/components/logo";
-import { hostForTenantCode } from "@/lib/tenant-code/resolve-host";
-
-// Local dev hosts (`ph.localhost:3002`, `ph.ilovelawyer.local:3002`, bare `ph.ilovelawyer:3002`)
-// are the only ones ever served over plain HTTP — matches the dev-host conventions documented
-// in lib/tenant-code/resolve-host.ts.
-function protocolFor(host: string): "http" | "https" {
-  return /(localhost|\.local)(:|$)/i.test(host) ? "http" : "https";
-}
+import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-host";
 
 /**
  * Shown on any host that didn't resolve to a Tenant — the bare apex (ilovelawyer.com) and
@@ -14,7 +7,7 @@ function protocolFor(host: string): "http" | "https" {
  * copy/branding of its own; it only exists to route the visitor to the design that does.
  */
 export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
-  const protocol = protocolFor(currentHost);
+  const protocol = protocolForHost(currentHost);
   const ukHref = `${protocol}://${hostForTenantCode("UK", currentHost)}`;
   const phHref = `${protocol}://${hostForTenantCode("PH", currentHost)}`;
 
