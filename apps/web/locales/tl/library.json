@@ -136,6 +136,7 @@
     "dateEnacted": "Petsa ng pagkakabatas",
     "document": "Dokumento",
     "detailUnavailable": "Hindi ma-load ngayon ang buong detalye ng dokumentong ito. Ipinapakita ang mayroon kami.",
+    "documentTextUnavailable": "Hindi pa available ang buong teksto ng dokumentong ito — ipinapakita sa halip ang buod sa ibaba.",
     "summary": "Buod",
     "purpose": "Layunin",
     "affectedLaws": "Mga batas na apektado at susog",

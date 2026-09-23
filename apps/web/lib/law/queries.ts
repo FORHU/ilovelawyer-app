@@ -17,7 +17,6 @@ export const LAW_CASE_TYPES = [
   "Administrative",
   "Labor",
   "Constitutional",
-  "Commercial",
 ] as const
 export const LAW_TOPICS = [
   "criminal",
@@ -185,6 +184,9 @@ export interface LawDocument {
     pdf_url: string | null
     source_url: string | null
     juris_url: string
+    /** Verbatim document text, PDF-extracted on first view. Null when no source url exists,
+     * extraction failed, or (UK tenant) this pipeline doesn't apply. */
+    full_text: string | null
   }
   detail: {
     /** false only when juris.ph was unreachable and we fell back to a base row without detail. */
