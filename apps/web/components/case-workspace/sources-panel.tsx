@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, ChevronRight, Gavel, CheckCircle2, ExternalLink, ThumbsUp, ThumbsDown } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
@@ -7,6 +8,7 @@ import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId } fr
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { EvidenceItem, RuleItem, Label } from "@/components/shared/decision-detail";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
+import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface SourcesPanelProps {
@@ -467,7 +469,15 @@ function RelatedCaseRow({ relatedCase, onClick }: { relatedCase: RelatedCase; on
       <div className="flex items-center gap-1.5">
         <Gavel className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
         {relatedCase.vetted && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" aria-hidden="true" />}
-        {relatedCase.url ? (
+        {relatedCase.url && isInternalLibraryHref(relatedCase.url) ? (
+          <Link
+            href={relatedCase.url}
+            onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
+            className="inline-flex min-w-0 items-center gap-1 font-medium text-foreground underline decoration-dotted hover:text-brand-gold"
+          >
+            <span className="truncate">{label}</span>
+          </Link>
+        ) : relatedCase.url ? (
           <a
             href={relatedCase.url}
             target="_blank"

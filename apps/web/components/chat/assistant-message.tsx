@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { useTranslation } from "react-i18next";
@@ -123,11 +124,6 @@ function highlightChildren(
   );
 }
 
-// Legal citation links that ilovelawyer-api's legal-citation-link-rewrite.ts could resolve to
-// a Library entry are rewritten server-side to this in-app route before the message is ever
-// persisted; anything else is a genuine external source and still opens in a new tab.
-const INTERNAL_LIBRARY_HREF_RE = /^\/homepage\/library\/laws\//;
-
 function buildComponents(
   decisions: DecisionRecordPayload[],
   onOpenDecision: (decision: DecisionRecordPayload) => void,
@@ -158,7 +154,7 @@ function buildComponents(
       <blockquote className="border-l-2 border-border pl-3 my-2 text-muted-foreground">{children}</blockquote>
     ),
     a: ({ children, href }) => {
-      if (href && INTERNAL_LIBRARY_HREF_RE.test(href)) {
+      if (isInternalLibraryHref(href)) {
         return (
           <Link href={href} className="underline underline-offset-2 font-medium text-primary">
             {children}
