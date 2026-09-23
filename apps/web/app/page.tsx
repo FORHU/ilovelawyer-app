@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { NeutralLandingSplash } from "@/components/landing/neutral-splash";
@@ -15,6 +16,63 @@ import { UkConsultationSection } from "@/components/landing/uk/consultation-sect
 import { UkFirmsSection } from "@/components/landing/uk/firms-section";
 import { UkLandingFooter } from "@/components/landing/uk/footer";
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
+import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+
+// Tenant-branching SEO copy for generateMetadata (title/description/OG/Twitter) below —
+// hardcoded here rather than routed through i18next since metadata is generated server-side
+// before any client-side language state exists (<html lang="en"> is already hardcoded, no
+// cookie/header carries the in-app language choice to the server).
+const TENANT_SEO: Record<TenantCode, { title: string; description: string }> = {
+  UK: {
+    title: "ilovelawyer UK — AI Legal Intelligence for Solicitors",
+    description:
+      "Case management, AI consultation with cited UK precedent, and a Legal Terminal built for solicitors and barristers.",
+  },
+  PH: {
+    title: "ilovelawyer — AI Legal Intelligence for Philippine Lawyers",
+    description:
+      "Case management, AI consultation with cited Philippine jurisprudence, and a Legal Terminal built for practicing lawyers.",
+  },
+};
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenantCode = await getTenantCodeHint();
+
+  if (tenantCode === null) {
+    // Bare apex / app.ilovelawyer.com: the neutral splash is a two-link jurisdiction picker
+    // with no unique content of its own — keep it out of search entirely (matches this
+    // host's blanket robots.txt disallow).
+    return { robots: { index: false, follow: false } };
+  }
+
+  const { title, description } = TENANT_SEO[tenantCode];
+  const config = getTenantCodeConfig(tenantCode);
+
+  return {
+    title: { absolute: title }, // bypass the root layout's "%s · ilovelawyer" template —
+    // this is the homepage, it gets the full brand title as-is
+    description,
+    alternates: { canonical: "/" }, // resolves against the root layout's per-request
+    // metadataBase to this host's own absolute URL — must stay self-referencing per host,
+    // never collapsed onto one canonical domain, since PH and UK are different content at
+    // the same relative path
+    openGraph: {
+      title,
+      description,
+      url: "/",
+      siteName: "ilovelawyer",
+      locale: config.locale,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: { index: true, follow: true }, // overrides the root layout's default-deny
+  };
+}
 
 export default async function LandingPage() {
   const tenantCode = await getTenantCodeHint();
