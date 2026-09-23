@@ -21,6 +21,7 @@ export const PANEL_IDS = [
   "audioOverview",
   "decisions",
   "theories",
+  "verification",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]

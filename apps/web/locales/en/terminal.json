@@ -349,5 +349,27 @@
   "caseBriefGenerateHint": "Generate a Word and PDF version of this case's brief from its current snapshot.",
   "caseBriefGenerateCta": "Generate case brief",
   "caseBriefNothingGenerated": "Nothing generated yet this session — go to Generate first.",
-  "caseBriefFormatNotGenerated": "This format hasn't been generated yet."
+  "caseBriefFormatNotGenerated": "This format hasn't been generated yet.",
+  "groundingLoading": "Checking this case's answers against the bundle…",
+  "groundingError": "Could not load verification results.",
+  "groundingEmpty": "Nothing checked yet. Verification runs automatically on legal chat turns in a case once it is enabled — an empty panel does not mean the answers are sound.",
+  "groundingProblems": "Needs attention ({{count}})",
+  "groundingNoProblems": "Nothing to act on. All {{count}} checked claims held up against the bundle.",
+  "groundingShowChecked": "Show {{count}} claims that checked out",
+  "groundingHideChecked": "Hide claims that checked out",
+  "groundingVerdict": {
+    "CONTRADICTED": "Contradicted by the cited document",
+    "FALSE_ABSENCE": "Said to be missing, but supplied",
+    "UNSUPPORTED": "Not established by the cited document",
+    "NOT_SUPPLIED": "Not sent to the AI for this answer",
+    "CORRECT_ABSENCE": "Correctly flagged as not in the bundle",
+    "UNRESOLVED": "Could not be checked",
+    "SUPPORTED": "Supported by the cited document"
+  },
+  "groundingEvidenceKind": {
+    "ASSERTED_BY_PARTY": "The passage records a party's assertion, not a finding",
+    "STATED_BY_WITNESS": "The passage is a witness's account",
+    "SHOWN_BY_DOCUMENT": "Shown by the document itself",
+    "ESTABLISHED": "Recorded as established"
+  }
 }

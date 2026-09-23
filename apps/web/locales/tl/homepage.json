@@ -140,5 +140,27 @@
     "deleteConsultationNamed": "Tanggalin ang {{name}}",
     "deleteConsultationConfirm": "Tanggalin ang konsultasyong ito? Hindi na ito maibabalik.",
     "collapseSidebar": "I-collapse ang sidebar"
+  },
+  "grounding": {
+    "summary": "{{checked}} claims checked against the bundle · {{problems}} need attention",
+    "verdict": {
+      "CONTRADICTED": "Contradicted by the cited document",
+      "FALSE_ABSENCE": "Said to be missing, but it was supplied",
+      "UNSUPPORTED": "Not established by the cited document"
+    }
+  },
+  "triage": {
+    "urgent": "Urgent",
+    "intent": {
+      "CONSULTATION": "advice",
+      "DRAFT_DOCUMENT": "document request",
+      "DRAFT_PLEADING": "pleading request",
+      "ANALYZE_DOCUMENT": "document review",
+      "LEGAL_RESEARCH": "research",
+      "PARALEGAL_TASK": "paralegal task",
+      "DEADLINE_COMPUTATION": "deadline",
+      "REVISE_PREVIOUS": "revision",
+      "OTHER": ""
+    }
   }
 }
