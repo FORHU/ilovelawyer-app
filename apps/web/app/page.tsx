@@ -86,8 +86,13 @@ export default async function LandingPage() {
     const host = headersList.get("host") ?? "";
     return (
       <div className="flex flex-col min-h-screen w-full bg-background">
-        <LandingNavbar />
-        <NeutralLandingSplash currentHost={host} />
+        <LandingNavbar overHero={false} />
+        {/* The redesigned navbar is `fixed` (it floats transparently over the hero video on
+            the tenant pages below) so it no longer reserves layout space — this page has no
+            hero to sit under it, so it needs its own top offset instead. */}
+        <div className="pt-16 flex-1 flex flex-col">
+          <NeutralLandingSplash currentHost={host} />
+        </div>
       </div>
     );
   }

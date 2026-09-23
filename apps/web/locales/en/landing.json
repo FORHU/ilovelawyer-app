@@ -11,7 +11,9 @@
     "getStarted": "Get Started",
     "goToDashboard": "Go to Dashboard",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "searchPlaceholder": "Ask a legal question",
+    "searchLabel": "Ask a legal question"
   },
   "hero": {
     "ctaPrimary": "Start Free Consultation",

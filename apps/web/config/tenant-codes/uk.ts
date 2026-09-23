@@ -10,6 +10,7 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
   },
   landingAssets: {
     heroVideos: ["/landing/videos/hero-1.mp4", "/landing/videos/hero-2.mp4", "/landing/videos/hero-3.mp4"],
+    heroPosters: ["/landing/uk/hero-1.jpg", "/landing/uk/hero-2.jpg", "/landing/uk/hero-3.jpg"],
     firmWorkspace: "/landing/uk/firm-workspace.jpg",
   },
   ui: {

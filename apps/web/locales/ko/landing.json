@@ -11,7 +11,9 @@
     "getStarted": "시작하기",
     "goToDashboard": "대시보드로 이동",
     "openMenu": "메뉴 열기",
-    "closeMenu": "메뉴 닫기"
+    "closeMenu": "메뉴 닫기",
+    "searchPlaceholder": "법률 질문하기",
+    "searchLabel": "법률 질문하기"
   },
   "hero": {
     "ctaPrimary": "무료 상담 시작하기",
