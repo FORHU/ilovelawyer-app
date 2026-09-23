@@ -1,0 +1,214 @@
+name: Deploy UK
+
+# FORHU/ilovelawyer-app → the London stack (eu-west-2).
+#
+# Same lint/typecheck/build as deploy-production.yml. Two differences:
+#   * NEXT_PUBLIC_* values are baked in at build time, so the UK needs its OWN
+#     image — it points at the UK API, not Singapore's. It is tagged uk-<sha>
+#     so Singapore's :latest and :<sha> are untouched.
+#   * the host has no SSH port and no key pair, so the deploy runs through SSM
+#     Run Command, with the runtime env file carried in Parameter Store.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or SHA to deploy"
+        required: true
+        default: main
+
+concurrency:
+  group: ilovelawyer-uk-deploy        # shared with ilovelawyer-api: one deploy at a time
+  cancel-in-progress: false
+
+env:
+  ECR_REPOSITORY: ilovelawyer-app
+  ECR_REGION: ap-southeast-1          # where the images live
+  AWS_REGION: eu-west-2               # where the UK stack runs
+  ACCOUNT_ID: "617163942417"
+  INSTANCE_ID: i-0c21e7d8c1aae968c
+  APP_DIR: /opt/ilovelawyer
+  ENV_PARAM: /ilovelawyer-uk/app-env
+  NODE_ENV: production
+  PORT: "3002"
+
+jobs:
+  deploy:
+    name: Lint, Build, Push & Deploy (UK)
+    # Native arm64 — matches Graviton EC2. Do not build linux/arm64 via QEMU on
+    # ubuntu-latest; pnpm/next under emulation looks stuck and can take hours.
+    runs-on: ubuntu-24.04-arm
+    environment: uk
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_UK_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          echo "tag=uk-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "registry=${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.ECR_REGION }}.amazonaws.com" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "${{ env.ECR_REGION }}" \
+            | docker login --username AWS --password-stdin "${{ steps.tag.outputs.registry }}"
+
+      # NEXT_PUBLIC_* values are inlined into the client JS bundle at `next build`
+      # time, not read at container runtime — see
+      # docs/adr/0005-web-env-vars-baked-at-build-time.md. This file must exist
+      # before `docker build` runs, since the builder stage's `COPY . .` carries
+      # it into the image. The UK values differ from Singapore's, which is why
+      # the UK cannot reuse Singapore's image.
+      - name: Write web env file
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.UK_NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          cat > ${{ github.workspace }}/apps/web/.env.staging << EOF
+          NODE_ENV=${{ env.NODE_ENV }}
+          NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/arm64
+          provenance: false
+          tags: ${{ steps.tag.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.tag.outputs.tag }}
+
+      # The same file also serves as the container's runtime env, exactly as in
+      # production. It holds no secrets beyond the public client ID, but goes
+      # through Parameter Store for consistency with the API deploy.
+      - name: Store env file in Parameter Store
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.UK_NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          cat > env.tmp << EOF
+          NODE_ENV=${{ env.NODE_ENV }}
+          PORT=${{ env.PORT }}
+          NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+          EOF
+
+          aws ssm put-parameter \
+            --name "${{ env.ENV_PARAM }}" \
+            --type SecureString --overwrite \
+            --value "file://env.tmp" \
+            --region "${{ env.AWS_REGION }}" > /dev/null
+
+          rm -f env.tmp
+
+      - name: Deploy via SSM
+        id: send
+        env:
+          REGISTRY: ${{ steps.tag.outputs.registry }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          IMAGE="${REGISTRY}/${{ env.ECR_REPOSITORY }}:${TAG}"
+          ENVFILE="${{ env.APP_DIR }}/ilovelawyer-app.env"
+
+          COMMANDS=(
+            "set -euo pipefail"
+            "mkdir -p ${{ env.APP_DIR }}"
+            "aws ssm get-parameter --name ${{ env.ENV_PARAM }} --with-decryption --region ${{ env.AWS_REGION }} --query Parameter.Value --output text > ${ENVFILE}"
+            "chmod 600 ${ENVFILE}"
+            "aws ecr get-login-password --region ${{ env.ECR_REGION }} | docker login --username AWS --password-stdin ${REGISTRY}"
+            "docker pull --platform linux/arm64 ${IMAGE}"
+            "docker rm -f ilovelawyer-app 2>/dev/null || true"
+            "docker run -d --name ilovelawyer-app --restart unless-stopped --platform linux/arm64 --env-file ${ENVFILE} -p 127.0.0.1:${{ env.PORT }}:${{ env.PORT }} ${IMAGE}"
+            "docker image prune -f"
+          )
+
+          PARAMS=$(printf '%s\n' "${COMMANDS[@]}" | jq -R . | jq -sc '{commands: .}')
+
+          CMD_ID=$(aws ssm send-command \
+            --region "${{ env.AWS_REGION }}" \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ilovelawyer-app ${TAG}" \
+            --timeout-seconds 900 \
+            --parameters "${PARAMS}" \
+            --query Command.CommandId --output text)
+
+          echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          echo "SSM command: $CMD_ID"
+
+      - name: Wait for the deploy
+        run: |
+          set -uo pipefail
+          STATUS=Pending
+          for i in $(seq 1 90); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "${{ env.AWS_REGION }}" \
+              --command-id "${{ steps.send.outputs.command_id }}" \
+              --instance-id "${{ env.INSTANCE_ID }}" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            echo "status: $STATUS"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 10
+          done
+
+          aws ssm get-command-invocation \
+            --region "${{ env.AWS_REGION }}" \
+            --command-id "${{ steps.send.outputs.command_id }}" \
+            --instance-id "${{ env.INSTANCE_ID }}" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+
+          [ "$STATUS" = "Success" ] || { echo "::error::deploy $STATUS"; exit 1; }
+
+      - name: Smoke test
+        run: |
+          set -uo pipefail
+          for i in $(seq 1 12); do
+            CODE=$(curl -s -o /dev/null -m 10 -w '%{http_code}' https://uk.ilovelawyer.com/ || echo 000)
+            echo "attempt $i: $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::uk.ilovelawyer.com did not return 200 after the deploy"
+          exit 1
