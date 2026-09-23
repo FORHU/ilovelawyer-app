@@ -11,6 +11,7 @@ function fakeSocket(connected: boolean) {
     on: vi.fn((event: string, fn: () => void) => handlers.set(event, fn)),
     off: vi.fn((event: string) => handlers.delete(event)),
     fireConnect: () => handlers.get("connect")?.(),
+    fireDisconnect: () => handlers.get("disconnect")?.(),
   }
 }
 
@@ -76,6 +77,23 @@ describe("joinCaseRoom / isCaseRoomSubscribed", () => {
     socket.emit.mockClear()
     socket.fireConnect()
     expect(socket.emit).not.toHaveBeenCalled()
+  })
+
+  it("clears the subscribed flag on a raw disconnect, so the next reconnect re-subscribes for real", () => {
+    const socket = fakeSocket(true)
+    joinCaseRoom(socket, "case6")
+    expect(isCaseRoomSubscribed("case6")).toBe(true)
+
+    // A dropped connection (network blip, laptop sleep, a backgrounded tab the browser
+    // suspends) — no explicit cleanup runs, but server-side room membership is gone regardless.
+    socket.fireDisconnect()
+    expect(isCaseRoomSubscribed("case6")).toBe(false)
+
+    // The reconnect must land as a genuine false -> true transition (what
+    // useIsCaseRoomSubscribed's listeners, and in turn useAiJobStatus's own reconciliation
+    // effect, actually watch for) — not a no-op against a flag that was never really cleared.
+    socket.fireConnect()
+    expect(isCaseRoomSubscribed("case6")).toBe(true)
   })
 
   it("tracks each caseId's subscription independently", () => {

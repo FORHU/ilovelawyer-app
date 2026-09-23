@@ -103,7 +103,10 @@
     "addDescription": "What happened",
     "addCta": "Add event",
     "date": "Date",
-    "time": "Time"
+    "time": "Time",
+    "generate": "Generate timeline",
+    "generating": "Generating…",
+    "generateError": "Last generation failed."
   },
   "email": {
     "action": "Email",

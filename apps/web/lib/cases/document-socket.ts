@@ -93,7 +93,9 @@ export function applyDocumentEvent(
   }
 
   // The Terminal's snapshot embeds each document's ragStatus and otherwise only refreshes on a
-  // long idle poll. Only on a terminal state — "started" changes nothing it shows.
+  // long idle poll. Only on a terminal state — "started" changes nothing it shows. Immediate, not
+  // debounced: Studio's Data Table tile is meant to auto-refresh live as each document finishes,
+  // not settle only once a batch quiets down.
   if (payload.caseId && (event === "document:ready" || event === "document:failed")) {
     queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(payload.caseId) })
   }

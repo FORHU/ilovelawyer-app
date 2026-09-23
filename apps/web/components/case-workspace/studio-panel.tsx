@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search, Play } from "lucide-react";
@@ -17,7 +17,7 @@ import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, s
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
-import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
+import { useCaseSnapshotQuery, useAiJobStatus, useGenerateTimelineMutation } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
 import { chatKeys } from "@/lib/query-keys";
@@ -143,13 +143,49 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const { data: session } = useChatSessionQuery();
   const queryClient = useQueryClient();
   // Lifted up from CaseTimelineView (same query key, so this doesn't add a second network
-  // call) so the Timeline tile's click can trigger a refetch directly, the same way the Mind
-  // Map tile triggers a (re)generation, instead of the tile just opening the view.
+  // call) so the tile's note (event count) and the header's generate button (rendered further
+  // down, once the detail view is open) can both read/drive the same cache.
   const timelineQuery = useGraphViewQuery(caseId, "timeline");
   const timelineEventCount = useMemo(
     () => (timelineQuery.data?.nodes ?? []).filter((node) => node.type === "TIMELINE_EVENT").length,
     [timelineQuery.data],
   );
+  // Timeline dates are extracted by a Chat Wonder call (case-strategy.service.ts) — either
+  // manually (kind "timelineGenerate", triggered only from the open detail view's header refresh
+  // button — the tile itself just opens that view, see StudioTile below) or automatically as one
+  // step inside a document upload's post-extraction "caseRefresh" job (queues/case-post-
+  // extraction.ts). Both kinds feed the same "is it generating right now" state and the same
+  // refetch-on-completion below, so the tile's spinner/label and the header button react the same
+  // way regardless of which path is actually running — "caseRefresh" IN_PROGRESS is a coarser
+  // signal (that job also runs contradictions/case-finding, not just the timeline step), but
+  // AiGenerationLockSvc has no finer-grained per-step status to read instead.
+  const generateTimelineMutation = useGenerateTimelineMutation(caseId);
+  const timelineGenerateJob = useAiJobStatus(caseId, "timelineGenerate");
+  const caseRefreshJob = useAiJobStatus(caseId, "caseRefresh");
+  const isGeneratingTimeline =
+    generateTimelineMutation.isPending ||
+    timelineGenerateJob.data?.status === "IN_PROGRESS" ||
+    caseRefreshJob.data?.status === "IN_PROGRESS";
+  const handleGenerateTimeline = useCallback(() => {
+    if (isGeneratingTimeline) return;
+    generateTimelineMutation.mutate();
+  }, [isGeneratingTimeline, generateTimelineMutation]);
+  // useAiJobStatus only auto-invalidates the case snapshot on an IN_PROGRESS -> DONE transition —
+  // this tile reads the timeline via graph-view, a separate cache, so it refetches that itself.
+  const prevTimelineGenerateStatus = useRef(timelineGenerateJob.data?.status);
+  useEffect(() => {
+    if (prevTimelineGenerateStatus.current === "IN_PROGRESS" && timelineGenerateJob.data?.status === "DONE") {
+      void timelineQuery.refetch();
+    }
+    prevTimelineGenerateStatus.current = timelineGenerateJob.data?.status;
+  }, [timelineGenerateJob.data?.status, timelineQuery]);
+  const prevCaseRefreshStatus = useRef(caseRefreshJob.data?.status);
+  useEffect(() => {
+    if (prevCaseRefreshStatus.current === "IN_PROGRESS" && caseRefreshJob.data?.status === "DONE") {
+      void timelineQuery.refetch();
+    }
+    prevCaseRefreshStatus.current = caseRefreshJob.data?.status;
+  }, [caseRefreshJob.data?.status, timelineQuery]);
   // Case Workspace didn't fetch the full snapshot before — Sources/Mind Map/Timeline each pull
   // their own narrower query. Data Table combines four of its already-structured sections
   // (Witnesses, Damages, Deadlines, Findings) that otherwise only have dedicated views in the
@@ -430,6 +466,26 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <TooltipContent side="left">{t("workspace.mindMapRegenerateCta")}</TooltipContent>
           </Tooltip>
         )}
+        {expanded && openTile === "timeline" && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleGenerateTimeline}
+                disabled={isGeneratingTimeline}
+                aria-label={t("workspace.timelineGenerateCta")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+              >
+                {isGeneratingTimeline ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t("workspace.timelineGenerateCta")}</TooltipContent>
+          </Tooltip>
+        )}
         {expanded && openTile === "audioOverview" && audioConsultationId && activeAudioOverviewMessage && (
           <div className="flex items-center gap-1">
           <Tooltip>
@@ -532,15 +588,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               disabled={isGenerating}
               onClick={() => void handleGenerateMindMap()}
             />)}
-            {/* Same idea as the Mind Map tile above: triggers a refetch in place rather than
-             * opening the view. Timeline has no "generate" step (it's live case data, not an
-             * AI artifact), so "refresh" is this tile's equivalent action. */}
+            {/* Unlike Mind Map above, this opens the detail view directly — same "already-there
+             * data" shape as Documents/Decisions — rather than triggering a generation. The tile
+             * still passively reflects isGeneratingTimeline (icon spin + label) when a run is
+             * already in progress, but starting one is only ever the open view's own header
+             * refresh button (see studio-panel's header block for openTile === "timeline"). */}
             <StudioTile
-              icon={timelineQuery.isFetching ? Loader2 : Clock}
-              iconSpinning={timelineQuery.isFetching}
-              label={timelineQuery.isFetching ? t("workspace.timelineRefreshing") : t("workspace.timelineTile")}
+              icon={isGeneratingTimeline ? Loader2 : Clock}
+              iconSpinning={isGeneratingTimeline}
+              label={isGeneratingTimeline ? t("workspace.timelineGenerating") : t("workspace.timelineTile")}
               note={
-                timelineQuery.isFetching
+                isGeneratingTimeline
                   ? undefined
                   : timelineEventCount > 0
                     ? t("workspace.timelineEventCount", { count: timelineEventCount })
@@ -548,11 +606,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               }
               expanded={expanded}
               disabled={noDocuments}
-              disabledHint={t("workspace.needsDocumentsHint")}
-              onClick={() => {
-                void timelineQuery.refetch();
-                openStudioTile("timeline");
-              }}
+              disabledHint={noDocuments ? t("workspace.needsDocumentsHint") : undefined}
+              onClick={() => openStudioTile("timeline")}
             />
             {/* Same pattern again: Witnesses/Damages/Deadlines/Findings are lawyer-entered or
              * Refresh-Analysis-populated data, not something to generate on click — so this tile
@@ -605,8 +660,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
            * re-opening the tile grid. */}
           {expanded &&
             ((consultationId && (isGenerating || activeMindMap)) ||
-              timelineEventCount > 0 ||
-              timelineQuery.isFetching ||
               dataTableRows.length > 0 ||
               snapshotQuery.isFetching ||
               (audioConsultationId && (isGeneratingAudioOverview || activeAudioOverviewMessage))) && (
@@ -621,19 +674,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     title={t("workspace.mindMapTile")}
                     subtitle={mindMapStatusLabel}
                     onClick={() => openStudioTile("mindmap")}
-                  />
-                )}
-                {!noDocuments && (timelineEventCount > 0 || timelineQuery.isFetching) && (
-                  <ResultRow
-                    icon={timelineQuery.isFetching ? Loader2 : Clock}
-                    iconSpinning={timelineQuery.isFetching}
-                    title={t("workspace.timelineTile")}
-                    subtitle={
-                      timelineQuery.isFetching
-                        ? t("workspace.timelineRefreshing")
-                        : t("workspace.timelineEventCount", { count: timelineEventCount })
-                    }
-                    onClick={() => openStudioTile("timeline")}
                   />
                 )}
                 {!noDocuments && (dataTableRows.length > 0 || snapshotQuery.isFetching) && (
@@ -753,7 +793,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               </p>
             )
           ) : openTile === "timeline" ? (
-            <CaseTimelineView caseId={caseId} fill />
+            <CaseTimelineView caseId={caseId} fill hideGenerateButton />
           ) : openTile === "dataTable" ? (
             dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">

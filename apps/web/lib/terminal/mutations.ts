@@ -70,6 +70,7 @@ export type AiGenerationKind =
   | "theoryDiff"
   | "caseReconstructionScenes"
   | "caseReconstructionTableRead"
+  | "timelineGenerate"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -347,6 +348,24 @@ export function useUpdateTimelineMutation(caseId: string) {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+// Manual "Generate timeline" trigger — re-runs the same document-date extraction the automatic
+// post-upload pipeline runs (queues/case-post-extraction.ts on the backend), for when a lawyer
+// wants it re-derived without waiting for the next corpus change. Queued server-side
+// (AiGenerationQueue/SQS), same pattern as useGenerateReconstructionMutation above: this POST
+// returns once the job is claimed, not once the timeline is actually updated — the caller pairs
+// this with useAiJobStatus(caseId, "timelineGenerate") and invalidates the timeline/graph-view
+// queries itself once that flips to DONE, since useAiJobStatus only auto-invalidates the snapshot.
+export function useGenerateTimelineMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/timeline/generate`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "timelineGenerate") })
     },
   })
 }
