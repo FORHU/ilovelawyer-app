@@ -10,12 +10,13 @@ import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
-import type { DecisionRecordPayload } from "@/lib/terminal/types";
+import type { DecisionRecordPayload, FindingCategory } from "@/lib/terminal/types";
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useAudioOverview } from "@/lib/chat/use-audio-overview";
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player";
+import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus, useGenerateTimelineMutation } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
@@ -29,6 +30,16 @@ interface DataTableRow {
   label: string;
   detail: string;
 }
+
+// Fixed review order for the Findings section of the Data Table — matches the order lawyers
+// scan a case in (issue, then case-for/case-against, then how to press/defend it).
+const FINDING_CATEGORY_ORDER: FindingCategory[] = [
+  "LEGAL_ISSUE",
+  "WEAKNESS",
+  "STRENGTH",
+  "ATTACK_STRATEGY",
+  "DEFENSE_STRATEGY",
+];
 
 // Findings/Damages categories are SCREAMING_SNAKE_CASE enum values (LEGAL_ISSUE,
 // ATTORNEYS_FEES, ...) with no existing display-label translation anywhere in the app —
@@ -123,6 +134,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // Combines this tab's own in-flight request with the persisted job status, so a job kicked
   // off from another tab (or this one, before a refresh) still shows as generating here too.
   const isGenerating = isGeneratingLocal || mindMapJob.data?.status === "IN_PROGRESS";
+  // The composer may already have a turn in flight for this same consultation — both share one
+  // Chat Wonder session per consultation, and firing a second concurrent turn onto it silently
+  // orphans one of them. Same cross-panel flag the composer's own send already gates on.
+  const isMindMapConsultationBusy = useSendingConsultationsStore((s) =>
+    consultationId ? s.sendingConsultationIds.has(consultationId) : false,
+  );
 
   const { data: caseRecord } = useCaseQuery(caseId);
   // Same PENDING-polling query DocumentFolderBrowser's own indexing badge uses — reused here
@@ -216,7 +233,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         detail: dl.computedDueDate ? new Date(dl.computedDueDate).toLocaleDateString() : "—",
       });
     });
-    snap.findings.forEach((f) => {
+    // Findings arrive in whatever order the API/DB returned them (insertion order), which
+    // interleaves categories — group them into the fixed review order below so all of one
+    // category's rows (e.g. every Weakness) sit together instead of scattered through the table.
+    const findingsByCategory = [...snap.findings].sort(
+      (a, b) => FINDING_CATEGORY_ORDER.indexOf(a.category) - FINDING_CATEGORY_ORDER.indexOf(b.category),
+    );
+    findingsByCategory.forEach((f) => {
       rows.push({
         type: formatCategory(f.category),
         label: f.label,
@@ -291,7 +314,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // pattern as ConsultationChat's own ensureConsultationId — instead of requiring the lawyer to
   // go start a chat manually before Mind Map does anything.
   const handleGenerateMindMap = useCallback(async () => {
-    if (!session || isGenerating) return;
+    if (!session || isGenerating || isMindMapConsultationBusy) return;
     setIsGenerating(true);
     setGenerateError(false);
     try {
@@ -313,7 +336,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     } finally {
       setIsGenerating(false);
     }
-  }, [consultationId, session, isGenerating, caseId, queryClient, createConsultation, onConsultationCreated]);
+  }, [consultationId, session, isGenerating, isMindMapConsultationBusy, caseId, queryClient, createConsultation, onConsultationCreated]);
 
   // Mind Map generation is request-only — no auto-fire on mount (see the matching removal in
   // consultation-chat.tsx for why: every case was showing the same generic strategy outline
@@ -339,6 +362,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const {
     activeAudioOverviewMessage,
     isGeneratingScript: isGeneratingAudioOverview,
+    isConsultationBusy: isAudioOverviewConsultationBusy,
     generateScriptError: audioOverviewGenerateError,
     generateScript: handleGenerateAudioOverviewScript,
     audioRendering,
@@ -452,7 +476,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               <button
                 type="button"
                 onClick={() => void handleGenerateMindMap()}
-                disabled={!session || isGenerating}
+                disabled={!session || isGenerating || isMindMapConsultationBusy}
                 aria-label={t("workspace.mindMapRegenerateCta")}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
               >
@@ -463,7 +487,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left">{t("workspace.mindMapRegenerateCta")}</TooltipContent>
+            <TooltipContent side="left">
+              {isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : t("workspace.mindMapRegenerateCta")}
+            </TooltipContent>
           </Tooltip>
         )}
         {expanded && openTile === "timeline" && (
@@ -493,7 +519,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               <button
                 type="button"
                 onClick={() => void handleGenerateAudioOverviewScript()}
-                disabled={!session || isGeneratingAudioOverview}
+                disabled={!session || isGeneratingAudioOverview || isAudioOverviewConsultationBusy}
                 aria-label={t("workspace.audioOverviewGenerateCta")}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
               >
@@ -504,7 +530,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="left">{t("workspace.audioOverviewGenerateCta")}</TooltipContent>
+            <TooltipContent side="left">
+              {isAudioOverviewConsultationBusy ? t("workspace.replyInProgressHint") : t("workspace.audioOverviewGenerateCta")}
+            </TooltipContent>
           </Tooltip>
           {renderedAudioUrl && playerBarDismissed && (
             <Tooltip>
@@ -585,7 +613,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               label={isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
               note={isGenerating ? undefined : mindMapStatusLabel || undefined}
               expanded={expanded}
-              disabled={isGenerating}
+              disabled={isGenerating || isMindMapConsultationBusy}
+              disabledHint={isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
               onClick={() => void handleGenerateMindMap()}
             />)}
             {/* Unlike Mind Map above, this opens the detail view directly — same "already-there
@@ -631,8 +660,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 openStudioTile("dataTable");
               }}
             />
-            {/* Same tile/result-row split as Mind Map, but deliberately no auto-generate-on-mount
-             * effect — see activeAudioOverviewMessage's comment above for why. */}
+            {/* Same pattern as Documents/Case Brief below: opens the inline detail view directly
+             * rather than generating in place first — that view still asks for an explicit
+             * "Generate" click before kicking off script generation (see openTile ===
+             * "audioOverview" below), so a bare tile click never silently starts a generation. */}
             {(hasPrompt || activeAudioOverviewMessage) && (<StudioTile
               icon={isGeneratingAudioOverview ? Loader2 : AudioLines}
               iconSpinning={isGeneratingAudioOverview}
@@ -640,9 +671,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               note={isGeneratingAudioOverview ? undefined : audioOverviewStatusLabel || undefined}
               expanded={expanded}
               disabled={isGeneratingAudioOverview}
-              onClick={() =>
-                activeAudioOverviewMessage ? openStudioTile("audioOverview") : void handleGenerateAudioOverviewScript()
-              }
+              onClick={() => openStudioTile("audioOverview")}
             />)}
             {/* Same pattern as Documents above: opens the inline detail view directly rather
              * than generating in place first — CaseBriefContent handles generating the preview
@@ -772,14 +801,19 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     {isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapEmpty")}
                   </p>
                   {!isGenerating && (
-                    <button
-                      type="button"
-                      onClick={() => void handleGenerateMindMap()}
-                      disabled={!session}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
-                    >
-                      {t("workspace.mindMapGenerateCta")}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleGenerateMindMap()}
+                        disabled={!session || isMindMapConsultationBusy}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                      >
+                        {t("workspace.mindMapGenerateCta")}
+                      </button>
+                      {isMindMapConsultationBusy && (
+                        <p className="text-xs text-muted-foreground">{t("workspace.replyInProgressHint")}</p>
+                      )}
+                    </>
                   )}
                   {isGenerating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />}
                   {generateError && (
@@ -878,14 +912,19 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
                 </p>
                 {!isGeneratingAudioOverview && (
-                  <button
-                    type="button"
-                    onClick={() => void handleGenerateAudioOverviewScript()}
-                    disabled={!session}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
-                  >
-                    {t("workspace.audioOverviewGenerateCta")}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void handleGenerateAudioOverviewScript()}
+                      disabled={!session || isAudioOverviewConsultationBusy}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                    >
+                      {t("workspace.audioOverviewGenerateCta")}
+                    </button>
+                    {isAudioOverviewConsultationBusy && (
+                      <p className="text-xs text-muted-foreground">{t("workspace.replyInProgressHint")}</p>
+                    )}
+                  </>
                 )}
                 {isGeneratingAudioOverview && (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />

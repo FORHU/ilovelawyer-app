@@ -64,9 +64,11 @@ export function useNotificationsQuery(options?: { limit?: number; enabled?: bool
  * The chat invalidation is this same "gap in the connection" reasoning applied to
  * chat:chunk/chat:done/chat:error (see subscribeChatGeneration in lib/chat/mutations.ts): a
  * page mid-generation that loses its socket (background tab throttled, network blip) and
- * later reconnects needs exactly one fresh GET /messages to pick up whatever it missed —
- * `invalidateQueries`'s default `refetchType: "active"` means only currently-mounted queries
- * actually refetch, so this is a no-op for any consultation nobody's looking at.
+ * later reconnects needs exactly one fresh GET /messages to pick up whatever it missed.
+ * `refetchType: "all"` (not the default "active") matters specifically for a consultation
+ * nobody's currently looking at — its own turn's chat:done can be the exact event this
+ * reconnect missed, and without an immediate refetch here that turn is left looking stuck
+ * (sendingConsultationIds never clears) until someone happens to reopen it.
  *
  * `document:started/ready/failed/retrying` (Case Document extraction queue) patch the cached
  * document lists in place — see registerDocumentSocketHandlers in lib/cases/document-socket.ts.
@@ -88,7 +90,7 @@ export function useNotificationSocket() {
 
     const handleConnect = () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all })
-      queryClient.invalidateQueries({ queryKey: chatKeys.all })
+      queryClient.invalidateQueries({ queryKey: chatKeys.all, refetchType: "all" })
       // Same "gap in the connection" reasoning for document:* events (see document-socket.ts):
       // chatKeys.all above already covers a consultation's documents; case document lists and
       // the Terminal snapshot (which embeds each document's ragStatus) need their own.

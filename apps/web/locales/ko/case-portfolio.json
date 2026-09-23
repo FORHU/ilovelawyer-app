@@ -133,6 +133,7 @@
     "timelineEventCount": "이벤트 {{count}}건",
     "dataTableTile": "데이터 표",
     "needsDocumentsHint": "문서를 업로드하면 사용할 수 있습니다",
+    "replyInProgressHint": "현재 답변이 끝날 때까지 기다려 주세요",
     "dataTableRefreshing": "데이터 표 새로고침 중…",
     "dataTableFactCount": "항목 {{count}}건",
     "dataTableEmpty": "이 사건에 기록된 증인, 손해배상, 기한, 또는 사실관계가 아직 없습니다.",

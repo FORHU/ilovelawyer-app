@@ -2,6 +2,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
+import { useRouter } from "next/navigation";
 import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
@@ -12,7 +13,6 @@ import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NotificationBellTrigger } from "@/components/notifications/notification-bell-trigger";
-import { NotificationPanel } from "@/components/notifications/notification-panel";
 import { useNotificationBellState } from "@/components/notifications/use-notification-bell-state";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -88,6 +88,7 @@ const MOBILE_NAV_ITEMS = [
 
 export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   // Lifted into a store (not local state) so a page can render its own trigger — see
   // mobileHeaderMerged's doc comment above — that opens this exact same drawer.
@@ -96,11 +97,12 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
   const closeMobileMenu = useMobileNavStore((s) => s.close);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
-  // Mobile only: tapping the bell (moved up into the profile row) swaps the primary nav list
-  // for the notification list in place, rather than opening a floating popover — the popover
-  // kept fighting Radix's own collision math to stay on-screen inside the narrow drawer panel.
-  const [showMobileNotifications, setShowMobileNotifications] = useState(false);
-  const mobileNotificationState = useNotificationBellState(showMobileNotifications, () => setShowMobileNotifications(false));
+  // Mobile only: tapping the bell (moved up into the profile row) sends the user straight to
+  // the full notifications page instead of expanding an inline list — the drawer is narrow
+  // enough that an in-place list left barely any of it visible at once. The hook is still
+  // used (with the list query left off, `open: false`) purely for the unread badge/reconnect
+  // dot on the trigger button itself.
+  const mobileNotificationState = useNotificationBellState(false, () => {});
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
@@ -135,10 +137,6 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
     return () => window.removeEventListener("resize", handleResize);
   }, [isMobileMenuOpen, closeMobileMenu]);
 
-  // Land back on the primary nav list, not mid-notifications, the next time the drawer opens.
-  useEffect(() => {
-    if (!isMobileMenuOpen) setShowMobileNotifications(false);
-  }, [isMobileMenuOpen]);
 
   // Helper to dynamically toggle active states for the sub-tier workspace links.
   // Active items render bold + a small gold dot beneath the label (added inline where
@@ -364,11 +362,14 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
             <Tooltip>
               <TooltipTrigger asChild>
                 <NotificationBellTrigger
-                  open={showMobileNotifications}
+                  open={false}
                   hasUnread={mobileNotificationState.hasUnread}
                   unreadCount={mobileNotificationState.unreadCount}
                   isReconnecting={mobileNotificationState.isReconnecting}
-                  onClick={() => setShowMobileNotifications((prev) => !prev)}
+                  onClick={() => {
+                    closeMobileMenu();
+                    router.push("/homepage/notifications");
+                  }}
                 />
               </TooltipTrigger>
               <TooltipContent side="left">
@@ -378,36 +379,19 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           </div>
         )}
 
-        {/* Tapping the bell above swaps this whole slot for the notification list, in place —
-         * not a floating popover — then back again on a second tap or once a notification/
-         * "view all" navigates away (see the isMobileMenuOpen effect resetting this on close). */}
-        {showMobileNotifications ? (
-          <NotificationPanel
-            className="min-h-0 flex-1"
-            isReconnecting={mobileNotificationState.isReconnecting}
-            hasUnread={mobileNotificationState.hasUnread}
-            isLoading={mobileNotificationState.isLoading}
-            notifications={mobileNotificationState.notifications}
-            onMarkAllRead={mobileNotificationState.onMarkAllRead}
-            markAllReadPending={mobileNotificationState.markAllReadPending}
-            onOpenNotification={mobileNotificationState.handleOpenNotification}
-            onViewAll={mobileNotificationState.handleViewAll}
-          />
-        ) : (
-          <nav className="flex flex-col gap-1 px-3 py-3">
-            {MOBILE_NAV_ITEMS.map((item) => (
-              <Tooltip key={item.tab}>
-                <TooltipTrigger asChild>
-                  <Link href={item.href} onClick={closeMobileMenu} className={getMobileTabClass(item.tab)}>
-                    <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
-                    <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="left">{item.tooltip}</TooltipContent>
-              </Tooltip>
-            ))}
-          </nav>
-        )}
+        <nav className="flex flex-col gap-1 px-3 py-3">
+          {MOBILE_NAV_ITEMS.map((item) => (
+            <Tooltip key={item.tab}>
+              <TooltipTrigger asChild>
+                <Link href={item.href} onClick={closeMobileMenu} className={getMobileTabClass(item.tab)}>
+                  <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
+                  <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="left">{item.tooltip}</TooltipContent>
+            </Tooltip>
+          ))}
+        </nav>
 
         <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
           <LanguageSwitcher />

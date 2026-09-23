@@ -20,6 +20,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   const {
     activeAudioOverviewMessage,
     isGeneratingScript,
+    isConsultationBusy,
     generateScriptError,
     generateScript,
     audioRendering,
@@ -75,10 +76,16 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
             <button
               type="button"
               onClick={() => void generateScript()}
+              disabled={isConsultationBusy}
               className={primaryBtnClass}
             >
               {t("case-portfolio:workspace.audioOverviewGenerateCta")}
             </button>
+          )}
+          {!isGeneratingScript && isConsultationBusy && (
+            <p className="text-xs text-muted-foreground">
+              {t("case-portfolio:workspace.replyInProgressHint")}
+            </p>
           )}
           {generateScriptError && (
             <p className="text-xs text-danger">
