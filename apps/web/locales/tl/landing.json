@@ -7,7 +7,6 @@
       "resources": "Mga Resource"
     },
     "signIn": "Mag-sign In",
-    "requestDemo": "Humiling ng Demo",
     "getStarted": "Magsimula",
     "goToDashboard": "Pumunta sa Dashboard",
     "openMenu": "Buksan ang menu",
@@ -16,23 +15,17 @@
     "searchLabel": "Magtanong ng legal na tanong"
   },
   "hero": {
-    "ctaPrimary": "Simulan ang Libreng Konsultasyon",
-    "ctaExplore": "Galugarin ang Platform",
     "slideOne": {
       "line1": "Kung saan",
-      "line2": "nililinaw ang mga kaso",
-      "subtext": "Dumadaloy ang AI consultation habang isinusulat ito, kasama ang mga sinipi na precedent.",
-      "subtext_UK": "Dumadaloy ang AI consultation habang isinusulat ito, kasama ang mga sinipi na UK precedent."
+      "line2": "nililinaw ang mga kaso"
     },
     "slideTwo": {
       "line1": "Ang iyong mga kaso,",
-      "line2": "nasa ilalim ng kontrol",
-      "subtext": "Inaayos ng Legal Terminal ang labinsiyam na pane ng case intelligence sa paraang gusto mo."
+      "line2": "nasa ilalim ng kontrol"
     },
     "slideThree": {
       "line1": "Kung saan nagtatagpo",
-      "line2": "ang abogado at AI",
-      "subtext": "Pinapanatili ng Case Workspace ang mga source, chat, at work product sa iisang screen."
+      "line2": "ang abogado at AI"
     },
     "slideLabel": "Slide {{number}}",
     "nextSlide": "Susunod na slide",

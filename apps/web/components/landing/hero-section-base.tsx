@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowUpRight, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -120,8 +119,13 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
           ) : (
             <AnimatePresence mode="popLayout">
               <div key={index} className="flex flex-col gap-2">
+                {/* Asymmetric mask padding below: leading-[0.95] on the h1 is tighter than this
+                    serif's descenders (the "g" in "get" was clipped by the animation mask), so
+                    the mask gets extra room at the bottom only. The matching negative margins
+                    cancel both paddings back out of the layout flow, so this doesn't shift the
+                    gap between the two headline lines. */}
                 {(["line1", "line2"] as const).map((lineKey, i) => (
-                  <div key={lineKey} className="overflow-hidden py-[0.2em] -my-[0.2em]">
+                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.75em] -mt-[0.2em] -mb-[0.75em]">
                     <motion.h1
                       custom={i}
                       initial="hidden"
@@ -139,46 +143,6 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               </div>
             </AnimatePresence>
           )}
-
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={index}
-              initial={reduce ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: LANDING_DURATIONS.captionCrossfade }}
-              className="text-white text-sm leading-[1.35] max-w-[540px] flex items-center gap-2"
-            >
-              {t(`hero.${SLIDE_KEYS[index]}.subtext`, tCtx)}
-              <span aria-hidden>→</span>
-            </motion.p>
-          </AnimatePresence>
-
-          <div className="flex flex-wrap items-center gap-6 pt-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/signup"
-                  className={`bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-8 py-4 rounded-full flex items-center gap-3 hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
-                >
-                  {t("hero.ctaPrimary")}
-                  <ArrowUpRight size={14} />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Create your free ilovelawyer account</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href="#capabilities"
-                  className={`text-white border border-white/40 text-xs tracking-[1.2px] uppercase px-8 py-4 rounded-full hover:border-white transition-colors duration-200 inline-flex items-center ${FOCUS_RING}`}
-                >
-                  {t("hero.ctaExplore")}
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>Jump down to see what the platform can do</TooltipContent>
-            </Tooltip>
-          </div>
         </div>
       </div>
 

@@ -7,7 +7,6 @@
       "resources": "리소스"
     },
     "signIn": "로그인",
-    "requestDemo": "데모 요청",
     "getStarted": "시작하기",
     "goToDashboard": "대시보드로 이동",
     "openMenu": "메뉴 열기",
@@ -16,23 +15,17 @@
     "searchLabel": "법률 질문하기"
   },
   "hero": {
-    "ctaPrimary": "무료 상담 시작하기",
-    "ctaExplore": "플랫폼 살펴보기",
     "slideOne": {
       "line1": "사건이",
-      "line2": "명확해지는 곳",
-      "subtext": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 판례가 함께 제시됩니다.",
-      "subtext_UK": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 영국 판례가 함께 제시됩니다."
+      "line2": "명확해지는 곳"
     },
     "slideTwo": {
       "line1": "당신의 사건들을,",
-      "line2": "한눈에 관리하세요",
-      "subtext": "리걸 터미널은 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다."
+      "line2": "한눈에 관리하세요"
     },
     "slideThree": {
       "line1": "변호사와 AI가",
-      "line2": "만나는 곳",
-      "subtext": "Case Workspace는 자료, 채팅, 결과물을 하나의 화면에 모아둡니다."
+      "line2": "만나는 곳"
     },
     "slideLabel": "슬라이드 {{number}}",
     "nextSlide": "다음 슬라이드",
