@@ -109,7 +109,7 @@
   "add": "Add",
   "outlook": "Outlook",
   "outlookEmpty": "No outlook yet.",
-  "outlookEmptyHint": "Run Refresh analysis to generate an assessment of this case.",
+  "outlookEmptyHint": "An assessment appears the next time a document is added or updated on this case.",
   "outlookDisclaimer": "AI assessment, not legal advice.",
   "previousReview": "Previous review",
   "band_UNFAVORABLE": "Unfavorable",
