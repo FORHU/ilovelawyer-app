@@ -1,7 +1,7 @@
 import { createElement, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { Folder, Loader2, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, Folder, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
@@ -210,6 +210,15 @@ export function EvidencePanel({
   // headed sections instead so every document, PENDING and FAILED included, stays in view.
   const documentGroups = groupByCategory(snapshot.documents)
   const hasCategories = documentGroups.some((group) => group.category !== null)
+  // Categories start open; this holds the ones the lawyer has collapsed ("" = Uncategorized).
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+  const toggleCategory = (key: string) =>
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
 
   return (
     <PanelBody gap="4">
@@ -258,32 +267,50 @@ export function EvidencePanel({
           <>
             <StatusSummary documents={snapshot.documents} />
             <div className="space-y-3">
-              {documentGroups.map((group) => (
-                <section key={group.category ?? ""} aria-label={group.category ?? t("uncategorizedFolder")}>
-                  {/* A case with no categorised documents stays one plain list — an
-                   * "Uncategorized" header over everything would add nothing. */}
-                  {hasCategories ? (
-                    <p className={`mb-1.5 flex items-center gap-1.5 ${labelTextClass}`}>
-                      <Folder className="size-3" aria-hidden="true" />
-                      <span className="truncate" title={group.category ?? undefined}>
-                        {group.category ?? t("uncategorizedFolder")}
-                      </span>
-                      <span>· {group.docs.length}</span>
-                    </p>
-                  ) : null}
-                  <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                    {group.docs.map((doc) => (
-                      <DocumentRow
-                        key={doc.id}
-                        doc={doc}
-                        onOpen={() => setOpenDocumentId(doc.id)}
-                        onDelete={() => setDeletingDoc(doc)}
-                        isDeleting={isDeleting && deletingVars?.documentId === doc.id}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
+              {documentGroups.map((group, index) => {
+                const key = group.category ?? ""
+                const label = group.category ?? t("uncategorizedFolder")
+                const isOpen = !hasCategories || !collapsedCategories.has(key)
+                const listId = `evidence-category-${index}`
+                return (
+                  <section key={key} aria-label={label}>
+                    {/* A case with no categorised documents stays one plain list — an
+                     * "Uncategorized" header over everything would add nothing. */}
+                    {hasCategories ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(key)}
+                        aria-expanded={isOpen}
+                        aria-controls={listId}
+                        className={`mb-1.5 flex w-full items-center gap-1.5 rounded-md py-1 text-left transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${labelTextClass}`}
+                      >
+                        <ChevronDown
+                          className={`size-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`}
+                          aria-hidden="true"
+                        />
+                        <Folder className="size-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate" title={group.category ?? undefined}>
+                          {label}
+                        </span>
+                        <span className="shrink-0">· {group.docs.length}</span>
+                      </button>
+                    ) : null}
+                    {isOpen ? (
+                      <ul id={listId} className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                        {group.docs.map((doc) => (
+                          <DocumentRow
+                            key={doc.id}
+                            doc={doc}
+                            onOpen={() => setOpenDocumentId(doc.id)}
+                            onDelete={() => setDeletingDoc(doc)}
+                            isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+                          />
+                        ))}
+                      </ul>
+                    ) : null}
+                  </section>
+                )
+              })}
             </div>
           </>
         )}
