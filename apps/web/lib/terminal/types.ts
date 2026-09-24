@@ -125,8 +125,8 @@ export type OutlookBand =
   | "LEANING_FAVORABLE"
   | "FAVORABLE"
 
-// LLM judgement of how the case is going, as a band + confidence, never a number. Not in the API
-// yet (backend handoff steps 2-9) — optional everywhere until it ships.
+// LLM judgement of how the case is going, as a band + confidence, never a number. Null until the
+// case's first refresh after the outlook feature shipped.
 export interface CaseOutlook {
   band: OutlookBand
   confidence: ConfidenceLevel
@@ -135,7 +135,7 @@ export interface CaseOutlook {
   createdAt: string
 }
 
-// Weekly buckets, oldest first. Not in the API yet.
+// Weekly buckets, oldest first.
 export interface TrendPoint {
   date: string
   value: number
@@ -148,7 +148,7 @@ export interface SnapshotRisk {
   severity: "FATAL" | "MAJOR" | "UNVERIFIED" | "MISSING_EVIDENCE" | "DEADLINE"
   status: "OPEN" | "CONFIRMED" | "ACCEPTED"
   pageNumber: number | null
-  /** Not in the API yet. */
+  /** Null for lawyer-added risks; only AI-generated risks carry a confidence. */
   confidence?: ConfidenceLevel | null
 }
 
@@ -310,7 +310,7 @@ export interface CaseSnapshot {
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
-  /** Not in the API yet — see CaseOutlook. `outlookHistory` is newest first and includes the current one. */
+  /** `outlookHistory` is newest first and includes the current one. */
   outlook?: CaseOutlook | null
   outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]
   trends?: { health?: TrendPoint[]; openIssues?: TrendPoint[]; evidence?: TrendPoint[] }
