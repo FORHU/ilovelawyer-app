@@ -9,7 +9,7 @@ import { CircleHelp, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { MermaidDiagram } from "./mermaid-diagram";
 import { findAnchorMatches } from "@/components/shared/decision-anchor-match";
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
-import { decisionAnchorElementId } from "@/lib/chat/use-topic-navigator";
+import { decisionAnchorElementId, reapplyFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import type { MessageGroundingCheck } from "@/lib/chat/mutations";
@@ -347,6 +347,13 @@ const AssistantMessage = React.memo(function AssistantMessage({
     () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId),
     [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId],
   );
+  // A new `components` object (any prop/highlight change above) remounts every <p>/<li> in this
+  // bubble, dropping the paragraph-level highlight SourcesPanel put on one of them — see
+  // use-topic-navigator.ts's applyFallbackHighlight. Re-applied here, after the DOM commit but
+  // before paint, on every render (cheap: a no-op unless that highlight lives in this bubble).
+  React.useLayoutEffect(() => {
+    if (messageIndex !== undefined) reapplyFallbackHighlight(messageIndex);
+  });
   return (
     <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>

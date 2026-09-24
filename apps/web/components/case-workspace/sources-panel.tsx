@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
-import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
+import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, clearFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { EvidenceItem, RuleItem, Label } from "@/components/shared/decision-detail";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
@@ -75,6 +75,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   // could coincidentally "highlight" an unrelated quote once a new consultation's messages load.
   useEffect(() => {
     setActiveHighlight(null);
+    clearFallbackHighlight();
   }, [activeConsultationId, setActiveHighlight]);
 
   const handleJump = (index: number) => {
@@ -97,12 +98,16 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   // span already has its own permanent dotted-underline styling, unrelated to this on-click one.
   // `messageIndex` is the specific turn's own decisions-bearing message (DecisionNavigatorGroup.
   // index), not always the latest turn — every prompt's decisions render here now, each jumping
-  // to its own bubble rather than always the newest one.
-  const handleJumpToElement = (id: string, messageIndex: number) => {
+  // to its own bubble rather than always the newest one. `quoteText` (evidence rows only) lets
+  // scrollToElementId highlight the closest-matching paragraph when the quote was paraphrased.
+  const handleJumpToElement = (id: string, messageIndex: number, quoteText?: string | null) => {
     setActiveHighlight(id);
-    if (!onBeforeJump) return scrollToElementId(id, messageIndex);
-    onBeforeJump(messageIndex);
-    requestAnimationFrame(() => requestAnimationFrame(() => scrollToElementId(id, messageIndex)));
+    // Always wait two frames (not just on mobile, where the Chat tab has to mount first):
+    // setActiveHighlight above only re-renders the reply after this handler returns, swapping the
+    // quote's plain <span> for the yellow <mark> — scrolling to the old node mid-swap could land
+    // on an element that's about to be replaced, leaving a jump with no highlight.
+    onBeforeJump?.(messageIndex);
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToElementId(id, messageIndex, quoteText ?? undefined)));
   };
 
   // Flattens one turn's decision records into the same "what backs this reply" evidence/rule rows
@@ -167,7 +172,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                       <EvidenceItem
                         key={i}
                         evidence={ev}
-                        onClick={() => handleJumpToElement(id, group.index)}
+                        onClick={() => handleJumpToElement(id, group.index, ev.quote)}
                         active={id === activeHighlightId}
                       />
                     );
@@ -185,7 +190,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                       <EvidenceItem
                         key={i}
                         evidence={ev}
-                        onClick={() => handleJumpToElement(id, group.index)}
+                        onClick={() => handleJumpToElement(id, group.index, ev.quote)}
                         active={id === activeHighlightId}
                       />
                     );

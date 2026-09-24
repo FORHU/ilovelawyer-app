@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -894,15 +894,38 @@ export default function ConsultationChat({
   // CSS max-h-[50vh] on the textarea (below) is the actual visual cap — the browser clamps
   // to it and shows a scrollbar regardless of what height gets set here, so this can just
   // always request the content's full natural height rather than also clamping in JS.
-  useEffect(() => {
+  //
+  // A layout effect, not a plain one: a passive effect runs *after* the browser has painted the
+  // new text at the old height, so as a line wrapped, the one-row textarea auto-scrolled to keep
+  // the caret in view and the text visibly vanished for a few frames until the resize landed.
+  // It also re-runs when isComposerMultiline flips — that flip changes the textarea's width
+  // (shared row -> its own full-width row), so the height measured at the old width is stale.
+  // Because that re-measure happens at the *new* width, where the same text may fit on one line
+  // again, going back to single-row is gated on the text having shrunk past where it wrapped
+  // (multilineFlipLengthRef) — otherwise the two layouts would flip-flop forever on the same text.
+  const multilineFlipLengthRef = useRef(0);
+  useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+    el.scrollTop = 0;
     // A single line (leading-6 + the textarea's own py-1.5) renders at 36px in both the
     // embedded and non-embedded variants — anything taller means it has wrapped past one line.
-    setIsComposerMultiline(el.scrollHeight > 40);
-  }, [inputMessage]);
+    const wrapped = el.scrollHeight > 40;
+    if (!isComposerMultiline) {
+      if (wrapped) {
+        multilineFlipLengthRef.current = inputMessage.length;
+        setIsComposerMultiline(true);
+      }
+    } else if (
+      !wrapped &&
+      (inputMessage.length === 0 ||
+        inputMessage.length < multilineFlipLengthRef.current - Math.min(8, multilineFlipLengthRef.current >> 1))
+    ) {
+      setIsComposerMultiline(false);
+    }
+  }, [inputMessage, isComposerMultiline]);
 
   // The transcript, rather than the page, owns scrolling. Follow new/streaming content only
   // while the lawyer is already at the bottom; toggling Topics, scroll-spy state, or a query
@@ -1054,17 +1077,30 @@ export default function ConsultationChat({
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
+  // Only a drag that actually carries files is an attach gesture — selecting text in the textarea
+  // and dragging it (or a text/link drag from elsewhere on the page) also fires dragover on this
+  // form, and treating that as a file drop flashed the "Drop files to attach" overlay over the
+  // very text being selected. Text drags are left entirely to the browser (no preventDefault), so
+  // moving selected text within the textarea still works normally.
+  const isFileDrag = (e: React.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
     setIsDraggingOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
+    // dragleave also fires when the pointer moves onto a child of the form — only clear the
+    // overlay when it actually leaves the form, or it would flicker over every inner element.
+    if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
     setIsDraggingOver(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
     setIsDraggingOver(false);
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
@@ -1889,9 +1925,8 @@ export default function ConsultationChat({
                       onClick={() => void handleStop()}
                       disabled={!canStop || isStopping}
                       aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
-                      className="order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                      className="order-3 h-9 w-9 shrink-0 flex items-center justify-center rounded-full bg-brand-gold text-background transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
                     >
-                      <span className="hidden sm:inline">{t("input.stopLabel", { defaultValue: "Stop" })}</span>
                       {isStopping ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                       ) : (

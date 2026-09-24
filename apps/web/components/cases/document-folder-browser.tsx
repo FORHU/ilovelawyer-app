@@ -295,7 +295,12 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   }
 
   const header = (
-    <div className="flex flex-col gap-1">
+    <div className="@container flex min-w-0 flex-col gap-1">
+      {/* One row: title on the left, action buttons flush right on the same line. Below `@sm` the
+       * buttons show only their icon (label lives in the tooltip/aria-label) so title + buttons
+       * fit without wrapping or pushing the row wider than the panel; at `@sm`+ they show their
+       * full text. `@container`, not a viewport breakpoint, because this renders inside Studio's
+       * resizable dock as often as a real narrow viewport. */}
       <div className="flex items-center justify-between gap-2">
         {view.kind === "folder" ? (
           <button
@@ -325,7 +330,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             {t("detail.documents")}
           </span>
         )}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
           {view.kind === "root" && !showArchived && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -337,10 +342,10 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   }}
                   aria-pressed={showArchived}
                   aria-label={t("detail.viewArchived")}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-1 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border p-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 @sm:px-2 @sm:py-1"
                 >
                   <Archive className="h-3 w-3" aria-hidden="true" />
-                  {t("detail.viewArchived")}
+                  <span className="hidden @sm:inline">{t("detail.viewArchived")}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>{t("detail.viewArchived")}</TooltipContent>
@@ -353,14 +358,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   type="button"
                   disabled={isUploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2 py-1 text-[11px] font-semibold text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                  aria-label={isUploading ? t("detail.uploading") : t("detail.addDocument")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-brand-gold/30 bg-brand-gold/10 p-1.5 text-[11px] font-semibold text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 @sm:px-2 @sm:py-1"
                 >
                   {isUploading ? (
                     <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                   ) : (
                     <Plus className="h-3 w-3" aria-hidden="true" />
                   )}
-                  {isUploading ? t("detail.uploading") : t("detail.addDocument")}
+                  <span className="hidden @sm:inline">{isUploading ? t("detail.uploading") : t("detail.addDocument")}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>{view.kind === "folder" ? t("detail.dropToUpload") : "Upload one or more documents to this case"}</TooltipContent>
@@ -377,14 +383,15 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
                   aria-pressed={selectMode}
                   disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  aria-label={selectMode ? t("editModal.cancel") : t("detail.selectItems")}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border p-1.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 @sm:px-2 @sm:py-1 ${
                     selectMode
                       ? "border-primary/40 bg-primary/10 text-primary"
                       : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted dark:hover:bg-overlay-hover"
                   }`}
                 >
                   {selectMode ? <X className="h-3 w-3" aria-hidden="true" /> : <CheckSquare className="h-3 w-3" aria-hidden="true" />}
-                  {selectMode ? t("editModal.cancel") : t("detail.selectItems")}
+                  <span className="hidden @sm:inline">{selectMode ? t("editModal.cancel") : t("detail.selectItems")}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>{selectMode ? t("editModal.cancel") : t("detail.selectItems")}</TooltipContent>
@@ -466,23 +473,17 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // derivation above.
   const selectionBar = selectableCount > 0 && selectMode && (
     <div
-      // Always one row, never wrapped — wrapping made the Archive/Delete group's alignment
-      // inconsistent across widths (space-between pushed it flush right on a wide row, but
-      // once wrapped onto its own line it fell back to flush left, since there's nothing left
-      // to space *between* on a line with only one group on it). A single row that scrolls
-      // horizontally on a truly narrow width (Studio's dock can be as narrow as 260px) keeps
-      // the same left-to-right layout — and the same right-aligned actions — everywhere. Below
-      // `@xs` the action buttons also drop their text (icon + tooltip only, see below) so this
-      // row fits without needing that scroll in the first place on a typical narrow screen —
-      // `@container`, not a viewport breakpoint, since this renders inside Studio's resizable
-      // dock as often as it does a real narrow viewport. Every gap/padding in this bar is
-      // trimmed down as far as it'll go without crowding, specifically so the full-text state
-      // needs as little room as possible — verified against a live render (not just the
-      // Tailwind breakpoint in isolation) that at `@xs` (20rem) there's no overflow.
-      className="@container flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
+      // Always one row — Select all on the left, actions flush right (`ml-auto`). Never scrolls
+      // sideways (a scrollbar inside the bar read as broken) and never wraps (a wrapped action
+      // group looked detached from the row it acts on). On a narrow width (Studio's dock can be as
+      // narrow as 260px, or a phone viewport) it fits by dropping the action buttons' text (icon +
+      // tooltip only, see below), using tighter padding/gaps below `@xs`, and letting the
+      // "N selected" badge truncate as a last resort. `@container`, not a viewport breakpoint,
+      // since this renders inside Studio's resizable dock as often as it does a real narrow viewport.
+      className="@container flex min-w-0 items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-2 py-2 @xs:gap-2 @xs:px-3 dark:bg-overlay-hover/40"
     >
-      <div className="flex shrink-0 items-center gap-2">
-        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium text-foreground">
+      <div className="flex min-w-0 items-center gap-2">
+        <label className="flex min-w-0 cursor-pointer items-center gap-1.5 text-xs font-medium whitespace-nowrap text-foreground">
           <input
             type="checkbox"
             checked={allSelected}
@@ -490,12 +491,12 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
           />
           {t("detail.selectAll")}
-          <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+          <span className="min-w-0 truncate rounded-full bg-background px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
             {t("detail.selectedCount", { count: selectedCount })}
           </span>
         </label>
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 @xs:gap-2">
         {showArchived ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -503,7 +504,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                 type="button"
                 disabled={selectedCount === 0 || isBulkRestoring}
                 onClick={() => setConfirmingBulkRestore(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 p-2 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-blue-400"
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-blue-400"
               >
                 {isBulkRestoring ? (
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
@@ -523,7 +524,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   type="button"
                   disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
                   onClick={() => setConfirmingBulkArchive(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 p-2 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-amber-400"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-amber-400"
                 >
                   {isBulkArchiving ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
@@ -541,7 +542,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
                   type="button"
                   disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
                   onClick={() => setConfirmingBulkDelete(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 p-2 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-red-400"
                 >
                   {isBulkDeleting ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
@@ -728,7 +729,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // shows when no specific folder card is being targeted, so it doesn't cover that card's own
   // highlighted state.
   return (
-    <div className="flex flex-col gap-3" {...activeDragHandlers}>
+    <div className="flex min-w-0 flex-col gap-3" {...activeDragHandlers}>
       {header}
       {selectionBar}
       <div
