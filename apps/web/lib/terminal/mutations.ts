@@ -28,6 +28,7 @@ import type {
   TheoryDiff,
   TheoryStance,
   Witness,
+  WitnessStatus,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 
@@ -619,11 +620,29 @@ export function useCreateWitnessMutation(caseId: string) {
     mutationFn: (body: {
       name: string
       role?: string
+      summary?: string
+      status?: WitnessStatus
+      credibility?: number
       contact?: string
       notes?: string
     }) =>
       apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses`, {
         method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateWitnessMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status?: WitnessStatus; credibility?: number }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
+        method: "PATCH",
         body: JSON.stringify(body),
       }),
     onSuccess: () => {

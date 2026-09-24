@@ -351,11 +351,16 @@ export interface CaseFinding {
   updatedAt: string
 }
 
+export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
+
 export interface Witness {
   id: string
   caseId: string
   name: string
   role: string | null
+  summary: string | null
+  status: WitnessStatus
+  credibility: number
   contact: string | null
   notes: string | null
   createdAt: string
