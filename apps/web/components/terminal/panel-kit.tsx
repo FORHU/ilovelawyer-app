@@ -96,6 +96,7 @@ export function PanelRowList({
   const reducedMotion = usePrefersReducedMotion()
   const items = Children.toArray(children).filter(isValidElement) as ReactElement<Record<string, unknown>>[]
   const keys = items.map((item) => String(item.key))
+  const latestByKey = new Map(items.map((item) => [String(item.key), item]))
   const [rendered, setRendered] = useState(items)
   const prevKeysRef = useRef<string[]>(keys)
   const flipStateRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
@@ -155,7 +156,12 @@ export function PanelRowList({
       ref={listRef}
       className={bare ? "flex flex-col" : "overflow-hidden rounded-lg border border-border divide-y divide-border"}
     >
-      {rendered.map((item) => cloneElement(item, { "data-row-key": String(item.key) }))}
+      {rendered.map((item) =>
+        // `rendered` only re-syncs when the set of keys changes, so a row whose own content changed
+        // (same key) would otherwise show its stale element. Prefer the live one; a removed row has
+        // no live element and keeps its last copy for the exit fade-out.
+        cloneElement(latestByKey.get(String(item.key)) ?? item, { "data-row-key": String(item.key) }),
+      )}
     </ul>
   )
 }
