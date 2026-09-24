@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { Loader2, RefreshCw } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 import {
@@ -86,10 +88,14 @@ export function CaseTimelineView({
   // the "Timeline" breadcrumb, instead of this content-area button — Legal Terminal's Evidence
   // panel and the chat's embedded timeline tab have no equivalent header slot, so they keep it.
   hideGenerateButton = false,
+  // Optional heading rendered on the left of the generate row, so the button sits at the right
+  // end of the section header instead of on a row of its own (Evidence panel passes "Timeline").
+  title,
 }: {
   caseId: string
   fill?: boolean
   hideGenerateButton?: boolean
+  title?: React.ReactNode
 }) {
   const { t } = useTranslation("homepage")
   const { t: tt } = useTranslation("terminal")
@@ -204,24 +210,43 @@ export function CaseTimelineView({
 
   return (
     <div className={fill ? "flex h-full min-h-0 flex-col overflow-y-auto" : "flex flex-col"}>
-      <div className={`mx-auto flex w-full max-w-xl flex-1 flex-col ${fill ? "px-5 py-6 sm:px-8" : "px-0 pt-1 pb-2"}`}>
+      <div className={`mx-auto flex w-full flex-1 flex-col ${fill ? "max-w-xl px-5 py-6 sm:px-8" : "px-0 pt-1 pb-2"}`}>
         {!hideGenerateButton ? (
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              disabled={isGenerating || generate.isPending}
-              onClick={() => generate.mutate()}
-              className="h-8 shrink-0 rounded-full border border-border bg-muted px-3.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-foreground transition-colors hover:bg-muted/70 disabled:opacity-50"
-            >
-              {isGenerating || generate.isPending
-                ? t("timeline.generating", { defaultValue: "Generating…" })
-                : t("timeline.generate", { defaultValue: "Generate timeline" })}
-            </button>
+          <div className={`${title ? "mb-2" : "mb-4"} flex items-center justify-between gap-3`}>
+            {title}
+            <div className="ml-auto flex items-center gap-2">
             {generateStatus.data?.status === "FAILED" ? (
               <span className="text-[11px] text-red-500">
                 {t("timeline.generateError", { defaultValue: "Last generation failed." })}
               </span>
             ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isGenerating || generate.isPending}
+                  onClick={() => generate.mutate()}
+                  aria-label={
+                    isGenerating || generate.isPending
+                      ? t("timeline.generating", { defaultValue: "Generating…" })
+                      : t("timeline.generate", { defaultValue: "Generate timeline" })
+                  }
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 dark:hover:bg-overlay-hover"
+                >
+                  {isGenerating || generate.isPending ? (
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw className="size-4" aria-hidden="true" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {isGenerating || generate.isPending
+                  ? t("timeline.generating", { defaultValue: "Generating…" })
+                  : t("timeline.generate", { defaultValue: "Generate timeline" })}
+              </TooltipContent>
+            </Tooltip>
+            </div>
           </div>
         ) : null}
         {isLoading ? (

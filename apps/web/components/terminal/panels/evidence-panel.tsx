@@ -9,7 +9,7 @@ import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-draw
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import { useUploadCaseDocumentsMutation, useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
-import { fileTypeIcon } from "@/lib/cases/file-type-icon"
+import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import type {
@@ -18,7 +18,7 @@ import type {
   PrivilegeStatus,
   SnapshotDocument,
 } from "@/lib/terminal/types"
-import { EmptyNote, labelTextClass, PanelBody, SectionLabel } from "@/components/terminal/panel-kit"
+import { EmptyNote, labelTextClass, PanelBody } from "@/components/terminal/panel-kit"
 
 export const PRIVILEGE_STATUS_KEYS: Record<PrivilegeStatus, string> = {
   NONE: "privilegeNone",
@@ -105,8 +105,12 @@ function DocumentRow({
   return (
     <li className="group flex w-full items-center gap-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover">
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
-          {createElement(fileTypeIcon(doc), { className: "size-4", "aria-hidden": true })}
+        <span
+          aria-hidden="true"
+          className={`flex size-10 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
+        >
+          {createElement(fileTypeIcon(doc), { className: "size-4" })}
+          <span className="font-mono text-[8px] font-semibold leading-none tracking-[0.5px]">{fileExtensionLabel(doc)}</span>
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] text-foreground" title={doc.name}>
@@ -295,8 +299,7 @@ export function EvidencePanel({
       </div>
 
       <div className="border-t border-border pt-4">
-        <SectionLabel>{t("timeline")}</SectionLabel>
-        <CaseTimelineView caseId={caseId} fill={false} />
+        <CaseTimelineView caseId={caseId} fill={false} title={<p className={labelTextClass}>{t("timeline")}</p>} />
       </div>
 
       <EvidenceDetailDrawer

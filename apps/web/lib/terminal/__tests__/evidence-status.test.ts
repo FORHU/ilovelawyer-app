@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone, timelineDotTone } from "../evidence-status"
-import { fileTypeIcon, isSpreadsheet } from "@/lib/cases/file-type-icon"
+import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon, isSpreadsheet } from "@/lib/cases/file-type-icon"
 import { File, FileImage, FileSpreadsheet, FileText, Mail } from "lucide-react"
 
 describe("ingestTone / countByStatus", () => {
@@ -100,5 +100,25 @@ describe("groupByCategory", () => {
 
   it("returns no groups for no documents", () => {
     expect(groupByCategory([])).toEqual([])
+  })
+})
+
+describe("fileExtensionLabel", () => {
+  it("uses the uploaded filename's extension, uppercased", () => {
+    expect(fileExtensionLabel({ mimeType: null, name: "Contract.docx" })).toBe("DOCX")
+    expect(fileExtensionLabel({ mimeType: "application/pdf", name: "brief.PDF" })).toBe("PDF")
+  })
+  it("falls back to the MIME type, then to empty", () => {
+    expect(fileExtensionLabel({ mimeType: "application/pdf", name: "scan" })).toBe("PDF")
+    expect(fileExtensionLabel({ mimeType: null, name: "scan" })).toBe("")
+  })
+})
+
+describe("fileTypeColorClass", () => {
+  it("colours by file family and stays neutral for unknown types", () => {
+    expect(fileTypeColorClass({ mimeType: null, name: "a.pdf" })).toContain("red")
+    expect(fileTypeColorClass({ mimeType: null, name: "a.docx" })).toContain("blue")
+    expect(fileTypeColorClass({ mimeType: null, name: "a.xlsx" })).toContain("green")
+    expect(fileTypeColorClass({ mimeType: "application/zip", name: "a.zip" })).toBe("text-muted-foreground")
   })
 })
