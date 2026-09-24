@@ -1,10 +1,17 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Trash2 } from "lucide-react"
-import { useCreateWitnessMutation, useDeleteWitnessMutation, useUpdateWitnessMutation } from "@/lib/terminal/mutations"
-import type { WitnessStatus } from "@/lib/terminal/types"
-import { useGraphViewQuery } from "@/lib/graph-view/mutations"
-import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { Loader2, Sparkles, Trash2 } from "lucide-react"
+import {
+  useAiJobStatus,
+  useCreateWitnessMutation,
+  useDeleteWitnessMutation,
+  useScoreWitnessesMutation,
+  useUpdateWitnessMutation,
+} from "@/lib/terminal/mutations"
+import type { Witness, WitnessStatus } from "@/lib/terminal/types"
+import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
+import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -13,30 +20,38 @@ const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: st
   OUTSTANDING: { text: "text-amber-500", badge: "border-amber-500/50 bg-amber-500/10 text-amber-500", bar: "bg-amber-400", label: "witnessOutstanding" },
 }
 
-type WitnessData = {
-  name: string
-  role?: string | null
-  summary?: string | null
-  status?: WitnessStatus
-  credibility?: number
-  contact?: string | null
-}
+type WitnessData = Partial<Witness> & { name: string }
 
 // Reads the graph-view projection (view_type=witnesses) instead of slicing CaseSnapshot, so a
 // witness added/removed from any mounted panel refreshes this one via the shared query cache.
 export function WitnessPanel({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
+  const queryClient = useQueryClient()
   const create = useCreateWitnessMutation(caseId)
   const update = useUpdateWitnessMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
+  const score = useScoreWitnessesMutation(caseId)
+  const job = useAiJobStatus(caseId, "witnessScoring")
   const [name, setName] = useState("")
   const [role, setRole] = useState("")
   const [summary, setSummary] = useState("")
+  const [openReasons, setOpenReasons] = useState<Set<string>>(new Set())
   const graphView = useGraphViewQuery(caseId, "witnesses")
   const witnesses = (graphView.data?.nodes ?? []).map((node) => ({
     node,
     w: node.data as WitnessData,
   }))
+
+  // useAiJobStatus only refreshes the snapshot when a job finishes; this panel reads the graph
+  // view, so refresh that too on the IN_PROGRESS -> DONE transition.
+  const isScoring = score.isPending || job.data?.status === "IN_PROGRESS"
+  const prevJobStatus = useRef(job.data?.status)
+  useEffect(() => {
+    if (prevJobStatus.current === "IN_PROGRESS" && job.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevJobStatus.current = job.data?.status
+  }, [job.data?.status, caseId, queryClient])
 
   const counts = { READY: 0, ADVERSE: 0, OUTSTANDING: 0 }
   witnesses.forEach(({ w }) => {
@@ -47,9 +62,41 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   const ringR = 15
   const ringC = 2 * Math.PI * ringR
 
+  const toggleReasons = (id: string) =>
+    setOpenReasons((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
   return (
     <PanelBody gap="4">
-      <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+        {total > 0 ? (
+          <button
+            type="button"
+            onClick={() => score.mutate()}
+            disabled={isScoring}
+            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
+          >
+            {isScoring ? (
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="h-3 w-3" aria-hidden="true" />
+            )}
+            {isScoring
+              ? t("witnessScoring")
+              : witnesses.some(({ w }) => w.scoredAt)
+                ? t("witnessRescore")
+                : t("witnessScore")}
+          </button>
+        ) : null}
+      </div>
+      <MutationError show={score.isError || job.data?.status === "FAILED"}>
+        {job.data?.status === "FAILED" && !score.isError ? t("witnessScoreFailed") : undefined}
+      </MutationError>
       {total > 0 ? (
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0">
@@ -92,11 +139,19 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
       <PanelRowList empty={<EmptyNote>{t("noWitnesses")}</EmptyNote>}>
         {witnesses.map(({ node, w }) => {
           const status = w.status ?? "OUTSTANDING"
-          const credibility = w.credibility ?? 50
+          const override = w.credibilityOverride ?? null
+          const ai = w.aiCredibility ?? null
+          // Manual override wins, then the AI score, then the legacy stored value.
+          const credibility = override ?? ai ?? w.credibility ?? 50
+          const hasScore = override !== null || ai !== null
+          const scoredNoData = !hasScore && !!w.scoredAt
           const style = STATUS_STYLE[status]
           const nextStatus = STATUSES[(STATUSES.indexOf(status) + 1) % STATUSES.length]!
+          const suggested = w.aiSuggestedStatus && w.aiSuggestedStatus !== status ? w.aiSuggestedStatus : null
+          const reasons = w.aiRationale ?? []
+          const reasonsOpen = openReasons.has(node.id)
           const commitCredibility = (value: number) => {
-            if (value !== credibility) update.mutate({ id: node.refId, credibility: value })
+            if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
           }
           return (
             <PanelRow key={node.id} className="flex-col items-stretch gap-2">
@@ -157,9 +212,63 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                   />
                 </div>
                 <span className={`w-6 text-right text-xs font-semibold tabular-nums ${style.text}`}>
-                  {credibility}
+                  {hasScore ? credibility : "—"}
                 </span>
               </div>
+              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${labelTextClass}`}>
+                <span>
+                  {override !== null
+                    ? t("witnessManualScore")
+                    : ai !== null
+                      ? t("witnessAiScore")
+                      : scoredNoData
+                        ? t("witnessNotEnoughData")
+                        : t("witnessNotScored")}
+                </span>
+                {override !== null && ai !== null ? (
+                  <button
+                    type="button"
+                    onClick={() => update.mutate({ id: node.refId, credibilityOverride: null })}
+                    disabled={update.isPending}
+                    className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                  >
+                    {t("witnessResetToAi")} ({ai})
+                  </button>
+                ) : null}
+                {reasons.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleReasons(node.id)}
+                    aria-expanded={reasonsOpen}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    {t("witnessWhy")}
+                  </button>
+                ) : null}
+                {suggested ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    {t("witnessAiSuggests", { status: t(STATUS_STYLE[suggested].label) })}
+                    <button
+                      type="button"
+                      onClick={() => update.mutate({ id: node.refId, status: suggested })}
+                      disabled={update.isPending}
+                      className={`underline underline-offset-2 disabled:opacity-50 ${STATUS_STYLE[suggested].text}`}
+                    >
+                      {t("witnessApply")}
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+              {reasonsOpen && reasons.length > 0 ? (
+                <ul className="flex flex-col gap-1.5 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
+                  {reasons.map((r, i) => (
+                    <li key={i}>
+                      {r.text}
+                      {r.source ? <span className="text-muted-foreground"> — {r.source}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </PanelRow>
           )
         })}

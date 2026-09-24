@@ -361,6 +361,14 @@ export interface Witness {
   summary: string | null
   status: WitnessStatus
   credibility: number
+  /** AI-proposed — the displayed score is credibilityOverride ?? aiCredibility ?? credibility. */
+  aiCredibility: number | null
+  aiRationale: { text: string; source: string | null }[] | null
+  aiSuggestedStatus: WitnessStatus | null
+  credibilityOverride: number | null
+  scoredAt: string | null
+  statementDueOn: string | null
+  statementReceived: boolean
   contact: string | null
   notes: string | null
   createdAt: string
