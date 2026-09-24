@@ -1,6 +1,6 @@
 import { useState, type ComponentPropsWithoutRef } from "react"
 import { useTranslation } from "react-i18next"
-import { MessageSquareWarning, RotateCcw } from "lucide-react"
+import { MessageSquare, MessageSquareWarning, RotateCcw } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail"
 import { useDisputeDecisionMutation, useReactivateDecisionMutation } from "@/lib/terminal/mutations"
@@ -67,13 +67,29 @@ function DecisionCard({
   const disputed = decision.status === "DISPUTED"
 
   return (
-    <PanelRow {...rest} className={`flex-col items-start ${disputed ? "bg-riskmed/5" : ""}`}>
-      <div className="flex w-full items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">
+    <PanelRow {...rest} className={`@container flex-col items-start ${disputed ? "bg-riskmed/5" : ""}`}>
+      {/* Stacked (badge above, full-width text) below the row's own `@sm` — not the viewport's —
+       * since these panels live inside resizable desktop panes that can be much narrower than
+       * the viewport implies. Side-by-side once there's room; `flex-col-reverse` keeps the badge
+       * visually first without reordering the DOM. */}
+      <div className="flex w-full flex-col-reverse items-start gap-1.5 @sm:flex-row @sm:items-start @sm:justify-between @sm:gap-2">
+        <p className="leading-5 font-medium text-foreground @sm:flex-1">
           {p.conclusion}
         </p>
         <DecisionConfidenceBadge confidence={p.confidence} />
       </div>
+
+      {decision.sourcePrompt && (
+        <p
+          className="flex w-full items-start gap-1 text-[11px] text-muted-foreground"
+          title={decision.sourcePrompt.content}
+        >
+          <MessageSquare className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">
+            {t("decisionSourcePrompt", { prompt: decision.sourcePrompt.content })}
+          </span>
+        </p>
+      )}
 
       {disputed && (
         <p className="flex items-start gap-1 text-[10px] font-semibold tracking-[1px] text-riskmed">
@@ -83,7 +99,7 @@ function DecisionCard({
         </p>
       )}
 
-      <div className="w-full space-y-2">
+      <div className="w-full">
         <DecisionDetailBody payload={p} />
       </div>
 

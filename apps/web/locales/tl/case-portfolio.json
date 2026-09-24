@@ -54,7 +54,6 @@
     "removeDocumentConfirm": "Alisin ang \"{{documentName}}\" mula sa kasong ito? Hindi na ito maibabalik.",
     "selectItems": "Piliin",
     "selectAll": "Piliin lahat",
-    "deselectAll": "Alisin ang pagpili",
     "selectedCount_one": "{{count}} napili",
     "selectedCount_other": "{{count}} napili",
     "deleteSelected": "Tanggalin",

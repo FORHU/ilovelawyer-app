@@ -16,6 +16,8 @@ interface Member {
   email: string;
   role: "owner" | "admin" | "member";
   you: boolean;
+  /** Invited but hasn't accepted yet — shown with a PENDING badge instead of YOU. */
+  pending?: boolean;
 }
 
 export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
@@ -33,7 +35,7 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
       <div ref={ref} className="max-w-[1160px] mx-auto grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-16 items-center">
         <motion.div
           style={{ y }}
-          className="justify-self-center w-[296px] h-[418px] rounded-xl bg-brand-navy-950 border border-white/10 shadow-2xl overflow-hidden text-white flex flex-col"
+          className="justify-self-center w-[296px] min-h-[418px] rounded-xl bg-brand-navy-950 border border-white/10 shadow-2xl overflow-hidden text-white flex flex-col"
         >
           <div className="p-4 border-b border-white/10">
             <p className="font-['Libre_Caslon_Text'] text-[18px]">{t("firms.membersCard.title")}</p>
@@ -51,16 +53,16 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
           </div>
           <div className="flex flex-col">
             {members.map((m) => (
-              <div key={m.email} className="flex items-center gap-2.5 p-3 border-b border-white/10">
+              <div key={m.email} className="flex items-center gap-2.5 p-2.5 border-b border-white/10">
                 <span className="size-7 rounded-full bg-brand-navy-800 flex items-center justify-center text-[10px] font-semibold shrink-0">
                   {m.initials}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-xs font-medium">
                     {m.name}
-                    {m.you && (
+                    {(m.you || m.pending) && (
                       <span className="text-[9px] border border-white/25 rounded-full px-1.5 py-px text-white/60 font-normal">
-                        {t("firms.membersCard.you")}
+                        {m.you ? t("firms.membersCard.you") : t("firms.membersCard.pending")}
                       </span>
                     )}
                   </div>
@@ -68,6 +70,8 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
                 </div>
                 <span className="text-[10px] border border-white/25 rounded-md px-2 py-1 shrink-0">
                   {t(`firms.membersCard.roles.${m.role}`)}
+                  {/* The owner's role is fixed; everyone else's is a dropdown in the product. */}
+                  {m.role !== "owner" && <span aria-hidden> ▾</span>}
                 </span>
               </div>
             ))}
@@ -102,8 +106,8 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
             </Tooltip>
           </div>
           <div className="flex flex-col gap-3.5">
-            <h3 className="text-white text-[22px] tracking-[-0.02em]">{t("firms.jurisdictionsHeading")}</h3>
-            <p className="text-white/75 text-base leading-[1.6]">{t("firms.jurisdictionsBody")}</p>
+            <h3 className="text-white text-[22px] tracking-[-0.02em]">{t("firms.jurisdictionsHeading", tCtx)}</h3>
+            <p className="text-white/75 text-base leading-[1.6]">{t("firms.jurisdictionsBody", tCtx)}</p>
           </div>
         </div>
       </div>

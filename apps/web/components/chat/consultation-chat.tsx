@@ -47,6 +47,7 @@ import {
   ChatGenerationCancelledError,
   type ChatMessage,
   type MessageReasoning,
+  type MessageGroundingCheck,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
@@ -88,6 +89,13 @@ function StoppedNotice({ label, compact }: { label: string; compact?: boolean })
 interface DisplayMessage {
   role: "user" | "assistant";
   content: string;
+  /** Grounding verification rows for this reply, straight off the messages API — see
+   * GroundingSummary. Undefined for user turns, for replies generated before the verifier ran,
+   * and whenever it is disabled on the API. */
+  groundingChecks?: MessageGroundingCheck[];
+  /** Jev triage for this user turn — drives the urgency chip under the prompt. */
+  urgent?: boolean | null;
+  intent?: string | null;
   /** Only ever set when `enableFileChips` is on (ADR 0012) — Case Chat never populates this. */
   attachments?: MessageAttachment[];
   /** The AI's case strategy map, extracted from `[MINDMAP]...[/MINDMAP]` — during streaming
@@ -602,6 +610,9 @@ export default function ConsultationChat({
               decisions: m.decisionRecords?.records,
               reasoning: m.reasoning ?? undefined,
               researchSteps: m.researchSteps?.steps,
+              groundingChecks: m.groundingChecks,
+              urgent: m.urgent,
+              intent: m.intent,
             }))
         : [],
     [consultationId, history, enableFileChips],
@@ -808,12 +819,14 @@ export default function ConsultationChat({
   // handful of short strings, and AssistantMessage no-ops (no highlight) wherever none match.
   const evidenceQuoteHighlights = useMemo(() => {
     const targets: { id: string; text: string }[] = [];
-    (latestDecisions?.records ?? []).forEach((record, ri) => {
+    if (!latestDecisions) return targets;
+    const messageIndex = latestDecisions.index;
+    latestDecisions.records.forEach((record, ri) => {
       record.evidenceFor.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "for", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "for", ei), text: ev.quote });
       });
       record.evidenceAgainst.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "against", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "against", ei), text: ev.quote });
       });
     });
     return targets;
@@ -2298,6 +2311,17 @@ export default function ConsultationChat({
                         </div>
                         {/* Stopped before a single word streamed: no assistant message exists to
                             carry the notice, so it sits right under the prompt instead. */}
+                        {/* Triage only earns space when it flagged something: an "urgent" chip on
+                            every routine message would be wallpaper. The intent label rides along
+                            on the same chip rather than claiming a second one. */}
+                        {m.urgent && (
+                          <div className={embedded ? "px-1" : "px-4"}>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
+                              {t("triage.urgent", { defaultValue: "Urgent" })}
+                              {m.intent ? <span className="font-normal opacity-80">· {t(`triage.intent.${m.intent}`, { defaultValue: "" })}</span> : null}
+                            </span>
+                          </div>
+                        )}
                         {m.replyStopped && (
                           <div className={embedded ? "px-1" : "px-4"}>
                             <StoppedNotice label={t("message.stopped", { defaultValue: "Response stopped" })} compact={embedded} />
@@ -2380,6 +2404,7 @@ export default function ConsultationChat({
                             onOpenDecision={handleOpenDecision}
                             messageIndex={i}
                             quoteHighlights={evidenceQuoteHighlights}
+                            groundingChecks={m.groundingChecks}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
                           {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {

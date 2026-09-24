@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { FooterRevealPortal } from "@/components/landing/footer-reveal-portal";
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages";
+import { useLanguageStore } from "@/lib/store/language.store";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render the same footer shell (see hero-section-base.tsx for why this is one
@@ -39,6 +40,7 @@ const PH_COLUMNS = [
     links: [
       { key: "helpCentre", href: "mailto:support@ilovelawyer.ph" },
       { key: "transcription", href: "#capabilities" },
+      { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
   },
@@ -63,6 +65,7 @@ const UK_COLUMNS = [
     links: [
       { key: "helpCentre", href: "mailto:support@uk.ilovelawyer.com" },
       { key: "transcription", href: "/homepage/transcription" },
+      { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
   },
@@ -73,21 +76,13 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
   const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
   const columns = tenantCode === "UK" ? UK_COLUMNS : PH_COLUMNS;
-  const year = new Date().getFullYear();
+  const language = useLanguageStore((s) => s.language);
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
 
   return (
     <FooterRevealPortal>
       <footer id="footer" className="bg-brand-navy-900 text-white py-16 px-6 md:px-16">
         <div className="max-w-[1440px] mx-auto">
-          <Link
-            href="/"
-            className="mb-4 inline-block hover:opacity-70 transition-opacity duration-200"
-            aria-label="ilovelawyer"
-          >
-            <Logo forBackground="dark" size={28} />
-          </Link>
-          <p className="text-white/60 text-sm max-w-[420px] mb-12">{t("footer.tagline", tCtx)}</p>
-
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
             {columns.map((col) => (
               <div key={col.columnKey} className="flex flex-col gap-3 text-sm">
@@ -106,9 +101,26 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
             ))}
           </div>
 
-          <div className="pt-5 border-t border-brand-oxblood/60 flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
+          <div className="pt-5 border-t border-white/[0.16] flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
+            <div className="flex gap-2.5">
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setLanguage(lang)}
+                  aria-pressed={language === lang}
+                  className={`rounded-full border px-3 py-1.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 ${
+                    language === lang
+                      ? "border-white/70 text-white"
+                      : "border-white/30 hover:border-white/60 hover:text-white"
+                  }`}
+                >
+                  {LANGUAGE_LABELS[lang]}
+                </button>
+              ))}
+            </div>
             <span>{t("footer.jurisdictionLine", tCtx)}</span>
-            <span>&copy; {year} ilovelawyer</span>
+            <span>&copy; ilovelawyer</span>
           </div>
         </div>
       </footer>

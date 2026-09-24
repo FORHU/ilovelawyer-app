@@ -82,7 +82,16 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 // fade-out (above) ever gets to run. Keeping this component mounted and switching to `empty`
 // only once `rendered` itself has drained (i.e. after the exit tween completes) lets the very
 // last row animate out the same way row 2-of-5 does.
-export function PanelRowList({ children, empty }: { children: ReactNode; empty?: ReactNode }) {
+export function PanelRowList({
+  children,
+  empty,
+  bare,
+}: {
+  children: ReactNode
+  empty?: ReactNode
+  /** Drop the bordered container and row dividers (Case Summary's risk register). */
+  bare?: boolean
+}) {
   const listRef = useRef<HTMLUListElement>(null)
   const reducedMotion = usePrefersReducedMotion()
   const items = Children.toArray(children).filter(isValidElement) as ReactElement<Record<string, unknown>>[]
@@ -142,7 +151,10 @@ export function PanelRowList({ children, empty }: { children: ReactNode; empty?:
   if (rendered.length === 0) return <>{empty ?? null}</>
 
   return (
-    <ul ref={listRef} className="overflow-hidden rounded-lg border border-border divide-y divide-border">
+    <ul
+      ref={listRef}
+      className={bare ? "flex flex-col" : "overflow-hidden rounded-lg border border-border divide-y divide-border"}
+    >
       {rendered.map((item) => cloneElement(item, { "data-row-key": String(item.key) }))}
     </ul>
   )

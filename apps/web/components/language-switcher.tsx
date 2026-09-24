@@ -10,8 +10,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
  * Display Language switcher. Styling is intentionally minimal (inherits
  * currentColor/text sizing from wherever it's placed) so it can be dropped
  * into either header without fighting that header's own theme.
+ *
+ * `variant="inline"` renders the option list in normal document flow below
+ * the trigger (pushing whatever comes after it down) instead of floating it
+ * as an absolutely-positioned popover — used in the mobile drawer, where an
+ * absolute popover has no safe side to overflow toward.
  */
-export function LanguageSwitcher() {
+export function LanguageSwitcher({
+  align = "right",
+  variant = "dropdown",
+}: {
+  align?: "left" | "right"
+  variant?: "dropdown" | "inline"
+}) {
   const language = useLanguageStore((state) => state.language)
   const setLanguage = useLanguageStore((state) => state.setLanguage)
   const [isOpen, setIsOpen] = useState(false)
@@ -28,33 +39,77 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [isOpen])
 
+  const optionButtonClass = (lang: (typeof SUPPORTED_LANGUAGES)[number], inline: boolean) =>
+    `block w-full text-left text-[10px] tracking-[1px] uppercase transition-colors ${
+      inline ? "py-1.5" : "px-4 py-2.5"
+    } ${
+      language === lang
+        ? `text-black dark:text-foreground font-bold ${inline ? "" : "bg-black/5 dark:bg-overlay-hover"}`
+        : `text-black/60 dark:text-muted-foreground hover:text-black dark:hover:text-foreground ${
+            inline ? "" : "hover:bg-black/5 dark:hover:bg-overlay-hover"
+          }`
+    }`
+
+  const trigger = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="flex items-center gap-1 text-[10px] tracking-[1px] uppercase opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-label="Change display language"
+        >
+          <Globe className="w-4 h-4" aria-hidden="true" />
+          {LANGUAGE_LABELS[language]}
+          <ChevronDown
+            className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Change display language</TooltipContent>
+    </Tooltip>
+  )
+
+  if (variant === "inline") {
+    return (
+      <div className="w-full" ref={menuRef}>
+        {trigger}
+
+        {isOpen && (
+          <div role="menu" className="mt-2 flex flex-col gap-1">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setLanguage(lang)
+                  setIsOpen(false)
+                }}
+                className={optionButtonClass(lang, true)}
+              >
+                {LANGUAGE_LABELS[lang]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="relative" ref={menuRef}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setIsOpen((prev) => !prev)}
-            className="flex items-center gap-1 text-[10px] tracking-[1px] uppercase opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-            aria-haspopup="menu"
-            aria-expanded={isOpen}
-            aria-label="Change display language"
-          >
-            <Globe className="w-4 h-4" aria-hidden="true" />
-            {LANGUAGE_LABELS[language]}
-            <ChevronDown
-              className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-              aria-hidden="true"
-            />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Change display language</TooltipContent>
-      </Tooltip>
+      {trigger}
 
       {isOpen && (
         <div
           role="menu"
-          className="absolute top-full right-0 mt-3 w-32 bg-white dark:bg-card border border-black/10 dark:border-border rounded-sm shadow-xl py-1 z-(--z-modal)"
+          className={`absolute top-full mt-3 w-32 bg-white dark:bg-card border border-black/10 dark:border-border rounded-sm shadow-xl py-1 z-(--z-modal) ${
+            align === "left" ? "left-0" : "right-0"
+          }`}
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
             <button
@@ -65,11 +120,7 @@ export function LanguageSwitcher() {
                 setLanguage(lang)
                 setIsOpen(false)
               }}
-              className={`block w-full text-left px-4 py-2.5 text-[10px] tracking-[1px] uppercase transition-colors ${
-                language === lang
-                  ? "text-black dark:text-foreground font-bold bg-black/5 dark:bg-overlay-hover"
-                  : "text-black/60 dark:text-muted-foreground hover:text-black dark:hover:text-foreground hover:bg-black/5 dark:hover:bg-overlay-hover"
-              }`}
+              className={optionButtonClass(lang, false)}
             >
               {LANGUAGE_LABELS[lang]}
             </button>
