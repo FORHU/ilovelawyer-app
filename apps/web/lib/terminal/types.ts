@@ -135,10 +135,12 @@ export interface CaseOutlook {
   createdAt: string
 }
 
-// Weekly buckets, oldest first.
+// Weekly buckets, oldest first — matches ilovelawyer-api's WeeklyTrendPoint (swagger.ts) exactly:
+// `total` is the running total as of that week, `added` is just that week's new items.
 export interface TrendPoint {
-  date: string
-  value: number
+  weekStart: string
+  added: number
+  total: number
 }
 
 export interface SnapshotRisk {
