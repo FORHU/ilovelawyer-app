@@ -9,13 +9,33 @@ export interface AnchorMatch {
   decisionId: string
 }
 
-function normalizeWhitespace(text: string): string {
-  return text.replace(/\s+/g, " ").trim()
+// Folds one character to a comparison form — typographic quotes/dashes to their ASCII twins and
+// case dropped. Always exactly one output char per input char (a lowercase form that isn't a
+// single char is kept as-is), so indexOfOriginal below stays a 1:1 map. An evidence quote
+// pulled out of a PDF routinely differs from the reply's own text in just these ways (curly vs
+// straight apostrophe, sentence-initial capital), which would otherwise leave it unhighlighted.
+function foldChar(ch: string): string {
+  if (ch === "‘" || ch === "’") return "'"
+  if (ch === "“" || ch === "”") return '"'
+  if (ch === "–" || ch === "—") return "-"
+  const lower = ch.toLowerCase()
+  return lower.length === 1 ? lower : ch
 }
 
-/** Collapses runs of whitespace to a single space, recording for each character kept in the
- * normalized string the index it came from in the original — so a match found in the
- * normalized text can be mapped back to the original (unnormalized) span to highlight. */
+function foldText(text: string): string {
+  let out = ""
+  for (const ch of text) out += foldChar(ch)
+  return out
+}
+
+function normalizeWhitespace(text: string): string {
+  return foldText(text.replace(/\s+/g, " ").trim()).replace(/[.;,:]+$/, "")
+}
+
+/** Collapses runs of whitespace to a single space (and folds case/typographic punctuation, see
+ * foldChar), recording for each character kept in the normalized string the index it came from
+ * in the original — so a match found in the normalized text can be mapped back to the original
+ * (unnormalized) span to highlight. */
 function normalizeWithIndexMap(text: string): { normalized: string; indexOfOriginal: number[] } {
   let normalized = ""
   const indexOfOriginal: number[] = []
@@ -29,7 +49,7 @@ function normalizeWithIndexMap(text: string): { normalized: string; indexOfOrigi
         inRun = true
       }
     } else {
-      normalized += ch
+      normalized += foldChar(ch)
       indexOfOriginal.push(i)
       inRun = false
     }

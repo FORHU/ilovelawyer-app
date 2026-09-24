@@ -70,6 +70,106 @@ export function evidenceQuoteElementId(
   return `evidence-quote-${messageIndex}-${recordIndex}-${direction}-${indexInDirection}`;
 }
 
+const STOP_WORDS = new Set(["the", "and", "that", "this", "with", "from", "have", "was", "for", "his", "her", "not"]);
+
+function significantWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w)),
+  );
+}
+
+/** Finds the reply paragraph/list item (across every rendered chat bubble) whose wording overlaps
+ * `quote` the most — the fallback when the quote never matched verbatim (see scrollToElementId).
+ * Needs at least half of the quote's significant words to appear, so an unrelated paragraph is
+ * never picked just because it's the least-bad option. Ties go to the later bubble, where a
+ * turn's decisions (and so its evidence) are attached. */
+function findBestMatchingParagraph(quote: string): { el: HTMLElement; messageIndex: number; ordinal: number } | null {
+  const quoteWords = significantWords(quote);
+  if (quoteWords.size === 0) return null;
+  let best: { el: HTMLElement; messageIndex: number; ordinal: number } | null = null;
+  let bestScore = 0;
+  const bubbles = Array.from(document.querySelectorAll<HTMLElement>('[id*="chat-msg-"]'));
+  for (const bubble of bubbles) {
+    const idMatch = BUBBLE_ID.exec(bubble.id);
+    if (!idMatch) continue;
+    // Only the innermost text-bearing elements are scored — a list item that itself contains
+    // block children would double-count against its own paragraph.
+    leafParagraphs(bubble).forEach((el, ordinal) => {
+      const words = significantWords(el.textContent ?? "");
+      let hits = 0;
+      for (const w of quoteWords) if (words.has(w)) hits++;
+      const score = hits / quoteWords.size;
+      if (score >= 0.5 && score >= bestScore) {
+        best = { el, messageIndex: Number(idMatch[1]), ordinal };
+        bestScore = score;
+      }
+    });
+  }
+  return best;
+}
+
+// Same yellow as assistant-message.tsx's active quote <mark>, applied straight to a DOM node —
+// the paragraph/bubble isn't a React-tracked highlight target (no verbatim span to mark), so this
+// can't go through activeHighlightId. Stays until the next selection (or clearFallbackHighlight,
+// e.g. on a thread switch) rather than fading: a highlight that disappears while the user's eyes
+// are still following the scroll left them not knowing what the evidence was pointing at.
+//
+// The highlight is remembered as *where* it is (message index + which paragraph in that bubble),
+// not just as a DOM node: AssistantMessage rebuilds its markdown `components` — and so remounts
+// every <p>/<li> — whenever its props or the active highlight change, and the smooth scroll this
+// highlight accompanies triggers exactly such re-renders (scroll-spy state). A class added to the
+// node itself was wiped by that remount, which is why the highlight only showed up after clicking
+// the same evidence a second time. AssistantMessage calls reapplyFallbackHighlight from a layout
+// effect after each of its renders to put it back on the fresh node before paint.
+const FALLBACK_HIGHLIGHT_CLASSES = ["bg-yellow-200", "dark:bg-yellow-500/30", "rounded-sm", "transition-colors", "duration-500"];
+const BUBBLE_ID = /chat-msg-(\d+)$/;
+// ordinal -1 = the whole bubble (no paragraph resembled the quote)
+let fallbackTarget: { messageIndex: number; ordinal: number } | null = null;
+let fallbackHighlighted: HTMLElement | null = null;
+
+function bubbleForIndex(messageIndex: number): HTMLElement | null {
+  const bubbles = document.querySelectorAll<HTMLElement>('[id*="chat-msg-"]');
+  for (const b of Array.from(bubbles)) {
+    const m = BUBBLE_ID.exec(b.id);
+    if (m && Number(m[1]) === messageIndex) return b;
+  }
+  return null;
+}
+
+// Leaf paragraphs/list items of a bubble, in document order — the same set findBestMatchingParagraph
+// scores, so an ordinal recorded there resolves to the same element again here.
+function leafParagraphs(bubble: HTMLElement): HTMLElement[] {
+  return Array.from(bubble.querySelectorAll<HTMLElement>("p, li")).filter((el) => !el.querySelector("p, li"));
+}
+
+export function clearFallbackHighlight() {
+  fallbackHighlighted?.classList.remove(...FALLBACK_HIGHLIGHT_CLASSES);
+  fallbackHighlighted = null;
+  fallbackTarget = null;
+}
+
+function setFallbackHighlight(messageIndex: number, ordinal: number) {
+  clearFallbackHighlight();
+  fallbackTarget = { messageIndex, ordinal };
+  reapplyFallbackHighlight(messageIndex);
+}
+
+/** Re-puts the paragraph/bubble highlight on its (possibly just-remounted) DOM node. A no-op
+ * unless the current highlight belongs to `messageIndex`, so each bubble's own layout effect only
+ * ever touches its own content. */
+export function reapplyFallbackHighlight(messageIndex: number) {
+  if (!fallbackTarget || fallbackTarget.messageIndex !== messageIndex) return;
+  const bubble = bubbleForIndex(messageIndex);
+  const el = bubble ? (fallbackTarget.ordinal < 0 ? bubble : leafParagraphs(bubble)[fallbackTarget.ordinal]) : null;
+  if (!el || el === fallbackHighlighted) return;
+  fallbackHighlighted?.classList.remove(...FALLBACK_HIGHLIGHT_CLASSES);
+  el.classList.add(...FALLBACK_HIGHLIGHT_CLASSES);
+  fallbackHighlighted = el;
+}
+
 /** Derives "topics across every split AI reply" for a consultation straight from persisted
  * history — usable from anywhere on the page, not just inside ConsultationChat's own render
  * tree, since a split reply is always already-persisted data (see MessageGroup). Each turn's
@@ -197,8 +297,13 @@ export function useTopicNavigator(
     return bestIndex;
   }, [visibleMessages, effectiveTime]);
   const latestDecisionsRecords = latestDecisionsIndex >= 0 ? visibleMessages[latestDecisionsIndex]!.decisionRecords!.records : undefined;
-  const latestDecisions: { index: number; records: DecisionRecordPayload[] } | null =
-    latestDecisionsRecords ? { index: latestDecisionsIndex, records: latestDecisionsRecords } : null;
+  // Memoized so its identity only changes with the data: ConsultationChat derives its per-bubble
+  // evidenceQuoteHighlights from this, and a fresh object every render (e.g. each scroll-spy
+  // update mid-jump) rebuilt every reply's markdown components and remounted its paragraphs.
+  const latestDecisions = useMemo<{ index: number; records: DecisionRecordPayload[] } | null>(
+    () => (latestDecisionsRecords ? { index: latestDecisionsIndex, records: latestDecisionsRecords } : null),
+    [latestDecisionsIndex, latestDecisionsRecords],
+  );
 
   // The reply Related Cases (useRelatedCasesQuery) belongs to — that query is always "this
   // consultation's latest turn," with no per-item anchor of its own, so SourcesPanel jumps any
@@ -235,14 +340,32 @@ export function useTopicNavigator(
   // landing on the same spot regardless of which decision/quote it backs was the bug this
   // fixes). Falls back to the plain message scroll when that id never matched in the rendered
   // text (findAnchorMatches can miss one — e.g. split across markdown formatting, or a quote the
-  // model paraphrased instead of copying verbatim).
-  const scrollToElementId = useCallback((id: string, fallbackMessageIndex: number) => {
+  // model paraphrased instead of copying verbatim). For a quote, `quoteText` lets that fallback do
+  // better than the whole message: it lands on (and briefly flashes) the reply paragraph sharing
+  // the most wording with the quote — evidence quoted from an uploaded document is often
+  // restated, not copied, in the reply, and that paragraph is where the claim actually lives.
+  const scrollToElementId = useCallback((id: string, fallbackMessageIndex: number, quoteText?: string) => {
+    // A previous selection's paragraph/bubble tint must not linger next to the new one.
+    clearFallbackHighlight();
+    // An exact match is highlighted by assistant-message.tsx itself (the active <mark>).
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    document.getElementById(`chat-msg-${fallbackMessageIndex}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const paragraph = quoteText ? findBestMatchingParagraph(quoteText) : null;
+    if (paragraph) {
+      paragraph.el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFallbackHighlight(paragraph.messageIndex, paragraph.ordinal);
+      return;
+    }
+    // Nothing in the reply resembles the quote — still mark the message it belongs to, so the
+    // click visibly lands somewhere instead of silently scrolling.
+    const message = document.getElementById(`chat-msg-${fallbackMessageIndex}`);
+    if (message) {
+      message.scrollIntoView({ behavior: "smooth", block: "start" });
+      setFallbackHighlight(fallbackMessageIndex, -1);
+    }
   }, []);
 
   // Lightweight scroll-spy: highlights whichever topic bubble is nearest the top of the

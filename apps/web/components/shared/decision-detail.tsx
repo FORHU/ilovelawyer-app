@@ -57,7 +57,7 @@ export function EvidenceItem({
             }
           : undefined
       }
-      className={`text-[12px] leading-5 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
+      className={`min-w-0 text-[12px] leading-5 text-muted-foreground ${onClick ? "cursor-pointer rounded-md p-1 -m-1 hover:bg-muted dark:hover:bg-overlay-hover" : ""} ${active ? "bg-brand-gold/10 ring-1 ring-inset ring-brand-gold/50" : ""}`}
     >
       <div className="flex items-start gap-1.5">
         {evidence.verified ? (
@@ -65,17 +65,25 @@ export function EvidenceItem({
         ) : (
           <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-400" aria-hidden="true" aria-label={t("decisionUnverified")} />
         )}
-        <span>
-          <span className="font-medium text-foreground">
+        {/* Document name and pinpoint are separate flex items (wrapping onto their own line when
+         * the name is long) rather than inline spans — a long unbreakable filename like
+         * CROWN-MED-001_Forensic_Medical_Report.pdf otherwise wraps mid-token and strands the
+         * "· paragraph N" pinpoint beside it. */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+          <span className="min-w-0 font-medium text-foreground wrap-anywhere">
             {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
           </span>
-          {evidence.pinpoint && <span className="text-muted-foreground"> · {evidence.pinpoint}</span>}
-        </span>
+          {evidence.pinpoint && (
+            <span className="shrink-0 rounded bg-muted px-1.5 text-[10.5px] leading-4 text-muted-foreground dark:bg-overlay-hover">
+              {evidence.pinpoint}
+            </span>
+          )}
+        </div>
       </div>
       {evidence.quote && (
-        <blockquote className="mt-1.5 ml-4.5 flex items-start gap-1.5 border-l-2 border-border pl-2.5 italic">
-          <Quote className="mt-0.5 h-2.5 w-2.5 shrink-0" aria-hidden="true" />
-          {evidence.quote}
+        <blockquote className="mt-1 ml-4.5 flex items-start gap-1.5 border-l-2 border-border pl-2.5 italic">
+          <Quote className="mt-1 h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 wrap-anywhere">{evidence.quote}</span>
         </blockquote>
       )}
     </li>

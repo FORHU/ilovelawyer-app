@@ -14,6 +14,15 @@ if (!i18next.isInitialized) {
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   })
+} else {
+  // Dev Fast Refresh re-evaluates this module but i18next itself is a singleton that stays
+  // initialized, so edits to a locale JSON would never reach it (keys render as raw ids until a
+  // hard reload). Re-register the bundled catalogs so those edits show up live.
+  for (const [lng, namespaces] of Object.entries(I18N_RESOURCES)) {
+    for (const [ns, resources] of Object.entries(namespaces)) {
+      i18next.addResourceBundle(lng, ns, resources, true, true)
+    }
+  }
 }
 
 export default i18next

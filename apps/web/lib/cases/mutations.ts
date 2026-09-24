@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
@@ -37,7 +38,10 @@ export interface CaseRecord {
   ukJurisdiction?: string | null
   status: CaseStatus
   createdAt: string
+  /** Last real activity on the case (edits, documents, chat, decisions, events) — not views. */
   updatedAt: string
+  /** When the current user last opened this case; null if never. Only present on list responses. */
+  lastOpenedAt?: string | null
 }
 
 /** Lists the current user's cases, paginated (backend default: page 1, limit 20).
@@ -64,6 +68,20 @@ export function useCaseQuery(id: string) {
     queryFn: () => apiFetch<CaseRecord>(`/api/my-cases/${id}`),
     enabled: !!id,
   })
+}
+
+/** Records "Last opened" for the current user once per mount of the page that calls it (Workspace,
+ * Terminal or the case detail page). Fire-and-forget — a failure only means a stale "Last opened"
+ * date, so it never surfaces an error. Invalidates the case lists so Case Portfolio shows the new
+ * date when the user goes back to it instead of waiting out the 5-minute cache. */
+export function useMarkCaseOpened(id: string) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!id) return
+    apiFetchRaw(`/api/my-cases/${id}/opened`, { method: "POST" })
+      .then(() => queryClient.invalidateQueries({ queryKey: caseKeys.lists() }))
+      .catch(() => {})
+  }, [id, queryClient])
 }
 
 export interface CreateCasePayload {

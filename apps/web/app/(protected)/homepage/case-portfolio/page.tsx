@@ -38,21 +38,27 @@ import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 15;
 
-// Mirrors the real row grid below (name/parties, updated date, open-in links,
+// "Sep 24, 2026" (US order), pinned to en-US so the table doesn't shift format with the browser's locale.
+const caseDateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+const formatCaseDate = (iso: string) => caseDateFormat.format(new Date(iso));
+
+// Mirrors the real row grid below (name/parties, created/updated/opened dates, open-in links,
 // action menu) so the swap from skeleton to real rows doesn't jump layout.
 function CaseListSkeleton() {
   return (
-    <div className="md:min-w-[760px]">
+    <div className="md:min-w-[750px] lg:min-w-[900px]">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4"
+          className="flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 md:grid md:grid-cols-[minmax(160px,2fr)_104px_104px_104px_108px_44px] lg:grid-cols-[minmax(180px,2fr)_108px_108px_108px_210px_56px] md:items-center md:gap-4"
         >
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-3/5" />
             <Skeleton className="h-3 w-2/5" />
           </div>
           <Skeleton className="h-3 w-20" />
+          <Skeleton className="hidden md:block h-3 w-20" />
+          <Skeleton className="hidden md:block h-3 w-20" />
           <div className="hidden md:flex items-center gap-2">
             <Skeleton className="h-8 w-24 rounded-full" />
             <Skeleton className="h-8 w-20 rounded-full" />
@@ -412,17 +418,19 @@ export default function CaseManagerDashboard() {
           <div className="md:overflow-x-auto lg:overflow-visible">
             {/* Column header only makes sense once the row below is actually a grid (md+) —
              * the stacked mobile card has no columns to label. */}
-            <div className="hidden md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] gap-4 md:min-w-[760px] pl-4 pr-6 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+            <div className="hidden md:grid md:grid-cols-[minmax(160px,2fr)_104px_104px_104px_108px_44px] lg:grid-cols-[minmax(180px,2fr)_108px_108px_108px_210px_56px] gap-4 md:min-w-[750px] lg:min-w-[900px] pl-4 pr-6 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
               <span>{t("tableCaseHeader")}</span>
-              <span>{t("tableUpdatedHeader")}</span>
+              <span className="truncate">{t("tableCreatedHeader")}</span>
+              <span className="truncate">{t("tableUpdatedHeader")}</span>
+              <span className="truncate">{t("tableOpenedHeader")}</span>
               <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
               <span className="text-right">{t("tableActionHeader")}</span>
             </div>
-            <div className="md:min-w-[760px]">
+            <div className="md:min-w-[750px] lg:min-w-[900px]">
               {cases.map((c) => (
                 <div
                   key={c.id}
-                  className="group/row flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 transition-colors md:grid md:grid-cols-[minmax(220px,2.2fr)_140px_220px_56px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
+                  className="group/row flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 transition-colors md:grid md:grid-cols-[minmax(160px,2fr)_104px_104px_104px_108px_44px] lg:grid-cols-[minmax(180px,2fr)_108px_108px_108px_210px_56px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
                 >
                   {selectMode ? (
                     <div
@@ -471,14 +479,28 @@ export default function CaseManagerDashboard() {
                    * menu on one line); at md+ each `contents` wrapper drops out so date, links,
                    * and the action menu resume being their own grid columns, matching the header
                    * row above. */}
-                  <div className="flex items-center justify-between gap-3 md:contents">
-                    <span className="text-[13px] text-foreground">
-                      {new Date(c.updatedAt).toLocaleDateString()}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 md:contents">
+                    {/* Below md the three dates share one full-width line above the links (labelled,
+                     * since there's no column header there); at md+ this wrapper drops out so each
+                     * date becomes its own grid column under the header row. */}
+                    <div className="flex basis-full flex-wrap gap-x-4 gap-y-0.5 text-[12px] text-muted-foreground md:contents">
+                      <span className="md:text-[13px] md:text-foreground">
+                        <span className="md:hidden">{t("tableCreatedHeader")} </span>
+                        {formatCaseDate(c.createdAt)}
+                      </span>
+                      <span className="md:text-[13px] md:text-foreground">
+                        <span className="md:hidden">{t("tableUpdatedHeader")} </span>
+                        {formatCaseDate(c.updatedAt)}
+                      </span>
+                      <span className="md:text-[13px] md:text-foreground">
+                        <span className="md:hidden">{t("tableOpenedHeader")} </span>
+                        {c.lastOpenedAt ? formatCaseDate(c.lastOpenedAt) : t("neverOpened")}
+                      </span>
+                    </div>
 
                     <div className="flex items-center gap-3 md:contents">
                       <div className="flex items-center gap-2">
-                        {/* Hidden below md — the case name/party block above is already a link
+                        {/* Hidden below lg — the case name/party block above is already a link
                          * to this same Workspace route, so on mobile (where every button is
                          * competing for the same ~300px row) this would just be a second,
                          * redundant way to do what tapping the row already does. Desktop keeps
@@ -487,7 +509,7 @@ export default function CaseManagerDashboard() {
                           <TooltipTrigger asChild>
                             <Link
                               href={`/homepage/case-portfolio/${c.id}`}
-                              className="hidden md:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
+                              className="hidden lg:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
                             >
                               {t("overview.tabWorkspace")}
                             </Link>
