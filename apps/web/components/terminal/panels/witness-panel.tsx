@@ -136,143 +136,147 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
           </div>
         </div>
       ) : null}
-      <PanelRowList empty={<EmptyNote>{t("noWitnesses")}</EmptyNote>}>
-        {witnesses.map(({ node, w }) => {
-          const status = w.status ?? "OUTSTANDING"
-          const override = w.credibilityOverride ?? null
-          const ai = w.aiCredibility ?? null
-          // Manual override wins, then the AI score, then the legacy stored value.
-          const credibility = override ?? ai ?? w.credibility ?? 50
-          const hasScore = override !== null || ai !== null
-          const scoredNoData = !hasScore && !!w.scoredAt
-          const style = STATUS_STYLE[status]
-          const nextStatus = STATUSES[(STATUSES.indexOf(status) + 1) % STATUSES.length]!
-          const suggested = w.aiSuggestedStatus && w.aiSuggestedStatus !== status ? w.aiSuggestedStatus : null
-          const reasons = w.aiRationale ?? []
-          const reasonsOpen = openReasons.has(node.id)
-          const commitCredibility = (value: number) => {
-            if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
-          }
-          return (
-            <PanelRow key={node.id} className="flex-col items-stretch gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-medium text-foreground">{w.name}</p>
-                  {w.role || w.summary ? (
-                    <p className={`mt-0.5 ${labelTextClass}`}>
-                      {[w.role, w.summary].filter(Boolean).join(" — ")}
-                    </p>
-                  ) : null}
-                  {w.contact ? <p className="mt-1 text-[13px] text-muted-foreground">{w.contact}</p> : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => update.mutate({ id: node.refId, status: nextStatus })}
-                  disabled={update.isPending}
-                  title={t("witnessCycleStatus")}
-                  className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] disabled:opacity-50 ${style.badge}`}
-                >
-                  {t(style.label)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => del.mutate(node.refId)}
-                  disabled={del.isPending}
-                  className={dangerIconBtnClass}
-                  aria-label={t("delete")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="relative h-1.5 flex-1 rounded-full bg-muted">
-                  <div
-                    className="h-full overflow-hidden rounded-full"
-                    style={{ width: `${credibility}%` }}
+      {/* PanelRowList's <ul> is overflow-hidden: as a direct flex child of the scrolling PanelBody it
+          would shrink to the pane height and clip rows instead of letting the body scroll. */}
+      <div className="shrink-0">
+        <PanelRowList empty={<EmptyNote>{t("noWitnesses")}</EmptyNote>}>
+          {witnesses.map(({ node, w }) => {
+            const status = w.status ?? "OUTSTANDING"
+            const override = w.credibilityOverride ?? null
+            const ai = w.aiCredibility ?? null
+            // Manual override wins, then the AI score, then the legacy stored value.
+            const credibility = override ?? ai ?? w.credibility ?? 50
+            const hasScore = override !== null || ai !== null
+            const scoredNoData = !hasScore && !!w.scoredAt
+            const style = STATUS_STYLE[status]
+            const nextStatus = STATUSES[(STATUSES.indexOf(status) + 1) % STATUSES.length]!
+            const suggested = w.aiSuggestedStatus && w.aiSuggestedStatus !== status ? w.aiSuggestedStatus : null
+            const reasons = w.aiRationale ?? []
+            const reasonsOpen = openReasons.has(node.id)
+            const commitCredibility = (value: number) => {
+              if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
+            }
+            return (
+              <PanelRow key={node.id} className="flex-col items-stretch gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-foreground">{w.name}</p>
+                    {w.role || w.summary ? (
+                      <p className={`mt-0.5 ${labelTextClass}`}>
+                        {[w.role, w.summary].filter(Boolean).join(" — ")}
+                      </p>
+                    ) : null}
+                    {w.contact ? <p className="mt-1 text-[13px] text-muted-foreground">{w.contact}</p> : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => update.mutate({ id: node.refId, status: nextStatus })}
+                    disabled={update.isPending}
+                    title={t("witnessCycleStatus")}
+                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] disabled:opacity-50 ${style.badge}`}
                   >
-                    {/* Gradient is sized to the full track so the fill reveals red→amber→green by score. */}
+                    {t(style.label)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => del.mutate(node.refId)}
+                    disabled={del.isPending}
+                    className={dangerIconBtnClass}
+                    aria-label={t("delete")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-1.5 flex-1 rounded-full bg-muted">
                     <div
-                      className="h-full"
-                      style={{
-                        width: credibility ? `${10000 / credibility}%` : "100%",
-                        background: "linear-gradient(90deg, #f87171, #fbbf24 50%, #34d399)",
-                      }}
+                      className="h-full overflow-hidden rounded-full"
+                      style={{ width: `${credibility}%` }}
+                    >
+                      {/* Gradient is sized to the full track so the fill reveals red→amber→green by score. */}
+                      <div
+                        className="h-full"
+                        style={{
+                          width: credibility ? `${10000 / credibility}%` : "100%",
+                          background: "linear-gradient(90deg, #f87171, #fbbf24 50%, #34d399)",
+                        }}
+                      />
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      defaultValue={credibility}
+                      key={credibility}
+                      aria-label={t("witnessCredibility")}
+                      onPointerUp={(e) => commitCredibility(Number(e.currentTarget.value))}
+                      onKeyUp={(e) => commitCredibility(Number(e.currentTarget.value))}
+                      className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
                     />
                   </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    defaultValue={credibility}
-                    key={credibility}
-                    aria-label={t("witnessCredibility")}
-                    onPointerUp={(e) => commitCredibility(Number(e.currentTarget.value))}
-                    onKeyUp={(e) => commitCredibility(Number(e.currentTarget.value))}
-                    className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
-                  />
+                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${style.text}`}>
+                    {hasScore ? credibility : "—"}
+                  </span>
                 </div>
-                <span className={`w-6 text-right text-xs font-semibold tabular-nums ${style.text}`}>
-                  {hasScore ? credibility : "—"}
-                </span>
-              </div>
-              <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${labelTextClass}`}>
-                <span>
-                  {override !== null
-                    ? t("witnessManualScore")
-                    : ai !== null
-                      ? t("witnessAiScore")
-                      : scoredNoData
-                        ? t("witnessNotEnoughData")
-                        : t("witnessNotScored")}
-                </span>
-                {override !== null && ai !== null ? (
-                  <button
-                    type="button"
-                    onClick={() => update.mutate({ id: node.refId, credibilityOverride: null })}
-                    disabled={update.isPending}
-                    className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-                  >
-                    {t("witnessResetToAi")} ({ai})
-                  </button>
-                ) : null}
-                {reasons.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleReasons(node.id)}
-                    aria-expanded={reasonsOpen}
-                    className="underline underline-offset-2 hover:text-foreground"
-                  >
-                    {t("witnessWhy")}
-                  </button>
-                ) : null}
-                {suggested ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    {t("witnessAiSuggests", { status: t(STATUS_STYLE[suggested].label) })}
+                <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${labelTextClass}`}>
+                  <span>
+                    {override !== null
+                      ? t("witnessManualScore")
+                      : ai !== null
+                        ? t("witnessAiScore")
+                        : scoredNoData
+                          ? t("witnessNotEnoughData")
+                          : t("witnessNotScored")}
+                  </span>
+                  {override !== null && ai !== null ? (
                     <button
                       type="button"
-                      onClick={() => update.mutate({ id: node.refId, status: suggested })}
+                      onClick={() => update.mutate({ id: node.refId, credibilityOverride: null })}
                       disabled={update.isPending}
-                      className={`underline underline-offset-2 disabled:opacity-50 ${STATUS_STYLE[suggested].text}`}
+                      className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
                     >
-                      {t("witnessApply")}
+                      {t("witnessResetToAi")} ({ai})
                     </button>
-                  </span>
+                  ) : null}
+                  {reasons.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleReasons(node.id)}
+                      aria-expanded={reasonsOpen}
+                      className="underline underline-offset-2 hover:text-foreground"
+                    >
+                      {t("witnessWhy")}
+                    </button>
+                  ) : null}
+                  {suggested ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      {t("witnessAiSuggests", { status: t(STATUS_STYLE[suggested].label) })}
+                      <button
+                        type="button"
+                        onClick={() => update.mutate({ id: node.refId, status: suggested })}
+                        disabled={update.isPending}
+                        className={`underline underline-offset-2 disabled:opacity-50 ${STATUS_STYLE[suggested].text}`}
+                      >
+                        {t("witnessApply")}
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
+                {reasonsOpen && reasons.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
+                    {reasons.map((r, i) => (
+                      <li key={i}>
+                        {r.text}
+                        {r.source ? <span className="text-muted-foreground"> — {r.source}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
                 ) : null}
-              </div>
-              {reasonsOpen && reasons.length > 0 ? (
-                <ul className="flex flex-col gap-1.5 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
-                  {reasons.map((r, i) => (
-                    <li key={i}>
-                      {r.text}
-                      {r.source ? <span className="text-muted-foreground"> — {r.source}</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </PanelRow>
-          )
-        })}
-      </PanelRowList>
+              </PanelRow>
+            )
+          })}
+        </PanelRowList>
+      </div>
       <form
         className="mt-auto flex flex-col gap-2"
         onSubmit={(e) => {
