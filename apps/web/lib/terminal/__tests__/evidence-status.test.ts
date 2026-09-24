@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { countByStatus, documentSizeLabel, ingestTone, timelineDotTone } from "../evidence-status"
+import { countByStatus, documentSizeLabel, groupByCategory, ingestTone, timelineDotTone } from "../evidence-status"
 import { fileTypeIcon, isSpreadsheet } from "@/lib/cases/file-type-icon"
 import { File, FileImage, FileSpreadsheet, FileText, Mail } from "lucide-react"
 
@@ -75,5 +75,30 @@ describe("documentSizeLabel", () => {
 describe("timelineDotTone with an archived document", () => {
   it("is none when the id is not in the active-only documents map", () => {
     expect(timelineDotTone("archived-doc", new Map([["other", { ragStatus: "READY" }]]))).toBe("none")
+  })
+})
+
+describe("groupByCategory", () => {
+  const doc = (id: string, category: string | null) => ({ id, category })
+
+  it("puts named categories first, alphabetically, and uncategorized last", () => {
+    const groups = groupByCategory([doc("1", "Pleadings"), doc("2", null), doc("3", "Contracts"), doc("4", "Pleadings")])
+    expect(groups.map((g) => [g.category, g.docs.map((d) => d.id)])).toEqual([
+      ["Contracts", ["3"]],
+      ["Pleadings", ["1", "4"]],
+      [null, ["2"]],
+    ])
+  })
+
+  it("treats blank and whitespace-padded categories like the Workspace folders do", () => {
+    const groups = groupByCategory([doc("1", "  "), doc("2", " Contracts "), doc("3", "Contracts")])
+    expect(groups.map((g) => [g.category, g.docs.map((d) => d.id)])).toEqual([
+      ["Contracts", ["2", "3"]],
+      [null, ["1"]],
+    ])
+  })
+
+  it("returns no groups for no documents", () => {
+    expect(groupByCategory([])).toEqual([])
   })
 })

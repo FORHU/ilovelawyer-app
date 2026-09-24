@@ -14,7 +14,8 @@ import {
 import { AddTimelineEventDialog } from "./add-timeline-event-dialog"
 import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
-import { TONE_BG_CLASS, TONE_TEXT_CLASS, timelineDotTone } from "@/lib/terminal/evidence-status"
+import { TONE_BG_CLASS, TONE_TEXT_CLASS, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
+import type { SnapshotDocument } from "@/lib/terminal/types"
 
 const RAG_LABEL_KEY = { ready: "ragReady", pending: "ragPending", failed: "ragFailed" } as const
 
@@ -97,6 +98,12 @@ export function CaseTimelineView({
     () => new Map((snapshot.data?.documents ?? []).map((doc) => [doc.id, doc])),
     [snapshot.data?.documents],
   )
+  // "Category · name · status" — the category is the same one the Evidence list and Workspace's
+  // folders group by, so a dot can be traced back to where its document sits.
+  const sourceLabel = (tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
+    if (tone === "none" || !sourceDoc) return tt("noSourceDocument")
+    return [sourceDoc.category?.trim(), sourceDoc.name, tt(RAG_LABEL_KEY[tone])].filter(Boolean).join(" · ")
+  }
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
     queryKey: ["events", "case", caseId],
@@ -267,9 +274,7 @@ export function CaseTimelineView({
                         <p
                           className={`mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}
                         >
-                          {tone === "none"
-                            ? tt("noSourceDocument")
-                            : `${sourceDoc?.name} · ${tt(RAG_LABEL_KEY[tone])}`}
+                          {sourceLabel(tone, sourceDoc)}
                         </p>
                         {item.rawId && !isEditing ? (
                           <button
@@ -338,7 +343,7 @@ export function CaseTimelineView({
                             <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
                           ) : null}
                           <p className={`mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}>
-                            {tone === "none" ? tt("noSourceDocument") : `${sourceDoc?.name} · ${tt(RAG_LABEL_KEY[tone])}`}
+                            {sourceLabel(tone, sourceDoc)}
                           </p>
                         </div>
                       </li>

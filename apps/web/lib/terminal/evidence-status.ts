@@ -52,3 +52,28 @@ export function documentSizeLabel(doc: {
   }
   return doc.pageCount == null ? null : { key: "pageCountShort", n: doc.pageCount }
 }
+
+/** Groups documents by `category` — the same field Workspace's DocumentFolderBrowser shows as
+ * folders. Named categories come first, alphabetically; documents with no category come last
+ * under `category: null`. Order within a group is the input order. */
+export function groupByCategory<T extends { category: string | null }>(
+  documents: T[],
+): { category: string | null; docs: T[] }[] {
+  const named = new Map<string, T[]>()
+  const uncategorized: T[] = []
+  for (const doc of documents) {
+    const category = doc.category?.trim()
+    if (!category) {
+      uncategorized.push(doc)
+      continue
+    }
+    const bucket = named.get(category)
+    if (bucket) bucket.push(doc)
+    else named.set(category, [doc])
+  }
+  const groups: { category: string | null; docs: T[] }[] = [...named.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, docs]) => ({ category, docs }))
+  if (uncategorized.length > 0) groups.push({ category: null, docs: uncategorized })
+  return groups
+}

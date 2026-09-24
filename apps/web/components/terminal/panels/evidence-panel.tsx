@@ -1,7 +1,7 @@
 import { createElement, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Folder, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
@@ -10,7 +10,7 @@ import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import { useUploadCaseDocumentsMutation, useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { fileTypeIcon } from "@/lib/cases/file-type-icon"
-import { countByStatus, documentSizeLabel, ingestTone } from "@/lib/terminal/evidence-status"
+import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import type {
   CaseSnapshot,
@@ -206,6 +206,10 @@ export function EvidencePanel({
   const openMatrixItem = snapshot.evidence.matrix.find(
     (m) => m.documentId === openDocumentId
   )
+  // Same categories Workspace's Studio panel shows as folders (DocumentFolderBrowser), rendered as
+  // headed sections instead so every document, PENDING and FAILED included, stays in view.
+  const documentGroups = groupByCategory(snapshot.documents)
+  const hasCategories = documentGroups.some((group) => group.category !== null)
 
   return (
     <PanelBody gap="4">
@@ -253,17 +257,34 @@ export function EvidencePanel({
         ) : (
           <>
             <StatusSummary documents={snapshot.documents} />
-            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-              {snapshot.documents.map((doc) => (
-                <DocumentRow
-                  key={doc.id}
-                  doc={doc}
-                  onOpen={() => setOpenDocumentId(doc.id)}
-                  onDelete={() => setDeletingDoc(doc)}
-                  isDeleting={isDeleting && deletingVars?.documentId === doc.id}
-                />
+            <div className="space-y-3">
+              {documentGroups.map((group) => (
+                <section key={group.category ?? ""} aria-label={group.category ?? t("uncategorizedFolder")}>
+                  {/* A case with no categorised documents stays one plain list — an
+                   * "Uncategorized" header over everything would add nothing. */}
+                  {hasCategories ? (
+                    <p className={`mb-1.5 flex items-center gap-1.5 ${labelTextClass}`}>
+                      <Folder className="size-3" aria-hidden="true" />
+                      <span className="truncate" title={group.category ?? undefined}>
+                        {group.category ?? t("uncategorizedFolder")}
+                      </span>
+                      <span>· {group.docs.length}</span>
+                    </p>
+                  ) : null}
+                  <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                    {group.docs.map((doc) => (
+                      <DocumentRow
+                        key={doc.id}
+                        doc={doc}
+                        onOpen={() => setOpenDocumentId(doc.id)}
+                        onDelete={() => setDeletingDoc(doc)}
+                        isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+                      />
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
           </>
         )}
         {isDragOver && (
