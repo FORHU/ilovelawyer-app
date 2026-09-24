@@ -36,7 +36,9 @@ export interface SummaryView {
 }
 
 function kpi(value: number, points?: TrendPoint[]): Kpi {
-  const trend = points?.map((p) => p.value) ?? []
+  // `total` (the running total as of that week) is what's comparable to `value` (the current
+  // count) — `added` is just that week's new items, a different quantity.
+  const trend = points?.map((p) => p.total) ?? []
   const delta = trend.length > 1 ? trend[trend.length - 1]! - trend[trend.length - 2]! : null
   return { value, delta, trend }
 }
