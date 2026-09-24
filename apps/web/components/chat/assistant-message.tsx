@@ -156,6 +156,19 @@ function buildComponents(
       <blockquote className="border-l-2 border-border pl-3 my-2 text-muted-foreground">{children}</blockquote>
     ),
     a: ({ children, href }) => {
+      // Chat Wonder writes a generated document's download link as this exact placeholder
+      // href (ilovelawyer-api's DOWNLOAD_PLACEHOLDER) the moment it decides to link one in —
+      // long before the document is actually rendered/exported/uploaded, which only finishes
+      // once the whole turn is persisted (see chat.service.ts's persistAssistantTurn). The API
+      // swaps it for the real, working proxy URL only at that point, at read time; until then
+      // this literal fragment is still sitting in the streamed/held-back text. Rendering it as
+      // a live, target="_blank" anchor here would open a new tab at a dead `#download` fragment
+      // of the current page — clickable-looking but stale. Render it inert instead; once the
+      // turn is done, ConsultationChat replaces this text with the persisted copy that already
+      // carries the real swapped-in href, and this branch stops matching.
+      if (href === "#download") {
+        return <span className="font-medium text-muted-foreground">{children}</span>;
+      }
       if (isInternalLibraryHref(href)) {
         return (
           <Link href={href} className="underline underline-offset-2 font-medium text-primary">
