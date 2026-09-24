@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search, Play } from "lucide-react";
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
@@ -21,7 +22,8 @@ import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.
 import { useCaseQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery, useAiJobStatus, useGenerateTimelineMutation } from "@/lib/terminal/mutations";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
-import { getActiveMindMap } from "@/lib/chat/mind-map-parser";
+import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
+import { useMindMapExpansion } from "@/lib/chat/use-mind-map-expansion";
 import { chatKeys } from "@/lib/query-keys";
 
 export type StudioTileKind = "documents" | "decisions" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
@@ -266,6 +268,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     () => getActiveMindMap((history ?? []).map((m) => ({ mindMap: m.mindMap?.data }))),
     [history],
   );
+  const activeMindMapRecord = useMemo(() => getActiveMindMapRecord(history ?? []), [history]);
+  const mindMapExpansion = useMindMapExpansion(consultationId ?? undefined, activeMindMapRecord, {
+    busy: isGenerating || isMindMapConsultationBusy,
+  });
+  // Regenerate replaces expansions too — the header's icon button asks first (MindMap's own
+  // toolbar button has its inline version of the same warning).
+  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
+  const mindMapExpandedCount = mindMapExpansion?.expandedCount ?? 0;
+
   // The message that actually carried the current map, walked the same way getActiveMindMap
   // does (most recent first) — just kept as the raw message here instead of only its map data,
   // so the result row below can show when it was generated.
@@ -480,26 +491,61 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           </div>
         )}
         {expanded && openTile === "mindmap" && consultationId && activeMindMap && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => void handleGenerateMindMap()}
-                disabled={!session || isGenerating || isMindMapConsultationBusy}
-                aria-label={t("workspace.mindMapRegenerateCta")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              {isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : t("workspace.mindMapRegenerateCta")}
-            </TooltipContent>
-          </Tooltip>
+          <Popover open={regenerateConfirmOpen} onOpenChange={setRegenerateConfirmOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      // No expansions to lose: regenerate straight away, and preventDefault keeps
+                      // the PopoverTrigger from opening the warning.
+                      if (mindMapExpandedCount === 0) {
+                        e.preventDefault();
+                        void handleGenerateMindMap();
+                      }
+                    }}
+                    disabled={!session || isGenerating || isMindMapConsultationBusy}
+                    aria-label={t("workspace.mindMapRegenerateCta")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : t("workspace.mindMapRegenerateCta")}
+              </TooltipContent>
+            </Tooltip>
+            <PopoverContent side="bottom" align="end" role="alertdialog" className="w-72">
+              <p className="text-[13px] leading-snug text-foreground">
+                {t("mindMapExpand.regenerateWarning", { count: mindMapExpandedCount })}
+              </p>
+              <div className="mt-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRegenerateConfirmOpen(false)}
+                  className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  {t("mindMapExpand.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegenerateConfirmOpen(false);
+                    void handleGenerateMindMap();
+                  }}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-700"
+                >
+                  {t("mindMapExpand.regenerateConfirm")}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
         {expanded && openTile === "timeline" && (
           <Tooltip>
@@ -789,6 +835,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       isStale={snapshotQuery.data?.mindMap.isStale}
                       regenerating={isGenerating}
                       onRegenerate={() => void handleGenerateMindMap()}
+                      expansion={mindMapExpansion}
                     />
                   </div>
                 </div>

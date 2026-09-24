@@ -41,8 +41,9 @@ export const MIND_MAP_FIXED_NODE_DESCRIPTIONS: Record<string, string> = {
   nextSteps: 'The immediate actions needed to move the matter forward, listed in the order they should happen.',
 };
 
-// The model isn't told to use a fixed `id` for the five nodes (only a fixed label), so match
-// on a normalised label too when the id doesn't line up with the keys above.
+// ilovelawyer-api now gives the five nodes these exact ids (normalizeMindMap), so the id lookup
+// in fixedNodeDescription is what matches for any newly saved map. This label lookup stays for
+// maps saved before that, which still carry whatever id the model picked.
 const MIND_MAP_FIXED_LABEL_TO_ID: Record<string, string> = {
   'legal basis': 'legalBasis',
   'key facts': 'keyFacts',
@@ -61,6 +62,19 @@ export function fixedNodeDescription(opts: { id?: string; label?: string; isRoot
   const mappedId = MIND_MAP_FIXED_LABEL_TO_ID[(opts.label ?? '').trim().toLowerCase()];
   return mappedId ? MIND_MAP_FIXED_NODE_DESCRIPTIONS[mappedId] : undefined;
 }
+
+// Safety/performance caps on a map's size — not a renderer limit (2D and 3D draw any depth).
+// Mirrors ilovelawyer-api's src/constants/mind-map-limits.constants.ts, which enforces them when
+// it saves a map; change both together.
+export const MIND_MAP_LIMITS = {
+  /** Levels below the root; the root itself is level 0. */
+  maxDepth: 6,
+  /** Total nodes in one map, root included. */
+  maxNodes: 150,
+  /** Children one "Expand with AI" call may add to a node. */
+  expandMin: 2,
+  expandMax: 5,
+} as const;
 
 export function mindMapLink3dColor(isDark: boolean) {
   return isDark ? '#3a4a6c' : '#c5c9d4';

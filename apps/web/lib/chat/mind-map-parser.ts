@@ -4,11 +4,24 @@
 // contains it, so the frontend needs its own extractor/stripper to keep it out of the live
 // streaming bubble and to read the tree out as it arrives.
 
+// Mirrors ilovelawyer-api's MindMapItem. Maps the API saves are already normalized there
+// (normalizeMindMap in src/utils/response-parser.ts): ids are path-based and stable across
+// regenerations — `root`, the fixed branches `legalBasis` / `keyFacts` / `remedies` / `risks` /
+// `nextSteps`, other first-level nodes `b<n>`, deeper nodes `<parent id>.<n>` — and the tree is
+// kept inside MIND_MAP_LIMITS. Maps saved before that carry the model's own ids and none of the
+// optional fields below, so nothing here may assume they're present.
 export interface MindMapItem {
   id: string;
   label: string;
   description?: string;
   isRoot?: boolean;
+  /** Levels below the root; the root is 0. */
+  depth?: number;
+  /** More exists (or could be generated) below this node than the tree carries. */
+  hasMore?: boolean;
+  /** The model's own id, kept only when it differs from the path id. */
+  sourceId?: string;
+  media?: unknown[];
   children: MindMapItem[];
 }
 
@@ -57,6 +70,27 @@ export function getActiveMindMap(messages: { mindMap?: unknown }[]): MindMapItem
   for (let i = messages.length - 1; i >= 0; i--) {
     const map = usableMindMap(messages[i]?.mindMap);
     if (map) return map;
+  }
+  return undefined;
+}
+
+/** getActiveMindMap plus which message carries it and at what version — what "Expand with AI"
+ * and undo need to address the map on the API (see useMindMapExpansion). Walks the same way, so
+ * it always points at the map getActiveMindMap would show for the same messages. */
+export interface ActiveMindMapRecord {
+  messageId: string;
+  /** 1 = as generated; each expand adds one, each undo takes one away. */
+  version: number;
+  data: MindMapItem;
+}
+
+export function getActiveMindMapRecord(
+  messages: { id: string; mindMap?: { data?: unknown; version?: number } | null }[],
+): ActiveMindMapRecord | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    const data = usableMindMap(m?.mindMap?.data);
+    if (m && data) return { messageId: m.id, version: m.mindMap?.version ?? 1, data };
   }
   return undefined;
 }

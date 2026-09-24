@@ -288,5 +288,23 @@
     "audioOverviewHostA": "Host A",
     "audioOverviewHostB": "Host B",
     "mindMapNoConsultation": "Start a chat to generate a mind map."
+  },
+  "mindMapExpand": {
+    "button": "Expand",
+    "generateMore": "Generate more under this",
+    "expanding": "Expanding…",
+    "expanded": "Added new points to the map.",
+    "undo": "Undo",
+    "undone": "Expansion undone.",
+    "undoStale": "The map has changed since then, so that expansion can't be undone.",
+    "undoError": "Couldn't undo. Try again.",
+    "error": "Couldn't expand this node. Try again.",
+    "alreadyExpanding": "This node is already being expanded.",
+    "limitNodes": "Map limit reached ({{max}} nodes).",
+    "limitDepth": "This node is at the deepest level the map allows.",
+    "regenerateWarning_one": "Regenerating replaces the whole map, including {{count}} expanded branch.",
+    "regenerateWarning_other": "Regenerating replaces the whole map, including {{count}} expanded branches.",
+    "regenerateConfirm": "Regenerate",
+    "cancel": "Cancel"
   }
 }

@@ -17,6 +17,21 @@ export interface MindMapProps {
   isStale?: boolean;
   regenerating?: boolean;
   onRegenerate?: () => void;
+  /** "Expand with AI" — omit to hide it (e.g. a map with no consultation behind it). Built by
+   * useMindMapExpansion (lib/chat/use-mind-map-expansion.ts). */
+  expansion?: MindMapExpansion;
+}
+
+export interface MindMapExpansion {
+  /** Resolves true once the new children are saved and in the messages cache. */
+  expand: (nodeId: string) => Promise<boolean>;
+  /** Node ids on this map with an expand request in flight. */
+  expandingNodeIds: ReadonlySet<string>;
+  /** Set while expanding isn't allowed right now (a chat reply is generating) — shown as the hint. */
+  disabledReason?: string;
+  /** Expand/edit changes since the map was generated (version − 1) — Regenerate warns before
+   * replacing them. */
+  expandedCount: number;
 }
 
 // 3D mind map rendering consumes flexible, AI-shaped tree structures.

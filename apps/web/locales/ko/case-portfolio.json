@@ -157,5 +157,22 @@
     "audioOverviewHostA": "호스트 A",
     "audioOverviewHostB": "호스트 B",
     "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다."
+  },
+  "mindMapExpand": {
+    "button": "확장",
+    "generateMore": "이 항목 아래에 더 생성",
+    "expanding": "확장 중…",
+    "expanded": "맵에 새 항목을 추가했습니다.",
+    "undo": "실행 취소",
+    "undone": "확장을 취소했습니다.",
+    "undoStale": "그 이후 맵이 변경되어 해당 확장을 취소할 수 없습니다.",
+    "undoError": "실행 취소하지 못했습니다. 다시 시도하세요.",
+    "error": "이 노드를 확장하지 못했습니다. 다시 시도하세요.",
+    "alreadyExpanding": "이 노드는 이미 확장 중입니다.",
+    "limitNodes": "맵 한도에 도달했습니다({{max}}개 노드).",
+    "limitDepth": "이 노드는 맵이 허용하는 가장 깊은 단계에 있습니다.",
+    "regenerateWarning_other": "다시 생성하면 확장한 가지 {{count}}개를 포함해 맵 전체가 바뀝니다.",
+    "regenerateConfirm": "다시 생성",
+    "cancel": "취소"
   }
 }

@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
+import { Loader2, Sparkles } from 'lucide-react';
 
 export const CustomNode = memo(({ data }: any) => {
   const isVertical = data.layout === 'vertical';
@@ -40,7 +41,7 @@ export const CustomNode = memo(({ data }: any) => {
   const hasImageOrAudio = data.media?.some((m: any) => m.type === 'image' || m.type === 'audio');
 
   return (
-    <div className={`${hasImageOrAudio ? 'px-3 py-2 max-w-[180px] min-w-[140px]' : 'px-8 py-5 min-w-[280px] max-w-[450px]'} rounded-xl ${data.isRoot ? 'border-[4px]' : ''} transition-all duration-300 group relative cursor-pointer hover:shadow-[0_0_30px_rgba(114,47,55,0.25)] hover:scale-[1.05] ${data.className || 'bg-slate-700 border-slate-800'}`}>
+    <div className={`${hasImageOrAudio ? 'px-3 py-2 max-w-[180px] min-w-[140px]' : 'px-8 py-5 min-w-[280px] max-w-[450px]'} rounded-xl ${data.isRoot ? 'border-[4px]' : ''} ${data.expand?.busy ? 'animate-pulse' : ''} transition-all duration-300 group relative cursor-pointer hover:shadow-[0_0_30px_rgba(114,47,55,0.25)] hover:scale-[1.05] ${data.className || 'bg-slate-700 border-slate-800'}`}>
 
       {/* Target Handle - Root doesn't usually have one, others do */}
       {!data.isRoot && (
@@ -92,6 +93,23 @@ export const CustomNode = memo(({ data }: any) => {
           >
             <span>{data.isCollapsed ? '+' : '–'}</span>
             {data.isCollapsed && data.collapsedCount > 0 && <span>{data.collapsedCount}</span>}
+          </button>
+        )}
+
+        {/* "Expand with AI" — MindMapInner decides whether it shows (leaf / hasMore, not root,
+            not at the last level) and whether it's usable (node cap, a reply generating); the
+            hint says why when it isn't. */}
+        {data.expand && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (!data.expand.disabled) data.onExpand?.(data.id); }}
+            disabled={data.expand.disabled}
+            title={data.expand.hint ?? data.expand.label}
+            aria-label={data.expand.hint ? `${data.expand.label} — ${data.expand.hint}` : data.expand.label}
+            className="absolute -top-3 -right-3 flex items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-[11px] font-bold text-white shadow-md hover:bg-black/90 disabled:opacity-60 disabled:cursor-not-allowed z-10"
+          >
+            {data.expand.busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+            <span>{data.expand.label}</span>
           </button>
         )}
 

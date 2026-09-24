@@ -17,9 +17,10 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
-import { MindMapProps } from './types';
-import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, mindMapGridColor, fixedNodeDescription } from './constants';
+import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { MindMapProps, MindMapItem } from './types';
+import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, MIND_MAP_LIMITS, mindMapGridColor, fixedNodeDescription } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
 import { reconcileCollapsedIds, countDescendants } from './collapse';
@@ -55,7 +56,23 @@ const getInitialNodes = (): Node[] => {
   ];
 };
 
-function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, regenerating, onRegenerate }: MindMapProps) {
+/** Where a node sits in the tree `data` — for the detail panel's "Generate more" button, which has
+ * to work the same for a 2D and a 3D click (3D nodes aren't React Flow nodes). */
+function locateTreeNode(root: MindMapItem, id: string | null): { item: MindMapItem; depth: number } | null {
+  if (!root || !id) return null;
+  const walk = (item: MindMapItem, depth: number): { item: MindMapItem; depth: number } | null => {
+    if (item?.id === id) return { item, depth };
+    for (const child of item?.children || item?.items || item?.nodes || item?.subnodes || item?.branches || item?.subitems || []) {
+      const hit = walk(child, depth + 1);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  return walk(root, 0);
+}
+
+function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, regenerating, onRegenerate, expansion }: MindMapProps) {
+  const { t } = useTranslation('case-portfolio');
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -109,6 +126,48 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       return next;
     });
   }, []);
+
+  // "Expand with AI" (see MindMapExpansion). Limits per the Map expansion limits decision: no
+  // button on the root (its five branches are fixed) or on a node at the last level; disabled
+  // for the whole map once it holds MIND_MAP_LIMITS.maxNodes nodes.
+  const totalNodes = useMemo(() => (data && typeof data === 'object' ? 1 + countDescendants(data) : 0), [data]);
+  const expandState = useCallback(
+    (node: { id: string; isRoot?: boolean; depth: number }) => {
+      if (!expansion || node.isRoot || node.depth >= MIND_MAP_LIMITS.maxDepth) return null;
+      const busy = expansion.expandingNodeIds.has(node.id);
+      const atNodeCap = totalNodes >= MIND_MAP_LIMITS.maxNodes;
+      const hint = atNodeCap
+        ? t('mindMapExpand.limitNodes', { max: MIND_MAP_LIMITS.maxNodes })
+        : expansion.disabledReason;
+      return { busy, disabled: busy || Boolean(hint), hint };
+    },
+    [expansion, totalNodes, t],
+  );
+
+  // After a successful expand: open the node (it may have been collapsed) and bring its new
+  // children into view once they've been laid out.
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null);
+  const handleExpandNode = useCallback(async (id: string) => {
+    if (!expansion) return;
+    const ok = await expansion.expand(id);
+    if (!ok) return;
+    setCollapsedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setPendingFocusId(id);
+  }, [expansion]);
+
+  // Regenerate replaces the whole map, expansions included — say so first. Inline (not a
+  // dialog) so it still shows when the map is in the browser's native fullscreen.
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const requestRegenerate = useCallback(() => {
+    if (!onRegenerate) return;
+    if (expansion && expansion.expandedCount > 0) setConfirmRegenerate(true);
+    else onRegenerate();
+  }, [expansion, onRegenerate]);
 
   const toggleFullScreen = () => {
     if (!containerRef.current) return;
@@ -200,6 +259,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           isCollapsible,
           isCollapsed,
           collapsedCount: isCollapsed ? countDescendants(item) : 0,
+          // For the Expand button (see nodesWithCallbacks) — maps saved before the API set
+          // `depth` fall back to the position in this walk, which is the same number.
+          depth: typeof item.depth === 'number' ? item.depth : depth,
+          hasMore: item.hasMore === true,
+          childCount: getChildren(item).length,
         },
         position: { x, y },
       });
@@ -420,6 +484,17 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     };
   }, [nodesInitialized, nodes.length, layout, fitView]);
 
+  useEffect(() => {
+    if (!pendingFocusId || is3D) return;
+    const ids = [pendingFocusId, ...edges.filter((e) => e.source === pendingFocusId).map((e) => e.target)];
+    if (ids.length < 2) return;
+    const timer = setTimeout(() => {
+      fitView({ nodes: ids.map((id) => ({ id })), padding: 0.3, duration: 800 });
+      setPendingFocusId(null);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [edges, pendingFocusId, is3D, fitView]);
+
   const saveToHistory = useCallback(() => {
     setHistory(prev => [...prev.slice(-15), { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }]);
   }, [nodes, edges]);
@@ -479,11 +554,28 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   }, [nodes, edges, setNodes, setEdges, handleEditNode, handleDeleteNode, saveToHistory]);
 
   const nodesWithCallbacks = useMemo(() => {
-    return nodes.map(node => ({
-      ...node,
-      data: { ...node.data, id: node.id, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode, onToggleCollapse: handleToggleCollapse, isSelected: node.id === selectedNodeId }
-    }));
-  }, [nodes, handleEditNode, handleAddNode, handleDeleteNode, handleToggleCollapse, selectedNodeId]);
+    return nodes.map(node => {
+      // On the canvas the button only sits on nodes that are leaves or that the AI flagged as
+      // having more — any other node can still be expanded from its detail panel.
+      const state = expandState({ id: node.id, isRoot: node.data.isRoot, depth: node.data.depth ?? 0 });
+      const expand = state && (node.data.childCount === 0 || node.data.hasMore)
+        ? { ...state, label: t('mindMapExpand.button') }
+        : null;
+      return {
+        ...node,
+        data: { ...node.data, id: node.id, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode, onToggleCollapse: handleToggleCollapse, onExpand: handleExpandNode, expand, isSelected: node.id === selectedNodeId }
+      };
+    });
+  }, [nodes, handleEditNode, handleAddNode, handleDeleteNode, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, t]);
+
+  const selectedTreeNode = useMemo(() => locateTreeNode(data, selectedNodeId), [data, selectedNodeId]);
+  const selectedExpandState = selectedTreeNode
+    ? expandState({
+        id: selectedTreeNode.item.id,
+        isRoot: selectedTreeNode.depth === 0,
+        depth: typeof selectedTreeNode.item.depth === 'number' ? selectedTreeNode.item.depth : selectedTreeNode.depth,
+      })
+    : null;
 
   // In 3D mode, use the data stored from the 3D click; in 2D use React Flow
   const selectedNodeData = useMemo(() => {
@@ -649,7 +741,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         {onRegenerate && !isStale && (
           <button
             type="button"
-            onClick={onRegenerate}
+            onClick={requestRegenerate}
             disabled={regenerating}
             title="Regenerate mind map"
             className={MIND_MAP_CHROME.accentBtn}
@@ -661,7 +753,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         {isStale && (
           <button
             type="button"
-            onClick={onRegenerate}
+            onClick={requestRegenerate}
             disabled={regenerating}
             title="Case has new activity since this map was generated"
             className={MIND_MAP_CHROME.staleBadge}
@@ -678,6 +770,34 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           <span className="hidden sm:inline text-[9px] uppercase tracking-wider">{isFullScreen ? 'Exit' : 'Full'}</span>
         </button>
       </div>
+
+      {confirmRegenerate && expansion && (
+        <div
+          role="alertdialog"
+          aria-labelledby="mind-map-regenerate-warning"
+          className="absolute top-16 right-4 z-(--z-canvas-overlay) w-[min(20rem,calc(100%-2rem))] rounded-xl border border-amber-500/40 bg-card/95 p-3 shadow-lg backdrop-blur-md"
+        >
+          <p id="mind-map-regenerate-warning" className="text-[13px] leading-snug text-foreground">
+            {t('mindMapExpand.regenerateWarning', { count: expansion.expandedCount })}
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmRegenerate(false)}
+              className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              {t('mindMapExpand.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setConfirmRegenerate(false); onRegenerate?.(); }}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-700"
+            >
+              {t('mindMapExpand.regenerateConfirm')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Ultra-Compact Vertical Hub - Snug Corner */}
       <div className={MIND_MAP_CHROME.hub}>
@@ -864,9 +984,26 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                     );
                   })()}
 
-                  {/* Attached evidence (shared between 2D/3D). Not populated by this app's AI
-                      pipeline today — MindMapItem carries no `media` field yet — but rendered
-                      here so nodes light this up automatically once it is. */}
+                  {selectedExpandState && (
+                    <div className="border-t border-border pt-4">
+                      <button
+                        type="button"
+                        onClick={() => void handleExpandNode(selectedTreeNode!.item.id)}
+                        disabled={selectedExpandState.disabled}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-brand-navy-950 transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                      >
+                        {selectedExpandState.busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                        {selectedExpandState.busy ? t('mindMapExpand.expanding') : t('mindMapExpand.generateMore')}
+                      </button>
+                      {selectedExpandState.hint && !selectedExpandState.busy && (
+                        <p className="mt-2 text-center text-[12px] text-muted-foreground">{selectedExpandState.hint}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Attached evidence (shared between 2D/3D). MindMapItem has a `media` field,
+                      but this app's AI pipeline doesn't populate it today — rendered here so
+                      nodes light this up automatically once it does. */}
                   {selectedNodeData.media && selectedNodeData.media.length > 0 && (
                     <div className="mt-8 border-t border-border pt-6 space-y-4">
                       <span className={MIND_MAP_CHROME.detailLabel}>Attached Files ({selectedNodeData.media.length})</span>
