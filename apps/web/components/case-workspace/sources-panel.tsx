@@ -2,7 +2,7 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, ChevronRight, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
+import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
@@ -45,8 +45,8 @@ interface SourcesPanelProps {
  * Evidence For/Against and Authorities (rule citations + related cases), both from that turn's
  * audited Decision Records (see ilovelawyer-api's MessageDecisionRecord / lib/terminal/types.ts),
  * each row jumping straight to the reply bubble it came from in the embedded Chat pane next door.
- * Topics (the split-reply table of contents this panel used to be limited to — see
- * lib/chat/use-topic-navigator.ts) stays as a secondary, collapsed-by-default section below.
+ * Grouped per prompt under Topics (the split-reply table of contents — see
+ * lib/chat/use-topic-navigator.ts): each prompt's dropdown lists its topics, then its decisions.
  * Collapses to a slim rail. Documents (this case's Case Documents) moved to the Studio panel
  * instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move, only
  * where it's surfaced. */
@@ -57,9 +57,6 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
     useTopicNavigator(activeConsultationId);
   const { data: relatedCasesData } = useRelatedCasesQuery(activeConsultationId ?? undefined);
   const relatedCases = relatedCasesData?.relatedCases ?? [];
-  // Collapsed by default — Topics is the demoted, secondary section now that Evidence/
-  // Authorities are the panel's primary content (see the module doc comment above).
-  const [topicsOpen, setTopicsOpen] = useState(false);
   // Newest prompt's decisions open by default, older prompts collapsed — same "only an explicit
   // toggle is stored, openness otherwise derives from latest" idiom as TopicNavigatorList's own
   // `overrides` (topic-navigator.tsx), so a new turn arriving auto-opens without disturbing a
@@ -121,12 +118,104 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
     rules: group.records.flatMap((r, ri) => r.rule.map((rule) => ({ rule, ri }))),
   });
 
-  const decisionGroupsNewestFirst = [...decisionGroups].reverse();
   const totalDecisionRecords = decisionGroups.reduce((sum, g) => sum + g.records.length, 0);
+  const decisionGroupByPrompt = new Map(decisionGroups.map((g) => [g.promptIndex, g]));
+  // Each prompt's decisions render inside its own Topics dropdown, after its last topic (see
+  // renderDecisionGroup below), rather than as a second list grouped by the same prompts. `groups`
+  // drops prompts with no split-reply topics, but a non-split reply can still carry decisions —
+  // those prompts are added back here (topic-less) so their decisions still have a home.
+  const promptGroups = [
+    ...groups,
+    ...decisionGroups
+      .filter((d) => !groups.some((g) => g.promptIndex === d.promptIndex))
+      .map((d) => ({ promptIndex: d.promptIndex, promptTitle: d.promptTitle, topics: [] })),
+  ].sort((a, b) => a.promptIndex - b.promptIndex);
 
   const hasEvidence = decisionGroups.length > 0;
   const hasAuthorities = relatedCases.length > 0;
   const hasAnything = hasEvidence || hasAuthorities || topics.length > 0;
+
+  const renderDecisionGroup = (promptIndex: number) => {
+    const group = decisionGroupByPrompt.get(promptIndex);
+    if (!group) return null;
+    const isOpen = isDecisionGroupOpen(group.promptIndex);
+    const { evidenceFor, evidenceAgainst, rules } = flattenDecisionGroup(group);
+    return (
+      <div className="pt-0.5">
+        <button
+          type="button"
+          onClick={() => toggleDecisionGroup(group.promptIndex)}
+          aria-expanded={isOpen}
+          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground dark:hover:bg-overlay-hover"
+        >
+          <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`} aria-hidden="true" />
+          <Scale className="h-3 w-3 shrink-0 text-brand-gold" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{t("workspace.decisionsTile")}</span>
+          <span className="shrink-0 text-[10px] text-muted-foreground">
+            {t("workspace.decisionsNoteCount", { count: group.records.length })}
+          </span>
+        </button>
+        {isOpen && (
+          <div className="space-y-2.5 py-1.5 pl-4">
+            {evidenceFor.length > 0 && (
+              <div>
+                <SubLabel>{tTerminal("decisionEvidenceFor")} · {evidenceFor.length}</SubLabel>
+                <ul className="mt-1.5 space-y-1.5">
+                  {evidenceFor.map(({ ev, ri, ei }, i) => {
+                    const id = evidenceQuoteElementId(group.index, ri, "for", ei);
+                    return (
+                      <EvidenceItem
+                        key={i}
+                        evidence={ev}
+                        onClick={() => handleJumpToElement(id, group.index)}
+                        active={id === activeHighlightId}
+                      />
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            {evidenceAgainst.length > 0 && (
+              <div>
+                <SubLabel>{tTerminal("decisionEvidenceAgainst")} · {evidenceAgainst.length}</SubLabel>
+                <ul className="mt-1.5 space-y-1.5">
+                  {evidenceAgainst.map(({ ev, ri, ei }, i) => {
+                    const id = evidenceQuoteElementId(group.index, ri, "against", ei);
+                    return (
+                      <EvidenceItem
+                        key={i}
+                        evidence={ev}
+                        onClick={() => handleJumpToElement(id, group.index)}
+                        active={id === activeHighlightId}
+                      />
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            {rules.length > 0 && (
+              <div>
+                <SubLabel>{t("workspace.sourcesAuthorities")} · {rules.length}</SubLabel>
+                <ul className="mt-1.5 space-y-1">
+                  {rules.map(({ rule, ri }, i) => {
+                    const id = decisionAnchorElementId(group.index, ri);
+                    return (
+                      <RuleItem
+                        key={i}
+                        rule={rule}
+                        onClick={() => handleJumpToElement(id, group.index)}
+                        active={id === activeHighlightId}
+                      />
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <aside
@@ -148,7 +237,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
         {expanded && (
           <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
             <ListTree className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden="true" />
-            <span className="truncate">{t("workspace.sources")}</span>
+            <span className="truncate">{t("workspace.topicsSectionTitle")}</span>
           </span>
         )}
         <Tooltip>
@@ -183,10 +272,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                 <CollapsedSectionIcon
                   icon={ListTree}
                   label={`${t("workspace.topicsSectionTitle")} · ${topics.length}`}
-                  onClick={() => {
-                    onExpandedChange(true);
-                    setTopicsOpen(true);
-                  }}
+                  onClick={() => onExpandedChange(true)}
                 />
               )}
               {hasEvidence && (
@@ -217,116 +303,19 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
           {hasAnything ? (
             <div className="flex flex-col gap-4">
               <div className="border-t border-border pt-3 first:border-0 first:pt-0">
-                <SectionToggle
-                  label={t("workspace.topicsSectionTitle")}
-                  count={topics.length > 0 ? topics.length : undefined}
-                  open={topicsOpen}
-                  onToggle={() => setTopicsOpen((v) => !v)}
-                />
-                {topicsOpen &&
-                  (topics.length > 0 ? (
-                    <div className="mt-2">
-                      <TopicNavigatorList groups={groups} activeIndex={activeIndex} onJump={handleJump} />
-                    </div>
-                  ) : isGenerating ? (
-                    <div className="mt-2">
-                      <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
-                    </div>
-                  ) : (
-                    <p className="py-3 text-center text-xs text-muted-foreground">{t("workspace.topicsEmpty")}</p>
-                  ))}
+                {promptGroups.length > 0 ? (
+                  <TopicNavigatorList
+                    groups={promptGroups}
+                    activeIndex={activeIndex}
+                    onJump={handleJump}
+                    renderGroupFooter={renderDecisionGroup}
+                  />
+                ) : isGenerating ? (
+                  <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
+                ) : (
+                  <p className="py-3 text-center text-xs text-muted-foreground">{t("workspace.topicsEmpty")}</p>
+                )}
               </div>
-
-              {hasEvidence && (
-                <div className="flex flex-col gap-1 border-t border-border pt-3 first:border-0 first:pt-0">
-                  <Label>{t("workspace.decisionsTile")}</Label>
-                  <div className="space-y-1">
-                    {decisionGroupsNewestFirst.map((group) => {
-                      const isOpen = isDecisionGroupOpen(group.promptIndex);
-                      const { evidenceFor, evidenceAgainst, rules } = flattenDecisionGroup(group);
-                      return (
-                        <div key={group.promptIndex}>
-                          <button
-                            type="button"
-                            onClick={() => toggleDecisionGroup(group.promptIndex)}
-                            aria-expanded={isOpen}
-                            className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground dark:hover:bg-overlay-hover"
-                          >
-                            <ChevronDown
-                              className={`h-3 w-3 shrink-0 transition-transform ${isOpen ? "" : "-rotate-90"}`}
-                              aria-hidden="true"
-                            />
-                            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold" title={group.promptTitle}>
-                              {group.promptTitle || "Untitled prompt"}
-                            </span>
-                            <span className="shrink-0 text-[10px] text-muted-foreground">
-                              {t("workspace.decisionsNoteCount", { count: group.records.length })}
-                            </span>
-                          </button>
-                          {isOpen && (
-                            <div className="space-y-2.5 py-1.5 pl-4">
-                              {evidenceFor.length > 0 && (
-                                <div>
-                                  <SubLabel>{tTerminal("decisionEvidenceFor")} · {evidenceFor.length}</SubLabel>
-                                  <ul className="mt-1.5 space-y-1.5">
-                                    {evidenceFor.map(({ ev, ri, ei }, i) => {
-                                      const id = evidenceQuoteElementId(group.index, ri, "for", ei);
-                                      return (
-                                        <EvidenceItem
-                                          key={i}
-                                          evidence={ev}
-                                          onClick={() => handleJumpToElement(id, group.index)}
-                                          active={id === activeHighlightId}
-                                        />
-                                      );
-                                    })}
-                                  </ul>
-                                </div>
-                              )}
-                              {evidenceAgainst.length > 0 && (
-                                <div>
-                                  <SubLabel>{tTerminal("decisionEvidenceAgainst")} · {evidenceAgainst.length}</SubLabel>
-                                  <ul className="mt-1.5 space-y-1.5">
-                                    {evidenceAgainst.map(({ ev, ri, ei }, i) => {
-                                      const id = evidenceQuoteElementId(group.index, ri, "against", ei);
-                                      return (
-                                        <EvidenceItem
-                                          key={i}
-                                          evidence={ev}
-                                          onClick={() => handleJumpToElement(id, group.index)}
-                                          active={id === activeHighlightId}
-                                        />
-                                      );
-                                    })}
-                                  </ul>
-                                </div>
-                              )}
-                              {rules.length > 0 && (
-                                <div>
-                                  <SubLabel>{t("workspace.sourcesAuthorities")} · {rules.length}</SubLabel>
-                                  <ul className="mt-1.5 space-y-1">
-                                    {rules.map(({ rule, ri }, i) => {
-                                      const id = decisionAnchorElementId(group.index, ri);
-                                      return (
-                                        <RuleItem
-                                          key={i}
-                                          rule={rule}
-                                          onClick={() => handleJumpToElement(id, group.index)}
-                                          active={id === activeHighlightId}
-                                        />
-                                      );
-                                    })}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {relatedCases.length > 0 && (
                 <div className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
@@ -388,35 +377,7 @@ function CollapsedSectionIcon({
   );
 }
 
-// Shared by Evidence For/Against and Topics below — a dropdown-style section header, since a
-// turn with a long evidence list would otherwise push everything after it out of view.
-function SectionToggle({
-  label,
-  count,
-  open,
-  onToggle,
-}: {
-  label: string;
-  count?: number;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-2 text-left">
-      <Label>
-        {label}
-        {count !== undefined ? ` · ${count}` : ""}
-      </Label>
-      {open ? (
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      ) : (
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      )}
-    </button>
-  );
-}
-
-// A static (non-clickable) sub-heading, one rung below SectionToggle — used inside an already-
+// A static (non-clickable) sub-heading, used inside an already-
 // expanded decision-group dropdown, where Evidence For/Against/Authorities don't need their own
 // second level of collapsing on top of the group's own toggle.
 function SubLabel({ children }: { children: ReactNode }) {
