@@ -17,19 +17,15 @@
   "hero": {
     "slideOne": {
       "line1": "Where cases",
-      "line2": "get clarity",
-      "subtext": "AI consultation streams in as it's written, with cited precedent alongside.",
-      "subtext_UK": "AI consultation streams in as it's written, with cited UK precedent alongside."
+      "line2": "get clarity"
     },
     "slideTwo": {
       "line1": "Your caseload,",
-      "line2": "under control",
-      "subtext": "The Legal Terminal arranges nineteen panes of case intelligence your way."
+      "line2": "under control"
     },
     "slideThree": {
       "line1": "Where counsel",
-      "line2": "meets AI",
-      "subtext": "Case Workspace keeps sources, chat, and work product on one screen."
+      "line2": "meets AI"
     },
     "slideLabel": "Slide {{number}}",
     "nextSlide": "Next slide",

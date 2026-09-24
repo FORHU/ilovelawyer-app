@@ -9,7 +9,6 @@ export const LANDING_DURATIONS = {
   heroLineOutTransform: 0.8,
   heroLineOutOpacity: 0.5,
   heroBgCrossfade: 0.9,
-  captionCrossfade: 0.6,
   reveal: 0.9,
   cardExpand: 0.42,
   magneticPush: 0.26,

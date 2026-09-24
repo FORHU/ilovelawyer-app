@@ -125,7 +125,7 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
                     cancel both paddings back out of the layout flow, so this doesn't shift the
                     gap between the two headline lines. */}
                 {(["line1", "line2"] as const).map((lineKey, i) => (
-                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.4em] -mt-[0.2em] -mb-[0.4em]">
+                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.75em] -mt-[0.2em] -mb-[0.75em]">
                     <motion.h1
                       custom={i}
                       initial="hidden"
@@ -143,20 +143,6 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               </div>
             </AnimatePresence>
           )}
-
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={index}
-              initial={reduce ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: LANDING_DURATIONS.captionCrossfade }}
-              className="text-white text-sm leading-[1.35] max-w-[540px] flex items-center gap-2"
-            >
-              {t(`hero.${SLIDE_KEYS[index]}.subtext`, tCtx)}
-              <span aria-hidden>→</span>
-            </motion.p>
-          </AnimatePresence>
         </div>
       </div>
 
