@@ -11,7 +11,12 @@ import {
   useGenerateTimelineMutation,
   useUpdateTimelineMutation,
 } from "@/lib/terminal/mutations"
+import { AddTimelineEventDialog } from "./add-timeline-event-dialog"
 import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
+import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
+import { TONE_BG_CLASS, TONE_TEXT_CLASS, timelineDotTone } from "@/lib/terminal/evidence-status"
+
+const RAG_LABEL_KEY = { ready: "ragReady", pending: "ragPending", failed: "ragFailed" } as const
 
 interface CalendarEvent {
   id: string
@@ -26,6 +31,8 @@ interface TimelineRow {
   at: Date | null
   title: string
   description: string | null
+  documentId: string | null
+  isCalendar: boolean
 }
 
 function toDateInputValue(at: Date) {
@@ -41,29 +48,25 @@ function isDateOnly(at: Date) {
   )
 }
 
-function formatBadge(at: Date) {
-  if (isDateOnly(at)) {
-    return new Intl.DateTimeFormat(undefined, {
-      timeZone: "UTC",
-      month: "short",
-      day: "numeric",
-    }).format(at)
-  }
-  return at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
+// Day + month ("28 JUL"), UTC for date-only events so a midnight-UTC date doesn't slip a day in
+// negative-offset timezones. The year is appended only when the case spans more than one.
+function formatDay(at: Date, withYear: boolean) {
+  const parts = new Intl.DateTimeFormat(undefined, {
+    timeZone: isDateOnly(at) ? "UTC" : undefined,
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "2-digit" as const } : {}),
+  }).format(at)
+  return parts
 }
 
-function formatCaptionDate(at: Date) {
+function formatTime(at: Date) {
   if (isDateOnly(at)) return null
-  return at.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })
+  return at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
 }
 
 function yearOf(at: Date) {
   return isDateOnly(at) ? at.getUTCFullYear() : at.getFullYear()
-}
-
-function dotClass(index: number, total: number) {
-  if (index === 0 || index === total - 1) return "bg-brand-gold"
-  return "bg-muted-foreground/50"
 }
 
 function toDateTimeLocalValue(date: string, time: string) {
@@ -88,6 +91,12 @@ export function CaseTimelineView({
   hideGenerateButton?: boolean
 }) {
   const { t } = useTranslation("homepage")
+  const { t: tt } = useTranslation("terminal")
+  const snapshot = useCaseSnapshotQuery(caseId)
+  const documentsById = useMemo(
+    () => new Map((snapshot.data?.documents ?? []).map((doc) => [doc.id, doc])),
+    [snapshot.data?.documents],
+  )
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
     queryKey: ["events", "case", caseId],
@@ -126,10 +135,7 @@ export function CaseTimelineView({
     prevCaseRefreshStatus.current = caseRefreshStatus.data?.status
   }, [caseRefreshStatus.data?.status, caseId, queryClient])
 
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
+  const [addOpen, setAddOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDate, setEditDate] = useState("")
 
@@ -140,13 +146,20 @@ export function CaseTimelineView({
     const fromCase: TimelineRow[] = (timeline.data?.nodes ?? [])
       .filter((node) => node.type === "TIMELINE_EVENT")
       .map((node) => {
-        const event = node.data as { occurredOn: string | null; title: string; description: string | null }
+        const event = node.data as {
+          occurredOn: string | null
+          title: string
+          description: string | null
+          documentId?: string | null
+        }
         return {
           id: `tl-${node.refId}`,
           rawId: node.refId,
           at: event.occurredOn ? new Date(event.occurredOn) : null,
           title: event.title,
           description: event.description,
+          documentId: event.documentId ?? null,
+          isCalendar: false,
         }
       })
     const fromCalendar: TimelineRow[] = (calendar.data?.events ?? []).map((event) => ({
@@ -155,6 +168,8 @@ export function CaseTimelineView({
       at: new Date(event.dateTime),
       title: event.title,
       description: event.notes,
+      documentId: null,
+      isCalendar: true,
     }))
     const seen = new Set<string>()
     return [...fromCase, ...fromCalendar]
@@ -178,16 +193,7 @@ export function CaseTimelineView({
   const isLoading = timeline.isLoading || calendar.isLoading
   const isError = timeline.isError || calendar.isError
 
-  // `dated` is already sorted ascending, so the same year only ever appears in consecutive
-  // runs — no need to bucket by a Map. Always grouped (not just when the case spans more than
-  // one year) so every year gets its own header row, same as a day divider in an activity feed.
-  const yearGroups: { year: number; items: TimelineRow[] }[] = []
-  dated.forEach((item) => {
-    const year = yearOf(item.at as Date)
-    const last = yearGroups[yearGroups.length - 1]
-    if (last && last.year === year) last.items.push(item)
-    else yearGroups.push({ year, items: [item] })
-  })
+  const multiYear = new Set(dated.map((item) => yearOf(item.at as Date))).size > 1
 
   return (
     <div className={fill ? "flex h-full min-h-0 flex-col overflow-y-auto" : "flex flex-col"}>
@@ -226,98 +232,93 @@ export function CaseTimelineView({
             })}
           </p>
         ) : (
-          <div className="mb-8 flex flex-col gap-10">
-            {yearGroups.length > 0
-              ? yearGroups.map((group) => (
-                  <div key={group.year} className="flex flex-col">
-                    {/* Year header — a centered divider label, same shape as a day divider in an
-                     * activity feed ("Today"/"Yesterday"), always shown (one per year, not only
-                     * when the case spans more than one). */}
-                    <div className="mb-4 flex items-center gap-3">
-                      <span aria-hidden="true" className="h-px flex-1 bg-border" />
-                      <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        {group.year}
-                      </span>
-                      <span aria-hidden="true" className="h-px flex-1 bg-border" />
-                    </div>
-                    <ol className="relative flex flex-col gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute top-2 bottom-2 left-[7px] w-px bg-border"
-                      />
-                      {group.items.map((item) => {
-                        const at = item.at as Date
-                        const caption = formatCaptionDate(at)
-                        const isEditing = editingId === item.id
+          <div className="mb-8 flex flex-col gap-6">
+            {dated.length > 0 ? (
+              <ol className="flex flex-col">
+                {dated.map((item, index) => {
+                  const at = item.at as Date
+                  const isEditing = editingId === item.id
+                  const isLast = index === dated.length - 1
+                  const tone = item.isCalendar ? "none" : timelineDotTone(item.documentId, documentsById)
+                  const sourceDoc = item.documentId ? documentsById.get(item.documentId) : undefined
 
-                        return (
-                          <li key={item.id} className="relative pl-6">
-                            <span
-                              className={`absolute left-0 top-4 z-10 size-[15px] rounded-full ring-4 ring-background ${dotClass(dated.indexOf(item), dated.length)}`}
+                  return (
+                    <li key={item.id} className="grid grid-cols-[3.25rem_0.75rem_minmax(0,1fr)] gap-x-3">
+                      <div className="pt-px text-right">
+                        <p className="font-mono text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase tabular-nums">
+                          {formatDay(at, multiYear)}
+                        </p>
+                        {formatTime(at) ? (
+                          <p className="font-mono text-[10px] text-muted-foreground/70 tabular-nums">{formatTime(at)}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span
+                          aria-hidden="true"
+                          className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ring-background ${TONE_BG_CLASS[tone]}`}
+                        />
+                        {!isLast ? <span aria-hidden="true" className="mt-1 w-px flex-1 bg-border" /> : null}
+                      </div>
+                      <div className={`min-w-0 ${isLast ? "" : "pb-4"}`}>
+                        <p className="text-[13px] leading-5 text-foreground">{item.title}</p>
+                        {item.description ? (
+                          <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{item.description}</p>
+                        ) : null}
+                        <p
+                          className={`mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}
+                        >
+                          {tone === "none"
+                            ? tt("noSourceDocument")
+                            : `${sourceDoc?.name} · ${tt(RAG_LABEL_KEY[tone])}`}
+                        </p>
+                        {item.rawId && !isEditing ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(item.id)
+                              setEditDate(toDateInputValue(at))
+                            }}
+                            className="mt-1 text-[10px] font-medium text-muted-foreground hover:underline"
+                          >
+                            {t("timeline.editDate", { defaultValue: "Edit date" })}
+                          </button>
+                        ) : null}
+                        {item.rawId && isEditing ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <input
+                              type="date"
+                              value={editDate}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              className="h-7 w-[7.5rem] rounded-lg border border-border bg-muted px-1.5 text-[11px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
                             />
-                            <div className="rounded-xl border border-border bg-muted/40 p-3.5 transition-colors hover:border-brand-gold/30">
-                              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                                <p className="text-[14px] font-semibold leading-5 text-foreground">{item.title}</p>
-                                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.5px] tabular-nums text-muted-foreground">
-                                  {formatBadge(at)}
-                                </span>
-                              </div>
-                              {caption ? (
-                                <p className="mt-0.5 text-[11px] text-muted-foreground/70">{caption}</p>
-                              ) : null}
-                              {item.description ? (
-                                <p className="mt-1.5 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
-                              ) : null}
-                              {item.rawId && !isEditing ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingId(item.id)
-                                    setEditDate(toDateInputValue(at))
-                                  }}
-                                  className="mt-2 text-[10px] font-medium text-muted-foreground hover:underline"
-                                >
-                                  {t("timeline.editDate", { defaultValue: "Edit date" })}
-                                </button>
-                              ) : null}
-                              {item.rawId && isEditing ? (
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                  <input
-                                    type="date"
-                                    value={editDate}
-                                    onChange={(e) => setEditDate(e.target.value)}
-                                    className="h-7 w-[7.5rem] rounded-lg border border-border bg-muted px-1.5 text-[11px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-                                  />
-                                  <button
-                                    type="button"
-                                    disabled={update.isPending || !editDate}
-                                    onClick={() => {
-                                      update.mutate(
-                                        { id: item.rawId as string, occurredOn: new Date(`${editDate}T00:00:00Z`).toISOString() },
-                                        { onSuccess: () => setEditingId(null) },
-                                      )
-                                    }}
-                                    className="text-[10px] font-semibold text-brand-gold hover:underline disabled:opacity-50"
-                                  >
-                                    {t("timeline.save", { defaultValue: "Save" })}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingId(null)}
-                                    className="text-[10px] font-medium text-muted-foreground hover:underline"
-                                  >
-                                    {t("timeline.cancel", { defaultValue: "Cancel" })}
-                                  </button>
-                                </div>
-                              ) : null}
-                            </div>
-                          </li>
-                        )
-                      })}
-                    </ol>
-                  </div>
-                ))
-              : null}
+                            <button
+                              type="button"
+                              disabled={update.isPending || !editDate}
+                              onClick={() => {
+                                update.mutate(
+                                  { id: item.rawId as string, occurredOn: new Date(`${editDate}T00:00:00Z`).toISOString() },
+                                  { onSuccess: () => setEditingId(null) },
+                                )
+                              }}
+                              className="text-[10px] font-semibold text-brand-gold hover:underline disabled:opacity-50"
+                            >
+                              {t("timeline.save", { defaultValue: "Save" })}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="text-[10px] font-medium text-muted-foreground hover:underline"
+                            >
+                              {t("timeline.cancel", { defaultValue: "Cancel" })}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            ) : null}
 
             {undated.length > 0 ? (
               <section>
@@ -325,80 +326,61 @@ export function CaseTimelineView({
                   {t("timeline.nextSteps", { defaultValue: "Next steps" })}
                 </h3>
                 <ul className="divide-y divide-border rounded-2xl border border-border bg-muted/40">
-                  {undated.map((item) => (
-                    <li key={item.id} className="flex gap-3 px-4 py-3.5">
-                      <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/50" />
-                      <div className="min-w-0">
-                        <p className="text-[15px] font-semibold leading-snug text-foreground">{item.title}</p>
-                        {item.description ? (
-                          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
+                  {undated.map((item) => {
+                    const tone = item.isCalendar ? "none" : timelineDotTone(item.documentId, documentsById)
+                    const sourceDoc = item.documentId ? documentsById.get(item.documentId) : undefined
+                    return (
+                      <li key={item.id} className="flex gap-3 px-4 py-3.5">
+                        <span aria-hidden="true" className={`mt-2 size-2 shrink-0 rounded-full ${TONE_BG_CLASS[tone]}`} />
+                        <div className="min-w-0">
+                          <p className="text-[15px] font-semibold leading-snug text-foreground">{item.title}</p>
+                          {item.description ? (
+                            <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
+                          ) : null}
+                          <p className={`mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}>
+                            {tone === "none" ? tt("noSourceDocument") : `${sourceDoc?.name} · ${tt(RAG_LABEL_KEY[tone])}`}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             ) : null}
           </div>
         )}
 
-        <form
-          className="mt-auto flex flex-col gap-2.5 border-t border-border pt-5"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const value = title.trim()
-            if (!value) return
-            create.mutate({
-              title: value,
-              description: description.trim() || undefined,
-              occurredOn: toDateTimeLocalValue(date, time),
-            })
-            setTitle("")
-            setDescription("")
-            setDate("")
-            setTime("")
-          }}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {t("timeline.addHeading", { defaultValue: "Add event" })}
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[8rem_6.5rem_1fr]">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-label={t("timeline.date", { defaultValue: "Date" })}
-              className="h-9 rounded-lg border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-            />
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              aria-label={t("timeline.time", { defaultValue: "Time" })}
-              className="h-9 rounded-lg border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
-            />
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t("timeline.addTitle", { defaultValue: "Event title" })}
-              className="col-span-2 h-9 rounded-lg border border-border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 sm:col-span-1"
-            />
-          </div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t("timeline.addDescription", { defaultValue: "What happened" })}
-            rows={2}
-            className="rounded-lg border border-border bg-muted px-2.5 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
+        <div className="mt-auto border-t border-border pt-5">
           <button
-            type="submit"
-            disabled={create.isPending || !title.trim()}
-            className="h-9 self-start rounded-full bg-rose-300 px-4 text-[11px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-rose-400 disabled:opacity-50 dark:bg-rose-400/90"
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="h-9 rounded-full bg-primary px-4 text-[11px] font-semibold uppercase tracking-[1px] text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98]"
           >
-            {t("timeline.addCta", { defaultValue: "Add event" })}
+            {t("timeline.addHeading", { defaultValue: "Add event" })}
           </button>
-        </form>
+        </div>
+        <AddTimelineEventDialog
+          open={addOpen}
+          onOpenChange={(open) => {
+            setAddOpen(open)
+            if (!open) create.reset()
+          }}
+          documents={snapshot.data?.documents ?? []}
+          isPending={create.isPending}
+          submitError={create.isError ? t("timeline.addFailed", { defaultValue: "Could not add the event. Try again." }) : null}
+          onSubmit={(v) =>
+            create.mutate(
+              {
+                title: v.title,
+                description: v.description || undefined,
+                occurredOn: toDateTimeLocalValue(v.date, v.time),
+                documentId: v.documentId || undefined,
+                pageNumber: v.pageNumber ?? undefined,
+              },
+              { onSuccess: () => setAddOpen(false) },
+            )
+          }
+        />
       </div>
     </div>
   )

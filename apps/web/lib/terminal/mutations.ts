@@ -323,6 +323,8 @@ export function useCreateTimelineMutation(caseId: string) {
       title: string
       occurredOn?: string
       description?: string
+      documentId?: string
+      pageNumber?: number
     }) =>
       apiFetch(`/api/my-cases/${caseId}/timeline`, {
         method: "POST",
