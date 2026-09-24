@@ -160,7 +160,7 @@
   "ragReady": "Ready",
   "ragFailed": "Failed",
   "ragPending": "Pending",
-  "clickRowForMetadata": "Click a row for metadata",
+  "clickRowForMetadata": "Add evidence file",
   "pageCountShort": "{{n}} pp",
   "sheetLabel": "1 sheet",
   "sheetCount": "{{n}} sheets",

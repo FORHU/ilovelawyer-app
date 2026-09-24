@@ -355,7 +355,7 @@ export function CaseTimelineView({
                 <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {t("timeline.nextSteps", { defaultValue: "Next steps" })}
                 </h3>
-                <ul className="divide-y divide-border rounded-2xl border border-border bg-muted/40">
+                <ul className="divide-y divide-border rounded-sm border border-border bg-muted/40">
                   {undated.map((item) => {
                     const tone = item.isCalendar ? "none" : timelineDotTone(item.documentId, documentsById)
                     const sourceDoc = item.documentId ? documentsById.get(item.documentId) : undefined
