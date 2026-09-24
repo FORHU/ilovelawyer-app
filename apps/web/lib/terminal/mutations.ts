@@ -411,6 +411,25 @@ export function useScanContradictionsMutation(caseId: string) {
   })
 }
 
+export type ContradictionStatus = "OPEN" | "RESOLVED" | "DISMISSED"
+
+// A contradiction's triage status. The server carries it over to the same contradiction when a
+// later scan finds it again (see EvidenceIntelligenceSvc.scanContradictionsInner).
+export function useUpdateContradictionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: ContradictionStatus; resolutionNote?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
 export interface UpdateEvidenceMatrixPayload {
   documentId: string
   authenticity?: string
