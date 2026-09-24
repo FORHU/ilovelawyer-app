@@ -462,6 +462,53 @@ export interface AttributedClaim {
   sourceLabel: string | null
 }
 
+export type RedTeamArgumentStrength = "STRONG" | "MODERATE" | "WEAK"
+
+export type RedTeamSourceKind =
+  | "LEGAL_ISSUE"
+  | "WEAKNESS"
+  | "CONTRADICTION"
+  | "TIMELINE"
+  | "DOCUMENT"
+  | "WITNESS"
+  | "DAMAGE"
+  | "PARTY"
+
+export interface RedTeamArgument {
+  title: string
+  gist: string | null
+  strength: RedTeamArgumentStrength
+  /** -10..10; positive = moves the case toward the opponent. */
+  impact: number
+  reasoning: string | null
+  source: { kind: RedTeamSourceKind; label: string }
+  /** Jev's check of this argument against the case data (USE_JEV_REDTEAM). When present,
+   * strength/impact are computed from it and the author model's own are in model*. Absent on
+   * assessments made with the flag off; null when Jev's call failed for this argument. */
+  jev?: RedTeamJevRating | null
+  modelStrength?: RedTeamArgumentStrength
+  modelImpact?: number
+}
+
+export interface RedTeamJevRating {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** 0..1 */
+  likelihood: number
+  likelihoodConfidence: number
+  /** 0..1 */
+  severity: number
+  severityConfidence: number
+  uncertain: boolean
+}
+
+export interface RedTeamArguments {
+  opponent: string | null
+  riskOfLoss: number | null
+  /** Highest impact first. */
+  arguments: RedTeamArgument[]
+}
+
 export interface RedTeamAssessment {
   id: string
   caseId: string
@@ -470,6 +517,9 @@ export interface RedTeamAssessment {
    * components/shared/attributed-text.tsx. Null/empty on assessments generated before this
    * existed, or if the model's [CLAIMS] block didn't parse. */
   claims: AttributedClaim[] | null
+  /** Ranked opposing arguments, each resolved to the case item it rests on. Null on assessments
+   * generated before this existed, or if the model's [ARGUMENTS] block didn't parse. */
+  arguments: RedTeamArguments | null
   createdAt: string
   updatedAt: string
 }
