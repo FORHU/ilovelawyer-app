@@ -22,6 +22,10 @@ import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-host";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
+// The testimonial section is switched off until there are real client quotes to show (the UK
+// one is still a placeholder). Flip to true to bring it back on both tenants.
+const SHOW_TESTIMONIALS = false;
+
 // Tenant-branching SEO copy for generateMetadata (title/description/OG/Twitter) below —
 // hardcoded here rather than routed through i18next since metadata is generated server-side
 // before any client-side language state exists (<html lang="en"> is already hardcoded, no
@@ -163,7 +167,7 @@ export default async function LandingPage() {
           <main className="flex-1">
             <UkHeroSection />
             <CapabilitiesSection />
-            <UkFirmQuoteSection />
+            {SHOW_TESTIMONIALS && <UkFirmQuoteSection />}
             <UkTerminalShowcaseSection />
             <UkConsultationSection />
             <UkFirmsSection />
@@ -183,7 +187,7 @@ export default async function LandingPage() {
         <main className="flex-1">
           <HeroSection />
           <CapabilitiesSection />
-          <FirmQuoteSection />
+          {SHOW_TESTIMONIALS && <FirmQuoteSection />}
           <TerminalShowcaseSection />
           <ConsultationSection />
           <FirmsSection />

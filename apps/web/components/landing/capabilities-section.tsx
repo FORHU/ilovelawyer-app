@@ -4,16 +4,13 @@ import { useRef } from "react";
 import type { SVGProps } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GitBranch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { featureIcons } from "@/components/landing/feature-icons";
 import { useNoHover } from "@/lib/landing/use-no-hover";
 
-// Handoff §3 icon set, mapped onto this grid's 15 real (already-shipped) capabilities in
-// the same order as the `capabilities.items` i18n array. "Case Reconstruction" has no
-// counterpart in the handoff's icon set, so it keeps its existing lucide icon.
+// Handoff icon set, one per tile, in the same order as the `capabilities.items` i18n array.
 const CAPABILITIES: { Icon: React.ElementType<SVGProps<SVGSVGElement>>; route: string }[] = [
   { Icon: featureIcons.accountsSignIn, route: "/homepage/profile" },
   { Icon: featureIcons.firmsTeams, route: "/homepage/organization" },
@@ -23,14 +20,19 @@ const CAPABILITIES: { Icon: React.ElementType<SVGProps<SVGSVGElement>>; route: s
   { Icon: featureIcons.legalTerminal, route: "/homepage/terminal" },
   { Icon: featureIcons.researchLibrary, route: "/homepage/library" },
   { Icon: featureIcons.transcription, route: "/homepage/transcription" },
+  { Icon: featureIcons.documentUpload, route: "/homepage/case-portfolio" },
   { Icon: featureIcons.calendar, route: "/homepage/calendar" },
   { Icon: featureIcons.visualStrategyMap, route: "/homepage/terminal" },
-  { Icon: GitBranch, route: "/homepage/terminal" },
+  { Icon: featureIcons.evidenceTimeline, route: "/homepage/terminal" },
   { Icon: featureIcons.redTeam, route: "/homepage/terminal" },
   { Icon: featureIcons.audioOverview, route: "/homepage/terminal" },
   { Icon: featureIcons.citationChecking, route: "/homepage/terminal" },
   { Icon: featureIcons.contradictionScan, route: "/homepage/terminal" },
 ];
+
+// The last row holds 4 tiles in a 6-column grid; starting it at column 2 (instead of 1) puts it one
+// column in from the left, so the four sit centred under the six above at the desktop layout.
+const LAST_ROW_START = 12;
 
 const REPEL_RADIUS = 130;
 const REPEL_MAX_PUSH = 16;
@@ -97,31 +99,14 @@ export function CapabilitiesSection() {
   return (
     <section id="capabilities" className="relative bg-brand-navy-950 py-24 px-6 md:px-16">
       <div className="max-w-360 mx-auto">
-        <div className="flex items-end justify-between gap-8 pb-16 flex-wrap">
-          <div>
-            <h2 className="font-display text-white text-[clamp(30px,3.4vw,46px)] font-normal leading-[1.15]">
-              {t("capabilities.heading")}
-            </h2>
-            <p className="text-white/75 text-base mt-4 max-w-[560px] leading-[1.6]">
-              {t("capabilities.subheading")}
-            </p>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/signup"
-                className="shrink-0 border-b-2 border-white pb-1.5 hover:opacity-70 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950 rounded-xs"
-              >
-                <span className="text-white text-xs tracking-[1.2px] uppercase font-semibold">
-                  {t("capabilities.explorePlatform")}
-                </span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>{t("capabilities.exploreTooltip")}</TooltipContent>
-          </Tooltip>
+        <div className="flex flex-col items-center text-center gap-5 pb-14">
+          <h2 className="font-display text-white text-[clamp(30px,3.4vw,46px)] font-normal leading-[1.15] tracking-[-0.02em] max-w-[900px]">
+            {t("capabilities.heading")}
+          </h2>
+          <p className="text-white text-[15px] leading-[1.5] max-w-[640px] text-balance">{t("capabilities.subheading")}</p>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-11">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-11 max-w-[1176px] mx-auto">
           {CAPABILITIES.map(({ Icon, route }, i) => (
             <Tooltip key={i}>
               <TooltipTrigger asChild>
@@ -133,12 +118,12 @@ export function CapabilitiesSection() {
                   onMouseEnter={() => handleEnter(i)}
                   onMouseLeave={handleLeave}
                   onClick={(e) => void handleClick(e, route)}
-                  className="group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950"
+                  className={`group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950 ${i === LAST_ROW_START ? "lg:col-start-2" : ""}`}
                 >
                   <span className="w-12 h-12 rounded-full border border-white/35 flex items-center justify-center text-white transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">
                     <Icon width={22} height={22} strokeWidth={1.6} />
                   </span>
-                  <span className="text-white text-[13px]">{labels[i]}</span>
+                  <span className="text-white text-[13px] leading-[1.2]">{labels[i]}</span>
                 </Link>
               </TooltipTrigger>
               <TooltipContent>{t("capabilities.tileTooltip")}</TooltipContent>

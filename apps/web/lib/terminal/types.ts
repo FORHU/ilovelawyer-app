@@ -117,6 +117,32 @@ export interface SnapshotTimelineEvent {
   pageNumber: number | null
 }
 
+export type ConfidenceLevel = "LOW" | "MEDIUM" | "HIGH"
+export type OutlookBand =
+  | "UNFAVORABLE"
+  | "LEANS_UNFAVORABLE"
+  | "UNCERTAIN"
+  | "LEANS_FAVORABLE"
+  | "FAVORABLE"
+
+// LLM judgement of how the case is going, as a band + confidence, never a number. Null until the
+// case's first refresh after the outlook feature shipped.
+export interface CaseOutlook {
+  band: OutlookBand
+  confidence: ConfidenceLevel
+  rationale: string
+  drivers: { label: string; direction: "FOR" | "AGAINST"; sourceDocId?: string | null }[]
+  createdAt: string
+}
+
+// Weekly buckets, oldest first — matches ilovelawyer-api's WeeklyTrendPoint (swagger.ts) exactly:
+// `total` is the running total as of that week, `added` is just that week's new items.
+export interface TrendPoint {
+  weekStart: string
+  added: number
+  total: number
+}
+
 export interface SnapshotRisk {
   id: string
   title: string
@@ -124,6 +150,8 @@ export interface SnapshotRisk {
   severity: "FATAL" | "MAJOR" | "UNVERIFIED" | "MISSING_EVIDENCE" | "DEADLINE"
   status: "OPEN" | "CONFIRMED" | "ACCEPTED"
   pageNumber: number | null
+  /** Null for lawyer-added risks; only AI-generated risks carry a confidence. */
+  confidence?: ConfidenceLevel | null
 }
 
 export interface SnapshotDate {
@@ -254,7 +282,7 @@ export interface CaseSnapshot {
     caseName: string
     actionType?: string | null
     jurisdiction?: string | null
-    parties: { id: string; name: string; designation: string }[]
+    parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
   }
   documents: SnapshotDocument[]
@@ -284,6 +312,10 @@ export interface CaseSnapshot {
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
+  /** `outlookHistory` is newest first and includes the current one. */
+  outlook?: CaseOutlook | null
+  outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]
+  trends?: { health?: TrendPoint[]; openIssues?: TrendPoint[]; evidence?: TrendPoint[] }
   riskAnalysis?: {
     overall: {
       score: number

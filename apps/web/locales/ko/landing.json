@@ -17,27 +17,26 @@
   "hero": {
     "slideOne": {
       "line1": "사건이",
-      "line2": "명확해지는 곳"
+      "line2": "명확해지는 곳",
+      "subtext": "AI 상담은 작성되는 즉시 스트리밍되며, 인용된 판례가 함께 제시됩니다."
     },
     "slideTwo": {
       "line1": "당신의 사건들을,",
-      "line2": "한눈에 관리하세요"
+      "line2": "한눈에 관리하세요",
+      "subtext": "리걸 터미널은 열아홉 가지 사건 정보 패널을 원하는 대로 배치합니다."
     },
     "slideThree": {
       "line1": "변호사와 AI가",
-      "line2": "만나는 곳"
+      "line2": "만나는 곳",
+      "subtext": "Case Workspace는 자료, 채팅, 결과물을 하나의 화면에 모아둡니다."
     },
     "slideLabel": "슬라이드 {{number}}",
     "nextSlide": "다음 슬라이드",
-    "pauseVideo": "배경 동영상 일시정지",
-    "playVideo": "배경 동영상 재생",
     "scrollDown": "기능 섹션으로 스크롤"
   },
   "capabilities": {
     "heading": "ilovelawyer가 제공하는 모든 기능",
     "subheading": "목업도, 로드맵 항목도 아닙니다. 오늘 제품에 이미 담겨 있는 16가지 기능입니다.",
-    "explorePlatform": "플랫폼 살펴보기",
-    "exploreTooltip": "가입하고 플랫폼을 둘러보세요",
     "tileTooltip": "제품에서 열기",
     "items": [
       "계정 및 로그인",
@@ -48,9 +47,10 @@
       "리걸 터미널",
       "리서치 라이브러리",
       "녹취록 작성",
+      "문서 업로드",
       "캘린더",
       "비주얼 전략 맵",
-      "사건 재구성",
+      "증거 및 타임라인",
       "레드팀 분석",
       "오디오 요약",
       "인용 검증",
@@ -60,7 +60,7 @@
   "quotes": {
     "items": [
       {
-        "text": "ilovelawyer가 리서치 프로세스에 가져다주는 민첩성은 전례가 없으며, 이제 고객에게 제공할 수 있는 통찰의 깊이는 그 어느 때보다 커졌습니다.",
+        "text": "ilovelawyer가 리서치 프로세스에 가져다주는 민첩성은 전례가 없습니다. 단순히 속도의 문제가 아니라, 이제 고객에게 훨씬 짧은 시간에 제공할 수 있는 통찰의 깊이 때문입니다.",
         "author": "선임 파트너",
         "firm": "Cruz & Associates Law Offices"
       },
@@ -77,75 +77,69 @@
     ],
     "items_UK": [
       {
-        "text": "TODO: replace with a real UK client testimonial before launch.",
-        "author": "TODO",
-        "firm": "TODO — UK client testimonial pending"
+        "text": "ilovelawyer가 리서치 프로세스에 가져다주는 민첩성은 전례가 없습니다. 단순히 속도의 문제가 아니라, 이제 고객에게 훨씬 짧은 시간에 제공할 수 있는 통찰의 깊이 때문입니다.",
+        "author": "선임 파트너",
+        "firm": "Cruz & Associates Law Offices"
       }
     ],
     "quoteLabel": "인용 {{number}}"
   },
   "terminal": {
     "heading": "하나의 워크스페이스, 원하는 대로 배치하세요",
-    "body": "리걸 터미널은 스스로 배치하는 소송 조종석입니다. 하나, 둘, 넷, 여섯 개의 패널 중 원하는 구성으로 시작한 뒤, 나만의 레이아웃을 저장하고 어떤 기기에서든 불러오세요.",
+    "body": "리걸 터미널은 스스로 배치하는 소송 조종석입니다. 열아홉 가지 패널 유형을 격자에 고정되지 않고 자유롭게 끌어다 놓고 크기를 조절할 수 있습니다. 하나, 둘, 넷, 여섯 개의 패널 중 원하는 구성으로 시작한 뒤, 나만의 레이아웃을 저장하고 어떤 기기에서든 불러오세요.",
     "cta": "터미널 열기",
-    "comingSoon": "출시 예정",
     "panels": {
-      "chat": {
-        "title": "AI Legal Assistant",
-        "subtitle": "한 번 질문하면, 출처가 표시된 답변이 스트리밍됩니다"
+      "caseSummary": {
+        "title": "사건 요약",
+        "subtitle": "당사자, 청구, 위험 등록부를 한눈에"
+      },
+      "evidenceTimeline": {
+        "title": "증거 및 타임라인",
+        "subtitle": "모든 문서와 날짜를 순서대로 정리"
       },
       "redTeam": {
         "title": "레드팀 분석",
         "subtitle": "상대측이 제기할 주장"
       },
-      "audioOverview": {
-        "title": "오디오 요약",
-        "subtitle": "두 명의 AI 진행자가 사건을 논의합니다"
-      },
-      "caseReconstruction": {
-        "title": "사건 재구성",
-        "subtitle": "의뢰인, 법원, 상대측의 서사"
+      "chat": {
+        "title": "AI Legal Assistant",
+        "subtitle": "질문하면 사건에 근거한 답변을 받습니다"
       }
     }
   },
   "consultation": {
     "heading": "한 번만 물어보세요. 그 근거가 되는 법률까지 함께.",
-    "body": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 인용 정보, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
+    "body": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 사건 번호 또는 R.A. 번호, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "cta": "상담 시작하기",
     "caseName": "Reyes v. Northbridge Logistics",
-    "caseName_UK": "Fairholme v. Sterling Trustees Ltd",
     "relatedCases": "관련 사건",
     "relatedCasesItems": [
-      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "vetted": true },
-      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "vetted": false }
-    ],
-    "relatedCasesItems_UK": [
-      { "title": "Ilott v The Blue Cross", "citation": "[2017] UKSC 17", "vetted": true },
-      { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
+      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "snippet": "해고 시 절차적 적법절차는 두 건의 서면 통지와 실질적인 소명 기회를 요구합니다.", "vetted": true },
+      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "snippet": "정당한 사유가 있는 해고이더라도 이중 통지 원칙이 지켜지지 않은 경우 명목적 손해배상이 인정됩니다.", "vetted": false }
     ],
     "vetted": "검증됨",
-    "question": "최초 서면 통지 없이 이루어진 저의 의뢰인의 해고가 무효라고 주장할 수 있을까요?",
-    "answer": "네. 이중 통지 원칙에 따라 사용자는 해고 전에 두 건의 서면 통지를 해야 합니다. *Agabon v. NLRC* 판례는 정당한 사유가 있더라도 첫 번째 통지를 생략하면 부당해고로 인정될 수 있음을 확인했습니다.",
-    "question_UK": "제 의뢰인이 아버지의 유언장에서 제외된 것에 이의를 제기할 수 있을까요?",
-    "answer_UK": "네. 1975년 상속법에 따라 유언장에서 제외된 부양가족은 합리적인 재정적 지원을 청구할 수 있습니다. *Ilott v The Blue Cross* 판례가 법원이 적용할 핵심 기준을 제시했습니다.",
-    "composerPlaceholder": "추가 질문하기..."
+    "indexing": "채팅용 색인 중…"
   },
   "firms": {
     "heading": "로펌이 실제로 일하는 방식에 맞췄습니다",
     "teamsHeading": "로펌 및 팀",
-    "teamsBody": "단독으로 활동하거나, Solo·Professional·Enterprise 세 가지 플랜 중 하나로 로펌을 만드세요. 이메일로 동료를 초대하고 소유자, 관리자, 구성원 중 역할을 지정할 수 있습니다. 되돌릴 수 없는 작업은 항상 먼저 확인을 요청합니다.",
+    "teamsBody": "단독으로 활동하거나, Solo·Professional·Enterprise 세 가지 플랜 중 하나로 로펌을 만드세요. 이메일로 동료를 초대하고 소유자, 관리자, 구성원 중 역할을 지정할 수 있습니다. 되돌릴 수 없는 작업은 항상 먼저 확인을 요청하며, 소유자는 떠나기 전에 후임자를 지정해야 합니다.",
     "teamsCta": "팀 초대하기",
-    "jurisdictionsHeading": "두 개의 관할권, 하나의 제품",
-    "jurisdictionsBody": "필리핀과 영국 업무는 각각 고유한 주소와 용어 체계를 가지며, 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증은 두 관할권 모두에서 작동합니다.",
+    "jurisdictionsHeading": "필리핀 실무에 맞춘 제품",
+    "jurisdictionsBody": "조직마다 고유한 주소와 용어 체계를 가지며, 필리핀 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 필리핀 법에 맞게 구성되어 있습니다.",
+    "jurisdictionsHeading_UK": "영국 실무에 맞춘 제품",
+    "jurisdictionsBody_UK": "조직마다 고유한 주소와 용어 체계를 가지며, 영국 실무에 실제로 적용되는 도구만 제공됩니다. 사건, 문서, AI 상담, 인용 검증이 모두 영국 법에 맞게 구성되어 있습니다.",
     "roster": [
       { "initials": "AC", "name": "Atty. Ana Cruz", "email": "ana@cruzpartners.ph", "role": "owner", "you": true },
       { "initials": "RS", "name": "Ramon Santos", "email": "ramon@cruzpartners.ph", "role": "admin", "you": false },
-      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false }
+      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false },
+      { "initials": "JT", "name": "Jose Tan", "email": "jose@cruzpartners.ph", "role": "member", "you": false, "pending": true }
     ],
     "roster_UK": [
       { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
       { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
-      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false }
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false },
+      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@sinclairwycombe.co.uk", "role": "member", "you": false, "pending": true }
     ],
     "membersCard": {
       "title": "구성원",
@@ -157,6 +151,7 @@
       "planName": "Professional",
       "planName_UK": "Enterprise",
       "you": "나",
+      "pending": "대기 중",
       "invite": "구성원 초대",
       "invitePlaceholder": "colleague@lawfirm.ph",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
@@ -169,8 +164,6 @@
     }
   },
   "footer": {
-    "tagline": "필리핀 시장을 위한 프리미엄 AI 법률 운영. 오랜 법률 전통과 현대 기술 혁신을 통합합니다.",
-    "tagline_UK": "영국 시장을 위한 프리미엄 AI 법률 운영. 오랜 법률 전통과 현대 기술 혁신을 통합합니다.",
     "columns": {
       "product": {
         "heading": "제품",
@@ -203,6 +196,7 @@
         "links": {
           "helpCentre": "고객센터 및 FAQ",
           "transcription": "녹취록 작성",
+          "documentUpload": "문서 업로드",
           "calendar": "캘린더"
         }
       },

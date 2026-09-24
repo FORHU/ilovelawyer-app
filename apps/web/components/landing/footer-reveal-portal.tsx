@@ -42,7 +42,11 @@ export function FooterRevealPortal({ children }: { children: ReactNode }) {
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, []);
+    // portalTarget, not []: the footer div only exists once the portal target has been found, so
+    // on the first run footerRef is still null. Depending on it re-runs this once the footer is
+    // actually mounted; otherwise the spacer stays at DEFAULT_HEIGHT and leaves a gap (or cuts
+    // the footer off) whenever the real footer height differs from it.
+  }, [portalTarget]);
 
   return (
     <>
