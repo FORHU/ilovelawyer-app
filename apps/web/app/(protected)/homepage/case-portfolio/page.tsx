@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { openCaseTerminal } from "@/lib/desktop";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
@@ -498,6 +499,9 @@ export default function CaseManagerDashboard() {
                           <TooltipTrigger asChild>
                             <Link
                               href={`/homepage/terminal/${c.id}`}
+                              onClick={(e) => {
+                                if (openCaseTerminal(c.id)) e.preventDefault();
+                              }}
                               className="flex h-11 md:h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
                             >
                               {t("Terminal")}

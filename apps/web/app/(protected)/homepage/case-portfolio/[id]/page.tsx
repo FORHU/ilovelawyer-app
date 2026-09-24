@@ -1,6 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { openCaseTerminal } from "@/lib/desktop";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
@@ -118,6 +119,9 @@ export default function CaseDetailPage() {
               </TabButton>
               <Link
                 href={`/homepage/terminal/${id}`}
+                onClick={(e) => {
+                  if (openCaseTerminal(id)) e.preventDefault();
+                }}
                 className="pb-3 flex shrink-0 items-center gap-1.5 sm:gap-2 uppercase text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
@@ -463,6 +467,9 @@ function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOp
 
           <Link
             href={`/homepage/terminal/${id}`}
+            onClick={(e) => {
+              if (openCaseTerminal(id)) e.preventDefault();
+            }}
             className="flex items-center justify-center gap-2.5 h-11 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
           >
             <Scale className="w-3.5 h-3.5" aria-hidden="true" />

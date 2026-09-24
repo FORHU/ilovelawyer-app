@@ -64,6 +64,7 @@ import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
+import { onPanelWindowClosed, openPanelWindow } from "@/lib/desktop"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
@@ -299,22 +300,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSaveRef = useRef<{ workspaceId: string; layoutJson: WorkspaceLayout } | null>(null)
   const inFlightSaveRef = useRef<Promise<unknown> | null>(null)
-  // Tracks pop-out windows this tab opened, so the polling effect below can flip a pane back to
-  // visible the moment its popup closes. A ref, not state — nothing here needs to re-render.
-  const popupWindowsRef = useRef<Map<PanelId, Window>>(new Map())
-
-  // Only reliable cross-window signal a popup gives its opener without any cooperation from the
-  // popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
-  useEffect(() => {
-    const interval = setInterval(() => {
-      for (const [id, win] of popupWindowsRef.current) {
-        if (!win.closed) continue
-        popupWindowsRef.current.delete(id)
-        setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: true } : p)) } : prev))
-      }
-    }, 500)
-    return () => clearInterval(interval)
-  }, [])
+  // Flips a popped-out pane back to visible the moment its window closes — whether that window is
+  // a browser popup or a desktop-shell window is lib/desktop's concern, not this component's.
+  useEffect(
+    () =>
+      onPanelWindowClosed((closed) => {
+        if (closed.caseId !== caseId) return
+        setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === closed.panelId ? { ...p, visible: true } : p)) } : prev))
+      }),
+    [caseId],
+  )
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
@@ -578,15 +573,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // [panelId]/page.tsx — a minimal, independent page hitting the same API, no cross-window sync).
   // The pane hides from the main grid — same mechanism as hidePanel, just without touching
   // maximizedId's "is this the maximized one" semantics beyond clearing it if it matches — while
-  // the popup is open (see the polling effect below for how it comes back once closed).
+  // the popup is open (see the onPanelWindowClosed effect above for how it comes back once closed).
   const popOutPanel = (id: PanelId) => {
-    const win = window.open(
-      `/homepage/terminal/${caseId}/panel/${id}`,
-      `terminal-panel-${caseId}-${id}`,
-      "width=560,height=680",
-    )
-    if (!win) return
-    popupWindowsRef.current.set(id, win)
+    if (!openPanelWindow(caseId, id)) return
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: false } : p)) } : prev))
   }
