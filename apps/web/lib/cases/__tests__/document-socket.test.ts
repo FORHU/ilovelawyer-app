@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { QueryClient } from "@tanstack/react-query"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
 import { terminalKeys } from "@/lib/terminal/mutations"
+import { graphViewKeys } from "@/lib/graph-view/mutations"
 import type { UserDocument } from "@/lib/cases/mutations"
 import {
   applyDocumentEvent,
@@ -85,18 +86,26 @@ describe("applyDocumentEvent", () => {
     expect(qc.getQueryData(caseKeys.timeline("case1"))).toEqual(once)
   })
 
-  it("invalidates the Terminal snapshot only on a terminal state", () => {
+  it("invalidates the Terminal snapshot on every event except started", () => {
     const qc = new QueryClient()
     const spy = vi.spyOn(qc, "invalidateQueries")
 
     applyDocumentEvent(qc, "document:started", { ...base, ragStatus: "PENDING" })
-    applyDocumentEvent(qc, "document:retrying", { ...base, ragStatus: "PENDING" })
     expect(spy).not.toHaveBeenCalled()
 
-    applyDocumentEvent(qc, "document:ready", base)
+    applyDocumentEvent(qc, "document:retrying", { ...base, ragStatus: "PENDING" })
     applyDocumentEvent(qc, "document:failed", { ...base, ragStatus: "FAILED" })
     expect(spy).toHaveBeenCalledTimes(2)
     expect(spy).toHaveBeenCalledWith({ queryKey: terminalKeys.snapshot("case1") })
+  })
+
+  it("also refetches the timeline when a document becomes ready", () => {
+    const qc = new QueryClient()
+    const spy = vi.spyOn(qc, "invalidateQueries")
+
+    applyDocumentEvent(qc, "document:ready", base)
+    expect(spy).toHaveBeenCalledWith({ queryKey: terminalKeys.snapshot("case1") })
+    expect(spy).toHaveBeenCalledWith({ queryKey: graphViewKeys.all("case1") })
   })
 })
 

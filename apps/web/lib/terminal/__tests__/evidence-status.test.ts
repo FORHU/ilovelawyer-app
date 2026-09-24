@@ -1,0 +1,124 @@
+import { describe, it, expect } from "vitest"
+import { countByStatus, documentSizeLabel, groupByCategory, ingestTone, timelineDotTone } from "../evidence-status"
+import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon, isSpreadsheet } from "@/lib/cases/file-type-icon"
+import { File, FileImage, FileSpreadsheet, FileText, Mail } from "lucide-react"
+
+describe("ingestTone / countByStatus", () => {
+  it("maps READY and FAILED, and treats anything else as pending", () => {
+    expect(ingestTone("READY")).toBe("ready")
+    expect(ingestTone("FAILED")).toBe("failed")
+    expect(ingestTone("PENDING")).toBe("pending")
+    expect(ingestTone(null)).toBe("pending")
+  })
+
+  it("counts documents per status", () => {
+    const docs = ["READY", "PENDING", "READY", "FAILED", "READY", "PENDING"].map((ragStatus) => ({ ragStatus }))
+    expect(countByStatus(docs)).toEqual({ ready: 3, pending: 2, failed: 1 })
+  })
+})
+
+describe("timelineDotTone", () => {
+  const docs = new Map([
+    ["a", { ragStatus: "READY" }],
+    ["b", { ragStatus: "PENDING" }],
+  ])
+
+  it("takes the source document's status", () => {
+    expect(timelineDotTone("a", docs)).toBe("ready")
+    expect(timelineDotTone("b", docs)).toBe("pending")
+  })
+
+  it("is 'none' with no source document or one that no longer resolves", () => {
+    expect(timelineDotTone(null, docs)).toBe("none")
+    expect(timelineDotTone("deleted", docs)).toBe("none")
+  })
+})
+
+describe("fileTypeIcon", () => {
+  it("uses the MIME type first", () => {
+    expect(fileTypeIcon({ mimeType: "application/pdf", name: "x" })).toBe(FileText)
+    expect(fileTypeIcon({ mimeType: "image/png", name: "x" })).toBe(FileImage)
+    expect(
+      fileTypeIcon({ mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", name: "x" }),
+    ).toBe(FileSpreadsheet)
+  })
+
+  it("falls back to the extension when the MIME type is blank", () => {
+    expect(fileTypeIcon({ mimeType: null, name: "payroll.xlsx" })).toBe(FileSpreadsheet)
+    expect(fileTypeIcon({ mimeType: "", name: "thread.eml" })).toBe(Mail)
+    expect(fileTypeIcon({ mimeType: null, name: "letter.DOCX" })).toBe(FileText)
+  })
+
+  it("uses a generic file icon otherwise", () => {
+    expect(fileTypeIcon({ mimeType: "application/zip", name: "a.zip" })).toBe(File)
+  })
+
+  it("detects spreadsheets", () => {
+    expect(isSpreadsheet({ mimeType: null, name: "a.csv" })).toBe(true)
+    expect(isSpreadsheet({ mimeType: "application/pdf", name: "a.pdf" })).toBe(false)
+  })
+})
+
+describe("documentSizeLabel", () => {
+  const xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  it("uses the worksheet count for spreadsheets, one sheet when unknown or 1", () => {
+    expect(documentSizeLabel({ name: "a.xlsx", mimeType: xlsx, pageCount: 3 })).toEqual({ key: "sheetCount", n: 3 })
+    expect(documentSizeLabel({ name: "a.xlsx", mimeType: xlsx, pageCount: 1 })).toEqual({ key: "sheetLabel" })
+    expect(documentSizeLabel({ name: "a.xlsx", mimeType: xlsx, pageCount: null })).toEqual({ key: "sheetLabel" })
+  })
+  it("shows pages for other documents and nothing when the count is unknown", () => {
+    expect(documentSizeLabel({ name: "a.pdf", mimeType: "application/pdf", pageCount: 12 })).toEqual({ key: "pageCountShort", n: 12 })
+    expect(documentSizeLabel({ name: "a.pdf", mimeType: "application/pdf", pageCount: null })).toBeNull()
+  })
+})
+
+describe("timelineDotTone with an archived document", () => {
+  it("is none when the id is not in the active-only documents map", () => {
+    expect(timelineDotTone("archived-doc", new Map([["other", { ragStatus: "READY" }]]))).toBe("none")
+  })
+})
+
+describe("groupByCategory", () => {
+  const doc = (id: string, category: string | null) => ({ id, category })
+
+  it("puts named categories first, alphabetically, and uncategorized last", () => {
+    const groups = groupByCategory([doc("1", "Pleadings"), doc("2", null), doc("3", "Contracts"), doc("4", "Pleadings")])
+    expect(groups.map((g) => [g.category, g.docs.map((d) => d.id)])).toEqual([
+      ["Contracts", ["3"]],
+      ["Pleadings", ["1", "4"]],
+      [null, ["2"]],
+    ])
+  })
+
+  it("treats blank and whitespace-padded categories like the Workspace folders do", () => {
+    const groups = groupByCategory([doc("1", "  "), doc("2", " Contracts "), doc("3", "Contracts")])
+    expect(groups.map((g) => [g.category, g.docs.map((d) => d.id)])).toEqual([
+      ["Contracts", ["2", "3"]],
+      [null, ["1"]],
+    ])
+  })
+
+  it("returns no groups for no documents", () => {
+    expect(groupByCategory([])).toEqual([])
+  })
+})
+
+describe("fileExtensionLabel", () => {
+  it("uses the uploaded filename's extension, uppercased", () => {
+    expect(fileExtensionLabel({ mimeType: null, name: "Contract.docx" })).toBe("DOCX")
+    expect(fileExtensionLabel({ mimeType: "application/pdf", name: "brief.PDF" })).toBe("PDF")
+  })
+  it("falls back to the MIME type, then to empty", () => {
+    expect(fileExtensionLabel({ mimeType: "application/pdf", name: "scan" })).toBe("PDF")
+    expect(fileExtensionLabel({ mimeType: null, name: "scan" })).toBe("")
+  })
+})
+
+describe("fileTypeColorClass", () => {
+  it("colours by file family and stays neutral for unknown types", () => {
+    expect(fileTypeColorClass({ mimeType: null, name: "a.pdf" })).toContain("red")
+    expect(fileTypeColorClass({ mimeType: null, name: "a.docx" })).toContain("blue")
+    expect(fileTypeColorClass({ mimeType: null, name: "a.xlsx" })).toContain("green")
+    expect(fileTypeColorClass({ mimeType: "application/zip", name: "a.zip" })).toBe("text-muted-foreground")
+  })
+})

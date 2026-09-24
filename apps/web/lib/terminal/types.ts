@@ -114,6 +114,7 @@ export interface SnapshotTimelineEvent {
   description: string | null
   status: string
   source: "AI" | "LAWYER" | "CALENDAR"
+  documentId: string | null
   pageNumber: number | null
 }
 

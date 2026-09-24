@@ -14,6 +14,7 @@ import {
   UPLOAD_CONCURRENCY,
 } from "@/lib/cases/upload-batch"
 import { terminalKeys } from "@/lib/terminal/mutations"
+import { graphViewKeys } from "@/lib/graph-view/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
 
 export interface Party {
@@ -563,15 +564,15 @@ export function useDeleteCaseDocumentMutation() {
       queryClient.setQueryData<CaseSnapshot>(terminalKeys.snapshot(caseId), (old) =>
         old ? { ...old, documents: old.documents.filter((d) => d.id !== documentId) } : old,
       )
+      // The API clears documentId on this document's timeline events, so refetch them too.
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
 
-// Archiving/unarchiving is a pure visibility flag on the active Document browser — an archived
-// document behaves identically everywhere else (RAG grounding, chat, case snapshot, AI analysis
-// all keep seeing it), matching how Case archiving deliberately leaves everything but the
-// Active/Archived tab unchanged. So unlike delete, these deliberately do NOT touch
-// terminalKeys.snapshot — the backend still returns archived documents there by design.
+// Archiving/unarchiving is a visibility flag: RAG grounding and chat still see an archived
+// document, but the case snapshot (Legal Terminal counts, Evidence list, risk analysis) excludes
+// it — so these also invalidate terminalKeys.snapshot, or the Terminal keeps a stale count.
 export function useArchiveCaseDocumentMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -582,6 +583,7 @@ export function useArchiveCaseDocumentMutation() {
         old ? old.filter((d) => d.id !== documentId) : old,
       )
       queryClient.invalidateQueries({ queryKey: caseKeys.archivedTimeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }
@@ -596,6 +598,7 @@ export function useUnarchiveCaseDocumentMutation() {
         old ? old.filter((d) => d.id !== documentId) : old,
       )
       queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }
@@ -617,6 +620,7 @@ export function useBulkUnarchiveCaseDocumentsMutation() {
         old ? old.filter((d) => !restoredIds.has(d.id)) : old,
       )
       queryClient.invalidateQueries({ queryKey: caseKeys.timeline(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }
