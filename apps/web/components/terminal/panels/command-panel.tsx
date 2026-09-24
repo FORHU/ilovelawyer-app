@@ -117,7 +117,7 @@ export function CommandPanel({
               <div className="flex flex-col items-center gap-1">
                 <OutlookGauge band={outlook.band} label={`${t(`band_${outlook.band}`)}, ${t(`confidence_${outlook.confidence}`)}`} />
                 <div className="flex w-40 justify-between font-mono text-[9px] tracking-[1px] text-muted-foreground uppercase">
-                  <span>{t("band_ADVERSE")}</span>
+                  <span>{t("band_UNFAVORABLE")}</span>
                   <span>{t("band_FAVORABLE")}</span>
                 </div>
                 <p className="mt-1 inline-flex items-center gap-2 text-[15px] leading-tight font-semibold text-foreground">

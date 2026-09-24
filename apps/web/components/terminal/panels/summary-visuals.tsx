@@ -2,18 +2,18 @@ import { useEffect, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import type { ConfidenceLevel, OutlookBand } from "@/lib/terminal/types"
 
-const BANDS: OutlookBand[] = ["ADVERSE", "LEANING_ADVERSE", "BALANCED", "LEANING_FAVORABLE", "FAVORABLE"]
+const BANDS: OutlookBand[] = ["UNFAVORABLE", "LEANS_UNFAVORABLE", "UNCERTAIN", "LEANS_FAVORABLE", "FAVORABLE"]
 
 // Text colour for a band name; the semantic severity tokens keep both themes correct.
 export const BAND_TONE: Record<OutlookBand, string> = {
-  ADVERSE: "text-danger",
-  LEANING_ADVERSE: "text-riskmed",
-  BALANCED: "text-warn",
-  LEANING_FAVORABLE: "text-ok",
+  UNFAVORABLE: "text-danger",
+  LEANS_UNFAVORABLE: "text-riskmed",
+  UNCERTAIN: "text-warn",
+  LEANS_FAVORABLE: "text-ok",
   FAVORABLE: "text-ok",
 }
 // Same hues as the text tones, with the leaning-favorable arc dimmed so the two greens stay distinct.
-const ARC_TONE: Record<OutlookBand, string> = { ...BAND_TONE, LEANING_FAVORABLE: "text-ok/60" }
+const ARC_TONE: Record<OutlookBand, string> = { ...BAND_TONE, LEANS_FAVORABLE: "text-ok/60" }
 
 const SEG = 36
 const GAP = 3
@@ -29,10 +29,10 @@ function arc(from: number, to: number, r: number) {
 
 // Badge tone for a band; the pill is outlined in the same hue.
 export const BAND_BADGE: Record<OutlookBand, "danger" | "warning" | "caution" | "success"> = {
-  ADVERSE: "danger",
-  LEANING_ADVERSE: "warning",
-  BALANCED: "caution",
-  LEANING_FAVORABLE: "success",
+  UNFAVORABLE: "danger",
+  LEANS_UNFAVORABLE: "warning",
+  UNCERTAIN: "caution",
+  LEANS_FAVORABLE: "success",
   FAVORABLE: "success",
 }
 

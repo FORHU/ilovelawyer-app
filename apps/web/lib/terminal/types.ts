@@ -119,10 +119,10 @@ export interface SnapshotTimelineEvent {
 
 export type ConfidenceLevel = "LOW" | "MEDIUM" | "HIGH"
 export type OutlookBand =
-  | "ADVERSE"
-  | "LEANING_ADVERSE"
-  | "BALANCED"
-  | "LEANING_FAVORABLE"
+  | "UNFAVORABLE"
+  | "LEANS_UNFAVORABLE"
+  | "UNCERTAIN"
+  | "LEANS_FAVORABLE"
   | "FAVORABLE"
 
 // LLM judgement of how the case is going, as a band + confidence, never a number. Null until the

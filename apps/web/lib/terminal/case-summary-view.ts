@@ -95,7 +95,7 @@ export function sampleSummaryView(now = Date.now()): SummaryView {
   ): SnapshotRisk => ({ id, title, description: null, severity, status: "OPEN", pageNumber: null, confidence })
   return {
     outlook: {
-      band: "LEANING_FAVORABLE",
+      band: "LEANS_FAVORABLE",
       confidence: "MEDIUM",
       rationale:
         "The termination letter and payroll records support the illegal dismissal claim. The retaliation theory rests on one uncorroborated sworn statement, and the position paper deadline is not yet confirmed.",
@@ -103,10 +103,10 @@ export function sampleSummaryView(now = Date.now()): SummaryView {
       createdAt: ago(0),
     },
     outlookHistory: [
-      { band: "LEANING_FAVORABLE", confidence: "MEDIUM", createdAt: ago(3) },
-      { band: "BALANCED", confidence: "MEDIUM", createdAt: ago(7) },
-      { band: "BALANCED", confidence: "LOW", createdAt: ago(30) },
-      { band: "LEANING_ADVERSE", confidence: "LOW", createdAt: ago(74) },
+      { band: "LEANS_FAVORABLE", confidence: "MEDIUM", createdAt: ago(3) },
+      { band: "UNCERTAIN", confidence: "MEDIUM", createdAt: ago(7) },
+      { band: "UNCERTAIN", confidence: "LOW", createdAt: ago(30) },
+      { band: "LEANS_UNFAVORABLE", confidence: "LOW", createdAt: ago(74) },
     ],
     health: { value: 72, delta: 4, trend: [61, 63, 62, 66, 68, 72] },
     deadline: { days: 1, dueISO: new Date(now + DAY).toISOString(), confirmed: false },
