@@ -111,6 +111,7 @@
   "scanning": "Sine-scan…",
   "contradictions": "Mga nakitang kontradiksyon",
   "noContradictions": "Wala pang nakitang kontradiksyon.",
+  "contradictionScanFailed": "Nabigo ang scan. Subukan muli.",
   "contradictionDirect": "Direkta",
   "contradictionInferential": "Hinuha",
   "contradictionNotAConflict": "Malamang walang salungatan",

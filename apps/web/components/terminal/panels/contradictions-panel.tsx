@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Loader2, Search } from "lucide-react"
 import {
@@ -7,7 +8,7 @@ import {
   useUpdateContradictionMutation,
   type ContradictionStatus,
 } from "@/lib/terminal/mutations"
-import { useGraphViewQuery } from "@/lib/graph-view/mutations"
+import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import {
   EmptyNote,
   MutationError,
@@ -32,6 +33,9 @@ type ContradictionMetadata = {
   /** Jev's classification (USE_JEV_CONTRADICTIONS); null/absent when it wasn't run. */
   nature?: "DIRECT" | "INFERENTIAL" | "NOT_A_CONFLICT" | null
   natureConfidence?: number | null
+  /** Where in the document each side sits, e.g. "D13 p.2" — set by the full-bundle scan. */
+  leftLocator?: string | null
+  rightLocator?: string | null
 }
 
 // The severity tag is Jev's DIRECT/INFERENTIAL/NOT_A_CONFLICT read when the scan had it, else the
@@ -63,14 +67,30 @@ function formatContradictionValue(kind: string, value: string) {
   if (kind === "amount_mismatch" && /^\d+(\.\d+)?$/.test(value)) {
     return `₱${Number(value).toLocaleString()}`
   }
+  // Full-bundle scan values: "GBP4500.00", "2023-11-14", "11d".
+  const money = value.match(/^([A-Z]{3})(\d+(?:\.\d+)?)$/)
+  if (money) {
+    try {
+      return new Intl.NumberFormat(undefined, { style: "currency", currency: money[1] }).format(Number(money[2]))
+    } catch {
+      return value
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(`${value}T00:00:00Z`)
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+  }
+  const days = value.match(/^(\d+)d$/)
+  if (days) return `${days[1]} days`
   return value
 }
 
 function contradictionHeadline(item: ContradictionMetadata) {
   const left = formatContradictionValue(item.kind, item.leftValue)
   const right = formatContradictionValue(item.kind, item.rightValue)
+  // The full scan's fact keys are just the value kind ("date") — the values already say that.
   const label =
-    item.factKey && item.factKey !== "other"
+    item.factKey && !["other", "date", "amount", "duration"].includes(item.factKey)
       ? item.factKey.replace(/_/g, " ")
       : null
   return label ? `${label}: ${left} vs ${right}` : `${left} vs ${right}`
@@ -87,8 +107,19 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
   const update = useUpdateContradictionMutation(caseId)
   const job = useAiJobStatus(caseId, "contradictions")
   const graphView = useGraphViewQuery(caseId, "contradictions")
+  const queryClient = useQueryClient()
   const isScanning = scan.isPending || job.data?.status === "IN_PROGRESS"
   const [open, setOpen] = useState<string | null>(null)
+
+  // The scan is queued; useAiJobStatus only refreshes the snapshot when it finishes, and this
+  // panel reads the graph view — refresh that too on the IN_PROGRESS -> DONE transition.
+  const prevJobStatus = useRef(job.data?.status)
+  useEffect(() => {
+    if (prevJobStatus.current === "IN_PROGRESS" && job.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevJobStatus.current = job.data?.status
+  }, [job.data?.status, caseId, queryClient])
   const [note, setNote] = useState("")
 
   const docName = new Map((graphView.data?.nodes ?? []).map((n) => [n.id, n.label]))
@@ -138,7 +169,9 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
           {isScanning ? t("scanning") : t("scan")}
         </button>
       </div>
-      <MutationError show={scan.isError || update.isError} />
+      <MutationError show={scan.isError || update.isError || job.data?.status === "FAILED"}>
+        {job.data?.status === "FAILED" && !scan.isError ? t("contradictionScanFailed") : undefined}
+      </MutationError>
 
       {rows.length > 0 ? (
         <div className="flex items-center gap-3">
@@ -188,9 +221,17 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
           {rows.map(({ edge, m, severity, handled }) => {
             const style = SEVERITY_STYLE[severity]
             const status = m.status ?? "OPEN"
-            const left = docName.get(edge.source) ?? t("unknownDocument")
-            const right = docName.get(edge.target) ?? t("unknownDocument")
-            const sources = edge.source === edge.target ? t("contradictionSameDocument", { doc: left }) : `${left} vs. ${right}`
+            const leftDoc = docName.get(edge.source) ?? t("unknownDocument")
+            const rightDoc = docName.get(edge.target) ?? t("unknownDocument")
+            // Inside one merged bundle the locators ("D13 p.2") are what tell the two sides apart.
+            const left = m.leftLocator ?? leftDoc
+            const right = m.rightLocator ?? rightDoc
+            const sources =
+              m.leftLocator || m.rightLocator
+                ? `${left} vs. ${right}`
+                : edge.source === edge.target
+                  ? t("contradictionSameDocument", { doc: leftDoc })
+                  : `${leftDoc} vs. ${rightDoc}`
             const isOpen = open === edge.id
             return (
               <PanelRow

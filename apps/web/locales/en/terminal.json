@@ -137,6 +137,7 @@
   "scanning": "Scanning…",
   "contradictions": "Contradictions found",
   "noContradictions": "No contradictions found yet.",
+  "contradictionScanFailed": "The scan failed. Try again.",
   "contradictionDirect": "Direct",
   "contradictionInferential": "Inferential",
   "contradictionNotAConflict": "Likely no conflict",

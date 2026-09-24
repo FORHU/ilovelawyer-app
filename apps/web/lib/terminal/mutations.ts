@@ -397,16 +397,18 @@ export function useCreateRiskMutation(caseId: string) {
   })
 }
 
+// Queued server-side (AiGenerationQueue/SQS) — a full-bundle scan can run for minutes. This POST
+// returns once the job is claimed; ContradictionsPanel follows useAiJobStatus(caseId,
+// "contradictions") and refreshes the graph view itself when that flips to DONE.
 export function useScanContradictionsMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
         method: "POST",
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "contradictions") })
     },
   })
 }
