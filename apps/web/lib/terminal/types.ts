@@ -360,6 +360,11 @@ export interface Witness {
   name: string
   role: string | null
   summary: string | null
+  /** AI = found automatically in `sourceDocument`; `sourceQuote` is the verbatim line it came from. */
+  source: "MANUAL" | "AI"
+  sourceDocumentId: string | null
+  sourceQuote: string | null
+  sourceDocument: { id: string; name: string } | null
   status: WitnessStatus
   credibility: number
   /** AI-proposed — the displayed score is credibilityOverride ?? aiCredibility ?? credibility. */

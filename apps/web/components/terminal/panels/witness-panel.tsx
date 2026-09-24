@@ -32,10 +32,13 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   const del = useDeleteWitnessMutation(caseId)
   const score = useScoreWitnessesMutation(caseId)
   const job = useAiJobStatus(caseId, "witnessScoring")
+  // Runs on its own after documents finish extracting (no button) — see WitnessExtractSvc.
+  const extractJob = useAiJobStatus(caseId, "witnessExtract")
   const [name, setName] = useState("")
   const [role, setRole] = useState("")
   const [summary, setSummary] = useState("")
   const [openReasons, setOpenReasons] = useState<Set<string>>(new Set())
+  const [openQuotes, setOpenQuotes] = useState<Set<string>>(new Set())
   const graphView = useGraphViewQuery(caseId, "witnesses")
   const witnesses = (graphView.data?.nodes ?? []).map((node) => ({
     node,
@@ -43,15 +46,20 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   }))
 
   // useAiJobStatus only refreshes the snapshot when a job finishes; this panel reads the graph
-  // view, so refresh that too on the IN_PROGRESS -> DONE transition.
+  // view, so refresh that too on either job's IN_PROGRESS -> DONE transition.
   const isScoring = score.isPending || job.data?.status === "IN_PROGRESS"
+  const isExtracting = extractJob.data?.status === "IN_PROGRESS"
   const prevJobStatus = useRef(job.data?.status)
+  const prevExtractStatus = useRef(extractJob.data?.status)
   useEffect(() => {
-    if (prevJobStatus.current === "IN_PROGRESS" && job.data?.status === "DONE") {
+    const scoreDone = prevJobStatus.current === "IN_PROGRESS" && job.data?.status === "DONE"
+    const extractDone = prevExtractStatus.current === "IN_PROGRESS" && extractJob.data?.status === "DONE"
+    if (scoreDone || extractDone) {
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     }
     prevJobStatus.current = job.data?.status
-  }, [job.data?.status, caseId, queryClient])
+    prevExtractStatus.current = extractJob.data?.status
+  }, [job.data?.status, extractJob.data?.status, caseId, queryClient])
 
   const counts = { READY: 0, ADVERSE: 0, OUTSTANDING: 0 }
   witnesses.forEach(({ w }) => {
@@ -62,18 +70,28 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   const ringR = 15
   const ringC = 2 * Math.PI * ringR
 
-  const toggleReasons = (id: string) =>
-    setOpenReasons((prev) => {
+  const toggleIn = (setter: typeof setOpenReasons) => (id: string) =>
+    setter((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+  const toggleReasons = toggleIn(setOpenReasons)
+  const toggleQuote = toggleIn(setOpenQuotes)
 
   return (
     <PanelBody gap="4">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+        <div className="min-w-0">
+          <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+          {isExtracting ? (
+            <p className={`mt-1 inline-flex items-center gap-1.5 ${labelTextClass}`}>
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              {t("witnessExtracting")}
+            </p>
+          ) : null}
+        </div>
         {total > 0 ? (
           <button
             type="button"
@@ -153,6 +171,8 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
             const suggested = w.aiSuggestedStatus && w.aiSuggestedStatus !== status ? w.aiSuggestedStatus : null
             const reasons = w.aiRationale ?? []
             const reasonsOpen = openReasons.has(node.id)
+            const quoteOpen = openQuotes.has(node.id)
+            const aiFound = w.source === "AI"
             const commitCredibility = (value: number) => {
               if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
             }
@@ -167,6 +187,31 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       </p>
                     ) : null}
                     {w.contact ? <p className="mt-1 text-[13px] text-muted-foreground">{w.contact}</p> : null}
+                    {aiFound ? (
+                      <p className={`mt-1 ${labelTextClass}`}>
+                        {w.sourceDocument
+                          ? t("witnessFoundIn", { doc: w.sourceDocument.name })
+                          : t("witnessFoundByAi")}
+                        {w.sourceQuote ? (
+                          <>
+                            {" · "}
+                            <button
+                              type="button"
+                              onClick={() => toggleQuote(node.id)}
+                              aria-expanded={quoteOpen}
+                              className="underline underline-offset-2 hover:text-foreground"
+                            >
+                              {t("witnessShowQuote")}
+                            </button>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    {aiFound && quoteOpen && w.sourceQuote ? (
+                      <blockquote className="mt-1.5 border-l-2 border-border pl-2 text-[12px] italic text-foreground">
+                        {w.sourceQuote}
+                      </blockquote>
+                    ) : null}
                   </div>
                   <button
                     type="button"
