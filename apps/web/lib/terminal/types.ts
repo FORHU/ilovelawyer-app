@@ -352,11 +352,24 @@ export interface CaseFinding {
   updatedAt: string
 }
 
+export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
+
 export interface Witness {
   id: string
   caseId: string
   name: string
   role: string | null
+  summary: string | null
+  status: WitnessStatus
+  credibility: number
+  /** AI-proposed — the displayed score is credibilityOverride ?? aiCredibility ?? credibility. */
+  aiCredibility: number | null
+  aiRationale: { text: string; source: string | null }[] | null
+  aiSuggestedStatus: WitnessStatus | null
+  credibilityOverride: number | null
+  scoredAt: string | null
+  statementDueOn: string | null
+  statementReceived: boolean
   contact: string | null
   notes: string | null
   createdAt: string

@@ -28,6 +28,7 @@ import type {
   TheoryDiff,
   TheoryStance,
   Witness,
+  WitnessStatus,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 
@@ -71,6 +72,7 @@ export type AiGenerationKind =
   | "caseReconstructionScenes"
   | "caseReconstructionTableRead"
   | "timelineGenerate"
+  | "witnessScoring"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -621,6 +623,9 @@ export function useCreateWitnessMutation(caseId: string) {
     mutationFn: (body: {
       name: string
       role?: string
+      summary?: string
+      status?: WitnessStatus
+      credibility?: number
       contact?: string
       notes?: string
     }) =>
@@ -631,6 +636,44 @@ export function useCreateWitnessMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateWitnessMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      status?: WitnessStatus
+      credibilityOverride?: number | null
+      statementDueOn?: string | null
+      statementReceived?: boolean
+    }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+// Queued server-side (AiGenerationQueue/SQS): this POST returns once the job is claimed, not once
+// scores are saved. The caller pairs it with useAiJobStatus(caseId, "witnessScoring") and
+// refreshes the witnesses graph view itself when that flips to DONE.
+export function useScoreWitnessesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/witnesses/score`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "witnessScoring") })
     },
   })
 }
