@@ -264,6 +264,7 @@
   "highDensityMode": "High density mode",
   "panelLabels": "Panel labels",
   "noDecisions": "No decisions recorded yet — these populate automatically as the case's legal chat produces answers with clear conclusions.",
+  "decisionSourcePrompt": "Asked: \"{{prompt}}\"",
   "decisionRuleApplied": "Rule applied",
   "decisionEvidenceFor": "Evidence for",
   "decisionEvidenceAgainst": "Evidence against",
