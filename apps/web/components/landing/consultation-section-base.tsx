@@ -2,25 +2,22 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Grid2x2, Mic, Plus } from "lucide-react";
+import { Grid2x2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
-import AssistantMessage from "@/components/chat/assistant-message";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import type { RelatedCase } from "@/lib/chat/mutations";
-import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render identical markup (see hero-section-base.tsx for why this is one
-// component instead of two hand-copied files) — differing only in i18next context.
+// PH and UK render identical markup and content (see hero-section-base.tsx for why this is one
+// component instead of two hand-copied files) — the handoff shows the same sample case to both.
 //
-// Per user decision, the citation card below stays theme-adaptive (it's built from the
-// real chat-rendering components AssistantMessage/HubRelatedCases, so it authentically
-// shows the product in the visitor's chosen theme) even though the handoff depicts it as
-// permanently dark like the rest of the page's chrome — only the section's own heading/
-// body/background follow the fixed-dark treatment used elsewhere on the redesigned page.
+// The citation card carries the `dark` class so it always uses the dark theme tokens, matching the
+// handoff (a permanently dark card, like the rest of the page's chrome) in both light and dark mode.
+// It is still built from the real chat-rendering component HubRelatedCases, so it shows the product
+// as it actually looks in dark mode.
 
 const CONSULTATION_ROUTE = "/homepage";
 const loginHref = `/login?next=${encodeURIComponent(CONSULTATION_ROUTE)}`;
@@ -28,13 +25,13 @@ const loginHref = `/login?next=${encodeURIComponent(CONSULTATION_ROUTE)}`;
 interface MockCitation {
   title: string;
   citation: string;
+  snippet?: string;
   vetted: boolean;
 }
 
-export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
+export function ConsultationSectionBase() {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
-  const relatedCases = t("consultation.relatedCasesItems", { ...tCtx, returnObjects: true }) as MockCitation[];
+  const relatedCases = t("consultation.relatedCasesItems", { returnObjects: true }) as MockCitation[];
   const entries: RelatedCase[] = relatedCases.map((c) => ({
     type: "case",
     title: c.title,
@@ -42,7 +39,7 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
     case_number: c.citation,
     ra_number: null,
     year: null,
-    snippet: null,
+    snippet: c.snippet ?? null,
     relevance: null,
     vetted: c.vetted,
   }));
@@ -87,46 +84,31 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
 
         <motion.div
           style={{ y }}
-          className="justify-self-center w-full max-w-[600px] rounded-xl bg-card border border-border shadow-xl overflow-hidden flex flex-col"
+          className="dark justify-self-center w-full max-w-[600px] rounded-xl bg-card border border-border shadow-xl overflow-hidden flex flex-col"
         >
           <div className="p-4 border-b border-border flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-brand-gold shrink-0" />
             <span className="font-['Libre_Caslon_Text'] text-card-foreground text-sm uppercase tracking-[-0.01em]">
-              {t("consultation.caseName", tCtx)}
+              {t("consultation.caseName")}
             </span>
           </div>
 
           <div className="p-4 flex flex-col gap-3">
-            <p className="self-end max-w-[85%] rounded-[18px_18px_4px_18px] border border-border bg-muted text-card-foreground text-[15px] leading-6 px-3 py-2">
-              {t("consultation.question", tCtx)}
-            </p>
-
-            <AssistantMessage content={t("consultation.answer", tCtx)} />
-
-            <div className="rounded-[14px] border border-border bg-card p-3">
-              <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                <Grid2x2 size={13} />
-                <span className="font-semibold text-card-foreground">{t("consultation.relatedCases")}</span>
-                <span>&middot; {relatedCases.length}</span>
-              </div>
-              <HubRelatedCases entries={entries} isLoading={false} emptyLabel="" />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Grid2x2 size={13} />
+              <span className="font-semibold text-card-foreground">{t("consultation.relatedCases")}</span>
+              <span>&middot; {relatedCases.length}</span>
             </div>
+            <HubRelatedCases entries={entries} isLoading={false} emptyLabel="" />
+          </div>
 
-            <div className="bg-card p-2 rounded-[26px] border border-border shadow-[0_20px_40px_rgba(0,0,0,0.15)] flex items-center gap-1.5">
-              <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground">
-                <Plus className="w-4 h-4" aria-hidden="true" />
-              </div>
-              <span className="flex-1 px-1 py-1.5 text-[15px] text-muted-foreground truncate">
-                {t("consultation.composerPlaceholder")}
-              </span>
-              <div className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground">
-                <Mic className="w-4 h-4" aria-hidden="true" />
-              </div>
-              <div className="h-9 shrink-0 flex items-center gap-2 rounded-full bg-brand-gold text-background px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px]">
-                <span>Send</span>
-                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-              </div>
-            </div>
+          {/* A document attached to the consultation, still being indexed for chat. */}
+          <div className="px-4 py-3 border-t border-border flex flex-col items-start gap-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] text-card-foreground">
+              <Loader2 className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
+              {t("consultation.attachment")}
+            </span>
+            <span className="text-[10.5px] text-muted-foreground">{t("consultation.indexing")}</span>
           </div>
         </motion.div>
       </div>

@@ -64,17 +64,17 @@ export function FirmQuoteSectionBase({ tenantCode }: { tenantCode: TenantCode })
       <div className="absolute inset-x-0 top-0 h-[200px] bg-gradient-to-b from-[#0b0b0b] to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-[200px] bg-gradient-to-t from-[#0b0b0b] to-transparent" />
 
-      <div className="relative z-10 h-full flex flex-col justify-end px-6 md:px-16 pb-12 gap-8">
+      <div className="relative z-10 h-full flex flex-col justify-end px-8 pb-12 gap-8">
         <div
-          className="flex flex-col gap-3 max-w-[760px] transition-opacity duration-200"
+          className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4 transition-opacity duration-200"
           style={{ opacity: fading ? 0 : 1 }}
         >
-          <p className="font-display text-white text-[clamp(22px,2.4vw,32px)] font-light leading-[1.25] tracking-[-0.023em] line-clamp-3">
+          <p className="font-display text-white text-[clamp(22px,2.4vw,32px)] font-light leading-[1.25] tracking-[-0.023em] max-w-[760px]">
             &ldquo;{quote.text}&rdquo;
           </p>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-white text-base font-medium">{quote.author}</span>
-            <span className="text-white/70 text-sm">{quote.firm}</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-white text-[clamp(16px,1.6vw,20px)] font-medium tracking-[-0.01em]">{quote.author}</span>
+            <span className="text-white/80 text-sm tracking-[-0.01em]">{quote.firm}</span>
           </div>
         </div>
 

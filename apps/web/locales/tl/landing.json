@@ -17,27 +17,26 @@
   "hero": {
     "slideOne": {
       "line1": "Kung saan",
-      "line2": "nililinaw ang mga kaso"
+      "line2": "nililinaw ang mga kaso",
+      "subtext": "Dumadaloy ang AI consultation habang isinusulat ito, kasama ang mga sinipi na precedent."
     },
     "slideTwo": {
       "line1": "Ang iyong mga kaso,",
-      "line2": "nasa ilalim ng kontrol"
+      "line2": "nasa ilalim ng kontrol",
+      "subtext": "Inaayos ng Legal Terminal ang labinsiyam na pane ng case intelligence sa paraang gusto mo."
     },
     "slideThree": {
       "line1": "Kung saan nagtatagpo",
-      "line2": "ang abogado at AI"
+      "line2": "ang abogado at AI",
+      "subtext": "Pinapanatili ng Case Workspace ang mga source, chat, at work product sa iisang screen."
     },
     "slideLabel": "Slide {{number}}",
     "nextSlide": "Susunod na slide",
-    "pauseVideo": "I-pause ang background video",
-    "playVideo": "I-play ang background video",
     "scrollDown": "Mag-scroll sa capabilities"
   },
   "capabilities": {
     "heading": "Bawat feature na dala ng ilovelawyer",
     "subheading": "Walang mockup, walang roadmap item. Labing-anim na kakayahan na live sa produkto ngayon.",
-    "explorePlatform": "Galugarin ang Platform",
-    "exploreTooltip": "Mag-sign up para tuklasin ang platform",
     "tileTooltip": "Buksan ito sa produkto",
     "items": [
       "Account at pag-sign in",
@@ -48,9 +47,10 @@
       "Legal Terminal",
       "Research library",
       "Transcription",
+      "Pag-upload ng dokumento",
       "Kalendaryo",
       "Visual Strategy Map",
-      "Case Reconstruction",
+      "Ebidensya at Timeline",
       "Red Team",
       "Audio Overview",
       "Pagsuri ng citation",
@@ -60,7 +60,7 @@
   "quotes": {
     "items": [
       {
-        "text": "Ang agility na dala ng ilovelawyer sa aming research process ay walang katulad, at mas malalim na ngayon ang insight na naibibigay namin sa aming mga kliyente kaysa dati.",
+        "text": "Walang katulad ang agility na dala ng ilovelawyer sa aming research process. Hindi lang ito tungkol sa bilis; tungkol ito sa lalim ng insight na maibibigay na namin ngayon sa aming mga kliyente sa mas maikling panahon.",
         "author": "Senior Partner",
         "firm": "Cruz & Associates Law Offices"
       },
@@ -77,75 +77,69 @@
     ],
     "items_UK": [
       {
-        "text": "TODO: replace with a real UK client testimonial before launch.",
-        "author": "TODO",
-        "firm": "TODO — UK client testimonial pending"
+        "text": "Walang katulad ang agility na dala ng ilovelawyer sa aming research process. Hindi lang ito tungkol sa bilis; tungkol ito sa lalim ng insight na maibibigay na namin ngayon sa aming mga kliyente sa mas maikling panahon.",
+        "author": "Senior Partner",
+        "firm": "Cruz & Associates Law Offices"
       }
     ],
     "quoteLabel": "Quote {{number}}"
   },
   "terminal": {
     "heading": "Isang workspace, ayon sa gusto mo",
-    "body": "Ang Legal Terminal ay isang litigation cockpit na inaayos mo mismo. Magsimula sa isa, dalawa, apat, o anim na pane, pagkatapos ay i-save ang sarili mong layout at buksan ito sa kahit anong device.",
+    "body": "Ang Legal Terminal ay isang litigation cockpit na inaayos mo mismo. Labinsiyam na uri ng pane, malayang hinihila at binabago ang laki, hindi nakakulong sa grid. Magsimula sa isa, dalawa, apat, o anim na pane, pagkatapos ay i-save ang sarili mong layout at buksan ito sa kahit anong device.",
     "cta": "Buksan ang Terminal",
-    "comingSoon": "Paparating Na",
     "panels": {
-      "chat": {
-        "title": "AI Legal Assistant",
-        "subtitle": "Magtanong nang isang beses, may sitas ang sagot"
+      "caseSummary": {
+        "title": "Case Summary",
+        "subtitle": "Mga partido, claim, at risk register sa isang tingin"
+      },
+      "evidenceTimeline": {
+        "title": "Ebidensya at Timeline",
+        "subtitle": "Bawat dokumento at petsa, nakaayos ayon sa pagkakasunod"
       },
       "redTeam": {
         "title": "Red Team",
         "subtitle": "Ang argumento na gagamitin ng kabilang panig"
       },
-      "audioOverview": {
-        "title": "Audio Overview",
-        "subtitle": "Dalawang AI host ang tatalakay sa kaso"
-      },
-      "caseReconstruction": {
-        "title": "Case Reconstruction",
-        "subtitle": "Salaysay ng kliyente, korte, at kabilang panig"
+      "chat": {
+        "title": "AI Legal Assistant",
+        "subtitle": "Magtanong, at makakuha ng sagot na nakabatay sa kaso"
       }
     }
   },
   "consultation": {
     "heading": "Magtanong nang isang beses. Makuha ang batas sa likod nito.",
-    "body": "Dumadaloy ang bawat consultation habang isinusulat ito, kasama ang kaugnay na case law sa tabi nito: pamagat, sipi, link ng pinagmulan, at excerpt, na may markang beripikadong citation. Mag-attach ng dokumento at hahanapin ito ng assistant kapag natapos na ang pag-index.",
+    "body": "Dumadaloy ang bawat consultation habang isinusulat ito, kasama ang kaugnay na case law sa tabi nito: pamagat, numero ng kaso o R.A., link ng pinagmulan, at excerpt, na may markang beripikadong citation. Mag-attach ng dokumento at hahanapin ito ng assistant kapag natapos na ang pag-index.",
     "cta": "Simulan ang Konsultasyon",
     "caseName": "Reyes v. Northbridge Logistics",
-    "caseName_UK": "Fairholme v. Sterling Trustees Ltd",
     "relatedCases": "Mga Kaugnay na Kaso",
     "relatedCasesItems": [
-      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "vetted": true },
-      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "vetted": false }
-    ],
-    "relatedCasesItems_UK": [
-      { "title": "Ilott v The Blue Cross", "citation": "[2017] UKSC 17", "vetted": true },
-      { "title": "Radmacher v Granatino", "citation": "[2010] UKSC 42", "vetted": false }
+      { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "snippet": "Ang procedural due process sa pagtanggal ay nangangailangan ng dalawang nakasulat na abiso at tunay na pagkakataong madinig.", "vetted": true },
+      { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "snippet": "Nominal na danyos kapag may sapat na dahilan ang pagtanggal ngunit hindi nasunod ang twin-notice rule.", "vetted": false }
     ],
     "vetted": "Beripikado",
-    "question": "Puwede ko bang argumentuhan na hindi wasto ang pagtanggal sa aking kliyente dahil walang unang nakasulat na abiso?",
-    "answer": "Oo. Sa ilalim ng twin-notice rule, kailangang magbigay ang employer ng dalawang nakasulat na abiso bago ang pagtanggal. Kinumpirma ng *Agabon v. NLRC* na ang pagkaligtaan ng unang abiso ay sapat na para sa illegal dismissal, kahit may just cause.",
-    "question_UK": "Puwede bang hamunin ng aking kliyente ang pagkakatanggal niya sa testamento ng kanyang ama?",
-    "answer_UK": "Oo. Sa ilalim ng Inheritance Act 1975, maaaring humingi ng makatwirang tustos-pananalapi ang isang umaasang hindi isinama sa testamento. Itinakda ng *Ilott v The Blue Cross* ang pangunahing pagsusulit na gagamitin dito ng korte.",
-    "composerPlaceholder": "Magtanong pa..."
+    "indexing": "Ini-index para sa chat…"
   },
   "firms": {
     "heading": "Ginawa ayon sa aktwal na paraan ng paggawa ng mga law firm",
     "teamsHeading": "Mga law firm at team",
-    "teamsBody": "Mag-praktis nang mag-isa, o gumawa ng law firm sa isa sa tatlong plano: Solo, Professional, Enterprise. Anyayahan ang mga kasamahan sa pamamagitan ng email na may role na Owner, Admin, o Member. Laging humihingi ng kumpirmasyon muna ang bawat hakbang na hindi na maibabalik.",
+    "teamsBody": "Mag-praktis nang mag-isa, o gumawa ng law firm sa isa sa tatlong plano: Solo, Professional, Enterprise. Anyayahan ang mga kasamahan sa pamamagitan ng email na may role na Owner, Admin, o Member. Laging humihingi ng kumpirmasyon muna ang bawat hakbang na hindi na maibabalik, at kailangang magtalaga ng kahalili ang owner bago siya umalis.",
     "teamsCta": "Anyayahan ang Iyong Team",
-    "jurisdictionsHeading": "Dalawang jurisdiction, iisang produkto",
-    "jurisdictionsBody": "May sariling address at bokabularyo ang bawat praktis sa Pilipinas at United Kingdom, at ang mga tool lamang na talagang angkop dito ang ipinapakita. Gumagana sa pareho ang mga kaso, dokumento, AI consultation, at pagsuri ng citation.",
+    "jurisdictionsHeading": "Ginawa para sa praktis sa Pilipinas",
+    "jurisdictionsBody": "May sariling address at bokabularyo ang iyong organisasyon, at ang mga tool lamang na talagang angkop sa praktis sa Pilipinas ang ipinapakita — mga kaso, dokumento, AI consultation, at pagsuri ng citation, na lahat ay iniakma sa batas ng Pilipinas.",
+    "jurisdictionsHeading_UK": "Ginawa para sa praktis sa UK",
+    "jurisdictionsBody_UK": "May sariling address at bokabularyo ang iyong organisasyon, at ang mga tool lamang na talagang angkop sa praktis sa UK ang ipinapakita — mga kaso, dokumento, AI consultation, at pagsuri ng citation, na lahat ay iniakma sa batas ng UK.",
     "roster": [
       { "initials": "AC", "name": "Atty. Ana Cruz", "email": "ana@cruzpartners.ph", "role": "owner", "you": true },
       { "initials": "RS", "name": "Ramon Santos", "email": "ramon@cruzpartners.ph", "role": "admin", "you": false },
-      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false }
+      { "initials": "MD", "name": "Maria Delgado", "email": "maria@cruzpartners.ph", "role": "member", "you": false },
+      { "initials": "JT", "name": "Jose Tan", "email": "jose@cruzpartners.ph", "role": "member", "you": false, "pending": true }
     ],
     "roster_UK": [
       { "initials": "CA", "name": "Charlotte Ashworth-Hale", "email": "charlotte@sinclairwycombe.co.uk", "role": "owner", "you": true },
       { "initials": "JP", "name": "James Pemberton", "email": "james@sinclairwycombe.co.uk", "role": "admin", "you": false },
-      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false }
+      { "initials": "EF", "name": "Eleanor Fairfax", "email": "eleanor@sinclairwycombe.co.uk", "role": "member", "you": false },
+      { "initials": "OM", "name": "Oliver Marsh", "email": "oliver@sinclairwycombe.co.uk", "role": "member", "you": false, "pending": true }
     ],
     "membersCard": {
       "title": "Mga Miyembro",
@@ -157,6 +151,7 @@
       "planName": "Professional",
       "planName_UK": "Enterprise",
       "you": "IKAW",
+      "pending": "NAKABINBIN",
       "invite": "Mag-imbita ng miyembro",
       "invitePlaceholder": "colleague@lawfirm.ph",
       "invitePlaceholder_UK": "colleague@lawfirm.co.uk",
@@ -169,8 +164,6 @@
     }
   },
   "footer": {
-    "tagline": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng Pilipinas. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
-    "tagline_UK": "Nakalaan sa pagbibigay ng Premium AI Legal Operations para sa merkado ng UK. Isinasama namin ang mga siglo ng legal tradition sa modernong teknolohikal na inobasyon.",
     "columns": {
       "product": {
         "heading": "Produkto",
@@ -192,7 +185,7 @@
         }
       },
       "jurisdictions": {
-        "heading": "Mga Jurisdiction",
+        "heading": "Jurisdiction",
         "links": {
           "philippines": "Pilipinas",
           "unitedKingdom": "United Kingdom"
@@ -203,6 +196,7 @@
         "links": {
           "helpCentre": "Help Centre at FAQ",
           "transcription": "Transcription",
+          "documentUpload": "Pag-upload ng dokumento",
           "calendar": "Kalendaryo"
         }
       },

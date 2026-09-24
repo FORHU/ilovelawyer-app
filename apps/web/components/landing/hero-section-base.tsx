@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { EASE_EXPO_OUT, LANDING_DURATIONS, LANDING_STAGGERS } from "@/lib/landing/motion-tokens";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
@@ -44,12 +42,10 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const tCtx = tenantCode === "UK" ? { context: "UK" } : undefined;
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const { heroVideos, heroPosters } = getTenantCodeConfig(tenantCode).landingAssets;
 
-  // Loads/restarts the active slide's video. Deliberately excludes `paused` — toggling pause
-  // shouldn't rewind the current slide back to frame 0, only the separate effect below does.
+  // Loads/restarts the active slide's video. With reduced motion on, nothing autoplays.
   useEffect(() => {
     const active = videoRefs.current[index];
     if (!active) return;
@@ -58,17 +54,8 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
     });
     if (active.preload !== "auto") active.preload = "auto";
     active.currentTime = 0;
-    if (!reduce && !paused) void active.play();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!reduce) void active.play();
   }, [index, reduce]);
-
-  // Handoff accessibility note: a pause control for the hero videos.
-  useEffect(() => {
-    const active = videoRefs.current[index];
-    if (!active) return;
-    if (paused || reduce) active.pause();
-    else void active.play();
-  }, [paused, reduce, index]);
 
   const advance = () => setIndex((i) => (i + 1) % SLIDE_KEYS.length);
 
@@ -101,10 +88,10 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
       <div className="absolute inset-0 bg-gradient-to-b from-black/32 via-black/5 to-black/42" />
       <div className="absolute inset-x-0 bottom-0 h-[180px] bg-gradient-to-t from-[#0b0b0b] to-transparent" />
 
-      <div className="relative z-10 w-full px-6 md:px-16 pb-16 pt-24">
-        <div className="flex flex-col gap-6 max-w-[1240px] mx-auto">
+      <div className="relative z-10 w-full px-6 pb-16 pt-24">
+        <div className="flex flex-col">
           {reduce ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               {(["line1", "line2"] as const).map((lineKey, i) => (
                 <h1
                   key={lineKey}
@@ -117,15 +104,12 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               ))}
             </div>
           ) : (
+            // The line mask's em-based padding must resolve against the headline's own font size (set on
+            // the mask too), otherwise it's computed from the 16px body size and clips descenders (g, y).
             <AnimatePresence mode="popLayout">
-              <div key={index} className="flex flex-col gap-2">
-                {/* Asymmetric mask padding below: leading-[0.95] on the h1 is tighter than this
-                    serif's descenders (the "g" in "get" was clipped by the animation mask), so
-                    the mask gets extra room at the bottom only. The matching negative margins
-                    cancel both paddings back out of the layout flow, so this doesn't shift the
-                    gap between the two headline lines. */}
+              <div key={index} className="flex flex-col">
                 {(["line1", "line2"] as const).map((lineKey, i) => (
-                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.75em] -mt-[0.2em] -mb-[0.75em]">
+                  <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.6em] -mt-[0.2em] -mb-[0.6em] text-[clamp(72px,13.5vw,200px)]">
                     <motion.h1
                       custom={i}
                       initial="hidden"
@@ -143,6 +127,25 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               </div>
             </AnimatePresence>
           )}
+
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={index}
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: LANDING_DURATIONS.captionCrossfade }}
+              className={`absolute z-10 text-white text-sm leading-[1.35] ${
+                index === 1
+                  ? "left-[84px] bottom-[26px] w-[380px] max-w-[calc(100%-108px)]"
+                  : "right-6 bottom-[calc(64px+clamp(130px,18vw,250px))] w-[380px] max-w-[calc(100%-3rem)] text-right"
+              }`}
+            >
+              {t(`hero.${SLIDE_KEYS[index]}.subtext`, tCtx)}
+              <span aria-hidden className="ml-2">→</span>
+            </motion.p>
+          </AnimatePresence>
+
         </div>
       </div>
 
@@ -154,21 +157,6 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
       >
         &rsaquo;
       </button>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={paused ? t("hero.playVideo") : t("hero.pauseVideo")}
-            aria-pressed={paused}
-            onClick={() => setPaused((p) => !p)}
-            className="absolute right-6 md:right-16 bottom-7 z-10 p-1.5 text-white opacity-80 hover:opacity-100 transition-opacity duration-200 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            {paused ? <Play size={16} aria-hidden /> : <Pause size={16} aria-hidden />}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{paused ? t("hero.playVideo") : t("hero.pauseVideo")}</TooltipContent>
-      </Tooltip>
 
       <motion.button
         type="button"
