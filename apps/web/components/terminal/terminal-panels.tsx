@@ -24,6 +24,7 @@ import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
 import { AudioOverviewPanel } from "@/components/terminal/panels/audio-overview-panel"
 import { DecisionsPanel } from "@/components/terminal/panels/decisions-panel"
+import { VerificationPanel } from "@/components/terminal/panels/verification-panel"
 
 export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
   const { t } = useTranslation("terminal")
@@ -117,6 +118,8 @@ export function TerminalPanelBody({
       return <AudioOverviewPanel caseId={caseId} />
     case "decisions":
       return <DecisionsPanel snapshot={snapshot} caseId={caseId} />
+    case "verification":
+      return <VerificationPanel caseId={caseId} />
     case "theories":
       return <TheoriesPanel snapshot={snapshot} caseId={caseId} />
     default:

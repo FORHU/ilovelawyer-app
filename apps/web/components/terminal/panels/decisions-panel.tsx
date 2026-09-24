@@ -67,9 +67,13 @@ function DecisionCard({
   const disputed = decision.status === "DISPUTED"
 
   return (
-    <PanelRow {...rest} className={`flex-col items-start ${disputed ? "bg-riskmed/5" : ""}`}>
-      <div className="flex w-full items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 leading-5 font-medium text-foreground">
+    <PanelRow {...rest} className={`@container flex-col items-start ${disputed ? "bg-riskmed/5" : ""}`}>
+      {/* Stacked (badge above, full-width text) below the row's own `@sm` — not the viewport's —
+       * since these panels live inside resizable desktop panes that can be much narrower than
+       * the viewport implies. Side-by-side once there's room; `flex-col-reverse` keeps the badge
+       * visually first without reordering the DOM. */}
+      <div className="flex w-full flex-col-reverse items-start gap-1.5 @sm:flex-row @sm:items-start @sm:justify-between @sm:gap-2">
+        <p className="leading-5 font-medium text-foreground @sm:flex-1">
           {p.conclusion}
         </p>
         <DecisionConfidenceBadge confidence={p.confidence} />
@@ -95,7 +99,7 @@ function DecisionCard({
         </p>
       )}
 
-      <div className="w-full space-y-2">
+      <div className="w-full">
         <DecisionDetailBody payload={p} />
       </div>
 

@@ -12,6 +12,8 @@ import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared
 import { decisionAnchorElementId } from "@/lib/chat/use-topic-navigator";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
+import type { MessageGroundingCheck } from "@/lib/chat/mutations";
+import { GroundingSummary } from "./grounding-summary";
 
 /** One piece of evidence's quote (evidenceFor/evidenceAgainst), searched for and highlighted
  * yellow wherever it actually appears in a reply — see SourcesPanel, which builds this list from
@@ -312,6 +314,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
   onOpenDecision,
   messageIndex,
   quoteHighlights = NO_QUOTE_HIGHLIGHTS,
+  groundingChecks,
 }: {
   content: string;
   className?: string;
@@ -330,6 +333,10 @@ const AssistantMessage = React.memo(function AssistantMessage({
    * ConsultationChat, which builds one list per turn and hands it to every sibling, since only
    * the split reply's last bubble carries `decisions` but a quote can be in any of them. */
   quoteHighlights?: QuoteHighlight[];
+  /** What the grounding verifier found for this reply — rendered as one line underneath, and
+   * omitted entirely when absent (the verifier is flag-gated on the API, and a freshly streamed
+   * reply has none until the next messages fetch). */
+  groundingChecks?: MessageGroundingCheck[];
 }) {
   const cleaned = cleanAssistantContent(content);
   // Subscribed directly (not a prop) so a click anywhere that calls setActiveHighlight —
@@ -352,6 +359,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
           ))}
         </div>
       )}
+      <GroundingSummary checks={groundingChecks} />
     </div>
   );
 });

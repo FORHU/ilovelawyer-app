@@ -104,6 +104,30 @@ export interface ChatMessage {
   /** The reply's raw accumulated text as of the last checkpoint, while replyStatus is still
    * PENDING — see Message.pendingReplyContent's doc comment. Null once DONE/FAILED. */
   pendingReplyContent?: string | null
+  /** What the grounding verifier found when it checked THIS answer's claims against the case
+   * bundle (ilovelawyer-api docs/plans/grounding-verifier.md). Written after the answer is
+   * persisted, so a freshly streamed reply has none until the next messages fetch — and absent
+   * entirely unless the verifier is enabled on the API. Empty is not a clean bill of health.
+   * `passage` is excluded server-side: it is a slab of bundle text, fetched per-row only when a
+   * verdict is actually being audited. */
+  groundingChecks?: MessageGroundingCheck[]
+  /** Jev triage for a user turn (ilovelawyer-api message-triage.ts): whether the message reads as
+   * time-critical, and what it is asking for. Written on send when USE_JEV_MESSAGE_TRIAGE is on;
+   * absent otherwise and on assistant messages. */
+  urgent?: boolean | null
+  intent?: string | null
+}
+
+export interface MessageGroundingCheck {
+  id: string
+  kind: "ABSENCE_CLAIM" | "ASSERTION"
+  assertion: string
+  citation: string | null
+  documentId: string | null
+  verdict: "FALSE_ABSENCE" | "NOT_SUPPLIED" | "CORRECT_ABSENCE" | "UNRESOLVED" | "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  /** Null when the verdict was settled by lookup rather than by the model. */
+  confidence: number | null
+  evidenceKind: "ASSERTED_BY_PARTY" | "STATED_BY_WITNESS" | "SHOWN_BY_DOCUMENT" | "ESTABLISHED" | null
 }
 
 export function useChatSessionQuery() {

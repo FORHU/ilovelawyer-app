@@ -119,6 +119,29 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
         container.querySelectorAll<HTMLElement>(".docx-wrapper > section.docx").forEach((page) => {
           page.style.boxShadow = "none";
         });
+        // `ignoreWidth`/`ignoreHeight` only stop docx-preview from setting the PAGE's own explicit
+        // width/height to the source document's real paper size — they don't touch page margins
+        // (still applied as fixed padding on `section.docx` regardless), and `.docx-wrapper`'s own
+        // library stylesheet lays it out with `align-items: center` (not `stretch`), so the page —
+        // and anything inside it whose own preferred width is its unwrapped single-line width —
+        // sizes off its OWN content rather than being forced to the wrapper's actual width. On a
+        // normal-width screen that mostly still fits; on a narrow mobile frame it doesn't, and
+        // every ancestor down to this component only clips vertically (`overflow-y-auto`), so the
+        // overflow spills sideways in silence until CaseBriefContent's `overflow-hidden` finally
+        // crops it — invisibly, with no scrollbar, which is what actually showed up as text cut
+        // off on both edges. Rather than chase every specific docx construct (page margins, a
+        // table, an image) that can independently produce an over-wide box, force EVERY descendant
+        // to respect the container: `max-width: 100%` is a no-op on inline content and only caps
+        // block/replaced boxes, so this can't distort normal text, only stop it from overflowing.
+        const style = document.createElement("style");
+        style.textContent = `
+          .docx-wrapper { width: 100% !important; }
+          .docx-wrapper section.docx { width: 100% !important; max-width: 100% !important; }
+          .docx-wrapper * { max-width: 100% !important; box-sizing: border-box !important; }
+          .docx-wrapper table { table-layout: auto !important; }
+          .docx-wrapper img { height: auto !important; }
+        `;
+        container.appendChild(style);
       } catch {
         if (!cancelled) setInlineFailed(true);
       } finally {

@@ -359,23 +359,27 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               <p className="truncate text-sm font-bold text-foreground">{user.name ?? user.username}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <NotificationBellTrigger
-                  open={false}
-                  hasUnread={mobileNotificationState.hasUnread}
-                  unreadCount={mobileNotificationState.unreadCount}
-                  isReconnecting={mobileNotificationState.isReconnecting}
-                  onClick={() => {
-                    closeMobileMenu();
-                    router.push("/homepage/notifications");
-                  }}
-                />
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {mobileNotificationState.isReconnecting ? t("notifications.reconnecting") : t("notifications.label")}
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex shrink-0 items-center gap-1">
+              <ThemeToggle />
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <NotificationBellTrigger
+                    open={false}
+                    hasUnread={mobileNotificationState.hasUnread}
+                    unreadCount={mobileNotificationState.unreadCount}
+                    isReconnecting={mobileNotificationState.isReconnecting}
+                    onClick={() => {
+                      closeMobileMenu();
+                      router.push("/homepage/notifications");
+                    }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {mobileNotificationState.isReconnecting ? t("notifications.reconnecting") : t("notifications.label")}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         )}
 
@@ -393,9 +397,8 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           ))}
         </nav>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
-          <LanguageSwitcher />
-          <ThemeToggle />
+        <div className="border-t border-border px-5 py-3.5">
+          <LanguageSwitcher variant="inline" />
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border px-3 py-3">

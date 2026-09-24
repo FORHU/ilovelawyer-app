@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ExternalLink,
   FolderPlus,
-  ListX,
   Loader2,
   Plus,
   Trash2,
@@ -227,8 +226,13 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const selectedCount = showArchived || view.kind === "folder" ? selectedDocIds.size : selectedDocIds.size + selectedFolders.size
   const allSelected = selectableCount > 0 && selectedCount === selectableCount
 
+  // Clears on any nonzero selection (not just a full one) so this one control — paired with
+  // `checked={allSelected}` below — covers what a separate "Deselect all" button used to: with
+  // some items picked, `allSelected` is false and the checkbox renders unchecked, but clicking
+  // it still means "get me back to nothing selected," not "select everything," since a partial
+  // pick is closer to "some are on" than to "none are on."
   const toggleSelectAll = () => {
-    if (allSelected) {
+    if (selectedCount > 0) {
       setSelectedDocIds(new Set())
       setSelectedFolders(new Set())
     } else if (showArchived) {
@@ -239,13 +243,6 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       setSelectedDocIds(new Set(looseFiles.map((d) => d.id)))
       setSelectedFolders(new Set(sortedFolders.map(([name]) => name)))
     }
-  }
-
-  // Clears the current pick without leaving select mode — distinct from exitSelectMode (the
-  // toolbar's Cancel button), which drops out of selection entirely.
-  const deselectAll = () => {
-    setSelectedDocIds(new Set())
-    setSelectedFolders(new Set())
   }
 
   // A selected folder has no id of its own — it resolves to every document currently filed under
@@ -369,6 +366,30 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               <TooltipContent>{view.kind === "folder" ? t("detail.dropToUpload") : "Upload one or more documents to this case"}</TooltipContent>
             </Tooltip>
           )}
+          {/* Lives here (alongside Archived/+Add) rather than as its own row above the grid —
+           * the same button both enters and exits select mode (re-tap to cancel), so there's no
+           * separate "X"/cancel control to keep in sync with it. */}
+          {selectableCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                  aria-pressed={selectMode}
+                  disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40 ${
+                    selectMode
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/30 hover:bg-muted dark:hover:bg-overlay-hover"
+                  }`}
+                >
+                  {selectMode ? <X className="h-3 w-3" aria-hidden="true" /> : <CheckSquare className="h-3 w-3" aria-hidden="true" />}
+                  {selectMode ? t("editModal.cancel") : t("detail.selectItems")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{selectMode ? t("editModal.cancel") : t("detail.selectItems")}</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
       {hasUploadFailures && (
@@ -435,144 +456,106 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     />
   )
 
-  // A "Select"/"Select all"/action row above the grid — folders and documents share it since
-  // acting on a folder just means bulk-acting on the documents in it (see
-  // resolveSelectedDocumentIds above). Hidden once there's nothing on screen to select, and while
-  // a document preview has taken over the view (that branch returns early below, before this is
-  // ever reached). Active and Archived share this bar but get different action buttons below
-  // (Archive/Delete vs. Restore) — selectableCount/selectedCount switch source (active `documents`
-  // vs. `archivedDocuments`) based on showArchived, see their derivation above. Active mode gets
-  // its own toolbar surface (border + tinted background) so it reads as a distinct interaction
-  // state rather than a second line of plain body text.
-  const selectionBar = selectableCount > 0 && (
+  // The "Select all"/action row above the grid, shown only once select mode is on (the header's
+  // own Select/Cancel toggle button — see `header` above — owns entering and exiting it, so
+  // there's no separate standalone-button state to render here anymore). Folders and documents
+  // share this bar since acting on a folder just means bulk-acting on the documents in it (see
+  // resolveSelectedDocumentIds above). Active and Archived share this bar but get different
+  // action buttons below (Archive/Delete vs. Restore) — selectableCount/selectedCount switch
+  // source (active `documents` vs. `archivedDocuments`) based on showArchived, see their
+  // derivation above.
+  const selectionBar = selectableCount > 0 && selectMode && (
     <div
-      className={
-        selectMode
-          ? // flex-wrap keeps every control inside this bordered box on narrow widths (Studio's
-            // dock can be as narrow as 260px) — the row grows taller instead of letting the
-            // cancel button overflow past the box's right edge.
-            "flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
-          : "flex items-center justify-end"
-      }
+      // Always one row, never wrapped — wrapping made the Archive/Delete group's alignment
+      // inconsistent across widths (space-between pushed it flush right on a wide row, but
+      // once wrapped onto its own line it fell back to flush left, since there's nothing left
+      // to space *between* on a line with only one group on it). A single row that scrolls
+      // horizontally on a truly narrow width (Studio's dock can be as narrow as 260px) keeps
+      // the same left-to-right layout — and the same right-aligned actions — everywhere. Below
+      // `@xs` the action buttons also drop their text (icon + tooltip only, see below) so this
+      // row fits without needing that scroll in the first place on a typical narrow screen —
+      // `@container`, not a viewport breakpoint, since this renders inside Studio's resizable
+      // dock as often as it does a real narrow viewport. Every gap/padding in this bar is
+      // trimmed down as far as it'll go without crowding, specifically so the full-text state
+      // needs as little room as possible — verified against a live render (not just the
+      // Tailwind breakpoint in isolation) that at `@xs` (20rem) there's no overflow.
+      className="@container flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-muted/40 px-3 py-2 dark:bg-overlay-hover/40"
     >
-      {selectMode ? (
-        <>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleSelectAll}
-                className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
-              />
-              {t("detail.selectAll")}
-              <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                {t("detail.selectedCount", { count: selectedCount })}
-              </span>
-            </label>
-            {selectedCount > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={deselectAll}
-                    disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ListX className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    {t("detail.deselectAll")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("detail.deselectAll")}</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center gap-2.5">
-            {showArchived ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    disabled={selectedCount === 0 || isBulkRestoring}
-                    onClick={() => setConfirmingBulkRestore(true)}
-                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400"
-                  >
-                    {isBulkRestoring ? (
-                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    )}
-                    {t("detail.restoreSelected")}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{t("detail.restoreSelected")}</TooltipContent>
-              </Tooltip>
-            ) : (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
-                      onClick={() => setConfirmingBulkArchive(true)}
-                      className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"
-                    >
-                      {isBulkArchiving ? (
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      )}
-                      {t("detail.archiveSelected")}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
-                      onClick={() => setConfirmingBulkDelete(true)}
-                      className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 py-1.5 pr-3.5 pl-3 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400"
-                    >
-                      {isBulkDeleting ? (
-                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      )}
-                      {t("detail.deleteSelected")}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
-                </Tooltip>
-              </>
-            )}
+      <div className="flex shrink-0 items-center gap-2">
+        <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 shrink-0 cursor-pointer rounded border-border accent-brand-gold"
+          />
+          {t("detail.selectAll")}
+          <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            {t("detail.selectedCount", { count: selectedCount })}
+          </span>
+        </label>
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {showArchived ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || isBulkRestoring}
+                onClick={() => setConfirmingBulkRestore(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 p-2 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-blue-400"
+              >
+                {isBulkRestoring ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                ) : (
+                  <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="hidden @xs:inline">{t("detail.restoreSelected")}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("detail.restoreSelected")}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={exitSelectMode}
-                  disabled={isBulkDeleting || isBulkArchiving || isBulkRestoring}
-                  aria-label={t("editModal.cancel")}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-overlay-hover"
+                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                  onClick={() => setConfirmingBulkArchive(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 p-2 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-amber-400"
                 >
-                  <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {isBulkArchiving ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="hidden @xs:inline">{t("detail.archiveSelected")}</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{t("editModal.cancel")}</TooltipContent>
+              <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
             </Tooltip>
-          </div>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setSelectMode(true)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted hover:text-foreground dark:hover:bg-overlay-hover"
-        >
-          <CheckSquare className="h-3 w-3 shrink-0" aria-hidden="true" />
-          {t("detail.selectItems")}
-        </button>
-      )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                  onClick={() => setConfirmingBulkDelete(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 p-2 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-red-400"
+                >
+                  {isBulkDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                  <span className="hidden @xs:inline">{t("detail.deleteSelected")}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
     </div>
   )
 
