@@ -464,6 +464,16 @@ export interface DecisionRecordPayload {
   wouldChangeIf: string[]
 }
 
+/** The user turn that produced a decision, resolved server-side from sourceMessageId (the
+ * assistant reply) back to its parent user message — see CaseSnapshotSvc.get. Null when the
+ * source message was deleted or the record predates this lookup. */
+export interface DecisionSourcePrompt {
+  messageId: string
+  consultationId: string
+  content: string
+  createdAt: string
+}
+
 export interface DecisionRecord {
   id: string
   caseId: string
@@ -475,6 +485,7 @@ export interface DecisionRecord {
   disputeNote: string | null
   createdAt: string
   updatedAt: string
+  sourcePrompt: DecisionSourcePrompt | null
 }
 
 // Case Theories & Annotations (differentiation program, Phase 2) — several lawyers can hold
