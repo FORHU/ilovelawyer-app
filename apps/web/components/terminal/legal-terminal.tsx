@@ -479,7 +479,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         const mapped = data.law.citations.filter((c) => c.resolvedAuthority).length
         return mapped > 0 ? t("badgeMapped", { count: mapped }) : undefined
       })(),
-      mindMap: data.mindMap.lastGeneratedAt ? (data.mindMap.isStale ? t("badgeStale") : t("badgeReady")) : undefined,
+      // The case's document-built map when it has a live one (what the panel shows), else the
+      // chat-generated map the panel falls back to.
+      mindMap:
+        data.caseMindMap && !data.caseMindMap.retired
+          ? data.caseMindMap.isStale ? t("badgeStale") : t("badgeReady")
+          : data.mindMap.lastGeneratedAt ? (data.mindMap.isStale ? t("badgeStale") : t("badgeReady")) : undefined,
       redTeam: data.redTeamAssessment ? t("badgeReady") : undefined,
       procedure: (() => {
         const open = data.procedure.items.filter((i) => !i.done).length
@@ -2829,8 +2834,15 @@ function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, opts?: 
   ].filter((part): part is string => Boolean(part))
   if (procedureParts.length > 0) summaries.procedure = procedureParts.join(" · ")
 
-  if (data.mindMap.lastGeneratedAt) {
-    const parts = [data.mindMap.isStale ? t("badgeStale") : t("badgeReady"), relativeUpdate(data.mindMap.lastGeneratedAt)].filter(
+  // Same choice as the badge above: the live case map first, else the chat map.
+  const shownMap =
+    data.caseMindMap && !data.caseMindMap.retired
+      ? { isStale: data.caseMindMap.isStale, updatedAt: data.caseMindMap.generatedAt }
+      : data.mindMap.lastGeneratedAt
+        ? { isStale: data.mindMap.isStale, updatedAt: data.mindMap.lastGeneratedAt }
+        : null
+  if (shownMap) {
+    const parts = [shownMap.isStale ? t("badgeStale") : t("badgeReady"), relativeUpdate(shownMap.updatedAt)].filter(
       (part): part is string => Boolean(part),
     )
     summaries.mindMap = parts.join(" · ")

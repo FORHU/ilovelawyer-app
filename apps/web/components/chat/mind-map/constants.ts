@@ -41,8 +41,9 @@ export const MIND_MAP_FIXED_NODE_DESCRIPTIONS: Record<string, string> = {
   nextSteps: 'The immediate actions needed to move the matter forward, listed in the order they should happen.',
 };
 
-// The model isn't told to use a fixed `id` for the five nodes (only a fixed label), so match
-// on a normalised label too when the id doesn't line up with the keys above.
+// ilovelawyer-api now gives the five nodes these exact ids (normalizeMindMap), so the id lookup
+// in fixedNodeDescription is what matches for any newly saved map. This label lookup stays for
+// maps saved before that, which still carry whatever id the model picked.
 const MIND_MAP_FIXED_LABEL_TO_ID: Record<string, string> = {
   'legal basis': 'legalBasis',
   'key facts': 'keyFacts',
@@ -62,6 +63,19 @@ export function fixedNodeDescription(opts: { id?: string; label?: string; isRoot
   return mappedId ? MIND_MAP_FIXED_NODE_DESCRIPTIONS[mappedId] : undefined;
 }
 
+// Safety/performance caps on a map's size — not a renderer limit (2D and 3D draw any depth).
+// Mirrors ilovelawyer-api's src/constants/mind-map-limits.constants.ts, which enforces them when
+// it saves a map; change both together.
+export const MIND_MAP_LIMITS = {
+  /** Levels below the root; the root itself is level 0. */
+  maxDepth: 6,
+  /** Total nodes in one map, root included. */
+  maxNodes: 150,
+  /** Children one "Expand with AI" call may add to a node. */
+  expandMin: 2,
+  expandMax: 5,
+} as const;
+
 export function mindMapLink3dColor(isDark: boolean) {
   return isDark ? '#3a4a6c' : '#c5c9d4';
 }
@@ -80,8 +94,13 @@ export const MIND_MAP_CHROME = {
     'flex items-center gap-1.5 px-4 py-2 rounded-xl shadow-lg transition-all border border-brand-gold/30 bg-brand-gold text-brand-navy-950 font-bold hover:scale-105 active:scale-95 uppercase tracking-widest text-[10px]',
   fullBtn:
     'flex items-center gap-2 px-5 py-2 rounded-xl shadow-lg transition-all border border-brand-gold/30 bg-brand-gold text-brand-navy-950 font-bold hover:scale-105 active:scale-95 uppercase tracking-[0.2em] text-[10px]',
-  staleBadge:
-    'flex items-center gap-1.5 px-3 py-1.5 md:px-3.5 md:py-2 rounded-full shadow-lg transition-all border border-amber-500/40 bg-card text-amber-700 dark:text-amber-400 font-bold hover:bg-muted active:scale-95 uppercase tracking-widest text-[9px] disabled:opacity-60 disabled:pointer-events-none',
+  // Icon-only regenerate buttons (the label lives in title/aria-label): the plain one in the gold
+  // accent, the stale one outlined in amber on an opaque card so an out-of-date map still stands
+  // out. No backdrop blur, like the rest of this toolbar.
+  regenerateIconBtn:
+    'flex items-center justify-center size-9 rounded-xl shadow-lg transition-all border border-brand-gold/30 bg-brand-gold text-brand-navy-950 hover:scale-105 active:scale-95 disabled:opacity-60 disabled:pointer-events-none',
+  staleIconBtn:
+    'flex items-center justify-center size-9 rounded-full shadow-lg transition-all border border-amber-500/40 bg-card text-amber-700 dark:text-amber-400 hover:bg-muted active:scale-95 disabled:opacity-60 disabled:pointer-events-none',
   menu: 'absolute top-full left-0 mt-2 w-48 bg-popover border border-border rounded-xl shadow-2xl z-[210] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200',
   menuHeader: 'p-2 border-b border-border bg-muted/50 text-center',
   menuHeaderLabel: 'text-[8px] uppercase tracking-widest font-black text-muted-foreground',

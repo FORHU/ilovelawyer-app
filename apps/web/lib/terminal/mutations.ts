@@ -76,6 +76,8 @@ export type AiGenerationKind =
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
+  | "mindMapExpand"
+  | "caseMindMap"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"

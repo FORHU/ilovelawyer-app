@@ -15,6 +15,7 @@ export const caseKeys = {
   timelines: () => [...caseKeys.all, "timeline"] as const,
   timeline: (id: string) => [...caseKeys.timelines(), id] as const,
   archivedTimeline: (id: string) => [...caseKeys.timelines(), id, "archived"] as const,
+  mindMap: (id: string) => [...caseKeys.all, "mind-map", id] as const,
 }
 
 export const organizationKeys = {
