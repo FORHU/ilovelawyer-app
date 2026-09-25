@@ -48,11 +48,39 @@ export interface CitationGround {
   jev: CitationGroundJevCheck | null
 }
 
+/** One adverse signal against a cited authority, from the sweep. */
+export interface AdverseCitationHit {
+  id: string
+  citationCheckId: string
+  /** OWN_STATUS: the case's own citation check marked it ADVERSE. NEGATIVE_TREATMENT: a later
+   * decision in the corpus overruled, abandoned or distinguished it. */
+  kind: "OWN_STATUS" | "NEGATIVE_TREATMENT"
+  treatment: "OVERRULED" | "ABANDONED" | "DISTINGUISHED" | null
+  citingTitle: string | null
+  excerpt: string | null
+  /** Jev's read (USE_JEV_ADVERSE_SWEEP); null for OWN_STATUS or when not run. */
+  jev: { effect: "DEFEATS_PROPOSITION" | "DISTINGUISHABLE" | "NOT_ADVERSE"; confidence: number } | null
+  /** Worth a Weakness — offered to the lawyer, never added on its own. */
+  suggested: boolean
+  suggestionStatus: "PENDING" | "ACCEPTED" | "DISMISSED"
+  weaknessId: string | null
+}
+
+export interface CitationMapSweep {
+  /** Null until the first sweep. */
+  sweptAt: string | null
+  /** Cited authorities, and how many resolved into the corpus the sweep can search. */
+  authorities: number
+  inCorpus: number
+  hits: AdverseCitationHit[]
+}
+
 export interface CitationMapSeed {
   caseId: string
   citations: CitationMapSeedItem[]
   claims: CitationMapClaim[]
   grounds: CitationGround[]
+  sweep: CitationMapSweep
 }
 
 export interface CitationEdgeToLaw {

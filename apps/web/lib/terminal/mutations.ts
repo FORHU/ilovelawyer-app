@@ -77,6 +77,7 @@ export type AiGenerationKind =
   | "witnessExtract"
   | "claimExtract"
   | "citationGrounds"
+  | "adverseSweep"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -438,6 +439,31 @@ export function useMapCitationGroundsMutation(caseId: string) {
     mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
+    },
+  })
+}
+
+/** Queued "Run sweep" — the adverse-citation sweep (AdverseSweepSvc). */
+export function useAdverseSweepMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-map/sweep`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "adverseSweep") })
+    },
+  })
+}
+
+/** Accept (adds the Weakness) or dismiss a sweep hit's suggestion. */
+export function useDecideAdverseHitMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "accept" | "dismiss" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-map/adverse/${id}/${decision}`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+      // An accepted hit is a new Weakness row.
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }

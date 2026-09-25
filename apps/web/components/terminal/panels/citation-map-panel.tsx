@@ -4,9 +4,11 @@ import { useTranslation } from "react-i18next"
 import { FileText, Loader2, Sparkles, Trash2, Workflow } from "lucide-react"
 import { CitationMap } from "@/components/citation-map"
 import { citationMapKeys, useCitationMapQuery } from "@/lib/citation-map/mutations"
-import type { CitationGround, CitationMapClaim, CitationMapSeedItem } from "@/lib/citation-map/types"
+import type { AdverseCitationHit, CitationGround, CitationMapClaim, CitationMapSeedItem, CitationMapSweep } from "@/lib/citation-map/types"
 import {
+  useAdverseSweepMutation,
   useAiJobStatus,
+  useDecideAdverseHitMutation,
   useCreateCitationGroundMutation,
   useCreateClaimMutation,
   useDeleteCitationGroundMutation,
@@ -98,6 +100,19 @@ export function CitationMapPanel({ caseId }: { caseId: string }) {
   )
 }
 
+type SweepOutcome = "PENDING" | "ADVERSE" | "CHECK" | "CLEAR"
+const SWEEP_STYLE: Record<SweepOutcome, Tone> = { PENDING: "warn", ADVERSE: "danger", CHECK: "warn", CLEAR: "ok" }
+
+/** ADVERSE when any hit is worth a Weakness (still open or accepted); CHECK when there are hits a
+ * lawyer should still read (distinguished, or unchecked); CLEAR when there are none, or Jev read
+ * every one as not touching the proposition. */
+function sweepOutcome(sweep: CitationMapSweep): SweepOutcome {
+  if (!sweep.sweptAt) return "PENDING"
+  if (sweep.hits.some((h) => h.suggested && h.suggestionStatus !== "DISMISSED")) return "ADVERSE"
+  if (sweep.hits.some((h) => h.suggestionStatus !== "DISMISSED" && h.jev?.effect !== "NOT_ADVERSE")) return "CHECK"
+  return "CLEAR"
+}
+
 /** A queued job's button state, refreshing the seed when the job finishes (useAiJobStatus only
  * refreshes the snapshot). */
 function useQueuedJob(caseId: string, kind: AiGenerationKind, pending: boolean) {
@@ -122,6 +137,9 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
   const deleteGround = useDeleteCitationGroundMutation(caseId)
   const extractJob = useQueuedJob(caseId, "claimExtract", extract.isPending)
   const mapJob = useQueuedJob(caseId, "citationGrounds", map.isPending)
+  const sweepRun = useAdverseSweepMutation(caseId)
+  const sweepJob = useQueuedJob(caseId, "adverseSweep", sweepRun.isPending)
+  const decide = useDecideAdverseHitMutation(caseId)
   const [open, setOpen] = useState<string | null>(null)
   const [linkClaim, setLinkClaim] = useState("")
   const [linkRole, setLinkRole] = useState<"SUBSTANTIVE" | "PROCEDURAL">("SUBSTANTIVE")
@@ -134,6 +152,7 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
     )
   }
 
+  const sweep = seed.data?.sweep ?? { sweptAt: null, authorities: 0, inCorpus: 0, hits: [] }
   const citations = seed.data?.citations ?? []
   const claims = seed.data?.claims ?? []
   const grounds = seed.data?.grounds ?? []
@@ -306,12 +325,140 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
               </PanelRow>
             )
           })}
+          {citations.length > 0 ? (
+            <PanelRow key="sweep" className="flex-col items-stretch gap-2">
+              <SweepRowBody
+                sweep={sweep}
+                running={sweepJob.running}
+                isOpen={open === "sweep"}
+                onToggle={() => toggle("sweep")}
+                onRun={() => sweepRun.mutate()}
+                onDecide={(id, decision) => decide.mutate({ id, decision })}
+                deciding={decide.isPending}
+                citationById={citationById}
+              />
+            </PanelRow>
+          ) : null}
         </PanelRowList>
       </div>
-      <MutationError show={createGround.isError || deleteGround.isError} />
+      <MutationError show={createGround.isError || deleteGround.isError || sweepRun.isError || sweepJob.failed || decide.isError}>
+        {sweepJob.failed ? t("groundsJobFailed") : undefined}
+      </MutationError>
 
       <ClaimsSection caseId={caseId} claims={claims} />
     </PanelBody>
+  )
+}
+
+// The last row of the list: the adverse-citation sweep — its outcome as a pill, and on expand what
+// it found, with each hit worth a Weakness offered to the lawyer to add or dismiss.
+function SweepRowBody({
+  sweep,
+  running,
+  isOpen,
+  onToggle,
+  onRun,
+  onDecide,
+  deciding,
+  citationById,
+}: {
+  sweep: CitationMapSweep
+  running: boolean
+  isOpen: boolean
+  onToggle: () => void
+  onRun: () => void
+  onDecide: (id: string, decision: "accept" | "dismiss") => void
+  deciding: boolean
+  citationById: Map<string, CitationMapSeedItem>
+}) {
+  const { t } = useTranslation("terminal")
+  const outcome = sweepOutcome(sweep)
+  const adverse = sweep.hits.filter((h) => h.suggested && h.suggestionStatus !== "DISMISSED").length
+  const pill = {
+    PENDING: t("sweepPending"),
+    ADVERSE: t("sweepAdverse", { n: adverse }),
+    CHECK: t("sweepCheck"),
+    CLEAR: t("sweepClear"),
+  }[outcome]
+  return (
+    <>
+      <button type="button" onClick={onToggle} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-3 text-left">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium text-foreground">{t("sweepTitle")}</span>
+          <span className={`mt-0.5 block ${labelTextClass}`}>
+            {running
+              ? t("sweepRunning")
+              : sweep.sweptAt
+                ? t("sweepSummary", {
+                    date: new Date(sweep.sweptAt).toLocaleDateString(),
+                    inCorpus: sweep.inCorpus,
+                    total: sweep.authorities,
+                  })
+                : t("sweepNotRun")}
+          </span>
+        </span>
+        {running ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" /> : null}
+        <TonePill tone={SWEEP_STYLE[outcome]}>{pill}</TonePill>
+      </button>
+      {isOpen ? (
+        <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
+          <p className="text-muted-foreground">{t("sweepScope")}</p>
+          {sweep.sweptAt && sweep.hits.length === 0 ? <p>{t("sweepNoHits")}</p> : null}
+          {sweep.hits.map((hit) => (
+            <SweepHit key={hit.id} hit={hit} citation={citationById.get(hit.citationCheckId)} onDecide={onDecide} deciding={deciding} />
+          ))}
+          <div className="flex justify-end border-t border-border pt-2">
+            <button type="button" onClick={onRun} disabled={running} className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}>
+              {running ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Workflow className="h-3 w-3" aria-hidden="true" />}
+              {sweep.sweptAt ? t("sweepRerun") : t("sweepRun")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function SweepHit({
+  hit,
+  citation,
+  onDecide,
+  deciding,
+}: {
+  hit: AdverseCitationHit
+  citation: CitationMapSeedItem | undefined
+  onDecide: (id: string, decision: "accept" | "dismiss") => void
+  deciding: boolean
+}) {
+  const { t } = useTranslation("terminal")
+  return (
+    <div className={cn("flex flex-col gap-1 border-t border-border pt-2", hit.suggestionStatus === "DISMISSED" && "opacity-60")}>
+      <p className="font-medium">
+        {citation ? authorityLabel(citation) : "—"}
+        <span className="font-normal text-muted-foreground">
+          {" — "}
+          {hit.kind === "OWN_STATUS"
+            ? t("sweepOwnStatus")
+            : t("sweepTreatment", { treatment: t(`sweepTreatmentWord.${hit.treatment}`), citing: hit.citingTitle ?? "—" })}
+        </span>
+      </p>
+      {hit.excerpt ? <p className="text-muted-foreground">“{hit.excerpt}”</p> : null}
+      {hit.jev ? <JevCheck verdict={t(`sweepJev.${hit.jev.effect}`)} confidence={hit.jev.confidence} /> : null}
+      {hit.suggestionStatus === "ACCEPTED" ? (
+        <p className="text-ok">{t("sweepAdded")}</p>
+      ) : hit.suggestionStatus === "DISMISSED" ? (
+        <p className="text-muted-foreground">{t("sweepDismissed")}</p>
+      ) : hit.suggested ? (
+        <div className="flex gap-2">
+          <button type="button" onClick={() => onDecide(hit.id, "accept")} disabled={deciding} className={primaryBtnClass}>
+            {t("sweepAddWeakness")}
+          </button>
+          <button type="button" onClick={() => onDecide(hit.id, "dismiss")} disabled={deciding} className={ghostBtnClass}>
+            {t("sweepDismiss")}
+          </button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

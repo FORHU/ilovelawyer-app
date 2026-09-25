@@ -285,6 +285,8 @@ export interface CaseSnapshot {
     jurisdiction?: string | null
     parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
+    /** When the Citation Map's adverse-citation sweep last finished; null until the first one. */
+    adverseSweptAt?: string | null
   }
   documents: SnapshotDocument[]
   timeline: SnapshotTimelineEvent[]
