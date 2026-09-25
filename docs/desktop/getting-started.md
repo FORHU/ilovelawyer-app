@@ -3,6 +3,10 @@
 A beginner's guide to the Tauri shell in this repo — what it is, how it talks to the
 Next.js app, and how to run it. No prior Tauri knowledge assumed.
 
+Once this makes sense and you want to *build* something, see
+[`adding-features.md`](adding-features.md) — the separation of responsibilities and the
+recipes for adding commands and events.
+
 ---
 
 ## 1. The one-sentence version
