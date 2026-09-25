@@ -365,6 +365,21 @@ export interface WitnessNeed {
   options?: { value: string; label: string }[]
 }
 
+/** One row of the "Why?" table: a factor's answer, who gave it, and the evidence for it. */
+export interface WitnessFactorView {
+  factor: string
+  label: string
+  answerLabel: string | null
+  by: "JEV" | "AI" | "NONE"
+  confidence: number | null
+  lowConfidence: boolean
+  quote: string | null
+  quoteVerified: boolean
+  documentName: string | null
+  otherReading?: string
+  override?: { answerLabel: string; note: string }
+}
+
 /** Rubric audit written by the scorer. Only the parts the panel reads are typed. */
 export interface WitnessAiFactors {
   band: "HIGH" | "MODERATE" | "LOW" | "WEAK" | null
@@ -376,6 +391,8 @@ export interface WitnessAiFactors {
   reviewCount?: number
   /** The lawyer's own factor answers, in plain words. */
   overrideList?: { factor: string; label: string; answerLabel: string; note: string; at: string }[]
+  /** The factor table shown under "Why?". */
+  factorView?: WitnessFactorView[]
 }
 
 /** A ticked-off need. The proof is a document or photo from the case's Documents. `match` is what

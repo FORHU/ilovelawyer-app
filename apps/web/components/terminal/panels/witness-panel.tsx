@@ -229,6 +229,7 @@ export function WitnessPanel({
               )
             }
             const band = w.aiFactors?.band ?? null
+            const factorView = w.aiFactors?.factorView ?? []
             const commitCredibility = (value: number) => {
               if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
             }
@@ -341,7 +342,7 @@ export function WitnessPanel({
                       {t("witnessResetToAi")} ({ai})
                     </button>
                   ) : null}
-                  {reasons.length > 0 ? (
+                  {reasons.length > 0 || factorView.length > 0 ? (
                     <button
                       type="button"
                       onClick={() => toggleReasons(node.id)}
@@ -365,6 +366,61 @@ export function WitnessPanel({
                     </span>
                   ) : null}
                 </div>
+                {reasonsOpen && factorView.length > 0 ? (
+                  <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={labelTextClass}>{t("witnessFactorsTitle")}</p>
+                      {onJumpToPanel ? (
+                        <button
+                          type="button"
+                          onClick={() => onJumpToPanel("evidence")}
+                          className="text-[12px] underline underline-offset-2 hover:text-foreground"
+                        >
+                          {t("witnessShowInDocs")}
+                        </button>
+                      ) : null}
+                    </div>
+                    <ul className="flex flex-col gap-2.5">
+                      {factorView.map((f) => (
+                        <li key={f.factor} className="flex flex-col gap-0.5">
+                          <p>
+                            <span className="font-medium">{f.label}:</span>{" "}
+                            {f.override ? f.override.answerLabel : f.answerLabel ?? t("witnessFactorNotShown")}
+                          </p>
+                          <p className={labelTextClass}>
+                            {f.override
+                              ? t("witnessFactorYours", { answer: f.override.note || "-" })
+                              : f.by === "JEV"
+                                ? t("witnessFactorByJev")
+                                : f.by === "AI"
+                                  ? t("witnessFactorByChatWonder")
+                                  : ""}
+                            {!f.override && f.by === "JEV" && f.confidence !== null
+                              ? ` \u00b7 ${t("witnessFactorSure", { pct: Math.round(f.confidence * 100) })}`
+                              : ""}
+                            {f.lowConfidence ? <span className="text-amber-500">{" \u00b7 "}{t("witnessFactorCheck")}</span> : null}
+                          </p>
+                          {f.quote ? (
+                            <blockquote className="border-l-2 border-border pl-2 italic text-muted-foreground">
+                              {f.quote}
+                              <span className="not-italic">
+                                {" \u2014 "}
+                                {f.quoteVerified
+                                  ? t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })
+                                  : t("witnessFactorQuoteMissing")}
+                              </span>
+                            </blockquote>
+                          ) : f.answerLabel ? (
+                            <p className="text-muted-foreground">{t("witnessFactorNoQuote")}</p>
+                          ) : null}
+                          {f.otherReading ? (
+                            <p className="text-amber-500">{t("witnessFactorOther", { answer: f.otherReading })}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 {reasonsOpen && reasons.length > 0 ? (
                   <ul className="flex flex-col gap-1.5 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
                     {reasons.map((r, i) => (
