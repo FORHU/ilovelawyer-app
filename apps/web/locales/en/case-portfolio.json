@@ -319,5 +319,26 @@
     "buildCta": "Build from documents",
     "buildError": "Couldn't build the mind map. Try again.",
     "uploadHint": "Upload documents to build the map from them automatically."
+  },
+  "mindMapEdit": {
+    "rename": "Rename",
+    "addPoint": "Add point",
+    "delete": "Delete",
+    "save": "Save",
+    "labelPlaceholder": "Point",
+    "descriptionPlaceholder": "Details (optional)",
+    "confirmDelete": "Delete “{{label}}”?",
+    "confirmDeleteWithChildren_one": "Delete “{{label}}” and the {{count}} point under it?",
+    "confirmDeleteWithChildren_other": "Delete “{{label}}” and the {{count}} points under it?",
+    "added": "Point added.",
+    "renamed": "Renamed.",
+    "deleted": "Point deleted.",
+    "error": "Couldn't save your change. Try again.",
+    "changedElsewhere": "This part of the map changed while you were editing. Try again."
+  },
+  "mindMapStructure": {
+    "showLevels": "Show levels",
+    "upToLevel": "Up to level {{level}}",
+    "expandAll": "Expand all"
   }
 }

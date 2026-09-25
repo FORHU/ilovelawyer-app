@@ -4,19 +4,21 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   applyMindMapChange,
+  editMindMapNode,
   expandMindMapNode,
   revertMindMap,
   type MindMapChangeResult,
 } from "@/lib/chat/mutations";
 import {
   applyCaseMindMapChange,
+  editCaseMindMapNode,
   expandCaseMindMapNode,
   revertCaseMindMap,
 } from "@/lib/case-workspace/case-mind-map";
 import type { ActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { caseKeys, chatKeys } from "@/lib/query-keys";
 import { mindMapNodeKey, useExpandingMindMapNodesStore } from "@/lib/store/expanding-mind-map-nodes.store";
-import type { MindMapExpansion } from "@/components/chat/mind-map/types";
+import type { MindMapEditRequest, MindMapExpansion } from "@/components/chat/mind-map/types";
 import { MIND_MAP_LIMITS } from "@/components/chat/mind-map/constants";
 
 /** Which map "Expand with AI" acts on: a consultation's chat map (addressed by the message that
@@ -112,6 +114,37 @@ export function useMindMapExpansion(
     [target, scope, settle, start, stop, t, undo],
   );
 
+  /** Rename / add / delete — the same save-into-cache and Undo toast as expand. */
+  const edit = useCallback(
+    async (change: MindMapEditRequest): Promise<string | null> => {
+      if (!target) return null;
+      try {
+        const result =
+          target.kind === "consultation"
+            ? await editMindMapNode(target.consultationId, { messageId: target.record.messageId, ...change })
+            : await editCaseMindMapNode(target.caseId, change);
+        settle(result);
+        toast.success(t(`mindMapEdit.${change.op === "add" ? "added" : change.op === "rename" ? "renamed" : "deleted"}`), {
+          action: { label: t("mindMapExpand.undo"), onClick: () => void undo(result) },
+        });
+        return result.editedNodeId ?? change.nodeId;
+      } catch (err) {
+        const { status, code } = err as { status?: number; code?: string };
+        toast.error(
+          code === "MAX_NODES"
+            ? t("mindMapExpand.limitNodes", { max: MIND_MAP_LIMITS.maxNodes })
+            : code === "MAX_DEPTH"
+              ? t("mindMapExpand.limitDepth")
+              : status === 409
+                ? t("mindMapEdit.changedElsewhere")
+                : t("mindMapEdit.error"),
+        );
+        return null;
+      }
+    },
+    [target, settle, t, undo],
+  );
+
   const expandingNodeIds = useMemo(() => {
     const ids = new Set<string>();
     if (!scope) return ids;
@@ -128,7 +161,7 @@ export function useMindMapExpansion(
       : target.expandedCount
     : 0;
   return useMemo(
-    () => (target ? { expand, expandingNodeIds, disabledReason: opts.disabledReason, expandedCount } : undefined),
-    [target, expand, expandingNodeIds, opts.disabledReason, expandedCount],
+    () => (target ? { expand, edit, expandingNodeIds, disabledReason: opts.disabledReason, expandedCount } : undefined),
+    [target, expand, edit, expandingNodeIds, opts.disabledReason, expandedCount],
   );
 }

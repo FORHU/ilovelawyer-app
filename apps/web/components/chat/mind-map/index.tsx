@@ -5,12 +5,9 @@ import { useTheme } from 'next-themes';
 import ReactFlow, {
   useNodesState,
   useEdgesState,
-  addEdge,
   Background,
-  Connection,
   Edge,
   Node,
-  MarkerType,
   ReactFlowProvider,
   useReactFlow,
   useNodesInitialized
@@ -20,10 +17,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MindMapProps, MindMapItem } from './types';
-import { MIND_MAP_HEX_COLORS, MIND_MAP_THEME, MIND_MAP_CHROME, MIND_MAP_LIMITS, mindMapGridColor, fixedNodeDescription } from './constants';
+import { MIND_MAP_CHROME, MIND_MAP_LIMITS, mindMapGridColor, fixedNodeDescription } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
-import { reconcileCollapsedIds, countDescendants } from './collapse';
+import { reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth } from './collapse';
+import { buildMindMapGraph, MIND_MAP_PERF_THRESHOLD, type MindMapLayout } from './layout';
+import { NodeEditor } from './node-editor';
+import type { MindMapEditRequest } from './types';
 import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
 
 const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), {
@@ -34,6 +34,9 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
     </div>
   ),
 }) as React.ForwardRefExoticComponent<MindMap3DProps & React.RefAttributes<MindMap3DHandle>>;
+
+/** Levels open when a map is first shown (root = 0): the five branches and their points. */
+const DEFAULT_VISIBLE_LEVELS = 2;
 
 const nodeTypes = {
   custom: CustomNode,
@@ -79,13 +82,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === 'dark';
 
-  const [layout, setLayout] = useState<'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual'>('horizontal');
+  const [layout, setLayout] = useState<MindMapLayout>('horizontal');
   const [nodes, setNodes, onNodesChange] = useNodesState(getInitialNodes());
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  // Undo-stack storage only — law-ph itself has no UI trigger wired to pop it, so this
-  // component doesn't expose one either; kept so saveToHistory (used by every edit action)
-  // has somewhere to write.
-  const [, setHistory] = useState<{ nodes: Node[], edges: Edge[] }[]>([]);
   const [is3D, setIs3D] = useState(false);
   const mindMap3DRef = useRef<MindMap3DHandle>(null);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
@@ -104,6 +103,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const localStorageKey = `mind_map:${consultationId ?? 'unscoped'}`;
 
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  // True until this map's collapse state is settled — either the user's own, restored from the
+  // cache, or the default below. Only a settled state is written back, so an empty set persisted
+  // before the default lands can't later pass for "the user expanded everything".
+  const [collapseDefaultPending, setCollapseDefaultPending] = useState(false);
 
   // Re-seeds from the *new* key's cache whenever localStorageKey changes — not just on mount —
   // since this component isn't remounted when the caller swaps consultationId (e.g. Studio's
@@ -113,11 +116,36 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     try {
       const cached = localStorage.getItem(localStorageKey);
       const parsed = cached ? JSON.parse(cached) : null;
-      setCollapsedIds(new Set(Array.isArray(parsed?.collapsedIds) ? parsed.collapsedIds : []));
+      if (parsed?.collapseSettled && Array.isArray(parsed.collapsedIds)) {
+        setCollapsedIds(new Set(parsed.collapsedIds));
+        setCollapseDefaultPending(false);
+        return;
+      }
     } catch {
-      setCollapsedIds(new Set());
+      // fall through to the default
     }
+    setCollapsedIds(new Set());
+    setCollapseDefaultPending(true);
   }, [localStorageKey]);
+
+  // First time this map is shown here: open at root + branches + their points (levels 0–2) and
+  // fold everything deeper, so a 100-node map opens looking like a readable overview. The
+  // Structure menu's "Show levels" and each node's toggle open the rest.
+  useEffect(() => {
+    if (!collapseDefaultPending || !data || typeof data !== 'object') return;
+    // Has to wait for `data`, which can arrive after the cache check above — same one-shot
+    // seeding as that effect, not a render loop (it clears its own trigger).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCollapsedIds(collapseBelowLevel(data, DEFAULT_VISIBLE_LEVELS));
+    setCollapseDefaultPending(false);
+  }, [collapseDefaultPending, data]);
+
+  const mapDepth = useMemo(() => treeDepth(data), [data]);
+  const showLevels = useCallback((level: number | null) => {
+    setCollapsedIds(level === null ? new Set() : collapseBelowLevel(data, level));
+    setCollapseDefaultPending(false);
+    setIsLayoutMenuOpen(false);
+  }, [data]);
 
   const handleToggleCollapse = useCallback((id: string) => {
     setCollapsedIds((prev) => {
@@ -197,178 +225,6 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     }
   }, [is3D, fitView]);
 
-  const getChildren = (item: any) => {
-    return item.children || item.items || item.nodes || item.subnodes || item.branches || item.subitems || [];
-  };
-
-  const treeToGraph = useCallback((root: any, currentLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual', collapsed: Set<string>) => {
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-
-    const subtreeSizes = new Map<any, number>();
-    const calcSize = (item: any, isRootItem = false): number => {
-      // A collapsed node reserves only its own footprint — its hidden descendants shouldn't
-      // push siblings apart. Root is never collapsible, so it always sizes by its real children.
-      const children = !isRootItem && item.id && collapsed.has(item.id) ? [] : getChildren(item);
-      if (children.length === 0) {
-        return currentLayout === 'vertical' ? 260 : 130;
-      }
-      let total = 0;
-      children.forEach((child: any) => {
-        total += calcSize(child);
-      });
-      const sizeWithPadding = Math.max(total + (children.length - 1) * 28, currentLayout === 'vertical' ? 260 : 130);
-      subtreeSizes.set(item, sizeWithPadding);
-      return sizeWithPadding;
-    };
-
-    calcSize(root, true);
-
-    const traverse = (item: any, parentId: string | null = null, x = 0, y = 0, angleRange: [number, number] = [0, 360], depth = 0, side: 'left' | 'right' | 'top' | 'bottom' = 'right') => {
-      const id = item.id || `node-${Math.random().toString(36).substr(2, 9)}`;
-      const isRoot = id === 'root' || !parentId;
-
-      const hexColor = isRoot ? '#722f37' : MIND_MAP_HEX_COLORS[Math.max(0, depth - 1) % MIND_MAP_HEX_COLORS.length];
-      const className = isRoot ? MIND_MAP_THEME.rootClass : MIND_MAP_THEME.nodeClass(Math.max(0, depth - 1));
-
-      let label = item.label || item.text || 'Untitled';
-      // Root + the five fixed first-level nodes get a static description; everything deeper
-      // keeps the model's. See MIND_MAP_FIXED_NODE_DESCRIPTIONS.
-      const description =
-        fixedNodeDescription({ id, label, isRoot }) ?? (item.description || item.details || item.summary || '');
-
-      if (isRoot && (label === 'Case Analysis' || label === 'Legal Strategy Map')) {
-        label = rootTitle;
-      }
-
-      const isCollapsible = !isRoot && getChildren(item).length > 0;
-      const isCollapsed = isCollapsible && collapsed.has(id);
-
-      nodes.push({
-        id,
-        type: 'custom',
-        data: {
-          label,
-          description,
-          media: item.media, // Pass media data forward for 2D/3D
-          isRoot,
-          color: hexColor,
-          className,
-          layout: currentLayout,
-          side, // Pass the calculated side to the node
-          isCollapsible,
-          isCollapsed,
-          collapsedCount: isCollapsed ? countDescendants(item) : 0,
-          // For the Expand button (see nodesWithCallbacks) — maps saved before the API set
-          // `depth` fall back to the position in this walk, which is the same number.
-          depth: typeof item.depth === 'number' ? item.depth : depth,
-          hasMore: item.hasMore === true,
-          childCount: getChildren(item).length,
-        },
-        position: { x, y },
-      });
-
-      if (parentId) {
-        // Root node in Dual/Radial has multiple source handles (left, right, top, bottom)
-        const isFromRoot = parentId === 'root' && (currentLayout === 'dual' || currentLayout === 'radial');
-        const sourceHandleId = isFromRoot ? side : undefined;
-
-        const edgeDepth = depth; // child depth relative to root
-        const edgeColor = edgeDepth > 0 ? MIND_MAP_HEX_COLORS[(edgeDepth - 1) % MIND_MAP_HEX_COLORS.length] : MIND_MAP_THEME.edgeColor;
-
-        edges.push({
-          id: `e${parentId}-${id}`,
-          source: parentId,
-          target: id,
-          sourceHandle: sourceHandleId,
-          animated: true,
-          style: { stroke: edgeColor, strokeWidth: 2.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor }
-        });
-      }
-
-      const children = getChildren(item);
-      if (!isCollapsed && children.length > 0) {
-        if (currentLayout === 'radial') {
-          // Calculate a dynamic global radius from the center (0,0) instead of the parent
-          // This creates concentric circles and prevents messy overlapping
-          let depthRadius = 600;
-          if (depth === 0) depthRadius = 600;
-          else if (depth === 1) depthRadius = 1200;
-          else depthRadius = 1200 + (depth - 1) * 600;
-
-          const [startAngle, endAngle] = angleRange;
-          const totalAngle = endAngle - startAngle;
-          const anglePerChild = totalAngle / children.length;
-
-          children.forEach((child: any, index: number) => {
-            const currentAngle = startAngle + (anglePerChild * index) + (anglePerChild / 2);
-            const normalizedAngle = ((currentAngle % 360) + 360) % 360;
-
-            const rad = (currentAngle * Math.PI) / 180;
-            // Position relative to Root (0,0) not the parent's x,y
-            const cx = depthRadius * Math.cos(rad);
-            const cy = depthRadius * Math.sin(rad);
-
-            const childStart = startAngle + (anglePerChild * index);
-            const childEnd = childStart + anglePerChild;
-
-            // Map angle to the best handle on the parent/root
-            let childSide: 'left' | 'right' | 'top' | 'bottom' = 'right';
-            if (normalizedAngle >= 45 && normalizedAngle < 135) childSide = 'bottom';
-            else if (normalizedAngle >= 135 && normalizedAngle < 225) childSide = 'left';
-            else if (normalizedAngle >= 225 && normalizedAngle < 315) childSide = 'top';
-
-            traverse(child, id, cx, cy, [childStart, childEnd], depth + 1, childSide);
-          });
-        } else if (currentLayout === 'dual' && isRoot) {
-          const midway = Math.ceil(children.length / 2);
-          const leftChildren = children.slice(0, midway);
-          const rightChildren = children.slice(midway);
-
-          const leftSize = leftChildren.reduce((acc: number, c: any) => acc + (subtreeSizes.get(c) || 130), 0) + (leftChildren.length - 1) * 28;
-          const rightSize = rightChildren.reduce((acc: number, acc_val: any) => acc + (subtreeSizes.get(acc_val) || 130), 0) + (rightChildren.length - 1) * 28;
-
-          let leftOffset = -(leftSize / 2);
-          leftChildren.forEach((child: any) => {
-            const childSize = subtreeSizes.get(child) || 130;
-            traverse(child, id, x - 550, y + (leftOffset + childSize / 2), [0, 0], 1, 'left');
-            leftOffset += childSize + 28;
-          });
-
-          let rightOffset = -(rightSize / 2);
-          rightChildren.forEach((child: any) => {
-            const childSize = subtreeSizes.get(child) || 130;
-            traverse(child, id, x + 550, y + (rightOffset + childSize / 2), [0, 0], 1, 'right');
-            rightOffset += childSize + 28;
-          });
-        } else {
-          const itemSize = subtreeSizes.get(item) || (currentLayout === 'vertical' ? 260 : 130);
-          let offset = -(itemSize / 2);
-
-          children.forEach((child: any) => {
-            const childSize = subtreeSizes.get(child) || (currentLayout === 'vertical' ? 260 : 130);
-            const posOffset = offset + (childSize / 2);
-
-            if (currentLayout === 'vertical') {
-              traverse(child, id, x + posOffset, y + 400, [0, 0], depth + 1);
-            } else if (currentLayout === 'dual') {
-              traverse(child, id, x + (side === 'left' ? -550 : 550), y + posOffset, [0, 0], depth + 1, side);
-            } else if (currentLayout === 'compact') {
-              traverse(child, id, x + 500, y + posOffset, [0, 0], depth + 1);
-            } else {
-              traverse(child, id, x + 550, y + posOffset, [0, 0], depth + 1);
-            }
-
-            offset += childSize + 28;
-          });
-        }
-      }
-    };
-
-    traverse(root, null, 0, 0);
-    return { nodes, edges };
-  }, [rootTitle]);
 
   // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
   // their collapsed/expanded state, ids no longer present (including brand-new ones from a
@@ -381,7 +237,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
 
   useEffect(() => {
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout, collapsedIds);
+      const { nodes: newNodes, edges: newEdges } = buildMindMapGraph(data, layout, collapsedIds, rootTitle);
       setNodes(newNodes);
       setEdges(newEdges);
 
@@ -389,7 +245,13 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       try {
         localStorage.setItem(
           localStorageKey,
-          JSON.stringify({ nodes: newNodes, edges: newEdges, data, collapsedIds: [...collapsedIds] }),
+          JSON.stringify({
+            nodes: newNodes,
+            edges: newEdges,
+            data,
+            collapsedIds: [...collapsedIds],
+            collapseSettled: !collapseDefaultPending,
+          }),
         );
       } catch (e) {
         console.error('Failed to persist map data:', e);
@@ -409,9 +271,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         console.error('Failed to recover map data:', e);
       }
     }
-  }, [data, layout, collapsedIds, treeToGraph, setNodes, setEdges, localStorageKey]);
+  }, [data, layout, collapsedIds, collapseDefaultPending, rootTitle, setNodes, setEdges, localStorageKey]);
 
-  const handleLayoutChange = (newLayout: 'horizontal' | 'vertical' | 'compact' | 'radial' | 'dual') => {
+  const handleLayoutChange = (newLayout: MindMapLayout) => {
     setLayout(newLayout);
     setIsLayoutMenuOpen(false);
   };
@@ -423,12 +285,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       return;
     }
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      const { nodes: newNodes, edges: newEdges } = treeToGraph(data, layout, collapsedIds);
+      const { nodes: newNodes, edges: newEdges } = buildMindMapGraph(data, layout, collapsedIds, rootTitle);
       setNodes(newNodes);
       setEdges(newEdges);
       setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
     }
-  }, [data, layout, collapsedIds, treeToGraph, setNodes, setEdges, fitView, is3D]);
+  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitView, is3D]);
 
   const saveToSlot = (idx: number) => {
     setSlots(prev => {
@@ -495,63 +357,6 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     return () => clearTimeout(timer);
   }, [edges, pendingFocusId, is3D, fitView]);
 
-  const saveToHistory = useCallback(() => {
-    setHistory(prev => [...prev.slice(-15), { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }]);
-  }, [nodes, edges]);
-
-  const onConnect = useCallback((params: Connection | Edge) => {
-    saveToHistory();
-    setEdges((eds: Edge[]) => addEdge({
-      ...params,
-      animated: true,
-      style: { stroke: MIND_MAP_THEME.edgeColor, strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: MIND_MAP_THEME.edgeColor }
-    }, eds));
-  }, [setEdges, saveToHistory]);
-
-  const handleEditNode = useCallback((id: string) => {
-    const node = nodes.find(n => n.id === id);
-    if (!node) return;
-    const newLabel = prompt('Enter new text:', node.data.label);
-    if (newLabel !== null) {
-      saveToHistory();
-      setNodes((nds: Node[]) => nds.map((n: Node) => n.id === id ? { ...n, data: { ...n.data, label: newLabel } } : n));
-    }
-  }, [nodes, setNodes, saveToHistory]);
-
-  const handleDeleteNode = useCallback((id: string) => {
-    if (id === 'root') return;
-    saveToHistory();
-    setNodes((nds: Node[]) => nds.filter((node: Node) => node.id !== id));
-    setEdges((eds: Edge[]) => eds.filter((edge: Edge) => edge.source !== id && edge.target !== id));
-  }, [setNodes, setEdges, saveToHistory]);
-
-  const handleAddNode = useCallback((parentId: string) => {
-    saveToHistory();
-    const parentNode = nodes.find(n => n.id === parentId);
-    if (!parentNode) return;
-    const id = Date.now().toString();
-    const childIndex = edges.filter(e => e.source === parentId).length;
-
-    const hexColor = MIND_MAP_HEX_COLORS[childIndex % MIND_MAP_HEX_COLORS.length];
-    const className = MIND_MAP_THEME.nodeClass(childIndex);
-    const newNode: Node = {
-      id,
-      type: 'custom',
-      data: { id, label: 'New Node', color: hexColor, className, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode },
-      position: { x: parentNode.position.x + 500, y: parentNode.position.y + (childIndex - 1) * 150 },
-    };
-    const newEdge: Edge = {
-      id: `e${parentId}-${id}`, source: parentId, target: id, animated: true,
-      style: { stroke: MIND_MAP_THEME.edgeColor, strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: MIND_MAP_THEME.edgeColor }
-    };
-    setNodes((nds: Node[]) => nds.concat(newNode));
-    setEdges((eds: Edge[]) => eds.concat(newEdge));
-    // `handleAddNode` itself is intentionally omitted from the deps below: this is its own
-    // initial-mount definition, referenced only inside a closure that fires later (in a click
-    // handler), by which point the real value is already assigned.
-  }, [nodes, edges, setNodes, setEdges, handleEditNode, handleDeleteNode, saveToHistory]);
 
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map(node => {
@@ -563,12 +368,32 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         : null;
       return {
         ...node,
-        data: { ...node.data, id: node.id, onEdit: handleEditNode, onAdd: handleAddNode, onDelete: handleDeleteNode, onToggleCollapse: handleToggleCollapse, onExpand: handleExpandNode, expand, isSelected: node.id === selectedNodeId }
+        data: { ...node.data, id: node.id, onToggleCollapse: handleToggleCollapse, onExpand: handleExpandNode, expand, isSelected: node.id === selectedNodeId }
       };
     });
-  }, [nodes, handleEditNode, handleAddNode, handleDeleteNode, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, t]);
+  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, t]);
 
   const selectedTreeNode = useMemo(() => locateTreeNode(data, selectedNodeId), [data, selectedNodeId]);
+
+  // Saved edits come back as a new `data`; move the panel/canvas to the node the edit is about.
+  const handleEditSaved = useCallback((edit: MindMapEditRequest) => {
+    if (edit.op === 'delete') {
+      handleCloseDetails();
+      return;
+    }
+    if (edit.op === 'rename') {
+      setSelected3DNodeData((prev: any) => (prev ? { ...prev, label: edit.label, description: edit.description ?? prev.description } : prev));
+      return;
+    }
+    // add: open the parent (it may be collapsed) and bring the new point into view.
+    setCollapsedIds((prev) => {
+      if (!prev.has(edit.nodeId)) return prev;
+      const next = new Set(prev);
+      next.delete(edit.nodeId);
+      return next;
+    });
+    setPendingFocusId(edit.nodeId);
+  }, [handleCloseDetails]);
   const selectedExpandState = selectedTreeNode
     ? expandState({
         id: selectedTreeNode.item.id,
@@ -645,7 +470,6 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
             onNodeClick={(_: React.MouseEvent, node: Node) => {
               setSelectedNodeId(node.id);
               setSelected3DNodeData({
@@ -659,7 +483,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             onPaneClick={handleCloseDetails}
             nodeTypes={nodeTypes}
             nodesDraggable={true}
-            nodesConnectable={true}
+            // Dragging a new edge between nodes only ever changed this browser's copy of the map
+            // and vanished on reload — structure changes go through the detail panel's editor.
+            nodesConnectable={false}
+            onlyRenderVisibleElements={nodes.length > MIND_MAP_PERF_THRESHOLD}
             elementsSelectable={true}
             panOnDrag={true}
             panOnScroll={false}
@@ -726,6 +553,23 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                   </button>
                 ))}
               </div>
+              {mapDepth > 1 && (
+                <>
+                  <div className={MIND_MAP_CHROME.menuHeader}>
+                    <span className={MIND_MAP_CHROME.menuHeaderLabel}>{t('mindMapStructure.showLevels')}</span>
+                  </div>
+                  <div className="p-1 grid grid-cols-1">
+                    {Array.from({ length: Math.min(mapDepth - 1, MIND_MAP_LIMITS.maxDepth - 1) }, (_, i) => i + 1).map((level) => (
+                      <button key={level} onClick={() => showLevels(level)} className={MIND_MAP_CHROME.menuItem}>
+                        {t('mindMapStructure.upToLevel', { level })}
+                      </button>
+                    ))}
+                    <button onClick={() => showLevels(null)} className={MIND_MAP_CHROME.menuItem}>
+                      {t('mindMapStructure.expandAll')}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -998,6 +842,26 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                       {selectedExpandState.hint && !selectedExpandState.busy && (
                         <p className="mt-2 text-center text-[12px] text-muted-foreground">{selectedExpandState.hint}</p>
                       )}
+                    </div>
+                  )}
+
+                  {expansion && selectedTreeNode && selectedTreeNode.depth > 0 && (
+                    <div className="border-t border-border pt-3">
+                      <NodeEditor
+                        key={selectedTreeNode.item.id}
+                        node={{
+                          id: selectedTreeNode.item.id,
+                          label: selectedTreeNode.item.label ?? '',
+                          description: selectedTreeNode.item.description,
+                          depth: typeof selectedTreeNode.item.depth === 'number' ? selectedTreeNode.item.depth : selectedTreeNode.depth,
+                          childCount: (selectedTreeNode.item.children ?? []).length,
+                          descendantCount: countDescendants(selectedTreeNode.item),
+                        }}
+                        onEdit={expansion.edit}
+                        onSaved={handleEditSaved}
+                        disabledReason={expansion.disabledReason}
+                        atNodeCap={totalNodes >= MIND_MAP_LIMITS.maxNodes}
+                      />
                     </div>
                   )}
 

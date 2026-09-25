@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
+import type { MindMapEditRequest } from "@/components/chat/mind-map/types"
 import type { DecisionRecordPayload } from "@/lib/terminal/types"
 
 export interface ChatSession {
@@ -522,6 +523,8 @@ export interface MindMapChangeResult {
   mindMap: MindMapItem
   /** expand only — the node the children were added under, as a path id. */
   expandedNodeId?: string
+  /** edit only — the renamed node, the new point, or (delete) the removed node's parent. */
+  editedNodeId?: string
 }
 
 /** Asks the AI for 2–5 new children under one node of a consultation's mind map. Synchronous on
@@ -533,6 +536,18 @@ export function expandMindMapNode(
 ): Promise<MindMapChangeResult> {
   return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map/expand`, {
     method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+/** A manual rename / add / delete on a consultation's map, saved as an undoable revision.
+ * `code` "MAX_DEPTH"/"MAX_NODES" (422) when an add would pass MIND_MAP_LIMITS. */
+export function editMindMapNode(
+  consultationId: string,
+  body: { messageId?: string } & MindMapEditRequest,
+): Promise<MindMapChangeResult> {
+  return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map`, {
+    method: "PATCH",
     body: JSON.stringify(body),
   })
 }

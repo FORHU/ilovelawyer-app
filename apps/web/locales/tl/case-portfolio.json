@@ -185,5 +185,26 @@
     "buildCta": "Buuin mula sa mga dokumento",
     "buildError": "Hindi mabuo ang mind map. Subukang muli.",
     "uploadHint": "Mag-upload ng mga dokumento para awtomatikong mabuo ang mapa mula sa mga ito."
+  },
+  "mindMapEdit": {
+    "rename": "Palitan ang pangalan",
+    "addPoint": "Magdagdag ng punto",
+    "delete": "Burahin",
+    "save": "I-save",
+    "labelPlaceholder": "Punto",
+    "descriptionPlaceholder": "Detalye (opsyonal)",
+    "confirmDelete": "Burahin ang “{{label}}”?",
+    "confirmDeleteWithChildren_one": "Burahin ang “{{label}}” at ang {{count}} punto sa ilalim nito?",
+    "confirmDeleteWithChildren_other": "Burahin ang “{{label}}” at ang {{count}} na punto sa ilalim nito?",
+    "added": "Naidagdag ang punto.",
+    "renamed": "Napalitan ang pangalan.",
+    "deleted": "Nabura ang punto.",
+    "error": "Hindi ma-save ang iyong pagbabago. Subukang muli.",
+    "changedElsewhere": "Nagbago ang bahaging ito ng mapa habang nag-e-edit ka. Subukang muli."
+  },
+  "mindMapStructure": {
+    "showLevels": "Ipakita ang mga antas",
+    "upToLevel": "Hanggang antas {{level}}",
+    "expandAll": "Buksan lahat"
   }
 }

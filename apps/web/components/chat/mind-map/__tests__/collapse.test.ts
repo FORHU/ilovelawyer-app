@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { collectIds, reconcileCollapsedIds, countDescendants } from "../collapse"
+import { collectIds, reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth } from "../collapse"
 
 const tree = {
   id: "root",
@@ -49,3 +49,29 @@ describe("reconcileCollapsedIds", () => {
     expect(reconcileCollapsedIds(prev, tree)).toEqual(new Set())
   })
 })
+
+describe("collapseBelowLevel", () => {
+  const deep = {
+    id: "root",
+    children: [
+      { id: "a", children: [{ id: "a.1", children: [{ id: "a.1.1", children: [] }] }, { id: "a.2", children: [] }] },
+      { id: "b", children: [] },
+    ],
+  }
+
+  it("folds every node at the given level that has children, and nothing else", () => {
+    expect(collapseBelowLevel(deep, 2)).toEqual(new Set(["a.1"]))
+    expect(collapseBelowLevel(deep, 1)).toEqual(new Set(["a"]))
+  })
+
+  it("folds nothing when the tree doesn't go below that level", () => {
+    expect(collapseBelowLevel(deep, 3)).toEqual(new Set())
+    expect(collapseBelowLevel(null, 2)).toEqual(new Set())
+  })
+
+  it("treeDepth counts levels below the root", () => {
+    expect(treeDepth(deep)).toBe(3)
+    expect(treeDepth({ id: "root", children: [] })).toBe(0)
+  })
+})
+

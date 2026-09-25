@@ -32,7 +32,15 @@ export interface MindMapExpansion {
   /** Expand/edit changes since the map was generated (version − 1) — Regenerate warns before
    * replacing them. */
   expandedCount: number;
+  /** Rename / add a point / delete, saved on the API. Resolves with the node to focus afterwards
+   * (see NodeEditor), or null when it failed. */
+  edit: (edit: MindMapEditRequest) => Promise<string | null>;
 }
+
+export type MindMapEditRequest =
+  | { op: 'add'; nodeId: string; label: string; description?: string }
+  | { op: 'rename'; nodeId: string; label: string; description?: string }
+  | { op: 'delete'; nodeId: string };
 
 // 3D mind map rendering consumes flexible, AI-shaped tree structures.
 // Keep this intentionally permissive so 2D/3D can share the same `data` input.

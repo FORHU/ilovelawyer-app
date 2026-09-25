@@ -5,6 +5,7 @@ import { caseKeys } from "@/lib/query-keys";
 import { terminalKeys, useAiJobStatus, type AiJobStatus } from "@/lib/terminal/mutations";
 import { usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import type { MindMapChangeResult } from "@/lib/chat/mutations";
+import type { MindMapEditRequest } from "@/components/chat/mind-map/types";
 
 /** The case's mind map built from its uploaded documents (ilovelawyer-api's CaseMindMapSvc) —
  * rebuilt by the post-upload refresh the same way the timeline's key dates are, and what Studio's
@@ -69,6 +70,13 @@ export function useGenerateCaseMindMapMutation(caseId: string) {
 export function expandCaseMindMapNode(caseId: string, body: { nodeId: string; count?: number }) {
   return apiFetch<MindMapChangeResult>(`/api/my-cases/${caseId}/mind-map/expand`, {
     method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function editCaseMindMapNode(caseId: string, body: MindMapEditRequest) {
+  return apiFetch<MindMapChangeResult>(`/api/my-cases/${caseId}/mind-map`, {
+    method: "PATCH",
     body: JSON.stringify(body),
   });
 }

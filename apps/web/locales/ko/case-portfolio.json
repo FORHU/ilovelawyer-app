@@ -183,5 +183,25 @@
     "buildCta": "문서로 만들기",
     "buildError": "마인드맵을 만들지 못했습니다. 다시 시도하세요.",
     "uploadHint": "문서를 업로드하면 맵이 자동으로 만들어집니다."
+  },
+  "mindMapEdit": {
+    "rename": "이름 바꾸기",
+    "addPoint": "항목 추가",
+    "delete": "삭제",
+    "save": "저장",
+    "labelPlaceholder": "항목",
+    "descriptionPlaceholder": "세부 내용(선택)",
+    "confirmDelete": "“{{label}}”을(를) 삭제할까요?",
+    "confirmDeleteWithChildren_other": "“{{label}}”과(와) 그 아래 항목 {{count}}개를 삭제할까요?",
+    "added": "항목을 추가했습니다.",
+    "renamed": "이름을 바꿨습니다.",
+    "deleted": "항목을 삭제했습니다.",
+    "error": "변경 내용을 저장하지 못했습니다. 다시 시도하세요.",
+    "changedElsewhere": "편집하는 동안 맵의 이 부분이 변경되었습니다. 다시 시도하세요."
+  },
+  "mindMapStructure": {
+    "showLevels": "단계 표시",
+    "upToLevel": "{{level}}단계까지",
+    "expandAll": "모두 펼치기"
   }
 }
