@@ -687,6 +687,23 @@ export function useUpdateWitnessMutation(caseId: string) {
   })
 }
 
+// A lawyer sets (or, with answer null, clears) their own answer for one rubric factor. The API
+// recalculates the score straight away; no model call, no rescore.
+export function useSetWitnessFactorMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, factor, answer, note }: { id: string; factor: string; answer: string | null; note?: string }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}/factors/${factor}`, {
+        method: "PATCH",
+        body: JSON.stringify({ answer, note: note ?? "" }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
 // Queued server-side (AiGenerationQueue/SQS): this POST returns once the job is claimed, not once
 // scores are saved. The caller pairs it with useAiJobStatus(caseId, "witnessScoring") and
 // refreshes the witnesses graph view itself when that flips to DONE.

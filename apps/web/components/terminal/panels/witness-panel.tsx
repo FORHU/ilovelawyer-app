@@ -8,6 +8,7 @@ import {
   useDeleteWitnessMutation,
   useScoreWitnessesMutation,
   useUpdateWitnessMutation,
+  useSetWitnessFactorMutation,
 } from "@/lib/terminal/mutations"
 import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } from "@/lib/terminal/types"
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
@@ -29,6 +30,15 @@ type WitnessData = Partial<Witness> & { name: string }
 // not confirmed. Mirrors PROOF_CONFIRM_MIN_CONFIDENCE in the API.
 const PROOF_CONFIRM_MIN_CONFIDENCE = 0.6
 
+// The score reads by its value, not by the status the lawyer has set: an 85 on an Incomplete
+// witness is still a strong score. Cut-offs match the API's bands.
+function scoreTextClass(value: number): string {
+  if (value >= 75) return "text-emerald-500"
+  if (value >= 55) return "text-amber-500"
+  if (value >= 35) return "text-orange-500"
+  return "text-red-400"
+}
+
 export function WitnessPanel({
   caseId,
   onJumpToPanel,
@@ -40,6 +50,7 @@ export function WitnessPanel({
   const queryClient = useQueryClient()
   const create = useCreateWitnessMutation(caseId)
   const update = useUpdateWitnessMutation(caseId)
+  const setFactor = useSetWitnessFactorMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
   const score = useScoreWitnessesMutation(caseId)
   const job = useAiJobStatus(caseId, "witnessScoring")
@@ -53,6 +64,9 @@ export function WitnessPanel({
   const [proofFor, setProofFor] = useState<{ nodeId: string; key: string } | null>(null)
   const [proofDoc, setProofDoc] = useState("")
   const [proofNote, setProofNote] = useState("")
+  const [factorFor, setFactorFor] = useState<{ nodeId: string; factor: string } | null>(null)
+  const [factorAnswer, setFactorAnswer] = useState("")
+  const [factorNote, setFactorNote] = useState("")
   const docs = useCaseDocumentsQuery(caseId).data ?? []
   const docName = (id: string) => docs.find((d) => d.id === id)?.name ?? t("witnessProofDocGone")
   const graphView = useGraphViewQuery(caseId, "witnesses")
@@ -301,7 +315,7 @@ export function WitnessPanel({
                       className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
                     />
                   </div>
-                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${style.text}`}>
+                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${hasScore ? scoreTextClass(credibility) : style.text}`}>
                     {hasScore ? credibility : "—"}
                   </span>
                 </div>
@@ -311,7 +325,7 @@ export function WitnessPanel({
                       ? t("witnessManualScore")
                       : ai !== null
                         ? band
-                          ? `${t("witnessAiScore")} · ${t(`witnessBand${band[0]}${band.slice(1).toLowerCase()}`)} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}`
+                          ? `${t("witnessAiScore")} · ${t(`witnessBand${band[0]}${band.slice(1).toLowerCase()}`)} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}${w.aiFactors?.reviewCount ? ` \u00b7 ${t("witnessLowConfidence", { count: w.aiFactors.reviewCount })}` : ""}`
                           : t("witnessAiScore")
                         : scoredNoData
                           ? t("witnessNotEnoughData")
@@ -371,6 +385,7 @@ export function WitnessPanel({
                       {needs.map((n) => {
                         const doneItem = doneByKey.get(n.key)
                         const proofOpen = proofFor?.nodeId === node.id && proofFor.key === n.key
+                        const factorOpen = !!n.factor && factorFor?.nodeId === node.id && factorFor.factor === n.factor
                         const confirmed =
                           doneItem?.match?.verdict === "SATISFIES" && doneItem.match.confidence >= PROOF_CONFIRM_MIN_CONFIDENCE
                         return (
@@ -400,6 +415,75 @@ export function WitnessPanel({
                               </>
                             ) : null}
                           </span>
+                          {!doneItem && n.link === "EVIDENCE" && onJumpToPanel ? (
+                            <button
+                              type="button"
+                              onClick={() => onJumpToPanel("evidence")}
+                              className="ml-2 text-[12px] underline underline-offset-2 hover:text-foreground"
+                            >
+                              {t("witnessOpenEvidence")}
+                            </button>
+                          ) : null}
+                          {!doneItem && n.link === "FACTOR" && n.options ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFactorFor(factorOpen ? null : { nodeId: node.id, factor: n.factor! })
+                                setFactorAnswer("")
+                                setFactorNote("")
+                              }}
+                              aria-expanded={factorOpen}
+                              className="ml-2 text-[12px] underline underline-offset-2 hover:text-foreground"
+                            >
+                              {t("witnessSetYourself")}
+                            </button>
+                          ) : null}
+                          {factorOpen && n.options ? (
+                            <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
+                              {n.question ? <p className="text-[12px] text-foreground">{n.question}</p> : null}
+                              <select
+                                value={factorAnswer}
+                                onChange={(e) => setFactorAnswer(e.target.value)}
+                                aria-label={t("witnessFactorChoose")}
+                                className={fieldClass}
+                              >
+                                <option value="">{t("witnessFactorChoose")}</option>
+                                {n.options.map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={factorNote}
+                                onChange={(e) => setFactorNote(e.target.value)}
+                                placeholder={t("witnessFactorNote")}
+                                aria-label={t("witnessFactorNote")}
+                                className={fieldClass}
+                              />
+                              {setFactor.isError && setFactor.error instanceof Error ? (
+                                <p className="text-[11px] text-danger">{setFactor.error.message}</p>
+                              ) : null}
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!factorAnswer || !factorNote.trim() || setFactor.isPending}
+                                  onClick={() =>
+                                    setFactor.mutate(
+                                      { id: node.refId, factor: n.factor!, answer: factorAnswer, note: factorNote.trim() },
+                                      { onSuccess: () => setFactorFor(null) },
+                                    )
+                                  }
+                                  className={primaryBtnClass}
+                                >
+                                  {t("witnessFactorSave")}
+                                </button>
+                                <button type="button" onClick={() => setFactorFor(null)} className={ghostBtnClass}>
+                                  {t("witnessProofCancel")}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
                           {doneItem ? (
                             <>
                               <p className={`mt-1 ${labelTextClass}`}>
@@ -468,6 +552,29 @@ export function WitnessPanel({
                         </li>
                         )
                       })}
+                    </ul>
+                  </div>
+                ) : null}
+                {(w.aiFactors?.overrideList?.length ?? 0) > 0 ? (
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <p className={labelTextClass}>{t("witnessSetByYou")}</p>
+                    <ul className="mt-1.5 flex flex-col gap-1.5 text-[12px] text-foreground">
+                      {w.aiFactors!.overrideList!.map((o) => (
+                        <li key={o.factor} className="flex items-start justify-between gap-2">
+                          <span>
+                            <span className="font-medium">{o.label}:</span> {o.answerLabel}
+                            {o.note ? <span className="text-muted-foreground"> — {o.note}</span> : null}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={setFactor.isPending}
+                            onClick={() => setFactor.mutate({ id: node.refId, factor: o.factor, answer: null })}
+                            className="shrink-0 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                          >
+                            {t("witnessFactorRemove")}
+                          </button>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 ) : null}

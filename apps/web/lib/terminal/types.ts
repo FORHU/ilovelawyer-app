@@ -360,6 +360,9 @@ export interface WitnessNeed {
   text: string
   link: "STATEMENT" | "EVIDENCE" | "FACTOR" | null
   factor?: string
+  /** For a FACTOR item: the question and the options a lawyer can pick. */
+  question?: string
+  options?: { value: string; label: string }[]
 }
 
 /** Rubric audit written by the scorer. Only the parts the panel reads are typed. */
@@ -369,6 +372,10 @@ export interface WitnessAiFactors {
   assessable: number
   insufficientReason: string | null
   needs?: WitnessNeed[]
+  /** How many counted answers Jev was unsure about. */
+  reviewCount?: number
+  /** The lawyer's own factor answers, in plain words. */
+  overrideList?: { factor: string; label: string; answerLabel: string; note: string; at: string }[]
 }
 
 /** A ticked-off need. The proof is a document or photo from the case's Documents. `match` is what
