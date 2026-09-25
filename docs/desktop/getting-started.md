@@ -235,6 +235,40 @@ stray `node` process.
 
 ---
 
+## 8b. Does the desktop app get my Next.js changes?
+
+In dev, always — it's pointed at your dev server, so it behaves like any browser tab.
+
+In production the answer depends on **which URL the shipped app loads**, and that's a
+deployment decision, not a code one. `Config::base_url()` in `src-tauri/src/lib.rs` picks
+between two modes:
+
+| Mode | How it's set | Where windows load from |
+|---|---|---|
+| **Bundled sidecar** (default) | nothing set | a Next.js server the app starts itself, on `localhost:3002` |
+| **Remote** | `FRONTEND_URL=https://…` | that deployed server |
+
+Which gives:
+
+| You changed | Dev | Prod — bundled | Prod — remote |
+|---|---|---|---|
+| React / Next.js | instant | **new installer** | **just deploy the web app** |
+| Rust / `src-tauri` | auto relaunch | new installer | new installer |
+| `tauri.conf.json` | restart | new installer | new installer |
+
+**The consequence worth planning around:** in bundled mode, the web app and the desktop
+app are welded together — every frontend fix ships as a new `.exe` that users must
+install. In remote mode they're decoupled, and the desktop app becomes a thin native
+shell you rarely need to re-release.
+
+That makes remote mode much more attractive for anything shipping regularly. It also
+means the desktop app needs the deployment to be reachable — offline, it has nothing to
+load, whereas the bundled build still opens.
+
+Neither production path is verified yet. Today only `tauri dev` is known to work.
+
+---
+
 ## 9. The rules (please don't break these)
 
 > **Next.js owns what I Love Lawyer *is*. Rust owns what Windows *can do*.**
