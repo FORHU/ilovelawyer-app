@@ -252,14 +252,14 @@
   "issueBriefing": "Briefing",
   "issueOpen": "Open",
   "issueResolved": "Resolved",
-  "issueUnrated": "Unrated",
-  "issueStatus": "Status",
+  "findingUnrated": "Unrated",
+  "findingStatus": "Status",
   "issueResolvedCount": "{{done}} of {{total}} resolved",
   "issueDetailPlaceholder": "Who bears the burden, and on what",
-  "issueJevCheck": "Check with Jev",
-  "issueJevChecking": "Checking…",
-  "issueJevOff": "Jev checks for legal issues are turned off.",
-  "issueJevFailed": "Jev couldn't check this issue. Try again.",
+  "findingJevCheck": "Check with Jev",
+  "findingJevChecking": "Checking…",
+  "findingJevOff": "Jev checks for this panel are turned off.",
+  "findingJevFailed": "Jev couldn't check this. Try again.",
   "issueJevRaisedLine": "Jev reads it as {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
     "RAISED": "raised by the case",
@@ -278,12 +278,35 @@
     "UNCLEAR": "unclear"
   },
   "issueJevBurdenDisputed": "The drafting AI put it on {{party}}.",
-  "issueJevModelRating": "The drafting AI marked it {{tag}}.",
+  "findingJevModelRating": "The drafting AI marked it {{tag}}.",
   "issueJevFlag": {
     "NOT_RAISED": "Jev doesn't see this issue in the case data",
     "BURDEN_DISPUTED": "Jev puts the burden on the other side"
   },
   "addWeakness": "Add a weakness",
+  "weaknessesIntro": "Exposure in your own case, soonest to surface first.",
+  "weaknessMaterial": "Material",
+  "weaknessMinor": "Minor",
+  "weaknessClosed": "Closed",
+  "weaknessClosedCount": "{{done}} of {{total}} closed",
+  "weaknessDetailPlaceholder": "What would close it",
+  "weaknessImpact": "Expected impact on the case (positive hurts you)",
+  "weaknessNoFix": "No fix on record",
+  "weaknessJevSupport": {
+    "SUPPORTED": "borne out by the case data",
+    "UNSUPPORTED": "not borne out by the case data",
+    "CONTRADICTED": "contradicted by the case data"
+  },
+  "weaknessJevScores": "severity {{sev}}% (conf. {{sevConf}}%) · surfaces early {{sur}}% (conf. {{surConf}}%)",
+  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
+  "weaknessJevCurable": {
+    "BY_EVIDENCE": "Can be closed with evidence",
+    "BY_ARGUMENT": "Can be answered by argument",
+    "NOT_CURABLE": "Nothing on the record would close it"
+  },
+  "weaknessJevFlag": {
+    "NOT_BORNE_OUT": "Jev doesn't find this borne out by the case data"
+  },
   "addStrength": "Add a strength",
   "addAttackStrategy": "Add an attack strategy",
   "addDefenseStrategy": "Add a defense strategy",

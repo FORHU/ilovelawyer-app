@@ -226,14 +226,14 @@
   "issueBriefing": "Isinusulat",
   "issueOpen": "Bukas",
   "issueResolved": "Nalutas",
-  "issueUnrated": "Walang rating",
-  "issueStatus": "Status",
+  "findingUnrated": "Walang rating",
+  "findingStatus": "Status",
   "issueResolvedCount": "{{done}} sa {{total}} ang nalutas",
   "issueDetailPlaceholder": "Sino ang may pasanin ng patunay, at tungkol saan",
-  "issueJevCheck": "Suriin kay Jev",
-  "issueJevChecking": "Sinusuri…",
-  "issueJevOff": "Naka-off ang pagsusuri ni Jev para sa mga legal na isyu.",
-  "issueJevFailed": "Hindi nasuri ni Jev ang isyung ito. Subukang muli.",
+  "findingJevCheck": "Suriin kay Jev",
+  "findingJevChecking": "Sinusuri…",
+  "findingJevOff": "Naka-off ang pagsusuri ni Jev para sa panel na ito.",
+  "findingJevFailed": "Hindi ito nasuri ni Jev. Subukang muli.",
   "issueJevRaisedLine": "Basa ni Jev: {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
     "RAISED": "itinataas ng kaso",
@@ -252,12 +252,35 @@
     "UNCLEAR": "hindi malinaw"
   },
   "issueJevBurdenDisputed": "Inilagay ito ng AI na sumulat sa {{party}}.",
-  "issueJevModelRating": "Minarkahan ito ng AI na sumulat bilang {{tag}}.",
+  "findingJevModelRating": "Minarkahan ito ng AI na sumulat bilang {{tag}}.",
   "issueJevFlag": {
     "NOT_RAISED": "Hindi nakikita ni Jev ang isyung ito sa datos ng kaso",
     "BURDEN_DISPUTED": "Inilalagay ni Jev ang pasanin sa kabilang panig"
   },
   "addWeakness": "Magdagdag ng kahinaan",
+  "weaknessesIntro": "Mga kahinaan ng sarili mong kaso, inuuna ang pinakamaagang lilitaw.",
+  "weaknessMaterial": "Mabigat",
+  "weaknessMinor": "Magaan",
+  "weaknessClosed": "Naisara",
+  "weaknessClosedCount": "{{done}} sa {{total}} ang naisara",
+  "weaknessDetailPlaceholder": "Ano ang makakapagsara nito",
+  "weaknessImpact": "Inaasahang epekto sa kaso (ang positibo ay laban sa iyo)",
+  "weaknessNoFix": "Walang lunas sa rekord",
+  "weaknessJevSupport": {
+    "SUPPORTED": "pinatutunayan ng datos ng kaso",
+    "UNSUPPORTED": "hindi pinatutunayan ng datos ng kaso",
+    "CONTRADICTED": "sinasalungat ng datos ng kaso"
+  },
+  "weaknessJevScores": "bigat {{sev}}% (kumpiyansa {{sevConf}}%) · maagang lilitaw {{sur}}% (kumpiyansa {{surConf}}%)",
+  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
+  "weaknessJevCurable": {
+    "BY_EVIDENCE": "Maisasara sa pamamagitan ng ebidensya",
+    "BY_ARGUMENT": "Masasagot sa pamamagitan ng argumento",
+    "NOT_CURABLE": "Walang nasa rekord na makakapagsara nito"
+  },
+  "weaknessJevFlag": {
+    "NOT_BORNE_OUT": "Hindi nakikita ni Jev na pinatutunayan ito ng datos ng kaso"
+  },
   "addStrength": "Magdagdag ng lakas",
   "addAttackStrategy": "Magdagdag ng attack strategy",
   "addDefenseStrategy": "Magdagdag ng defense strategy",

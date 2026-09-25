@@ -20,6 +20,7 @@ import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
 import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
 import { CaseFindingPanel } from "@/components/terminal/panels/case-finding-panel"
 import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
+import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
 import { WitnessPanel } from "@/components/terminal/panels/witness-panel"
 import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
@@ -78,13 +79,7 @@ export function TerminalPanelBody({
     case "legalIssues":
       return <LegalIssuesPanel caseId={caseId} />
     case "weaknesses":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="WEAKNESS"
-        />
-      )
+      return <WeaknessesPanel snapshot={snapshot} caseId={caseId} />
     case "strengths":
       return (
         <CaseFindingPanel

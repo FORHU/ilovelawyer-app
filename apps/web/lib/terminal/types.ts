@@ -352,6 +352,22 @@ export type FindingTag =
   | "STRONG"
   | "MODERATE"
 
+/** Jev's check of a weakness (USE_JEV_WEAKNESSES) — stored in CaseFinding.jev. */
+export interface WeaknessJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** 0..1 — how much of the case it costs. */
+  severity: number
+  severityConfidence: number
+  /** 0..1, where 1 is "usable against you straight away". */
+  surfacing: number
+  surfacingConfidence: number
+  curable: "BY_EVIDENCE" | "BY_ARGUMENT" | "NOT_CURABLE"
+  curableConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
+
 /** Jev's check of a legal issue (USE_JEV_LEGAL_ISSUES) — stored in CaseFinding.jev. */
 export interface LegalIssueJevCheck {
   raised: "RAISED" | "NOT_RAISED"

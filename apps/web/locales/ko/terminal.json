@@ -224,14 +224,14 @@
   "issueBriefing": "서면 준비 중",
   "issueOpen": "미결",
   "issueResolved": "해결됨",
-  "issueUnrated": "미분류",
-  "issueStatus": "상태",
+  "findingUnrated": "미분류",
+  "findingStatus": "상태",
   "issueResolvedCount": "{{total}}건 중 {{done}}건 해결",
   "issueDetailPlaceholder": "누가 무엇에 대해 입증 책임을 지는지",
-  "issueJevCheck": "Jev로 확인",
-  "issueJevChecking": "확인 중…",
-  "issueJevOff": "법적 쟁점에 대한 Jev 확인이 꺼져 있습니다.",
-  "issueJevFailed": "Jev가 이 쟁점을 확인하지 못했습니다. 다시 시도하세요.",
+  "findingJevCheck": "Jev로 확인",
+  "findingJevChecking": "확인 중…",
+  "findingJevOff": "이 패널의 Jev 확인이 꺼져 있습니다.",
+  "findingJevFailed": "Jev가 확인하지 못했습니다. 다시 시도하세요.",
   "issueJevRaisedLine": "Jev 판단: {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
     "RAISED": "사건에서 제기된 쟁점",
@@ -250,12 +250,35 @@
     "UNCLEAR": "불분명"
   },
   "issueJevBurdenDisputed": "작성 AI는 {{party}}에 두었습니다.",
-  "issueJevModelRating": "작성 AI의 표시: {{tag}}.",
+  "findingJevModelRating": "작성 AI의 표시: {{tag}}.",
   "issueJevFlag": {
     "NOT_RAISED": "Jev는 사건 자료에서 이 쟁점을 찾지 못했습니다",
     "BURDEN_DISPUTED": "Jev는 입증 책임을 상대방에게 둡니다"
   },
   "addWeakness": "약점 추가",
+  "weaknessesIntro": "우리 사건의 취약점 — 가장 먼저 드러날 것부터.",
+  "weaknessMaterial": "중대",
+  "weaknessMinor": "경미",
+  "weaknessClosed": "해소됨",
+  "weaknessClosedCount": "{{total}}건 중 {{done}}건 해소",
+  "weaknessDetailPlaceholder": "해소하려면 무엇이 필요한지",
+  "weaknessImpact": "사건에 대한 예상 영향 (양수는 불리)",
+  "weaknessNoFix": "기록상 해소 방법 없음",
+  "weaknessJevSupport": {
+    "SUPPORTED": "사건 자료로 뒷받침됨",
+    "UNSUPPORTED": "사건 자료로 뒷받침되지 않음",
+    "CONTRADICTED": "사건 자료와 모순됨"
+  },
+  "weaknessJevScores": "심각도 {{sev}}% (신뢰도 {{sevConf}}%) · 조기 노출 {{sur}}% (신뢰도 {{surConf}}%)",
+  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
+  "weaknessJevCurable": {
+    "BY_EVIDENCE": "증거로 해소 가능",
+    "BY_ARGUMENT": "주장으로 대응 가능",
+    "NOT_CURABLE": "기록상 해소할 방법 없음"
+  },
+  "weaknessJevFlag": {
+    "NOT_BORNE_OUT": "Jev는 사건 자료에서 이 취약점을 확인하지 못했습니다"
+  },
   "addStrength": "강점 추가",
   "addAttackStrategy": "공격 전략 추가",
   "addDefenseStrategy": "방어 전략 추가",
