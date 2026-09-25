@@ -212,6 +212,9 @@
   "mindMapCheck": {
     "notFound": "인용한 문서에서 찾을 수 없음",
     "contradicted": "인용한 문서와 상충함",
+    "notSupportedByCase": "사건 자료로 뒷받침되지 않음",
+    "contradictedByCase": "사건 자료와 상충함",
+    "supportedByCase": "사건 자료로 뒷받침됨",
     "supportedBy": "{{source}}에서 뒷받침됨",
     "notFoundIn": "{{source}}에서 찾을 수 없음",
     "contradictedBy": "{{source}}와(과) 상충함",

@@ -5,9 +5,10 @@ import type { MindMapItem } from '@/lib/chat/mind-map-parser';
 
 /**
  * A node's evidence in the mind map's detail panel: the case documents it cites, and — once Jev
- * has checked it (ilovelawyer-api mind-map-jev.ts) — whether the cited passage bears it out and
- * what that passage amounts to (a party's allegation, a witness's account, a document,
- * established). The case's document-built map only; chat maps cite nothing.
+ * has checked it (ilovelawyer-api mind-map-jev.ts) — whether the case data (plus the cited page,
+ * when there is one) bears it out. Older checks also say what the passage amounts to (a party's
+ * allegation, a witness's account, a document, established). The case's document-built map only;
+ * chat maps cite nothing.
  */
 export function NodeEvidence({ item, documentNames }: { item: MindMapItem; documentNames?: Record<string, string> }) {
   const { t } = useTranslation('case-portfolio');
@@ -17,11 +18,25 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
   };
 
   const check = item.check;
+  // A case-data verdict names the case data; a page verdict names the document and page.
+  const source = check?.documentId ? describe(check.documentId, check.page) : null;
   const verdictLine = check
     ? {
-        SUPPORTED: { Icon: CheckCircle2, tone: 'text-emerald-700 dark:text-emerald-400', text: t('mindMapCheck.supportedBy', { source: describe(check.documentId, check.page) }) },
-        UNSUPPORTED: { Icon: AlertTriangle, tone: 'text-amber-700 dark:text-amber-400', text: t('mindMapCheck.notFoundIn', { source: describe(check.documentId, check.page) }) },
-        CONTRADICTED: { Icon: XCircle, tone: 'text-red-700 dark:text-red-400', text: t('mindMapCheck.contradictedBy', { source: describe(check.documentId, check.page) }) },
+        SUPPORTED: {
+          Icon: CheckCircle2,
+          tone: 'text-emerald-700 dark:text-emerald-400',
+          text: source ? t('mindMapCheck.supportedBy', { source }) : t('mindMapCheck.supportedByCase'),
+        },
+        UNSUPPORTED: {
+          Icon: AlertTriangle,
+          tone: 'text-amber-700 dark:text-amber-400',
+          text: source ? t('mindMapCheck.notFoundIn', { source }) : t('mindMapCheck.notSupportedByCase'),
+        },
+        CONTRADICTED: {
+          Icon: XCircle,
+          tone: 'text-red-700 dark:text-red-400',
+          text: source ? t('mindMapCheck.contradictedBy', { source }) : t('mindMapCheck.contradictedByCase'),
+        },
       }[check.verdict]
     : null;
 
@@ -39,9 +54,9 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
           <div className="flex flex-col gap-1">
             <span>
               {verdictLine.text}
-              {check.verdict !== 'UNSUPPORTED' && ` · ${t(`mindMapCheck.kind.${check.evidenceKind}`, { defaultValue: check.evidenceKind })}`}
+              {check.verdict !== 'UNSUPPORTED' && check.evidenceKind && ` · ${t(`mindMapCheck.kind.${check.evidenceKind}`, { defaultValue: check.evidenceKind })}`}
             </span>
-            {!check.located && <span className="text-[12px] font-normal text-muted-foreground">{t('mindMapCheck.fallback')}</span>}
+            {check.documentId && !check.located && <span className="text-[12px] font-normal text-muted-foreground">{t('mindMapCheck.fallback')}</span>}
           </div>
         </div>
       )}

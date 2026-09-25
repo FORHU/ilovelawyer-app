@@ -352,6 +352,9 @@
   "mindMapCheck": {
     "notFound": "Not found in the cited document",
     "contradicted": "Contradicted by the cited document",
+    "notSupportedByCase": "Not supported by the case data",
+    "contradictedByCase": "Contradicted by the case data",
+    "supportedByCase": "Supported by the case data",
     "supportedBy": "Supported by {{source}}",
     "notFoundIn": "Not found in {{source}}",
     "contradictedBy": "Contradicted by {{source}}",

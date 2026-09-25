@@ -218,6 +218,9 @@
   "mindMapCheck": {
     "notFound": "Hindi makita sa binanggit na dokumento",
     "contradicted": "Sinasalungat ng binanggit na dokumento",
+    "notSupportedByCase": "Hindi sinusuportahan ng datos ng kaso",
+    "contradictedByCase": "Sinasalungat ng datos ng kaso",
+    "supportedByCase": "Sinusuportahan ng datos ng kaso",
     "supportedBy": "Sinusuportahan ng {{source}}",
     "notFoundIn": "Hindi makita sa {{source}}",
     "contradictedBy": "Sinasalungat ng {{source}}",

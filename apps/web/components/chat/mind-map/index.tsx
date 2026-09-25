@@ -389,9 +389,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           expand,
           isSelected: node.id === selectedNodeId,
           reviewLabel: node.data.reviewVerdict === 'CONTRADICTED'
-            ? t('mindMapCheck.contradicted')
+            ? t(node.data.reviewByCase ? 'mindMapCheck.contradictedByCase' : 'mindMapCheck.contradicted')
             : node.data.reviewVerdict === 'UNSUPPORTED'
-              ? t('mindMapCheck.notFound')
+              ? t(node.data.reviewByCase ? 'mindMapCheck.notSupportedByCase' : 'mindMapCheck.notFound')
               : node.data.reviewVerdict === 'SOURCE_REMOVED'
                 ? t('mindMapCheck.sourceRemoved')
                 : undefined,

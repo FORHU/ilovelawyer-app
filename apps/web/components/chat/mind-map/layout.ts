@@ -156,6 +156,8 @@ export function buildMindMapGraph(
             : item.sourceRemoved
               ? 'SOURCE_REMOVED'
               : null,
+        // Case-data verdicts say "…by the case data", page ones "…the cited document".
+        reviewByCase: item.check?.basis === 'caseData',
         childCount: children.length,
       },
       // (x, y) is the centre of the node's slot; React Flow positions a node by its top-left

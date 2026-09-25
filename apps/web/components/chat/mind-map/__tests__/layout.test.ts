@@ -74,4 +74,18 @@ describe("buildMindMapGraph", () => {
     const nodes = byId(buildMindMapGraph(checked, "horizontal", new Set(), "").nodes)
     expect(["a", "b", "c", "d", "e"].map((id) => nodes.get(id).data.reviewVerdict)).toEqual([null, "UNSUPPORTED", "CONTRADICTED", null, "SOURCE_REMOVED"])
   })
+
+  it("says whether a verdict was reached on the case data or on a cited page", () => {
+    const tree = {
+      id: "root",
+      label: "R",
+      children: [
+        { id: "a", label: "A", check: { verdict: "UNSUPPORTED", confidence: 0.9, basis: "caseData", checkedAt: "" } },
+        { id: "b", label: "B", check: { verdict: "UNSUPPORTED", confidence: 0.9, basis: "document", documentId: "d", located: true, checkedAt: "" } },
+      ],
+    }
+    const nodes = byId(buildMindMapGraph(tree, "horizontal", new Set(), "").nodes)
+    expect(nodes.get("a").data.reviewByCase).toBe(true)
+    expect(nodes.get("b").data.reviewByCase).toBe(false)
+  })
 })

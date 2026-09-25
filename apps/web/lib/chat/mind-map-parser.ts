@@ -24,7 +24,8 @@ export interface MindMapItem {
   media?: unknown[];
   /** Case documents this point comes from (the case's document-built map only). */
   sources?: { documentId: string; page?: number }[];
-  /** What Jev found checking this point against its cited passage — see MindMapNodeCheck. */
+  /** What Jev found checking this point against the case data (and its cited passage, if any) —
+   * see MindMapNodeCheck. */
   check?: MindMapNodeCheck;
   /** A document this point cited was removed or archived and the map wasn't rebuilt. */
   sourceRemoved?: boolean;
@@ -36,13 +37,18 @@ export interface MindMapItem {
 export interface MindMapNodeCheck {
   verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED";
   confidence: number;
-  /** "ASSERTED_BY_PARTY" | "STATED_BY_WITNESS" | "SHOWN_BY_DOCUMENT" | "ESTABLISHED" */
-  evidenceKind: string;
-  documentId: string;
+  /** What Jev judged against: the case data alone ("caseData"), or the case data plus the page the
+   * point cites ("document"). */
+  basis: "caseData" | "document";
+  /** "ASSERTED_BY_PARTY" | "STATED_BY_WITNESS" | "SHOWN_BY_DOCUMENT" | "ESTABLISHED" — only on
+   * checks saved before case-data judging. */
+  evidenceKind?: string;
+  /** The cited document ("document" basis only). */
+  documentId?: string;
   page?: number;
   /** False when judged on the document's most relevant passages because no page was cited (or
-   * the page had no text) — weaker evidence. */
-  located: boolean;
+   * the page had no text) — weaker evidence. "document" basis only. */
+  located?: boolean;
   checkedAt: string;
 }
 
