@@ -53,6 +53,29 @@ export const labelTextClass = "text-[10px] font-semibold tracking-[1.4px] text-m
 export const bodyTextClass = "text-[13px] text-foreground"
 export const secondaryTextClass = "text-[13px] text-muted-foreground"
 
+// A form control with its visible label above it (never placeholder-as-label) and optional hint below.
+export function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={htmlFor} className={labelTextClass}>
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
 export function SectionLabel({ children }: { children: ReactNode }) {
   return <p className={cn("mb-2", labelTextClass)}>{children}</p>
 }
