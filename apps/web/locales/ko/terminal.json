@@ -219,6 +219,42 @@
   "aiGenerated": "AI 생성",
   "groundedIn": "출처: {{doc}}",
   "addLegalIssue": "법적 쟁점 추가",
+  "legalIssuesIntro": "재판부가 판단해야 할 미결 쟁점입니다.",
+  "issueContested": "다툼 있음",
+  "issueBriefing": "서면 준비 중",
+  "issueOpen": "미결",
+  "issueResolved": "해결됨",
+  "issueUnrated": "미분류",
+  "issueStatus": "상태",
+  "issueResolvedCount": "{{total}}건 중 {{done}}건 해결",
+  "issueDetailPlaceholder": "누가 무엇에 대해 입증 책임을 지는지",
+  "issueJevCheck": "Jev로 확인",
+  "issueJevChecking": "확인 중…",
+  "issueJevOff": "법적 쟁점에 대한 Jev 확인이 꺼져 있습니다.",
+  "issueJevFailed": "Jev가 이 쟁점을 확인하지 못했습니다. 다시 시도하세요.",
+  "issueJevRaisedLine": "Jev 판단: {{verdict}} ({{pct}}%).",
+  "issueJevRaised": {
+    "RAISED": "사건에서 제기된 쟁점",
+    "NOT_RAISED": "사건에서 제기되지 않은 쟁점"
+  },
+  "issueJevContested": {
+    "CONTESTED": "다툼 있음",
+    "UNCONTESTED": "다툼 없음",
+    "UNCLEAR": "다툼 여부 불분명"
+  },
+  "issueJevBurdenLine": "입증 책임: {{party}} ({{pct}}%).",
+  "issueJevBurden": {
+    "CLAIMANT": "신청인 측",
+    "RESPONDENT": "피신청인 측",
+    "SHARED": "양측",
+    "UNCLEAR": "불분명"
+  },
+  "issueJevBurdenDisputed": "작성 AI는 {{party}}에 두었습니다.",
+  "issueJevModelRating": "작성 AI의 표시: {{tag}}.",
+  "issueJevFlag": {
+    "NOT_RAISED": "Jev는 사건 자료에서 이 쟁점을 찾지 못했습니다",
+    "BURDEN_DISPUTED": "Jev는 입증 책임을 상대방에게 둡니다"
+  },
   "addWeakness": "약점 추가",
   "addStrength": "강점 추가",
   "addAttackStrategy": "공격 전략 추가",

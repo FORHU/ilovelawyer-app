@@ -649,6 +649,20 @@ export function useUpdateFindingMutation(caseId: string) {
   })
 }
 
+/** Jev's check of one saved finding, on request. Only Legal Issues has one so far; the API
+ * answers 409 while USE_JEV_LEGAL_ISSUES is off. */
+export function useJevCheckFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}/jev-check`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
 export function useDeleteFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

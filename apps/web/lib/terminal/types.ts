@@ -352,6 +352,22 @@ export type FindingTag =
   | "STRONG"
   | "MODERATE"
 
+/** Jev's check of a legal issue (USE_JEV_LEGAL_ISSUES) — stored in CaseFinding.jev. */
+export interface LegalIssueJevCheck {
+  raised: "RAISED" | "NOT_RAISED"
+  raisedConfidence: number
+  contested: "CONTESTED" | "UNCONTESTED" | "UNCLEAR"
+  contestedConfidence: number
+  burden: BurdenParty
+  burdenConfidence: number
+  /** The drafting model's own burden call; null on lawyer-entered issues. */
+  modelBurden: BurdenParty | null
+  flags: ("NOT_RAISED" | "BURDEN_DISPUTED")[]
+  uncertain: boolean
+}
+
+export type BurdenParty = "CLAIMANT" | "RESPONDENT" | "SHARED" | "UNCLEAR"
+
 export interface CaseFinding {
   id: string
   caseId: string

@@ -247,6 +247,42 @@
   "aiGenerated": "AI-generated",
   "groundedIn": "Source: {{doc}}",
   "addLegalIssue": "Add a legal issue",
+  "legalIssuesIntro": "Open questions the tribunal will have to decide.",
+  "issueContested": "Contested",
+  "issueBriefing": "Briefing",
+  "issueOpen": "Open",
+  "issueResolved": "Resolved",
+  "issueUnrated": "Unrated",
+  "issueStatus": "Status",
+  "issueResolvedCount": "{{done}} of {{total}} resolved",
+  "issueDetailPlaceholder": "Who bears the burden, and on what",
+  "issueJevCheck": "Check with Jev",
+  "issueJevChecking": "Checking…",
+  "issueJevOff": "Jev checks for legal issues are turned off.",
+  "issueJevFailed": "Jev couldn't check this issue. Try again.",
+  "issueJevRaisedLine": "Jev reads it as {{verdict}} ({{pct}}%).",
+  "issueJevRaised": {
+    "RAISED": "raised by the case",
+    "NOT_RAISED": "not raised by the case"
+  },
+  "issueJevContested": {
+    "CONTESTED": "contested",
+    "UNCONTESTED": "not contested",
+    "UNCLEAR": "unclear whether contested"
+  },
+  "issueJevBurdenLine": "Burden on: {{party}} ({{pct}}%).",
+  "issueJevBurden": {
+    "CLAIMANT": "the claimant",
+    "RESPONDENT": "the respondent",
+    "SHARED": "both sides",
+    "UNCLEAR": "unclear"
+  },
+  "issueJevBurdenDisputed": "The drafting AI put it on {{party}}.",
+  "issueJevModelRating": "The drafting AI marked it {{tag}}.",
+  "issueJevFlag": {
+    "NOT_RAISED": "Jev doesn't see this issue in the case data",
+    "BURDEN_DISPUTED": "Jev puts the burden on the other side"
+  },
   "addWeakness": "Add a weakness",
   "addStrength": "Add a strength",
   "addAttackStrategy": "Add an attack strategy",

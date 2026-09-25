@@ -221,6 +221,42 @@
   "aiGenerated": "AI-generated",
   "groundedIn": "Pinagmulan: {{doc}}",
   "addLegalIssue": "Magdagdag ng legal na isyu",
+  "legalIssuesIntro": "Mga bukas na tanong na kailangang pagpasyahan ng tribunal.",
+  "issueContested": "Pinagtatalunan",
+  "issueBriefing": "Isinusulat",
+  "issueOpen": "Bukas",
+  "issueResolved": "Nalutas",
+  "issueUnrated": "Walang rating",
+  "issueStatus": "Status",
+  "issueResolvedCount": "{{done}} sa {{total}} ang nalutas",
+  "issueDetailPlaceholder": "Sino ang may pasanin ng patunay, at tungkol saan",
+  "issueJevCheck": "Suriin kay Jev",
+  "issueJevChecking": "Sinusuri…",
+  "issueJevOff": "Naka-off ang pagsusuri ni Jev para sa mga legal na isyu.",
+  "issueJevFailed": "Hindi nasuri ni Jev ang isyung ito. Subukang muli.",
+  "issueJevRaisedLine": "Basa ni Jev: {{verdict}} ({{pct}}%).",
+  "issueJevRaised": {
+    "RAISED": "itinataas ng kaso",
+    "NOT_RAISED": "hindi itinataas ng kaso"
+  },
+  "issueJevContested": {
+    "CONTESTED": "pinagtatalunan",
+    "UNCONTESTED": "hindi pinagtatalunan",
+    "UNCLEAR": "hindi malinaw kung pinagtatalunan"
+  },
+  "issueJevBurdenLine": "Pasanin ng patunay: {{party}} ({{pct}}%).",
+  "issueJevBurden": {
+    "CLAIMANT": "ang nagsampa",
+    "RESPONDENT": "ang respondent",
+    "SHARED": "magkabilang panig",
+    "UNCLEAR": "hindi malinaw"
+  },
+  "issueJevBurdenDisputed": "Inilagay ito ng AI na sumulat sa {{party}}.",
+  "issueJevModelRating": "Minarkahan ito ng AI na sumulat bilang {{tag}}.",
+  "issueJevFlag": {
+    "NOT_RAISED": "Hindi nakikita ni Jev ang isyung ito sa datos ng kaso",
+    "BURDEN_DISPUTED": "Inilalagay ni Jev ang pasanin sa kabilang panig"
+  },
   "addWeakness": "Magdagdag ng kahinaan",
   "addStrength": "Magdagdag ng lakas",
   "addAttackStrategy": "Magdagdag ng attack strategy",
