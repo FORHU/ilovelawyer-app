@@ -8,7 +8,7 @@
 > [`getting-started.md`](getting-started.md). For current direction see
 > [`implementation-plan.md`](../../implementation-plan.md) at the repo root.
 
-**Scope:** the native desktop shell (`src-tauri/`). For the underlying application itself (Case Terminal, auth, API — what this shell wraps but never reimplements), see [`system-architecture.md`](system-architecture.md) in this same folder. For what's still missing before this could actually ship, see [`production-readiness.md`](production-readiness.md) — as of this writing, this is a proof of concept, not production-ready. This doc is the standalone reference for the shell; the original planning history (extensive design Q&A, phase-by-phase decisions) lives in [`../architecture/`](../architecture/) — treat this file as the authoritative, current-state summary of that history, not a pointer to it.
+**Scope:** the native desktop shell (`src-tauri/`). For the underlying application itself (Case Terminal, auth, API — what this shell wraps but never reimplements), see [`system-architecture.md`](../architecture/system-architecture.md). For what's still missing before this could actually ship, see [`production-readiness.md`](production-readiness.md) — as of this writing, this is a proof of concept, not production-ready. This doc is the standalone reference for the shell; the original planning history (extensive design Q&A, phase-by-phase decisions) lives in [`../architecture/`](../architecture/) — treat this file as the authoritative, current-state summary of that history, not a pointer to it.
 
 ## What this is
 
