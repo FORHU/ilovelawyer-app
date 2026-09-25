@@ -278,7 +278,9 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                     {override !== null
                       ? t("witnessManualScore")
                       : ai !== null
-                        ? t("witnessAiScore")
+                        ? band
+                          ? `${t("witnessAiScore")} · ${t(`witnessBand${band[0]}${band.slice(1).toLowerCase()}`)} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}`
+                          : t("witnessAiScore")
                         : scoredNoData
                           ? t("witnessNotEnoughData")
                           : t("witnessNotScored")}
