@@ -215,6 +215,8 @@ export interface SnapshotCitation {
   id: string
   quotedText: string
   citedReference: string | null
+  /** The source text the quote was checked against — prefilled when editing a citation. */
+  officialText?: string | null
   status: "VALID" | "INVALID" | "UNVERIFIED" | "ADVERSE"
   notes: string | null
   /** Separate from `status` (does the quote match the source): does the cited authority itself

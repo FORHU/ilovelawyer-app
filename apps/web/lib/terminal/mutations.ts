@@ -528,6 +528,43 @@ export function useCheckCitationMutation(caseId: string) {
   })
 }
 
+// Both refresh the snapshot (the Law panel reads citations from it) and Citation Map's seed, which
+// is built from citedReference — an edited or removed citation must not linger there. An edit is
+// re-verified server-side, so the row comes back with a fresh status and authority link.
+function invalidateCitations(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
+  queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+  queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+}
+
+export function useUpdateCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      quotedText?: string
+      citedReference?: string | null
+      officialText?: string | null
+      pinpoint?: string | null
+    }) =>
+      apiFetch(`/api/my-cases/${caseId}/citations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
+  })
+}
+
+export function useDeleteCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/my-cases/${caseId}/citations/${id}`, { method: "DELETE" }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
+  })
+}
+
 export function useCreateDeadlineMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
