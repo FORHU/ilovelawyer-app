@@ -674,7 +674,6 @@ export function useUpdateWitnessMutation(caseId: string) {
       credibilityOverride?: number | null
       statementDueOn?: string | null
       statementReceived?: boolean
-      needsDone?: string[]
     }) =>
       apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
         method: "PATCH",
