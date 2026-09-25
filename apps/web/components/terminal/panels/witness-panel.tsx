@@ -9,7 +9,8 @@ import {
   useScoreWitnessesMutation,
   useUpdateWitnessMutation,
 } from "@/lib/terminal/mutations"
-import type { Witness, WitnessNeed, WitnessStatus } from "@/lib/terminal/types"
+import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } from "@/lib/terminal/types"
+import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
@@ -24,7 +25,17 @@ type WitnessData = Partial<Witness> & { name: string }
 
 // Reads the graph-view projection (view_type=witnesses) instead of slicing CaseSnapshot, so a
 // witness added/removed from any mounted panel refreshes this one via the shared query cache.
-export function WitnessPanel({ caseId }: { caseId: string }) {
+// A proof only reads as "Matches" when the server's check was this sure; otherwise it is shown as
+// not confirmed. Mirrors PROOF_CONFIRM_MIN_CONFIDENCE in the API.
+const PROOF_CONFIRM_MIN_CONFIDENCE = 0.6
+
+export function WitnessPanel({
+  caseId,
+  onJumpToPanel,
+}: {
+  caseId: string
+  onJumpToPanel?: (id: PanelId) => void
+}) {
   const { t } = useTranslation("terminal")
   const queryClient = useQueryClient()
   const create = useCreateWitnessMutation(caseId)
@@ -39,6 +50,11 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   const [summary, setSummary] = useState("")
   const [openReasons, setOpenReasons] = useState<Set<string>>(new Set())
   const [openQuotes, setOpenQuotes] = useState<Set<string>>(new Set())
+  const [proofFor, setProofFor] = useState<{ nodeId: string; key: string } | null>(null)
+  const [proofDoc, setProofDoc] = useState("")
+  const [proofNote, setProofNote] = useState("")
+  const docs = useCaseDocumentsQuery(caseId).data ?? []
+  const docName = (id: string) => docs.find((d) => d.id === id)?.name ?? t("witnessProofDocGone")
   const graphView = useGraphViewQuery(caseId, "witnesses")
   const witnesses = (graphView.data?.nodes ?? []).map((node) => ({
     node,
@@ -173,14 +189,30 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
             const reasonsOpen = openReasons.has(node.id)
             const quoteOpen = openQuotes.has(node.id)
             const aiFound = w.source === "AI"
-            const done = new Set(w.needsDone ?? [])
+            // Old ticks were bare keys with no proof; only entries with a proof document count.
+            const doneList = (w.needsDone ?? []).filter((d): d is WitnessNeedDone => typeof d === "object" && d !== null)
+            const doneByKey = new Map(doneList.map((d) => [d.key, d]))
             const needs: WitnessNeed[] = w.aiFactors?.needs ?? []
-            const openNeeds = needs.filter((n) => !done.has(n.key))
+            const openNeeds = needs.filter((n) => !doneByKey.has(n.key))
+            const asInput = (d: WitnessNeedDone) => ({ key: d.key, documentId: d.documentId, note: d.note })
             const toggleNeed = (key: string) => {
-              const next = new Set(done)
-              if (next.has(key)) next.delete(key)
-              else next.add(key)
-              update.mutate({ id: node.refId, needsDone: [...next] })
+              if (doneByKey.has(key)) {
+                update.mutate({ id: node.refId, needsDone: doneList.filter((d) => d.key !== key).map(asInput) })
+              } else {
+                setProofFor({ nodeId: node.id, key })
+                setProofDoc("")
+                setProofNote("")
+              }
+            }
+            const confirmProof = () => {
+              if (!proofFor || !proofDoc) return
+              update.mutate(
+                {
+                  id: node.refId,
+                  needsDone: [...doneList.map(asInput), { key: proofFor.key, documentId: proofDoc, note: proofNote.trim() || undefined }],
+                },
+                { onSuccess: () => setProofFor(null) },
+              )
             }
             const band = w.aiFactors?.band ?? null
             const commitCredibility = (value: number) => {
@@ -336,17 +368,23 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       {openNeeds.length > 0 ? ` · ${openNeeds.length}` : ""}
                     </p>
                     <ul className="mt-1.5 flex flex-col gap-1.5 text-[12px] text-foreground">
-                      {needs.map((n) => (
+                      {needs.map((n) => {
+                        const doneItem = doneByKey.get(n.key)
+                        const proofOpen = proofFor?.nodeId === node.id && proofFor.key === n.key
+                        const confirmed =
+                          doneItem?.match?.verdict === "SATISFIES" && doneItem.match.confidence >= PROOF_CONFIRM_MIN_CONFIDENCE
+                        return (
                         <li key={n.key} className="flex items-start gap-2">
                           <input
                             type="checkbox"
-                            checked={done.has(n.key)}
+                            checked={!!doneItem}
                             onChange={() => toggleNeed(n.key)}
                             disabled={update.isPending}
                             aria-label={t("witnessNeedsDone")}
                             className="mt-0.5 shrink-0"
                           />
-                          <span className={done.has(n.key) ? "text-muted-foreground line-through" : undefined}>
+                          <div className="min-w-0 flex-1">
+                          <span className={doneItem ? "text-muted-foreground" : undefined}>
                             {n.text}
                             {n.link === "STATEMENT" && !w.statementReceived ? (
                               <>
@@ -362,8 +400,74 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                               </>
                             ) : null}
                           </span>
+                          {doneItem ? (
+                            <>
+                              <p className={`mt-1 ${labelTextClass}`}>
+                                {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                {" \u00b7 "}
+                                <span className={confirmed ? "text-emerald-500" : "text-amber-500"}>
+                                  {confirmed ? t("witnessProofMatches") : t("witnessProofUnconfirmed")}
+                                </span>
+                                {" \u00b7 "}
+                                {t("witnessNotReflected")}
+                              </p>
+                              {doneItem.note ? <p className="mt-0.5 text-[12px] text-muted-foreground">{doneItem.note}</p> : null}
+                            </>
+                          ) : null}
+                          {proofOpen ? (
+                            <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
+                              <p className="text-[12px] text-foreground">{t("witnessProofPrompt")}</p>
+                              <select
+                                value={proofDoc}
+                                onChange={(e) => setProofDoc(e.target.value)}
+                                aria-label={t("witnessProofSelect")}
+                                className={fieldClass}
+                              >
+                                <option value="">{t("witnessProofSelect")}</option>
+                                {docs.map((d) => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={proofNote}
+                                onChange={(e) => setProofNote(e.target.value)}
+                                placeholder={t("witnessProofNote")}
+                                aria-label={t("witnessProofNote")}
+                                className={fieldClass}
+                              />
+                              {update.isError && update.error instanceof Error ? (
+                                <p className="text-[11px] text-danger">{update.error.message}</p>
+                              ) : null}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={confirmProof}
+                                  disabled={!proofDoc || update.isPending}
+                                  className={primaryBtnClass}
+                                >
+                                  {t("witnessProofConfirm")}
+                                </button>
+                                <button type="button" onClick={() => setProofFor(null)} className={ghostBtnClass}>
+                                  {t("witnessProofCancel")}
+                                </button>
+                                {onJumpToPanel ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJumpToPanel("evidence")}
+                                    className="text-[12px] underline underline-offset-2 hover:text-foreground"
+                                  >
+                                    {t("witnessProofOpenDocs")}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          </div>
                         </li>
-                      ))}
+                        )
+                      })}
                     </ul>
                   </div>
                 ) : null}

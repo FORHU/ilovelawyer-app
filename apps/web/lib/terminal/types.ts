@@ -371,6 +371,17 @@ export interface WitnessAiFactors {
   needs?: WitnessNeed[]
 }
 
+/** A ticked-off need. The proof is a document or photo from the case's Documents. `match` is what
+ * the server made of the fit between that document and the requirement. */
+export interface WitnessNeedDone {
+  key: string
+  documentId: string
+  note?: string
+  by: string
+  at: string
+  match?: { verdict: "SATISFIES" | "PARTLY" | "CANNOT_TELL"; confidence: number }
+}
+
 export interface Witness {
   id: string
   caseId: string
@@ -390,7 +401,7 @@ export interface Witness {
   aiSuggestedStatus: WitnessStatus | null
   aiFactors: WitnessAiFactors | null
   /** Keys of "what's needed" items the lawyer has ticked off. */
-  needsDone: string[] | null
+  needsDone: (WitnessNeedDone | string)[] | null
   credibilityOverride: number | null
   scoredAt: string | null
   statementDueOn: string | null

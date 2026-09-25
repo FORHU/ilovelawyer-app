@@ -109,7 +109,7 @@ export function TerminalPanelBody({
         />
       )
     case "witnesses":
-      return <WitnessPanel caseId={caseId} />
+      return <WitnessPanel caseId={caseId} onJumpToPanel={onJumpToPanel} />
     case "damages":
       return <DamagePanel snapshot={snapshot} caseId={caseId} />
     case "caseReconstruction":
