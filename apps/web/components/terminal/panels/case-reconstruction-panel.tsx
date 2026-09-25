@@ -583,8 +583,8 @@ function StoryboardView({
                 >
                   <p className="flex items-center gap-1.5 font-medium text-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate" title={docNameById.get(ref.docId) ?? ref.docId}>
-                      {docNameById.get(ref.docId) ?? ref.docId}
+                    <span className="truncate" title={docNameById.get(ref.docId) ?? t("archivedDocument")}>
+                      {docNameById.get(ref.docId) ?? t("archivedDocument")}
                     </span>
                     {ref.page != null && (
                       <span className="shrink-0 text-muted-foreground">
