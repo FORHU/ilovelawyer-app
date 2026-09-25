@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "default",
+  "description": "Capabilities for windows opened by the I Love Lawyer desktop shell. Every window loads the web app from a URL (local dev server, bundled sidecar, or a deployed tenant), so IPC is only granted to those origins. The app's own commands (open_case_terminal, open_panel_window) are allowed alongside core:default; the shell plugin is deliberately not exposed to web pages.",
+  "windows": ["main", "case-terminal-*", "panel-*"],
+  "remote": {
+    "urls": ["http://localhost:*", "https://*.ilovelawyer.com"]
+  },
+  "permissions": ["core:default"]
+}

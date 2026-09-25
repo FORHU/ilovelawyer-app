@@ -1,9 +1,9 @@
-// Window adapter shared by the browser build and the ilovelawyer-desktop (Tauri) shell.
+// Window adapter shared by the browser build and the Tauri desktop shell.
 //
 // In the desktop app, Tauri owns every native window: the page asks it to open a Case Terminal or
 // pop out a panel, and Tauri creates, places and tracks that window itself (see
-// ilovelawyer-desktop/src-tauri/src/lib.rs). In a plain browser the same calls fall back to
-// ordinary web behavior. Components call these helpers and never need to know which one ran.
+// src-tauri/src/lib.rs). In a plain browser the same calls fall back to ordinary web behavior.
+// Components call these helpers and never need to know which one ran.
 //
 // Talks to Tauri through the `window.__TAURI__` global (the shell sets `withGlobalTauri`) rather
 // than the @tauri-apps/api package, so the web app carries no desktop-only dependency.

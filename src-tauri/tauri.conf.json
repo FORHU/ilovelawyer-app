@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "I Love Lawyer Terminal!",
+  "version": "0.0.1",
+  "identifier": "com.ilovelawyer.desktop",
+  "build": {
+    "devUrl": "http://localhost:3002",
+    "beforeDevCommand": "pnpm --filter web dev",
+    "beforeBuildCommand": "pnpm --filter web build && node scripts/stage-web.js",
+    "frontendDist": "frontend-dist"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": true,
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/node"],
+    "resources": {
+      "C:\\.ilw-build\\web-standalone": "web-standalone"
+    }
+  }
+}
