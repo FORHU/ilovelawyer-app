@@ -255,7 +255,7 @@
   "witnessesIntro": "Statement status for the custodians named in the complaint.",
   "witnessReady": "Ready",
   "witnessAdverse": "Adverse",
-  "witnessOutstanding": "Outstanding",
+  "witnessOutstanding": "Incomplete",
   "witnessCredibility": "Credibility",
   "witnessCycleStatus": "Change status",
   "witnessScore": "Score with AI",
