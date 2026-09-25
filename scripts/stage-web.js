@@ -3,7 +3,7 @@
 //
 // UNVERIFIED as of the 2026-09-25 migration into this repo. The production bundling path was
 // never confirmed working even in ilovelawyer-desktop, and the move invalidated every relative
-// path below. `tauri dev` does not use this script. See docs/desktop/production-readiness.md.
+// path below. `tauri dev` does not use this script.
 //
 // Why this exists: `.next/standalone` is NOT self-contained under pnpm in a monorepo.
 // Next emits:
@@ -45,7 +45,7 @@ const standalone = path.join(appWeb, ".next", "standalone")
 // with no env var interpolation, so it can't compute this at build time, which means it
 // can't follow a dynamic path either. If this repo is ever checked out on a different drive,
 // update both this constant and that file together, or the build fails with tauri.conf.json's
-// well-known "resource path doesn't exist" error (see docs/desktop/architecture.md's gotchas).
+// well-known "resource path doesn't exist" error.
 const STAGING_ROOT = "C:\\.ilw-build"
 if (path.parse(repoRoot).root.toUpperCase() !== "C:\\") {
   fail(
@@ -99,7 +99,7 @@ if (!fs.existsSync(next)) fail(`\`next\` is not resolvable from ${staging} — t
 
 // The app's build-time .env rides along, which is how this repo has always bundled it. Nothing
 // secret lives there (NEXT_PUBLIC_* only), but it does pin NEXT_PUBLIC_API_URL into the shipped
-// app — see docs/desktop/production-readiness.md item 5.
+// app.
 const env = path.join(staging, ".env")
 console.log(`stage-web: staged ${staging}`)
 console.log(`stage-web: .env ${fs.existsSync(env) ? "included" : "not present"}`)

@@ -4,7 +4,7 @@ A code-reading review of `ilovelawyer-app`, plus checks run afterwards on `featu
 
 **None of the findings below are fixed yet.**
 
-Related: API findings are in `ilovelawyer-api/docs/evaluation-2026-09-24.md`; the desktop window plan is in `docs/desktop/window-ownership-plan.md`.
+Related: API findings are in `ilovelawyer-api/docs/evaluation-2026-09-24.md`.
 
 ## 1. Possible XSS in the spreadsheet preview
 

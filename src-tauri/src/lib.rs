@@ -60,7 +60,7 @@ struct PanelWindowClosed {
 
 /// Desktop-shell-only config, loaded from `.env` (see `.env.example`) with hardcoded
 /// fallbacks. Deliberately just things specific to this Tauri shell itself — no app/API
-/// secrets belong here (see docs/desktop/architecture.md's core rule: this repo orchestrates windows,
+/// secrets belong here (this shell orchestrates windows,
 /// it never holds the application's own credentials).
 struct Config {
     frontend_port: u16,
@@ -95,7 +95,7 @@ impl Config {
     /// The base origin every window loads, e.g. `http://localhost:3002` or
     /// `https://ph-dev.ilovelawyer.com`. Deliberately `localhost`, not `127.0.0.1`, for the
     /// local case — ilovelawyer-api's CORS allowlist (`CLIENT_URL`) is keyed off exact origin
-    /// strings and only lists the `localhost` form (see docs/desktop/architecture.md).
+    /// strings and only lists the `localhost` form.
     fn base_url(&self) -> String {
         self.frontend_url
             .clone()

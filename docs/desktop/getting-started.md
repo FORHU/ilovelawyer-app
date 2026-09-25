@@ -76,8 +76,8 @@ pointed at `http://localhost:3002/homepage/terminal/{caseId}`.
 
 > **In production it's slightly different:** there's no `next dev`, so the app ships a
 > copy of Node plus a built Next.js server and starts it itself ("the sidecar"). That
-> path exists in code but **is not currently verified working** — see
-> [`production-readiness.md`](production-readiness.md).
+> path exists in code but **is not currently verified working** — see the header comment
+> in `scripts/stage-web.js`.
 
 ---
 
@@ -318,12 +318,8 @@ Verified production packaging / installer
 ```
 
 The current Rust only manages **its own** windows. It has never looked at the rest of
-your desktop.
-
-For where this is going and the decisions already made, read
-[`implementation-plan.md`](../../implementation-plan.md) at the repo root. The older
-design history — the Q&A and phase-by-phase decisions this all came out of — is in
-[`../architecture/`](../architecture/).
+your desktop. Adding that means Win32 work — `EnumWindows` for an initial scan plus
+`SetWinEventHook` for live events, on a dedicated thread with its own message pump.
 
 ---
 
