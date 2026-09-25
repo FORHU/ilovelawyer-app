@@ -18,9 +18,41 @@ export interface CitationMapSeedItem {
   } | null
 }
 
+/** A pleaded claim — the "ground" authorities attach to in the list view. */
+export interface CitationMapClaim {
+  id: string
+  title: string
+  causeOfAction: string | null
+  /** AI = found in the pleadings; sourceLabel/sourceQuote say where. */
+  source: "MANUAL" | "AI"
+  sourceLabel: string | null
+  sourceQuote: string | null
+}
+
+/** Jev's check of one link (USE_JEV_CITATION_GROUNDS). */
+export interface CitationGroundJevCheck {
+  attaches: "SUPPORTS_GROUND" | "TANGENTIAL" | "DOES_NOT_APPLY"
+  confidence: number
+}
+
+/** One authority (a seed citation) attached to one claim. */
+export interface CitationGround {
+  id: string
+  citationCheckId: string
+  claimId: string
+  role: "SUBSTANTIVE" | "PROCEDURAL"
+  source: "MANUAL" | "AI"
+  /** The mapping model's one-line reason; null on manual links. */
+  reason: string | null
+  /** Null when Jev wasn't run or its call failed. */
+  jev: CitationGroundJevCheck | null
+}
+
 export interface CitationMapSeed {
   caseId: string
   citations: CitationMapSeedItem[]
+  claims: CitationMapClaim[]
+  grounds: CitationGround[]
 }
 
 export interface CitationEdgeToLaw {

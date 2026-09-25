@@ -75,6 +75,8 @@ export type AiGenerationKind =
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
+  | "claimExtract"
+  | "citationGrounds"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -411,6 +413,78 @@ export function useScanContradictionsMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "contradictions") })
     },
+  })
+}
+
+// ── Citation Map list view: pleaded claims and authority → claim links ──────────────────────
+// Kept here rather than in lib/citation-map/mutations.ts because they also touch terminalKeys
+// (job status) and graphViewKeys (claims are CLAIM nodes) — and that module is imported here.
+
+/** Queued "Find claims" — AI reads the pleadings for the case's claims (ClaimExtractSvc). */
+export function useExtractClaimsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/claims/extract`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "claimExtract") })
+    },
+  })
+}
+
+/** Queued "Map authorities" — AI links each cited authority to the claims it bears on. */
+export function useMapCitationGroundsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
+    },
+  })
+}
+
+function useInvalidateCitationMap(caseId: string) {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+    queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+  }
+}
+
+export function useCreateClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { title: string; causeOfAction?: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/claims`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/claims/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useCreateCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { citationCheckId: string; claimId: string; role: "SUBSTANTIVE" | "PROCEDURAL" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-grounds`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/citation-grounds/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
   })
 }
 

@@ -8,7 +8,6 @@ import ConsultationChat from "@/components/chat/consultation-chat"
 // (never at module-eval time), by which point both modules have finished initializing. The
 // same cycle already exists today via terminal-settings-sidebar.tsx importing PANEL_TITLES.
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
-import { CitationMap } from "@/components/citation-map"
 import { TheoriesPanel } from "@/components/terminal/theories-panel"
 import type { CaseSnapshot, PanelId, SnapshotRisk } from "@/lib/terminal/types"
 import { CommandPanel } from "@/components/terminal/panels/command-panel"
@@ -20,6 +19,7 @@ import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
 import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
 import { CaseFindingPanel } from "@/components/terminal/panels/case-finding-panel"
 import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
+import { CitationMapPanel } from "@/components/terminal/panels/citation-map-panel"
 import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
 import { StrengthsPanel } from "@/components/terminal/panels/strengths-panel"
 import { WitnessPanel } from "@/components/terminal/panels/witness-panel"
@@ -161,13 +161,5 @@ function MindMapPanel({ caseId }: { caseId: string }) {
       basePath={`/homepage/terminal/${caseId}`}
       caseId={caseId}
     />
-  )
-}
-
-function CitationMapPanel({ caseId }: { caseId: string }) {
-  return (
-    <div className="min-h-0 flex-1 p-2">
-      <CitationMap caseId={caseId} />
-    </div>
   )
 }
