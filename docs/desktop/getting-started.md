@@ -209,27 +209,34 @@ prevented. Ask for the same case twice and the second call just focuses the firs
 
 ## 8. How to run it
 
-One command:
+```powershell
+# 1. One-time machine setup
+winget install --id Rustlang.Rustup -e --accept-package-agreements --accept-source-agreements
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --accept-package-agreements --accept-source-agreements --override "--wait --quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
+# open a new terminal, then verify: rustc --version / cargo --version
 
-```bash
-pnpm tauri:dev
+# 2. Install deps
+cd ilovelawyer-app
+npx pnpm@10.33.4 install
+
+# 3. Two gitignored local files cargo/Tauri needs to even compile
+copy "$(where.exe node)" src-tauri\binaries\node-x86_64-pc-windows-msvc.exe
+mkdir C:\.ilw-build\web-standalone
+
+# 4. Config (also gitignored) — src-tauri\.env
+#   FRONTEND_URL=https://uk-dev.ilovelawyer.com
+#   WINDOW_TITLE=I Love Lawyer Terminal! (uk-dev)
+# apps\web\.env
+#   NODE_ENV=development
+#   NEXT_PUBLIC_API_URL=http://localhost:3001
+#   NEXT_PUBLIC_GOOGLE_CLIENT_ID=placeholder-not-configured
+
+# 5. Run
+npx pnpm@10.33.4 tauri dev
 ```
 
-That starts Next.js for you (`beforeDevCommand` in `tauri.conf.json`), waits for
-`localhost:3002` to respond, then opens the window. The first run compiles ~420 Rust
-crates and takes a few minutes; after that it's seconds.
-
-**If you're only doing web work**, skip Tauri entirely and run `pnpm dev` — it's a normal
-Next.js app.
-
-**If `pnpm dev` is already running** in another terminal, `tauri:dev` will try to start a
-second one and that child will fail on the occupied port. Harmless — Tauri only waits for
-`localhost:3002` to answer, and your existing server answers it — but you'll see a port
-error scroll past. Stop the standalone `pnpm dev` first if you want clean output.
-
-**On exit:** Tauri tries to stop the Next.js process it started, but child-process cleanup
-on Windows isn't perfectly reliable. If port 3002 seems stuck after you quit, look for a
-stray `node` process.
+Switching URLs later: edit `FRONTEND_URL` in `src-tauri\.env`, rerun step 5 — no rebuild needed.
 
 ### Editing code
 
