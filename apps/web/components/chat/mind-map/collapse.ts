@@ -1,6 +1,6 @@
 // Pure tree helpers for the collapse/expand feature — kept dependency-free (no DOM, no
 // reactflow) so they're unit-testable directly, and shared between the id-reconciliation effect,
-// the default "levels 0–2" collapse, and layout.ts's collapsedCount badge.
+// the default "levels 0–3" collapse, and layout.ts's collapsedCount badge.
 
 import type { MindMapItem } from './types';
 

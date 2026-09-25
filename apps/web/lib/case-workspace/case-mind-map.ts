@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { apiFetch } from "@/lib/fetch";
 import { caseKeys } from "@/lib/query-keys";
 import { terminalKeys, useAiJobStatus, type AiJobStatus } from "@/lib/terminal/mutations";
+import { useCaseDocumentsQuery } from "@/lib/cases/mutations";
+import { refreshWillReplaceCaseMap } from "./case-mind-map-status";
 import { usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import type { MindMapChangeResult } from "@/lib/chat/mutations";
 import type { MindMapEditRequest } from "@/components/chat/mind-map/types";
@@ -26,27 +28,50 @@ export interface CaseMindMap {
   retiredAt?: string | null;
 }
 
+/** Refetches the case map when `status` leaves IN_PROGRESS. */
+function useRefetchMapWhenDone(caseId: string, status: string | undefined) {
+  const queryClient = useQueryClient();
+  const prevStatus = useRef(status);
+  useEffect(() => {
+    if (prevStatus.current === "IN_PROGRESS" && status && status !== "IN_PROGRESS") {
+      void queryClient.invalidateQueries({ queryKey: caseKeys.mindMap(caseId) });
+    }
+    prevStatus.current = status;
+  }, [status, caseId, queryClient]);
+}
+
 /**
  * The case map plus the state of its build job (AI job kind "caseMindMap" — held by both the
- * automatic post-upload build and Studio's Regenerate). Refetches the map when a build finishes,
- * wherever it was started.
+ * automatic build and Studio's Regenerate). Refetches the map when a build finishes, wherever it
+ * was started, and when an Analysis Refresh (job "caseRefresh") finishes.
+ *
+ * An Analysis Refresh rebuilds the map only as its last step, but a map it is going to replace
+ * shows as regenerating for the whole run (`isRegenerating`), like the Timeline does. It won't
+ * replace a map the lawyer has expanded or edited (CaseMindMapSvc leaves those alone), so those
+ * don't spin; and with no live map it only builds one when the case has indexed documents. Can
+ * spin for nothing in two rare cases the app can't see (the run's map step finds its documents
+ * unchanged, or automatic builds are off on the server); the map then just refetches unchanged.
  */
 export function useCaseMindMap(caseId: string) {
-  const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: caseKeys.mindMap(caseId),
     queryFn: () => apiFetch<CaseMindMap | null>(`/api/my-cases/${caseId}/mind-map`),
     enabled: !!caseId,
   });
   const job = useAiJobStatus(caseId, "caseMindMap");
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh");
+  const documents = useCaseDocumentsQuery(caseId);
+  useRefetchMapWhenDone(caseId, job.data?.status);
+  useRefetchMapWhenDone(caseId, refreshJob.data?.status);
 
-  const prevStatus = useRef(job.data?.status);
-  useEffect(() => {
-    if (prevStatus.current === "IN_PROGRESS" && job.data?.status && job.data.status !== "IN_PROGRESS") {
-      void queryClient.invalidateQueries({ queryKey: caseKeys.mindMap(caseId) });
-    }
-    prevStatus.current = job.data?.status;
-  }, [job.data?.status, caseId, queryClient]);
+  const map = query.data ?? null;
+  const isBuilding = job.data?.status === "IN_PROGRESS";
+  const isRefreshing = refreshJob.data?.status === "IN_PROGRESS";
+  const refreshWillReplace = refreshWillReplaceCaseMap({
+    isRefreshing,
+    map,
+    hasIndexedDocuments: (documents.data ?? []).some((doc) => doc.ragStatus === "READY" && doc.status !== "ARCHIVED"),
+  });
 
   return {
     map: query.data ?? null,
@@ -56,7 +81,13 @@ export function useCaseMindMap(caseId: string) {
     /** True when the case had a map but its documents were all removed or archived. */
     retired: Boolean(query.data?.retiredAt),
     isLoading: query.isLoading,
-    isBuilding: job.data?.status === "IN_PROGRESS",
+    /** The map's own build is running. Blocks expand/edit/undo, whose result it would replace. */
+    isBuilding,
+    /** An Analysis Refresh is running that will end by replacing this map (see above). */
+    refreshWillReplace,
+    /** What the Regenerate icon and "building" states show: the map's own build, or an Analysis
+     * Refresh that's going to replace it. */
+    isRegenerating: isBuilding || refreshWillReplace,
     buildFailed: job.data?.status === "FAILED",
   };
 }

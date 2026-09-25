@@ -12,3 +12,19 @@ export function caseMindMapStaleDetail(t: TFunction, status: SnapshotCaseMindMap
   if (added && removed) return t("caseMindMap.staleAddedRemoved", { added, removed, count: added });
   return added ? t("caseMindMap.staleAdded", { count: added }) : t("caseMindMap.staleRemoved", { count: removed });
 }
+
+/**
+ * Whether a running Analysis Refresh is going to replace the case map — so it shows as
+ * regenerating for the whole run, not just its last step. Not a map the lawyer has expanded or
+ * edited (the refresh leaves those alone; they go Stale instead). With no live map (none yet, or
+ * retired), only when the case has indexed documents to build one from.
+ */
+export function refreshWillReplaceCaseMap(p: {
+  isRefreshing: boolean;
+  map: { expandedCount?: number; retiredAt?: string | null } | null;
+  hasIndexedDocuments: boolean;
+}): boolean {
+  if (!p.isRefreshing) return false;
+  const liveMap = p.map && !p.map.retiredAt ? p.map : null;
+  return liveMap ? (liveMap.expandedCount ?? 0) === 0 : p.hasIndexedDocuments;
+}

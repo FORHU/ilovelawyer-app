@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Workflow, Clock, Table as TableIcon, AudioLines, Files, Scale, PanelRight, PanelRightClose, ChevronLeft, ChevronRight, ChevronDown, Loader2, RefreshCw, Download, Search, Play } from "lucide-react";
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { MindMap } from "@/components/chat/mind-map";
 import { CaseTimelineView } from "@/components/cases/case-timeline";
 import { DocumentFolderBrowser } from "@/components/cases/document-folder-browser";
@@ -285,9 +284,20 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const generateCaseMindMap = useGenerateCaseMindMapMutation(caseId);
   const showingCaseMap = Boolean(caseMindMap.tree);
   const shownMindMap = caseMindMap.tree ?? activeMindMap;
+  // The map's own build (blocks expand/edit), vs. what the tile, empty state and Regenerate icon
+  // show: that build, or an Analysis Refresh that will end by replacing the map (see
+  // useCaseMindMap's refreshWillReplace) — which says "Generating mind map…" rather than "Building".
   const isBuildingCaseMap = caseMindMap.isBuilding || generateCaseMindMap.isPending;
+  const isCaseMapRegenerating = isBuildingCaseMap || caseMindMap.refreshWillReplace;
+  const caseMapBusyLabel = isBuildingCaseMap ? t("caseMindMap.building") : t("workspace.mindMapGenerating");
+  // Studio's Generate/Regenerate build the case map from the documents whenever the case has any
+  // (CaseMindMapSvc.generateFromDocuments: document excerpts → one map call → saved case map),
+  // even while a chat-generated map is on screen. Sending AUTO_MINDMAP_PROMPT instead runs a whole
+  // chat turn — full legal answer plus its self-check — before the map, which took minutes. The
+  // chat prompt stays only for a case with no documents to build from.
+  const buildsCaseMap = showingCaseMap || readyDocumentCount > 0;
   // "Something is about to replace the shown map" — Regenerate and Expand both wait it out.
-  const isShownMapBusy = showingCaseMap ? isBuildingCaseMap : isGenerating || isMindMapConsultationBusy;
+  const isShownMapBusy = isBuildingCaseMap || (!showingCaseMap && (isGenerating || isMindMapConsultationBusy));
   const mindMapExpansionTarget = useMemo<MindMapExpansionTarget | undefined>(
     () =>
       showingCaseMap && caseMindMap.map
@@ -300,14 +310,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const mindMapExpansion = useMindMapExpansion(mindMapExpansionTarget, {
     disabledReason: !isShownMapBusy
       ? undefined
-      : showingCaseMap
+      : isBuildingCaseMap
         ? t("caseMindMap.rebuilding")
         : t("workspace.replyInProgressHint"),
   });
-  // Regenerate replaces expansions too — the header's icon button asks first (MindMap's own
-  // toolbar button has its inline version of the same warning).
-  const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false);
-  const mindMapExpandedCount = mindMapExpansion?.expandedCount ?? 0;
 
   // The message that actually carried the current map, walked the same way getActiveMindMap
   // does (most recent first) — just kept as the raw message here instead of only its map data,
@@ -320,8 +326,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     return null;
   }, [history]);
   const mindMapStatusLabel = showingCaseMap && caseMindMap.map
-    ? isBuildingCaseMap
-      ? t("caseMindMap.building")
+    ? isCaseMapRegenerating
+      ? caseMapBusyLabel
       : [
           t("caseMindMap.fromDocuments", { count: caseMindMap.map.documentCount }),
           formatUpdatedAt(t, caseMindMap.map.generatedAt),
@@ -397,12 +403,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     }
   }, [consultationId, session, isGenerating, isMindMapConsultationBusy, caseId, queryClient, createConsultation, onConsultationCreated]);
 
-  // Regenerate whichever map is on screen: the case map is rebuilt from the documents (queued on
-  // the API, progress via the "caseMindMap" AI job); a chat map by sending the prompt again.
+  // Rebuild from the documents (queued on the API, progress via the "caseMindMap" AI job); the
+  // finished case map then replaces a chat map on screen. See buildsCaseMap.
   const regenerateShownMap = useCallback(() => {
-    if (showingCaseMap) generateCaseMindMap.mutate();
+    if (buildsCaseMap) generateCaseMindMap.mutate();
     else void handleGenerateMindMap();
-  }, [showingCaseMap, generateCaseMindMap, handleGenerateMindMap]);
+  }, [buildsCaseMap, generateCaseMindMap, handleGenerateMindMap]);
+  const isRegenerating = buildsCaseMap ? isCaseMapRegenerating : isGenerating;
+  const regeneratingLabel = buildsCaseMap && !isBuildingCaseMap && caseMindMap.refreshWillReplace ? caseMapBusyLabel : undefined;
+  // The tile opens the view whenever there's a map, or one is being made, to watch — the same as
+  // Timeline's tile while it generates; only otherwise does a click start a generation.
+  const mindMapTileOpens = Boolean(shownMindMap) || isCaseMapRegenerating || isGenerating;
 
   // Mind Map generation is request-only — no auto-fire on mount (see the matching removal in
   // consultation-chat.tsx for why: every case was showing the same generic strategy outline
@@ -536,63 +547,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             )}
           </div>
         )}
-        {expanded && openTile === "mindmap" && shownMindMap && (showingCaseMap || consultationId) && (
-          <Popover open={regenerateConfirmOpen} onOpenChange={setRegenerateConfirmOpen}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      // No expansions to lose: regenerate straight away, and preventDefault keeps
-                      // the PopoverTrigger from opening the warning.
-                      if (mindMapExpandedCount === 0) {
-                        e.preventDefault();
-                        regenerateShownMap();
-                      }
-                    }}
-                    disabled={showingCaseMap ? isBuildingCaseMap : !session || isGenerating || isMindMapConsultationBusy}
-                    aria-label={t("workspace.mindMapRegenerateCta")}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
-                  >
-                    {(showingCaseMap ? isBuildingCaseMap : isGenerating) ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {!showingCaseMap && isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : t("workspace.mindMapRegenerateCta")}
-              </TooltipContent>
-            </Tooltip>
-            <PopoverContent side="bottom" align="end" role="alertdialog" className="w-72">
-              <p className="text-[13px] leading-snug text-foreground">
-                {t("mindMapExpand.regenerateWarning", { count: mindMapExpandedCount })}
-              </p>
-              <div className="mt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRegenerateConfirmOpen(false)}
-                  className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  {t("mindMapExpand.cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRegenerateConfirmOpen(false);
-                    regenerateShownMap();
-                  }}
-                  className="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-700"
-                >
-                  {t("mindMapExpand.regenerateConfirm")}
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
         {expanded && openTile === "timeline" && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -709,23 +663,24 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               onClick={() => openStudioTile("decisions")}
             />)}
             {/* Same "open directly" shape as Documents/Timeline/Data Table below — opens the
-             * detail view if a map already exists, otherwise triggers the first generation (the
-             * view itself has its own Regenerate control once something's there, same as the
-             * header's regenerate button). While generating, the tile is disabled, so the only
-             * way to watch it finish is the detail view already open. */}
+             * detail view if a map already exists or one is being generated (the view shows the
+             * current map with a spinning Regenerate, or the building state), otherwise triggers
+             * the first generation. Like Timeline, it stays openable while generating — including
+             * through an Analysis Refresh, which spins it for its whole run. */}
             {/* Also shown before any chat once the case has documents (or a map built from them) —
              * the case map doesn't need a prompt. With no map yet, a click builds one from the
-             * documents when there are any, else falls back to the chat-generated map. */}
-            {(hasPrompt || showingCaseMap || isBuildingCaseMap || readyDocumentCount > 0) && (<StudioTile
-              icon={isShownMapBusy && (isBuildingCaseMap || isGenerating) ? Loader2 : Workflow}
-              iconSpinning={isBuildingCaseMap || (!showingCaseMap && isGenerating)}
-              label={isBuildingCaseMap ? t("caseMindMap.building") : !showingCaseMap && isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
-              note={isBuildingCaseMap || (!showingCaseMap && isGenerating) ? undefined : mindMapStatusLabel || undefined}
+             * documents when there are any, else falls back to the chat-generated map. Only that
+             * last click is ever blocked: sending the chat prompt while another reply is running. */}
+            {(hasPrompt || showingCaseMap || isCaseMapRegenerating || readyDocumentCount > 0) && (<StudioTile
+              icon={isCaseMapRegenerating || (!showingCaseMap && isGenerating) ? Loader2 : Workflow}
+              iconSpinning={isCaseMapRegenerating || (!showingCaseMap && isGenerating)}
+              label={isCaseMapRegenerating ? caseMapBusyLabel : !showingCaseMap && isGenerating ? t("workspace.mindMapGenerating") : t("workspace.mindMapTile")}
+              note={isCaseMapRegenerating || (!showingCaseMap && isGenerating) ? undefined : mindMapStatusLabel || undefined}
               expanded={expanded}
-              disabled={isBuildingCaseMap || (!showingCaseMap && (isGenerating || isMindMapConsultationBusy))}
-              disabledHint={!showingCaseMap && isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
+              disabled={!mindMapTileOpens && !buildsCaseMap && isMindMapConsultationBusy}
+              disabledHint={!mindMapTileOpens && !buildsCaseMap && isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
               onClick={() => {
-                if (shownMindMap) openStudioTile("mindmap");
+                if (mindMapTileOpens) openStudioTile("mindmap");
                 else if (readyDocumentCount > 0) {
                   generateCaseMindMap.mutate();
                   openStudioTile("mindmap");
@@ -876,9 +831,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "mindmap" ? (
             shownMindMap && (showingCaseMap || consultationId) ? (
               <div className="flex h-full flex-col gap-2">
-                {(showingCaseMap ? caseMindMap.buildFailed || generateCaseMindMap.isError : generateError) && (
+                {(buildsCaseMap ? caseMindMap.buildFailed || generateCaseMindMap.isError : generateError) && (
                   <p className="shrink-0 text-center text-xs text-red-600 dark:text-red-400">
-                    {showingCaseMap ? t("caseMindMap.buildError") : t("workspace.mindMapGenerateError")}
+                    {buildsCaseMap ? t("caseMindMap.buildError") : t("workspace.mindMapGenerateError")}
                   </p>
                 )}
                 <div className="min-h-0 flex-1">
@@ -890,19 +845,20 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     consultationId={showingCaseMap ? `case:${caseId}` : consultationId ?? undefined}
                     isStale={showingCaseMap ? snapshotQuery.data?.caseMindMap?.isStale : snapshotQuery.data?.mindMap.isStale}
                     staleDetail={showingCaseMap ? caseMindMapStaleDetail(t, snapshotQuery.data?.caseMindMap) : undefined}
-                    regenerating={showingCaseMap ? isBuildingCaseMap : isGenerating}
+                    regenerating={isRegenerating}
+                    regeneratingLabel={regeneratingLabel}
                     onRegenerate={regenerateShownMap}
                     expansion={mindMapExpansion}
                     documentNames={showingCaseMap ? documentNames : undefined}
                   />
                 </div>
               </div>
-            ) : readyDocumentCount > 0 || isBuildingCaseMap ? (
+            ) : readyDocumentCount > 0 || isCaseMapRegenerating ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
                 <p className="max-w-xs text-sm text-muted-foreground">
-                  {isBuildingCaseMap ? t("caseMindMap.building") : t("caseMindMap.emptyWithDocuments")}
+                  {isCaseMapRegenerating ? caseMapBusyLabel : t("caseMindMap.emptyWithDocuments")}
                 </p>
-                {isBuildingCaseMap ? (
+                {isCaseMapRegenerating ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
                 ) : (
                   <button
@@ -913,7 +869,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     {t("caseMindMap.buildCta")}
                   </button>
                 )}
-                {(caseMindMap.buildFailed || generateCaseMindMap.isError) && !isBuildingCaseMap && (
+                {(caseMindMap.buildFailed || generateCaseMindMap.isError) && !isCaseMapRegenerating && (
                   <p className="text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildError")}</p>
                 )}
               </div>

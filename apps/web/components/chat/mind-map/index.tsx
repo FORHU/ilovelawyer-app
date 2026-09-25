@@ -14,7 +14,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MindMapProps, MindMapItem } from './types';
 import { MIND_MAP_CHROME, MIND_MAP_LIMITS, MIND_MAP_THEME, mindMapGridColor, fixedNodeDescription } from './constants';
@@ -36,8 +36,10 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
   ),
 }) as React.ForwardRefExoticComponent<MindMap3DProps & React.RefAttributes<MindMap3DHandle>>;
 
-/** Levels open when a map is first shown (root = 0): the five branches and their points. */
-const DEFAULT_VISIBLE_LEVELS = 2;
+/** Levels open when a map is first shown (root = 0): the five branches, their points, and one
+ * level of detail under each point. Saved with the collapse state (`collapseDefault`), so a map
+ * whose fold was seeded under a different default is re-seeded once when this changes. */
+const DEFAULT_VISIBLE_LEVELS = 3;
 
 const nodeTypes = {
   custom: CustomNode,
@@ -75,7 +77,7 @@ function locateTreeNode(root: MindMapItem, id: string | null): { item: MindMapIt
   return walk(root, 0);
 }
 
-function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, staleDetail, regenerating, onRegenerate, expansion, documentNames }: MindMapProps) {
+function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, staleDetail, regenerating, regeneratingLabel = 'Regenerating…', onRegenerate, expansion, documentNames }: MindMapProps) {
   const { t } = useTranslation('case-portfolio');
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -117,7 +119,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     try {
       const cached = localStorage.getItem(localStorageKey);
       const parsed = cached ? JSON.parse(cached) : null;
-      if (parsed?.collapseSettled && Array.isArray(parsed.collapsedIds)) {
+      if (
+        parsed?.collapseSettled &&
+        Array.isArray(parsed.collapsedIds) &&
+        (parsed.collapseDefault ?? 2) === DEFAULT_VISIBLE_LEVELS
+      ) {
         setCollapsedIds(new Set(parsed.collapsedIds));
         setCollapseDefaultPending(false);
         return;
@@ -129,7 +135,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     setCollapseDefaultPending(true);
   }, [localStorageKey]);
 
-  // First time this map is shown here: open at root + branches + their points (levels 0–2) and
+  // First time this map is shown here: open at root + branches + points + their detail (levels 0–3) and
   // fold everything deeper, so a 100-node map opens looking like a readable overview. The
   // Structure menu's "Show levels" and each node's toggle open the rest.
   useEffect(() => {
@@ -252,6 +258,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             data,
             collapsedIds: [...collapsedIds],
             collapseSettled: !collapseDefaultPending,
+            collapseDefault: DEFAULT_VISIBLE_LEVELS,
           }),
         );
       } catch (e) {
@@ -531,14 +538,19 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       {/* Perspective Toggle - Top Left (2D/3D Switch) */}
       <div className="absolute top-4 left-4 z-(--z-canvas-overlay) flex items-center gap-2">
         <button
-          onClick={() => setIs3D(!is3D)}
+          onClick={() => {
+            setIs3D(!is3D);
+            setIsLayoutMenuOpen(false);
+          }}
           className={is3D ? MIND_MAP_CHROME.toggleOn : MIND_MAP_CHROME.toggleOff}
         >
           {is3D ? <Monitor size={14} /> : <Box size={14} />}
           <span className="text-[8px] md:text-[9px] uppercase tracking-widest leading-none">{is3D ? '2D' : '3D'}</span>
         </button>
 
-        {/* MINIMIZED Structure Selector */}
+        {/* MINIMIZED Structure Selector — 2D only: its layouts, levels and highlight all act on
+         * the 2D canvas, and the 3D graph lays itself out. */}
+        {!is3D && (
         <div className="relative">
           <button
             onClick={() => setIsLayoutMenuOpen(!isLayoutMenuOpen)}
@@ -591,7 +603,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                   </div>
                 </>
               )}
-              {hasChecks && !is3D && (
+              {hasChecks && (
                 <div className="p-1 border-t border-border">
                   <button
                     onClick={() => setHighlightReview((v) => !v)}
@@ -606,25 +618,24 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="absolute top-4 right-4 z-(--z-canvas-overlay) pointer-events-auto flex items-center gap-2">
-        {/* Regenerate lives here (not just the stale-only badge below) because this toolbar is
-         * the only chrome still visible once "Full" takes the map into the browser's native
-         * fullscreen — the panel header's own regenerate button (studio-panel.tsx) is an
-         * ancestor outside the fullscreened element, so it disappears entirely in that mode.
-         * Reachable regardless of staleness; the stale badge below is just a louder, more urgent
+        {/* The map's only Regenerate control (Studio's panel header no longer has one), and the
+         * only chrome still visible once "Full" takes the map into the browser's native
+         * fullscreen. Reachable regardless of staleness; the stale badge below is just a louder, more urgent
          * version of the same action for when the case has moved on since this map generated. */}
         {onRegenerate && !isStale && (
           <button
             type="button"
             onClick={requestRegenerate}
             disabled={regenerating}
-            title="Regenerate mind map"
-            className={MIND_MAP_CHROME.accentBtn}
+            title={regenerating ? regeneratingLabel : 'Regenerate mind map'}
+            aria-label={regenerating ? regeneratingLabel : 'Regenerate mind map'}
+            className={MIND_MAP_CHROME.regenerateIconBtn}
           >
-            {regenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            <span>{regenerating ? 'Regenerating…' : 'Regenerate'}</span>
+            {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           </button>
         )}
         {isStale && (
@@ -632,11 +643,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             type="button"
             onClick={requestRegenerate}
             disabled={regenerating}
-            title={staleDetail ?? "Case has new activity since this map was generated"}
-            className={MIND_MAP_CHROME.staleBadge}
+            title={regenerating ? regeneratingLabel : `${staleDetail ?? 'Case has new activity since this map was generated'} · Regenerate`}
+            aria-label={regenerating ? regeneratingLabel : `Stale mind map: ${staleDetail ?? 'the case has new activity since it was generated'}. Regenerate`}
+            className={MIND_MAP_CHROME.staleIconBtn}
           >
-            {regenerating ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
-            <span>{regenerating ? 'Regenerating…' : staleDetail ? `${staleDetail} · Regenerate` : 'Stale · Regenerate'}</span>
+            {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           </button>
         )}
         <button

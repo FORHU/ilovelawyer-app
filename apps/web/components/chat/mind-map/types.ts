@@ -18,6 +18,9 @@ export interface MindMapProps {
   /** What made it stale, when known — e.g. "2 documents added, 1 removed". Shown on the badge. */
   staleDetail?: string;
   regenerating?: boolean;
+  /** The Regenerate button's tooltip while `regenerating` — e.g. "Generating mind map…" when an
+   * Analysis Refresh is what will replace the map. Defaults to "Regenerating…". */
+  regeneratingLabel?: string;
   onRegenerate?: () => void;
   /** "Expand with AI" — omit to hide it (e.g. a map with no consultation behind it). Built by
    * useMindMapExpansion (lib/chat/use-mind-map-expansion.ts). */
