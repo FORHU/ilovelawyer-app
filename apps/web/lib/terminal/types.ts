@@ -354,6 +354,23 @@ export interface CaseFinding {
 
 export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
 
+/** One "what's needed" item: a link to where the app settles it, or instructions only. */
+export interface WitnessNeed {
+  key: string
+  text: string
+  link: "STATEMENT" | "EVIDENCE" | "FACTOR" | null
+  factor?: string
+}
+
+/** Rubric audit written by the scorer. Only the parts the panel reads are typed. */
+export interface WitnessAiFactors {
+  band: "HIGH" | "MODERATE" | "LOW" | "WEAK" | null
+  /** Points that could be assessed, out of 100. */
+  assessable: number
+  insufficientReason: string | null
+  needs?: WitnessNeed[]
+}
+
 export interface Witness {
   id: string
   caseId: string
@@ -371,6 +388,9 @@ export interface Witness {
   aiCredibility: number | null
   aiRationale: { text: string; source: string | null }[] | null
   aiSuggestedStatus: WitnessStatus | null
+  aiFactors: WitnessAiFactors | null
+  /** Keys of "what's needed" items the lawyer has ticked off. */
+  needsDone: string[] | null
   credibilityOverride: number | null
   scoredAt: string | null
   statementDueOn: string | null
