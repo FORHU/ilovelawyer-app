@@ -5,8 +5,8 @@ import { useCreateFindingMutation, useDeleteFindingMutation } from "@/lib/termin
 import type { CaseSnapshot, FindingCategory } from "@/lib/terminal/types"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
-// Backs Strengths / Attack Strategies / Defense Strategies — one CaseFinding table filtered by
-// category (see lib/terminal/mutations.ts), same as the backend. Legal Issues and Weaknesses have
+// Backs Attack Strategies / Defense Strategies — one CaseFinding table filtered by category (see
+// lib/terminal/mutations.ts), same as the backend. Legal Issues, Weaknesses and Strengths have
 // their own panels on RatedFindingPanel (rated-finding-panel.tsx).
 const FINDING_ADD_LABEL_KEYS: Record<FindingCategory, string> = {
   LEGAL_ISSUE: "addLegalIssue",

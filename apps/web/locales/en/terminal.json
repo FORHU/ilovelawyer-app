@@ -308,6 +308,28 @@
     "NOT_BORNE_OUT": "Jev doesn't find this borne out by the case data"
   },
   "addStrength": "Add a strength",
+  "strengthsIntro": "Findings that carry your theory of the case, the ones doing the most work first.",
+  "strengthStrong": "Strong",
+  "strengthModerate": "Moderate",
+  "strengthStrongCount": "{{done}} of {{total}} strong",
+  "strengthDetailPlaceholder": "Document reference and what it shows",
+  "strengthImpact": "How much of the case it carries (higher helps you)",
+  "strengthJevSupport": {
+    "SUPPORTED": "borne out by its source",
+    "UNSUPPORTED": "not borne out by its source",
+    "CONTRADICTED": "contradicted by its source"
+  },
+  "strengthJevNoSourceText": "No text of the cited document was found, so Jev checked this against the case data only.",
+  "strengthJevWeightLine": "weight {{pct}}% (conf. {{conf}}%)",
+  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevRebuttal": {
+    "UNREBUTTED": "Nothing on the record answers it",
+    "REBUTTABLE": "The other side has an answer you'd need to meet",
+    "ALREADY_REBUTTED": "The record already answers it"
+  },
+  "strengthJevFlag": {
+    "NOT_BORNE_OUT": "Jev doesn't find this in its source"
+  },
   "addAttackStrategy": "Add an attack strategy",
   "addDefenseStrategy": "Add a defense strategy",
   "witnessSummary": "What they can speak to (optional)",

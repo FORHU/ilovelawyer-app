@@ -282,6 +282,28 @@
     "NOT_BORNE_OUT": "Hindi nakikita ni Jev na pinatutunayan ito ng datos ng kaso"
   },
   "addStrength": "Magdagdag ng lakas",
+  "strengthsIntro": "Mga natuklasang nagdadala sa teorya ng kaso mo, inuuna ang pinakamalaki ang ambag.",
+  "strengthStrong": "Malakas",
+  "strengthModerate": "Katamtaman",
+  "strengthStrongCount": "{{done}} sa {{total}} ang malakas",
+  "strengthDetailPlaceholder": "Reference ng dokumento at ang ipinapakita nito",
+  "strengthImpact": "Gaano kalaki ang dinadala nito sa kaso (mas mataas ay pabor sa iyo)",
+  "strengthJevSupport": {
+    "SUPPORTED": "pinatutunayan ng pinagmulan nito",
+    "UNSUPPORTED": "hindi pinatutunayan ng pinagmulan nito",
+    "CONTRADICTED": "sinasalungat ng pinagmulan nito"
+  },
+  "strengthJevNoSourceText": "Walang nahanap na teksto ng binanggit na dokumento, kaya sinuri ito ni Jev laban sa datos ng kaso lamang.",
+  "strengthJevWeightLine": "bigat {{pct}}% (kumpiyansa {{conf}}%)",
+  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevRebuttal": {
+    "UNREBUTTED": "Walang sumasagot dito sa rekord",
+    "REBUTTABLE": "May sagot ang kabilang panig na kailangan mong harapin",
+    "ALREADY_REBUTTED": "Nasagot na ito ng rekord"
+  },
+  "strengthJevFlag": {
+    "NOT_BORNE_OUT": "Hindi ito nakikita ni Jev sa pinagmulan nito"
+  },
   "addAttackStrategy": "Magdagdag ng attack strategy",
   "addDefenseStrategy": "Magdagdag ng defense strategy",
   "noWitnesses": "Wala pang naitalang saksi.",

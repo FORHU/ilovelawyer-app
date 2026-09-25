@@ -37,9 +37,15 @@ export interface RatedFindingConfig {
   detailPlaceholderKey: string
   /** The pills a lawyer can pick, in display order. */
   tags: { tag: FindingTag; tone: Tone; label: string }[]
-  /** The finished state: fades, sinks to the bottom, and the ring shows its share. */
-  doneTag: FindingTag
+  /** The pill whose share the ring shows (Resolved, Closed, Strong). */
+  ringTag: FindingTag
   ringTitleKey: string
+  /** The finished state, if the category has one: those rows fade and sink to the bottom. */
+  doneTag?: FindingTag
+  /** Sub-line when the row has no detail of its own (Strengths: the source document). */
+  detailFallback?(finding: CaseFinding): string | null
+  /** Dim the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out). */
+  dimSubLine?(jev: unknown): boolean
   /** Show the ▲ impact number, and which direction of it is bad. */
   impact?: { badWhenUp: boolean; titleKey: string }
   /** i18n keys for Jev's flags on a row; [] when none. */
@@ -54,9 +60,9 @@ const UNRATED = { tone: "neutral" as Tone, label: "findingUnrated" }
 
 // Done sinks to the bottom; otherwise the order the API lists them in (position, then newest
 // first) — re-applied here since the graph-view projection doesn't keep it.
-function byPanelOrder(doneTag: FindingTag) {
+function byPanelOrder(doneTag: FindingTag | undefined) {
   return (a: CaseFinding, b: CaseFinding) => {
-    const done = Number(a.tag === doneTag) - Number(b.tag === doneTag)
+    const done = doneTag ? Number(a.tag === doneTag) - Number(b.tag === doneTag) : 0
     if (done) return done
     if (a.position !== null && b.position !== null) return a.position - b.position
     if (a.position !== null) return -1
@@ -96,7 +102,7 @@ export function RatedFindingPanel({
     const key = styleOf(f.tag) ? f.tag! : "UNRATED"
     counts.set(key, (counts.get(key) ?? 0) + 1)
   })
-  const done = counts.get(config.doneTag) ?? 0
+  const inRing = counts.get(config.ringTag) ?? 0
 
   const toggle = (f: CaseFinding) => {
     setOpen(open === f.id ? null : f.id)
@@ -111,7 +117,11 @@ export function RatedFindingPanel({
 
       {rows.length > 1 ? (
         <TagMixSummary
-          ring={{ pct: Math.round((done / rows.length) * 100), tone: "ok", title: t(config.ringTitleKey, { done, total: rows.length }) }}
+          ring={{
+            pct: Math.round((inRing / rows.length) * 100),
+            tone: "ok",
+            title: t(config.ringTitleKey, { done: inRing, total: rows.length }),
+          }}
           segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
             key: s.key,
             label: t(s.label),
@@ -130,7 +140,9 @@ export function RatedFindingPanel({
             const hint = f.jev && config.subHintKey ? config.subHintKey(f.jev) : null
             const isOpen = open === f.id
             const isAi = f.notes === "AI"
-            const isDone = f.tag === config.doneTag
+            const isDone = config.doneTag !== undefined && f.tag === config.doneTag
+            const subLine = f.detail ?? config.detailFallback?.(f) ?? null
+            const dim = f.jev && config.dimSubLine ? config.dimSubLine(f.jev) : false
             return (
               <PanelRow key={f.id} className="flex-col items-stretch gap-2">
                 <button
@@ -144,10 +156,10 @@ export function RatedFindingPanel({
                       {f.label}
                       {flags.length > 0 ? <JevFlag title={flags.map((key) => t(key)).join(" · ")} /> : null}
                     </span>
-                    {f.detail || hint ? (
+                    {subLine || hint ? (
                       <span className={`mt-0.5 block ${labelTextClass}`}>
-                        {f.detail}
-                        {f.detail && hint ? " · " : null}
+                        {subLine ? <span className={cn(dim && "line-through opacity-60")}>{subLine}</span> : null}
+                        {subLine && hint ? " · " : null}
                         {hint ? <span className="text-warn">{t(hint)}</span> : null}
                       </span>
                     ) : null}

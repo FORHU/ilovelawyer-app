@@ -15,8 +15,9 @@ const LEGAL_ISSUES: RatedFindingConfig = {
     { tag: "OPEN", tone: "neutral", label: "issueOpen" },
     { tag: "RESOLVED", tone: "ok", label: "issueResolved" },
   ],
-  doneTag: "RESOLVED",
+  ringTag: "RESOLVED",
   ringTitleKey: "issueResolvedCount",
+  doneTag: "RESOLVED",
   jevFlagKeys: (jev) => (jev as LegalIssueJevCheck).flags.map((flag) => `issueJevFlag.${flag}`),
   JevDetail: LegalIssueJevDetail,
 }

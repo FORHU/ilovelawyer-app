@@ -280,6 +280,28 @@
     "NOT_BORNE_OUT": "Jev는 사건 자료에서 이 취약점을 확인하지 못했습니다"
   },
   "addStrength": "강점 추가",
+  "strengthsIntro": "사건 이론을 뒷받침하는 사실 — 가장 큰 역할을 하는 것부터.",
+  "strengthStrong": "강함",
+  "strengthModerate": "보통",
+  "strengthStrongCount": "{{total}}건 중 {{done}}건 강함",
+  "strengthDetailPlaceholder": "문서 번호와 그 내용",
+  "strengthImpact": "사건에서 차지하는 비중 (클수록 유리)",
+  "strengthJevSupport": {
+    "SUPPORTED": "출처 문서로 뒷받침됨",
+    "UNSUPPORTED": "출처 문서로 뒷받침되지 않음",
+    "CONTRADICTED": "출처 문서와 모순됨"
+  },
+  "strengthJevNoSourceText": "인용된 문서의 본문을 찾지 못해 Jev가 사건 자료만으로 확인했습니다.",
+  "strengthJevWeightLine": "비중 {{pct}}% (신뢰도 {{conf}}%)",
+  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevRebuttal": {
+    "UNREBUTTED": "기록상 반박할 내용 없음",
+    "REBUTTABLE": "상대방에게 대응해야 할 반박이 있음",
+    "ALREADY_REBUTTED": "기록상 이미 반박됨"
+  },
+  "strengthJevFlag": {
+    "NOT_BORNE_OUT": "Jev는 출처 문서에서 이 내용을 찾지 못했습니다"
+  },
   "addAttackStrategy": "공격 전략 추가",
   "addDefenseStrategy": "방어 전략 추가",
   "noWitnesses": "아직 등록된 증인이 없습니다.",
