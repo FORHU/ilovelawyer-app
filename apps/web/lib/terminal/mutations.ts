@@ -7,6 +7,8 @@ import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
 import type {
   Annotation,
+  AuthorityKind,
+  AuthorityStance,
   AnnotationKind,
   AnnotationTargetType,
   CaseFinding,
@@ -74,6 +76,8 @@ export type AiGenerationKind =
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
+  | "mindMapExpand"
+  | "caseMindMap"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -524,6 +528,54 @@ export function useCheckCitationMutation(caseId: string) {
       // Citation Map's seed is built from citedReference — a fresh check should show up there
       // without the user having to manually refresh that panel.
       queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+    },
+  })
+}
+
+export function useAddAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      kind: AuthorityKind
+      stance: AuthorityStance
+      title: string
+      subtitle?: string
+      citation?: string
+      rationale?: string
+      findingId?: string | null
+    }) =>
+      apiFetch(`/api/my-cases/${caseId}/authorities`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useUpdateAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; stance?: AuthorityStance; findingId?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/authorities/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useRemoveAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/authorities/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }

@@ -49,7 +49,8 @@ import {
   type MessageReasoning,
   type MessageGroundingCheck,
 } from "@/lib/chat/mutations";
-import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
+import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
+import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
@@ -769,6 +770,17 @@ export default function ConsultationChat({
   // this walks the transcript (including whatever's still streaming in) back-to-front and
   // surfaces the most recent one the AI actually populated, same as law-ph's `activeMindMap`.
   const activeMindMap = useMemo(() => getActiveMindMap(messages), [messages]);
+  // Which persisted message/version that map is — what "Expand with AI" addresses on the API.
+  // From `history` (server rows), not `messages`: a map still streaming in has nothing to expand yet.
+  const activeMindMapRecord = useMemo(() => getActiveMindMapRecord(history ?? []), [history]);
+  const mindMapExpansionTarget = useMemo<MindMapExpansionTarget | undefined>(
+    () => (consultationId && activeMindMapRecord ? { kind: "consultation", consultationId, record: activeMindMapRecord } : undefined),
+    [consultationId, activeMindMapRecord],
+  );
+  const { t: tMindMap } = useTranslation("case-portfolio");
+  const mindMapExpansion = useMindMapExpansion(mindMapExpansionTarget, {
+    disabledReason: isGeneratingMindMap ? tMindMap("workspace.replyInProgressHint") : undefined,
+  });
 
   // The Mind Map tab's auto/manual "generate" turn is a system-driven request the user never
   // typed — it shouldn't clutter the Chat tab as an ordinary bubble. Drops that user message
@@ -2133,6 +2145,7 @@ export default function ConsultationChat({
                     isStale={snapshotQuery.data?.mindMap.isStale}
                     regenerating={isGeneratingMindMap}
                     onRegenerate={() => void doSend(AUTO_MINDMAP_PROMPT)}
+                    expansion={mindMapExpansion}
                   />
                 ) : (
                   <div className={`flex-1 flex flex-col items-center justify-center gap-4 text-center ${mindMapOnly ? "h-full py-8" : "py-24"}`}>

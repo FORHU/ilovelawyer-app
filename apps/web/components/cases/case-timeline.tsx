@@ -16,7 +16,7 @@ import {
 import { AddTimelineEventDialog } from "./add-timeline-event-dialog"
 import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
-import { TONE_BG_CLASS, TONE_TEXT_CLASS, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
+import { TONE_TEXT_CLASS, timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
 
 const RAG_LABEL_KEY = { ready: "ragReady", pending: "ragPending", failed: "ragFailed" } as const
@@ -275,9 +275,9 @@ export function CaseTimelineView({
                   const sourceDoc = item.documentId ? documentsById.get(item.documentId) : undefined
 
                   return (
-                    <li key={item.id} className="grid grid-cols-[3.25rem_0.75rem_minmax(0,1fr)] gap-x-3">
+                    <li key={item.id} className={`grid ${multiYear ? "grid-cols-[4.75rem_0.75rem_minmax(0,1fr)]" : "grid-cols-[3.25rem_0.75rem_minmax(0,1fr)]"} gap-x-3`}>
                       <div className="pt-px text-right">
-                        <p className="font-mono text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase tabular-nums">
+                        <p className="whitespace-nowrap font-mono text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase tabular-nums">
                           {formatDay(at, multiYear)}
                         </p>
                         {formatTime(at) ? (
@@ -287,7 +287,7 @@ export function CaseTimelineView({
                       <div className="flex flex-col items-center">
                         <span
                           aria-hidden="true"
-                          className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ring-background ${TONE_BG_CLASS[tone]}`}
+                          className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ring-background ${timelineDotClass(at)}`}
                         />
                         {!isLast ? <span aria-hidden="true" className="mt-1 w-px flex-1 bg-border" /> : null}
                       </div>
@@ -361,7 +361,7 @@ export function CaseTimelineView({
                     const sourceDoc = item.documentId ? documentsById.get(item.documentId) : undefined
                     return (
                       <li key={item.id} className="flex gap-3 px-4 py-3.5">
-                        <span aria-hidden="true" className={`mt-2 size-2 shrink-0 rounded-full ${TONE_BG_CLASS[tone]}`} />
+                        <span aria-hidden="true" className={`mt-2 size-2 shrink-0 rounded-full ${timelineDotClass(null)}`} />
                         <div className="min-w-0">
                           <p className="text-[15px] font-semibold leading-snug text-foreground">{item.title}</p>
                           {item.description ? (
