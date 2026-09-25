@@ -90,7 +90,9 @@ function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
 async function throwIfNotOk(res: Response): Promise<void> {
   if (res.ok) return
   const error = await res.json().catch(() => ({ message: res.statusText }))
-  throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status })
+  // `code` is the API's optional machine-readable reason (HttpError.code), e.g. a mind map
+  // expand refused with MAX_NODES — absent on most errors.
+  throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status, code: error.code })
 }
 
 /** Like apiFetch, but returns the raw Response instead of parsing JSON — for streamed bodies. */

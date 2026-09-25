@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { countByStatus, documentSizeLabel, groupByCategory, ingestTone, timelineDotTone } from "../evidence-status"
+import { countByStatus, documentSizeLabel, groupByCategory, ingestTone, timelineDotClass, timelineDotTone, TONE_BG_CLASS } from "../evidence-status"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon, isSpreadsheet } from "@/lib/cases/file-type-icon"
 import { File, FileImage, FileSpreadsheet, FileText, Mail } from "lucide-react"
 
@@ -120,5 +120,19 @@ describe("fileTypeColorClass", () => {
     expect(fileTypeColorClass({ mimeType: null, name: "a.docx" })).toContain("blue")
     expect(fileTypeColorClass({ mimeType: null, name: "a.xlsx" })).toContain("green")
     expect(fileTypeColorClass({ mimeType: "application/zip", name: "a.zip" })).toBe("text-muted-foreground")
+  })
+})
+
+describe("timelineDotClass", () => {
+  const now = new Date("2026-09-25T12:00:00Z")
+
+  it("is green once the event's date has passed, today included", () => {
+    expect(timelineDotClass(new Date("2023-11-06T00:00:00Z"), now)).toBe(TONE_BG_CLASS.ready)
+    expect(timelineDotClass(new Date("2026-09-25T00:00:00Z"), now)).toBe(TONE_BG_CLASS.ready)
+  })
+
+  it("is grey while the date is still ahead, or when there's no date", () => {
+    expect(timelineDotClass(new Date("2026-10-01T00:00:00Z"), now)).toBe(TONE_BG_CLASS.none)
+    expect(timelineDotClass(null, now)).toBe(TONE_BG_CLASS.none)
   })
 })

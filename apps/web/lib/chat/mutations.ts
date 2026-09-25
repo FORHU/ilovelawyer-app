@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
+import type { MindMapEditRequest } from "@/components/chat/mind-map/types"
 import type { DecisionRecordPayload } from "@/lib/terminal/types"
 
 export interface ChatSession {
@@ -67,9 +68,11 @@ export interface ChatMessage {
   /** Populated by GET .../messages (handoff doc §5). Absent/undefined on messages sent before
    * the backend shipped this — always treat as `?? []`. */
   documents?: MessageDocument[]
-  /** The AI's `[MINDMAP]...[/MINDMAP]` block for this message, extracted and persisted
-   * server-side (ilovelawyer-api's chat.service.ts). `null`/absent on messages with no map. */
-  mindMap?: { data: MindMapItem } | null
+  /** The AI's mind map for this message, persisted server-side (ilovelawyer-api's
+   * chat.service.ts). `null`/absent on messages with no map. `data` is always the current tree
+   * (after any "Expand with AI"/undo); `version` counts those edits, 1 = as generated — absent on
+   * responses from an API that predates it, treat as 1. */
+  mindMap?: { data: MindMapItem; version?: number } | null
   /** The two-host script for this message, from Chat Wonder's `[AUDIO_OVERVIEW_DATA]` frame
    * (only present when the message matched the audio-overview trigger phrase) — persisted the
    * same way mindMap is. Rendering the script to actual speech is a separate, explicit action
@@ -504,5 +507,69 @@ export interface AudioOverviewAudioPollResult {
 export function pollAudioOverviewAudio(consultationId: string, messageId: string) {
   return apiFetch<AudioOverviewAudioPollResult>(
     `/api/chat/consultations/${consultationId}/messages/${messageId}/audio-overview/audio/poll`,
+  )
+}
+
+/** Result of POST .../mind-map/expand and .../mind-map/revert (ilovelawyer-api's MindMapSvc):
+ * the whole updated tree, so the caller can swap it into the messages cache immediately. */
+export interface MindMapChangeResult {
+  /** "message" = a consultation's chat map; "case" = the case's document-built map
+   * (lib/case-workspace/case-mind-map.ts). */
+  kind?: "message" | "case"
+  caseId?: string
+  /** Message maps only. */
+  messageId?: string
+  version: number
+  mindMap: MindMapItem
+  /** expand only — the node the children were added under, as a path id. */
+  expandedNodeId?: string
+  /** edit only — the renamed node, the new point, or (delete) the removed node's parent. */
+  editedNodeId?: string
+}
+
+/** Asks the AI for 2–5 new children under one node of a consultation's mind map. Synchronous on
+ * the API side (a few seconds). Fails with `status` 422 and `code` "MAX_DEPTH"/"MAX_NODES" when
+ * the node or map is at a MIND_MAP_LIMITS cap, and 409 when the same node is already expanding. */
+export function expandMindMapNode(
+  consultationId: string,
+  body: { messageId?: string; nodeId: string; count?: number },
+): Promise<MindMapChangeResult> {
+  return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map/expand`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+/** A manual rename / add / delete on a consultation's map, saved as an undoable revision.
+ * `code` "MAX_DEPTH"/"MAX_NODES" (422) when an add would pass MIND_MAP_LIMITS. */
+export function editMindMapNode(
+  consultationId: string,
+  body: { messageId?: string } & MindMapEditRequest,
+): Promise<MindMapChangeResult> {
+  return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  })
+}
+
+/** "Undo expand": steps the map back one version. `version` is the one the user is looking at —
+ * the API refuses (409) if the map has moved on since, rather than undoing someone else's change. */
+export function revertMindMap(
+  consultationId: string,
+  body: { messageId?: string; version?: number },
+): Promise<MindMapChangeResult> {
+  return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map/revert`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
+/** Writes an expand/undo result straight into the cached messages so the canvas updates without
+ * waiting on a refetch (the caller still invalidates, to pick up anything else that changed). */
+export function applyMindMapChange(queryClient: QueryClient, consultationId: string, result: MindMapChangeResult) {
+  queryClient.setQueryData<ChatMessage[]>(chatKeys.messages(consultationId), (messages) =>
+    messages?.map((m) =>
+      m.id === result.messageId ? { ...m, mindMap: { ...m.mindMap, data: result.mindMap, version: result.version } } : m,
+    ),
   )
 }

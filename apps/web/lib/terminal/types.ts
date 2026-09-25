@@ -231,6 +231,38 @@ export interface SnapshotCitation {
   propositionType: "QUOTED" | "PARAPHRASED" | "INFERRED" | null
 }
 
+export type AuthorityKind = "STATUTE" | "CASE"
+/** How the authority bears on the case. Not the same as SnapshotCitation.status, whose ADVERSE
+ * means a quote contradicts its source; here ADVERSE means the authority hurts our side. */
+export type AuthorityStance = "STATUTE" | "ON_POINT" | "ADVERSE"
+
+export interface SnapshotAuthority {
+  id: string
+  kind: AuthorityKind
+  stance: AuthorityStance
+  title: string
+  subtitle: string | null
+  citation: string | null
+  rationale: string | null
+  /** The ground: a LEGAL_ISSUE finding on this case. */
+  findingId: string | null
+  source: "MANUAL" | "AI"
+  /** Jev's second opinion on `stance` (0–1 confidence). Null when Jev was off or failed. Never
+   * overwrites `stance`; the panel only offers it when it disagrees. */
+  jevStance: AuthorityStance | null
+  jevConfidence: number | null
+  resolvedAuthority: { lawId: string; title: string; jurisUrl: string } | null
+}
+
+export interface SnapshotAuthoritySummary {
+  statute: number
+  onPoint: number
+  adverse: number
+  total: number
+  /** Share of cited authority that is on point (0–1); null when nothing is cited. */
+  coverage: number | null
+}
+
 export interface SnapshotDeadlineConfirmation {
   id: string
   userId: string
@@ -279,6 +311,20 @@ export interface SnapshotMindMapStatus {
   isStale: boolean
 }
 
+/** The case's document-built map (ilovelawyer-api's CaseMindMapSvc). Stale = the READY document
+ * set changed since it was built. */
+export interface SnapshotCaseMindMapStatus {
+  version: number
+  generatedAt: string
+  documentCount: number
+  isStale: boolean
+  /** Every document it was built from is gone — the app hides it. */
+  retired?: boolean
+  /** Since it was built (0 for a map built before these were tracked, even when stale). */
+  documentsAdded?: number
+  documentsRemoved?: number
+}
+
 export interface CaseSnapshot {
   case: {
     id: string
@@ -298,7 +344,11 @@ export interface CaseSnapshot {
     matrix: SnapshotEvidenceMatrixItem[]
     contradictions: SnapshotContradiction[]
   }
-  law: { citations: SnapshotCitation[] }
+  law: {
+    citations: SnapshotCitation[]
+    authorities: SnapshotAuthority[]
+    summary: SnapshotAuthoritySummary
+  }
   procedure: {
     deadlines: SnapshotDeadline[]
     items: SnapshotProcedureItem[]
@@ -315,6 +365,8 @@ export interface CaseSnapshot {
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
+  /** Null until the case's first build; absent on an API that predates it. */
+  caseMindMap?: SnapshotCaseMindMapStatus | null
   /** `outlookHistory` is newest first and includes the current one. */
   outlook?: CaseOutlook | null
   outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]
