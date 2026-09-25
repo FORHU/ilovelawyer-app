@@ -339,6 +339,19 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
+/** The pill on a Legal Issues / Weaknesses / Strengths row — mirrors the API's FindingTag, and
+ * FINDING_TAGS_BY_CATEGORY there decides which ones a category may use. */
+export type FindingTag =
+  | "CONTESTED"
+  | "BRIEFING"
+  | "OPEN"
+  | "RESOLVED"
+  | "MATERIAL"
+  | "MINOR"
+  | "CLOSED"
+  | "STRONG"
+  | "MODERATE"
+
 export interface CaseFinding {
   id: string
   caseId: string
@@ -348,6 +361,18 @@ export interface CaseFinding {
   /** Which source document an AI-generated finding is grounded in. Null for lawyer-entered
    * findings and for AI findings the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Sub-line: who bears the burden, the work that would close it, or the document reference. */
+  detail: string | null
+  tag: FindingTag | null
+  /** -10..10, the same scale as Red Team's argument impact. */
+  impact: number | null
+  position: number | null
+  /** Jev's check (per-category shape). Null when Jev wasn't run or its call failed. */
+  jev: Record<string, unknown> | null
+  /** The drafting model's own tag/impact, kept once Jev has replaced them. */
+  modelTag: FindingTag | null
+  modelImpact: number | null
+  jevCheckedAt: string | null
   createdAt: string
   updatedAt: string
 }

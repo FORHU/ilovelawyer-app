@@ -18,6 +18,7 @@ import type {
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
+  FindingTag,
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
@@ -612,9 +613,33 @@ export function useRecomputeDeadlineMutation(caseId: string) {
 export function useCreateFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { category: FindingCategory; label: string }) =>
+    mutationFn: (body: { category: FindingCategory; label: string; detail?: string | null; tag?: FindingTag | null }) =>
       apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings`, {
         method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      label?: string
+      detail?: string | null
+      tag?: FindingTag | null
+      position?: number | null
+    }) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}`, {
+        method: "PATCH",
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
