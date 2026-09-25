@@ -25,6 +25,7 @@ import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map";
+import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status";
 import { chatKeys } from "@/lib/query-keys";
 
 export type StudioTileKind = "documents" | "decisions" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
@@ -158,6 +159,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const isIndexingDocuments = caseDocumentsQuery.data?.some((doc) => doc.ragStatus === "PENDING") ?? false;
   const documentCount = caseDocumentsQuery.data?.length ?? 0;
   const readyDocumentCount = caseDocumentsQuery.data?.filter((doc) => doc.ragStatus === "READY").length ?? 0;
+  // The case map's nodes cite documents by id (and Jev's verdicts name one); the map's detail
+  // panel shows these names instead.
+  const documentNames = useMemo(
+    () => Object.fromEntries((caseDocumentsQuery.data ?? []).map((doc) => [doc.id, doc.name])),
+    [caseDocumentsQuery.data],
+  );
   // Timeline and Data Table are populated from document analysis — nothing to show (or refresh)
   // until at least one document exists.
   const noDocuments = documentCount === 0;
@@ -882,9 +889,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     // map gets its own key so it never borrows a chat map's.
                     consultationId={showingCaseMap ? `case:${caseId}` : consultationId ?? undefined}
                     isStale={showingCaseMap ? snapshotQuery.data?.caseMindMap?.isStale : snapshotQuery.data?.mindMap.isStale}
+                    staleDetail={showingCaseMap ? caseMindMapStaleDetail(t, snapshotQuery.data?.caseMindMap) : undefined}
                     regenerating={showingCaseMap ? isBuildingCaseMap : isGenerating}
                     onRegenerate={regenerateShownMap}
                     expansion={mindMapExpansion}
+                    documentNames={showingCaseMap ? documentNames : undefined}
                   />
                 </div>
               </div>
@@ -933,13 +942,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   {generateError && (
                     <p className="text-xs text-red-600 dark:text-red-400">{t("workspace.mindMapGenerateError")}</p>
                   )}
-                  <p className="max-w-xs text-xs text-muted-foreground">{t("caseMindMap.uploadHint")}</p>
+                  <p className="max-w-xs text-xs text-muted-foreground">
+                    {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.uploadHint")}
+                  </p>
                 </div>
               )
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
                 <p className="text-sm text-muted-foreground">{t("workspace.mindMapNoConsultation")}</p>
-                <p className="max-w-xs text-xs text-muted-foreground">{t("caseMindMap.uploadHint")}</p>
+                <p className="max-w-xs text-xs text-muted-foreground">
+                  {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.uploadHint")}
+                </p>
               </div>
             )
           ) : openTile === "timeline" ? (

@@ -182,7 +182,12 @@
     "emptyWithDocuments": "이 사건의 문서로 사건 전략 맵을 만듭니다.",
     "buildCta": "문서로 만들기",
     "buildError": "마인드맵을 만들지 못했습니다. 다시 시도하세요.",
-    "uploadHint": "문서를 업로드하면 맵이 자동으로 만들어집니다."
+    "uploadHint": "문서를 업로드하면 맵이 자동으로 만들어집니다.",
+    "retired": "이 맵을 만든 문서가 제거되었습니다. 새 맵을 만들려면 문서를 업로드하세요.",
+    "staleAdded_other": "문서 {{count}}개 추가됨",
+    "staleRemoved_other": "문서 {{count}}개 제거됨",
+    "staleAddedRemoved_other": "문서 {{added}}개 추가, {{removed}}개 제거됨",
+    "terminalBuilding": "문서로 사건 맵을 만드는 중…"
   },
   "mindMapEdit": {
     "rename": "이름 바꾸기",
@@ -203,5 +208,25 @@
     "showLevels": "단계 표시",
     "upToLevel": "{{level}}단계까지",
     "expandAll": "모두 펼치기"
+  },
+  "mindMapCheck": {
+    "notFound": "인용한 문서에서 찾을 수 없음",
+    "contradicted": "인용한 문서와 상충함",
+    "supportedBy": "{{source}}에서 뒷받침됨",
+    "notFoundIn": "{{source}}에서 찾을 수 없음",
+    "contradictedBy": "{{source}}와(과) 상충함",
+    "fallback": "인용된 페이지가 없거나 해당 페이지에 텍스트가 없어 문서에서 가장 관련 있는 부분과 대조했습니다.",
+    "sources": "출처",
+    "page": "{{page}}쪽",
+    "removedDocument": "사건에서 제거된 문서",
+    "highlight": "검토할 항목 강조",
+    "kind": {
+      "ASSERTED_BY_PARTY": "당사자의 주장",
+      "STATED_BY_WITNESS": "증인의 진술",
+      "SHOWN_BY_DOCUMENT": "문서로 확인됨",
+      "ESTABLISHED": "확정된 사실"
+    },
+    "sourceRemoved": "출처 제거됨",
+    "sourceRemovedDetail": "이 항목이 인용한 문서가 제거되었거나 보관되었습니다. 여전히 유효한지 확인하거나 맵을 다시 생성하세요."
   }
 }

@@ -57,4 +57,21 @@ describe("buildMindMapGraph", () => {
     const radii = radialRingRadii([1, 5, 3])
     expect(radii[2]! - radii[1]!).toBeGreaterThanOrEqual(600)
   })
+
+  it("marks only the verdicts that need a look (Stage 6)", () => {
+    const check = (verdict: string) => ({ verdict, confidence: 0.9, evidenceKind: "SHOWN_BY_DOCUMENT", documentId: "d", located: true, checkedAt: "" })
+    const checked = {
+      id: "root",
+      label: "R",
+      children: [
+        { id: "a", label: "A", check: check("SUPPORTED") },
+        { id: "b", label: "B", check: check("UNSUPPORTED") },
+        { id: "c", label: "C", check: check("CONTRADICTED") },
+        { id: "d", label: "D" },
+        { id: "e", label: "E", sourceRemoved: true },
+      ],
+    }
+    const nodes = byId(buildMindMapGraph(checked, "horizontal", new Set(), "").nodes)
+    expect(["a", "b", "c", "d", "e"].map((id) => nodes.get(id).data.reviewVerdict)).toEqual([null, "UNSUPPORTED", "CONTRADICTED", null, "SOURCE_REMOVED"])
+  })
 })

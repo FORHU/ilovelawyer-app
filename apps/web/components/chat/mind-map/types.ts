@@ -15,11 +15,16 @@ export interface MindMapProps {
   /** Case has newer activity (CaseSnapshot.mindMap.isStale) than this map's generation.
    * Omit/false hides the toolbar badge entirely. */
   isStale?: boolean;
+  /** What made it stale, when known — e.g. "2 documents added, 1 removed". Shown on the badge. */
+  staleDetail?: string;
   regenerating?: boolean;
   onRegenerate?: () => void;
   /** "Expand with AI" — omit to hide it (e.g. a map with no consultation behind it). Built by
    * useMindMapExpansion (lib/chat/use-mind-map-expansion.ts). */
   expansion?: MindMapExpansion;
+  /** Case document names by id — the detail panel names a node's cited documents with these.
+   * Without it, citations show without a name. */
+  documentNames?: Record<string, string>;
 }
 
 export interface MindMapExpansion {

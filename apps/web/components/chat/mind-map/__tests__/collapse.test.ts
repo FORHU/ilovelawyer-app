@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { collectIds, reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth } from "../collapse"
+import { collectIds, reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth, treeHasChecks } from "../collapse"
 
 const tree = {
   id: "root",
@@ -75,3 +75,10 @@ describe("collapseBelowLevel", () => {
   })
 })
 
+describe("treeHasChecks", () => {
+  it("finds a Jev check anywhere in the tree", () => {
+    expect(treeHasChecks(tree)).toBe(false)
+    const deepCheck = { id: "root", children: [{ id: "a", children: [{ id: "a.1", check: { verdict: "SUPPORTED" }, children: [] }] }] }
+    expect(treeHasChecks(deepCheck)).toBe(true)
+  })
+})

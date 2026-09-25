@@ -22,7 +22,28 @@ export interface MindMapItem {
   /** The model's own id, kept only when it differs from the path id. */
   sourceId?: string;
   media?: unknown[];
+  /** Case documents this point comes from (the case's document-built map only). */
+  sources?: { documentId: string; page?: number }[];
+  /** What Jev found checking this point against its cited passage — see MindMapNodeCheck. */
+  check?: MindMapNodeCheck;
+  /** A document this point cited was removed or archived and the map wasn't rebuilt. */
+  sourceRemoved?: boolean;
   children: MindMapItem[];
+}
+
+/** Mirrors ilovelawyer-api's MindMapNodeCheck (mind-map-jev.ts). Absent until checked, and gone
+ * again once the node's text is edited. */
+export interface MindMapNodeCheck {
+  verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED";
+  confidence: number;
+  /** "ASSERTED_BY_PARTY" | "STATED_BY_WITNESS" | "SHOWN_BY_DOCUMENT" | "ESTABLISHED" */
+  evidenceKind: string;
+  documentId: string;
+  page?: number;
+  /** False when judged on the document's most relevant passages because no page was cited (or
+   * the page had no text) — weaker evidence. */
+  located: boolean;
+  checkedAt: string;
 }
 
 function isMindMapShape(v: unknown): v is MindMapItem {

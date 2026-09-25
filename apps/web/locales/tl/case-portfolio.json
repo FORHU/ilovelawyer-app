@@ -184,7 +184,15 @@
     "emptyWithDocuments": "Bumuo ng case strategy map mula sa mga dokumento ng kasong ito.",
     "buildCta": "Buuin mula sa mga dokumento",
     "buildError": "Hindi mabuo ang mind map. Subukang muli.",
-    "uploadHint": "Mag-upload ng mga dokumento para awtomatikong mabuo ang mapa mula sa mga ito."
+    "uploadHint": "Mag-upload ng mga dokumento para awtomatikong mabuo ang mapa mula sa mga ito.",
+    "retired": "Inalis na ang mga dokumentong pinagbuuan ng mapang ito. Mag-upload ng mga dokumento para bumuo ng bago.",
+    "staleAdded_one": "{{count}} dokumentong naidagdag",
+    "staleAdded_other": "{{count}} na dokumentong naidagdag",
+    "staleRemoved_one": "{{count}} dokumentong inalis",
+    "staleRemoved_other": "{{count}} na dokumentong inalis",
+    "staleAddedRemoved_one": "{{added}} dokumentong naidagdag, {{removed}} ang inalis",
+    "staleAddedRemoved_other": "{{added}} na dokumentong naidagdag, {{removed}} ang inalis",
+    "terminalBuilding": "Binubuo ang mapa ng kaso mula sa iyong mga dokumento…"
   },
   "mindMapEdit": {
     "rename": "Palitan ang pangalan",
@@ -206,5 +214,25 @@
     "showLevels": "Ipakita ang mga antas",
     "upToLevel": "Hanggang antas {{level}}",
     "expandAll": "Buksan lahat"
+  },
+  "mindMapCheck": {
+    "notFound": "Hindi makita sa binanggit na dokumento",
+    "contradicted": "Sinasalungat ng binanggit na dokumento",
+    "supportedBy": "Sinusuportahan ng {{source}}",
+    "notFoundIn": "Hindi makita sa {{source}}",
+    "contradictedBy": "Sinasalungat ng {{source}}",
+    "fallback": "Sinuri laban sa mga pinakakaugnay na bahagi ng dokumento, dahil walang binanggit na pahina o walang teksto ang pahinang iyon.",
+    "sources": "Mga pinagmulan",
+    "page": "p. {{page}}",
+    "removedDocument": "isang dokumentong wala na sa kaso",
+    "highlight": "I-highlight ang mga puntong susuriin",
+    "kind": {
+      "ASSERTED_BY_PARTY": "paratang ng isang partido",
+      "STATED_BY_WITNESS": "salaysay ng isang saksi",
+      "SHOWN_BY_DOCUMENT": "ipinapakita ng isang dokumento",
+      "ESTABLISHED": "napatunayan na"
+    },
+    "sourceRemoved": "Inalis ang pinagmulan",
+    "sourceRemovedDetail": "Inalis o na-archive ang isang dokumentong binanggit ng puntong ito. Suriin kung totoo pa rin ito, o i-regenerate ang mapa."
   }
 }

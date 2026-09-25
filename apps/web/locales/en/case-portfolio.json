@@ -318,7 +318,15 @@
     "emptyWithDocuments": "Build a case strategy map from this case's documents.",
     "buildCta": "Build from documents",
     "buildError": "Couldn't build the mind map. Try again.",
-    "uploadHint": "Upload documents to build the map from them automatically."
+    "uploadHint": "Upload documents to build the map from them automatically.",
+    "retired": "The documents this map was built from were removed. Upload documents to build a new one.",
+    "staleAdded_one": "{{count}} document added",
+    "staleAdded_other": "{{count}} documents added",
+    "staleRemoved_one": "{{count}} document removed",
+    "staleRemoved_other": "{{count}} documents removed",
+    "staleAddedRemoved_one": "{{added}} document added, {{removed}} removed",
+    "staleAddedRemoved_other": "{{added}} documents added, {{removed}} removed",
+    "terminalBuilding": "Building the case map from your documents…"
   },
   "mindMapEdit": {
     "rename": "Rename",
@@ -340,5 +348,25 @@
     "showLevels": "Show levels",
     "upToLevel": "Up to level {{level}}",
     "expandAll": "Expand all"
+  },
+  "mindMapCheck": {
+    "notFound": "Not found in the cited document",
+    "contradicted": "Contradicted by the cited document",
+    "supportedBy": "Supported by {{source}}",
+    "notFoundIn": "Not found in {{source}}",
+    "contradictedBy": "Contradicted by {{source}}",
+    "fallback": "Checked against the most relevant passages of the document, because no page was cited or that page has no text.",
+    "sources": "Sources",
+    "page": "p. {{page}}",
+    "removedDocument": "a document no longer in the case",
+    "highlight": "Highlight points to review",
+    "kind": {
+      "ASSERTED_BY_PARTY": "a party's allegation",
+      "STATED_BY_WITNESS": "a witness's account",
+      "SHOWN_BY_DOCUMENT": "shown by a document",
+      "ESTABLISHED": "established"
+    },
+    "sourceRemoved": "Source removed",
+    "sourceRemovedDetail": "A document this point cited was removed or archived. Check it still holds, or regenerate the map."
   }
 }

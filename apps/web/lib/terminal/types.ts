@@ -284,6 +284,11 @@ export interface SnapshotCaseMindMapStatus {
   generatedAt: string
   documentCount: number
   isStale: boolean
+  /** Every document it was built from is gone — the app hides it. */
+  retired?: boolean
+  /** Since it was built (0 for a map built before these were tracked, even when stale). */
+  documentsAdded?: number
+  documentsRemoved?: number
 }
 
 export interface CaseSnapshot {

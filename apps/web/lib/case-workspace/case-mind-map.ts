@@ -21,6 +21,9 @@ export interface CaseMindMap {
   documentCount: number;
   /** Expands/edits since the last build — what a Regenerate would replace. */
   expandedCount: number;
+  /** Set when every document it was built from was removed or archived: hidden until the next
+   * build (see `tree` below). */
+  retiredAt?: string | null;
 }
 
 /**
@@ -47,8 +50,11 @@ export function useCaseMindMap(caseId: string) {
 
   return {
     map: query.data ?? null,
-    /** The tree, only when it has at least one branch — same render gate as a chat map. */
-    tree: usableMindMap(query.data?.data),
+    /** The tree, only when it has at least one branch — same render gate as a chat map — and the
+     * map isn't retired. */
+    tree: query.data?.retiredAt ? undefined : usableMindMap(query.data?.data),
+    /** True when the case had a map but its documents were all removed or archived. */
+    retired: Boolean(query.data?.retiredAt),
     isLoading: query.isLoading,
     isBuilding: job.data?.status === "IN_PROGRESS",
     buildFailed: job.data?.status === "FAILED",

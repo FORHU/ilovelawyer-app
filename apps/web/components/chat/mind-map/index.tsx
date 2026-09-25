@@ -17,12 +17,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Layout, Maximize, Check, Save, RotateCcw, Trash2, Plus, Minus, Target, X, Box, Monitor, AlertTriangle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { MindMapProps, MindMapItem } from './types';
-import { MIND_MAP_CHROME, MIND_MAP_LIMITS, mindMapGridColor, fixedNodeDescription } from './constants';
+import { MIND_MAP_CHROME, MIND_MAP_LIMITS, MIND_MAP_THEME, mindMapGridColor, fixedNodeDescription } from './constants';
 import ReactMarkdown from 'react-markdown';
 import { CustomNode } from './custom-node';
-import { reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth } from './collapse';
+import { reconcileCollapsedIds, countDescendants, collapseBelowLevel, treeDepth, treeHasChecks } from './collapse';
 import { buildMindMapGraph, MIND_MAP_PERF_THRESHOLD, type MindMapLayout } from './layout';
 import { NodeEditor } from './node-editor';
+import { NodeEvidence } from './node-evidence';
 import type { MindMapEditRequest } from './types';
 import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
 
@@ -74,7 +75,7 @@ function locateTreeNode(root: MindMapItem, id: string | null): { item: MindMapIt
   return walk(root, 0);
 }
 
-function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, regenerating, onRegenerate, expansion }: MindMapProps) {
+function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isStale, staleDetail, regenerating, onRegenerate, expansion, documentNames }: MindMapProps) {
   const { t } = useTranslation('case-portfolio');
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -358,6 +359,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   }, [edges, pendingFocusId, is3D, fitView]);
 
 
+  // "Highlight points to review": everything Jev didn't flag fades back. Offered only once
+  // something on this map has been checked.
+  const [highlightReview, setHighlightReview] = useState(false);
+  const hasChecks = useMemo(() => treeHasChecks(data), [data]);
+
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map(node => {
       // On the canvas the button only sits on nodes that are leaves or that the AI flagged as
@@ -368,10 +374,25 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
         : null;
       return {
         ...node,
-        data: { ...node.data, id: node.id, onToggleCollapse: handleToggleCollapse, onExpand: handleExpandNode, expand, isSelected: node.id === selectedNodeId }
+        data: {
+          ...node.data,
+          id: node.id,
+          onToggleCollapse: handleToggleCollapse,
+          onExpand: handleExpandNode,
+          expand,
+          isSelected: node.id === selectedNodeId,
+          reviewLabel: node.data.reviewVerdict === 'CONTRADICTED'
+            ? t('mindMapCheck.contradicted')
+            : node.data.reviewVerdict === 'UNSUPPORTED'
+              ? t('mindMapCheck.notFound')
+              : node.data.reviewVerdict === 'SOURCE_REMOVED'
+                ? t('mindMapCheck.sourceRemoved')
+                : undefined,
+          dimmed: highlightReview && hasChecks && !node.data.isRoot && !node.data.reviewVerdict,
+        }
       };
     });
-  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, t]);
+  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, highlightReview, hasChecks, t]);
 
   const selectedTreeNode = useMemo(() => locateTreeNode(data, selectedNodeId), [data, selectedNodeId]);
 
@@ -570,6 +591,18 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                   </div>
                 </>
               )}
+              {hasChecks && !is3D && (
+                <div className="p-1 border-t border-border">
+                  <button
+                    onClick={() => setHighlightReview((v) => !v)}
+                    className={highlightReview ? MIND_MAP_CHROME.menuItemActive : MIND_MAP_CHROME.menuItem}
+                    aria-pressed={highlightReview}
+                  >
+                    {t('mindMapCheck.highlight')}
+                    {highlightReview && <Check size={10} strokeWidth={4} />}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -599,11 +632,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             type="button"
             onClick={requestRegenerate}
             disabled={regenerating}
-            title="Case has new activity since this map was generated"
+            title={staleDetail ?? "Case has new activity since this map was generated"}
             className={MIND_MAP_CHROME.staleBadge}
           >
             {regenerating ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
-            <span>{regenerating ? 'Regenerating…' : 'Stale · Regenerate'}</span>
+            <span>{regenerating ? 'Regenerating…' : staleDetail ? `${staleDetail} · Regenerate` : 'Stale · Regenerate'}</span>
           </button>
         )}
         <button
@@ -827,6 +860,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                       </div>
                     );
                   })()}
+
+                  {selectedTreeNode && (selectedTreeNode.item.sources?.length || selectedTreeNode.item.check || selectedTreeNode.item.sourceRemoved) && (
+                    <NodeEvidence item={selectedTreeNode.item} documentNames={documentNames} />
+                  )}
 
                   {selectedExpandState && (
                     <div className="border-t border-border pt-4">

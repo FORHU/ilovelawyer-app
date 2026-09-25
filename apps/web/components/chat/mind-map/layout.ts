@@ -148,6 +148,14 @@ export function buildMindMapGraph(
         // fall back to the position in this walk, which is the same number.
         depth: typeof item.depth === 'number' ? item.depth : depth,
         hasMore: item.hasMore === true,
+        // Only the verdicts that ask for the lawyer's attention are marked on the canvas;
+        // SUPPORTED stays quiet (the detail panel still says so).
+        reviewVerdict:
+          item.check?.verdict === 'UNSUPPORTED' || item.check?.verdict === 'CONTRADICTED'
+            ? item.check.verdict
+            : item.sourceRemoved
+              ? 'SOURCE_REMOVED'
+              : null,
         childCount: children.length,
       },
       // (x, y) is the centre of the node's slot; React Flow positions a node by its top-left

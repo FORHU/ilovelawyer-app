@@ -63,3 +63,12 @@ export function treeDepth(root: MindMapItem): number {
   const children = getChildren(root);
   return children.length ? 1 + Math.max(...children.map(treeDepth)) : 0;
 }
+
+/** Whether any node has something to review — a Jev check, or a citation to a removed document
+ * — the Structure menu only offers "Highlight points to review" once there's something to
+ * highlight. */
+export function treeHasChecks(root: MindMapItem): boolean {
+  if (!root) return false;
+  if (root.check || root.sourceRemoved) return true;
+  return getChildren(root).some(treeHasChecks);
+}
