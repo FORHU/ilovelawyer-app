@@ -277,6 +277,15 @@ export interface SnapshotMindMapStatus {
   isStale: boolean
 }
 
+/** The case's document-built map (ilovelawyer-api's CaseMindMapSvc). Stale = the READY document
+ * set changed since it was built. */
+export interface SnapshotCaseMindMapStatus {
+  version: number
+  generatedAt: string
+  documentCount: number
+  isStale: boolean
+}
+
 export interface CaseSnapshot {
   case: {
     id: string
@@ -313,6 +322,8 @@ export interface CaseSnapshot {
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
+  /** Null until the case's first build; absent on an API that predates it. */
+  caseMindMap?: SnapshotCaseMindMapStatus | null
   /** `outlookHistory` is newest first and includes the current one. */
   outlook?: CaseOutlook | null
   outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]

@@ -175,5 +175,15 @@
     "regenerateWarning_other": "Papalitan ng pag-regenerate ang buong mapa, kasama ang {{count}} pinalawak na sangay.",
     "regenerateConfirm": "I-regenerate",
     "cancel": "Kanselahin"
+  },
+  "caseMindMap": {
+    "building": "Binubuo ang mind map mula sa iyong mga dokumento…",
+    "rebuilding": "Binubuo muli ang mapa mula sa mga dokumento.",
+    "fromDocuments_one": "Mula sa {{count}} dokumento",
+    "fromDocuments_other": "Mula sa {{count}} na dokumento",
+    "emptyWithDocuments": "Bumuo ng case strategy map mula sa mga dokumento ng kasong ito.",
+    "buildCta": "Buuin mula sa mga dokumento",
+    "buildError": "Hindi mabuo ang mind map. Subukang muli.",
+    "uploadHint": "Mag-upload ng mga dokumento para awtomatikong mabuo ang mapa mula sa mga ito."
   }
 }

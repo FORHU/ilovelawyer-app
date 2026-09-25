@@ -512,7 +512,12 @@ export function pollAudioOverviewAudio(consultationId: string, messageId: string
 /** Result of POST .../mind-map/expand and .../mind-map/revert (ilovelawyer-api's MindMapSvc):
  * the whole updated tree, so the caller can swap it into the messages cache immediately. */
 export interface MindMapChangeResult {
-  messageId: string
+  /** "message" = a consultation's chat map; "case" = the case's document-built map
+   * (lib/case-workspace/case-mind-map.ts). */
+  kind?: "message" | "case"
+  caseId?: string
+  /** Message maps only. */
+  messageId?: string
   version: number
   mindMap: MindMapItem
   /** expand only — the node the children were added under, as a path id. */

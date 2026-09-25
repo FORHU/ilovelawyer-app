@@ -309,5 +309,15 @@
     "regenerateWarning_other": "Regenerating replaces the whole map, including {{count}} expanded branches.",
     "regenerateConfirm": "Regenerate",
     "cancel": "Cancel"
+  },
+  "caseMindMap": {
+    "building": "Building the mind map from your documents…",
+    "rebuilding": "The map is being rebuilt from the documents.",
+    "fromDocuments_one": "From {{count}} document",
+    "fromDocuments_other": "From {{count}} documents",
+    "emptyWithDocuments": "Build a case strategy map from this case's documents.",
+    "buildCta": "Build from documents",
+    "buildError": "Couldn't build the mind map. Try again.",
+    "uploadHint": "Upload documents to build the map from them automatically."
   }
 }

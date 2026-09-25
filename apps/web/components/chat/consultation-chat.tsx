@@ -50,7 +50,7 @@ import {
   type MessageGroundingCheck,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
-import { useMindMapExpansion } from "@/lib/chat/use-mind-map-expansion";
+import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
@@ -773,8 +773,13 @@ export default function ConsultationChat({
   // Which persisted message/version that map is — what "Expand with AI" addresses on the API.
   // From `history` (server rows), not `messages`: a map still streaming in has nothing to expand yet.
   const activeMindMapRecord = useMemo(() => getActiveMindMapRecord(history ?? []), [history]);
-  const mindMapExpansion = useMindMapExpansion(consultationId ?? undefined, activeMindMapRecord, {
-    busy: isGeneratingMindMap,
+  const mindMapExpansionTarget = useMemo<MindMapExpansionTarget | undefined>(
+    () => (consultationId && activeMindMapRecord ? { kind: "consultation", consultationId, record: activeMindMapRecord } : undefined),
+    [consultationId, activeMindMapRecord],
+  );
+  const { t: tMindMap } = useTranslation("case-portfolio");
+  const mindMapExpansion = useMindMapExpansion(mindMapExpansionTarget, {
+    disabledReason: isGeneratingMindMap ? tMindMap("workspace.replyInProgressHint") : undefined,
   });
 
   // The Mind Map tab's auto/manual "generate" turn is a system-driven request the user never
