@@ -9,7 +9,7 @@ import {
   useScoreWitnessesMutation,
   useUpdateWitnessMutation,
 } from "@/lib/terminal/mutations"
-import type { Witness, WitnessStatus } from "@/lib/terminal/types"
+import type { Witness, WitnessNeed, WitnessStatus } from "@/lib/terminal/types"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
@@ -173,6 +173,16 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
             const reasonsOpen = openReasons.has(node.id)
             const quoteOpen = openQuotes.has(node.id)
             const aiFound = w.source === "AI"
+            const done = new Set(w.needsDone ?? [])
+            const needs: WitnessNeed[] = w.aiFactors?.needs ?? []
+            const openNeeds = needs.filter((n) => !done.has(n.key))
+            const toggleNeed = (key: string) => {
+              const next = new Set(done)
+              if (next.has(key)) next.delete(key)
+              else next.add(key)
+              update.mutate({ id: node.refId, needsDone: [...next] })
+            }
+            const band = w.aiFactors?.band ?? null
             const commitCredibility = (value: number) => {
               if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
             }
@@ -316,6 +326,44 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {needs.length > 0 ? (
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <p className={labelTextClass}>
+                      {t("witnessNeeds")}
+                      {openNeeds.length > 0 ? ` · ${openNeeds.length}` : ""}
+                    </p>
+                    <ul className="mt-1.5 flex flex-col gap-1.5 text-[12px] text-foreground">
+                      {needs.map((n) => (
+                        <li key={n.key} className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={done.has(n.key)}
+                            onChange={() => toggleNeed(n.key)}
+                            disabled={update.isPending}
+                            aria-label={t("witnessNeedsDone")}
+                            className="mt-0.5 shrink-0"
+                          />
+                          <span className={done.has(n.key) ? "text-muted-foreground line-through" : undefined}>
+                            {n.text}
+                            {n.link === "STATEMENT" && !w.statementReceived ? (
+                              <>
+                                {" "}
+                                <button
+                                  type="button"
+                                  onClick={() => update.mutate({ id: node.refId, statementReceived: true })}
+                                  disabled={update.isPending}
+                                  className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                                >
+                                  {t("witnessMarkReceived")}
+                                </button>
+                              </>
+                            ) : null}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
               </PanelRow>
             )
