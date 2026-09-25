@@ -114,7 +114,34 @@ export interface SnapshotTimelineEvent {
   description: string | null
   status: string
   source: "AI" | "LAWYER" | "CALENDAR"
+  documentId: string | null
   pageNumber: number | null
+}
+
+export type ConfidenceLevel = "LOW" | "MEDIUM" | "HIGH"
+export type OutlookBand =
+  | "UNFAVORABLE"
+  | "LEANS_UNFAVORABLE"
+  | "UNCERTAIN"
+  | "LEANS_FAVORABLE"
+  | "FAVORABLE"
+
+// LLM judgement of how the case is going, as a band + confidence, never a number. Null until the
+// case's first refresh after the outlook feature shipped.
+export interface CaseOutlook {
+  band: OutlookBand
+  confidence: ConfidenceLevel
+  rationale: string
+  drivers: { label: string; direction: "FOR" | "AGAINST"; sourceDocId?: string | null }[]
+  createdAt: string
+}
+
+// Weekly buckets, oldest first — matches ilovelawyer-api's WeeklyTrendPoint (swagger.ts) exactly:
+// `total` is the running total as of that week, `added` is just that week's new items.
+export interface TrendPoint {
+  weekStart: string
+  added: number
+  total: number
 }
 
 export interface SnapshotRisk {
@@ -124,6 +151,8 @@ export interface SnapshotRisk {
   severity: "FATAL" | "MAJOR" | "UNVERIFIED" | "MISSING_EVIDENCE" | "DEADLINE"
   status: "OPEN" | "CONFIRMED" | "ACCEPTED"
   pageNumber: number | null
+  /** Null for lawyer-added risks; only AI-generated risks carry a confidence. */
+  confidence?: ConfidenceLevel | null
 }
 
 export interface SnapshotDate {
@@ -186,6 +215,8 @@ export interface SnapshotCitation {
   id: string
   quotedText: string
   citedReference: string | null
+  /** The source text the quote was checked against — prefilled when editing a citation. */
+  officialText?: string | null
   status: "VALID" | "INVALID" | "UNVERIFIED" | "ADVERSE"
   notes: string | null
   /** Separate from `status` (does the quote match the source): does the cited authority itself
@@ -254,7 +285,7 @@ export interface CaseSnapshot {
     caseName: string
     actionType?: string | null
     jurisdiction?: string | null
-    parties: { id: string; name: string; designation: string }[]
+    parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
   }
   documents: SnapshotDocument[]
@@ -284,6 +315,10 @@ export interface CaseSnapshot {
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
   mindMap: SnapshotMindMapStatus
+  /** `outlookHistory` is newest first and includes the current one. */
+  outlook?: CaseOutlook | null
+  outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]
+  trends?: { health?: TrendPoint[]; openIssues?: TrendPoint[]; evidence?: TrendPoint[] }
   riskAnalysis?: {
     overall: {
       score: number
@@ -319,11 +354,29 @@ export interface CaseFinding {
   updatedAt: string
 }
 
+export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
+
 export interface Witness {
   id: string
   caseId: string
   name: string
   role: string | null
+  summary: string | null
+  /** AI = found automatically in `sourceDocument`; `sourceQuote` is the verbatim line it came from. */
+  source: "MANUAL" | "AI"
+  sourceDocumentId: string | null
+  sourceQuote: string | null
+  sourceDocument: { id: string; name: string } | null
+  status: WitnessStatus
+  credibility: number
+  /** AI-proposed — the displayed score is credibilityOverride ?? aiCredibility ?? credibility. */
+  aiCredibility: number | null
+  aiRationale: { text: string; source: string | null }[] | null
+  aiSuggestedStatus: WitnessStatus | null
+  credibilityOverride: number | null
+  scoredAt: string | null
+  statementDueOn: string | null
+  statementReceived: boolean
   contact: string | null
   notes: string | null
   createdAt: string
@@ -411,6 +464,53 @@ export interface AttributedClaim {
   sourceLabel: string | null
 }
 
+export type RedTeamArgumentStrength = "STRONG" | "MODERATE" | "WEAK"
+
+export type RedTeamSourceKind =
+  | "LEGAL_ISSUE"
+  | "WEAKNESS"
+  | "CONTRADICTION"
+  | "TIMELINE"
+  | "DOCUMENT"
+  | "WITNESS"
+  | "DAMAGE"
+  | "PARTY"
+
+export interface RedTeamArgument {
+  title: string
+  gist: string | null
+  strength: RedTeamArgumentStrength
+  /** -10..10; positive = moves the case toward the opponent. */
+  impact: number
+  reasoning: string | null
+  source: { kind: RedTeamSourceKind; label: string }
+  /** Jev's check of this argument against the case data (USE_JEV_REDTEAM). When present,
+   * strength/impact are computed from it and the author model's own are in model*. Absent on
+   * assessments made with the flag off; null when Jev's call failed for this argument. */
+  jev?: RedTeamJevRating | null
+  modelStrength?: RedTeamArgumentStrength
+  modelImpact?: number
+}
+
+export interface RedTeamJevRating {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** 0..1 */
+  likelihood: number
+  likelihoodConfidence: number
+  /** 0..1 */
+  severity: number
+  severityConfidence: number
+  uncertain: boolean
+}
+
+export interface RedTeamArguments {
+  opponent: string | null
+  riskOfLoss: number | null
+  /** Highest impact first. */
+  arguments: RedTeamArgument[]
+}
+
 export interface RedTeamAssessment {
   id: string
   caseId: string
@@ -419,6 +519,9 @@ export interface RedTeamAssessment {
    * components/shared/attributed-text.tsx. Null/empty on assessments generated before this
    * existed, or if the model's [CLAIMS] block didn't parse. */
   claims: AttributedClaim[] | null
+  /** Ranked opposing arguments, each resolved to the case item it rests on. Null on assessments
+   * generated before this existed, or if the model's [ARGUMENTS] block didn't parse. */
+  arguments: RedTeamArguments | null
   createdAt: string
   updatedAt: string
 }
@@ -464,6 +567,16 @@ export interface DecisionRecordPayload {
   wouldChangeIf: string[]
 }
 
+/** The user turn that produced a decision, resolved server-side from sourceMessageId (the
+ * assistant reply) back to its parent user message — see CaseSnapshotSvc.get. Null when the
+ * source message was deleted or the record predates this lookup. */
+export interface DecisionSourcePrompt {
+  messageId: string
+  consultationId: string
+  content: string
+  createdAt: string
+}
+
 export interface DecisionRecord {
   id: string
   caseId: string
@@ -475,6 +588,7 @@ export interface DecisionRecord {
   disputeNote: string | null
   createdAt: string
   updatedAt: string
+  sourcePrompt: DecisionSourcePrompt | null
 }
 
 // Case Theories & Annotations (differentiation program, Phase 2) — several lawyers can hold

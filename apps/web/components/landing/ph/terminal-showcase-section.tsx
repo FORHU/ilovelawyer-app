@@ -1,5 +1,5 @@
 import { TerminalShowcaseSectionBase } from "@/components/landing/terminal-showcase-section-base";
 
 export function TerminalShowcaseSection() {
-  return <TerminalShowcaseSectionBase />;
+  return <TerminalShowcaseSectionBase tenantCode="PH" />;
 }

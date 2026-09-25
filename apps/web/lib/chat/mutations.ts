@@ -58,6 +58,12 @@ export interface ChatMessage {
   role: MessageRole
   content: string
   createdAt: string
+  /** The user message that triggered this reply (null/absent on a user message itself). Already
+   * present on the wire (ilovelawyer-api spreads the full Message row) — typed here so the
+   * latest-turn logic in use-topic-navigator.ts can anchor on the parent's createdAt (set
+   * synchronously at submission time) instead of this message's own, which is only set once
+   * generation finishes and can land out of submission order under concurrent turns. */
+  parentMessageId?: string | null
   /** Populated by GET .../messages (handoff doc §5). Absent/undefined on messages sent before
    * the backend shipped this — always treat as `?? []`. */
   documents?: MessageDocument[]

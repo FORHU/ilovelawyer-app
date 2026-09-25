@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
-import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, type UserDocument } from "@/lib/cases/mutations";
+import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, useMarkCaseOpened, type UserDocument } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
 import { useConsultationsQuery, type Consultation } from "@/lib/chat/mutations";
@@ -39,6 +39,7 @@ export default function CaseDetailPage() {
 
   const { data: caseRecord } = useCaseQuery(id);
   const { data: snapshot } = useCaseSnapshotQuery(id);
+  useMarkCaseOpened(id);
 
   const filedLine = [
     snapshot?.case.actionType,

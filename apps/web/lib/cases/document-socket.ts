@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import type { Socket } from "socket.io-client"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
 import { terminalKeys } from "@/lib/terminal/mutations"
+import { graphViewKeys } from "@/lib/graph-view/mutations"
 import type { UserDocument } from "@/lib/cases/mutations"
 
 /** Live Case Document extraction events pushed by ilovelawyer-api's DocumentExtractionSvc over
@@ -92,12 +93,15 @@ export function applyDocumentEvent(
     queryClient.setQueryData<UserDocument[]>(chatKeys.documents(payload.consultationId), patch)
   }
 
-  // The Terminal's snapshot embeds each document's ragStatus and otherwise only refreshes on a
-  // long idle poll. Only on a terminal state — "started" changes nothing it shows. Immediate, not
-  // debounced: Studio's Data Table tile is meant to auto-refresh live as each document finishes,
-  // not settle only once a batch quiets down.
-  if (payload.caseId && (event === "document:ready" || event === "document:failed")) {
+  // The Terminal's snapshot embeds each document's ragStatus and pageCount and otherwise only
+  // refreshes on a long idle poll. Not on "started" — it changes nothing the snapshot shows.
+  // "retrying" is included so a retried document leaves the red FAILED state right away.
+  // Immediate, not debounced: Studio's Data Table tile is meant to auto-refresh live as each
+  // document finishes, not settle only once a batch quiets down.
+  if (payload.caseId && event !== "document:started") {
     queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(payload.caseId) })
+    // A finished extraction can add key-date timeline events for this document.
+    if (event === "document:ready") queryClient.invalidateQueries({ queryKey: graphViewKeys.all(payload.caseId) })
   }
 }
 

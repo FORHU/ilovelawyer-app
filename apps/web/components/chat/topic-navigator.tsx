@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -73,11 +73,17 @@ export function TopicNavigatorList({
   activeIndex,
   onJump,
   compact = false,
+  renderGroupFooter,
 }: {
   groups: TopicNavigatorGroup[];
   activeIndex: number | null;
   onJump: (index: number) => void;
   compact?: boolean;
+  /** Extra content rendered inside a prompt's expanded dropdown, after its last topic — Case
+   * Workspace's Sources panel uses this to show that same prompt's Decision Records in place,
+   * rather than in a second, separately-grouped list keyed by the same prompts. Ignored in
+   * `compact`, where there's no room for anything but dots. */
+  renderGroupFooter?: (promptIndex: number) => ReactNode;
 }) {
   // Newest prompt's topics open by default (mirrors the old flat list's "everything visible"
   // behavior for the common single-turn case); older prompts collapse so a many-turn thread
@@ -128,6 +134,7 @@ export function TopicNavigatorList({
                 {group.topics.map((topic) => (
                   <TopicRow key={topic.index} topic={topic} isActive={topic.index === activeIndex} onJump={onJump} compact={false} />
                 ))}
+                {renderGroupFooter?.(group.promptIndex)}
               </div>
             )}
           </div>

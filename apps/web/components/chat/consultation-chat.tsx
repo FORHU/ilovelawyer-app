@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, ChevronRight } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -810,6 +810,11 @@ export default function ConsultationChat({
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
+  // Terminal's inline Topics panel. While it's showing, the picker row's "Topics" toggle button
+  // is hidden (rendering both side by side was redundant); the panel's edge arrow collapses it.
+  const terminalTopicsPanelVisible = Boolean(
+    embedded && showTopicNavigator && terminalTopicsOpen && (splitTopics.length > 0 || isGeneratingTopics),
+  );
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
   // the transcript so each can highlight yellow whichever quotes actually appear in its own
@@ -819,12 +824,14 @@ export default function ConsultationChat({
   // handful of short strings, and AssistantMessage no-ops (no highlight) wherever none match.
   const evidenceQuoteHighlights = useMemo(() => {
     const targets: { id: string; text: string }[] = [];
-    (latestDecisions?.records ?? []).forEach((record, ri) => {
+    if (!latestDecisions) return targets;
+    const messageIndex = latestDecisions.index;
+    latestDecisions.records.forEach((record, ri) => {
       record.evidenceFor.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "for", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "for", ei), text: ev.quote });
       });
       record.evidenceAgainst.forEach((ev, ei) => {
-        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(ri, "against", ei), text: ev.quote });
+        if (ev.quote?.trim()) targets.push({ id: evidenceQuoteElementId(messageIndex, ri, "against", ei), text: ev.quote });
       });
     });
     return targets;
@@ -892,15 +899,38 @@ export default function ConsultationChat({
   // CSS max-h-[50vh] on the textarea (below) is the actual visual cap — the browser clamps
   // to it and shows a scrollbar regardless of what height gets set here, so this can just
   // always request the content's full natural height rather than also clamping in JS.
-  useEffect(() => {
+  //
+  // A layout effect, not a plain one: a passive effect runs *after* the browser has painted the
+  // new text at the old height, so as a line wrapped, the one-row textarea auto-scrolled to keep
+  // the caret in view and the text visibly vanished for a few frames until the resize landed.
+  // It also re-runs when isComposerMultiline flips — that flip changes the textarea's width
+  // (shared row -> its own full-width row), so the height measured at the old width is stale.
+  // Because that re-measure happens at the *new* width, where the same text may fit on one line
+  // again, going back to single-row is gated on the text having shrunk past where it wrapped
+  // (multilineFlipLengthRef) — otherwise the two layouts would flip-flop forever on the same text.
+  const multilineFlipLengthRef = useRef(0);
+  useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
+    el.scrollTop = 0;
     // A single line (leading-6 + the textarea's own py-1.5) renders at 36px in both the
     // embedded and non-embedded variants — anything taller means it has wrapped past one line.
-    setIsComposerMultiline(el.scrollHeight > 40);
-  }, [inputMessage]);
+    const wrapped = el.scrollHeight > 40;
+    if (!isComposerMultiline) {
+      if (wrapped) {
+        multilineFlipLengthRef.current = inputMessage.length;
+        setIsComposerMultiline(true);
+      }
+    } else if (
+      !wrapped &&
+      (inputMessage.length === 0 ||
+        inputMessage.length < multilineFlipLengthRef.current - Math.min(8, multilineFlipLengthRef.current >> 1))
+    ) {
+      setIsComposerMultiline(false);
+    }
+  }, [inputMessage, isComposerMultiline]);
 
   // The transcript, rather than the page, owns scrolling. Follow new/streaming content only
   // while the lawyer is already at the bottom; toggling Topics, scroll-spy state, or a query
@@ -1052,17 +1082,30 @@ export default function ConsultationChat({
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
+  // Only a drag that actually carries files is an attach gesture — selecting text in the textarea
+  // and dragging it (or a text/link drag from elsewhere on the page) also fires dragover on this
+  // form, and treating that as a file drop flashed the "Drop files to attach" overlay over the
+  // very text being selected. Text drags are left entirely to the browser (no preventDefault), so
+  // moving selected text within the textarea still works normally.
+  const isFileDrag = (e: React.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
     setIsDraggingOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
+    // dragleave also fires when the pointer moves onto a child of the form — only clear the
+    // overlay when it actually leaves the form, or it would flicker over every inner element.
+    if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
     setIsDraggingOver(false);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLFormElement>) => {
+    if (!isFileDrag(e)) return;
     e.preventDefault();
     setIsDraggingOver(false);
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
@@ -1887,9 +1930,8 @@ export default function ConsultationChat({
                       onClick={() => void handleStop()}
                       disabled={!canStop || isStopping}
                       aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
-                      className="order-3 h-9 w-9 sm:w-auto shrink-0 flex items-center justify-center sm:justify-start gap-2.5 rounded-full bg-brand-gold text-background px-0 sm:px-[18px] text-[10px] font-semibold uppercase tracking-[1.2px] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                      className="order-3 h-9 w-9 shrink-0 flex items-center justify-center rounded-full bg-brand-gold text-background transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:opacity-50"
                     >
-                      <span className="hidden sm:inline">{t("input.stopLabel", { defaultValue: "Stop" })}</span>
                       {isStopping ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                       ) : (
@@ -2002,7 +2044,7 @@ export default function ConsultationChat({
         {isolateConsultation && !mindMapOnly && caseId && (
           <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
             <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />
-            {embedded && showTopicNavigator && (
+            {embedded && showTopicNavigator && !terminalTopicsPanelVisible && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -2010,7 +2052,7 @@ export default function ConsultationChat({
                     onClick={() => setTerminalTopicsOpen((open) => !open)}
                     aria-expanded={terminalTopicsOpen}
                     aria-controls={terminalTopicsOpen ? `${chatInstanceId}-topics` : undefined}
-                    className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+                    className="relative top-1.5 right-2 flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
                     disabled={splitTopics.length === 0 && !isGeneratingTopics}
                   >
                     <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2018,7 +2060,7 @@ export default function ConsultationChat({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {splitTopics.length === 0 && !isGeneratingTopics ? "Topics appear after a structured AI response" : "Show or hide response topics"}
+                  {splitTopics.length === 0 && !isGeneratingTopics ? "Topics appear after a structured AI response" : "Show response topics"}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -2474,24 +2516,39 @@ export default function ConsultationChat({
           );
         })()}
         </div>
-        {embedded && showTopicNavigator && terminalTopicsOpen && (splitTopics.length > 0 || isGeneratingTopics) && (
-          <aside
-            id={`${chatInstanceId}-topics`}
-            aria-label={t("topicNavigator.label")}
-            className="ml-2 flex w-52 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
-          >
-            <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
-              <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
-              {t("topicNavigator.label")}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {splitTopics.length === 0 ? (
-                <TopicNavigatorLoading label={t("topicNavigator.generating")} />
-              ) : (
-                <TopicNavigatorList groups={splitTopicGroups} activeIndex={activeTopicIndex} onJump={scrollToTopic} />
-              )}
-            </div>
-          </aside>
+        {terminalTopicsPanelVisible && (
+          // The picker row's "Topics" button is hidden while this panel is open (see
+          // terminalTopicsPanelVisible) so there's a single Topics control at a time — the arrow
+          // tab straddling the panel's left edge is how it's collapsed again. It lives outside
+          // the <aside> because that clips its overflow.
+          <div className="relative ml-2 flex shrink-0">
+            <button
+              type="button"
+              onClick={() => setTerminalTopicsOpen(false)}
+              aria-label={t("topicNavigator.hide")}
+              title={t("topicNavigator.hide")}
+              className="absolute top-1/2 left-0 z-10 flex h-10 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+            >
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <aside
+              id={`${chatInstanceId}-topics`}
+              aria-label={t("topicNavigator.label")}
+              className="flex w-52 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
+            >
+              <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
+                <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+                {t("topicNavigator.label")}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                {splitTopics.length === 0 ? (
+                  <TopicNavigatorLoading label={t("topicNavigator.generating")} />
+                ) : (
+                  <TopicNavigatorList groups={splitTopicGroups} activeIndex={activeTopicIndex} onJump={scrollToTopic} />
+                )}
+              </div>
+            </aside>
+          </div>
         )}
       </main>
 

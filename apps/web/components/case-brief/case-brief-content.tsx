@@ -20,8 +20,10 @@ import { triggerBriefDownload } from "@/lib/terminal/download-brief"
  *   - Generate: an explicit "Generate new Case Brief" action — deliberately not automatic, so
  *     just opening this panel to look at something already made doesn't silently create a new
  *     S3 upload + history entry every time.
- *   - Preview: shows whatever was most recently generated *this session* (no auto-regenerate on
- *     open), with a Word/PDF toggle and a real rendered preview per format via AttachmentPreview
+ *   - Preview: shows the most recently generated brief (no auto-regenerate on open) — taken from
+ *     the just-finished generate call if there is one, otherwise from the newest Word/PDF entries in
+ *     the server-side history, so leaving this view (or reloading) doesn't lose it and force a
+ *     re-generate. With a Word/PDF toggle and a real rendered preview per format via AttachmentPreview
  *     — the same docx-preview/PDF-iframe machinery the Studio Documents tile already uses, all
  *     client-side (file bytes never leave the browser, unlike a third-party embed viewer such as
  *     Office/Google, which this app deliberately avoids for confidential documents). A Download
@@ -31,11 +33,24 @@ import { triggerBriefDownload } from "@/lib/terminal/download-brief"
  */
 export function CaseBriefContent({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
-  const [view, setView] = useState<"generate" | "preview" | "history">("generate")
-  const [generated, setGenerated] = useState<{ docx: string | null; pdf: string | null }>({
-    docx: null,
-    pdf: null,
-  })
+  // null = the user hasn't picked a tab yet, so the default is derived once history is known:
+  // Preview when a brief already exists, Generate when none does.
+  const [pickedView, setView] = useState<"generate" | "preview" | "history" | null>(null)
+  // Set only by a generate call finished in this mount, so the fresh files show immediately
+  // without waiting on the history refetch; it takes precedence over what history says.
+  const [justGenerated, setJustGenerated] = useState<{ docx: string | null; pdf: string | null } | null>(null)
+
+  const history = useCaseBriefHistoryQuery(caseId)
+  // History is newest first, so the first entry of each format is the latest of that format.
+  // Only the loaded pages are scanned — the newest generation is always on page one.
+  const entries = history.data?.pages.flatMap((page) => page.items) ?? []
+  const latestDocx = entries.find((entry) => entry.format === "docx" && entry.file.fileUrl)
+  const latestPdf = entries.find((entry) => entry.format === "pdf" && entry.file.fileUrl)
+  const fromHistory = { docx: latestDocx?.file.fileUrl ?? null, pdf: latestPdf?.file.fileUrl ?? null }
+  const generated = justGenerated ?? fromHistory
+  const generatedAt = justGenerated ? null : (latestPdf ?? latestDocx)?.createdAt ?? null
+  const hasGenerated = Boolean(generated.docx || generated.pdf)
+  const view = pickedView ?? (hasGenerated ? "preview" : "generate")
 
   const tabs: { key: typeof view; label: string; icon?: typeof History }[] = [
     { key: "generate", label: t("caseBriefGenerateTab") },
@@ -62,16 +77,22 @@ export function CaseBriefContent({ caseId }: { caseId: string }) {
       </div>
 
       <div className="min-h-0 flex-1">
-        {view === "generate" ? (
+        {pickedView === null && history.isPending ? (
+          <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            {t("caseBriefHistoryLoading")}
+          </div>
+        ) : view === "generate" ? (
           <CaseBriefGenerate
             caseId={caseId}
+            hasGenerated={hasGenerated}
             onGenerated={(result) => {
-              setGenerated(result)
+              setJustGenerated(result)
               setView("preview")
             }}
           />
         ) : view === "preview" ? (
-          <CaseBriefPreview generated={generated} />
+          <CaseBriefPreview generated={generated} generatedAt={generatedAt} onRegenerate={() => setView("generate")} />
         ) : (
           <CaseBriefHistory caseId={caseId} />
         )}
@@ -82,9 +103,11 @@ export function CaseBriefContent({ caseId }: { caseId: string }) {
 
 function CaseBriefGenerate({
   caseId,
+  hasGenerated,
   onGenerated,
 }: {
   caseId: string
+  hasGenerated: boolean
   onGenerated: (result: { docx: string | null; pdf: string | null }) => void
 }) {
   const { t } = useTranslation("terminal")
@@ -110,17 +133,32 @@ function CaseBriefGenerate({
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 rounded-lg border border-border bg-muted/20 p-6 text-center">
       <FileText className="h-10 w-10 text-muted-foreground" aria-hidden="true" />
-      <p className="max-w-xs text-sm text-muted-foreground">{t("caseBriefGenerateHint")}</p>
+      <p className="max-w-xs text-sm text-muted-foreground">
+        {hasGenerated ? t("caseBriefRegenerateHint") : t("caseBriefGenerateHint")}
+      </p>
       <Button onClick={handleGenerate} disabled={isGenerating}>
         {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-        {isGenerating ? t("caseBriefGenerating") : t("caseBriefGenerateCta")}
+        {isGenerating
+          ? t("caseBriefGenerating")
+          : hasGenerated
+            ? t("caseBriefRegenerateCta")
+            : t("caseBriefGenerateCta")}
       </Button>
       {hasError && <p className="text-xs text-destructive">{t("caseBriefPreviewError")}</p>}
     </div>
   )
 }
 
-function CaseBriefPreview({ generated }: { generated: { docx: string | null; pdf: string | null } }) {
+function CaseBriefPreview({
+  generated,
+  generatedAt,
+  onRegenerate,
+}: {
+  generated: { docx: string | null; pdf: string | null }
+  /** ISO time of the brief being shown when it came from history; null right after generating. */
+  generatedAt: string | null
+  onRegenerate: () => void
+}) {
   const { t } = useTranslation("terminal")
   const [format, setFormat] = useState<CaseBriefFormat>("pdf")
   const url = generated[format]
@@ -176,14 +214,26 @@ function CaseBriefPreview({ generated }: { generated: { docx: string | null; pdf
         )}
       </div>
 
-      <Button
-        className="shrink-0 self-end"
-        disabled={!url}
-        onClick={() => url && triggerBriefDownload(url)}
-      >
-        <Download className="h-4 w-4" aria-hidden="true" />
-        {format === "docx" ? t("downloadWord") : t("downloadPdf")}
-      </Button>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-col items-start gap-0.5">
+          {generatedAt && (
+            <span className="text-xs text-muted-foreground">
+              {t("caseBriefLastGenerated", { date: formatEntryDate(generatedAt) })}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onRegenerate}
+            className="text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            {t("caseBriefRegenerateCta")}
+          </button>
+        </div>
+        <Button disabled={!url} onClick={() => url && triggerBriefDownload(url)}>
+          <Download className="h-4 w-4" aria-hidden="true" />
+          {format === "docx" ? t("downloadWord") : t("downloadPdf")}
+        </Button>
+      </div>
     </div>
   )
 }

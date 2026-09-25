@@ -28,6 +28,7 @@ import type {
   TheoryDiff,
   TheoryStance,
   Witness,
+  WitnessStatus,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 
@@ -71,6 +72,8 @@ export type AiGenerationKind =
   | "caseReconstructionScenes"
   | "caseReconstructionTableRead"
   | "timelineGenerate"
+  | "witnessScoring"
+  | "witnessExtract"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -323,6 +326,8 @@ export function useCreateTimelineMutation(caseId: string) {
       title: string
       occurredOn?: string
       description?: string
+      documentId?: string
+      pageNumber?: number
     }) =>
       apiFetch(`/api/my-cases/${caseId}/timeline`, {
         method: "POST",
@@ -392,12 +397,33 @@ export function useCreateRiskMutation(caseId: string) {
   })
 }
 
+// Queued server-side (AiGenerationQueue/SQS) — a full-bundle scan can run for minutes. This POST
+// returns once the job is claimed; ContradictionsPanel follows useAiJobStatus(caseId,
+// "contradictions") and refreshes the graph view itself when that flips to DONE.
 export function useScanContradictionsMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
         method: "POST",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "contradictions") })
+    },
+  })
+}
+
+export type ContradictionStatus = "OPEN" | "RESOLVED" | "DISMISSED"
+
+// A contradiction's triage status. The server carries it over to the same contradiction when a
+// later scan finds it again (see EvidenceIntelligenceSvc.scanContradictionsInner).
+export function useUpdateContradictionMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: ContradictionStatus; resolutionNote?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/evidence/contradictions/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
@@ -499,6 +525,43 @@ export function useCheckCitationMutation(caseId: string) {
       // without the user having to manually refresh that panel.
       queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
     },
+  })
+}
+
+// Both refresh the snapshot (the Law panel reads citations from it) and Citation Map's seed, which
+// is built from citedReference — an edited or removed citation must not linger there. An edit is
+// re-verified server-side, so the row comes back with a fresh status and authority link.
+function invalidateCitations(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
+  queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+  queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+}
+
+export function useUpdateCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      quotedText?: string
+      citedReference?: string | null
+      officialText?: string | null
+      pinpoint?: string | null
+    }) =>
+      apiFetch(`/api/my-cases/${caseId}/citations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
+  })
+}
+
+export function useDeleteCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/my-cases/${caseId}/citations/${id}`, { method: "DELETE" }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
   })
 }
 
@@ -619,6 +682,9 @@ export function useCreateWitnessMutation(caseId: string) {
     mutationFn: (body: {
       name: string
       role?: string
+      summary?: string
+      status?: WitnessStatus
+      credibility?: number
       contact?: string
       notes?: string
     }) =>
@@ -629,6 +695,44 @@ export function useCreateWitnessMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateWitnessMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      status?: WitnessStatus
+      credibilityOverride?: number | null
+      statementDueOn?: string | null
+      statementReceived?: boolean
+    }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+// Queued server-side (AiGenerationQueue/SQS): this POST returns once the job is claimed, not once
+// scores are saved. The caller pairs it with useAiJobStatus(caseId, "witnessScoring") and
+// refreshes the witnesses graph view itself when that flips to DONE.
+export function useScoreWitnessesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/witnesses/score`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "witnessScoring") })
     },
   })
 }
