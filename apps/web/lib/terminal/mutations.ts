@@ -763,10 +763,28 @@ export function useUpdateWitnessMutation(caseId: string) {
       credibilityOverride?: number | null
       statementDueOn?: string | null
       statementReceived?: boolean
+      needsDone?: { key: string; documentId: string; note?: string }[]
     }) =>
       apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+// A lawyer sets (or, with answer null, clears) their own answer for one rubric factor. The API
+// recalculates the score straight away; no model call, no rescore.
+export function useSetWitnessFactorMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, factor, answer, note }: { id: string; factor: string; answer: string | null; note?: string }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}/factors/${factor}`, {
+        method: "PATCH",
+        body: JSON.stringify({ answer, note: note ?? "" }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
