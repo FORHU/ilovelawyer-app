@@ -25,6 +25,13 @@ export function timelineDotTone(
   return doc ? ingestTone(doc.ragStatus) : "none"
 }
 
+/** A timeline event's dot: green once its date has passed (today included), grey while it's still
+ * ahead or when it has no date. Independent of the source document — its status is the source
+ * line's colour (timelineDotTone), not the dot's. */
+export function timelineDotClass(at: Date | null | undefined, now: Date = new Date()): string {
+  return at && at.getTime() <= now.getTime() ? TONE_BG_CLASS.ready : TONE_BG_CLASS.none
+}
+
 export const TONE_TEXT_CLASS: Record<IngestTone, string> = {
   ready: "text-ok",
   pending: "text-warn",

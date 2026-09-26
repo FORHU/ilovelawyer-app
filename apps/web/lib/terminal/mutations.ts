@@ -7,6 +7,8 @@ import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
 import type {
   Annotation,
+  AuthorityKind,
+  AuthorityStance,
   AnnotationKind,
   AnnotationTargetType,
   CaseFinding,
@@ -74,6 +76,8 @@ export type AiGenerationKind =
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
+  | "mindMapExpand"
+  | "caseMindMap"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -525,6 +529,91 @@ export function useCheckCitationMutation(caseId: string) {
       // without the user having to manually refresh that panel.
       queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
     },
+  })
+}
+
+export function useAddAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: {
+      kind: AuthorityKind
+      stance: AuthorityStance
+      title: string
+      subtitle?: string
+      citation?: string
+      rationale?: string
+      findingId?: string | null
+    }) =>
+      apiFetch(`/api/my-cases/${caseId}/authorities`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useUpdateAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; stance?: AuthorityStance; findingId?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/authorities/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useRemoveAuthorityMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/authorities/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Both refresh the snapshot (the Law panel reads citations from it) and Citation Map's seed, which
+// is built from citedReference — an edited or removed citation must not linger there. An edit is
+// re-verified server-side, so the row comes back with a fresh status and authority link.
+function invalidateCitations(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
+  queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+  queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+}
+
+export function useUpdateCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      quotedText?: string
+      citedReference?: string | null
+      officialText?: string | null
+      pinpoint?: string | null
+    }) =>
+      apiFetch(`/api/my-cases/${caseId}/citations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
+  })
+}
+
+export function useDeleteCitationMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/api/my-cases/${caseId}/citations/${id}`, { method: "DELETE" }),
+    onSuccess: () => invalidateCitations(queryClient, caseId),
   })
 }
 

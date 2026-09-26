@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { CircleCheck, PanelLeft, PanelLeftClose, Plus, Search, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -41,35 +41,39 @@ export default function TerminalSettingsSidebar({
 }: TerminalSettingsSidebarProps) {
   const { t } = useTranslation("terminal")
   const [query, setQuery] = useState("")
-  const asideRef = useRef<HTMLElement>(null)
+  const [showEmpty, setShowEmpty] = useState(false)
 
   const visibleSet = useMemo(() => new Set(visiblePanelIds), [visiblePanelIds])
+
+  // A pane is worth listing when the case has something for it (a real badge — see
+  // computePanelBadges), it's already on the grid, or it has no content signal at all (the AI
+  // assistant is useful on any case). Everything else is hidden by default so users aren't
+  // offered panes their case has nothing for; searching, or the footer toggle, still reaches
+  // them since some empty panes are where content gets created (Witnesses, Red Team, ...).
+  const isPopulated = (id: PanelId) => panelBadges[id] !== undefined || visibleSet.has(id) || id === "chat"
+
+  const emptyCount = useMemo(
+    () => allPanels.filter((panel) => PANEL_CATEGORY[panel.id] && !isPopulated(panel.id)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allPanels, panelBadges, visibleSet],
+  )
 
   const groupedPanels = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matches = allPanels.filter((panel) => {
       const label = PANEL_TITLES[panel.id] ?? panel.label
-      return !q || label.toLowerCase().includes(q)
+      if (q) return label.toLowerCase().includes(q)
+      return showEmpty || isPopulated(panel.id)
     })
     return PANE_CATEGORY_ORDER.map((category) => ({
       category,
       panels: matches.filter((panel) => PANEL_CATEGORY[panel.id] === category),
     })).filter((group) => group.panels.length > 0)
-  }, [allPanels, query])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allPanels, query, showEmpty, panelBadges, visibleSet])
 
-  // Collapse on an outside click, mirroring ConsultationSidebar — no overlay so it
-  // doesn't block scrolling/dragging elsewhere on the grid.
-  useEffect(() => {
-    if (!expanded || isMobileOpen) return
-    const handlePointerDown = (e: MouseEvent) => {
-      if (asideRef.current && !asideRef.current.contains(e.target as Node)) {
-        onExpandedChange(false)
-      }
-    }
-    document.addEventListener("mousedown", handlePointerDown)
-    return () => document.removeEventListener("mousedown", handlePointerDown)
-  }, [expanded, isMobileOpen, onExpandedChange])
-
+  // No outside-click collapse: the library only closes via its own collapse button, so working
+  // in the grid (dragging panes in, clicking panes) doesn't keep dismissing it.
   useEffect(() => {
     if (!isMobileOpen) return
     const handleResize = () => {
@@ -143,7 +147,8 @@ export default function TerminalSettingsSidebar({
                           badge ? "text-muted-foreground" : "text-muted-foreground/60 italic"
                         }`}
                       >
-                        {badge ?? t("paneEmptyBadge")}
+                        {/* The assistant has no case content to report, so "Empty" would be misleading. */}
+                        {badge ?? (panel.id === "chat" ? null : t("paneEmptyBadge"))}
                       </span>
                       {onScreen ? (
                         <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
@@ -177,15 +182,24 @@ export default function TerminalSettingsSidebar({
     )
 
   const footerHint = (
-    <p className="shrink-0 border-t border-border px-4 py-3 text-[11px] leading-4 text-muted-foreground">
-      {t("panelLibraryHint")}
-    </p>
+    <div className="shrink-0 border-t border-border px-4 py-3 text-[11px] leading-4 text-muted-foreground">
+      {emptyCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowEmpty((prev) => !prev)}
+          aria-pressed={showEmpty}
+          className="mb-2 text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+        >
+          {showEmpty ? t("paneHideEmpty") : t("paneShowEmpty", { count: emptyCount })}
+        </button>
+      )}
+      <p>{t("panelLibraryHint")}</p>
+    </div>
   )
 
   return (
     <>
       <aside
-        ref={asideRef}
         className={`absolute inset-y-0 left-0 z-(--z-sidebar) hidden flex-col overflow-hidden border-r border-border bg-sidebar py-3 shadow-lg transition-[width] duration-200 lg:flex ${
           expanded ? "w-72" : "w-16"
         }`}
