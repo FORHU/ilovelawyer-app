@@ -40,6 +40,18 @@ export function isDesktop(): boolean {
 }
 
 /**
+ * Where a browser user can download the desktop app, or null when no build is published.
+ *
+ * Deliberately env-gated: there is no installer yet (`tauri build` has never been verified —
+ * see docs/desktop/getting-started.md), so offering a download would be a link to nothing.
+ * Callers must treat null as "say nothing about the desktop app" rather than showing a
+ * disabled button.
+ */
+export function desktopDownloadUrl(): string | null {
+  return process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || null
+}
+
+/**
  * Opens (or focuses) this case's Terminal in its own native window, on another monitor when
  * there is one. Returns false outside the desktop app — the caller should navigate normally
  * (a Link or router.push keeps same-tab navigation and middle-click working in the browser).

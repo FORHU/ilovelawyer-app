@@ -222,10 +222,16 @@ crates and takes a few minutes; after that it's seconds.
 **If you're only doing web work**, skip Tauri entirely and run `pnpm dev` — it's a normal
 Next.js app.
 
-**If `pnpm dev` is already running** in another terminal, `tauri:dev` will try to start a
-second one and that child will fail on the occupied port. Harmless — Tauri only waits for
-`localhost:3002` to answer, and your existing server answers it — but you'll see a port
-error scroll past. Stop the standalone `pnpm dev` first if you want clean output.
+**If `pnpm dev` is already running** in another terminal, `tauri:dev` will **fail outright**
+— not just print a warning. `beforeDevCommand` unconditionally tries to bind port 3002
+again, `next dev` exits with `EADDRINUSE`, and Tauri treats that as a failed prerequisite
+and aborts before ever launching the Rust app (`ELIFECYCLE ... exit code 1`). Stop the
+standalone `pnpm dev` first — there is no working "both at once" using two servers.
+
+**To view it in a browser tab *and* the desktop window at the same time**, you don't need
+two servers — just open `http://localhost:3002` in a normal browser while `tauri:dev` is
+running. Both are loading the same Next.js instance, so they share hot reload and state
+changes identically. That's the supported way to get both.
 
 **On exit:** Tauri tries to stop the Next.js process it started, but child-process cleanup
 on Windows isn't perfectly reliable. If port 3002 seems stuck after you quit, look for a

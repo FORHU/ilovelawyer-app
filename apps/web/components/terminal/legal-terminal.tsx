@@ -65,7 +65,8 @@ import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
-import { onPanelWindowClosed, openPanelWindow } from "@/lib/desktop"
+import { desktopDownloadUrl, onPanelWindowClosed, openPanelWindow } from "@/lib/desktop"
+import { toast } from "sonner"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import LayoutTabStrip from "@/components/terminal/layout-tab-strip"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -639,7 +640,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // maximizedId's "is this the maximized one" semantics beyond clearing it if it matches — while
   // the popup is open (see the onPanelWindowClosed effect above for how it comes back once closed).
   const popOutPanel = (id: PanelId) => {
-    if (!openPanelWindow(caseId, id)) return
+    // Only a blocked browser pop-up lands here — the desktop shell always succeeds. Without
+    // this the click did nothing at all, with no indication why.
+    if (!openPanelWindow(caseId, id)) {
+      const downloadUrl = desktopDownloadUrl()
+      toast.error(t("popOut.blockedTitle"), {
+        description: downloadUrl ? t("popOut.blockedHintWithDesktop") : t("popOut.blockedHint"),
+        action: downloadUrl
+          ? {
+              label: t("popOut.getDesktopApp"),
+              onClick: () => window.open(downloadUrl, "_blank", "noopener,noreferrer"),
+            }
+          : undefined,
+      })
+      return
+    }
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: false } : p)) } : prev))
   }

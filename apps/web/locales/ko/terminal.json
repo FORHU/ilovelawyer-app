@@ -354,5 +354,11 @@
     "STATED_BY_WITNESS": "The passage is a witness's account",
     "SHOWN_BY_DOCUMENT": "Shown by the document itself",
     "ESTABLISHED": "Recorded as established"
+  },
+  "popOut": {
+    "blockedTitle": "Your browser blocked the pop-out window",
+    "blockedHint": "Allow pop-ups for this site to open a panel in its own window.",
+    "blockedHintWithDesktop": "Allow pop-ups for this site, or use the desktop app to open panels in real windows you can move between monitors.",
+    "getDesktopApp": "Get the desktop app"
   }
 }
