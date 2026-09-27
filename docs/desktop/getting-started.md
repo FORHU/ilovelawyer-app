@@ -27,7 +27,8 @@ A browser tab cannot:
 - Open a genuinely separate OS window that you can drag to another monitor
 - Know how many monitors you have, or where they are
 - Position a window at specific screen coordinates
-- (Later) notice that *other* applications' windows opened or moved
+- Notice *other* applications' windows — which one you were last in, so a panel can dock
+  beside it (see [Window Intelligence](#window-intelligence-docking-beside-other-apps))
 
 Lawyers work across multiple screens with many documents open. That's the whole reason
 for the native layer. Everything else — cases, auth, documents, the API — stays in the
@@ -379,6 +380,14 @@ pixels end to end (tao makes the process per-monitor-v2 DPI aware, so Win32 and 
 once you've been in another app's window since launch. The taskbar, desktop, Start menu,
 Alt+Tab and this app's own windows deliberately don't count.
 
+**"My command works in `pnpm dev` but not in the desktop app."** Or: `"<command> not allowed.
+Plugin not found"`. A page only gets the app's own commands if the capability grants them by
+name — see `adding-features.md` §3, step 2b. Only the dev-server origin (`devUrl`) is treated
+as local and exempt, so this looks fine in `tauri:dev` on `localhost:3002` and fails on every
+other URL the app ever loads, including `https://*.ilovelawyer.com` and a tenant host like
+`ph.localhost:3002`. Verified live: the same `invoke` was rejected on `ph.localhost:3002` and
+accepted on `localhost:3002` before the grants existed.
+
 ---
 
 ## Window Intelligence: docking beside other apps
@@ -398,6 +407,14 @@ How it works, in [`../../src-tauri/src/window_intel.rs`](../../src-tauri/src/win
   `dock-target-changed` whenever that changes.
 - This app's own windows are ignored, so docking a panel (which takes the foreground)
   can't retarget itself.
+- When the tracked window closes, the target does **not** usually become null — closing it
+  hands the foreground to whatever was behind, and that becomes the new target. The button
+  keeps showing, naming the next app. It only disappears when there is no ordinary external
+  window left at all, which in practice means you have to have closed everything.
+- Docking is best-effort by design: if the window has closed, been minimized, or simply
+  isn't the target any more by the time you click, `target_geometry` fails, the Rust side
+  logs `docking skipped, using default placement`, and the panel still opens where it
+  normally would. Verified live.
 
 Rules for anyone extending it:
 
@@ -426,32 +443,66 @@ Build order we agreed, and where we are:
 ```text
 1. Move src-tauri into this repo ................ DONE
 2. Verify the unified repo (tauri dev) .......... DONE  (production build: NOT verified)
-3. Win32 tracer bullet .......................... DONE, NOT YET SEEN WORKING LIVE  ← you are here
+3. Win32 tracer bullet .......................... DONE, SEEN WORKING LIVE
 4. Connect it to the existing panel system ...... DONE  (Dock beside = existing pop-out)
 5. Extract a minimal bridge ..................... DONE  (DockTarget / useDockTarget)
-6. Expand — only on need we actually observed ... NEXT
+6. Expand — only on need we actually observed ... NEXT  ← you are here
 ```
 
 ### Returning point (last worked on 2026-09-27)
 
-Commit `2e7a247` on `feature/tauri-migration`. Everything compiles and tests pass, but
-**no one has clicked Dock beside in the running app yet.** Start here:
+**Dock beside has now been driven in the running app** and placement checked by measuring
+window rectangles in physical pixels, not by eye. Two bugs were found and fixed doing it.
 
-1. `pnpm tauri:dev`, then run this checklist and write down what actually happens:
-   - [ ] Click into Chrome, back into a Terminal: the button shows and says "chrome"
-   - [ ] Click it: the panel lands against Chrome's right edge, same height
-   - [ ] Chrome maximized: the panel overlaps the screen's right edge instead
-   - [ ] Chrome on the second monitor, at a different scaling %: right place, right size
-   - [ ] Close Chrome: the button disappears; clicking an old one opens the panel normally
-   - [ ] Taskbar, Start menu, Alt+Tab, our own windows: none of them change the target
-   - [ ] Task Manager (runs elevated): label falls back to "your last window"
-   - [ ] Visible gap or overlap between the panel and Chrome? How many pixels?
-2. Fix whatever step 1 turns up. Don't start new features before this.
-3. Then pick from the list below, based on what the checklist taught us.
+What was verified, on a single 3840×2160 display at 300% scaling (work area 3840×2016):
+
+| Case | Expected | Measured |
+|---|---|---|
+| Target left of centre | flush against its right edge | target `R=1935` → panel `L=1935` ✓ exact |
+| Target near the right edge | flips to its left | panel `L=335`, `R=2015` = target `L` ✓ exact |
+| Target maximized | overlaps work-area right edge | panel `L=2160` = `3840−1680` ✓ exact |
+| Target no longer current | normal placement, no failure | logged `docking skipped`, panel opened ✓ |
+| Taskbar, Start, our own windows | target unchanged | stayed on the previous app ✓ |
+| `dock-target-changed` reaching React | label follows the foreground | events arrived in order ✓ |
+| Button label | names the app | `Notepad`, `chrome`, `msedge`, `Code` ✓ |
+
+Found and fixed:
+
+- **App commands were rejected on every origin except the dev server** — see §11's gotcha.
+  This would have broken Dock beside *and* pop-out on the deployed `*.ilovelawyer.com`
+  builds, not just locally. Needed a `tauri_build::AppManifest` in `build.rs` plus
+  `allow-*` grants in the capability.
+- **A 15px gap** between panel and target: Tauri positions the whole window, invisible
+  resize borders included (15px per side at 300%), so the visible frames didn't meet.
+  `dock_panel` now grows the rect by `window_intel::invisible_borders`. That alone was
+  enough — an earlier second `dock_panel` pass after `show()` turned out to be unnecessary
+  and was removed.
+
+Still unverified — **start here**:
+
+1. **Second monitor at a different scaling %** — the one case with no coverage, because the
+   machine this ran on has a single display. `place_beside`'s negative-coordinate unit test
+   covers the arithmetic, but nothing has checked that Tauri's physical coordinates and
+   `GetDpiForWindow` agree once a second monitor with its own scale factor is involved.
+   This is the highest-value remaining check: it is exactly where physical/logical pixel
+   confusion shows up.
+2. **The "elevated process" label fallback** — a process we can't inspect should give
+   `appName: null` and the label "Dock beside your last window". The code path is clear
+   (`process_name` returns `None` when `OpenProcess` fails) but it was never exercised;
+   Task Manager on this machine wasn't elevated enough to trigger it.
+3. **The minimized-but-still-current target** — hard to arrange, because minimizing a window
+   hands the foreground to another app, which legitimately retargets. It returns `Err` and
+   falls back exactly like the stale case above, which *is* verified, so this is a
+   completeness gap rather than a risk.
+
+Note for whoever automates this again: a browser or editor that keeps grabbing the
+foreground will retarget between "decide the target" and "click the button", so trust the
+button's own label at click time rather than anything read beforehand.
 
 ### Next, roughly in order
 
 ```text
+A popped-out pane can be stranded (see below)    ← not new, but now easier to hit
 Following a docked window as it moves/resizes   (EVENT_OBJECT_LOCATIONCHANGE, filtered
                                                  to the one target — it fires constantly)
 Friendly app names ("Google Chrome", not "chrome")
@@ -462,6 +513,31 @@ Automatic rules — patterns go INTO Rust, only a rule id comes back out, so a w
                   title never leaves the native layer
 Verified production packaging / installer (sidecar paths likely need updating since src-tauri moved)
 ```
+
+### Flagged while testing: a popped-out pane can be stranded
+
+Not caused by Window Intelligence — it's in the pop-out feature itself, which docking just
+gives another route into. `popOutPanel` marks the pane `visible: false`, and the Terminal's
+autosave persists that to the workspace's `layoutJson` about 1.2s later. The pane is restored
+by the `onPanelWindowClosed` handler — **but only if that event arrives.** If the app restarts
+while a pane is out (a Rust rebuild in dev, a crash, quitting, or the owner window closing),
+the saved layout still says hidden and there is no window left to send the event. Observed
+directly: a 2-pane workspace came back with one pane after a `tauri:dev` rebuild.
+
+Recoverable — re-add the pane from the Panel Library — but it looks like a pane silently
+vanished from a saved workspace. Smallest fix: don't let pop-out state reach the persisted
+layout (keep the popped-out set in memory), or reconcile against the shell on mount and show
+any pane whose window no longer exists. Left undone deliberately: it is a pop-out concern, not
+a docking one, and worth fixing on its own rather than inside this branch.
+
+### Also noted: the API's tenant host map is missing `*.localhost`
+
+`ilovelawyer-api/src/utils/tenant-host.ts` lists `ph.ilovelawyer`, `ph.ilovelawyer.local` and
+the `.com` forms, but not `ph.localhost` / `uk.localhost` — which the web app's own copy in
+`apps/web/lib/tenant-code/resolve-host.ts` does list, and whose comment says to keep the two in
+sync. So a request from `http://ph.localhost:3002` gets "Unable to determine tenant from request
+origin" and organization creation fails there. Worked around during testing by creating the
+organization with a `ph.ilovelawyer.local` origin. Fix belongs in the API repo.
 
 ### Decisions already made — don't re-litigate
 
@@ -489,4 +565,5 @@ Verified production packaging / installer (sidecar paths likely need updating si
 | **Sidecar** | A helper program bundled with the app — here, Node running the built Next.js server |
 | **Label** | Tauri's unique name for a window, e.g. `case-terminal-abc123` |
 | **HWND** | Windows' internal handle for a window. Used by the OS, not exposed to the web side |
+| **Dock target** | The other app's window you were last in, which a panel can be docked beside. The web side sees it as `{ runtimeId, appName, title }` |
 | **Logical vs physical pixels** | Same screen, two coordinate systems, differing by the display's scale factor (125%, 150%…) |
