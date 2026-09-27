@@ -1,7 +1,4 @@
 {
-  "chat": {
-    "emptyPromptSummarizeCase": "Summarise this case's key facts"
-  },
   "emptyState": {
     "step2Body": "Claimants, defendants and interveners."
   }

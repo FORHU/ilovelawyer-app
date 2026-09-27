@@ -1,3 +1,5 @@
+import { britishCatalogs } from "@/lib/i18n/british"
+
 import enAuth from "@/locales/en/auth.json"
 import enCalendar from "@/locales/en/calendar.json"
 import enCasePortfolio from "@/locales/en/case-portfolio.json"
@@ -12,17 +14,11 @@ import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
 import enTranscription from "@/locales/en/transcription.json"
 
-// en-GB is an overlay, not a full catalogue: only the strings that differ from en, which is why
-// there are nine namespaces here and thirteen above. Missing keys fall through to en via
-// i18next's fallbackLng.
-import enGBAuth from "@/locales/en-GB/auth.json"
+// en-GB holds only what a transform cannot derive: the terms UK practice uses. British spelling is
+// applied to the American catalogs at load time instead — see lib/i18n/british.ts for why the
+// output isn't checked in.
 import enGBCasePortfolio from "@/locales/en-GB/case-portfolio.json"
-import enGBCommon from "@/locales/en-GB/common.json"
 import enGBCreateCase from "@/locales/en-GB/create-case.json"
-import enGBHomepage from "@/locales/en-GB/homepage.json"
-import enGBLanding from "@/locales/en-GB/landing.json"
-import enGBLibrary from "@/locales/en-GB/library.json"
-import enGBOrganization from "@/locales/en-GB/organization.json"
 import enGBTerminal from "@/locales/en-GB/terminal.json"
 
 import koAuth from "@/locales/ko/auth.json"
@@ -53,35 +49,37 @@ import tlTerm from "@/locales/tl/term.json"
 import tlTerminal from "@/locales/tl/terminal.json"
 import tlTranscription from "@/locales/tl/transcription.json"
 
+const EN = {
+  common: enCommon,
+  auth: enAuth,
+  landing: enLanding,
+  homepage: enHomepage,
+  calendar: enCalendar,
+  "case-portfolio": enCasePortfolio,
+  "create-case": enCreateCase,
+  library: enLibrary,
+  transcription: enTranscription,
+  profile: enProfile,
+  organization: enOrganization,
+  term: enTerm,
+  terminal: enTerminal,
+} as const
+
+// Only the differences British spelling can't derive — the terms UK practice uses. Keyed by
+// namespace; namespaces with nothing to override are simply absent.
+const EN_GB_TERMS = {
+  "case-portfolio": enGBCasePortfolio,
+  "create-case": enGBCreateCase,
+  terminal: enGBTerminal,
+}
+
 // Statically bundled: catalogs are small, curated, and this avoids a runtime
 // fetch/backend just to swap Display Language.
 export const I18N_RESOURCES = {
-  en: {
-    common: enCommon,
-    auth: enAuth,
-    landing: enLanding,
-    homepage: enHomepage,
-    calendar: enCalendar,
-    "case-portfolio": enCasePortfolio,
-    "create-case": enCreateCase,
-    library: enLibrary,
-    transcription: enTranscription,
-    profile: enProfile,
-    organization: enOrganization,
-    term: enTerm,
-    terminal: enTerminal,
-  },
-  "en-GB": {
-    common: enGBCommon,
-    auth: enGBAuth,
-    landing: enGBLanding,
-    homepage: enGBHomepage,
-    "case-portfolio": enGBCasePortfolio,
-    "create-case": enGBCreateCase,
-    library: enGBLibrary,
-    organization: enGBOrganization,
-    terminal: enGBTerminal,
-  },
+  en: EN,
+  // Derived, not checked in: every namespace en has, respelled, with the UK terms over the top.
+  // See lib/i18n/british.ts.
+  "en-GB": britishCatalogs(EN, EN_GB_TERMS),
   ko: {
     common: koCommon,
     auth: koAuth,

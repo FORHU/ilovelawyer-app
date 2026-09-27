@@ -1,6 +1,0 @@
-{
-  "emptyState": {
-    "summarizeDocumentPrompt": "Summarise \"{{fileName}}\""
-  },
-  "thinkingFinalizing": "is finalising the analysis"
-}
