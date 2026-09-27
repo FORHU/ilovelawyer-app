@@ -31,7 +31,8 @@ pub struct DockTarget {
 }
 
 /// A rectangle in physical pixels, edges exclusive on the right/bottom like Win32's `RECT`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Also used for per-edge insets (see `invisible_borders`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Rect {
     pub left: i32,
     pub top: i32,
@@ -82,7 +83,7 @@ pub fn place_beside(target: Rect, work_area: Rect, width: i32, min_height: i32) 
 }
 
 #[cfg(windows)]
-pub use win::{current, start, target_geometry};
+pub use win::{current, invisible_borders, start, target_geometry};
 
 #[cfg(not(windows))]
 pub use unsupported::{current, start, target_geometry};
@@ -107,7 +108,7 @@ mod win {
     use windows::Win32::UI::HiDpi::GetDpiForWindow;
     use windows::Win32::UI::WindowsAndMessaging::{
         DispatchMessageW, GetAncestor, GetClassNameW, GetForegroundWindow, GetMessageW,
-        GetWindowLongPtrW, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindow,
+        GetWindowLongPtrW, GetWindowRect, GetWindowTextW, GetWindowThreadProcessId, IsIconic, IsWindow,
         IsWindowVisible, CHILDID_SELF, EVENT_OBJECT_DESTROY, EVENT_SYSTEM_FOREGROUND, GA_ROOT,
         GWL_EXSTYLE, MSG, OBJID_WINDOW, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
         WS_EX_TOOLWINDOW,
@@ -232,6 +233,33 @@ mod win {
         }
     }
 
+    /// How far one of *our* windows extends past its visible frame on each edge: the invisible
+    /// resize borders Windows 10/11 adds. Zero when unknown (e.g. DWM can't say yet).
+    pub fn invisible_borders(window: isize) -> Rect {
+        let hwnd = HWND(window as *mut c_void);
+        let mut outer = RECT::default();
+        let mut frame = RECT::default();
+        unsafe {
+            if GetWindowRect(hwnd, &mut outer).is_err()
+                || DwmGetWindowAttribute(
+                    hwnd,
+                    DWMWA_EXTENDED_FRAME_BOUNDS,
+                    &mut frame as *mut RECT as *mut c_void,
+                    std::mem::size_of::<RECT>() as u32,
+                )
+                .is_err()
+            {
+                return Rect::default();
+            }
+        }
+        Rect {
+            left: (frame.left - outer.left).max(0),
+            top: (frame.top - outer.top).max(0),
+            right: (outer.right - frame.right).max(0),
+            bottom: (outer.bottom - frame.bottom).max(0),
+        }
+    }
+
     unsafe extern "system" fn on_event(
         _hook: HWINEVENTHOOK,
         event: u32,
@@ -256,8 +284,10 @@ mod win {
     /// this app's own windows included, so docking a panel can't retarget itself — is ignored and
     /// the previous target stands.
     unsafe fn track(hwnd: HWND) {
-        let Some((app_name, title)) = describe(hwnd) else { return };
-        let raw = hwnd.0 as isize;
+        // Track the top-level window: that's what `forget` sees destroyed and what gets docked to.
+        let root = GetAncestor(hwnd, GA_ROOT);
+        let Some((app_name, title)) = describe(root) else { return };
+        let raw = root.0 as isize;
 
         let changed = {
             let mut tracker = TRACKER.lock().unwrap();

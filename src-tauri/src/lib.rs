@@ -6,7 +6,7 @@ use tauri::{
     AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, RunEvent, Runtime, State,
     WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
-use window_intel::{DockGeometry, DockTarget};
+use window_intel::{DockGeometry, DockTarget, Rect};
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
 
@@ -421,7 +421,17 @@ fn current_dock_target() -> Option<DockTarget> {
 fn dock_panel(panel: &WebviewWindow, dock: &DockGeometry) -> tauri::Result<()> {
     let width = (PANEL_WIDTH * dock.scale).round() as i32;
     let min_height = (PANEL_HEIGHT * dock.scale).round() as i32;
-    let rect = window_intel::place_beside(dock.target, dock.work_area, width, min_height);
+    // `rect` is where the panel's *visible* frame should go. Tauri positions and sizes the whole
+    // window, which on Windows 10/11 includes invisible resize borders around that frame (15px
+    // each side at 300%) — grow the rect by them, or the panel sits that far from the target.
+    let visible = window_intel::place_beside(dock.target, dock.work_area, width, min_height);
+    let borders = invisible_borders(panel);
+    let rect = Rect {
+        left: visible.left - borders.left,
+        top: visible.top - borders.top,
+        right: visible.right + borders.right,
+        bottom: visible.bottom + borders.bottom,
+    };
 
     // Position first: crossing to a monitor with a different scale makes the window resize
     // itself, and the size set afterwards has to win.
@@ -436,6 +446,16 @@ fn dock_panel(panel: &WebviewWindow, dock: &DockGeometry) -> tauri::Result<()> {
         (rect.width().max(0) as u32).saturating_sub(frame_width),
         (rect.height().max(0) as u32).saturating_sub(frame_height),
     ))
+}
+
+#[cfg(windows)]
+fn invisible_borders(window: &WebviewWindow) -> Rect {
+    window.hwnd().map(|hwnd| window_intel::invisible_borders(hwnd.0 as isize)).unwrap_or_default()
+}
+
+#[cfg(not(windows))]
+fn invisible_borders(_window: &WebviewWindow) -> Rect {
+    Rect::default()
 }
 
 /// Window lifecycle rules, run whenever any window is destroyed:
