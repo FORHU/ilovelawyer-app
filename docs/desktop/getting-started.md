@@ -451,6 +451,10 @@ Build order we agreed, and where we are:
 
 ### Returning point (last worked on 2026-09-27)
 
+> Picking up where this left off? [`../next-session.md`](../next-session.md) is the short list of
+> what's open across both repos, including how to get the local stack running again. This section
+> is the detail behind its desktop items.
+
 **Dock beside has now been driven in the running app** and placement checked by measuring
 window rectangles in physical pixels, not by eye. Two bugs were found and fixed doing it.
 
