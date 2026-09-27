@@ -25,6 +25,7 @@ import { CaseReconstructionPanel } from "@/components/terminal/panels/case-recon
 import { AudioOverviewPanel } from "@/components/terminal/panels/audio-overview-panel"
 import { DecisionsPanel } from "@/components/terminal/panels/decisions-panel"
 import { VerificationPanel } from "@/components/terminal/panels/verification-panel"
+import { CaseMindMapPanel } from "@/components/terminal/panels/case-mind-map-panel"
 
 export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
   const { t } = useTranslation("terminal")
@@ -63,7 +64,7 @@ export function TerminalPanelBody({
     case "chat":
       return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} onJumpToPanel={onJumpToPanel} />
     case "mindMap":
-      return <MindMapPanel caseId={caseId} />
+      return <CaseMindMapPanel caseId={caseId} snapshot={snapshot} />
     case "citationMap":
       return <CitationMapPanel caseId={caseId} />
     case "redTeam":
@@ -157,18 +158,6 @@ function ChatPanel({
       // (see PANEL_TITLES) between a reply's topic title and a real panel name.
       panelTitles={PANEL_TITLES}
       onJumpToPanel={onJumpToPanel ? (id: string) => onJumpToPanel(id as PanelId) : undefined}
-    />
-  )
-}
-
-function MindMapPanel({ caseId }: { caseId: string }) {
-  return (
-    <ConsultationChat
-      embedded
-      isolateConsultation
-      mindMapOnly
-      basePath={`/homepage/terminal/${caseId}`}
-      caseId={caseId}
     />
   )
 }

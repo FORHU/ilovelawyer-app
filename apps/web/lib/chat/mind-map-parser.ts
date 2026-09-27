@@ -4,12 +4,52 @@
 // contains it, so the frontend needs its own extractor/stripper to keep it out of the live
 // streaming bubble and to read the tree out as it arrives.
 
+// Mirrors ilovelawyer-api's MindMapItem. Maps the API saves are already normalized there
+// (normalizeMindMap in src/utils/response-parser.ts): ids are path-based and stable across
+// regenerations — `root`, the fixed branches `legalBasis` / `keyFacts` / `remedies` / `risks` /
+// `nextSteps`, other first-level nodes `b<n>`, deeper nodes `<parent id>.<n>` — and the tree is
+// kept inside MIND_MAP_LIMITS. Maps saved before that carry the model's own ids and none of the
+// optional fields below, so nothing here may assume they're present.
 export interface MindMapItem {
   id: string;
   label: string;
   description?: string;
   isRoot?: boolean;
+  /** Levels below the root; the root is 0. */
+  depth?: number;
+  /** More exists (or could be generated) below this node than the tree carries. */
+  hasMore?: boolean;
+  /** The model's own id, kept only when it differs from the path id. */
+  sourceId?: string;
+  media?: unknown[];
+  /** Case documents this point comes from (the case's document-built map only). */
+  sources?: { documentId: string; page?: number }[];
+  /** What Jev found checking this point against the case data (and its cited passage, if any) —
+   * see MindMapNodeCheck. */
+  check?: MindMapNodeCheck;
+  /** A document this point cited was removed or archived and the map wasn't rebuilt. */
+  sourceRemoved?: boolean;
   children: MindMapItem[];
+}
+
+/** Mirrors ilovelawyer-api's MindMapNodeCheck (mind-map-jev.ts). Absent until checked, and gone
+ * again once the node's text is edited. */
+export interface MindMapNodeCheck {
+  verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED";
+  confidence: number;
+  /** What Jev judged against: the case data alone ("caseData"), or the case data plus the page the
+   * point cites ("document"). */
+  basis: "caseData" | "document";
+  /** "ASSERTED_BY_PARTY" | "STATED_BY_WITNESS" | "SHOWN_BY_DOCUMENT" | "ESTABLISHED" — only on
+   * checks saved before case-data judging. */
+  evidenceKind?: string;
+  /** The cited document ("document" basis only). */
+  documentId?: string;
+  page?: number;
+  /** False when judged on the document's most relevant passages because no page was cited (or
+   * the page had no text) — weaker evidence. "document" basis only. */
+  located?: boolean;
+  checkedAt: string;
 }
 
 function isMindMapShape(v: unknown): v is MindMapItem {
@@ -57,6 +97,27 @@ export function getActiveMindMap(messages: { mindMap?: unknown }[]): MindMapItem
   for (let i = messages.length - 1; i >= 0; i--) {
     const map = usableMindMap(messages[i]?.mindMap);
     if (map) return map;
+  }
+  return undefined;
+}
+
+/** getActiveMindMap plus which message carries it and at what version — what "Expand with AI"
+ * and undo need to address the map on the API (see useMindMapExpansion). Walks the same way, so
+ * it always points at the map getActiveMindMap would show for the same messages. */
+export interface ActiveMindMapRecord {
+  messageId: string;
+  /** 1 = as generated; each expand adds one, each undo takes one away. */
+  version: number;
+  data: MindMapItem;
+}
+
+export function getActiveMindMapRecord(
+  messages: { id: string; mindMap?: { data?: unknown; version?: number } | null }[],
+): ActiveMindMapRecord | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    const data = usableMindMap(m?.mindMap?.data);
+    if (m && data) return { messageId: m.id, version: m.mindMap?.version ?? 1, data };
   }
   return undefined;
 }

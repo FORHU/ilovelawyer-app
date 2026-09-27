@@ -115,7 +115,9 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
     calculateLeaves(root);
 
     // 2. Leaf-Weighted Concentric Radial Layout
-    const traverse = (item: any, depth = 0, angleStart = 0, angleEnd = 2 * Math.PI) => {
+    // `branch` = which first-level branch the node is under (-1 for the root): the whole branch
+    // shares one colour, same as the 2D canvas (layout.ts).
+    const traverse = (item: any, depth = 0, angleStart = 0, angleEnd = 2 * Math.PI, branch = -1) => {
       const isRoot = depth === 0;
       const nodeId = getId(item);
       let label = getLabel(item);
@@ -136,7 +138,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
       const z = isRoot ? 0 : zWave + (depth % 2 === 0 ? 40 : -40);
 
       const colors = MIND_MAP_HEX_COLORS;
-      const paletteIndex = Math.max(0, depth - 1);
+      const paletteIndex = Math.max(0, branch);
 
       nodes.push({
         id: nodeId,
@@ -155,14 +157,14 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
         const totalLeaves = leafMap.get(item.id);
         let currentAngle = angleStart;
 
-        children.forEach((child: any) => {
+        children.forEach((child: any, index: number) => {
           const childId = getId(child);
           links.push({ source: nodeId, target: childId });
 
           const childLeaves = leafMap.get(childId);
           const angleShare = (childLeaves / (totalLeaves || 1)) * (angleEnd - angleStart);
 
-          traverse(child, depth + 1, currentAngle, currentAngle + angleShare);
+          traverse(child, depth + 1, currentAngle, currentAngle + angleShare, isRoot ? index : branch);
           currentAngle += angleShare;
         });
       }
