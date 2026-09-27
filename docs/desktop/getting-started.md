@@ -411,18 +411,70 @@ Rules for anyone extending it:
 
 ---
 
-## 12. What is NOT built yet
+## 12. What is NOT built yet — and where to pick up
 
-Don't go looking for these — they're planned, not written:
+### The goal (don't lose this)
+
+> **The desktop app earns its place by knowing about the *other* windows on a lawyer's
+> screen** — the court site in Chrome, the brief in Word — and putting the right case
+> panel next to them. Multi-window layout was the easy part and is already done; Window
+> Intelligence is the differentiator. Case association and panel automation are
+> *consumers* of it, not its foundation.
+
+Build order we agreed, and where we are:
 
 ```text
-Following a docked window as it moves or resizes
-Tracking more than the single last-used external window
-Associating a panel or case with an external window across sessions
-Automatic rules (matched inside Rust, so titles never leave it)
-Friendly app names ("Google Chrome" rather than "chrome")
-Verified production packaging / installer
+1. Move src-tauri into this repo ................ DONE
+2. Verify the unified repo (tauri dev) .......... DONE  (production build: NOT verified)
+3. Win32 tracer bullet .......................... DONE, NOT YET SEEN WORKING LIVE  ← you are here
+4. Connect it to the existing panel system ...... DONE  (Dock beside = existing pop-out)
+5. Extract a minimal bridge ..................... DONE  (DockTarget / useDockTarget)
+6. Expand — only on need we actually observed ... NEXT
 ```
+
+### Returning point (last worked on 2026-09-27)
+
+Commit `2e7a247` on `feature/tauri-migration`. Everything compiles and tests pass, but
+**no one has clicked Dock beside in the running app yet.** Start here:
+
+1. `pnpm tauri:dev`, then run this checklist and write down what actually happens:
+   - [ ] Click into Chrome, back into a Terminal: the button shows and says "chrome"
+   - [ ] Click it: the panel lands against Chrome's right edge, same height
+   - [ ] Chrome maximized: the panel overlaps the screen's right edge instead
+   - [ ] Chrome on the second monitor, at a different scaling %: right place, right size
+   - [ ] Close Chrome: the button disappears; clicking an old one opens the panel normally
+   - [ ] Taskbar, Start menu, Alt+Tab, our own windows: none of them change the target
+   - [ ] Task Manager (runs elevated): label falls back to "your last window"
+   - [ ] Visible gap or overlap between the panel and Chrome? How many pixels?
+2. Fix whatever step 1 turns up. Don't start new features before this.
+3. Then pick from the list below, based on what the checklist taught us.
+
+### Next, roughly in order
+
+```text
+Following a docked window as it moves/resizes   (EVENT_OBJECT_LOCATIONCHANGE, filtered
+                                                 to the one target — it fires constantly)
+Friendly app names ("Google Chrome", not "chrome")
+Choosing among several windows, not just the last one used (EnumWindows scan + picker)
+Stable monitor identity (device path / QueryDisplayConfig — NOT \\.\DISPLAY1, which
+                         reshuffles when a monitor is replugged)
+Automatic rules — patterns go INTO Rust, only a rule id comes back out, so a window
+                  title never leaves the native layer
+Verified production packaging / installer (sidecar paths likely need updating since src-tauri moved)
+```
+
+### Decisions already made — don't re-litigate
+
+- **Titles:** shown live in the UI only. Never logged, stored, or sent to the API.
+- **Identity:** HWND and PID are runtime handles, not identity. Association with a
+  window is session-only and user-confirmed; nothing persists HWND → case.
+- **Events:** `EVENT_SYSTEM_FOREGROUND`, not `EVENT_OBJECT_FOCUS` (fires per control);
+  `EVENT_OBJECT_SHOW`, not `CREATE` (no title yet at create time).
+- **Threads:** hooks live on their own thread with a message pump, never the UI thread.
+- **Feedback loop:** our own windows are ignored, or opening a panel would retarget
+  itself.
+- **Don't build ahead:** event coalescing, a multi-window tracker and fancier DPI
+  handling wait until we've *observed* the problem they solve.
 
 ---
 
