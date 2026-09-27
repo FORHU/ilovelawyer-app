@@ -40,6 +40,60 @@ export function isDesktop(): boolean {
 }
 
 /**
+ * Another app's window (say, Chrome on a court site) the user was last in, which a panel can be
+ * docked beside. Desktop only; session-scoped — `runtimeId` means nothing after a restart.
+ *
+ * `title` is sensitive (client names, medical records): show it live, but never log it, store
+ * it, or send it to the API.
+ */
+export interface DockTarget {
+  runtimeId: number
+  /** Executable name, e.g. "chrome"; null when the OS won't say (an elevated process). */
+  appName: string | null
+  title: string
+}
+
+export interface PopOutOptions {
+  /** A `DockTarget.runtimeId` to dock the panel beside. Ignored outside the desktop app. */
+  besideWindow?: number
+}
+
+/** The current dock target, or null (always null in a browser). See `useDockTarget`. */
+export async function currentDockTarget(): Promise<DockTarget | null> {
+  const t = tauri()
+  if (!t) return null
+  try {
+    return await t.core.invoke<DockTarget | null>("current_dock_target")
+  } catch (err) {
+    console.error("current_dock_target failed", err)
+    return null
+  }
+}
+
+/** Calls `handler` whenever the dock target changes (null: it closed). No-op in a browser. */
+export function onDockTargetChanged(handler: (target: DockTarget | null) => void): Unlisten {
+  const t = tauri()
+  if (!t) return () => {}
+  return listenTauri(t, "dock-target-changed", handler)
+}
+
+// Subscribes to a shell event, handling an unsubscribe that arrives before `listen` resolves.
+function listenTauri<T>(t: TauriGlobal, event: string, handler: (payload: T) => void): Unlisten {
+  let unlisten: Unlisten | null = null
+  let disposed = false
+  t.event
+    .listen<T>(event, (e) => handler(e.payload))
+    .then((fn) => {
+      if (disposed) fn()
+      else unlisten = fn
+    })
+  return () => {
+    disposed = true
+    unlisten?.()
+  }
+}
+
+/**
  * Where a browser user can download the desktop app, or null when no build is published.
  *
  * Deliberately env-gated: there is no installer yet (`tauri build` has never been verified —
@@ -86,13 +140,14 @@ function pollBrowserPopups() {
 
 /**
  * Pops a Terminal panel out into its own window. On desktop it's a native window owned by the
- * current one (it closes when this window does); in a browser it's a popup. Returns false only
- * when nothing opened (a blocked popup), so the caller can leave the pane where it is.
+ * current one (it closes when this window does), optionally docked beside another app's window;
+ * in a browser it's a popup. Returns false only when nothing opened (a blocked popup), so the
+ * caller can leave the pane where it is.
  */
-export function openPanelWindow(caseId: string, panelId: string): boolean {
+export function openPanelWindow(caseId: string, panelId: string, options: PopOutOptions = {}): boolean {
   const t = tauri()
   if (t) {
-    t.core.invoke("open_panel_window", { caseId, panelId }).catch((err) => {
+    t.core.invoke("open_panel_window", { caseId, panelId, besideWindow: options.besideWindow ?? null }).catch((err) => {
       console.error("open_panel_window failed", err)
     })
     return true
@@ -122,16 +177,5 @@ export function onPanelWindowClosed(handler: (closed: PanelWindowClosed) => void
     }
   }
 
-  let unlisten: Unlisten | null = null
-  let disposed = false
-  t.event
-    .listen<PanelWindowClosed>("panel-window-closed", (event) => handler(event.payload))
-    .then((fn) => {
-      if (disposed) fn()
-      else unlisten = fn
-    })
-  return () => {
-    disposed = true
-    unlisten?.()
-  }
+  return listenTauri(t, "panel-window-closed", handler)
 }

@@ -1,9 +1,12 @@
+mod window_intel;
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{
-    AppHandle, Emitter, Manager, Monitor, RunEvent, Runtime, State, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder, WindowEvent,
+    AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, RunEvent, Runtime, State,
+    WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
+use window_intel::{DockGeometry, DockTarget};
 use tauri_plugin_shell::process::CommandChild;
 use tauri_plugin_shell::ShellExt;
 
@@ -115,13 +118,14 @@ pub fn run() {
         .manage(SidecarProcess::default())
         .manage(PanelWindows::default())
         .manage(Shell { base_url: base_url.clone(), window_title: window_title.clone() })
-        .invoke_handler(tauri::generate_handler![open_case_terminal, open_panel_window])
+        .invoke_handler(tauri::generate_handler![open_case_terminal, open_panel_window, current_dock_target])
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
                 handle_window_destroyed(window.app_handle(), window.label());
             }
         })
         .setup(move |app| {
+            window_intel::start(app.handle().clone());
             let app_handle = app.handle().clone();
             let base_url = base_url.clone();
             let window_title = window_title.clone();
@@ -315,7 +319,10 @@ async fn open_case_terminal(
 /// if it's already out. The calling window becomes the panel's owner: when the owner closes,
 /// the panel closes with it (see `handle_window_destroyed`).
 ///
-/// Placed near the right edge of the calling window's monitor, cascading when several are out.
+/// Placed near the right edge of the calling window's monitor, cascading when several are out —
+/// or, given `beside_window` (a `DockTarget::runtime_id`), docked beside that other app's window.
+/// Docking is best-effort: if that window has since closed or been minimized, the panel still
+/// opens, in its normal place.
 #[tauri::command]
 async fn open_panel_window(
     app: AppHandle,
@@ -324,11 +331,22 @@ async fn open_panel_window(
     panels: State<'_, PanelWindows>,
     case_id: String,
     panel_id: String,
+    beside_window: Option<u64>,
 ) -> Result<(), String> {
     validate_id("caseId", &case_id)?;
     validate_id("panelId", &panel_id)?;
     let label = panel_label(&case_id, &panel_id);
+    let dock = beside_window.and_then(|id| match window_intel::target_geometry(id) {
+        Ok(geometry) => Some(geometry),
+        Err(err) => {
+            eprintln!("docking skipped, using default placement: {err}");
+            None
+        }
+    });
     if focus_existing(&app, &label) {
+        if let (Some(dock), Some(panel)) = (dock, app.get_webview_window(&label)) {
+            dock_panel(&panel, &dock).map_err(|e| e.to_string())?;
+        }
         return Ok(());
     }
 
@@ -357,9 +375,14 @@ async fn open_panel_window(
 
     let mut builder = WebviewWindowBuilder::new(&app, label.clone(), url)
         .title(&shell.window_title)
-        .inner_size(PANEL_WIDTH, PANEL_HEIGHT);
+        .inner_size(PANEL_WIDTH, PANEL_HEIGHT)
+        // A docked panel is built hidden and shown once it's in place, so it never flashes at
+        // the default position first.
+        .visible(dock.is_none());
 
-    if let Some(monitor) = current_monitor {
+    if dock.is_some() {
+        // Placed by `dock_panel` below.
+    } else if let Some(monitor) = current_monitor {
         let scale = monitor.scale_factor();
         let origin = monitor.position().to_logical::<f64>(scale);
         let size = monitor.size().to_logical::<f64>(scale);
@@ -369,11 +392,50 @@ async fn open_panel_window(
         builder = builder.position(x, y);
     }
 
-    if let Err(err) = builder.build() {
-        panels.0.lock().unwrap().remove(&label);
-        return Err(err.to_string());
+    let panel = match builder.build() {
+        Ok(panel) => panel,
+        Err(err) => {
+            panels.0.lock().unwrap().remove(&label);
+            return Err(err.to_string());
+        }
+    };
+    if let Some(dock) = dock {
+        // Whatever happens while docking, show the window: a built-but-hidden panel would leave
+        // its pane missing from the grid with no window to bring it back from.
+        let docked = dock_panel(&panel, &dock);
+        let _ = panel.show();
+        let _ = panel.set_focus();
+        docked.map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+/// The other app's window a panel can be docked beside right now, if any — for pages that mount
+/// after the last `window_intel::DOCK_TARGET_CHANGED_EVENT`.
+#[tauri::command]
+fn current_dock_target() -> Option<DockTarget> {
+    window_intel::current()
+}
+
+/// Moves and sizes `panel` beside the dock target, in physical pixels on the target's monitor.
+fn dock_panel(panel: &WebviewWindow, dock: &DockGeometry) -> tauri::Result<()> {
+    let width = (PANEL_WIDTH * dock.scale).round() as i32;
+    let min_height = (PANEL_HEIGHT * dock.scale).round() as i32;
+    let rect = window_intel::place_beside(dock.target, dock.work_area, width, min_height);
+
+    // Position first: crossing to a monitor with a different scale makes the window resize
+    // itself, and the size set afterwards has to win.
+    panel.set_position(PhysicalPosition::new(rect.left, rect.top))?;
+    // `set_size` sets the inner (web content) size. Subtract this window's own title bar and
+    // borders so its outer frame lines up with the target's.
+    let outer = panel.outer_size()?;
+    let inner = panel.inner_size()?;
+    let frame_width = outer.width.saturating_sub(inner.width);
+    let frame_height = outer.height.saturating_sub(inner.height);
+    panel.set_size(PhysicalSize::new(
+        (rect.width().max(0) as u32).saturating_sub(frame_width),
+        (rect.height().max(0) as u32).saturating_sub(frame_height),
+    ))
 }
 
 /// Window lifecycle rules, run whenever any window is destroyed:

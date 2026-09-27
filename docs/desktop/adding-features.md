@@ -104,6 +104,7 @@ Three things that matter here:
 .invoke_handler(tauri::generate_handler![
     open_case_terminal,
     open_panel_window,
+    current_dock_target,
     focus_case_terminal,   // ← add here, or it doesn't exist to the web side
 ])
 ```

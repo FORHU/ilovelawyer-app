@@ -122,15 +122,21 @@ The rule of thumb:
 
 ### The commands that exist today
 
-Both live in [`../../src-tauri/src/lib.rs`](../../src-tauri/src/lib.rs):
+All live in [`../../src-tauri/src/lib.rs`](../../src-tauri/src/lib.rs):
 
 - `open_case_terminal(caseId)` — opens (or focuses) that case's Terminal window
-- `open_panel_window(caseId, panelId)` — pops a panel out into its own window
+- `open_panel_window(caseId, panelId, besideWindow?)` — pops a panel out into its own
+  window; with `besideWindow`, docks it beside another app's window (see
+  [Window Intelligence](#window-intelligence-docking-beside-other-apps))
+- `current_dock_target()` — the other app's window a panel can be docked beside right now,
+  or null
 
 ### The events that exist today
 
 - `panel-window-closed` — a popped-out panel window was closed, so the Terminal that
   popped it out can put that pane back on its grid
+- `dock-target-changed` — the user switched to a different app's window (or the tracked
+  one closed); payload is the new dock target or null
 
 ---
 
@@ -323,9 +329,12 @@ belongs on the other side of the bridge.
 ```text
 ilovelawyer-app/
 ├── apps/web/
-│   └── lib/desktop/index.ts    ← THE BRIDGE. Start here.
+│   └── lib/desktop/
+│       ├── index.ts            ← THE BRIDGE. Start here.
+│       └── use-dock-target.ts  ← React hook: the current dock target
 ├── src-tauri/
-│   ├── src/lib.rs              ← all the Rust. Commands, windows, lifecycle.
+│   ├── src/lib.rs              ← commands, our own windows, lifecycle
+│   ├── src/window_intel.rs     ← Win32: watches OTHER apps' windows (Windows only)
 │   ├── src/main.rs             ← 6 lines; just calls into lib.rs
 │   ├── tauri.conf.json         ← ports, bundling, window settings
 │   ├── capabilities/           ← Tauri permissions (keep minimal)
@@ -360,11 +369,45 @@ produce the same label, and the second pop-out would focus the wrong window. The
 test for exactly this in `lib.rs`.
 
 **"Coordinates are wrong on my second monitor."** Windows has two coordinate systems —
-physical pixels and logical (DPI-scaled) pixels. Tauri works in logical. If you start
-calling raw Windows APIs, they return physical, and mixing the two silently breaks
-positioning on any display that isn't at 100% scaling. Convert once, at the boundary.
+physical pixels and logical (DPI-scaled) pixels. Tauri's builder APIs mostly take logical;
+raw Windows APIs return physical. Mixing the two silently breaks positioning on any display
+that isn't at 100% scaling. `window_intel.rs` avoids the problem by staying in physical
+pixels end to end (tao makes the process per-monitor-v2 DPI aware, so Win32 and Tauri's
+`Physical*` types agree) — keep it that way rather than converting halfway.
 
-**"Where's the window-detection code?"** It doesn't exist yet. See below.
+**"The Dock beside button never shows up."** It only appears in the desktop app, and only
+once you've been in another app's window since launch. The taskbar, desktop, Start menu,
+Alt+Tab and this app's own windows deliberately don't count.
+
+---
+
+## Window Intelligence: docking beside other apps
+
+The first slice of the desktop app's main differentiator: knowing about **other**
+applications' windows. Today it does one thing — each Terminal pane header gets a
+**Dock beside \<app\>** button that pops the panel out and places it against the window
+you were last in (say, Chrome on a court site): to its right if there's room, else its
+left, else over the screen's right edge. If that window has closed or been minimized by
+then, the panel opens in its usual place instead.
+
+How it works, in [`../../src-tauri/src/window_intel.rs`](../../src-tauri/src/window_intel.rs):
+
+- A dedicated thread installs `SetWinEventHook` for foreground changes and window
+  destruction, and pumps messages forever. Never Tauri's UI thread.
+- It remembers **one** window: the last external one to take the foreground, and emits
+  `dock-target-changed` whenever that changes.
+- This app's own windows are ignored, so docking a panel (which takes the foreground)
+  can't retarget itself.
+
+Rules for anyone extending it:
+
+- **Window titles are sensitive** — they carry client names and medical records. They
+  may be *shown* in the UI (the user can already see that window), but must never be
+  logged, stored, or sent to the API. That includes Rust error strings.
+- **HWNDs never leave Rust.** The web app gets an opaque `runtimeId`. HWNDs are reused
+  by Windows and don't survive a restart, so they are not identity; nothing persists an
+  external window's association with a case.
+- Docking is always the user's click. No automatic matching yet.
 
 ---
 
@@ -373,16 +416,13 @@ positioning on any display that isn't at 100% scaling. Convert once, at the boun
 Don't go looking for these — they're planned, not written:
 
 ```text
-Detecting other applications' windows   ← the next big feature
-Tracking windows as they move
-Associating a panel with an external window
-Automatic rules
+Following a docked window as it moves or resizes
+Tracking more than the single last-used external window
+Associating a panel or case with an external window across sessions
+Automatic rules (matched inside Rust, so titles never leave it)
+Friendly app names ("Google Chrome" rather than "chrome")
 Verified production packaging / installer
 ```
-
-The current Rust only manages **its own** windows. It has never looked at the rest of
-your desktop. Adding that means Win32 work — `EnumWindows` for an initial scan plus
-`SetWinEventHook` for live events, on a dedicated thread with its own message pump.
 
 ---
 

@@ -30,6 +30,7 @@ import {
   Pin,
   Plus,
   PanelLeft,
+  PanelRightOpen,
   PanelTop,
   Maximize2,
   Minimize2,
@@ -65,7 +66,8 @@ import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
-import { desktopDownloadUrl, onPanelWindowClosed, openPanelWindow } from "@/lib/desktop"
+import { desktopDownloadUrl, onPanelWindowClosed, openPanelWindow, type PopOutOptions } from "@/lib/desktop"
+import { useDockTarget } from "@/lib/desktop/use-dock-target"
 import { toast } from "sonner"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
 import LayoutTabStrip from "@/components/terminal/layout-tab-strip"
@@ -644,10 +646,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // The pane hides from the main grid — same mechanism as hidePanel, just without touching
   // maximizedId's "is this the maximized one" semantics beyond clearing it if it matches — while
   // the popup is open (see the onPanelWindowClosed effect above for how it comes back once closed).
-  const popOutPanel = (id: PanelId) => {
+  const popOutPanel = (id: PanelId, options?: PopOutOptions) => {
     // Only a blocked browser pop-up lands here — the desktop shell always succeeds. Without
     // this the click did nothing at all, with no indication why.
-    if (!openPanelWindow(caseId, id)) {
+    if (!openPanelWindow(caseId, id, options)) {
       const downloadUrl = desktopDownloadUrl()
       toast.error(t("popOut.blockedTitle"), {
         description: downloadUrl ? t("popOut.blockedHintWithDesktop") : t("popOut.blockedHint"),
@@ -1353,7 +1355,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                           isMaximized={false}
                           onToggleMaximize={() => toggleMaximize(panel.id)}
                           onHide={() => hidePanel(panel.id)}
-                          onPopOut={() => popOutPanel(panel.id)}
+                          onPopOut={(options) => popOutPanel(panel.id, options)}
                           pinned={isPinned}
                           onTogglePin={() => patchPanel(panel.id, { pinned: !isPinned })}
                         />
@@ -1614,7 +1616,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       isMaximized
                       onToggleMaximize={close}
                       onHide={() => hidePanel(maximizedPanel.id)}
-                      onPopOut={() => popOutPanel(maximizedPanel.id)}
+                      onPopOut={(options) => popOutPanel(maximizedPanel.id, options)}
                       pinned={!!maximizedPanel.pinned}
                       onTogglePin={() => patchPanel(maximizedPanel.id, { pinned: !maximizedPanel.pinned })}
                     />
@@ -1662,7 +1664,8 @@ function PreferenceToggle({
 }
 
 // Shared header icon cluster: Maximize/Hide (always available), Pop-out (always available —
-// see popOutPanel), and Pin (rendered only when the caller passes onTogglePin — omitted where
+// see popOutPanel), Dock beside (desktop only, while another app's window is known — see
+// lib/desktop's DockTarget), and Pin (rendered only when the caller passes onTogglePin — omitted where
 // there's nothing for it to lock, e.g. Focus mode's own header — see call sites).
 function PaneHeaderActions({
   t,
@@ -1673,14 +1676,18 @@ function PaneHeaderActions({
   pinned,
   onTogglePin,
 }: {
-  t: (key: string) => string
+  t: (key: string, opts?: Record<string, unknown>) => string
   isMaximized: boolean
   onToggleMaximize: () => void
   onHide: () => void
-  onPopOut: () => void
+  onPopOut: (options?: PopOutOptions) => void
   pinned?: boolean
   onTogglePin?: () => void
 }) {
+  const dockTarget = useDockTarget()
+  const dockLabel = dockTarget?.appName
+    ? t("popOut.dockBeside", { app: dockTarget.appName })
+    : t("popOut.dockBesideUnknownApp")
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       {onTogglePin && (
@@ -1707,7 +1714,7 @@ function PaneHeaderActions({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={onPopOut}
+            onClick={() => onPopOut()}
             className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
             aria-label={t("popOutPane")}
           >
@@ -1716,6 +1723,27 @@ function PaneHeaderActions({
         </TooltipTrigger>
         <TooltipContent>{t("popOutPane")}</TooltipContent>
       </Tooltip>
+      {dockTarget && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onPopOut({ besideWindow: dockTarget.runtimeId })}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+              aria-label={dockLabel}
+            >
+              <PanelRightOpen className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          {/* The title says *which* window (several Chrome windows look alike). Display only —
+              see DockTarget for why it must never be logged or sent anywhere. */}
+          <TooltipContent>
+            <div>{dockLabel}</div>
+            <div className="max-w-64 truncate opacity-70">{dockTarget.title}</div>
+          </TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -1967,7 +1995,7 @@ type ArrangementBodyProps = {
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
-  onPopOut: (id: PanelId) => void
+  onPopOut: (id: PanelId, options?: PopOutOptions) => void
   onJumpToPanel: (id: PanelId) => void
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
@@ -2130,7 +2158,7 @@ function ColumnStack({
   labelFor: (panel: PanelLayout | { id: PanelId }) => string
   onToggleMaximize: (id: PanelId) => void
   onHide: (id: PanelId) => void
-  onPopOut: (id: PanelId) => void
+  onPopOut: (id: PanelId, options?: PopOutOptions) => void
   onJumpToPanel: (id: PanelId) => void
   onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
   t: (key: string, opts?: Record<string, unknown>) => string
@@ -2202,7 +2230,7 @@ function ColumnStack({
                   isMaximized={false}
                   onToggleMaximize={() => onToggleMaximize(panel.id)}
                   onHide={() => onHide(panel.id)}
-                  onPopOut={() => onPopOut(panel.id)}
+                  onPopOut={(options) => onPopOut(panel.id, options)}
                   pinned={!!panel.pinned}
                   onTogglePin={() => onPatchPanel(panel.id, { pinned: !panel.pinned })}
                 />
@@ -2491,7 +2519,7 @@ function FocusArrangement({
                 isMaximized={false}
                 onToggleMaximize={() => onToggleMaximize(focusPanel.id)}
                 onHide={() => onHide(focusPanel.id)}
-                onPopOut={() => onPopOut(focusPanel.id)}
+                onPopOut={(options) => onPopOut(focusPanel.id, options)}
               />
             </div>
           )
