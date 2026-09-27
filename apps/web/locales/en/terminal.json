@@ -530,8 +530,8 @@
   "jevAgrees": "Jev agrees",
   "popOut": {
     "blockedTitle": "Your browser blocked the pop-out window",
-    "blockedHint": "Allow pop-ups for this site to open a panel in its own window.",
-    "blockedHintWithDesktop": "Allow pop-ups for this site, or use the desktop app to open panels in real windows you can move between monitors.",
+    "blockedHint": "Allow pop-ups for this site to open a pane in its own window.",
+    "blockedHintWithDesktop": "Allow pop-ups for this site, or use the desktop app to open panes in real windows you can move between monitors.",
     "getDesktopApp": "Get the desktop app",
     "dockBeside": "Dock beside {{app}}",
     "dockBesideUnknownApp": "Dock beside your last window"
