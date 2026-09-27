@@ -158,7 +158,9 @@ The language the app's UI chrome is currently rendered in. User-controlled via a
 _Avoid_: "locale" (this app has no locale-prefixed routing, currency/date formatting, or region concept — Display Language controls UI text only)
 
 **Supported Language**
-One of the curated set of Display Languages the app ships translations for: English (default), Korean, Tagalog. Adding a new one is a deliberate, one-at-a-time decision — not an open-ended "any language" selector.
+One of the curated set of Display Languages the app ships translations for: English (default), English (UK), Korean, Tagalog. Adding a new one is a deliberate, one-at-a-time decision — not an open-ended "any language" selector.
+_Note_: `en-GB` is an **overlay**, not a full catalog — it carries only the strings that differ from `en` (British spelling, and the terms UK practice uses: claimant rather than petitioner, legal advice privilege rather than attorney-client), and everything else resolves through i18next's `fallbackLng`. So a new English string is added to `en` alone unless its wording is jurisdiction-specific. It deliberately leaves Philippine proper nouns alone (Labor Code, NLRC, Department of Labor and Employment) — those are PH content, not Americanisms. `term` (Terms & Conditions) has no overlay at all: i18next replaces an array wholesale, so overriding one word would fork the whole legal document into a second copy free to drift.
+_Distinct from_: the `_UK` key suffix (e.g. `terminal.mocks_UK`), which is chosen by the organization's **Tenant**, not by the reader — a UK tenant sees UK sample content whatever Display Language is selected. The two are independent: a reader can view PH-tenant content in English (UK), or UK-tenant content in Tagalog.
 
 **Language Catalog**
 The static set of translated UI strings for one Supported Language, split into per-feature files (e.g. `common`, `auth`, `landing`, `calendar`) so a page loads only the catalog(s) it needs. Translated by hand, not by an automated translation service — there is no translation vendor called at runtime.

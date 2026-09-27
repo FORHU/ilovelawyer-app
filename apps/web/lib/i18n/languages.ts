@@ -1,4 +1,9 @@
-export const SUPPORTED_LANGUAGES = ["en", "ko", "tl"] as const
+// `en-GB` ships only the strings that differ from `en` (British spelling, and the legal terms UK
+// practice uses — claimant, not petitioner). Everything else resolves through i18next's
+// `fallbackLng`, so a new English string needs adding to `en` alone unless its wording is
+// jurisdiction-specific. Distinct from the `_UK` key suffix, which is chosen by the organization's
+// Tenant rather than by the reader — see components/landing/terminal-mock-window.tsx.
+export const SUPPORTED_LANGUAGES = ["en", "en-GB", "ko", "tl"] as const
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
@@ -6,6 +11,7 @@ export const DEFAULT_LANGUAGE: SupportedLanguage = "en"
 
 export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "English",
+  "en-GB": "English (UK)",
   ko: "한국어",
   tl: "Tagalog",
 }

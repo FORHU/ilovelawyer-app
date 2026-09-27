@@ -12,6 +12,19 @@ import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
 import enTranscription from "@/locales/en/transcription.json"
 
+// en-GB is an overlay, not a full catalogue: only the strings that differ from en, which is why
+// there are nine namespaces here and thirteen above. Missing keys fall through to en via
+// i18next's fallbackLng.
+import enGBAuth from "@/locales/en-GB/auth.json"
+import enGBCasePortfolio from "@/locales/en-GB/case-portfolio.json"
+import enGBCommon from "@/locales/en-GB/common.json"
+import enGBCreateCase from "@/locales/en-GB/create-case.json"
+import enGBHomepage from "@/locales/en-GB/homepage.json"
+import enGBLanding from "@/locales/en-GB/landing.json"
+import enGBLibrary from "@/locales/en-GB/library.json"
+import enGBOrganization from "@/locales/en-GB/organization.json"
+import enGBTerminal from "@/locales/en-GB/terminal.json"
+
 import koAuth from "@/locales/ko/auth.json"
 import koCalendar from "@/locales/ko/calendar.json"
 import koCasePortfolio from "@/locales/ko/case-portfolio.json"
@@ -57,6 +70,17 @@ export const I18N_RESOURCES = {
     organization: enOrganization,
     term: enTerm,
     terminal: enTerminal,
+  },
+  "en-GB": {
+    common: enGBCommon,
+    auth: enGBAuth,
+    landing: enGBLanding,
+    homepage: enGBHomepage,
+    "case-portfolio": enGBCasePortfolio,
+    "create-case": enGBCreateCase,
+    library: enGBLibrary,
+    organization: enGBOrganization,
+    terminal: enGBTerminal,
   },
   ko: {
     common: koCommon,
