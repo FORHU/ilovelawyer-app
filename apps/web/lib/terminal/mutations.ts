@@ -73,6 +73,7 @@ export type AiGenerationKind =
   | "theoryDiff"
   | "caseReconstructionScenes"
   | "caseReconstructionTableRead"
+  | "caseReconstructionEvents"
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
@@ -891,6 +892,22 @@ export function useGenerateReconstructionScenesMutation(caseId: string) {
       apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/scenes`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionScenes") })
+    },
+  })
+}
+
+// The dated event chain (Events tab) — built from the case's documents alone, no narrative
+// required (unlike scenes/table-read above, which are folded into `reconstruction`). Queued the
+// same way as useGenerateReconstructionMutation. A 422 here isn't a bug to retry: it means
+// documents are missing or still processing — see ReconstructionEventBlocker and the events
+// endpoint's own EventPrerequisiteInput on the backend.
+export function useGenerateReconstructionEventsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/events`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionEvents") })
     },
   })
 }

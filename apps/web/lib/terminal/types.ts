@@ -359,6 +359,9 @@ export interface CaseSnapshot {
   witnesses: Witness[]
   damages: DamageClaim[]
   reconstruction: CaseReconstruction | null
+  // The dated event chain (Events tab) — separate from `reconstruction`, which only exists once a
+  // narrative has been generated. Named apart from `dates`/`nextDate` above, which are the calendar.
+  reconstructionEvents: ReconstructionEvents | null
   redTeamAssessment: RedTeamAssessment | null
   decisions: DecisionRecord[]
   theories: CaseTheory[]
@@ -477,6 +480,58 @@ export interface CaseReconstruction {
   tableReadStaleAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+// Event Chain (Grounded Reconstruction) — the case's dated events, each a Proposition resting on
+// one Source Quote, marked Verified/Disputed/Unverified — see CONTEXT.md and docs/adr/0002-0003
+// in ilovelawyer-api. Its own table on the backend (CaseReconstructionEvents), independent of
+// `reconstruction` above: it needs only the case's documents, not a generated narrative.
+export type ReconstructionEventStatus = "VERIFIED" | "DISPUTED" | "UNVERIFIED"
+
+export interface ReconstructionEventSourceRef {
+  docId: string
+  page: number | null
+  quote: string
+}
+
+export interface ReconstructionEvent {
+  index: number
+  /** YYYY-MM-DD, or null when the documents gave no usable date. */
+  date: string | null
+  /** The event as a factual proposition, never as a report of an allegation. */
+  proposition: string
+  /** Who says so, as the source presents it; null when the document just records it. */
+  assertedBy: string | null
+  /** Null when no quote could be verified against the named document — such an event can never
+   * be Verified. */
+  sourceRef: ReconstructionEventSourceRef | null
+  /** Absent only when the chain predates status assessment entirely; otherwise always set —
+   * with USE_JEV_RECONSTRUCTION off every event is still UNVERIFIED, never left unset. */
+  status?: ReconstructionEventStatus
+  statusConfidence?: number
+  /** Plain-language note: why this badge — a contradiction found, who alone asserts an
+   * unconfirmed claim, or that the check couldn't run. */
+  statusNote?: string
+  /** Other documents that independently show the event (settles a party's or witness's account). */
+  corroboratedBy?: string[]
+  /** Other documents that say the opposite — what makes the event Disputed when its own source
+   * alone wouldn't. */
+  contradictedBy?: string[]
+}
+
+export interface ReconstructionEvents {
+  events: ReconstructionEvent[]
+  updatedAt: string
+}
+
+// The event chain's 422 (mirrors ilovelawyer-api's EventBlocker) — what's missing before it can
+// be built, each with what to do about it. Read off a failed generate mutation's `error.body`
+// (see lib/fetch.ts's throwIfNotOk) rather than parsing `message` back apart.
+export interface ReconstructionEventBlocker {
+  code: "NO_DOCUMENTS" | "DOCUMENTS_PROCESSING" | "DOCUMENTS_FAILED"
+  problem: string
+  action: string
+  documents?: string[]
 }
 
 // One beat of the reconstructed episode — time, place, who's there, what happens, any recorded
