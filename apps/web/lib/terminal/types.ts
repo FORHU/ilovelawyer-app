@@ -393,6 +393,8 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
+export type FindingReadiness = "READY" | "DRAFTING" | "BLOCKED"
+
 export interface CaseFinding {
   id: string
   caseId: string
@@ -402,6 +404,12 @@ export interface CaseFinding {
   /** Which source document an AI-generated finding is grounded in. Null for lawyer-entered
    * findings and for AI findings the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** ATTACK_STRATEGY/DEFENSE_STRATEGY only — null for the other three categories. */
+  readiness: FindingReadiness | null
+  readinessNote: string | null
+  /** Jev's second opinion on `readiness` — never overwrites it, shown only on disagreement. */
+  jevReadiness: FindingReadiness | null
+  jevConfidence: number | null
   createdAt: string
   updatedAt: string
 }
