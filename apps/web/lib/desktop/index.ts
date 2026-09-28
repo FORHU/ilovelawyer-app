@@ -2,7 +2,7 @@
 //
 // In the desktop app, Tauri owns every native window: the page asks it to open a Case Terminal or
 // pop out a panel, and Tauri creates, places and tracks that window itself (see
-// src-tauri/src/lib.rs). In a plain browser the same calls fall back to ordinary web behavior.
+// src-tauri/src/). In a plain browser the same calls fall back to ordinary web behavior.
 // Components call these helpers and never need to know which one ran.
 //
 // Talks to Tauri through the `window.__TAURI__` global (the shell sets `withGlobalTauri`) rather
@@ -105,19 +105,25 @@ export function desktopDownloadUrl(): string | null {
   return process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL || null
 }
 
-/**
- * Opens (or focuses) this case's Terminal in its own native window, on another monitor when
- * there is one. Returns false outside the desktop app — the caller should navigate normally
- * (a Link or router.push keeps same-tab navigation and middle-click working in the browser).
- */
-export function openCaseTerminal(caseId: string): boolean {
-  const t = tauri()
-  if (!t) return false
-  t.core.invoke("open_case_terminal", { caseId }).catch((err) => {
-    console.error("open_case_terminal failed", err)
-  })
-  return true
-}
+// DISABLED: terminal-own-window (2026-09-28) — the Legal Terminal now opens in the same window,
+// in the desktop app too; only Terminal panels get their own windows (pop-out / Dock beside).
+// Kept, commented out, to switch back on: uncomment this and every other `DISABLED:
+// terminal-own-window` spot (search for it). The Rust side (`open_case_terminal` in
+// src-tauri/src/case_terminal.rs) is still there and still registered.
+//
+// /**
+//  * Opens (or focuses) this case's Terminal in its own native window, on another monitor when
+//  * there is one. Returns false outside the desktop app — the caller should navigate normally
+//  * (a Link or router.push keeps same-tab navigation and middle-click working in the browser).
+//  */
+// export function openCaseTerminal(caseId: string): boolean {
+//   const t = tauri()
+//   if (!t) return false
+//   t.core.invoke("open_case_terminal", { caseId }).catch((err) => {
+//     console.error("open_case_terminal failed", err)
+//   })
+//   return true
+// }
 
 // Browser popups this tab opened, keyed by `${caseId}:${panelId}`. A browser gives the opener no
 // close event for a popup, so `win.closed` is polled while any are open — the only reliable signal
