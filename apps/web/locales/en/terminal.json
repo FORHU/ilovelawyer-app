@@ -307,6 +307,7 @@
   "claimTitlePlaceholder": "Claim, e.g. Illegal dismissal",
   "claimCausePlaceholder": "Pleaded under (optional)",
   "addLegalIssue": "Add a legal issue",
+  "findingsUpdating": "Updating from the case documents…",
   "legalIssuesIntro": "Open questions the tribunal will have to reach.",
   "issueContested": "Contested",
   "issueBriefing": "Briefing",
