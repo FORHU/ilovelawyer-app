@@ -272,7 +272,7 @@
   "aiGenerated": "AI-generated",
   "groundedIn": "Source: {{doc}}",
   "addLegalIssue": "Add a legal issue",
-  "legalIssuesIntro": "Open questions the tribunal will have to decide.",
+  "legalIssuesIntro": "Open questions the tribunal will have to reach.",
   "issueContested": "Contested",
   "issueBriefing": "Briefing",
   "issueOpen": "Open",

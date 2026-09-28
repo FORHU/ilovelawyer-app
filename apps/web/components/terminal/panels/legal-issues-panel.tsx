@@ -20,11 +20,14 @@ import {
   PanelRowList,
   TONE_STYLE,
   TagMixSummary,
-  TonePill,
+  CatalogPill,
+  catalogBlurbClass,
+  catalogRowClass,
+  catalogSubClass,
+  catalogTitleClass,
   dangerIconBtnClass,
   fieldClass,
   ghostBtnClass,
-  labelTextClass,
   primaryBtnClass,
   type Tone,
 } from "@/components/terminal/panel-kit"
@@ -87,11 +90,12 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
   const jevError = jevCheck.error as (Error & { status?: number }) | null
 
   return (
-    <PanelBody gap="4">
-      <p className="text-[13px] text-muted-foreground">{t("legalIssuesIntro")}</p>
+    <PanelBody gap="3">
+      <p className={catalogBlurbClass}>{t("legalIssuesIntro")}</p>
 
       {items.length > 1 ? (
         <TagMixSummary
+          catalog
           ring={{ pct: Math.round((resolved / items.length) * 100), tone: "ok", title: t("issueResolvedCount", { done: resolved, total: items.length }) }}
           segments={[...ISSUE_TAGS, "UNRATED" as const].map((tag) => ({
             key: tag,
@@ -113,23 +117,23 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
             const isAi = f.notes === "AI"
             const isResolved = tag === "RESOLVED"
             return (
-              <PanelRow key={f.id} className="flex-col items-stretch gap-2">
+              <PanelRow key={f.id} className={catalogRowClass}>
                 <button
                   type="button"
                   onClick={() => toggle(f)}
                   aria-expanded={isOpen}
-                  className={cn("flex w-full items-center justify-between gap-3 text-left", isResolved && "opacity-60")}
+                  className={cn("flex w-full items-center justify-between gap-2.5 text-left", isResolved && "opacity-60")}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                    <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {f.label}
                       {jev && jev.flags.length > 0 ? (
                         <JevFlag title={jev.flags.map((flag) => t(`issueJevFlag.${flag}`)).join(" · ")} />
                       ) : null}
                     </span>
-                    {f.detail ? <span className={`mt-0.5 block ${labelTextClass}`}>{f.detail}</span> : null}
+                    {f.detail ? <span className={catalogSubClass}>{f.detail}</span> : null}
                   </span>
-                  <TonePill tone={style.tone}>{t(style.label)}</TonePill>
+                  <CatalogPill tone={style.tone}>{t(style.label)}</CatalogPill>
                 </button>
 
                 {isOpen ? (
