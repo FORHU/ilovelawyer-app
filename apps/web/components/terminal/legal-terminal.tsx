@@ -38,7 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
-import { Pane } from "@/components/terminal/panel-kit"
+import { Pane, PaneCode } from "@/components/terminal/panel-kit"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import {
@@ -1345,6 +1345,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         title={isPinned ? t("pinnedHint") : t("dragHint")}
                       >
                         <Grip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <PaneCode panelId={panel.id} />
                         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                           {label}
                         </span>
@@ -1606,6 +1607,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               {(close) => (
                 <>
                   <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 rounded-t-lg border-b border-border bg-muted px-3">
+                    <PaneCode panelId={maximizedPanel.id} />
                     <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                       {labelFor(maximizedPanel)}
                     </span>
@@ -2194,6 +2196,7 @@ function ColumnStack({
             className="relative min-h-0 flex-1"
             header={
               <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+                <PaneCode panelId={panel.id} />
                 <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {labelFor(panel)}
                 </span>
@@ -2485,6 +2488,7 @@ function FocusArrangement({
         header={
           focusPanel && (
             <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+              <PaneCode panelId={focusPanel.id} />
               <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor(focusPanel)}</span>
               <PaneHeaderActions
                 t={t}
@@ -2522,6 +2526,7 @@ function FocusArrangement({
         className="relative min-h-0"
         header={
           <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
+            <PaneCode panelId="chat" />
             <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor({ id: "chat" })}</span>
             {/* No pop-out here either — anchored means a permanent fixture (see the file doc
                 comment above): pop-out would hide it from the main grid, but this column ignores

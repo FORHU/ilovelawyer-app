@@ -16,6 +16,8 @@ import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
+import type { PanelId } from "@/lib/terminal/types"
+import { Badge } from "@workspace/ui/components/badge"
 
 gsap.registerPlugin(Flip)
 
@@ -87,16 +89,18 @@ export function DeltaMark({
   value,
   badWhenUp,
   title,
+  className,
   children,
 }: {
   value: number
   badWhenUp: boolean
   title?: string
+  className?: string
   children?: ReactNode
 }) {
   const tone: Tone = value === 0 ? "neutral" : value > 0 === badWhenUp ? "danger" : "ok"
   return (
-    <span className={cn("shrink-0 text-[11px] font-semibold tabular-nums", TONE_STYLE[tone].text)} title={title}>
+    <span className={cn("shrink-0 text-[11px] font-semibold tabular-nums", TONE_STYLE[tone].text, className)} title={title}>
       {value > 0 ? `▲ +${value}` : value < 0 ? `▼ ${value}` : "— 0"}
       {children}
     </span>
@@ -116,47 +120,63 @@ export interface TagMixSegment {
 export function TagMixSummary({
   ring,
   segments,
+  catalog,
 }: {
   ring?: { pct: number; tone: Tone; title: string }
   segments: TagMixSegment[]
+  /** The Terminal panel catalog's sizing — used by Legal Issues, Weaknesses, Strengths and the
+   * Citation Map list. */
+  catalog?: boolean
 }) {
   const present = segments.filter((s) => s.count > 0)
-  const ringR = 15
+  const ringR = catalog ? 16 : 15
   const ringC = 2 * Math.PI * ringR
+  const box = catalog ? 40 : 36
+  const stroke = catalog ? 4 : 3
   return (
     <div className="flex items-center gap-3">
       {ring ? (
         <div className="relative h-10 w-10 shrink-0" title={ring.title}>
-          <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
-            <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
+          <svg viewBox={`0 0 ${box} ${box}`} className="h-full w-full -rotate-90" aria-hidden="true">
+            <circle cx={box / 2} cy={box / 2} r={ringR} fill="none" strokeWidth={stroke} className={catalog ? "stroke-muted" : "stroke-border"} />
             <circle
-              cx="18"
-              cy="18"
+              cx={box / 2}
+              cy={box / 2}
               r={ringR}
               fill="none"
-              strokeWidth="3"
+              strokeWidth={stroke}
               strokeLinecap="round"
               className={TONE_STYLE[ring.tone].stroke}
               strokeDasharray={`${(ring.pct / 100) * ringC} ${ringC}`}
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-foreground">
+          <span
+            className={cn(
+              "absolute inset-0 flex items-center justify-center text-foreground",
+              catalog ? "font-mono text-[9.5px] font-bold tabular-nums" : "text-[10px] font-semibold",
+            )}
+          >
             {ring.pct}%
           </span>
           <span className="sr-only">{ring.title}</span>
         </div>
       ) : null}
       <div className="min-w-0 flex-1">
-        <div className="flex h-1.5 gap-px overflow-hidden rounded-full">
+        <div className={cn("flex h-1.5 overflow-hidden rounded-full", catalog ? "gap-[2px]" : "gap-px")}>
           {present.map((s) => (
-            <div key={s.key} className={TONE_STYLE[s.tone].bar} style={{ flexGrow: s.count }} />
+            <div key={s.key} className={catalog ? CATALOG_BAR[s.tone] : TONE_STYLE[s.tone].bar} style={{ flexGrow: s.count }} />
           ))}
         </div>
-        <div className={cn("mt-1.5 flex flex-wrap gap-x-3", labelTextClass)}>
+        <div
+          className={cn(
+            "mt-1.5 flex flex-wrap",
+            catalog ? "gap-x-2.5 gap-y-1 font-mono text-[9.5px] tracking-[0.4px] text-muted-foreground uppercase" : cn("gap-x-3", labelTextClass),
+          )}
+        >
           {present.map((s) => (
-            <span key={s.key} className="inline-flex items-center gap-1">
-              <span className={cn("h-1.5 w-1.5 rounded-sm", TONE_STYLE[s.tone].bar)} />
-              {s.label} <span className={TONE_STYLE[s.tone].text}>{s.count}</span>
+            <span key={s.key} className={cn("inline-flex items-center", catalog ? "gap-[5px]" : "gap-1")}>
+              <span className={cn("h-1.5 w-1.5", catalog ? "rounded-[2px]" : "rounded-sm", catalog ? CATALOG_BAR[s.tone] : TONE_STYLE[s.tone].bar)} />
+              {s.label} <span className={cn(TONE_STYLE[s.tone].text, catalog && "font-bold")}>{s.count}</span>
             </span>
           ))}
         </div>
@@ -235,6 +255,94 @@ export function Field({
 export function JevNotChecked() {
   const { t } = useTranslation("terminal")
   return <p className="text-warn">{t("jevNotChecked")}</p>
+}
+
+// ── Pane code chip ─────────────────────────────────────────────────────────────────────────
+// The two-letter code before each pane's title, toned by what the pane is about — the catalog's
+// codes where it names the pane; TL/ST/DC/TH/VF (neutral) for the panes it doesn't show.
+const PANE_CODES: Record<PanelId, [string, Tone]> = {
+  command: ["CS", "ok"],
+  evidence: ["EV", "warn"],
+  law: ["LW", "ok"],
+  dates: ["TL", "neutral"],
+  chat: ["AI", "warn"],
+  mindMap: ["MP", "riskmed"],
+  citationMap: ["CM", "neutral"],
+  redTeam: ["RT", "danger"],
+  procedure: ["ST", "neutral"],
+  teamAudit: ["TA", "neutral"],
+  contradictions: ["CX", "danger"],
+  legalIssues: ["IS", "warn"],
+  weaknesses: ["WK", "danger"],
+  strengths: ["SG", "ok"],
+  attackStrategy: ["AT", "riskmed"],
+  defenseStrategy: ["DF", "ok"],
+  witnesses: ["WT", "warn"],
+  damages: ["DM", "ok"],
+  caseReconstruction: ["RC", "neutral"],
+  audioOverview: ["AU", "neutral"],
+  decisions: ["DC", "neutral"],
+  theories: ["TH", "neutral"],
+  verification: ["VF", "neutral"],
+}
+
+export function PaneCode({ panelId }: { panelId: PanelId }) {
+  const [code, tone] = PANE_CODES[panelId]
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex h-[19px] shrink-0 items-center rounded-[5px] border px-1.5 font-mono text-[9.5px] font-bold tracking-[0.6px]",
+        tone === "neutral" ? "border-border bg-muted text-muted-foreground" : CATALOG_BADGE_BORDER[tone],
+        TONE_STYLE[tone].text,
+      )}
+    >
+      {code}
+    </span>
+  )
+}
+
+// ── The Terminal panel catalog's list look ─────────────────────────────────────────────────
+// Legal Issues, Weaknesses, Strengths and the Citation Map list are built to the catalog design
+// (11px muted intro, 12px row titles, 10px caps sub-lines, 17px pills) rather than the denser
+// defaults the other panels use.
+export const catalogBlurbClass = "text-[11px] leading-normal text-pretty text-muted-foreground"
+export const catalogRowClass = "flex-col items-stretch gap-2 px-2.5 py-2"
+export const catalogTitleClass = "text-[12px] text-pretty text-foreground"
+export const catalogSubClass = "mt-0.5 block text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase"
+export const catalogDeltaClass = "whitespace-nowrap font-mono text-[10px]"
+
+// Solid segment colors, as the catalog draws its mix bar (TONE_STYLE's warn bar is softened).
+const CATALOG_BAR: Record<Tone, string> = {
+  danger: "bg-danger",
+  riskmed: "bg-riskmed",
+  warn: "bg-warn",
+  ok: "bg-ok",
+  neutral: "bg-muted-foreground/40",
+}
+
+const CATALOG_BADGE_TONE = { danger: "danger", riskmed: "warning", warn: "caution", ok: "success", neutral: "neutral" } as const
+const CATALOG_BADGE_BORDER: Record<Tone, string> = {
+  danger: "border-danger/40 bg-danger/10",
+  riskmed: "border-riskmed/40 bg-riskmed/[0.12]",
+  warn: "border-warn/40 bg-warn/10",
+  ok: "border-ok/40 bg-ok/10",
+  neutral: "border-border",
+}
+
+// The catalog's status pill: @workspace/ui's Badge (pill shape) at the design's size — 17px tall,
+// 8.5px bold caps — with its 1px tone border.
+export function CatalogPill({ tone, title, children }: { tone: Tone; title?: string; children: ReactNode }) {
+  return (
+    <Badge
+      shape="pill"
+      tone={CATALOG_BADGE_TONE[tone]}
+      title={title}
+      className={cn("h-[17px] border px-1.5 py-0 font-sans text-[8.5px] font-bold tracking-[1px]", CATALOG_BADGE_BORDER[tone])}
+    >
+      {children}
+    </Badge>
+  )
 }
 
 export function SectionLabel({ children }: { children: ReactNode }) {

@@ -27,12 +27,15 @@ import {
   PanelRow,
   PanelRowList,
   SectionLabel,
+  CatalogPill,
   TagMixSummary,
-  TonePill,
+  catalogBlurbClass,
+  catalogRowClass,
+  catalogSubClass,
+  catalogTitleClass,
   dangerIconBtnClass,
   fieldClass,
   ghostBtnClass,
-  labelTextClass,
   primaryBtnClass,
   type Tone,
 } from "@/components/terminal/panel-kit"
@@ -171,9 +174,9 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
   }
 
   return (
-    <PanelBody gap="4">
+    <PanelBody gap="3">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="min-w-0 flex-1 text-[13px] text-muted-foreground">{t("groundsIntro")}</p>
+        <p className={cn("min-w-0 flex-1", catalogBlurbClass)}>{t("groundsIntro")}</p>
         <div className="flex shrink-0 gap-1.5">
           <button
             type="button"
@@ -202,6 +205,7 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
 
       {citations.length > 1 ? (
         <TagMixSummary
+          catalog
           ring={{
             pct: Math.round((mappedAuthorities / citations.length) * 100),
             tone: "ok",
@@ -223,24 +227,24 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
             const state = linkState(g)
             const isOpen = open === g.id
             return (
-              <PanelRow key={g.id} className="flex-col items-stretch gap-2">
+              <PanelRow key={g.id} className={catalogRowClass}>
                 <button
                   type="button"
                   onClick={() => toggle(g.id)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-3 text-left"
+                  className="flex w-full items-center justify-between gap-2.5 text-left"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                    <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {authorityLabel(citationById.get(g.citationCheckId)!)} → {claimById.get(g.claimId)!.title}
                       {state === "NOT_APPLY" ? <JevFlag title={t("groundJevFlag")} /> : null}
                     </span>
-                    <span className={`mt-0.5 block ${labelTextClass}`}>
+                    <span className={catalogSubClass}>
                       {t(`groundRole.${g.role}`)}
                       {g.source === "MANUAL" ? ` · ${t("groundAddedByYou")}` : null}
                     </span>
                   </span>
-                  <TonePill tone={LINK_STYLE[state].tone}>{t(LINK_STYLE[state].label)}</TonePill>
+                  <CatalogPill tone={LINK_STYLE[state].tone}>{t(LINK_STYLE[state].label)}</CatalogPill>
                 </button>
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
@@ -266,18 +270,18 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
           {unmapped.map((c) => {
             const isOpen = open === c.id
             return (
-              <PanelRow key={c.id} className="flex-col items-stretch gap-2">
+              <PanelRow key={c.id} className={catalogRowClass}>
                 <button
                   type="button"
                   onClick={() => toggle(c.id)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center justify-between gap-3 text-left"
+                  className="flex w-full items-center justify-between gap-2.5 text-left"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-foreground">{authorityLabel(c)}</span>
-                    <span className={`mt-0.5 block ${labelTextClass}`}>{t("groundNotLinked")}</span>
+                    <span className={cn("block", catalogTitleClass)}>{authorityLabel(c)}</span>
+                    <span className={catalogSubClass}>{t("groundNotLinked")}</span>
                   </span>
-                  <TonePill tone={LINK_STYLE.UNMAPPED.tone}>{t(LINK_STYLE.UNMAPPED.label)}</TonePill>
+                  <CatalogPill tone={LINK_STYLE.UNMAPPED.tone}>{t(LINK_STYLE.UNMAPPED.label)}</CatalogPill>
                 </button>
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
@@ -476,10 +480,10 @@ function ClaimsSection({ caseId, claims }: { caseId: string; claims: CitationMap
       <SectionLabel>{t("claimsTitle", { n: claims.length })}</SectionLabel>
       <PanelRowList empty={<EmptyNote>{t("claimsEmpty")}</EmptyNote>}>
         {claims.map((claim) => (
-          <PanelRow key={claim.id} className="items-start justify-between">
+          <PanelRow key={claim.id} className="items-start justify-between px-2.5 py-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] leading-5 text-foreground">{claim.title}</p>
-              {claim.causeOfAction ? <p className={labelTextClass}>{claim.causeOfAction}</p> : null}
+              <p className={catalogTitleClass}>{claim.title}</p>
+              {claim.causeOfAction ? <p className={catalogSubClass}>{claim.causeOfAction}</p> : null}
               {claim.source === "AI" ? (
                 <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1 font-semibold tracking-[1px] text-brand-gold uppercase">

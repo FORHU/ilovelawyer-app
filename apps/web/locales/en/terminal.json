@@ -274,7 +274,7 @@
   "groundedIn": "Source: {{doc}}",
   "citationMapList": "List",
   "citationMapGraph": "Graph",
-  "groundsIntro": "How each cited authority attaches to a pleaded claim.",
+  "groundsIntro": "How each authority attaches to a pleaded ground.",
   "groundsFindClaims": "Find claims",
   "groundsFindingClaims": "Finding claims…",
   "groundsMap": "Map authorities",
@@ -289,7 +289,7 @@
   "groundUnmapped": "Unmapped",
   "groundRole": {
     "SUBSTANTIVE": "Substantive ground",
-    "PROCEDURAL": "Procedural ground"
+    "PROCEDURAL": "Independent ground"
   },
   "groundRoleLabel": "Role",
   "groundAddedByYou": "Added by you",
@@ -336,7 +336,7 @@
   "sweepAdded": "Added to Weaknesses",
   "sweepDismissed": "Dismissed",
   "addLegalIssue": "Add a legal issue",
-  "legalIssuesIntro": "Open questions the tribunal will have to decide.",
+  "legalIssuesIntro": "Open questions the tribunal will have to reach.",
   "issueContested": "Contested",
   "issueBriefing": "Briefing",
   "issueOpen": "Open",
@@ -373,9 +373,9 @@
     "BURDEN_DISPUTED": "Jev puts the burden on the other side"
   },
   "addWeakness": "Add a weakness",
-  "weaknessesIntro": "Exposure in your own case, soonest to surface first.",
+  "weaknessesIntro": "Exposure in our own case, ordered by how early it will surface.",
   "weaknessMaterial": "Material",
-  "weaknessMinor": "Minor",
+  "weaknessMinor": "Open",
   "weaknessClosed": "Closed",
   "weaknessClosedCount": "{{done}} of {{total}} closed",
   "weaknessDetailPlaceholder": "What would close it",
@@ -397,7 +397,7 @@
     "NOT_BORNE_OUT": "Jev doesn't find this borne out by the case data"
   },
   "addStrength": "Add a strength",
-  "strengthsIntro": "Findings that carry your theory of the case, the ones doing the most work first.",
+  "strengthsIntro": "Findings that carry our theory of the case.",
   "strengthStrong": "Strong",
   "strengthModerate": "Moderate",
   "strengthStrongCount": "{{done}} of {{total}} strong",
