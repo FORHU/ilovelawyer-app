@@ -161,10 +161,14 @@
     "audioOverviewHistoryLoading": "Nilo-load ang kasaysayan…",
     "audioOverviewHistoryError": "Hindi ma-load ang kasaysayan ng audio overview.",
     "audioOverviewHistoryEmpty": "Wala pang nagawang audio overview.",
-    "audioOverviewHistoryNoAudio": "Hindi pa na-render ang audio",
-    "audioOverviewHistoryTurns": "{{count}} linya",
     "audioOverviewHistoryShowScript": "Ipakita ang script",
     "audioOverviewHistoryHideScript": "Itago ang script",
+    "audioOverviewStatus": {
+      "ready": "Handa",
+      "rendering": "Nire-render",
+      "failed": "Nabigo",
+      "scriptOnly": "Script lang"
+    },
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
   },
   "mindMapExpand": {

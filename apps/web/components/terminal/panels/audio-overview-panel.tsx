@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, Volume2 } from "lucide-react"
+import { Loader2, RefreshCw, Volume2 } from "lucide-react"
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
@@ -140,6 +140,31 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
             : null}
         </div>
       )}
+      {/* Each generation is a new history entry, so this is the only way History ever grows
+       * from this panel — the empty state's button above only exists until the first one. */}
+      <div className="flex shrink-0 items-center justify-end gap-2 px-1">
+        {generateScriptError && (
+          <p className="text-xs text-danger">{t("case-portfolio:workspace.audioOverviewGenerateError")}</p>
+        )}
+        {isConsultationBusy && !isGeneratingScript && (
+          <p className="text-xs text-muted-foreground">{t("case-portfolio:workspace.replyInProgressHint")}</p>
+        )}
+        <button
+          type="button"
+          onClick={() => void generateScript()}
+          disabled={isGeneratingScript || isConsultationBusy}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/40 disabled:opacity-50"
+        >
+          {isGeneratingScript ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {isGeneratingScript
+            ? t("case-portfolio:workspace.audioOverviewGenerating")
+            : t("case-portfolio:workspace.audioOverviewGenerateCta")}
+        </button>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="px-1">
           <AudioOverviewTurns

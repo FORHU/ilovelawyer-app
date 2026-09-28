@@ -295,10 +295,14 @@
     "audioOverviewHistoryLoading": "Loading history…",
     "audioOverviewHistoryError": "Couldn't load audio overview history.",
     "audioOverviewHistoryEmpty": "No audio overviews generated yet.",
-    "audioOverviewHistoryNoAudio": "Audio not rendered",
-    "audioOverviewHistoryTurns": "{{count}} turns",
     "audioOverviewHistoryShowScript": "Show script",
     "audioOverviewHistoryHideScript": "Hide script",
+    "audioOverviewStatus": {
+      "ready": "Ready",
+      "rendering": "Rendering",
+      "failed": "Failed",
+      "scriptOnly": "Script only"
+    },
     "mindMapNoConsultation": "Start a chat to generate a mind map."
   },
   "mindMapExpand": {

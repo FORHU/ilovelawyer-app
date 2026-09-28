@@ -161,10 +161,14 @@
     "audioOverviewHistoryLoading": "기록을 불러오는 중…",
     "audioOverviewHistoryError": "오디오 개요 기록을 불러올 수 없습니다.",
     "audioOverviewHistoryEmpty": "아직 생성된 오디오 개요가 없습니다.",
-    "audioOverviewHistoryNoAudio": "오디오가 아직 렌더링되지 않았습니다",
-    "audioOverviewHistoryTurns": "{{count}}개 발언",
     "audioOverviewHistoryShowScript": "스크립트 보기",
     "audioOverviewHistoryHideScript": "스크립트 숨기기",
+    "audioOverviewStatus": {
+      "ready": "준비됨",
+      "rendering": "렌더링 중",
+      "failed": "실패",
+      "scriptOnly": "스크립트만"
+    },
     "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다."
   },
   "mindMapExpand": {
