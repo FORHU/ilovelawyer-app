@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type ComponentType } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2 } from "lucide-react"
+import { Check, CircleCheck, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import {
   useAiJobStatus,
   useCreateFindingMutation,
+  useCreateProcedureItemMutation,
+  useCreateRiskMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
   useUpdateFindingMutation,
@@ -99,6 +101,11 @@ export function RatedFindingPanel({
   const update = useUpdateFindingMutation(caseId)
   const del = useDeleteFindingMutation(caseId)
   const jevCheck = useJevCheckFindingMutation(caseId)
+  const sendToChecklist = useCreateProcedureItemMutation(caseId)
+  const flagRisk = useCreateRiskMutation(caseId)
+  // Ids already sent from this panel this session, so a second click can't double-add.
+  const [sentToChecklist, setSentToChecklist] = useState<Set<string>>(new Set())
+  const [flagged, setFlagged] = useState<Set<string>>(new Set())
   // Findings from an older format regenerate in the background when the Terminal loads the case
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
   // finishes; Legal Issues reads the graph view, so refresh that too.
@@ -278,24 +285,63 @@ export function RatedFindingPanel({
                     {f.jev ? <config.JevDetail finding={f} /> : anyJev && isAi ? <JevNotChecked /> : null}
 
                     <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
-                      {/* Lawyer-entered rows get Jev's read on request; AI ones were read when generated. */}
-                      {!isAi ? (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {/* Lawyer-entered rows get Jev's read on request; AI ones were read when generated. */}
+                        {!isAi ? (
+                          <button
+                            type="button"
+                            onClick={() => jevCheck.mutate(f.id)}
+                            disabled={jevCheck.isPending}
+                            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
+                          >
+                            {jevCheck.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                            )}
+                            {jevCheck.isPending ? t("findingJevChecking") : t("findingJevCheck")}
+                          </button>
+                        ) : null}
+                        {/* Cross-panel: send this finding to Case Strategy's to-dos or the risk register. */}
                         <button
                           type="button"
-                          onClick={() => jevCheck.mutate(f.id)}
-                          disabled={jevCheck.isPending}
-                          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
+                          disabled={sentToChecklist.has(f.id) || sendToChecklist.isPending}
+                          onClick={() =>
+                            sendToChecklist.mutate(
+                              { kind: "TODO", label: f.label, sourceLabel: t(`findingCategory.${config.category}`) },
+                              { onSuccess: () => setSentToChecklist((prev) => new Set(prev).add(f.id)) },
+                            )
+                          }
+                          title={t("toChecklistHint")}
+                          className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-foreground disabled:opacity-60"
                         >
-                          {jevCheck.isPending ? (
-                            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                          {sentToChecklist.has(f.id) ? (
+                            <Check className="h-3 w-3" aria-hidden="true" />
                           ) : (
-                            <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                            <CircleCheck className="h-3 w-3" aria-hidden="true" />
                           )}
-                          {jevCheck.isPending ? t("findingJevChecking") : t("findingJevCheck")}
+                          {sentToChecklist.has(f.id) ? t("addedToChecklist") : t("toChecklist")}
                         </button>
-                      ) : (
-                        <span />
-                      )}
+                        <button
+                          type="button"
+                          disabled={flagged.has(f.id) || flagRisk.isPending}
+                          onClick={() =>
+                            flagRisk.mutate(
+                              { title: f.label, severity: "UNVERIFIED" },
+                              { onSuccess: () => setFlagged((prev) => new Set(prev).add(f.id)) },
+                            )
+                          }
+                          title={t("flagRiskHint")}
+                          className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-riskmed disabled:opacity-60"
+                        >
+                          {flagged.has(f.id) ? (
+                            <Check className="h-3 w-3" aria-hidden="true" />
+                          ) : (
+                            <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                          )}
+                          {flagged.has(f.id) ? t("riskFlagged") : t("flagRisk")}
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => del.mutate(f.id)}
@@ -384,7 +430,7 @@ export function RatedFindingPanel({
           {t("add")}
         </button>
       </form>
-      <MutationError show={create.isError || update.isError || del.isError} />
+      <MutationError show={create.isError || update.isError || del.isError || sendToChecklist.isError || flagRisk.isError} />
     </PanelBody>
   )
 }
