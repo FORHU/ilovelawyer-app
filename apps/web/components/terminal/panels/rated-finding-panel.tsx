@@ -1,12 +1,14 @@
-import { useState, type ComponentType } from "react"
+import { useRef, useState, type ComponentType } from "react"
 import { useTranslation } from "react-i18next"
-import { FileText, Loader2, ShieldCheck, Sparkles, Trash2 } from "lucide-react"
+import { FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2 } from "lucide-react"
 import {
   useCreateFindingMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
   useUpdateFindingMutation,
 } from "@/lib/terminal/mutations"
+import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
+import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
 import type { CaseFinding, FindingCategory, FindingTag } from "@/lib/terminal/types"
 import {
   DeltaMark,
@@ -54,6 +56,8 @@ export interface RatedFindingConfig {
   subHintKey?(jev: unknown): string | null
   /** Jev's read, in the expanded row. */
   JevDetail: ComponentType<{ finding: CaseFinding }>
+  /** Show the attach-documents button beside the add field (Weaknesses, Strengths). */
+  upload?: boolean
 }
 
 const UNRATED = { tone: "neutral" as Tone, label: "findingUnrated" }
@@ -92,6 +96,8 @@ export function RatedFindingPanel({
   const [newTag, setNewTag] = useState<FindingTag | "">("")
   const [open, setOpen] = useState<string | null>(null)
   const [detail, setDetail] = useState("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { upload, isUploading } = useCaseDocumentUpload(caseId)
 
   const styleOf = (tag: FindingTag | null) => config.tags.find((s) => s.tag === tag) ?? null
   const rows = [...items].sort(byPanelOrder(config.doneTag))
@@ -290,6 +296,38 @@ export function RatedFindingPanel({
           setNewTag("")
         }}
       >
+        {config.upload ? (
+          <>
+            {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
+                automatic analysis then reads — findings aren't stored per-document. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? [])
+                e.target.value = ""
+                if (files.length > 0) upload(files)
+              }}
+            />
+            <button
+              type="button"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={t("uploadDocuments")}
+              title={t("uploadDocuments")}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+            >
+              {isUploading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+            </button>
+          </>
+        ) : null}
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}

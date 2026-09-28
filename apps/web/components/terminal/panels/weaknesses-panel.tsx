@@ -21,6 +21,7 @@ const WEAKNESSES: RatedFindingConfig = {
   jevFlagKeys: (jev) => (jev as WeaknessJevCheck).flags.map((flag) => `weaknessJevFlag.${flag}`),
   subHintKey: (jev) => ((jev as WeaknessJevCheck).curable === "NOT_CURABLE" ? "weaknessNoFix" : null),
   JevDetail: WeaknessJevDetail,
+  upload: true,
 }
 
 function WeaknessJevDetail({ finding }: { finding: CaseFinding }) {
