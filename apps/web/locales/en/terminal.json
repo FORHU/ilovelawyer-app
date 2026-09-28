@@ -77,7 +77,7 @@
   "badgeToDos": "{{count}} to-dos",
   "badgeEvents": "{{count}} events",
   "badgeWitnesses": "{{count}} witnesses",
-  "badgeClaims": "{{count}} claims",
+  "badgeHeads": "{{count}} heads",
   "badgeDecisions": "{{count}} decisions",
   "badgeTheories": "{{count}} theories",
   "focusNext": "Next {{date}}",

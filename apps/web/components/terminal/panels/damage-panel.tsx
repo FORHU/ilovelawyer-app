@@ -30,7 +30,7 @@ export function DamagePanel({
   const [description, setDescription] = useState("")
   const [amount, setAmount] = useState("")
 
-  const total = snapshot.damages.reduce((sum, d) => sum + (d.amount ?? 0), 0)
+  const total = snapshot.damagesSummary.total
   const reducedMotion = usePrefersReducedMotion()
   const [displayTotal, setDisplayTotal] = useState(total)
   const totalProxyRef = useRef({ value: total })

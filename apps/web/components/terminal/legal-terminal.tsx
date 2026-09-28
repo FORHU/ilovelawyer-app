@@ -498,7 +498,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       attackStrategy: byCategory("ATTACK_STRATEGY"),
       defenseStrategy: byCategory("DEFENSE_STRATEGY"),
       witnesses: data.witnesses.length > 0 ? t("badgeWitnesses", { count: data.witnesses.length }) : undefined,
-      damages: data.damages.length > 0 ? t("badgeClaims", { count: data.damages.length }) : undefined,
+      damages: data.damagesSummary.headCount > 0 ? t("badgeHeads", { count: data.damagesSummary.headCount }) : undefined,
       caseReconstruction: data.reconstruction ? t("badgeReady") : undefined,
       audioOverview: data.reconstruction?.audioFileId ? t("badgeReady") : undefined,
       decisions: data.decisions.length > 0 ? t("badgeDecisions", { count: data.decisions.length }) : undefined,

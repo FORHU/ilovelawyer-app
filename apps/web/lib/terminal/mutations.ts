@@ -17,6 +17,7 @@ import type {
   CaseTheory,
   DamageCategory,
   DamageClaim,
+  DamageClaimBody,
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
@@ -826,13 +827,25 @@ export function useDeleteWitnessMutation(caseId: string) {
 export function useCreateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: {
-      category: DamageCategory
-      description?: string
-      amount?: number
-    }) =>
+    mutationFn: (body: DamageClaimBody & { category: DamageCategory }) =>
       apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
         method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Editing one head can change others (attorney's fees are recomputed from the heads they're a
+// percentage of), so this refreshes the whole snapshot rather than patching one row in place.
+export function useUpdateDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: DamageClaimBody & { id: string }) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}`, {
+        method: "PATCH",
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
