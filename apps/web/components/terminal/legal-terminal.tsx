@@ -60,11 +60,13 @@ import type {
   PresetValue,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
+import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import TerminalSettingsSidebar from "@/components/terminal/terminal-settings-sidebar"
+import LayoutTabStrip from "@/components/terminal/layout-tab-strip"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 
@@ -271,6 +273,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
   const [newLayoutOpen, setNewLayoutOpen] = useState(false)
   const [newLayoutPreset, setNewLayoutPreset] = useState<PresetValue>("PANE_4")
+  // Starts empty: users name their own layout, and the name is required to create it.
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
@@ -377,6 +380,53 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     }
   }, [layout, selectedWorkspaceId, updateWorkspace])
 
+  // The autosave above waits 1.2s after the last edit, so a refresh/close inside that window used
+  // to drop the change. On page hide, send whatever is still pending with `keepalive` so the
+  // request outlives the page (a normal fetch is cancelled by the unload).
+  useEffect(() => {
+    const flushOnHide = () => {
+      const pending = pendingSaveRef.current
+      if (!pending) return
+      pendingSaveRef.current = null
+      apiFetch(`/api/terminal/workspaces/${pending.workspaceId}`, {
+        method: "PATCH",
+        keepalive: true,
+        body: JSON.stringify({ preset: pending.layoutJson.preset, layoutJson: pending.layoutJson }),
+      }).catch(() => {})
+    }
+    window.addEventListener("pagehide", flushOnHide)
+    return () => window.removeEventListener("pagehide", flushOnHide)
+  }, [])
+
+  // Panes can be added from the library while no layout exists yet (the "No layouts yet" state),
+  // but the autosave above only writes to a selected workspace — so they used to vanish on
+  // refresh. Persist them by creating a workspace from the current board the first time one
+  // becomes visible. The ref (not createWorkspace.isPending) guards against a second create
+  // firing on the render between mutate() and the pending flag flipping.
+  const autoCreatingWorkspaceRef = useRef(false)
+  useEffect(() => {
+    if (!layout || selectedWorkspaceId || !catalog.data || autoCreatingWorkspaceRef.current) return
+    if (!layout.panels.some((panel) => panel.visible)) return
+    autoCreatingWorkspaceRef.current = true
+    const layoutJson = layout
+    createWorkspace.mutate(
+      { caseId, name: t("untitledLayout"), preset: layoutJson.preset, layoutJson },
+      {
+        onSuccess: (workspace) => {
+          // Panes added while the create was in flight differ from what was sent, so the save
+          // effect picks them up as a normal edit once the workspace is selected.
+          lastSavedLayoutRef.current = JSON.stringify(layoutJson)
+          setSelectedWorkspaceId(workspace.id)
+          applyWorkspace.mutate(workspace.id)
+          autoCreatingWorkspaceRef.current = false
+        },
+        // Deliberately not reset on error: the mutation objects in the deps change identity as
+        // their state changes, so clearing the guard here would retry in a tight loop while the
+        // API is failing. A failed create just stays unsaved until the next reload.
+      },
+    )
+  }, [layout, selectedWorkspaceId, catalog.data, caseId, createWorkspace, applyWorkspace, t])
+
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
   const arrangementStageRef = useRef<HTMLDivElement>(null)
   const paneAnimations = useTerminalPaneAnimations({ stageRef: arrangementStageRef, layoutKey: layout })
@@ -392,7 +442,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // active one) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
   const setArrangement = (next: ArrangementValue) => {
     paneAnimations.capturePaneState()
-    setLayout((prev) => (prev ? { ...prev, arrangement: next } : prev))
+    // Columns must always be saved with an explicit columnCount: asLayout reads a "columns" save
+    // without one as a pre-rework legacy Free layout, so leaving it unset here (it only used to
+    // be written once the user clicked a column-count button) made every Columns layout reload
+    // as Free, with panes back at their old x/y.
+    setLayout((prev) =>
+      prev ? { ...prev, arrangement: next, columnCount: next === "columns" ? (prev.columnCount ?? 3) : prev.columnCount } : prev,
+    )
   }
 
   const visiblePanels = useMemo(() => {
@@ -423,7 +479,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         const mapped = data.law.citations.filter((c) => c.resolvedAuthority).length
         return mapped > 0 ? t("badgeMapped", { count: mapped }) : undefined
       })(),
-      mindMap: data.mindMap.lastGeneratedAt ? (data.mindMap.isStale ? t("badgeStale") : t("badgeReady")) : undefined,
+      // The case's document-built map when it has a live one (what the panel shows), else the
+      // chat-generated map the panel falls back to.
+      mindMap:
+        data.caseMindMap && !data.caseMindMap.retired
+          ? data.caseMindMap.isStale ? t("badgeStale") : t("badgeReady")
+          : data.mindMap.lastGeneratedAt ? (data.mindMap.isStale ? t("badgeStale") : t("badgeReady")) : undefined,
       redTeam: data.redTeamAssessment ? t("badgeReady") : undefined,
       procedure: (() => {
         const open = data.procedure.items.filter((i) => !i.done).length
@@ -461,7 +522,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => {
       if (!prev) return prev
-      return { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
+      const hidden = { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
+      // Free canvas: close the gap so the remaining panes re-fill the board (mirror of adding).
+      return (prev.arrangement ?? "free") === "free" ? autoTileLayout(hidden) : hidden
     })
   }
 
@@ -495,13 +558,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       if (!prev) return prev
       const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
       const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(prev.panels), ...extra }
-      if (prev.panels.some((panel) => panel.id === id)) {
-        return {
-          ...prev,
-          panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, ...next } : panel)),
-        }
-      }
-      return { ...prev, panels: [...prev.panels, next] }
+      const panels = prev.panels.some((panel) => panel.id === id)
+        ? prev.panels.map((panel) => (panel.id === id ? { ...panel, ...next } : panel))
+        : [...prev.panels, next]
+      const added = { ...prev, panels }
+      // Free canvas: a plain add (the library's click) tiles the board so the first pane fills it
+      // and each further pane splits the space, instead of floating a cascaded window on top of
+      // the others. A drop rect from an actual drag is a deliberate position, so it's respected —
+      // except for the very first pane, where "where" has no meaning and a full canvas is the
+      // sensible start.
+      const isFree = (prev.arrangement ?? "free") === "free"
+      const explicitRect = extra?.x !== undefined || extra?.y !== undefined
+      const onlyPane = panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).length === 1
+      return isFree && (!explicitRect || onlyPane) ? autoTileLayout(added, id) : added
     })
   }
 
@@ -833,27 +902,22 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     applyWorkspace.mutate(id)
   }
 
-  // Opens the New Layout dialog defaulted to the account's own default preset, with the name
-  // field pre-filled from that preset's label (selectPresetForNewLayout below keeps the name in
-  // sync with the picker as long as the user hasn't typed their own).
+  // Opens the New Layout dialog defaulted to the account's own default preset, with a blank name
+  // for the user to fill in (not derived from the preset, so it can't drift out of sync with it).
   const openNewLayoutDialog = () => {
-    const preset = catalog.data?.defaultPreset ?? "PANE_4"
-    setNewLayoutPreset(preset)
-    setNewLayoutName(t(PRESET_LABEL_KEYS[preset]))
+    setNewLayoutPreset(catalog.data?.defaultPreset ?? "PANE_4")
+    setNewLayoutName("")
     setNewLayoutOpen(true)
   }
 
-  const selectPresetForNewLayout = (preset: PresetValue) => {
-    setNewLayoutName((prev) => (prev === t(PRESET_LABEL_KEYS[newLayoutPreset]) ? t(PRESET_LABEL_KEYS[preset]) : prev))
-    setNewLayoutPreset(preset)
-  }
+  const selectPresetForNewLayout = (preset: PresetValue) => setNewLayoutPreset(preset)
 
   // Builds the new layout from the CHOSEN preset (applyPreset — the same function Reset and
   // initial-load already use) instead of cloning whatever arrangement happens to be on screen,
   // which is what this used to do before the preset picker existed.
   const commitNewLayout = () => {
-    if (!catalog.data) return
-    const name = newLayoutName.trim() || t(PRESET_LABEL_KEYS[newLayoutPreset])
+    const name = newLayoutName.trim()
+    if (!catalog.data || !name) return
     const fallback: WorkspaceLayout = {
       preset: newLayoutPreset,
       arrangement: "free",
@@ -872,7 +936,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         },
       },
     )
-    setNewLayoutName("")
   }
 
   // Resets the CURRENT tab's contents back to empty, in place — previously this called the
@@ -1028,40 +1091,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
         {/* Terminal bar: layout tabs, arrangement switch, pane count, and settings */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">
-          <div className="flex min-w-0 flex-1 items-stretch gap-5 overflow-x-auto">
-            {(workspaces.data ?? []).map((workspace) => {
-              const active = workspace.id === selectedWorkspaceId
-              return (
-                <span key={workspace.id} className="group/tab flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => selectWorkspace(workspace.id)}
-                    className={`whitespace-nowrap border-b-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
-                      active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {workspace.name}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => closeWorkspaceTab(workspace.id)}
-                    aria-label={t("closeLayout")}
-                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
-                  >
-                    <X className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                </span>
-              )
-            })}
-            <button
-              type="button"
-              onClick={openNewLayoutDialog}
-              className="flex shrink-0 items-center gap-1.5 self-center text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Plus className="h-3 w-3" aria-hidden="true" />
-              {t("newLayout")}
-            </button>
-          </div>
+          <LayoutTabStrip
+            tabs={workspaces.data ?? []}
+            activeId={selectedWorkspaceId}
+            onSelect={selectWorkspace}
+            onClose={closeWorkspaceTab}
+            onNew={openNewLayoutDialog}
+            labels={{
+              close: t("closeLayout"),
+              newLayout: t("newLayout"),
+              scrollLeft: t("layoutTabsScrollLeft"),
+              scrollRight: t("layoutTabsScrollRight"),
+            }}
+          />
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-0.5 rounded-full border border-border p-0.5">
               {ARRANGEMENTS.map(({ id, labelKey, icon: Icon }) => {
@@ -1441,19 +1483,23 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   </div>
                   <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
                     {t("workspaceName")}
+                    <span className="ml-0.5 text-danger" aria-hidden="true">*</span>
                   </label>
                   <input
                     id="new-layout-name"
                     autoFocus
+                    required
+                    aria-required="true"
                     value={newLayoutName}
                     onChange={(e) => setNewLayoutName(e.target.value)}
+                    placeholder={t("workspaceName")}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" && newLayoutName.trim()) {
                         commitNewLayout()
                         close()
                       }
                     }}
-                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none focus:border-brand-gold/60"
+                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-brand-gold/60"
                   />
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
                   <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1484,11 +1530,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     </button>
                     <button
                       type="button"
+                      disabled={!newLayoutName.trim()}
                       onClick={() => {
                         commitNewLayout()
                         close()
                       }}
-                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
                     >
                       {t("createLayout")}
                     </button>
@@ -2642,6 +2689,49 @@ function columnCount(preset: PresetValue, n: number) {
   return 2
 }
 
+// Free canvas auto-tiling, so the board is always filled: 1 pane = whole canvas, 2 = side by
+// side, 3-4 = a 2-column grid, 5+ = 3 columns. A short last row stretches its panes to the full
+// width (3 panes = two on top, one full-width below) rather than leaving an empty cell.
+// Panes keep their current reading order (top-to-bottom, left-to-right) so re-tiling doesn't
+// shuffle what the user already arranged; `newestId` goes last. If any pane is pinned the layout
+// is returned untouched — pinning protects that pane's own slot, which tiling would move.
+function autoTileLayout(layout: WorkspaceLayout, newestId?: PanelId): WorkspaceLayout {
+  const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+  if (visible.length === 0 || visible.some((panel) => panel.pinned)) return layout
+
+  const readingKey = (panel: PanelLayout): [number, number] =>
+    Number.isFinite(panel.x) && Number.isFinite(panel.y)
+      ? [Math.round((panel.y as number) * 10), panel.x as number]
+      : [Number.POSITIVE_INFINITY, panel.order]
+  const ordered = [...visible].sort((a, b) => {
+    if (a.id === newestId) return 1
+    if (b.id === newestId) return -1
+    const [rowA, colA] = readingKey(a)
+    const [rowB, colB] = readingKey(b)
+    return rowA - rowB || colA - colB
+  })
+
+  const count = ordered.length
+  const cols = count <= 1 ? 1 : count <= 4 ? 2 : 3
+  const rows = Math.ceil(count / cols)
+  const height = 1 / rows
+  const rects = new Map<PanelId, PaneRect>()
+  ordered.forEach((panel, index) => {
+    const row = Math.floor(index / cols)
+    const inRow = row === rows - 1 ? count - row * cols : cols
+    const width = 1 / inRow
+    rects.set(panel.id, { x: (index - row * cols) * width, y: row * height, width, height })
+  })
+
+  return {
+    ...layout,
+    panels: layout.panels.map((panel) => {
+      const rect = rects.get(panel.id)
+      return rect ? { ...panel, ...rect } : panel
+    }),
+  }
+}
+
 function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
   const visible = [...layout.panels]
     .filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
@@ -2744,8 +2834,15 @@ function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, opts?: 
   ].filter((part): part is string => Boolean(part))
   if (procedureParts.length > 0) summaries.procedure = procedureParts.join(" · ")
 
-  if (data.mindMap.lastGeneratedAt) {
-    const parts = [data.mindMap.isStale ? t("badgeStale") : t("badgeReady"), relativeUpdate(data.mindMap.lastGeneratedAt)].filter(
+  // Same choice as the badge above: the live case map first, else the chat map.
+  const shownMap =
+    data.caseMindMap && !data.caseMindMap.retired
+      ? { isStale: data.caseMindMap.isStale, updatedAt: data.caseMindMap.generatedAt }
+      : data.mindMap.lastGeneratedAt
+        ? { isStale: data.mindMap.isStale, updatedAt: data.mindMap.lastGeneratedAt }
+        : null
+  if (shownMap) {
+    const parts = [shownMap.isStale ? t("badgeStale") : t("badgeReady"), relativeUpdate(shownMap.updatedAt)].filter(
       (part): part is string => Boolean(part),
     )
     summaries.mindMap = parts.join(" · ")
