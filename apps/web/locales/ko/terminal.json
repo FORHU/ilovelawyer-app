@@ -308,6 +308,7 @@
   "sweepAdded": "취약점에 추가됨",
   "sweepDismissed": "무시됨",
   "addLegalIssue": "법적 쟁점 추가",
+  "findingsUpdating": "사건 문서를 바탕으로 업데이트하는 중…",
   "legalIssuesIntro": "재판부가 판단해야 할 미결 쟁점.",
   "issueContested": "다툼 있음",
   "issueBriefing": "서면 준비 중",
