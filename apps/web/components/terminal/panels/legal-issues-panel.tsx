@@ -1,13 +1,15 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { FileText, Loader2, ShieldCheck, Sparkles, Trash2 } from "lucide-react"
 import {
+  useAiJobStatus,
   useCreateFindingMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
   useUpdateFindingMutation,
 } from "@/lib/terminal/mutations"
-import { useGraphViewQuery } from "@/lib/graph-view/mutations"
+import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import type { CaseFinding, FindingTag, LegalIssueJevCheck } from "@/lib/terminal/types"
 import {
   EmptyNote,
@@ -66,6 +68,19 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
   const update = useUpdateFindingMutation(caseId)
   const del = useDeleteFindingMutation(caseId)
   const jevCheck = useJevCheckFindingMutation(caseId)
+  // Findings from an older format regenerate in the background when the Terminal loads the case
+  // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
+  // finishes; Legal Issues reads the graph view, so refresh that too.
+  const findingsJob = useAiJobStatus(caseId, "caseFinding")
+  const updating = findingsJob.data?.status === "IN_PROGRESS"
+  const queryClient = useQueryClient()
+  const prevJobStatus = useRef(findingsJob.data?.status)
+  useEffect(() => {
+    if (prevJobStatus.current === "IN_PROGRESS" && findingsJob.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevJobStatus.current = findingsJob.data?.status
+  }, [findingsJob.data?.status, caseId, queryClient])
   const graphView = useGraphViewQuery(caseId, "issues")
   const [label, setLabel] = useState("")
   const [newTag, setNewTag] = useState<IssueTag | "">("")
@@ -92,6 +107,12 @@ export function LegalIssuesPanel({ caseId }: { caseId: string }) {
   return (
     <PanelBody gap="3">
       <p className={catalogBlurbClass}>{t("legalIssuesIntro")}</p>
+      {updating ? (
+        <p className={cn("inline-flex items-center gap-1.5", catalogBlurbClass)} role="status">
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          {t("findingsUpdating")}
+        </p>
+      ) : null}
 
       {items.length > 1 ? (
         <TagMixSummary
