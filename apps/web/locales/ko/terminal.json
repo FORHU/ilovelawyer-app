@@ -244,7 +244,7 @@
   "aiGenerated": "AI 생성",
   "groundedIn": "출처: {{doc}}",
   "addLegalIssue": "법적 쟁점 추가",
-  "legalIssuesIntro": "재판부가 판단해야 할 미결 쟁점입니다.",
+  "legalIssuesIntro": "재판부가 판단해야 할 미결 쟁점.",
   "issueContested": "다툼 있음",
   "issueBriefing": "서면 준비 중",
   "issueOpen": "미결",
