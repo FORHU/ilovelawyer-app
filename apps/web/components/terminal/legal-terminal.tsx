@@ -63,6 +63,7 @@ import type {
 } from "@/lib/terminal/types"
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
+import { layoutToPersist } from "@/lib/terminal/popped-out"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -306,12 +307,18 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSaveRef = useRef<{ workspaceId: string; layoutJson: WorkspaceLayout } | null>(null)
   const inFlightSaveRef = useRef<Promise<unknown> | null>(null)
+  // Panes currently popped out into their own window → the workspace they were popped out of.
+  // Memory only, never saved: the autosave writes layoutToPersist(), which puts these panes back
+  // on the grid, so a restart while one is out can't lose it (see lib/terminal/popped-out.ts).
+  // Keyed by workspace so switching tabs doesn't push one workspace's pane into another's save.
+  const poppedOutRef = useRef(new Map<PanelId, string>())
   // Flips a popped-out pane back to visible the moment its window closes — whether that window is
   // a browser popup or a desktop-shell window is lib/desktop's concern, not this component's.
   useEffect(
     () =>
       onPanelWindowClosed((closed) => {
         if (closed.caseId !== caseId) return
+        poppedOutRef.current.delete(closed.panelId as PanelId)
         setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === closed.panelId ? { ...p, visible: true } : p)) } : prev))
       }),
     [caseId],
@@ -346,10 +353,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   useEffect(() => {
     if (!layout || !selectedWorkspaceId) return
-    const serialized = JSON.stringify(layout)
+    // What gets saved, not what's on screen: popped-out panes stay on the grid in the saved copy,
+    // so popping one out (or its window closing) isn't an edit and doesn't trigger a save.
+    const poppedOutHere = [...poppedOutRef.current].filter(([, from]) => from === selectedWorkspaceId).map(([id]) => id)
+    const toSave = layoutToPersist(layout, new Set(poppedOutHere))
+    const serialized = JSON.stringify(toSave)
     if (serialized === lastSavedLayoutRef.current) return
 
-    pendingSaveRef.current = { workspaceId: selectedWorkspaceId, layoutJson: layout }
+    pendingSaveRef.current = { workspaceId: selectedWorkspaceId, layoutJson: toSave }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null
@@ -549,6 +560,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Library's plain click fallback, which keeps today's cascade placement (harmless in modes
   // that don't use x/y/width/height).
   const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>, sourceRect?: DOMRect | null) => {
+    // Back on the grid by hand while its window may still be open: it's no longer "only out there".
+    poppedOutRef.current.delete(id)
     paneAnimations.capturePaneState()
     paneAnimations.queuePaneEntry(id, sourceRect ?? dragPreviewRect(id) ?? panelLibraryRect(id))
     setDragPreview(null)
@@ -662,6 +675,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })
       return
     }
+    poppedOutRef.current.set(id, selectedWorkspaceId)
     setMaximizedId((cur) => (cur === id ? null : cur))
     setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: false } : p)) } : prev))
   }
