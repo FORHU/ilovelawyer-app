@@ -10,8 +10,13 @@ type LogoProps = {
    * - `"dark"` — light-colored logo for dark backgrounds (navy headers/footers)
    * - `"light"` — dark-colored logo for light backgrounds
    * - `"auto"` — follows the app theme via CSS
+   * - `"current"` — inherits `color` from the wrapping element instead of picking a set itself.
+   *   For contexts that already drive their own ink via CSS (e.g. the landing navbar's
+   *   transparent-over-hero-video → solid-on-hover transition), so the mark and wordmark
+   *   transition together with the rest of that element's text instead of needing a
+   *   `dark`/`light` swap wired up separately.
    */
-  forBackground?: "dark" | "light" | "auto";
+  forBackground?: "dark" | "light" | "auto" | "current";
   className?: string;
 };
 
@@ -120,6 +125,10 @@ export function Logo({
 
   if (forBackground === "dark") {
     return <LogoSvg ink="#ffffff" variant={variant} size={size} className={className} />;
+  }
+
+  if (forBackground === "current") {
+    return <LogoSvg ink="currentColor" variant={variant} size={size} className={className} />;
   }
 
   return (

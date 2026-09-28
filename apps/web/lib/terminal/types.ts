@@ -290,6 +290,13 @@ export interface SnapshotProcedureItem {
   /** Which source document an AI-generated item is grounded in. Null for lawyer-entered items
    * and for AI items the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Jev's verdict on a recommended-approach item against the case data. Absent/null for to-dos,
+   * lawyer-entered items, and while USE_JEV_CASE_STRATEGY is off server-side. */
+  check?: {
+    verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+    confidence: number
+    checkedAt: string
+  } | null
 }
 
 export interface SnapshotAuditEvent {
@@ -304,6 +311,15 @@ export interface SnapshotStaleness {
   refId: string
   staleReason: string
   staleAt: string
+}
+
+/** The Case Strategy panel's own freshness: when its plan/to-dos/dates were last generated, and
+ * how many case changes (documents, findings, evidence…) landed since. Absent on an API that
+ * predates it. */
+export interface SnapshotStrategyPanelStatus {
+  lastGeneratedAt: string | null
+  isStale: boolean
+  changedSince: number
 }
 
 export interface SnapshotMindMapStatus {
@@ -333,6 +349,8 @@ export interface CaseSnapshot {
     jurisdiction?: string | null
     parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
+    /** When the Citation Map's adverse-citation sweep last finished; null until the first one. */
+    adverseSweptAt?: string | null
   }
   documents: SnapshotDocument[]
   timeline: SnapshotTimelineEvent[]
@@ -359,11 +377,15 @@ export interface CaseSnapshot {
   witnesses: Witness[]
   damages: DamageClaim[]
   reconstruction: CaseReconstruction | null
+  // The dated event chain (Events tab) — separate from `reconstruction`, which only exists once a
+  // narrative has been generated. Named apart from `dates`/`nextDate` above, which are the calendar.
+  reconstructionEvents: ReconstructionEvents | null
   redTeamAssessment: RedTeamAssessment | null
   decisions: DecisionRecord[]
   theories: CaseTheory[]
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
+  strategyPanel?: SnapshotStrategyPanelStatus
   mindMap: SnapshotMindMapStatus
   /** Null until the case's first build; absent on an API that predates it. */
   caseMindMap?: SnapshotCaseMindMapStatus | null
@@ -393,6 +415,66 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
+/** The pill on a Legal Issues / Weaknesses / Strengths row — mirrors the API's FindingTag, and
+ * FINDING_TAGS_BY_CATEGORY there decides which ones a category may use. */
+export type FindingTag =
+  | "CONTESTED"
+  | "BRIEFING"
+  | "OPEN"
+  | "RESOLVED"
+  | "MATERIAL"
+  | "MINOR"
+  | "CLOSED"
+  | "STRONG"
+  | "MODERATE"
+
+/** Jev's check of a strength (USE_JEV_STRENGTHS) — stored in CaseFinding.jev. */
+export interface StrengthJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** False when no text of the cited document was found — support was judged on the case data. */
+  sourceRead: boolean
+  /** 0..1 — how much of the case it carries. */
+  weight: number
+  weightConfidence: number
+  rebuttal: "UNREBUTTED" | "REBUTTABLE" | "ALREADY_REBUTTED"
+  rebuttalConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
+
+/** Jev's check of a weakness (USE_JEV_WEAKNESSES) — stored in CaseFinding.jev. */
+export interface WeaknessJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** 0..1 — how much of the case it costs. */
+  severity: number
+  severityConfidence: number
+  /** 0..1, where 1 is "usable against you straight away". */
+  surfacing: number
+  surfacingConfidence: number
+  curable: "BY_EVIDENCE" | "BY_ARGUMENT" | "NOT_CURABLE"
+  curableConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
+
+/** Jev's check of a legal issue (USE_JEV_LEGAL_ISSUES) — stored in CaseFinding.jev. */
+export interface LegalIssueJevCheck {
+  raised: "RAISED" | "NOT_RAISED"
+  raisedConfidence: number
+  contested: "CONTESTED" | "UNCONTESTED" | "UNCLEAR"
+  contestedConfidence: number
+  burden: BurdenParty
+  burdenConfidence: number
+  /** The drafting model's own burden call; null on lawyer-entered issues. */
+  modelBurden: BurdenParty | null
+  flags: ("NOT_RAISED" | "BURDEN_DISPUTED")[]
+  uncertain: boolean
+}
+
+export type BurdenParty = "CLAIMANT" | "RESPONDENT" | "SHARED" | "UNCLEAR"
+
 export interface CaseFinding {
   id: string
   caseId: string
@@ -402,11 +484,75 @@ export interface CaseFinding {
   /** Which source document an AI-generated finding is grounded in. Null for lawyer-entered
    * findings and for AI findings the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Sub-line: who bears the burden, the work that would close it, or the document reference. */
+  detail: string | null
+  tag: FindingTag | null
+  /** -10..10, the same scale as Red Team's argument impact. */
+  impact: number | null
+  position: number | null
+  /** Jev's check (per-category shape). Null when Jev wasn't run or its call failed. */
+  jev: Record<string, unknown> | null
+  /** The drafting model's own tag/impact, kept once Jev has replaced them. */
+  modelTag: FindingTag | null
+  modelImpact: number | null
+  jevCheckedAt: string | null
   createdAt: string
   updatedAt: string
 }
 
 export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
+
+/** One "what's needed" item: a link to where the app settles it, or instructions only. */
+export interface WitnessNeed {
+  key: string
+  text: string
+  link: "STATEMENT" | "EVIDENCE" | "FACTOR" | null
+  factor?: string
+  /** For a FACTOR item: the question and the options a lawyer can pick. */
+  question?: string
+  options?: { value: string; label: string }[]
+}
+
+/** One row of the "Why?" table: a factor's answer, who gave it, and the evidence for it. */
+export interface WitnessFactorView {
+  factor: string
+  label: string
+  answerLabel: string | null
+  by: "JEV" | "AI" | "NONE"
+  confidence: number | null
+  lowConfidence: boolean
+  quote: string | null
+  quoteVerified: boolean
+  documentName: string | null
+  otherReading?: string
+  override?: { answerLabel: string; note: string }
+}
+
+/** Rubric audit written by the scorer. Only the parts the panel reads are typed. */
+export interface WitnessAiFactors {
+  band: "HIGH" | "MODERATE" | "LOW" | "WEAK" | null
+  /** Points that could be assessed, out of 100. */
+  assessable: number
+  insufficientReason: string | null
+  needs?: WitnessNeed[]
+  /** How many counted answers Jev was unsure about. */
+  reviewCount?: number
+  /** The lawyer's own factor answers, in plain words. */
+  overrideList?: { factor: string; label: string; answerLabel: string; note: string; at: string }[]
+  /** The factor table shown under "Why?". */
+  factorView?: WitnessFactorView[]
+}
+
+/** A ticked-off need. The proof is a document or photo from the case's Documents. `match` is what
+ * the server made of the fit between that document and the requirement. */
+export interface WitnessNeedDone {
+  key: string
+  documentId: string
+  note?: string
+  by: string
+  at: string
+  match?: { verdict: "SATISFIES" | "PARTLY" | "CANNOT_TELL"; confidence: number }
+}
 
 export interface Witness {
   id: string
@@ -425,6 +571,9 @@ export interface Witness {
   aiCredibility: number | null
   aiRationale: { text: string; source: string | null }[] | null
   aiSuggestedStatus: WitnessStatus | null
+  aiFactors: WitnessAiFactors | null
+  /** Keys of "what's needed" items the lawyer has ticked off. */
+  needsDone: (WitnessNeedDone | string)[] | null
   credibilityOverride: number | null
   scoredAt: string | null
   statementDueOn: string | null
@@ -477,6 +626,58 @@ export interface CaseReconstruction {
   tableReadStaleAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+// Event Chain (Grounded Reconstruction) — the case's dated events, each a Proposition resting on
+// one Source Quote, marked Verified/Disputed/Unverified — see CONTEXT.md and docs/adr/0002-0003
+// in ilovelawyer-api. Its own table on the backend (CaseReconstructionEvents), independent of
+// `reconstruction` above: it needs only the case's documents, not a generated narrative.
+export type ReconstructionEventStatus = "VERIFIED" | "DISPUTED" | "UNVERIFIED"
+
+export interface ReconstructionEventSourceRef {
+  docId: string
+  page: number | null
+  quote: string
+}
+
+export interface ReconstructionEvent {
+  index: number
+  /** YYYY-MM-DD, or null when the documents gave no usable date. */
+  date: string | null
+  /** The event as a factual proposition, never as a report of an allegation. */
+  proposition: string
+  /** Who says so, as the source presents it; null when the document just records it. */
+  assertedBy: string | null
+  /** Null when no quote could be verified against the named document — such an event can never
+   * be Verified. */
+  sourceRef: ReconstructionEventSourceRef | null
+  /** Absent only when the chain predates status assessment entirely; otherwise always set —
+   * with USE_JEV_RECONSTRUCTION off every event is still UNVERIFIED, never left unset. */
+  status?: ReconstructionEventStatus
+  statusConfidence?: number
+  /** Plain-language note: why this badge — a contradiction found, who alone asserts an
+   * unconfirmed claim, or that the check couldn't run. */
+  statusNote?: string
+  /** Other documents that independently show the event (settles a party's or witness's account). */
+  corroboratedBy?: string[]
+  /** Other documents that say the opposite — what makes the event Disputed when its own source
+   * alone wouldn't. */
+  contradictedBy?: string[]
+}
+
+export interface ReconstructionEvents {
+  events: ReconstructionEvent[]
+  updatedAt: string
+}
+
+// The event chain's 422 (mirrors ilovelawyer-api's EventBlocker) — what's missing before it can
+// be built, each with what to do about it. Read off a failed generate mutation's `error.body`
+// (see lib/fetch.ts's throwIfNotOk) rather than parsing `message` back apart.
+export interface ReconstructionEventBlocker {
+  code: "NO_DOCUMENTS" | "DOCUMENTS_PROCESSING" | "DOCUMENTS_FAILED"
+  problem: string
+  action: string
+  documents?: string[]
 }
 
 // One beat of the reconstructed episode — time, place, who's there, what happens, any recorded

@@ -52,7 +52,11 @@ export function FooterRevealPortal({ children }: { children: ReactNode }) {
     <>
       {/* Reserves scroll room inside the smoothed content — intentionally empty. Carries the
           id nav links scroll to, since the portaled footer below is `position: fixed` and
-          always sits at the same viewport-relative spot, not a meaningful scroll target. */}
+          always sits at the same viewport-relative spot, not a meaningful scroll target.
+          Click-through past this gap to the portaled footer beneath it relies on
+          #smooth-content itself being `pointer-events-none` (see scroll-smoother-provider.tsx)
+          — putting `pointer-events-none` on just this spacer isn't enough, since #smooth-content
+          spans this same screen rect once scrolled to the end and would still catch the click. */}
       <div id="footer-spacer" aria-hidden style={{ height }} />
       {portalTarget &&
         createPortal(

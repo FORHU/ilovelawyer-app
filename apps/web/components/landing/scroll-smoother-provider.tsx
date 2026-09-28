@@ -50,8 +50,25 @@ export function ScrollSmootherProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div id="smooth-wrapper" ref={wrapperRef} className="flex-1 flex flex-col">
-      <div id="smooth-content" ref={contentRef} className="relative z-10 flex-1 flex flex-col">
+    // `pointer-events-none` on BOTH this and #smooth-content below, restored to `auto` by each
+    // real content block (currently just `<main>` — see page.tsx), is deliberate: GSAP pins
+    // *this* element (not #smooth-content) `position: fixed` at the full viewport to drive the
+    // smoothing, so it — not just its z-10 child — spans the gap page.tsx leaves for the
+    // portaled, ScrollSmoother-safe footer (footer-reveal-portal.tsx's #footer-spacer). That gap
+    // has no real content of its own, but sits above the footer in z-order, so left at the
+    // default `auto` either box swallows every click meant for the footer underneath once
+    // scrolled to the very end — marking only the empty spacer `pointer-events-none`, or only
+    // #smooth-content, isn't enough: pointer-events isn't inherited upward, so whichever
+    // ancestor is still `auto` re-catches the click. Cutting pointer-events off on every
+    // ancestor that spans this rect and opting real content back in per-block (not per-ancestor)
+    // is the standard way to make an overlay's empty space click-through without disabling its
+    // actual content.
+    <div id="smooth-wrapper" ref={wrapperRef} className="flex-1 flex flex-col pointer-events-none">
+      <div
+        id="smooth-content"
+        ref={contentRef}
+        className="relative z-10 flex-1 flex flex-col pointer-events-none"
+      >
         {children}
       </div>
     </div>

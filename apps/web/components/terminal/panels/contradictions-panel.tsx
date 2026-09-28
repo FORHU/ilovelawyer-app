@@ -15,9 +15,13 @@ import {
   PanelBody,
   PanelRow,
   PanelRowList,
+  TONE_STYLE,
+  TagMixSummary,
+  TonePill,
   fieldClass,
   ghostBtnClass,
   labelTextClass,
+  type Tone,
 } from "@/components/terminal/panel-kit"
 
 type ContradictionMetadata = {
@@ -42,17 +46,13 @@ type ContradictionMetadata = {
 // scan's own confidence banded HIGH/MEDIUM/LOW — never a label nothing measured.
 type Severity = "DIRECT" | "INFERENTIAL" | "NOT_A_CONFLICT" | "HIGH" | "MEDIUM" | "LOW"
 const SEVERITY_ORDER: Severity[] = ["DIRECT", "HIGH", "INFERENTIAL", "MEDIUM", "LOW", "NOT_A_CONFLICT"]
-const RED = { badge: "border-red-400/50 bg-red-400/10 text-red-400", bar: "bg-red-400", edge: "border-l-red-400", row: "bg-red-400/[0.06]", text: "text-red-400" }
-const ORANGE = { badge: "border-orange-400/50 bg-orange-400/10 text-orange-400", bar: "bg-orange-400", edge: "border-l-orange-400", row: "bg-orange-400/[0.05]", text: "text-orange-400" }
-const AMBER = { badge: "border-amber-500/40 bg-amber-500/5 text-amber-500", bar: "bg-amber-500/70", edge: "border-l-amber-500/70", row: "", text: "text-amber-500" }
-const MUTED = { badge: "border-border bg-muted text-muted-foreground", bar: "bg-muted-foreground/40", edge: "border-l-border", row: "", text: "text-muted-foreground" }
-const SEVERITY_STYLE: Record<Severity, typeof RED & { label: string }> = {
-  DIRECT: { ...RED, label: "contradictionDirect" },
-  HIGH: { ...RED, label: "contradictionHigh" },
-  INFERENTIAL: { ...ORANGE, label: "contradictionInferential" },
-  MEDIUM: { ...ORANGE, label: "contradictionMedium" },
-  LOW: { ...AMBER, label: "contradictionLow" },
-  NOT_A_CONFLICT: { ...MUTED, label: "contradictionNotAConflict" },
+const SEVERITY_STYLE: Record<Severity, { tone: Tone; label: string }> = {
+  DIRECT: { tone: "danger", label: "contradictionDirect" },
+  HIGH: { tone: "danger", label: "contradictionHigh" },
+  INFERENTIAL: { tone: "riskmed", label: "contradictionInferential" },
+  MEDIUM: { tone: "riskmed", label: "contradictionMedium" },
+  LOW: { tone: "warn", label: "contradictionLow" },
+  NOT_A_CONFLICT: { tone: "neutral", label: "contradictionNotAConflict" },
 }
 
 function severityOf(m: ContradictionMetadata): Severity {
@@ -136,11 +136,8 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
     )
   const counts = new Map<Severity, number>()
   rows.forEach((r) => counts.set(r.severity, (counts.get(r.severity) ?? 0) + 1))
-  const present = SEVERITY_ORDER.filter((s) => counts.get(s))
   const handledCount = rows.filter((r) => r.handled).length
   const handledPct = rows.length ? Math.round((handledCount / rows.length) * 100) : 0
-  const ringR = 15
-  const ringC = 2 * Math.PI * ringR
 
   const toggle = (id: string) => {
     setOpen(open === id ? null : id)
@@ -174,45 +171,15 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
       </MutationError>
 
       {rows.length > 0 ? (
-        <div className="flex items-center gap-3">
-          <div
-            className="relative h-10 w-10 shrink-0"
-            title={t("contradictionHandled", { done: handledCount, total: rows.length })}
-          >
-            <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
-              <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
-              <circle
-                cx="18"
-                cy="18"
-                r={ringR}
-                fill="none"
-                strokeWidth="3"
-                strokeLinecap="round"
-                className="stroke-emerald-500"
-                strokeDasharray={`${(handledPct / 100) * ringC} ${ringC}`}
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-foreground">
-              {handledPct}%
-            </span>
-            <span className="sr-only">{t("contradictionHandled", { done: handledCount, total: rows.length })}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex h-1.5 gap-px overflow-hidden rounded-full">
-              {present.map((s) => (
-                <div key={s} className={SEVERITY_STYLE[s].bar} style={{ flexGrow: counts.get(s) }} />
-              ))}
-            </div>
-            <div className={`mt-1.5 flex flex-wrap gap-x-3 ${labelTextClass}`}>
-              {present.map((s) => (
-                <span key={s} className="inline-flex items-center gap-1">
-                  <span className={`h-1.5 w-1.5 rounded-sm ${SEVERITY_STYLE[s].bar}`} />
-                  {t(SEVERITY_STYLE[s].label)} <span className={SEVERITY_STYLE[s].text}>{counts.get(s)}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TagMixSummary
+          ring={{ pct: handledPct, tone: "ok", title: t("contradictionHandled", { done: handledCount, total: rows.length }) }}
+          segments={SEVERITY_ORDER.map((s) => ({
+            key: s,
+            label: t(SEVERITY_STYLE[s].label),
+            count: counts.get(s) ?? 0,
+            tone: SEVERITY_STYLE[s].tone,
+          }))}
+        />
       ) : null}
 
       {/* Same shrink-0 wrapper as WitnessPanel: PanelRowList's <ul> is overflow-hidden. */}
@@ -220,6 +187,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
         <PanelRowList empty={<EmptyNote>{t("noContradictions")}</EmptyNote>}>
           {rows.map(({ edge, m, severity, handled }) => {
             const style = SEVERITY_STYLE[severity]
+            const tone = TONE_STYLE[style.tone]
             const status = m.status ?? "OPEN"
             const leftDoc = docName.get(edge.source) ?? t("unknownDocument")
             const rightDoc = docName.get(edge.target) ?? t("unknownDocument")
@@ -236,7 +204,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
             return (
               <PanelRow
                 key={edge.id}
-                className={`flex-col items-stretch gap-2 border-l-[3px] ${handled ? "border-l-border" : `${style.edge} ${style.row}`}`}
+                className={`flex-col items-stretch gap-2 border-l-[3px] ${handled ? "border-l-border" : `${tone.edge} ${tone.tint}`}`}
               >
                 <button
                   type="button"
@@ -255,8 +223,8 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
                       {t(status === "RESOLVED" ? "contradictionResolved" : "contradictionDismissed")}
                     </span>
                   ) : null}
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] ${style.badge}`}
+                  <TonePill
+                    tone={style.tone}
                     title={
                       m.nature
                         ? t("contradictionJevConfidence", { pct: Math.round((m.natureConfidence ?? 0) * 100) })
@@ -264,7 +232,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
                     }
                   >
                     {t(style.label)}
-                  </span>
+                  </TonePill>
                 </button>
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px]">
@@ -274,7 +242,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
                     ].map((side, i) => (
                       <div key={i}>
                         <p className={labelTextClass}>
-                          {side.doc} · <span className={style.text}>{formatContradictionValue(m.kind, side.value)}</span>
+                          {side.doc} · <span className={tone.text}>{formatContradictionValue(m.kind, side.value)}</span>
                         </p>
                         <p className="mt-0.5 leading-5 text-foreground">
                           {side.excerpt ? `“${side.excerpt}”` : t("contradictionNoExcerpt")}

@@ -20,6 +20,7 @@ import type {
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
+  FindingTag,
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
@@ -73,9 +74,14 @@ export type AiGenerationKind =
   | "theoryDiff"
   | "caseReconstructionScenes"
   | "caseReconstructionTableRead"
+  | "caseReconstructionEvents"
   | "timelineGenerate"
+  | "caseStrategyRefresh"
   | "witnessScoring"
   | "witnessExtract"
+  | "claimExtract"
+  | "citationGrounds"
+  | "adverseSweep"
   | "mindMapExpand"
   | "caseMindMap"
 
@@ -417,6 +423,103 @@ export function useScanContradictionsMutation(caseId: string) {
   })
 }
 
+// ── Citation Map list view: pleaded claims and authority → claim links ──────────────────────
+// Kept here rather than in lib/citation-map/mutations.ts because they also touch terminalKeys
+// (job status) and graphViewKeys (claims are CLAIM nodes) — and that module is imported here.
+
+/** Queued "Find claims" — AI reads the pleadings for the case's claims (ClaimExtractSvc). */
+export function useExtractClaimsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/claims/extract`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "claimExtract") })
+    },
+  })
+}
+
+/** Queued "Map authorities" — AI links each cited authority to the claims it bears on. */
+export function useMapCitationGroundsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
+    },
+  })
+}
+
+/** Queued "Run sweep" — the adverse-citation sweep (AdverseSweepSvc). */
+export function useAdverseSweepMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-map/sweep`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "adverseSweep") })
+    },
+  })
+}
+
+/** Accept (adds the Weakness) or dismiss a sweep hit's suggestion. */
+export function useDecideAdverseHitMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "accept" | "dismiss" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-map/adverse/${id}/${decision}`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+      // An accepted hit is a new Weakness row.
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+function useInvalidateCitationMap(caseId: string) {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+    queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+  }
+}
+
+export function useCreateClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { title: string; causeOfAction?: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/claims`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/claims/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useCreateCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { citationCheckId: string; claimId: string; role: "SUBSTANTIVE" | "PROCEDURAL" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-grounds`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/citation-grounds/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
+  })
+}
+
 export type ContradictionStatus = "OPEN" | "RESOLVED" | "DISMISSED"
 
 // A contradiction's triage status. The server carries it over to the same contradiction when a
@@ -638,7 +741,7 @@ export function useCreateDeadlineMutation(caseId: string) {
 export function useCreateProcedureItemMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { kind: string; label: string }) =>
+    mutationFn: (body: { kind: string; label: string; sourceLabel?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/items`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -657,6 +760,38 @@ export function useUpdateProcedureItemMutation(caseId: string) {
         method: "PATCH",
         body: JSON.stringify({ done }),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Refreshes only the Case Strategy panel's pass (plan, to-dos, key dates) — queued server-side
+// (AiGenerationQueue/SQS), so this POST returns once the job is claimed. The caller pairs it with
+// useAiJobStatus(caseId, "caseStrategyRefresh"), which invalidates the snapshot on DONE. Ticked
+// to-dos survive the refresh.
+export function useRefreshStrategyMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/strategy/refresh`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseStrategyRefresh") })
+    },
+  })
+}
+
+// One click to recompute every deadline flagged stale. Still an explicit lawyer action — a due
+// date is a legal fact, so it never changes on its own. A date that moves loses its earlier
+// confirmations server-side, so the snapshot refresh shows them as needing confirmation again.
+export function useRecomputeStaleDeadlinesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ recomputed: { id: string }[]; failed: { id: string; error: string }[] }>(
+        `/api/my-cases/${caseId}/procedure/deadlines/recompute-stale`,
+        { method: "POST" }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -701,11 +836,49 @@ export function useRecomputeDeadlineMutation(caseId: string) {
 export function useCreateFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { category: FindingCategory; label: string }) =>
+    mutationFn: (body: { category: FindingCategory; label: string; detail?: string | null; tag?: FindingTag | null }) =>
       apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      label?: string
+      detail?: string | null
+      tag?: FindingTag | null
+      position?: number | null
+    }) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+/** Jev's check of one saved finding, on request. Only Legal Issues has one so far; the API
+ * answers 409 while USE_JEV_LEGAL_ISSUES is off. */
+export function useJevCheckFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}/jev-check`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
@@ -763,10 +936,28 @@ export function useUpdateWitnessMutation(caseId: string) {
       credibilityOverride?: number | null
       statementDueOn?: string | null
       statementReceived?: boolean
+      needsDone?: { key: string; documentId: string; note?: string }[]
     }) =>
       apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+// A lawyer sets (or, with answer null, clears) their own answer for one rubric factor. The API
+// recalculates the score straight away; no model call, no rescore.
+export function useSetWitnessFactorMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, factor, answer, note }: { id: string; factor: string; answer: string | null; note?: string }) =>
+      apiFetch<Witness>(`/api/my-cases/${caseId}/witnesses/${id}/factors/${factor}`, {
+        method: "PATCH",
+        body: JSON.stringify({ answer, note: note ?? "" }),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
@@ -891,6 +1082,22 @@ export function useGenerateReconstructionScenesMutation(caseId: string) {
       apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/scenes`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionScenes") })
+    },
+  })
+}
+
+// The dated event chain (Events tab) — built from the case's documents alone, no narrative
+// required (unlike scenes/table-read above, which are folded into `reconstruction`). Queued the
+// same way as useGenerateReconstructionMutation. A 422 here isn't a bug to retry: it means
+// documents are missing or still processing — see ReconstructionEventBlocker and the events
+// endpoint's own EventPrerequisiteInput on the backend.
+export function useGenerateReconstructionEventsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/reconstruction/events`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstructionEvents") })
     },
   })
 }

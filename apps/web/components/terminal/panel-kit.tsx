@@ -16,6 +16,8 @@ import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
+import type { PanelId } from "@/lib/terminal/types"
+import { Badge } from "@workspace/ui/components/badge"
 
 gsap.registerPlugin(Flip)
 
@@ -53,6 +55,178 @@ export const labelTextClass = "text-[10px] font-semibold tracking-[1.4px] text-m
 export const bodyTextClass = "text-[13px] text-foreground"
 export const secondaryTextClass = "text-[13px] text-muted-foreground"
 
+// The design's five status tones, on the --danger/--riskmed/--warn/--ok tokens (globals.css).
+// Every pill, mix bar, delta and row edge in a panel picks one of these instead of raw palette
+// colors, so light/dark and the severity scale stay in one place.
+export type Tone = "danger" | "riskmed" | "warn" | "ok" | "neutral"
+
+export const TONE_STYLE: Record<Tone, { badge: string; bar: string; text: string; stroke: string; edge: string; tint: string }> = {
+  danger: { badge: "border-danger/50 bg-danger/10 text-danger", bar: "bg-danger", text: "text-danger", stroke: "stroke-danger", edge: "border-l-danger", tint: "bg-danger/[0.06]" },
+  riskmed: { badge: "border-riskmed/50 bg-riskmed/10 text-riskmed", bar: "bg-riskmed", text: "text-riskmed", stroke: "stroke-riskmed", edge: "border-l-riskmed", tint: "bg-riskmed/[0.05]" },
+  warn: { badge: "border-warn/40 bg-warn/5 text-warn", bar: "bg-warn/70", text: "text-warn", stroke: "stroke-warn", edge: "border-l-warn/70", tint: "" },
+  ok: { badge: "border-ok/50 bg-ok/10 text-ok", bar: "bg-ok", text: "text-ok", stroke: "stroke-ok", edge: "border-l-ok", tint: "" },
+  neutral: { badge: "border-border bg-muted text-muted-foreground", bar: "bg-muted-foreground/40", text: "text-muted-foreground", stroke: "stroke-muted-foreground", edge: "border-l-border", tint: "" },
+}
+
+export function TonePill({ tone, title, children }: { tone: Tone; title?: string; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px]",
+        TONE_STYLE[tone].badge,
+      )}
+      title={title}
+    >
+      {children}
+    </span>
+  )
+}
+
+// The ▲ +4 / ▼ -1 / — 0 change marker. Which direction is bad depends on the panel: more impact
+// is bad on Red Team and Weaknesses, good on Strengths. `children` trails the number (e.g. a "~"
+// for an uncertain rating).
+export function DeltaMark({
+  value,
+  badWhenUp,
+  title,
+  className,
+  children,
+}: {
+  value: number
+  badWhenUp: boolean
+  title?: string
+  className?: string
+  children?: ReactNode
+}) {
+  const tone: Tone = value === 0 ? "neutral" : value > 0 === badWhenUp ? "danger" : "ok"
+  return (
+    <span className={cn("shrink-0 text-[11px] font-semibold tabular-nums", TONE_STYLE[tone].text, className)} title={title}>
+      {value > 0 ? `▲ +${value}` : value < 0 ? `▼ ${value}` : "— 0"}
+      {children}
+    </span>
+  )
+}
+
+export interface TagMixSegment {
+  key: string
+  label: string
+  count: number
+  tone: Tone
+}
+
+// The summary strip over a rated list: an optional ring (share handled, risk of loss, share in a
+// favorable state — the caller says which) beside a stacked bar of how many rows carry each tag,
+// with its legend. Segments with no rows are left out.
+export function TagMixSummary({
+  ring,
+  segments,
+  catalog,
+}: {
+  ring?: { pct: number; tone: Tone; title: string }
+  segments: TagMixSegment[]
+  /** The Terminal panel catalog's sizing — used by Legal Issues, Weaknesses, Strengths and the
+   * Citation Map list. */
+  catalog?: boolean
+}) {
+  const present = segments.filter((s) => s.count > 0)
+  const ringR = catalog ? 16 : 15
+  const ringC = 2 * Math.PI * ringR
+  const box = catalog ? 40 : 36
+  const stroke = catalog ? 4 : 3
+  return (
+    <div className="flex items-center gap-3">
+      {ring ? (
+        <div className="relative h-10 w-10 shrink-0" title={ring.title}>
+          <svg viewBox={`0 0 ${box} ${box}`} className="h-full w-full -rotate-90" aria-hidden="true">
+            <circle cx={box / 2} cy={box / 2} r={ringR} fill="none" strokeWidth={stroke} className={catalog ? "stroke-muted" : "stroke-border"} />
+            <circle
+              cx={box / 2}
+              cy={box / 2}
+              r={ringR}
+              fill="none"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              className={TONE_STYLE[ring.tone].stroke}
+              strokeDasharray={`${(ring.pct / 100) * ringC} ${ringC}`}
+            />
+          </svg>
+          <span
+            className={cn(
+              "absolute inset-0 flex items-center justify-center text-foreground",
+              catalog ? "font-mono text-[9.5px] font-bold tabular-nums" : "text-[10px] font-semibold",
+            )}
+          >
+            {ring.pct}%
+          </span>
+          <span className="sr-only">{ring.title}</span>
+        </div>
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <div className={cn("flex h-1.5 overflow-hidden rounded-full", catalog ? "gap-[2px]" : "gap-px")}>
+          {present.map((s) => (
+            <div key={s.key} className={catalog ? CATALOG_BAR[s.tone] : TONE_STYLE[s.tone].bar} style={{ flexGrow: s.count }} />
+          ))}
+        </div>
+        <div
+          className={cn(
+            "mt-1.5 flex flex-wrap",
+            catalog ? "gap-x-2.5 gap-y-1 font-mono text-[9.5px] tracking-[0.4px] text-muted-foreground uppercase" : cn("gap-x-3", labelTextClass),
+          )}
+        >
+          {present.map((s) => (
+            <span key={s.key} className={cn("inline-flex items-center", catalog ? "gap-[5px]" : "gap-1")}>
+              <span className={cn("h-1.5 w-1.5", catalog ? "rounded-[2px]" : "rounded-sm", catalog ? CATALOG_BAR[s.tone] : TONE_STYLE[s.tone].bar)} />
+              {s.label} <span className={cn(TONE_STYLE[s.tone].text, catalog && "font-bold")}>{s.count}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// The chip beside a row's title when Jev's check disagrees with it (unsupported premise,
+// disputed burden, …). `title` says what Jev found.
+export function JevFlag({ title }: { title: string }) {
+  const { t } = useTranslation("terminal")
+  return (
+    <span
+      className="rounded border border-warn/50 px-1 text-[9px] font-semibold uppercase tracking-[1px] text-warn"
+      title={title}
+    >
+      {t("jevFlag")}
+    </span>
+  )
+}
+
+// "Checked by Jev: <verdict> (<pct>%)" in an expanded row, then the pilot's own detail lines as
+// `children`, the uncertain note, and what the drafting model had rated it.
+export function JevCheck({
+  verdict,
+  confidence,
+  uncertain,
+  modelRating,
+  children,
+}: {
+  verdict: string
+  confidence: number
+  uncertain?: boolean
+  modelRating?: string | null
+  children?: ReactNode
+}) {
+  const { t } = useTranslation("terminal")
+  return (
+    <div className="flex flex-col gap-0.5 border-t border-border pt-1.5 text-muted-foreground">
+      <p>
+        <span className="text-foreground">{t("jevCheckedBy")}</span> {verdict} ({Math.round(confidence * 100)}%)
+      </p>
+      {children}
+      {uncertain ? <p className="text-warn">{t("jevUncertain")}</p> : null}
+      {modelRating ? <p>{modelRating}</p> : null}
+    </div>
+  )
+}
+
 // A form control with its visible label above it (never placeholder-as-label) and optional hint below.
 export function Field({
   label,
@@ -73,6 +247,101 @@ export function Field({
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
+  )
+}
+
+// For a row in a Jev-checked batch whose own check failed — says so instead of letting the
+// model's rating pass as verified.
+export function JevNotChecked() {
+  const { t } = useTranslation("terminal")
+  return <p className="text-warn">{t("jevNotChecked")}</p>
+}
+
+// ── Pane code chip ─────────────────────────────────────────────────────────────────────────
+// The two-letter code before each pane's title, toned by what the pane is about — the catalog's
+// codes where it names the pane; TL/ST/DC/TH/VF (neutral) for the panes it doesn't show.
+const PANE_CODES: Record<PanelId, [string, Tone]> = {
+  command: ["CS", "ok"],
+  evidence: ["EV", "warn"],
+  law: ["LW", "ok"],
+  dates: ["TL", "neutral"],
+  chat: ["AI", "warn"],
+  mindMap: ["MP", "riskmed"],
+  citationMap: ["CM", "neutral"],
+  redTeam: ["RT", "danger"],
+  procedure: ["ST", "neutral"],
+  teamAudit: ["TA", "neutral"],
+  contradictions: ["CX", "danger"],
+  legalIssues: ["IS", "warn"],
+  weaknesses: ["WK", "danger"],
+  strengths: ["SG", "ok"],
+  attackStrategy: ["AT", "riskmed"],
+  defenseStrategy: ["DF", "ok"],
+  witnesses: ["WT", "warn"],
+  damages: ["DM", "ok"],
+  caseReconstruction: ["RC", "neutral"],
+  audioOverview: ["AU", "neutral"],
+  decisions: ["DC", "neutral"],
+  theories: ["TH", "neutral"],
+  verification: ["VF", "neutral"],
+}
+
+export function PaneCode({ panelId }: { panelId: PanelId }) {
+  const [code, tone] = PANE_CODES[panelId]
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex h-[19px] shrink-0 items-center rounded-[5px] border px-1.5 font-mono text-[9.5px] font-bold tracking-[0.6px]",
+        tone === "neutral" ? "border-border bg-muted text-muted-foreground" : CATALOG_BADGE_BORDER[tone],
+        TONE_STYLE[tone].text,
+      )}
+    >
+      {code}
+    </span>
+  )
+}
+
+// ── The Terminal panel catalog's list look ─────────────────────────────────────────────────
+// Legal Issues, Weaknesses, Strengths and the Citation Map list are built to the catalog design
+// (11px muted intro, 12px row titles, 10px caps sub-lines, 17px pills) rather than the denser
+// defaults the other panels use.
+export const catalogBlurbClass = "text-[11px] leading-normal text-pretty text-muted-foreground"
+export const catalogRowClass = "flex-col items-stretch gap-2 px-2.5 py-2"
+export const catalogTitleClass = "text-[12px] text-pretty text-foreground"
+export const catalogSubClass = "mt-0.5 block text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase"
+export const catalogDeltaClass = "whitespace-nowrap font-mono text-[10px]"
+
+// Solid segment colors, as the catalog draws its mix bar (TONE_STYLE's warn bar is softened).
+const CATALOG_BAR: Record<Tone, string> = {
+  danger: "bg-danger",
+  riskmed: "bg-riskmed",
+  warn: "bg-warn",
+  ok: "bg-ok",
+  neutral: "bg-muted-foreground/40",
+}
+
+const CATALOG_BADGE_TONE = { danger: "danger", riskmed: "warning", warn: "caution", ok: "success", neutral: "neutral" } as const
+const CATALOG_BADGE_BORDER: Record<Tone, string> = {
+  danger: "border-danger/40 bg-danger/10",
+  riskmed: "border-riskmed/40 bg-riskmed/[0.12]",
+  warn: "border-warn/40 bg-warn/10",
+  ok: "border-ok/40 bg-ok/10",
+  neutral: "border-border",
+}
+
+// The catalog's status pill: @workspace/ui's Badge (pill shape) at the design's size — 17px tall,
+// 8.5px bold caps — with its 1px tone border.
+export function CatalogPill({ tone, title, children }: { tone: Tone; title?: string; children: ReactNode }) {
+  return (
+    <Badge
+      shape="pill"
+      tone={CATALOG_BADGE_TONE[tone]}
+      title={title}
+      className={cn("h-[17px] border px-1.5 py-0 font-sans text-[8.5px] font-bold tracking-[1px]", CATALOG_BADGE_BORDER[tone])}
+    >
+      {children}
+    </Badge>
   )
 }
 

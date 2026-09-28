@@ -12,14 +12,22 @@ import {
   terminalKeys,
   useAiJobStatus,
   useGenerateReconstructionAudioMutation,
+  useGenerateReconstructionEventsMutation,
   useGenerateReconstructionMutation,
   useGenerateReconstructionScenesMutation,
   useGenerateTableReadMutation,
   useUpdateReconstructionMutation,
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
-import type { CaseSnapshot, SceneDetail } from "@/lib/terminal/types"
-import { EmptyNote, MutationError, PanelBody, SectionLabel, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import type {
+  CaseSnapshot,
+  ReconstructionEvent,
+  ReconstructionEventBlocker,
+  ReconstructionEventStatus,
+  ReconstructionEvents,
+  SceneDetail,
+} from "@/lib/terminal/types"
+import { EmptyNote, MutationError, PanelBody, SectionLabel, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 type ReconstructionRegister = "general" | "court" | "opposing"
 
@@ -52,6 +60,7 @@ const RECONSTRUCTION_VIEW_MODE_KEYS = {
   narrative: "viewModeNarrative",
   scenes: "viewModeScenes",
   storyboard: "viewModeStoryboard",
+  events: "viewModeEvents",
 } as const
 
 export function CaseReconstructionPanel({
@@ -85,7 +94,7 @@ export function CaseReconstructionPanel({
   })
   const [audioPolling, setAudioPolling] = useState(false)
   const [viewMode, setViewMode] = useState<
-    "narrative" | "scenes" | "storyboard"
+    "narrative" | "scenes" | "storyboard" | "events"
   >("narrative")
 
   const generate = useGenerateReconstructionMutation(caseId)
@@ -172,7 +181,7 @@ export function CaseReconstructionPanel({
       <MutationError show={generate.isError} />
 
       <div className="flex gap-1 border-b border-border">
-        {(["narrative", "scenes", "storyboard"] as const).map((mode) => (
+        {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
@@ -194,6 +203,13 @@ export function CaseReconstructionPanel({
       {viewMode === "storyboard" && (
         <StoryboardView
           reconstruction={reconstruction}
+          documents={snapshot.documents}
+        />
+      )}
+      {viewMode === "events" && (
+        <EventsView
+          caseId={caseId}
+          reconstructionEvents={snapshot.reconstructionEvents}
           documents={snapshot.documents}
         />
       )}
@@ -540,6 +556,243 @@ function ScenesView({
               </p>
             )}
           </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+const EVENT_STATUS_TONE: Record<ReconstructionEventStatus, "success" | "danger" | "neutral"> = {
+  // DISPUTED is danger (red), not the mock's amber "riskmed": once an unconfirmed-but-uncontested
+  // claim is UNVERIFIED (see docs/adr/0002 on the backend), DISPUTED is reserved for an actual
+  // conflict in the record — that's a red flag, not a medium risk. UNVERIFIED is neutral, not a
+  // warning tone: it's silence in the record, not something alarming.
+  VERIFIED: "success",
+  DISPUTED: "danger",
+  UNVERIFIED: "neutral",
+}
+const EVENT_STATUS_LABEL_KEY: Record<ReconstructionEventStatus, string> = {
+  VERIFIED: "eventStatusVerified",
+  DISPUTED: "eventStatusDisputed",
+  UNVERIFIED: "eventStatusUnverified",
+}
+const EVENT_STATUS_BAR_CLASS: Record<ReconstructionEventStatus, string> = {
+  VERIFIED: "bg-ok",
+  DISPUTED: "bg-danger",
+  UNVERIFIED: "bg-muted-foreground/40",
+}
+// Fixed order everywhere a status appears as a set (bar segments, count legend) — never the
+// order events happen to come back in, so the legend doesn't reshuffle between renders.
+const EVENT_STATUS_ORDER: ReconstructionEventStatus[] = ["VERIFIED", "DISPUTED", "UNVERIFIED"]
+
+const EVENT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+// event.date is a plain YYYY-MM-DD (or null) — deliberately not routed through `new Date(...)` and
+// toLocaleDateString: a date-only ISO string parses as UTC midnight, which a negative-UTC-offset
+// browser then displays as the previous day. Formatting the parts directly sidesteps that.
+function formatEventDate(date: string | null): string | null {
+  if (!date) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  if (!m) return date
+  const month = EVENT_MONTHS[Number(m[2]) - 1]
+  return month ? `${Number(m[3])} ${month} ${m[1]}` : date
+}
+
+function EventStatusBadge({ status }: { status: ReconstructionEventStatus }) {
+  const { t } = useTranslation("terminal")
+  return <Badge tone={EVENT_STATUS_TONE[status]}>{t(EVENT_STATUS_LABEL_KEY[status])}</Badge>
+}
+
+function EventRow({
+  event,
+  docNameById,
+}: {
+  event: ReconstructionEvent
+  docNameById: Map<string, string>
+}) {
+  const { t } = useTranslation("terminal")
+  const dateLabel = formatEventDate(event.date)
+  const docName = event.sourceRef ? (docNameById.get(event.sourceRef.docId) ?? t("archivedDocument")) : null
+  const otherDocNames = (ids: string[]) => ids.map((id) => docNameById.get(id) ?? t("archivedDocument")).join(", ")
+
+  return (
+    <li className="rounded-md border border-border px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-baseline gap-x-2 text-[12px] font-semibold text-foreground">
+            {dateLabel && <span className="text-muted-foreground">{dateLabel}</span>}
+            <span>{event.proposition}</span>
+          </p>
+          {event.assertedBy && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground italic">— {event.assertedBy}</p>
+          )}
+        </div>
+        {event.status && <EventStatusBadge status={event.status} />}
+      </div>
+
+      {event.sourceRef && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate" title={docName ?? undefined}>
+            {docName}
+          </span>
+          {event.sourceRef.page != null && <span className="shrink-0">· p.{event.sourceRef.page}</span>}
+        </p>
+      )}
+      {event.sourceRef?.quote && (
+        <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-[11px] text-muted-foreground italic">
+          <Quote className="mt-0.5 h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+          {event.sourceRef.quote}
+        </blockquote>
+      )}
+
+      {event.statusNote && <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">{event.statusNote}</p>}
+      {(event.corroboratedBy?.length || event.contradictedBy?.length) && (
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          {event.corroboratedBy?.length ? (
+            <>
+              {t("eventCorroboratedBy")} <span className="text-ok">{otherDocNames(event.corroboratedBy)}</span>
+            </>
+          ) : null}
+          {event.corroboratedBy?.length && event.contradictedBy?.length ? " · " : null}
+          {event.contradictedBy?.length ? (
+            <>
+              {t("eventContradictedBy")} <span className="text-danger">{otherDocNames(event.contradictedBy)}</span>
+            </>
+          ) : null}
+        </p>
+      )}
+    </li>
+  )
+}
+
+function EventsView({
+  caseId,
+  reconstructionEvents,
+  documents,
+}: {
+  caseId: string
+  reconstructionEvents: ReconstructionEvents | null
+  documents: CaseSnapshot["documents"]
+}) {
+  const { t } = useTranslation("terminal")
+  const events = reconstructionEvents?.events ?? null
+  const docNameById = new Map(documents.map((d) => [d.id, d.name]))
+
+  const generateEvents = useGenerateReconstructionEventsMutation(caseId)
+  const eventsJob = useAiJobStatus(caseId, "caseReconstructionEvents")
+  const isGenerating = generateEvents.isPending || eventsJob.data?.status === "IN_PROGRESS"
+
+  // The 422's structured blockers (see ReconstructionEventBlocker) — what to upload or wait for,
+  // read straight off the thrown error's body rather than re-parsing its message string.
+  const blockers = (generateEvents.error as (Error & { body?: { blockers?: ReconstructionEventBlocker[] } }) | null)
+    ?.body?.blockers
+
+  const rowsRef = useRef<HTMLUListElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
+  useGSAP(
+    () => {
+      if (!generateEvents.isSuccess || reducedMotion) return
+      const rows = rowsRef.current?.children
+      if (rows?.length) gsap.from(rows, { opacity: 0, y: 8, duration: 0.3, stagger: 0.04, ease: "power2.out" })
+    },
+    { dependencies: [generateEvents.isSuccess, reducedMotion] },
+  )
+
+  const counts = new Map<ReconstructionEventStatus, number>()
+  for (const e of events ?? []) {
+    if (!e.status) continue
+    counts.set(e.status, (counts.get(e.status) ?? 0) + 1)
+  }
+  const total = events?.length ?? 0
+  const verifiedPct = total ? Math.round(((counts.get("VERIFIED") ?? 0) / total) * 100) : 0
+  const present = EVENT_STATUS_ORDER.filter((s) => counts.get(s))
+  const ringR = 15
+  const ringC = 2 * Math.PI * ringR
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <SectionLabel>{t("eventsLabel")}</SectionLabel>
+        <button
+          type="button"
+          onClick={() => generateEvents.mutate()}
+          disabled={isGenerating}
+          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
+        >
+          {isGenerating ? (
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+          )}
+          {isGenerating ? t("generating") : events?.length ? t("regenerateEvents") : t("generateEvents")}
+        </button>
+      </div>
+
+      {blockers?.length ? (
+        <div className="rounded-md border border-border bg-muted px-3 py-2.5">
+          <p className="text-[12px] text-foreground">{t("eventsBlockedIntro")}</p>
+          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-4 text-muted-foreground">
+            {blockers.map((b, i) => (
+              <li key={i}>
+                {b.problem} {b.action}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <MutationError show={generateEvents.isError} />
+      )}
+
+      {!events || events.length === 0 ? (
+        <EmptyNote>{t("noEvents")}</EmptyNote>
+      ) : (
+        <>
+          <div className="flex items-center gap-3">
+            <div
+              className="relative h-10 w-10 shrink-0"
+              title={t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}
+            >
+              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
+                <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r={ringR}
+                  fill="none"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="stroke-ok"
+                  strokeDasharray={`${(verifiedPct / 100) * ringC} ${ringC}`}
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-foreground">
+                {verifiedPct}%
+              </span>
+              <span className="sr-only">{t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex h-1.5 gap-px overflow-hidden rounded-full">
+                {present.map((s) => (
+                  <div key={s} className={EVENT_STATUS_BAR_CLASS[s]} style={{ flexGrow: counts.get(s) }} />
+                ))}
+              </div>
+              <div className={`mt-1.5 flex flex-wrap gap-x-3 ${labelTextClass}`}>
+                {present.map((s) => (
+                  <span key={s} className="inline-flex items-center gap-1">
+                    <span className={`h-1.5 w-1.5 rounded-sm ${EVENT_STATUS_BAR_CLASS[s]}`} />
+                    {t(EVENT_STATUS_LABEL_KEY[s])} <span className="text-foreground">{counts.get(s)}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <ul ref={rowsRef} className="space-y-2">
+            {events.map((event) => (
+              <EventRow key={event.index} event={event} docNameById={docNameById} />
+            ))}
+          </ul>
         </>
       )}
     </div>
