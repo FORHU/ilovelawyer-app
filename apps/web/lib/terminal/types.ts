@@ -290,6 +290,13 @@ export interface SnapshotProcedureItem {
   /** Which source document an AI-generated item is grounded in. Null for lawyer-entered items
    * and for AI items the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Jev's verdict on a recommended-approach item against the case data. Absent/null for to-dos,
+   * lawyer-entered items, and while USE_JEV_CASE_STRATEGY is off server-side. */
+  check?: {
+    verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+    confidence: number
+    checkedAt: string
+  } | null
 }
 
 export interface SnapshotAuditEvent {
@@ -304,6 +311,15 @@ export interface SnapshotStaleness {
   refId: string
   staleReason: string
   staleAt: string
+}
+
+/** The Case Strategy panel's own freshness: when its plan/to-dos/dates were last generated, and
+ * how many case changes (documents, findings, evidence…) landed since. Absent on an API that
+ * predates it. */
+export interface SnapshotStrategyPanelStatus {
+  lastGeneratedAt: string | null
+  isStale: boolean
+  changedSince: number
 }
 
 export interface SnapshotMindMapStatus {
@@ -333,6 +349,8 @@ export interface CaseSnapshot {
     jurisdiction?: string | null
     parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
+    /** When the Citation Map's adverse-citation sweep last finished; null until the first one. */
+    adverseSweptAt?: string | null
   }
   documents: SnapshotDocument[]
   timeline: SnapshotTimelineEvent[]
@@ -367,6 +385,7 @@ export interface CaseSnapshot {
   theories: CaseTheory[]
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
+  strategyPanel?: SnapshotStrategyPanelStatus
   mindMap: SnapshotMindMapStatus
   /** Null until the case's first build; absent on an API that predates it. */
   caseMindMap?: SnapshotCaseMindMapStatus | null
@@ -396,6 +415,87 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
+/** The pill on a Legal Issues / Weaknesses / Strengths / Attack Strategy / Defense Strategy row —
+ * mirrors the API's FindingTag, and FINDING_TAGS_BY_CATEGORY there decides which ones a category
+ * may use. */
+export type FindingTag =
+  | "CONTESTED"
+  | "BRIEFING"
+  | "OPEN"
+  | "RESOLVED"
+  | "MATERIAL"
+  | "MINOR"
+  | "CLOSED"
+  | "STRONG"
+  | "MODERATE"
+  | "READY"
+  | "DRAFTING"
+  | "BLOCKED"
+  | "ANSWERED"
+  | "PARTIAL"
+  | "UNANSWERED"
+
+/** Jev's check of an attack strategy (USE_JEV_ATTACK_STRATEGY) — stored in CaseFinding.jev. */
+export interface AttackStrategyJevCheck {
+  readiness: "READY" | "DRAFTING" | "BLOCKED"
+  readinessConfidence: number
+  uncertain: boolean
+}
+
+/** Jev's check of a defense strategy (USE_JEV_DEFENSE_STRATEGY) — stored in CaseFinding.jev. */
+export interface DefenseStrategyJevCheck {
+  defenseStatus: "ANSWERED" | "PARTIAL" | "UNANSWERED"
+  defenseStatusConfidence: number
+  uncertain: boolean
+}
+
+/** Jev's check of a strength (USE_JEV_STRENGTHS) — stored in CaseFinding.jev. */
+export interface StrengthJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** False when no text of the cited document was found — support was judged on the case data. */
+  sourceRead: boolean
+  /** 0..1 — how much of the case it carries. */
+  weight: number
+  weightConfidence: number
+  rebuttal: "UNREBUTTED" | "REBUTTABLE" | "ALREADY_REBUTTED"
+  rebuttalConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
+
+/** Jev's check of a weakness (USE_JEV_WEAKNESSES) — stored in CaseFinding.jev. */
+export interface WeaknessJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** 0..1 — how much of the case it costs. */
+  severity: number
+  severityConfidence: number
+  /** 0..1, where 1 is "usable against you straight away". */
+  surfacing: number
+  surfacingConfidence: number
+  curable: "BY_EVIDENCE" | "BY_ARGUMENT" | "NOT_CURABLE"
+  curableConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
+
+/** Jev's check of a legal issue (USE_JEV_LEGAL_ISSUES) — stored in CaseFinding.jev. */
+export interface LegalIssueJevCheck {
+  raised: "RAISED" | "NOT_RAISED"
+  raisedConfidence: number
+  contested: "CONTESTED" | "UNCONTESTED" | "UNCLEAR"
+  contestedConfidence: number
+  burden: BurdenParty
+  burdenConfidence: number
+  /** The drafting model's own burden call; null on lawyer-entered issues. */
+  modelBurden: BurdenParty | null
+  flags: ("NOT_RAISED" | "BURDEN_DISPUTED")[]
+  uncertain: boolean
+}
+
+export type BurdenParty = "CLAIMANT" | "RESPONDENT" | "SHARED" | "UNCLEAR"
+
 export interface CaseFinding {
   id: string
   caseId: string
@@ -405,6 +505,18 @@ export interface CaseFinding {
   /** Which source document an AI-generated finding is grounded in. Null for lawyer-entered
    * findings and for AI findings the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Sub-line: who bears the burden, the work that would close it, or the document reference. */
+  detail: string | null
+  tag: FindingTag | null
+  /** -10..10, the same scale as Red Team's argument impact. */
+  impact: number | null
+  position: number | null
+  /** Jev's check (per-category shape). Null when Jev wasn't run or its call failed. */
+  jev: Record<string, unknown> | null
+  /** The drafting model's own tag/impact, kept once Jev has replaced them. */
+  modelTag: FindingTag | null
+  modelImpact: number | null
+  jevCheckedAt: string | null
   createdAt: string
   updatedAt: string
 }

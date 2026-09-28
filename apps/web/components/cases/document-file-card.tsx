@@ -109,24 +109,27 @@ export function DocumentFileCard({
                   : t("detail.archiveDocument", { documentName: doc.name })}
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={onDelete}
-                  aria-label={t("detail.removeDocument", { documentName: doc.name })}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-colors sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
-            </Tooltip>
+            {/* Delete only once archived — an active document has to be archived first. */}
+            {isArchived && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={onDelete}
+                    aria-label={t("detail.removeDocument", { documentName: doc.name })}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-100 transition-colors sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:text-red-400"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("detail.removeDocument", { documentName: doc.name })}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
       </div>
