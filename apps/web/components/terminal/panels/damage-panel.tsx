@@ -1,43 +1,61 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Trash2 } from "lucide-react"
+import { ChevronRight, Pencil, Scale, Trash2 } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
-import { useCreateDamageMutation, useDeleteDamageMutation } from "@/lib/terminal/mutations"
-import type { CaseSnapshot, DamageCategory } from "@/lib/terminal/types"
-import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { Badge } from "@workspace/ui/components/badge"
+import { cn } from "@workspace/ui/lib/utils"
+import { useCreateDamageMutation, useDeleteDamageMutation, useUpdateDamageMutation } from "@/lib/terminal/mutations"
+import type { CaseSnapshot, DamageClaim, DamageHeadSummary, DamageStatus } from "@/lib/terminal/types"
+import { formatMoney, formatMoneyCompact, formatShare, sortDamageHeads } from "@/lib/terminal/damages-format"
+import {
+  MutationError,
+  PanelBody,
+  PanelRow,
+  PanelRowList,
+  dangerIconBtnClass,
+  ghostBtnClass,
+  labelTextClass,
+  primaryBtnClass,
+  secondaryTextClass,
+} from "@/components/terminal/panel-kit"
+import { DAMAGE_TONE, DamagesRing, ExposureRange } from "@/components/terminal/panels/summary-visuals"
+import { DAMAGE_CATEGORY_KEYS, DAMAGE_STATUS_KEYS, DamageHeadEditor } from "@/components/terminal/panels/damage-head-editor"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 
-const DAMAGE_CATEGORY_KEYS: Record<DamageCategory, string> = {
-  ACTUAL: "damageActual",
-  MORAL: "damageMoral",
-  EXEMPLARY: "damageExemplary",
-  ATTORNEYS_FEES: "damageAttorneysFees",
-  OTHER: "damageOther",
+const STATUS_TONE: Record<DamageStatus, "caution" | "neutral" | "success"> = {
+  PROVISIONAL: "caution",
+  SUPPORTED: "neutral",
+  CERTIFIED: "success",
 }
 
-export function DamagePanel({
-  snapshot,
-  caseId,
-}: {
-  snapshot: CaseSnapshot
-  caseId: string
-}) {
+// Editor target: a head's id, "new" for the add form, or null when closed.
+type EditorTarget = string | "new" | null
+
+export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
   const { t } = useTranslation("terminal")
   const create = useCreateDamageMutation(caseId)
+  const update = useUpdateDamageMutation(caseId)
   const del = useDeleteDamageMutation(caseId)
-  const [category, setCategory] = useState<DamageCategory>("ACTUAL")
-  const [description, setDescription] = useState("")
-  const [amount, setAmount] = useState("")
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [quoteOpenId, setQuoteOpenId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<EditorTarget>(null)
 
-  const total = snapshot.damagesSummary.total
+  const summary = snapshot.damagesSummary
+  const money = (value: number) => formatMoney(value, summary.currency)
+  const compact = (value: number) => formatMoneyCompact(value, summary.currency)
+  const heads = sortDamageHeads(snapshot.damages)
+  const computedById = new Map(summary.heads.map((h) => [h.id, h]))
+  const nameOf = (d: Pick<DamageClaim, "label" | "category">) => d.label || t(DAMAGE_CATEGORY_KEYS[d.category])
+  const documentName = new Map(snapshot.documents.map((doc) => [doc.id, doc.name]))
+
+  // The ring's centre total counts up to a new value instead of snapping — skipped on first mount
+  // (nothing to count up from) and under reduced motion.
+  const total = summary.total
   const reducedMotion = usePrefersReducedMotion()
   const [displayTotal, setDisplayTotal] = useState(total)
   const totalProxyRef = useRef({ value: total })
   const mountedRef = useRef(false)
-
-  // Tweens the displayed total instead of snapping — skipped on first mount (nothing to count up
-  // from) and whenever reduced-motion is on, both of which just jump straight to the real value.
   useGSAP(
     () => {
       if (!mountedRef.current || reducedMotion) {
@@ -56,98 +74,228 @@ export function DamagePanel({
     { dependencies: [total, reducedMotion] },
   )
 
+  const orderedComputed = heads
+    .map((d) => computedById.get(d.id))
+    .filter((h): h is DamageHeadSummary => !!h)
+  const allCertified = orderedComputed.length > 0 && orderedComputed.every((h) => h.effectiveStatus === "CERTIFIED")
+  const caption = t(
+    summary.provisional ? "damagesCaptionProvisional" : allCertified ? "damagesCaptionCertified" : "damagesCaptionSupported",
+    { count: summary.headCount },
+  )
+  const ringLabel = t("damagesRingLabel", {
+    total: money(summary.total),
+    parts: orderedComputed
+      .map((h) => `${nameOf(heads.find((d) => d.id === h.id)!)} ${formatShare(h.share)}`)
+      .join(", "),
+  })
+  const evidenceList = new Intl.ListFormat(undefined, { type: "conjunction" }).format(summary.pendingEvidence)
+
+  const basisText = (d: DamageClaim) => {
+    const basis = d.basis
+    if (!basis || basis.kind === "FIXED") return null
+    if (basis.kind === "PERCENT_OF") {
+      return t("damageDerivedFrom", {
+        percent: basis.percent,
+        heads: new Intl.ListFormat(undefined, { type: "conjunction" }).format(
+          basis.categories.map((c) => t(DAMAGE_CATEGORY_KEYS[c])),
+        ),
+      })
+    }
+    const months = basis.months
+    if (months == null && !(basis.fromDate && basis.untilDate)) {
+      return t("damageBasisRatePending", { rate: money(basis.monthlyRate) })
+    }
+    return months != null
+      ? t("damageBasisRateText", { rate: money(basis.monthlyRate), months })
+      : t("damageBasisRateDates", {
+          rate: money(basis.monthlyRate),
+          from: new Date(basis.fromDate!).toLocaleDateString(),
+          until: new Date(basis.untilDate!).toLocaleDateString(),
+        })
+  }
+
+  const editorHead = editing && editing !== "new" ? (snapshot.damages.find((d) => d.id === editing) ?? null) : null
+  const saving = create.isPending || update.isPending
+
   return (
     <PanelBody gap="4">
-      <PanelRowList empty={<EmptyNote>{t("noDamages")}</EmptyNote>}>
-        {snapshot.damages.map((d) => (
-          <PanelRow key={d.id} className="items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
-                {t(DAMAGE_CATEGORY_KEYS[d.category])}
-              </p>
-              {d.description ? (
-                <p className="mt-0.5 text-[13px] leading-5 text-foreground">
-                  {d.description}
-                </p>
-              ) : null}
-              {d.amount != null ? (
-                <p className="mt-1 font-mono text-[13px] text-foreground">
-                  {d.amount.toLocaleString()}
-                </p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => del.mutate(d.id)}
-              disabled={del.isPending}
-              className={dangerIconBtnClass}
-              aria-label={t("delete")}
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          </PanelRow>
-        ))}
-      </PanelRowList>
-      {snapshot.damages.length > 0 && (
-        <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs font-semibold tracking-wider text-foreground uppercase">
-          <span>{t("damageTotal")}</span>
-          <span className="font-mono">{displayTotal.toLocaleString()}</span>
-        </div>
-      )}
-      <form
-        className="mt-auto flex flex-col gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const parsedAmount = amount.trim() ? Number(amount) : undefined
-          create.mutate({
-            category,
-            description: description.trim() || undefined,
-            amount: parsedAmount,
-          })
-          setDescription("")
-          setAmount("")
-        }}
-      >
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value as DamageCategory)}
-          aria-label={t("damageCategoryLabel")}
-          className={fieldClass}
-        >
-          {(Object.keys(DAMAGE_CATEGORY_KEYS) as DamageCategory[]).map((c) => (
-            <option key={c} value={c}>
-              {t(DAMAGE_CATEGORY_KEYS[c])}
-            </option>
-          ))}
-        </select>
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={t("damageDescription")}
-          aria-label={t("damageDescription")}
-          className={fieldClass}
-        />
-        <div className="flex gap-2">
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder={t("damageAmount")}
-            aria-label={t("damageAmount")}
-            className={`flex-1 ${fieldClass}`}
-          />
-          <button
-            type="submit"
-            disabled={create.isPending}
-            className={primaryBtnClass}
-          >
-            {t("add")}
+      {summary.provisional ? (
+        <p className={secondaryTextClass}>
+          {summary.pendingEvidence.length > 0
+            ? t("damagesNoteProvisional", { evidence: evidenceList })
+            : t("damagesNoteProvisionalGeneric")}
+        </p>
+      ) : null}
+
+      {heads.length === 0 && editing === null ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/60 px-4 py-6 text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted-foreground">
+            <Scale className="h-4.5 w-4.5" aria-hidden="true" />
+          </span>
+          <p className="font-['Libre_Caslon_Text'] text-lg font-normal tracking-[-0.02em] text-foreground">
+            {t("damagesEmptyTitle")}
+          </p>
+          <p className={cn(secondaryTextClass, "max-w-[42ch]")}>{t("damagesEmptyBody")}</p>
+          <button type="button" onClick={() => setEditing("new")} className={primaryBtnClass}>
+            {t("damageEditorAdd")}
           </button>
         </div>
-      </form>
-      <MutationError show={create.isError || del.isError} />
+      ) : null}
+
+      {heads.length > 0 ? (
+        <DamagesRing
+          heads={orderedComputed.map((h) => ({ id: h.id, category: h.category, share: h.share }))}
+          label={ringLabel}
+          eyebrow={t("damagesTotalClaim")}
+          total={compact(displayTotal)}
+          caption={caption}
+        />
+      ) : null}
+
+      <PanelRowList>
+        {heads.map((d) => {
+          const computed = computedById.get(d.id)
+          const amount = computed?.amount ?? d.amount
+          const status = computed?.effectiveStatus ?? d.status
+          const open = openId === d.id
+          const low = computed?.low ?? null
+          const high = computed?.high ?? null
+          const hasRange = low != null && high != null && (low !== amount || high !== amount)
+          const basis = basisText(d)
+          const sourceDoc = d.sourceDocumentId ? documentName.get(d.sourceDocumentId) : undefined
+          const quoteOpen = quoteOpenId === d.id
+          return (
+            <PanelRow key={d.id} className="flex-col items-stretch gap-0 p-0">
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : d.id)}
+                aria-expanded={open}
+                aria-controls={`damage-detail-${d.id}`}
+                className="grid w-full grid-cols-[10px_minmax(0,1fr)_auto_2.75rem] items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
+              >
+                <span className={cn("h-2 w-2 rounded-full", DAMAGE_TONE[d.category].bg)} aria-hidden="true" />
+                <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-foreground">
+                  <ChevronRight
+                    className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{nameOf(d)}</span>
+                  {status === "PROVISIONAL" ? (
+                    <span className="text-warn" title={t("damageStatusProvisional")}>
+                      <span aria-hidden="true">*</span>
+                      <span className="sr-only">{t("damageStatusProvisional")}</span>
+                    </span>
+                  ) : null}
+                </span>
+                <span className="font-mono text-[12px] text-foreground tabular-nums">
+                  {amount != null ? money(amount) : "—"}
+                </span>
+                <span className="text-right font-mono text-[11px] text-muted-foreground tabular-nums">
+                  {formatShare(computed?.share ?? 0)}
+                </span>
+              </button>
+
+              {open ? (
+                <div id={`damage-detail-${d.id}`} className="flex flex-col gap-2 border-t border-border px-3 py-2.5 pl-8">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={STATUS_TONE[status]}>{t(DAMAGE_STATUS_KEYS[status])}</Badge>
+                    {basis ? <span className="font-mono text-[12px] text-foreground">{basis}</span> : null}
+                  </div>
+                  {hasRange ? (
+                    <p className="font-mono text-[12px] text-muted-foreground">
+                      {t("damageRange", { low: money(low!), high: money(high!) })}
+                    </p>
+                  ) : null}
+                  {status === "PROVISIONAL" && d.pendingEvidence ? (
+                    <p className={secondaryTextClass}>{t("damageWaitingOn", { evidence: d.pendingEvidence })}</p>
+                  ) : null}
+                  {d.legalBasis ? (
+                    <p className={secondaryTextClass}>{t("damageLegalBasisUnverified", { basis: d.legalBasis })}</p>
+                  ) : null}
+                  {d.description ? <p className="text-[13px] text-foreground">{d.description}</p> : null}
+                  {d.source === "AI" ? (
+                    <p className={labelTextClass}>
+                      {sourceDoc ? t("damageFoundIn", { doc: sourceDoc }) : t("damageFoundByAi")}
+                      {d.sourceQuote ? (
+                        <>
+                          {" · "}
+                          <button
+                            type="button"
+                            onClick={() => setQuoteOpenId(quoteOpen ? null : d.id)}
+                            aria-expanded={quoteOpen}
+                            className="underline underline-offset-2 hover:text-foreground"
+                          >
+                            {t("damageShowQuote")}
+                          </button>
+                        </>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  {d.source === "AI" && quoteOpen && d.sourceQuote ? (
+                    <blockquote className="border-l-2 border-border pl-2 text-[12px] text-foreground italic">
+                      {d.sourceQuote}
+                    </blockquote>
+                  ) : null}
+                  <div className="flex items-center justify-end gap-1">
+                    <button type="button" onClick={() => setEditing(d.id)} className={cn(ghostBtnClass, "inline-flex items-center gap-1.5")}>
+                      <Pencil className="h-3 w-3" aria-hidden="true" />
+                      {t("damageEdit")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => del.mutate(d.id, { onSuccess: () => setOpenId(null) })}
+                      disabled={del.isPending}
+                      className={dangerIconBtnClass}
+                      aria-label={t("delete")}
+                      title={t("delete")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </PanelRow>
+          )
+        })}
+      </PanelRowList>
+
+      {heads.length > 0 ? (
+        <ExposureRange
+          low={summary.low}
+          modeled={summary.total}
+          high={summary.high}
+          scaleMax={summary.scaleMax}
+          format={compact}
+          labels={{
+            title: t("damagesExposure"),
+            low: t("damagesLow"),
+            modeled: t("damagesModeled"),
+            high: t("damagesHigh"),
+            unset: t("damagesRangeUnset"),
+          }}
+        />
+      ) : null}
+
+      {editing !== null ? (
+        <DamageHeadEditor
+          key={editing}
+          head={editorHead}
+          summary={summary}
+          pending={saving}
+          onCancel={() => setEditing(null)}
+          onSave={(body) => {
+            const done = { onSuccess: () => setEditing(null) }
+            if (editorHead) update.mutate({ id: editorHead.id, ...body }, done)
+            else create.mutate(body, done)
+          }}
+        />
+      ) : heads.length > 0 ? (
+        <button type="button" onClick={() => setEditing("new")} className={cn(ghostBtnClass, "self-start")}>
+          {t("damageEditorAdd")}
+        </button>
+      ) : null}
+
+      <MutationError show={create.isError || update.isError || del.isError} />
     </PanelBody>
   )
 }
