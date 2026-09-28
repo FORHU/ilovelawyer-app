@@ -78,6 +78,7 @@ export type AiGenerationKind =
   | "timelineGenerate"
   | "witnessScoring"
   | "witnessExtract"
+  | "damagesExtract"
   | "mindMapExpand"
   | "caseMindMap"
 
@@ -850,6 +851,18 @@ export function useUpdateDamageMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Queues a damages pass over every document of the case (DamagesExtractSvc.propose); progress and
+// completion come through useAiJobStatus(caseId, "damagesExtract").
+export function useProposeDamagesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/damages/propose`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
     },
   })
 }

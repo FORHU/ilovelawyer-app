@@ -1,12 +1,18 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronRight, Pencil, Scale, Trash2 } from "lucide-react"
+import { Check, ChevronRight, Pencil, Scale, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
-import { useCreateDamageMutation, useDeleteDamageMutation, useUpdateDamageMutation } from "@/lib/terminal/mutations"
-import type { CaseSnapshot, DamageClaim, DamageHeadSummary, DamageStatus } from "@/lib/terminal/types"
+import {
+  useAiJobStatus,
+  useCreateDamageMutation,
+  useDeleteDamageMutation,
+  useProposeDamagesMutation,
+  useUpdateDamageMutation,
+} from "@/lib/terminal/mutations"
+import type { CaseSnapshot, DamageClaim, DamageHeadSummary, DamageStatus, PanelId } from "@/lib/terminal/types"
 import { formatMoney, formatMoneyCompact, formatShare, sortDamageHeads } from "@/lib/terminal/damages-format"
 import {
   MutationError,
@@ -32,11 +38,37 @@ const STATUS_TONE: Record<DamageStatus, "caution" | "neutral" | "success"> = {
 // Editor target: a head's id, "new" for the add form, or null when closed.
 type EditorTarget = string | "new" | null
 
-export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; caseId: string }) {
+// Below this Jev's answer is spread across options, so the row says "uncertain" rather than
+// presenting the flag as settled. Mirrors UNCERTAIN_SCORE_CONFIDENCE in the API's red-team-jev.ts.
+const JEV_UNCERTAIN_CONFIDENCE = 0.5
+
+/** What Jev flags on a head, if anything worth showing: its quote not bearing out the figures,
+ * or the head being unlikely to be awarded. Null when Jev hasn't rated it (flag off) or is happy. */
+function jevFlags(d: DamageClaim) {
+  const support = d.jevSupport === "UNSUPPORTED" || d.jevSupport === "CONTRADICTED" ? d.jevSupport : null
+  const unlikely = d.jevAwardability != null && d.jevAwardability <= 1
+  if (!support && !unlikely) return null
+  return { support, unlikely, uncertain: d.jevConfidence != null && d.jevConfidence < JEV_UNCERTAIN_CONFIDENCE }
+}
+
+export function DamagePanel({
+  snapshot,
+  caseId,
+  onJumpToPanel,
+}: {
+  snapshot: CaseSnapshot
+  caseId: string
+  onJumpToPanel?: (id: PanelId) => void
+}) {
   const { t } = useTranslation("terminal")
   const create = useCreateDamageMutation(caseId)
   const update = useUpdateDamageMutation(caseId)
   const del = useDeleteDamageMutation(caseId)
+  const propose = useProposeDamagesMutation(caseId)
+  // Runs on its own after documents finish extracting, or from "Propose from documents" — see
+  // DamagesExtractSvc. useAiJobStatus refreshes the snapshot when it finishes.
+  const extractJob = useAiJobStatus(caseId, "damagesExtract")
+  const updating = propose.isPending || extractJob.data?.status === "IN_PROGRESS"
   const [openId, setOpenId] = useState<string | null>(null)
   const [quoteOpenId, setQuoteOpenId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorTarget>(null)
@@ -126,6 +158,12 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
             : t("damagesNoteProvisionalGeneric")}
         </p>
       ) : null}
+      {updating ? (
+        <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground" role="status">
+          <Sparkles className="h-3.5 w-3.5 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+          {t("damagesUpdating")}
+        </p>
+      ) : null}
 
       {heads.length === 0 && editing === null ? (
         <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/60 px-4 py-6 text-center">
@@ -136,9 +174,20 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
             {t("damagesEmptyTitle")}
           </p>
           <p className={cn(secondaryTextClass, "max-w-[42ch]")}>{t("damagesEmptyBody")}</p>
-          <button type="button" onClick={() => setEditing("new")} className={primaryBtnClass}>
-            {t("damageEditorAdd")}
-          </button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button type="button" onClick={() => setEditing("new")} className={primaryBtnClass}>
+              {t("damageEditorAdd")}
+            </button>
+            <button
+              type="button"
+              onClick={() => propose.mutate()}
+              disabled={updating}
+              title={t("damagesProposeHint")}
+              className={ghostBtnClass}
+            >
+              {t("damagesPropose")}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -149,6 +198,7 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
           eyebrow={t("damagesTotalClaim")}
           total={compact(displayTotal)}
           caption={caption}
+          dimmed={updating}
         />
       ) : null}
 
@@ -164,6 +214,8 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
           const basis = basisText(d)
           const sourceDoc = d.sourceDocumentId ? documentName.get(d.sourceDocumentId) : undefined
           const quoteOpen = quoteOpenId === d.id
+          const flags = jevFlags(d)
+          const aiPending = d.source === "AI" && d.status === "PROVISIONAL"
           return (
             <PanelRow key={d.id} className="flex-col items-stretch gap-0 p-0">
               <button
@@ -186,6 +238,13 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
                       <span className="sr-only">{t("damageStatusProvisional")}</span>
                     </span>
                   ) : null}
+                  {d.source === "AI" ? <Badge className="shrink-0">{t("damageAiChip")}</Badge> : null}
+                  {flags ? (
+                    <span className="shrink-0 text-riskmed" title={t("damageJevFlag")}>
+                      <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                      <span className="sr-only">{t("damageJevFlag")}</span>
+                    </span>
+                  ) : null}
                 </span>
                 <span className="font-mono text-[12px] text-foreground tabular-nums">
                   {amount != null ? money(amount) : "—"}
@@ -201,6 +260,38 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
                     <Badge tone={STATUS_TONE[status]}>{t(DAMAGE_STATUS_KEYS[status])}</Badge>
                     {basis ? <span className="font-mono text-[12px] text-foreground">{basis}</span> : null}
                   </div>
+                  {flags ? (
+                    <div className="flex flex-col gap-1.5 rounded-md bg-muted px-2.5 py-2">
+                      {flags.support ? (
+                        <p className="flex items-start gap-1.5 text-[12px] text-foreground">
+                          <Badge tone={flags.support === "CONTRADICTED" ? "danger" : "warning"}>{t("damageJevLabel")}</Badge>
+                          <span>
+                            {t(flags.support === "CONTRADICTED" ? "damageJevContradicted" : "damageJevUnsupported")}
+                            {flags.uncertain ? ` ${t("damageJevUncertain")}` : ""}
+                          </span>
+                        </p>
+                      ) : null}
+                      {flags.unlikely ? (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-foreground">
+                          <Badge tone="caution">{t("damageJevLabel")}</Badge>
+                          <span>
+                            {t("damageJevUnlikely")}
+                            {flags.uncertain ? ` ${t("damageJevUncertain")}` : ""}
+                          </span>
+                          {d.amountLow !== 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => update.mutate({ id: d.id, amountLow: 0 })}
+                              disabled={update.isPending}
+                              className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                            >
+                              {t("damageApplySuggestedLow", { amount: money(0) })}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {hasRange ? (
                     <p className="font-mono text-[12px] text-muted-foreground">
                       {t("damageRange", { low: money(low!), high: money(high!) })}
@@ -229,6 +320,18 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
                           </button>
                         </>
                       ) : null}
+                      {onJumpToPanel && d.sourceDocumentId ? (
+                        <>
+                          {" · "}
+                          <button
+                            type="button"
+                            onClick={() => onJumpToPanel("evidence")}
+                            className="underline underline-offset-2 hover:text-foreground"
+                          >
+                            {t("damageOpenInEvidence")}
+                          </button>
+                        </>
+                      ) : null}
                     </p>
                   ) : null}
                   {d.source === "AI" && quoteOpen && d.sourceQuote ? (
@@ -237,6 +340,18 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
                     </blockquote>
                   ) : null}
                   <div className="flex items-center justify-end gap-1">
+                    {aiPending ? (
+                      <button
+                        type="button"
+                        onClick={() => update.mutate({ id: d.id, status: "SUPPORTED" })}
+                        disabled={update.isPending}
+                        title={t("damageAcceptHint")}
+                        className={cn(primaryBtnClass, "inline-flex items-center gap-1.5")}
+                      >
+                        <Check className="h-3 w-3" aria-hidden="true" />
+                        {t("damageAccept")}
+                      </button>
+                    ) : null}
                     <button type="button" onClick={() => setEditing(d.id)} className={cn(ghostBtnClass, "inline-flex items-center gap-1.5")}>
                       <Pencil className="h-3 w-3" aria-hidden="true" />
                       {t("damageEdit")}
@@ -290,12 +405,23 @@ export function DamagePanel({ snapshot, caseId }: { snapshot: CaseSnapshot; case
           }}
         />
       ) : heads.length > 0 ? (
-        <button type="button" onClick={() => setEditing("new")} className={cn(ghostBtnClass, "self-start")}>
-          {t("damageEditorAdd")}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setEditing("new")} className={ghostBtnClass}>
+            {t("damageEditorAdd")}
+          </button>
+          <button
+            type="button"
+            onClick={() => propose.mutate()}
+            disabled={updating}
+            title={t("damagesProposeHint")}
+            className={ghostBtnClass}
+          >
+            {t("damagesPropose")}
+          </button>
+        </div>
       ) : null}
 
-      <MutationError show={create.isError || update.isError || del.isError} />
+      <MutationError show={create.isError || update.isError || del.isError || propose.isError} />
     </PanelBody>
   )
 }
