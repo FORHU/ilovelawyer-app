@@ -11,6 +11,9 @@ export const AUTH_PATHS = [
   "/api/auth/reset-password",
   "/api/auth/verify-otp",
   "/api/auth/login-link/consume",
+  // Desktop ↔ browser login handoff — sets the refresh cookie, so it goes through this app's own
+  // origin like the other sign-in routes (see lib/desktop's openInBrowser / openInDesktopApp).
+  "/api/auth/handoff/consume",
 ] as const
 
 // Defaults to "" (no-op — paths hit the backend exactly as written, today's behavior) until

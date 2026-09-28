@@ -3,9 +3,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
+import { AppWindow, BookOpen, Briefcase, Building2, CalendarDays, FileText, Globe, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
+import { handoffTarget, openInBrowser, openInDesktopApp } from "@/lib/desktop/handoff";
+import { toast } from "sonner";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -293,6 +295,33 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                   </Tooltip>
                 ))}
 
+                {/* Carries this sign-in over to the user's other client on the same PC — the
+                 * desktop app offers the browser and vice versa (lib/desktop/handoff.ts). */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        const open = handoffTarget() === "browser" ? openInBrowser : openInDesktopApp;
+                        open().catch(() => toast.error(t("userMenu.handoffFailed")));
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 border-t border-border px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                    >
+                      {handoffTarget() === "browser" ? (
+                        <Globe className="w-3.5 h-3.5" aria-hidden="true" />
+                      ) : (
+                        <AppWindow className="w-3.5 h-3.5" aria-hidden="true" />
+                      )}
+                      {handoffTarget() === "browser" ? t("userMenu.openInBrowser") : t("userMenu.openInDesktop")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {handoffTarget() === "browser" ? t("userMenu.openInBrowserHint") : t("userMenu.openInDesktopHint")}
+                  </TooltipContent>
+                </Tooltip>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -423,6 +452,24 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
          * above it — the one destructive action gets its own fixed spot, not just "last in a
          * scrolling list." */}
         <div className="mt-auto border-t border-border px-3 py-3">
+          {/* Same handoff as the wide account menu — narrow windows (or a browser with DevTools
+           * docked) only get this sheet, so it has to live here too. */}
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileMenu();
+              const open = handoffTarget() === "browser" ? openInBrowser : openInDesktopApp;
+              open().catch(() => toast.error(t("userMenu.handoffFailed")));
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            {handoffTarget() === "browser" ? (
+              <Globe className="size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <AppWindow className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {handoffTarget() === "browser" ? t("userMenu.openInBrowser") : t("userMenu.openInDesktop")}
+          </button>
           <Tooltip>
             <TooltipTrigger asChild>
               <button

@@ -17,7 +17,12 @@
     "organization": "Organization",
     "terms": "Terms & Conditions",
     "logout": "Log Out",
-    "loggingOut": "Logging out…"
+    "loggingOut": "Logging out…",
+    "openInBrowser": "Open in Browser",
+    "openInDesktop": "Open in Desktop App",
+    "openInBrowserHint": "Open this page in your normal browser, already signed in",
+    "openInDesktopHint": "Open this page in the I Love Lawyer desktop app, already signed in (if it's installed)",
+    "handoffFailed": "Couldn't hand off your sign-in — try again"
   },
   "mobileMenu": {
     "open": "Open menu",

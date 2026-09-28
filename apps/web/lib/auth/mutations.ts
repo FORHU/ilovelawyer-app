@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
+import { safeNextPath } from "@/lib/auth/next-path"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { chatKeys } from "@/lib/query-keys"
 import type { OrganizationWithRole } from "@/lib/organizations/queries"
@@ -62,12 +63,11 @@ function generateUsername(fullName: string): string {
   return `${base}.${suffix}`
 }
 
-/** A `?next=` value is attacker-controllable (a crafted link), so only a same-app relative
- * path is honored — anything else (an absolute URL, a protocol-relative "//evil.example"
- * open redirect, or nothing at all) falls back to the default post-auth destination. */
+/** A `?next=` value is attacker-controllable (a crafted link), so only a same-app path is
+ * honored — see lib/auth/next-path.ts, which also closes the `/\host` and `/<tab>/host` tricks
+ * the old `startsWith("//")` check let through. */
 export function sanitizeNextPath(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/homepage"
-  return raw
+  return safeNextPath(raw)
 }
 
 export function useLoginMutation() {
@@ -271,6 +271,46 @@ export function useConsumeLoginLinkMutation() {
       apiFetch<AuthTokensResponse>("/api/auth/login-link/consume", {
         method: "POST",
         body: JSON.stringify({ token }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: async (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
+    },
+  })
+}
+
+/** Whose account a handoff code is for — WITHOUT using it up — so the /handoff page can ask
+ * "Sign in as …?" before switching accounts. See ilovelawyer-api's AuthSvc.previewHandoff. */
+export function useHandoffPreviewQuery(code: string) {
+  return useQuery({
+    queryKey: ["auth", "handoff-preview", code],
+    queryFn: () =>
+      apiFetch<{ id: string; email: string; name: string | null; username: string }>("/api/auth/handoff/preview", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        skipAuthRefresh: true,
+      }),
+    enabled: !!code,
+    retry: false,
+    staleTime: Infinity,
+  })
+}
+
+/** Signs this client in with a one-time handoff code from the user's other client on the same PC
+ * (desktop app ↔ browser) — see ilovelawyer-api's utils/handoff.ts. Same outcome as the login
+ * link above; the difference is on the API side, which leaves the other client signed in. */
+export function useConsumeHandoffMutation() {
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ code }: { code: string }) =>
+      apiFetch<AuthTokensResponse>("/api/auth/handoff/consume", {
+        method: "POST",
+        body: JSON.stringify({ code }),
         skipAuthRefresh: true,
       }),
     onSuccess: async (data) => {

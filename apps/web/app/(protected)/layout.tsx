@@ -14,6 +14,15 @@ import { LoadingScreen } from "@/components/loading-screen"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 
+// Sends a signed-out visitor to /login with `?next=` set to where they were, so they land back
+// here after signing in — e.g. the desktop app's "Log in with your browser" opens
+// /connect-desktop, and a signed-out browser must come back to it, not to the dashboard.
+// The login side only honors same-site paths (lib/auth/next-path.ts).
+function loginReturningHere(): string {
+  const here = `${window.location.pathname}${window.location.search}`
+  return here === "/" || here.startsWith("/login") ? "/login" : `/login?next=${encodeURIComponent(here)}`
+}
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -35,7 +44,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       .then(() => setHydrating(false))
       .catch(() => {
         clearAuth()
-        router.replace("/login")
+        router.replace(loginReturningHere())
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -92,7 +101,7 @@ function CurrentUserSync({
   useEffect(() => {
     if (isAuthError) {
       clearAuth()
-      router.replace("/login")
+      router.replace(loginReturningHere())
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthError])

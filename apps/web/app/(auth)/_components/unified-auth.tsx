@@ -1,7 +1,8 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin } from "@react-oauth/google";
+import { isDesktop } from "@/lib/desktop";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -110,6 +111,11 @@ function UnifiedAuthContent() {
     setError(null);
     router.replace(next === "signin" ? "/login" : `/login?tab=${next}`, { scroll: false });
   }
+
+  // Desktop app only: sign in by handing over the browser's sign-in instead (see
+  // app/(protected)/connect-desktop). Read through useSyncExternalStore so the server render
+  // (never "desktop") and the first client render agree.
+  const inDesktopApp = useSyncExternalStore(noSubscribe, isDesktop, () => false);
 
   const googleLogin = useGoogleLogin({
     onSuccess: ({ access_token }) => {
@@ -754,6 +760,26 @@ function UnifiedAuthContent() {
                     </TooltipTrigger>
                     <TooltipContent>Skip the password and log in with your Google account</TooltipContent>
                   </Tooltip>
+
+                  {inDesktopApp && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          // Opens the user's normal browser (see src-tauri popups.rs); if it's signed
+                          // in there, one click hands the sign-in back to this app.
+                          onClick={() => window.open(`${window.location.origin}/connect-desktop`, "_blank", "noopener,noreferrer")}
+                          className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-foreground text-base tracking-[3.2px] uppercase" style={{ fontFamily: "Inter, sans-serif" }}>
+                            {t("login.logInWithBrowser")}
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("login.logInWithBrowserHint")}</TooltipContent>
+                    </Tooltip>
+                  )}
                 </form>
               )}
 
@@ -1099,6 +1125,9 @@ function UnifiedAuthContent() {
     </div>
   );
 }
+
+// useSyncExternalStore needs a subscribe function; "am I in the desktop app" never changes.
+const noSubscribe = () => () => {};
 
 export default function UnifiedAuthPage() {
   return <UnifiedAuthContent />;
