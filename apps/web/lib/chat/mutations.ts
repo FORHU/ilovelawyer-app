@@ -37,8 +37,18 @@ export interface AudioOverviewTurn {
   text: string
 }
 
+/** Jev's verdict on one script turn (ilovelawyer-api's audio-overview-jev.ts). Only turns that
+ * assert something about the case have one, and none at all when USE_JEV_AUDIO_OVERVIEW is off. */
+export interface AudioOverviewTurnCheck {
+  turn: number
+  verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  confidence: number
+  checkedAt: string
+}
+
 export interface MessageAudioOverview {
   turns: AudioOverviewTurn[]
+  checks?: AudioOverviewTurnCheck[] | null
   audioFileId: string | null
   audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
 }

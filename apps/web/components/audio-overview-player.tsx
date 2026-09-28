@@ -1,4 +1,4 @@
-import { Pause, Play, RotateCcw, RotateCw, X } from "lucide-react";
+import { Download, Pause, Play, RotateCcw, RotateCw, X } from "lucide-react";
 
 // Extracted out of Case Workspace's Studio panel so Legal Terminal's Audio Overview panel can
 // use the same richer player instead of a bare native <audio controls> — see
@@ -24,6 +24,7 @@ export function AudioOverviewPlayerBar({
   onSkip,
   onCycleRate,
   onClose,
+  onDownload,
   formatDuration,
 }: {
   title: string;
@@ -36,12 +37,24 @@ export function AudioOverviewPlayerBar({
   onSkip: (deltaSeconds: number) => void;
   onCycleRate: () => void;
   onClose: () => void;
+  /** Saves the rendered audio; the button only shows when given. */
+  onDownload?: () => void;
   formatDuration: (seconds: number) => string;
 }) {
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 truncate text-[12px] font-medium text-foreground">{title}</p>
+        {onDownload && (
+          <button
+            type="button"
+            onClick={onDownload}
+            aria-label="Download audio"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
