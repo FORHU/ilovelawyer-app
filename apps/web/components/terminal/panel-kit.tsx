@@ -207,6 +207,29 @@ export function JevCheck({
   )
 }
 
+// A form control with its visible label above it (never placeholder-as-label) and optional hint below.
+export function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  hint?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={htmlFor} className={labelTextClass}>
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
 // For a row in a Jev-checked batch whose own check failed — says so instead of letting the
 // model's rating pass as verified.
 export function JevNotChecked() {

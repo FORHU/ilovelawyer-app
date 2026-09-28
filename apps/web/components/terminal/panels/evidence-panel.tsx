@@ -1,14 +1,14 @@
 import { createElement, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { toast } from "sonner"
 import { ChevronDown, Folder, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
-import { useUploadCaseDocumentsMutation, useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
+import { useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
+import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
+import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
 import { useFileDrop } from "@/hooks/use-file-drop"
@@ -156,51 +156,7 @@ export function EvidencePanel({
   const [deletingDoc, setDeletingDoc] = useState<SnapshotDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const uploadDocuments = useUploadCaseDocumentsMutation()
-  const upload = (files: File[]) => {
-    const [supported, unsupported] = [
-      files.filter(isAllowedFileType),
-      files.filter((f) => !isAllowedFileType(f)),
-    ]
-    if (unsupported.length > 0) {
-      toast.error(
-        t("attachmentUnsupportedType", {
-          defaultValue: `${unsupported.map((f) => f.name).join(", ")} — unsupported file type, wasn't added. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`,
-          fileNames: unsupported.map((f) => f.name).join(", "),
-          formats: ALLOWED_FILE_TYPES_LABEL,
-        })
-      )
-    }
-
-    const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
-    ]
-    if (oversized.length > 0) {
-      toast.error(
-        t("attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-        })
-      )
-    }
-    if (withinSizeLimit.length === 0) return
-
-    uploadDocuments.mutate(
-      { files: withinSizeLimit, caseId },
-      {
-        // Per-file reasons the mutation itself already collects (presign/S3/confirm failures) —
-        // surfaced individually rather than the one generic "couldn't upload" line this replaced,
-        // so a lawyer can tell a transient network blip apart from a file the backend rejected.
-        onSuccess: (result) => {
-          result.failed.forEach(({ file, reason }) => {
-            toast.error(`${file.name} — ${reason}`)
-          })
-        },
-      },
-    )
-  }
+  const { upload, isUploading } = useCaseDocumentUpload(caseId)
   const { isDragOver, dragHandlers } = useFileDrop(upload, undefined)
 
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
@@ -237,12 +193,12 @@ export function EvidencePanel({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  disabled={uploadDocuments.isPending}
+                  disabled={isUploading}
                   onClick={() => fileInputRef.current?.click()}
                   aria-label={t("addDocument")}
                   className="flex size-5 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60"
                 >
-                  {uploadDocuments.isPending ? (
+                  {isUploading ? (
                     <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                   ) : (
                     <Plus className="h-3 w-3" aria-hidden="true" />
