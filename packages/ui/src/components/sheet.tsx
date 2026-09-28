@@ -53,7 +53,7 @@ function SheetContent({
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  side?: "left" | "right"
+  side?: "left" | "right" | "bottom"
   showCloseButton?: boolean
 }) {
   return (
@@ -62,12 +62,15 @@ function SheetContent({
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-y-0 z-50 flex h-full w-full max-w-md flex-col gap-4 bg-card p-6 text-card-foreground shadow-2xl transition-transform duration-200 ease-in-out",
+          "fixed z-50 flex w-full flex-col gap-4 bg-card p-6 text-card-foreground shadow-2xl transition-transform duration-200 ease-in-out",
           "data-[state=closed]:duration-150",
+          side !== "bottom" && "inset-y-0 h-full max-w-md",
           side === "right" &&
             "right-0 border-l border-border data-[state=closed]:translate-x-full data-[state=open]:translate-x-0",
           side === "left" &&
             "left-0 border-r border-border data-[state=closed]:-translate-x-full data-[state=open]:translate-x-0",
+          side === "bottom" &&
+            "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl border-t border-border data-[state=closed]:translate-y-full data-[state=open]:translate-y-0",
           className
         )}
         {...props}

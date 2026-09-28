@@ -42,21 +42,35 @@ let refreshPromise: Promise<string> | null = null
 // double effect invocation in dev, or the auth and protected layouts mounting
 // around the same navigation) must share one in-flight request instead of each
 // redeeming the cookie separately, or the loser gets a spurious 401.
+// The same race exists across tabs, which refreshPromise can't see: the access token lives only
+// in memory, so every new tab (e.g. several chat citations opened into the Library at once)
+// redeems the shared cookie on load. A Web Lock serializes those — the tab that waits then
+// sends the cookie its predecessor just rotated, instead of the one it already spent.
+const REFRESH_LOCK = "ilovelawyer-auth-refresh"
+
+async function redeemRefreshCookie(): Promise<string> {
+  const res = await fetch(resolveUrl("/api/auth/refresh"), {
+    method: "POST",
+    credentials: "include",
+  })
+
+  if (!res.ok) throw new Error("Session expired")
+
+  const data = await res.json()
+  useAuthStore.getState().setAccessToken(data.accessToken)
+  return data.accessToken as string
+}
+
 export async function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
-  refreshPromise = (async () => {
-    const res = await fetch(resolveUrl("/api/auth/refresh"), {
-      method: "POST",
-      credentials: "include",
-    })
-
-    if (!res.ok) throw new Error("Session expired")
-
-    const data = await res.json()
-    useAuthStore.getState().setAccessToken(data.accessToken)
-    return data.accessToken as string
-  })().finally(() => {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined
+  // lib.dom types request() as Promise<callback's return type> without unwrapping it; at runtime
+  // it resolves with the callback's resolved value, i.e. the token.
+  const redeemed = locks
+    ? (locks.request(REFRESH_LOCK, redeemRefreshCookie) as unknown as Promise<string>)
+    : redeemRefreshCookie()
+  refreshPromise = redeemed.finally(() => {
     refreshPromise = null
   })
 
