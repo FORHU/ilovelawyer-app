@@ -308,7 +308,7 @@
   "claimTitlePlaceholder": "Claim, e.g. Illegal dismissal",
   "claimCausePlaceholder": "Pleaded under (optional)",
   "sweepTitle": "Adverse-citation sweep",
-  "sweepNotRun": "Not run yet",
+  "sweepNotRun": "Not yet run against any ground",
   "sweepRunning": "Sweeping…",
   "sweepPending": "Pending",
   "sweepAdverse": "{{n}} adverse",

@@ -330,7 +330,7 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
             )
           })}
           {citations.length > 0 ? (
-            <PanelRow key="sweep" className="flex-col items-stretch gap-2">
+            <PanelRow key="sweep" className={catalogRowClass}>
               <SweepRowBody
                 sweep={sweep}
                 running={sweepJob.running}
@@ -386,10 +386,10 @@ function SweepRowBody({
   }[outcome]
   return (
     <>
-      <button type="button" onClick={onToggle} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-3 text-left">
+      <button type="button" onClick={onToggle} aria-expanded={isOpen} className="flex w-full items-center justify-between gap-2.5 text-left">
         <span className="min-w-0 flex-1">
-          <span className="block text-[13px] font-medium text-foreground">{t("sweepTitle")}</span>
-          <span className={`mt-0.5 block ${labelTextClass}`}>
+          <span className={cn("block", catalogTitleClass)}>{t("sweepTitle")}</span>
+          <span className={catalogSubClass}>
             {running
               ? t("sweepRunning")
               : sweep.sweptAt
@@ -402,7 +402,7 @@ function SweepRowBody({
           </span>
         </span>
         {running ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" /> : null}
-        <TonePill tone={SWEEP_STYLE[outcome]}>{pill}</TonePill>
+        <CatalogPill tone={SWEEP_STYLE[outcome]}>{pill}</CatalogPill>
       </button>
       {isOpen ? (
         <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">

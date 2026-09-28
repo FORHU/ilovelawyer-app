@@ -280,7 +280,7 @@
   "claimTitlePlaceholder": "청구, 예: 부당해고",
   "claimCausePlaceholder": "근거 법령 (선택)",
   "sweepTitle": "불리한 인용 점검",
-  "sweepNotRun": "아직 실행하지 않음",
+  "sweepNotRun": "아직 어떤 근거에 대해서도 실행하지 않음",
   "sweepRunning": "점검 중…",
   "sweepPending": "대기",
   "sweepAdverse": "불리 {{n}}건",

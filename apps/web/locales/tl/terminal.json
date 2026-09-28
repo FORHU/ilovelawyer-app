@@ -282,7 +282,7 @@
   "claimTitlePlaceholder": "Claim, hal. Illegal dismissal",
   "claimCausePlaceholder": "Batay sa (opsyonal)",
   "sweepTitle": "Pagsusuri ng salungat na citation",
-  "sweepNotRun": "Hindi pa napapatakbo",
+  "sweepNotRun": "Hindi pa napapatakbo laban sa anumang batayan",
   "sweepRunning": "Sinusuri…",
   "sweepPending": "Nakabinbin",
   "sweepAdverse": "{{n}} salungat",
