@@ -304,6 +304,19 @@ export interface SnapshotAuditEvent {
   action: string
   createdAt: string
   actorId?: string | null
+  /** Null for system-generated events (no actor, or the user was since deleted). */
+  actorName?: string | null
+  /** The name/title of what the event acted on ("No written protest"), when the API recorded one. */
+  subject?: string | null
+}
+
+export type CaseTeamRole = "OWNER" | "VIEW" | "EDIT" | "ADMIN"
+
+export interface CaseTeamMember {
+  userId: string
+  name: string
+  initials: string
+  role: CaseTeamRole
 }
 
 export interface SnapshotStaleness {
@@ -372,7 +385,7 @@ export interface CaseSnapshot {
     items: SnapshotProcedureItem[]
     requiredConfirmations: number
   }
-  teamAudit: { accesses: unknown[]; audit: SnapshotAuditEvent[] }
+  teamAudit: { team: CaseTeamMember[]; accesses: unknown[]; audit: SnapshotAuditEvent[] }
   findings: CaseFinding[]
   witnesses: Witness[]
   damages: DamageClaim[]

@@ -5,6 +5,7 @@ import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
+import { withAuditEvent } from "@/lib/terminal/audit-label"
 import type {
   Annotation,
   AuthorityKind,
@@ -24,6 +25,7 @@ import type {
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
+  SnapshotAuditEvent,
   SnapshotCustodyEvent,
   SnapshotEvidenceMatrixItem,
   TerminalCatalog,
@@ -174,6 +176,31 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   }, [caseId, kind, queryClient])
 
   return query
+}
+
+/** Team & Audit's "Live": merges each `audit:new` push (sent to case:<caseId> by the API's single
+ * audit write path, see useCaseRoom for the room join) into the cached snapshot's audit log, so a
+ * teammate's action appears without a refetch. The snapshot stays the source of truth — a missed
+ * push is repaired by its next refetch. Returns whether the push channel is currently connected. */
+export function useLiveAudit(caseId: string): boolean {
+  const queryClient = useQueryClient()
+  const live = useIsCaseRoomSubscribed(caseId)
+  useEffect(() => {
+    if (!caseId) return
+    const socket = getNotificationSocket()
+    const onEvent = (event: SnapshotAuditEvent & { caseId?: string }) => {
+      queryClient.setQueryData<CaseSnapshot>(terminalKeys.snapshot(caseId), (snapshot) =>
+        snapshot
+          ? { ...snapshot, teamAudit: { ...snapshot.teamAudit, audit: withAuditEvent(snapshot.teamAudit.audit, event) } }
+          : snapshot,
+      )
+    }
+    socket.on("audit:new", onEvent)
+    return () => {
+      socket.off("audit:new", onEvent)
+    }
+  }, [caseId, queryClient])
+  return live
 }
 
 export function useTerminalCatalogQuery() {
