@@ -1,12 +1,13 @@
 import React from "react";
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { FloatingDelayGroup } from "@floating-ui/react";
 import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { CircleHelp, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { CitationLink } from "./citation-link";
 import { findAnchorMatches } from "@/components/shared/decision-anchor-match";
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
 import { decisionAnchorElementId, reapplyFallbackHighlight } from "@/lib/chat/use-topic-navigator";
@@ -25,6 +26,7 @@ export interface QuoteHighlight {
 }
 
 const NO_QUOTE_HIGHLIGHTS: QuoteHighlight[] = [];
+const CITATION_HOVER_DELAY = { open: 300, close: 150 };
 
 // A Decision Record's `anchor` is a verbatim sentence chat-wonder-v2-api copied from this same
 // answer and already verified against it server-side (whitespace-normalized substring check —
@@ -170,11 +172,7 @@ function buildComponents(
         return <span className="font-medium text-muted-foreground">{children}</span>;
       }
       if (isInternalLibraryHref(href)) {
-        return (
-          <Link href={href} className="underline underline-offset-2 font-medium text-primary">
-            {children}
-          </Link>
-        );
+        return <CitationLink href={href}>{children}</CitationLink>;
       }
       return (
         <a
@@ -369,9 +367,14 @@ const AssistantMessage = React.memo(function AssistantMessage({
   });
   return (
     <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {cleaned}
-      </ReactMarkdown>
+      {/* Shared hover timing for this bubble's citations (see CitationLink): 300ms before a
+          preview opens, 150ms grace to reach it — and once one is open, moving to an adjacent
+          citation swaps the card instantly instead of waiting out the delay again. */}
+      <FloatingDelayGroup delay={CITATION_HOVER_DELAY}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+          {cleaned}
+        </ReactMarkdown>
+      </FloatingDelayGroup>
       {decisions.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {decisions.map((decision, i) => (

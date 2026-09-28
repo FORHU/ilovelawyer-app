@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
+import type { AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
@@ -21,6 +22,7 @@ import type {
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
+  FindingTag,
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
@@ -57,6 +59,8 @@ export const terminalKeys = {
     [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
   caseBriefHistory: (caseId: string) =>
     [...terminalKeys.all, "case-brief-history", caseId] as const,
+  audioOverviewHistory: (caseId: string) =>
+    [...terminalKeys.all, "audio-overview-history", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -76,9 +80,13 @@ export type AiGenerationKind =
   | "caseReconstructionTableRead"
   | "caseReconstructionEvents"
   | "timelineGenerate"
+  | "caseStrategyRefresh"
   | "witnessScoring"
   | "witnessExtract"
   | "damagesExtract"
+  | "claimExtract"
+  | "citationGrounds"
+  | "adverseSweep"
   | "mindMapExpand"
   | "caseMindMap"
 
@@ -420,6 +428,103 @@ export function useScanContradictionsMutation(caseId: string) {
   })
 }
 
+// ── Citation Map list view: pleaded claims and authority → claim links ──────────────────────
+// Kept here rather than in lib/citation-map/mutations.ts because they also touch terminalKeys
+// (job status) and graphViewKeys (claims are CLAIM nodes) — and that module is imported here.
+
+/** Queued "Find claims" — AI reads the pleadings for the case's claims (ClaimExtractSvc). */
+export function useExtractClaimsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/claims/extract`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "claimExtract") })
+    },
+  })
+}
+
+/** Queued "Map authorities" — AI links each cited authority to the claims it bears on. */
+export function useMapCitationGroundsMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
+    },
+  })
+}
+
+/** Queued "Run sweep" — the adverse-citation sweep (AdverseSweepSvc). */
+export function useAdverseSweepMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-map/sweep`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "adverseSweep") })
+    },
+  })
+}
+
+/** Accept (adds the Weakness) or dismiss a sweep hit's suggestion. */
+export function useDecideAdverseHitMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "accept" | "dismiss" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-map/adverse/${id}/${decision}`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+      // An accepted hit is a new Weakness row.
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+function useInvalidateCitationMap(caseId: string) {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
+    queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+  }
+}
+
+export function useCreateClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { title: string; causeOfAction?: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/claims`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteClaimMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/claims/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
+  })
+}
+
+export function useCreateCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: (body: { citationCheckId: string; claimId: string; role: "SUBSTANTIVE" | "PROCEDURAL" }) =>
+      apiFetch(`/api/my-cases/${caseId}/citation-grounds`, { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteCitationGroundMutation(caseId: string) {
+  const invalidate = useInvalidateCitationMap(caseId)
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/my-cases/${caseId}/citation-grounds/${id}`, { method: "DELETE" })
+    },
+    onSuccess: invalidate,
+  })
+}
+
 export type ContradictionStatus = "OPEN" | "RESOLVED" | "DISMISSED"
 
 // A contradiction's triage status. The server carries it over to the same contradiction when a
@@ -641,7 +746,7 @@ export function useCreateDeadlineMutation(caseId: string) {
 export function useCreateProcedureItemMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { kind: string; label: string }) =>
+    mutationFn: (body: { kind: string; label: string; sourceLabel?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/items`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -660,6 +765,38 @@ export function useUpdateProcedureItemMutation(caseId: string) {
         method: "PATCH",
         body: JSON.stringify({ done }),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Refreshes only the Case Strategy panel's pass (plan, to-dos, key dates) — queued server-side
+// (AiGenerationQueue/SQS), so this POST returns once the job is claimed. The caller pairs it with
+// useAiJobStatus(caseId, "caseStrategyRefresh"), which invalidates the snapshot on DONE. Ticked
+// to-dos survive the refresh.
+export function useRefreshStrategyMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/strategy/refresh`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseStrategyRefresh") })
+    },
+  })
+}
+
+// One click to recompute every deadline flagged stale. Still an explicit lawyer action — a due
+// date is a legal fact, so it never changes on its own. A date that moves loses its earlier
+// confirmations server-side, so the snapshot refresh shows them as needing confirmation again.
+export function useRecomputeStaleDeadlinesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ recomputed: { id: string }[]; failed: { id: string; error: string }[] }>(
+        `/api/my-cases/${caseId}/procedure/deadlines/recompute-stale`,
+        { method: "POST" }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -704,11 +841,49 @@ export function useRecomputeDeadlineMutation(caseId: string) {
 export function useCreateFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { category: FindingCategory; label: string }) =>
+    mutationFn: (body: { category: FindingCategory; label: string; detail?: string | null; tag?: FindingTag | null }) =>
       apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+export function useUpdateFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      label?: string
+      detail?: string | null
+      tag?: FindingTag | null
+      position?: number | null
+    }) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+/** Jev's check of one saved finding, on request. Only Legal Issues has one so far; the API
+ * answers 409 while USE_JEV_LEGAL_ISSUES is off. */
+export function useJevCheckFindingMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<CaseFinding>(`/api/my-cases/${caseId}/findings/${id}/jev-check`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
@@ -1279,6 +1454,44 @@ export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled,
+  })
+}
+
+export interface AudioOverviewHistoryEntry {
+  id: string
+  messageId: string
+  consultationId: string
+  createdAt: string
+  status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
+  turns: AudioOverviewTurn[]
+  checks: AudioOverviewTurnCheck[]
+  /** null until the audio has been rendered (the script alone is generated first). */
+  audio: { id: string; fileUrl: string } | null
+}
+
+interface AudioOverviewHistoryPage {
+  items: AudioOverviewHistoryEntry[]
+  nextCursor: string | null
+}
+
+const AUDIO_OVERVIEW_HISTORY_PAGE_SIZE = 20
+
+/** Every Audio Overview generated for the case, newest first — same infinite-query shape as
+ * useCaseBriefHistoryQuery (limit always sent, since the backend only computes nextCursor when
+ * given one). Always refetched on mount: a new overview is created from chat, not from here, so
+ * there's no mutation in this file to invalidate it. */
+export function useAudioOverviewHistoryQuery(caseId: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: terminalKeys.audioOverviewHistory(caseId),
+    queryFn: ({ pageParam }: { pageParam: string | null }) => {
+      const params = new URLSearchParams({ limit: String(AUDIO_OVERVIEW_HISTORY_PAGE_SIZE) })
+      if (pageParam) params.set("cursor", pageParam)
+      return apiFetch<AudioOverviewHistoryPage>(`/api/my-cases/${caseId}/audio-overview/history?${params.toString()}`)
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    refetchOnMount: "always",
     enabled,
   })
 }

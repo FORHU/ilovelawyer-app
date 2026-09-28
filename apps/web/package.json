@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.20",
     "@gsap/react": "^2.1.2",
     "@react-oauth/google": "^0.13.5",
     "@tanstack/react-query": "^5.101.1",

@@ -8,7 +8,6 @@ import ConsultationChat from "@/components/chat/consultation-chat"
 // (never at module-eval time), by which point both modules have finished initializing. The
 // same cycle already exists today via terminal-settings-sidebar.tsx importing PANEL_TITLES.
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
-import { CitationMap } from "@/components/citation-map"
 import { TheoriesPanel } from "@/components/terminal/theories-panel"
 import type { CaseSnapshot, PanelId, SnapshotRisk } from "@/lib/terminal/types"
 import { CommandPanel } from "@/components/terminal/panels/command-panel"
@@ -18,7 +17,12 @@ import { RedTeamPanel } from "@/components/terminal/panels/red-team-panel"
 import { ProcedurePanel } from "@/components/terminal/panels/procedure-panel"
 import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
 import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
-import { CaseFindingPanel, LegalIssuesPanel } from "@/components/terminal/panels/case-finding-panel"
+import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
+import { CitationMapPanel } from "@/components/terminal/panels/citation-map-panel"
+import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
+import { StrengthsPanel } from "@/components/terminal/panels/strengths-panel"
+import { AttackStrategyPanel } from "@/components/terminal/panels/attack-strategy-panel"
+import { DefenseStrategyPanel } from "@/components/terminal/panels/defense-strategy-panel"
 import { WitnessPanel } from "@/components/terminal/panels/witness-panel"
 import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
@@ -78,37 +82,13 @@ export function TerminalPanelBody({
     case "legalIssues":
       return <LegalIssuesPanel caseId={caseId} />
     case "weaknesses":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="WEAKNESS"
-        />
-      )
+      return <WeaknessesPanel snapshot={snapshot} caseId={caseId} />
     case "strengths":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="STRENGTH"
-        />
-      )
+      return <StrengthsPanel snapshot={snapshot} caseId={caseId} />
     case "attackStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="ATTACK_STRATEGY"
-        />
-      )
+      return <AttackStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "defenseStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="DEFENSE_STRATEGY"
-        />
-      )
+      return <DefenseStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "witnesses":
       return <WitnessPanel caseId={caseId} onJumpToPanel={onJumpToPanel} />
     case "damages":
@@ -159,13 +139,5 @@ function ChatPanel({
       panelTitles={PANEL_TITLES}
       onJumpToPanel={onJumpToPanel ? (id: string) => onJumpToPanel(id as PanelId) : undefined}
     />
-  )
-}
-
-function CitationMapPanel({ caseId }: { caseId: string }) {
-  return (
-    <div className="min-h-0 flex-1 p-2">
-      <CitationMap caseId={caseId} />
-    </div>
   )
 }

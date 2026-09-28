@@ -290,6 +290,20 @@
     "audioOverviewRenderError": "Couldn't render the audio. Try again.",
     "audioOverviewHostA": "Host A",
     "audioOverviewHostB": "Host B",
+    "audioOverviewCurrentTab": "Current",
+    "audioOverviewHistoryTab": "History",
+    "audioOverviewHistoryLoading": "Loading history…",
+    "audioOverviewHistoryError": "Couldn't load audio overview history.",
+    "audioOverviewHistoryEmpty": "No audio overviews generated yet.",
+    "audioOverviewHistoryShowScript": "Show script",
+    "audioOverviewHistoryHideScript": "Hide script",
+    "audioOverviewDownload": "Download audio",
+    "audioOverviewStatus": {
+      "ready": "Ready",
+      "rendering": "Rendering",
+      "failed": "Failed",
+      "scriptOnly": "Script only"
+    },
     "mindMapNoConsultation": "Start a chat to generate a mind map."
   },
   "mindMapExpand": {
@@ -348,6 +362,11 @@
     "showLevels": "Show levels",
     "upToLevel": "Up to level {{level}}",
     "expandAll": "Expand all"
+  },
+  "audioOverviewCheck": {
+    "supported": "Supported by the case data",
+    "unsupported": "Not supported by the case data",
+    "contradicted": "Contradicted by the case data"
   },
   "mindMapCheck": {
     "notFound": "Not found in the cited document",

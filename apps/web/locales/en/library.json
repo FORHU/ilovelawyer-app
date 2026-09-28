@@ -128,6 +128,13 @@
     "exploreSupremeCourtReports": "Explore Supreme Court Reports",
     "recentDecisions": "Landmark Decisions"
   },
+  "citationPreview": {
+    "openInLibrary": "Open in Library",
+    "opensInNewTab": " (opens in the Library in a new tab)",
+    "unavailable": "Preview unavailable — the full document is still in the Library.",
+    "noSummary": "No summary stored for this document yet.",
+    "sheetTitle": "Citation preview"
+  },
   "lawDoc": {
     "back": "Back to library",
     "loading": "Loading document…",

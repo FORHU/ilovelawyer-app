@@ -128,6 +128,13 @@
     "exploreSupremeCourtReports": "Galugarin ang Supreme Court Reports",
     "recentDecisions": "Mga Makasaysayang Desisyon"
   },
+  "citationPreview": {
+    "openInLibrary": "Buksan sa Library",
+    "opensInNewTab": " (bubukas sa Library sa bagong tab)",
+    "unavailable": "Hindi available ang preview — nasa Library pa rin ang buong dokumento.",
+    "noSummary": "Wala pang naka-save na buod para sa dokumentong ito.",
+    "sheetTitle": "Preview ng citation"
+  },
   "lawDoc": {
     "back": "Bumalik sa library",
     "loading": "Naglo-load ng dokumento…",

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query"
+import { queryOptions, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 
 // Wire values the API accepts for `category`. PH = juris.ph dataset names; UK = the
@@ -211,6 +211,34 @@ export interface LawDocument {
   }
   source: "juris.ph" | "cache" | "uk-legal-mcp" | string
   notice: string
+}
+
+// ── GET /api/law/preview — the chat citation hover card ─────────────────────
+// A deliberately small, DB-only sibling of /api/law/document (no full text, no upstream fetch),
+// since it runs on hover. Same `(category, id)` pair — see parseLibraryHref.
+export interface LawPreview {
+  title: string
+  reference: string | null
+  year: number | null
+  court: string | null
+  /** ≤ 280 chars, already truncated at a word boundary by the API. */
+  snippet: string | null
+}
+
+/** Options rather than a hook so CitationLink can prefetchQuery the same key on pointerenter,
+ * during the hover-open delay, before the card that reads it mounts. A stored law never
+ * changes, so it's never refetched while cached. */
+export function lawPreviewQueryOptions(category: LawCategoryParam, id: string) {
+  return queryOptions({
+    queryKey: ["law", "preview", category, id],
+    queryFn: () =>
+      apiFetch<LawPreview>(
+        `/api/law/preview?category=${category}&id=${encodeURIComponent(id)}`
+      ),
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    retry: 1,
+  })
 }
 
 /**
