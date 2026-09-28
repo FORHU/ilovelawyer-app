@@ -1,6 +1,6 @@
-// `en-GB` ships only the strings that differ from `en` (British spelling, and the legal terms UK
-// practice uses — claimant, not petitioner). Everything else resolves through i18next's
-// `fallbackLng`, so a new English string needs adding to `en` alone unless its wording is
+// `en-GB` is derived from `en` at load time: British spelling by transform, plus hand-written
+// overrides for the legal terms UK practice uses (claimant, not petitioner) — see
+// lib/i18n/british.ts. So a new English string needs adding to `en` alone unless its wording is
 // jurisdiction-specific. Distinct from the `_UK` key suffix, which is chosen by the organization's
 // Tenant rather than by the reader — see components/landing/terminal-mock-window.tsx.
 export const SUPPORTED_LANGUAGES = ["en", "en-GB", "ko", "tl"] as const

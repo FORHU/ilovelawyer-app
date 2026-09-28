@@ -26,6 +26,14 @@ describe("britishSpelling", () => {
     expect(britishSpelling("Remove {{name}} from this organization")).toBe("Remove {{name}} from this organisation")
   })
 
+  // A placeholder is a variable name, not prose: respelling it makes i18next render it literally.
+  it("never respells inside an interpolation or a nested key", () => {
+    expect(britishSpelling("Welcome to {{organizationName}}, organization admin")).toBe(
+      "Welcome to {{organizationName}}, organisation admin",
+    )
+    expect(britishSpelling("See $t(common.colorSettings) for color")).toBe("See $t(common.colorSettings) for colour")
+  })
+
   // The rules are stems matched anywhere in a word, so the risk is corrupting a word that merely
   // contains one. These are the cases that would break first.
   it("does not touch Philippine proper nouns, or words that merely contain a stem", () => {
@@ -120,6 +128,21 @@ describe("the wired-up en-GB catalogs", () => {
 
   it("leaves Philippine statute names as they are", () => {
     expect(enGB.library.categories.codals.laborCode).toBe("Labor Code")
+  })
+
+  // Guards every shipped string at once, including ones added after this test was written.
+  it("keeps every placeholder exactly as en has it", () => {
+    const placeholders = (s: string) => (s.match(/\{\{.*?\}\}|\$t\(.*?\)/g) ?? []).sort()
+    const walk = (american: unknown, british: unknown, path: string) => {
+      if (typeof american === "string" && typeof british === "string") {
+        expect(placeholders(british), path).toEqual(placeholders(american))
+      } else if (american && typeof american === "object" && british && typeof british === "object") {
+        for (const key of Object.keys(american)) {
+          walk((american as Record<string, unknown>)[key], (british as Record<string, unknown>)[key], `${path}.${key}`)
+        }
+      }
+    }
+    for (const ns of Object.keys(en) as (keyof typeof en)[]) walk(en[ns], enGB[ns], ns)
   })
 
   it("does not fork the American catalogs — en is untouched", () => {

@@ -79,9 +79,21 @@ function matchCase(matched: string, replacement: string): string {
   return replacement
 }
 
+// i18next syntax that names something rather than saying it: `{{organizationName}}` interpolation
+// and `$t(key)` nesting. Respelling either would make i18next look up a name that doesn't exist.
+const I18NEXT_REFERENCE = /(\{\{.*?\}\}|\$t\(.*?\))/
+
 /** One string, respelled. Exported for the tests; callers want `toBritish`. */
 export function britishSpelling(value: string): string {
-  let out = value
+  // split() with a capture group keeps the references, at the odd indexes.
+  return value
+    .split(I18NEXT_REFERENCE)
+    .map((part, i) => (i % 2 === 1 ? part : respell(part)))
+    .join("")
+}
+
+function respell(text: string): string {
+  let out = text
   for (const [pattern, british] of RULES) {
     out = out.replace(pattern, (matched) => matchCase(matched, british))
   }
