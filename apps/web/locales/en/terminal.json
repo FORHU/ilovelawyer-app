@@ -276,6 +276,8 @@
   "addStrength": "Add a strength",
   "addAttackStrategy": "Add an attack strategy",
   "addDefenseStrategy": "Add a defense strategy",
+  "attackStrategyIntro": "Moves that advance this case — for your client, whichever side they're on.",
+  "defenseStrategyIntro": "Moves that protect this case against challenges the other side is expected to raise.",
   "readinessReady": "Ready",
   "readinessDrafting": "Drafting",
   "readinessBlocked": "Blocked",

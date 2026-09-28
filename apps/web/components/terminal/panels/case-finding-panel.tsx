@@ -75,6 +75,15 @@ const FINDING_ADD_LABEL_KEYS: Record<FindingCategory, string> = {
   DEFENSE_STRATEGY: "addDefenseStrategy",
 }
 
+// Both are moves for your own client, not "your side vs. the other side" — Attack pushes the
+// case forward, Defense preempts/rebuts what the other side is expected to raise. Shown as an
+// intro line (same slot as WitnessPanel's witnessesIntro) since the panel titles alone read as
+// plaintiff/defendant to someone skimming the UI.
+const FINDING_INTRO_KEYS: Partial<Record<FindingCategory, string>> = {
+  ATTACK_STRATEGY: "attackStrategyIntro",
+  DEFENSE_STRATEGY: "defenseStrategyIntro",
+}
+
 // Legal Issues is the one CaseFinding category the case graph tracks as its own node type
 // (view_type=issues also carries CLAIM nodes) — reads the graph-view projection instead of
 // slicing CaseSnapshot, unlike the other four category panels below which stay snapshot-driven.
@@ -180,9 +189,11 @@ export function CaseFindingPanel({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { upload, isUploading } = useCaseDocumentUpload(caseId)
   const hasReadiness = READINESS_CATEGORIES.includes(category)
+  const introKey = FINDING_INTRO_KEYS[category]
 
   return (
     <PanelBody gap="4">
+      {introKey ? <p className="text-[13px] text-muted-foreground">{t(introKey)}</p> : null}
       {hasReadiness && items.length > 0 ? <ReadinessSummaryHeader items={items} /> : null}
       <PanelRowList empty={<EmptyNote>{t("noFindings")}</EmptyNote>}>
         {items.map((item) => {

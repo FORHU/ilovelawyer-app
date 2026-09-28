@@ -250,6 +250,8 @@
   "addStrength": "Magdagdag ng lakas",
   "addAttackStrategy": "Magdagdag ng attack strategy",
   "addDefenseStrategy": "Magdagdag ng defense strategy",
+  "attackStrategyIntro": "Mga hakbang para isulong ang kaso — para sa iyong kliyente, kahit sino man ang kinakatawan nila.",
+  "defenseStrategyIntro": "Mga hakbang para ipagtanggol ang kaso laban sa mga inaasahang argumento ng kabilang panig.",
   "readinessReady": "Handa",
   "readinessDrafting": "Ginagawa",
   "readinessBlocked": "Naka-block",

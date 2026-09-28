@@ -248,6 +248,8 @@
   "addStrength": "강점 추가",
   "addAttackStrategy": "공격 전략 추가",
   "addDefenseStrategy": "방어 전략 추가",
+  "attackStrategyIntro": "이 사건을 진전시키는 조치입니다 — 어느 쪽을 대리하든 우리 의뢰인을 위한 것입니다.",
+  "defenseStrategyIntro": "상대측이 제기할 것으로 예상되는 주장으로부터 이 사건을 방어하는 조치입니다.",
   "readinessReady": "준비 완료",
   "readinessDrafting": "작성 중",
   "readinessBlocked": "차단됨",
