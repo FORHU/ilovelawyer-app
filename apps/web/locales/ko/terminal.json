@@ -305,7 +305,7 @@
     "NOT_BORNE_OUT": "Jev는 사건 자료에서 이 취약점을 확인하지 못했습니다"
   },
   "addStrength": "강점 추가",
-  "strengthsIntro": "사건 이론을 뒷받침하는 사실 — 가장 큰 역할을 하는 것부터.",
+  "strengthsIntro": "우리 사건 이론을 뒷받침하는 사실.",
   "strengthStrong": "강함",
   "strengthModerate": "보통",
   "strengthStrongCount": "{{total}}건 중 {{done}}건 강함",

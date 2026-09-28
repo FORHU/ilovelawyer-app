@@ -333,7 +333,7 @@
     "NOT_BORNE_OUT": "Jev doesn't find this borne out by the case data"
   },
   "addStrength": "Add a strength",
-  "strengthsIntro": "Findings that carry your theory of the case, the ones doing the most work first.",
+  "strengthsIntro": "Findings that carry our theory of the case.",
   "strengthStrong": "Strong",
   "strengthModerate": "Moderate",
   "strengthStrongCount": "{{done}} of {{total}} strong",
