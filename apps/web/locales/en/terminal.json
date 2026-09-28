@@ -309,9 +309,9 @@
     "BURDEN_DISPUTED": "Jev puts the burden on the other side"
   },
   "addWeakness": "Add a weakness",
-  "weaknessesIntro": "Exposure in your own case, soonest to surface first.",
+  "weaknessesIntro": "Exposure in our own case, ordered by how early it will surface.",
   "weaknessMaterial": "Material",
-  "weaknessMinor": "Minor",
+  "weaknessMinor": "Open",
   "weaknessClosed": "Closed",
   "weaknessClosedCount": "{{done}} of {{total}} closed",
   "weaknessDetailPlaceholder": "What would close it",

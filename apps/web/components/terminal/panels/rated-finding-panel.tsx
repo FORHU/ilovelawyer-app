@@ -20,12 +20,16 @@ import {
   PanelRow,
   PanelRowList,
   TONE_STYLE,
+  CatalogPill,
   TagMixSummary,
-  TonePill,
+  catalogBlurbClass,
+  catalogDeltaClass,
+  catalogRowClass,
+  catalogSubClass,
+  catalogTitleClass,
   dangerIconBtnClass,
   fieldClass,
   ghostBtnClass,
-  labelTextClass,
   primaryBtnClass,
   type Tone,
 } from "@/components/terminal/panel-kit"
@@ -112,11 +116,12 @@ export function RatedFindingPanel({
   const jevError = jevCheck.error as (Error & { status?: number }) | null
 
   return (
-    <PanelBody gap="4">
-      <p className="text-[13px] text-muted-foreground">{t(config.introKey)}</p>
+    <PanelBody gap="3">
+      <p className={catalogBlurbClass}>{t(config.introKey)}</p>
 
       {rows.length > 1 ? (
         <TagMixSummary
+          catalog
           ring={{ pct: Math.round((done / rows.length) * 100), tone: "ok", title: t(config.ringTitleKey, { done, total: rows.length }) }}
           segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
             key: s.key,
@@ -138,20 +143,20 @@ export function RatedFindingPanel({
             const isAi = f.notes === "AI"
             const isDone = f.tag === config.doneTag
             return (
-              <PanelRow key={f.id} className="flex-col items-stretch gap-2">
+              <PanelRow key={f.id} className={catalogRowClass}>
                 <button
                   type="button"
                   onClick={() => toggle(f)}
                   aria-expanded={isOpen}
-                  className={cn("flex w-full items-center justify-between gap-3 text-left", isDone && "opacity-60")}
+                  className={cn("flex w-full items-center justify-between gap-2.5 text-left", isDone && "opacity-60")}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                    <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {f.label}
                       {flags.length > 0 ? <JevFlag title={flags.map((key) => t(key)).join(" · ")} /> : null}
                     </span>
                     {f.detail || hint ? (
-                      <span className={`mt-0.5 block ${labelTextClass}`}>
+                      <span className={catalogSubClass}>
                         {f.detail}
                         {f.detail && hint ? " · " : null}
                         {hint ? <span className="text-warn">{t(hint)}</span> : null}
@@ -159,9 +164,14 @@ export function RatedFindingPanel({
                     ) : null}
                   </span>
                   {config.impact && f.impact !== null ? (
-                    <DeltaMark value={f.impact} badWhenUp={config.impact.badWhenUp} title={t(config.impact.titleKey)} />
+                    <DeltaMark
+                      value={f.impact}
+                      badWhenUp={config.impact.badWhenUp}
+                      title={t(config.impact.titleKey)}
+                      className={catalogDeltaClass}
+                    />
                   ) : null}
-                  <TonePill tone={style.tone}>{t(style.label)}</TonePill>
+                  <CatalogPill tone={style.tone}>{t(style.label)}</CatalogPill>
                 </button>
 
                 {isOpen ? (

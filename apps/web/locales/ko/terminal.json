@@ -281,9 +281,9 @@
     "BURDEN_DISPUTED": "Jev는 입증 책임을 상대방에게 둡니다"
   },
   "addWeakness": "약점 추가",
-  "weaknessesIntro": "우리 사건의 취약점 — 가장 먼저 드러날 것부터.",
+  "weaknessesIntro": "우리 사건의 취약점 — 드러날 순서대로.",
   "weaknessMaterial": "중대",
-  "weaknessMinor": "경미",
+  "weaknessMinor": "미결",
   "weaknessClosed": "해소됨",
   "weaknessClosedCount": "{{total}}건 중 {{done}}건 해소",
   "weaknessDetailPlaceholder": "해소하려면 무엇이 필요한지",

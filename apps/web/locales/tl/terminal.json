@@ -283,9 +283,9 @@
     "BURDEN_DISPUTED": "Inilalagay ni Jev ang pasanin sa kabilang panig"
   },
   "addWeakness": "Magdagdag ng kahinaan",
-  "weaknessesIntro": "Mga kahinaan ng sarili mong kaso, inuuna ang pinakamaagang lilitaw.",
+  "weaknessesIntro": "Mga kahinaan ng sarili nating kaso, ayon sa kung gaano kaaga lilitaw.",
   "weaknessMaterial": "Mabigat",
-  "weaknessMinor": "Magaan",
+  "weaknessMinor": "Bukas",
   "weaknessClosed": "Naisara",
   "weaknessClosedCount": "{{done}} sa {{total}} ang naisara",
   "weaknessDetailPlaceholder": "Ano ang makakapagsara nito",
