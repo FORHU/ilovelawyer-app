@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { FileText } from "lucide-react"
+import { AlertTriangle, FileText, Loader2, RefreshCw } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -8,9 +8,12 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
+  useAiJobStatus,
   useCreateProcedureItemMutation,
   useProcedureRulesQuery,
   useRecomputeDeadlineMutation,
+  useRecomputeStaleDeadlinesMutation,
+  useRefreshStrategyMutation,
   useUpdateProcedureItemMutation,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
@@ -135,6 +138,13 @@ export function ProcedurePanel({
   const recomputeDeadline = useRecomputeDeadlineMutation(caseId)
   const createItem = useCreateProcedureItemMutation(caseId)
   const updateItem = useUpdateProcedureItemMutation(caseId)
+  const recomputeStale = useRecomputeStaleDeadlinesMutation(caseId)
+  const refreshStrategy = useRefreshStrategyMutation(caseId)
+  // The plan refresh is a queued job: it runs (and can be started by someone else) after the POST
+  // returns, so "updating" comes from the job status, not from the mutation.
+  const strategyJob = useAiJobStatus(caseId, "caseStrategyRefresh")
+  const updatingPlan = strategyJob.data?.status === "IN_PROGRESS" || refreshStrategy.isPending
+  const [showCompleted, setShowCompleted] = useState(false)
   const [ruleCode, setRuleCode] = useState("")
   const [triggerDate, setTriggerDate] = useState("")
   const [sourceTimelineEventId, setSourceTimelineEventId] = useState("")
@@ -151,12 +161,80 @@ export function ProcedurePanel({
   const todoItems = items.filter(
     (item) => item.kind.toUpperCase() !== "STRATEGY"
   )
+  // A real case has as many to-dos as its documents call for, so the list is never truncated:
+  // open ones stay up top and ticked ones fold away rather than crowding out what's left to do.
+  const openTodos = todoItems.filter((item) => !item.done)
+  const doneTodos = todoItems.filter((item) => item.done)
+  const strategyPanel = snapshot.strategyPanel
+  const staleDeadlineIds = snapshot.staleness
+    .filter((s) => s.nodeType === "PROCEDURAL_DEADLINE")
+    .map((s) => s.refId)
+    .filter((id) => snapshot.procedure.deadlines.some((d) => d.id === id))
+  const recomputeFailures = recomputeStale.data?.failed.length ?? 0
+
+  const renderTodo = (item: (typeof todoItems)[number]) => (
+    <li key={item.id}>
+      <label className="flex cursor-pointer items-start gap-2.5">
+        <input
+          type="checkbox"
+          checked={item.done}
+          onChange={() => updateItem.mutate({ id: item.id, done: !item.done })}
+          className="mt-0.5 h-3.5 w-3.5 rounded border-border bg-muted accent-brand-gold"
+        />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}
+          >
+            {item.label}
+          </span>
+          {item.sourceLabel && (
+            <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
+                {t("groundedIn", { doc: item.sourceLabel })}
+              </span>
+            </span>
+          )}
+        </span>
+      </label>
+    </li>
+  )
   const fallbackApproach = snapshot.risks.slice(0, 3).map((risk) => risk.title)
   const overall = snapshot.riskAnalysis?.overall ?? EMPTY_METER
   const liability = snapshot.riskAnalysis?.liability ?? EMPTY_METER
 
   return (
     <PanelBody gap="4">
+      {(strategyPanel?.isStale || updatingPlan) && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2"
+        >
+          <p className="flex items-center gap-2 text-xs text-foreground">
+            {updatingPlan ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-riskmed" aria-hidden="true" />
+            )}
+            {updatingPlan
+              ? t("updatingPlan")
+              : (strategyPanel?.changedSince ?? 0) > 1
+                ? t("strategyStale", { count: strategyPanel?.changedSince })
+                : t("strategyStaleOne")}
+          </p>
+          {!updatingPlan && (
+            <button
+              type="button"
+              onClick={() => refreshStrategy.mutate()}
+              className="flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline"
+            >
+              <RefreshCw className="h-3 w-3" aria-hidden="true" />
+              {t("updatePlan")}
+            </button>
+          )}
+        </div>
+      )}
+      <MutationError show={refreshStrategy.isError || strategyJob.data?.status === "FAILED"} />
       <div>
         <SectionLabel>{t("recommendedApproach")}</SectionLabel>
         {approachItems.length > 0 ? (
@@ -164,6 +242,18 @@ export function ProcedurePanel({
             {approachItems.map((item) => (
               <li key={item.id}>
                 {item.label}
+                {(item.check?.verdict === "UNSUPPORTED" ||
+                  item.check?.verdict === "CONTRADICTED") && (
+                  <Badge
+                    tone={item.check.verdict === "CONTRADICTED" ? "danger" : "caution"}
+                    shape="pill"
+                    className="ml-2 align-middle"
+                  >
+                    {item.check.verdict === "CONTRADICTED"
+                      ? t("approachContradicted")
+                      : t("approachUnsupported")}
+                  </Badge>
+                )}
                 {item.sourceLabel && (
                   <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -187,44 +277,37 @@ export function ProcedurePanel({
       </div>
 
       <div>
-        <SectionLabel>{t("criticalTodos")}</SectionLabel>
+        <div className="flex items-baseline justify-between gap-2">
+          <SectionLabel>{t("criticalTodos")}</SectionLabel>
+          {todoItems.length > 0 && (
+            <span className="text-[10px] text-muted-foreground">
+              {t("todosProgress", { done: doneTodos.length, total: todoItems.length })}
+            </span>
+          )}
+        </div>
         {todoItems.length === 0 ? (
           <EmptyNote>{t("noTodos")}</EmptyNote>
         ) : (
-          <ul className="space-y-2">
-            {todoItems.map((item) => (
-              <li key={item.id}>
-                <label className="flex cursor-pointer items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={item.done}
-                    onChange={() =>
-                      updateItem.mutate({ id: item.id, done: !item.done })
-                    }
-                    className="mt-0.5 h-3.5 w-3.5 rounded border-border bg-muted accent-brand-gold"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={`block text-[13px] leading-5 ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}
-                    >
-                      {item.label}
-                    </span>
-                    {item.sourceLabel && (
-                      <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <FileText
-                          className="h-3 w-3 shrink-0"
-                          aria-hidden="true"
-                        />
-                        <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
-                          {t("groundedIn", { doc: item.sourceLabel })}
-                        </span>
-                      </span>
-                    )}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">{openTodos.map(renderTodo)}</ul>
+            {doneTodos.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCompleted((v) => !v)}
+                  aria-expanded={showCompleted}
+                  className="text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase hover:underline"
+                >
+                  {showCompleted
+                    ? t("hideCompleted")
+                    : t("showCompleted", { count: doneTodos.length })}
+                </button>
+                {showCompleted && (
+                  <ul className="mt-2 space-y-2">{doneTodos.map(renderTodo)}</ul>
+                )}
+              </div>
+            )}
+          </>
         )}
         <form
           className="mt-3 flex gap-2"
@@ -281,6 +364,21 @@ export function ProcedurePanel({
             </Badge>
           )}
         </div>
+        {staleDeadlineIds.length > 1 && (
+          <button
+            type="button"
+            onClick={() => recomputeStale.mutate()}
+            disabled={recomputeStale.isPending}
+            className="mb-2 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
+          >
+            {t("recomputeAllStale", { count: staleDeadlineIds.length })}
+          </button>
+        )}
+        {recomputeFailures > 0 && (
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            {t("recomputeSome", { count: recomputeFailures })}
+          </p>
+        )}
         <PanelRowList empty={<EmptyNote>{t("computeDeadline")}</EmptyNote>}>
           {snapshot.procedure.deadlines.map((deadline) => {
               const confirms = (deadline.confirmations ?? []).filter(
@@ -388,7 +486,7 @@ export function ProcedurePanel({
             {t("computeDeadline")}
           </button>
         </form>
-        <MutationError show={confirmDeadline.isError || recomputeDeadline.isError || createDeadline.isError} />
+        <MutationError show={confirmDeadline.isError || recomputeDeadline.isError || recomputeStale.isError || createDeadline.isError} />
       </div>
     </PanelBody>
   )

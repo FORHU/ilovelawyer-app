@@ -75,6 +75,7 @@ export type AiGenerationKind =
   | "caseReconstructionTableRead"
   | "caseReconstructionEvents"
   | "timelineGenerate"
+  | "caseStrategyRefresh"
   | "witnessScoring"
   | "witnessExtract"
   | "mindMapExpand"
@@ -639,7 +640,7 @@ export function useCreateDeadlineMutation(caseId: string) {
 export function useCreateProcedureItemMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { kind: string; label: string }) =>
+    mutationFn: (body: { kind: string; label: string; sourceLabel?: string }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/items`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -658,6 +659,38 @@ export function useUpdateProcedureItemMutation(caseId: string) {
         method: "PATCH",
         body: JSON.stringify({ done }),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Refreshes only the Case Strategy panel's pass (plan, to-dos, key dates) — queued server-side
+// (AiGenerationQueue/SQS), so this POST returns once the job is claimed. The caller pairs it with
+// useAiJobStatus(caseId, "caseStrategyRefresh"), which invalidates the snapshot on DONE. Ticked
+// to-dos survive the refresh.
+export function useRefreshStrategyMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/strategy/refresh`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseStrategyRefresh") })
+    },
+  })
+}
+
+// One click to recompute every deadline flagged stale. Still an explicit lawyer action — a due
+// date is a legal fact, so it never changes on its own. A date that moves loses its earlier
+// confirmations server-side, so the snapshot refresh shows them as needing confirmation again.
+export function useRecomputeStaleDeadlinesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ recomputed: { id: string }[]; failed: { id: string; error: string }[] }>(
+        `/api/my-cases/${caseId}/procedure/deadlines/recompute-stale`,
+        { method: "POST" }
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
