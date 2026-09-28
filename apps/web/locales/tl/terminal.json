@@ -318,9 +318,9 @@
     "BURDEN_DISPUTED": "Inilalagay ni Jev ang pasanin sa kabilang panig"
   },
   "addWeakness": "Magdagdag ng kahinaan",
-  "weaknessesIntro": "Mga kahinaan ng sarili mong kaso, inuuna ang pinakamaagang lilitaw.",
+  "weaknessesIntro": "Mga kahinaan ng sarili nating kaso, ayon sa kung gaano kaaga lilitaw.",
   "weaknessMaterial": "Mabigat",
-  "weaknessMinor": "Magaan",
+  "weaknessMinor": "Bukas",
   "weaknessClosed": "Naisara",
   "weaknessClosedCount": "{{done}} sa {{total}} ang naisara",
   "weaknessDetailPlaceholder": "Ano ang makakapagsara nito",
@@ -342,7 +342,7 @@
     "NOT_BORNE_OUT": "Hindi nakikita ni Jev na pinatutunayan ito ng datos ng kaso"
   },
   "addStrength": "Magdagdag ng lakas",
-  "strengthsIntro": "Mga natuklasang nagdadala sa teorya ng kaso mo, inuuna ang pinakamalaki ang ambag.",
+  "strengthsIntro": "Mga natuklasang nagdadala sa teorya ng ating kaso.",
   "strengthStrong": "Malakas",
   "strengthModerate": "Katamtaman",
   "strengthStrongCount": "{{done}} sa {{total}} ang malakas",
