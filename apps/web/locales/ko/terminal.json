@@ -245,7 +245,7 @@
   "groundedIn": "출처: {{doc}}",
   "citationMapList": "목록",
   "citationMapGraph": "그래프",
-  "groundsIntro": "인용한 각 법원(法源)이 어떤 청구에 연결되는지 보여줍니다.",
+  "groundsIntro": "각 법원이 주장된 근거에 어떻게 연결되는지.",
   "groundsFindClaims": "청구 찾기",
   "groundsFindingClaims": "청구 찾는 중…",
   "groundsMap": "법원 연결",
@@ -260,7 +260,7 @@
   "groundUnmapped": "미연결",
   "groundRole": {
     "SUBSTANTIVE": "실체적 근거",
-    "PROCEDURAL": "절차적 근거"
+    "PROCEDURAL": "독립적 근거"
   },
   "groundRoleLabel": "역할",
   "groundAddedByYou": "직접 추가함",

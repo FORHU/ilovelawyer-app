@@ -247,7 +247,7 @@
   "groundedIn": "Pinagmulan: {{doc}}",
   "citationMapList": "Listahan",
   "citationMapGraph": "Graph",
-  "groundsIntro": "Kung paano kumakabit ang bawat binanggit na awtoridad sa isang isinampang claim.",
+  "groundsIntro": "Kung paano kumakabit ang bawat awtoridad sa isang isinampang batayan.",
   "groundsFindClaims": "Hanapin ang mga claim",
   "groundsFindingClaims": "Hinahanap ang mga claim…",
   "groundsMap": "I-map ang mga awtoridad",
@@ -262,7 +262,7 @@
   "groundUnmapped": "Hindi naka-map",
   "groundRole": {
     "SUBSTANTIVE": "Substantibong batayan",
-    "PROCEDURAL": "Prosedural na batayan"
+    "PROCEDURAL": "Hiwalay na batayan"
   },
   "groundRoleLabel": "Papel",
   "groundAddedByYou": "Idinagdag mo",

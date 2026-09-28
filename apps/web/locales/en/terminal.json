@@ -273,7 +273,7 @@
   "groundedIn": "Source: {{doc}}",
   "citationMapList": "List",
   "citationMapGraph": "Graph",
-  "groundsIntro": "How each cited authority attaches to a pleaded claim.",
+  "groundsIntro": "How each authority attaches to a pleaded ground.",
   "groundsFindClaims": "Find claims",
   "groundsFindingClaims": "Finding claims…",
   "groundsMap": "Map authorities",
@@ -288,7 +288,7 @@
   "groundUnmapped": "Unmapped",
   "groundRole": {
     "SUBSTANTIVE": "Substantive ground",
-    "PROCEDURAL": "Procedural ground"
+    "PROCEDURAL": "Independent ground"
   },
   "groundRoleLabel": "Role",
   "groundAddedByYou": "Added by you",
