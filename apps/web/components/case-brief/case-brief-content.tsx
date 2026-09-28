@@ -199,7 +199,7 @@ function CaseBriefPreview({
           <AttachmentPreview
             attachment={{
               id: format,
-              name: format === "docx" ? "case-brief.docx" : "case-brief.pdf",
+              name: briefFilename(format),
               url,
               mimeType:
                 format === "docx"
@@ -229,7 +229,7 @@ function CaseBriefPreview({
             {t("caseBriefRegenerateCta")}
           </button>
         </div>
-        <Button disabled={!url} onClick={() => url && triggerBriefDownload(url)}>
+        <Button disabled={!url} onClick={() => url && triggerBriefDownload(url, briefFilename(format))}>
           <Download className="h-4 w-4" aria-hidden="true" />
           {format === "docx" ? t("downloadWord") : t("downloadPdf")}
         </Button>
@@ -243,6 +243,11 @@ function formatEntryDate(iso: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   })
+}
+
+/** Fallback save name only — the API's Content-Disposition carries the case-named filename. */
+function briefFilename(format: CaseBriefFormat): string {
+  return `case-brief.${format}`
 }
 
 function formatLabel(format: CaseBriefFormat): string {
@@ -321,8 +326,8 @@ function CaseBriefHistory({ caseId }: { caseId: string }) {
             size="icon-sm"
             variant="outline"
             disabled={!entry.file.fileUrl}
-            aria-label={t("downloadPdf")}
-            onClick={() => entry.file.fileUrl && triggerBriefDownload(entry.file.fileUrl)}
+            aria-label={entry.format === "docx" ? t("downloadWord") : t("downloadPdf")}
+            onClick={() => entry.file.fileUrl && triggerBriefDownload(entry.file.fileUrl, briefFilename(entry.format))}
           >
             <Download className="h-4 w-4" aria-hidden="true" />
           </Button>
