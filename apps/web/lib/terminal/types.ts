@@ -333,6 +333,8 @@ export interface CaseSnapshot {
     jurisdiction?: string | null
     parties: { id: string; name: string; designation: string; descriptor?: string | null }[]
     lastRefreshedAt: string | null
+    /** When the Citation Map's adverse-citation sweep last finished; null until the first one. */
+    adverseSweptAt?: string | null
   }
   documents: SnapshotDocument[]
   timeline: SnapshotTimelineEvent[]
@@ -408,6 +410,21 @@ export type FindingTag =
   | "CLOSED"
   | "STRONG"
   | "MODERATE"
+
+/** Jev's check of a strength (USE_JEV_STRENGTHS) — stored in CaseFinding.jev. */
+export interface StrengthJevCheck {
+  support: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  supportConfidence: number
+  /** False when no text of the cited document was found — support was judged on the case data. */
+  sourceRead: boolean
+  /** 0..1 — how much of the case it carries. */
+  weight: number
+  weightConfidence: number
+  rebuttal: "UNREBUTTED" | "REBUTTABLE" | "ALREADY_REBUTTED"
+  rebuttalConfidence: number
+  flags: "NOT_BORNE_OUT"[]
+  uncertain: boolean
+}
 
 /** Jev's check of a weakness (USE_JEV_WEAKNESSES) — stored in CaseFinding.jev. */
 export interface WeaknessJevCheck {

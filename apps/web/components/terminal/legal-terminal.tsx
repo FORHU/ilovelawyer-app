@@ -476,6 +476,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       evidence: data.documents.length > 0 ? t("badgeDocs", { count: data.documents.length }) : undefined,
       law: data.law.citations.length > 0 ? t("badgeCited", { count: data.law.citations.length }) : undefined,
       citationMap: (() => {
+        // "Pending" until the adverse-citation sweep has run once — the design's cue that the map
+        // isn't finished. With no citations there's nothing to sweep, so no badge.
+        if (data.law.citations.length === 0) return undefined
+        if (!data.case.adverseSweptAt) return t("badgePending")
         const mapped = data.law.citations.filter((c) => c.resolvedAuthority).length
         return mapped > 0 ? t("badgeMapped", { count: mapped }) : undefined
       })(),
