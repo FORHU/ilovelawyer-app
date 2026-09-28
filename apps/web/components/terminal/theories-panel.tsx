@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
 import { GitFork, Loader2, MessageSquareWarning, Send, Sparkles } from "lucide-react"
@@ -39,6 +39,17 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState("")
   const [thesis, setThesis] = useState("")
+  // Grows with the text (up to the textarea's max-h, then it scrolls) instead of staying at a
+  // fixed 3 rows. Resetting to "auto" first lets it shrink again when text is deleted or the
+  // form is cleared after submit; runs when the form opens too, since the ref is only set then.
+  const thesisRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = thesisRef.current
+    if (!el) return
+    el.style.height = "auto"
+    // scrollHeight excludes the border, which border-box sizing needs added back.
+    el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`
+  }, [thesis, showCreate])
 
   const proposeJob = useAiJobStatus(caseId, "caseTheoryPropose")
   const propose = useProposeTheoryMutation(caseId)
@@ -95,12 +106,13 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
             className={fieldClass}
           />
           <textarea
+            ref={thesisRef}
             value={thesis}
             onChange={(e) => setThesis(e.target.value)}
             placeholder={t("theoryThesisPlaceholder")}
             aria-label={t("theoryThesisPlaceholder")}
             rows={3}
-            className={`resize-none py-1.5 ${fieldClass} h-auto`}
+            className={`max-h-60 resize-none overflow-y-auto py-1.5 ${fieldClass} h-auto`}
           />
           <button type="submit" disabled={create.isPending} className={`self-start ${primaryBtnClass}`}>
             {t("add")}
@@ -194,11 +206,15 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
       {theory.claims.length > 0 && (
         <div className="mt-2">
           <SectionLabel>{t("theoryClaims")}</SectionLabel>
-          <ul className="space-y-1">
+          {/* Fixed-width badge + top-aligned, wrapping text column so every claim's text starts at
+              the same x and the badge sits beside the first line, not centered on a tall block. */}
+          <ul className="space-y-2.5">
             {theory.claims.map((c) => (
-              <li key={c.id} className="flex items-center gap-1.5 text-[12px] leading-4 text-muted-foreground">
-                <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"}>{c.stance}</Badge>
-                {c.statement}
+              <li key={c.id} className="flex items-start gap-2 text-[12px] leading-5 text-muted-foreground">
+                <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"} className="mt-0.5 w-16 justify-center">
+                  {c.stance}
+                </Badge>
+                <span className="min-w-0 flex-1 wrap-break-word">{c.statement}</span>
               </li>
             ))}
           </ul>
