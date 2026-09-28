@@ -510,8 +510,33 @@ export type DamageJevSupport = "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
 /** How a head's amount is reached; null on a DamageClaim reads as FIXED. */
 export type DamageBasis =
   | { kind: "FIXED" }
-  | { kind: "RATE_X_PERIOD"; monthlyRate: number; months?: number; fromDate?: string; untilDate?: string }
+  | {
+      kind: "RATE_X_PERIOD"
+      monthlyRate: number
+      months?: number
+      fromDate?: string
+      /** An ISO date, or DAMAGE_AS_OF to keep accruing to today (backwages run until finality). */
+      untilDate?: string
+      /** Projected finality date — sets the head's high end when no amountHigh is given. */
+      highUntilDate?: string
+    }
   | { kind: "PERCENT_OF"; percent: number; categories: DamageCategory[] }
+
+/** untilDate value meaning "up to today" — mirrors AS_OF in the API's damages-compute.ts. */
+export const DAMAGE_AS_OF = "asOf"
+
+/** A suggested update to a head from a newly read document (API: damages-proposal.ts). Never
+ * applied on its own — the lawyer applies or dismisses it. */
+export interface DamageProposal {
+  basis: DamageBasis
+  amount: number | null
+  sourceDocumentId: string
+  documentName: string
+  sourceQuote: string
+  /** true: the document is the evidence the head was waiting on, so applying also certifies it. */
+  satisfiesPending: boolean | null
+  proposedAt: string
+}
 
 export interface DamageClaim {
   id: string
@@ -530,7 +555,7 @@ export interface DamageClaim {
   source: DamageSource
   sourceDocumentId: string | null
   sourceQuote: string | null
-  aiProposedBasis: DamageBasis | null
+  aiProposedBasis: DamageProposal | null
   jevSupport: DamageJevSupport | null
   jevAwardability: number | null
   jevConfidence: number | null
@@ -563,6 +588,8 @@ export interface DamagesSummary {
   heads: DamageHeadSummary[]
   provisional: boolean
   pendingEvidence: string[]
+  /** YYYY-MM-DD the accruing heads were computed to; null when none accrues. */
+  asOf: string | null
 }
 
 /** Fields the damages create/update endpoints accept. */

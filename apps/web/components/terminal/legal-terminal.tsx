@@ -38,6 +38,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
+import { PaneActivityContext, PaneActivityMark, useDamagesActivity } from "@/components/terminal/pane-activity"
 import { Pane } from "@/components/terminal/panel-kit"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
@@ -250,6 +251,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // caseRefresh pipeline (corpus-change triggered) now. This poll is what drives the
   // "Updating analysis…" indicator below while that background job is running.
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  // The damages extraction runs alongside caseRefresh after an upload; "Updating analysis" covers
+  // both (see shouldShowUpdatingAnalysis). Same query as useDamagesActivity's, so no extra request.
+  const damagesJob = useAiJobStatus(caseId, "damagesExtract")
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [dragPreview, setDragPreview] = useState<PaneDragPreview | null>(null)
@@ -461,6 +465,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     [catalog.data],
   )
 
+  // Damages & Remedies fills in from a background job (DamagesExtractSvc) that runs after an
+  // upload, alongside caseRefresh. Tracked here, at the root, so the pane's name shows it
+  // everywhere (header, tab, Focus card, library) even while the pane is closed; the top bar folds
+  // it into "Updating analysis".
+  const damagesPaneVisible = layout?.panels.some((p) => p.id === "damages" && p.visible) ?? false
+  const damagesActivity = useDamagesActivity(caseId, snapshot.data, snapshot.dataUpdatedAt, damagesPaneVisible)
+  const paneActivity = useMemo(
+    (): Partial<Record<PanelId, "busy" | "fresh">> => (damagesActivity ? { damages: damagesActivity } : {}),
+    [damagesActivity],
+  )
+
   // Real, non-fabricated per-pane status text for the Pane Library rows ("3 docs", "2 found",
   // "Ready" — never an invented figure; a pane with nothing to report simply has no entry,
   // which the library renders as an em dash, same spirit as ADR 0013's stance against
@@ -498,14 +513,21 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       attackStrategy: byCategory("ATTACK_STRATEGY"),
       defenseStrategy: byCategory("DEFENSE_STRATEGY"),
       witnesses: data.witnesses.length > 0 ? t("badgeWitnesses", { count: data.witnesses.length }) : undefined,
-      damages: data.damagesSummary.headCount > 0 ? t("badgeHeads", { count: data.damagesSummary.headCount }) : undefined,
+      damages:
+        damagesActivity === "busy"
+          ? t("badgeUpdating")
+          : damagesActivity === "fresh"
+            ? t("badgeNew")
+            : data.damagesSummary.headCount > 0
+              ? t("badgeHeads", { count: data.damagesSummary.headCount })
+              : undefined,
       caseReconstruction: data.reconstruction ? t("badgeReady") : undefined,
       audioOverview: data.reconstruction?.audioFileId ? t("badgeReady") : undefined,
       decisions: data.decisions.length > 0 ? t("badgeDecisions", { count: data.decisions.length }) : undefined,
       theories: data.theories.length > 0 ? t("badgeTheories", { count: data.theories.length }) : undefined,
     }
     return badges
-  }, [snapshot.data, t])
+  }, [snapshot.data, t, damagesActivity])
 
   // Richer, still real-data-only summaries for Focus mode's stack cards — composites of 2-3
   // facts per pane (vs panelBadges' single metric), for the handful of pane types the redesign
@@ -1024,6 +1046,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const maximizedPanel = maximizedId ? layout.panels.find((p) => p.id === maximizedId) : undefined
 
   return (
+    <PaneActivityContext.Provider value={paneActivity}>
     <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
         {/* Case row */}
         <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
@@ -1061,7 +1084,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <span className="hidden shrink-0 rounded-md border border-riskmed/30 bg-riskmed/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-riskmed sm:inline">
             {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
           </span>
-          {shouldShowUpdatingAnalysis(refreshJob.data?.status) && (
+          {shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status) && (
             <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               {t("updatingAnalysis")}
@@ -1344,6 +1367,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                           {label}
                         </span>
+                        <PaneActivityMark panelId={panel.id} />
                         <PaneHeaderActions
                           t={t}
                           isMaximized={false}
@@ -1605,6 +1629,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     <span id="maximized-pane-title" className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                       {labelFor(maximizedPanel)}
                     </span>
+                    <PaneActivityMark panelId={maximizedPanel.id} />
                     <PaneHeaderActions
                       t={t}
                       isMaximized
@@ -1626,6 +1651,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       </div>
     </div>
+    </PaneActivityContext.Provider>
   )
 }
 
@@ -2193,6 +2219,7 @@ function ColumnStack({
                 <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">
                   {labelFor(panel)}
                 </span>
+                <PaneActivityMark panelId={panel.id} />
                 <PaneHeaderActions
                   t={t}
                   isMaximized={false}
@@ -2349,8 +2376,9 @@ function TabsArrangement({
                       active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <button type="button" onClick={() => setActives[groupIndex]?.(panel.id)}>
+                    <button type="button" onClick={() => setActives[groupIndex]?.(panel.id)} className="inline-flex items-center gap-1.5">
                       {labelFor(panel)}
+                      <PaneActivityMark panelId={panel.id} />
                     </button>
                     <button
                       type="button"
@@ -2482,6 +2510,7 @@ function FocusArrangement({
           focusPanel && (
             <div className="terminal-pane-header flex h-9 shrink-0 items-center gap-2 border-b border-border bg-muted px-3">
               <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[1.4px] text-foreground">{labelFor(focusPanel)}</span>
+              <PaneActivityMark panelId={focusPanel.id} />
               <PaneHeaderActions
                 t={t}
                 isMaximized={false}
@@ -2507,7 +2536,10 @@ function FocusArrangement({
               onClick={() => onFocus(panel.id)}
               className="flex flex-col gap-1 rounded-2xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-brand-gold/40"
             >
-              <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground">{labelFor(panel)}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground">{labelFor(panel)}</span>
+                <PaneActivityMark panelId={panel.id} />
+              </span>
               {summary && <span className="line-clamp-2 text-[11px] leading-4 text-muted-foreground">{summary}</span>}
             </button>
           )

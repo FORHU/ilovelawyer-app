@@ -867,6 +867,31 @@ export function useProposeDamagesMutation(caseId: string) {
   })
 }
 
+// A suggested update from new evidence (DamageClaim.aiProposedBasis): apply replaces the head's
+// figures (and certifies it when the document was the awaited evidence), dismiss drops it. Both can
+// move other heads (attorney's fees), so both refresh the whole snapshot.
+export function useApplyDamageProposalMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/apply`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDismissDamageProposalMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/dismiss`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
 export function useDeleteDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

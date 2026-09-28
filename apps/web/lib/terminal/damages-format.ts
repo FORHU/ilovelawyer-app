@@ -1,4 +1,4 @@
-import type { DamageBasis, DamageCategory, DamageClaim, DamagesSummary } from "@/lib/terminal/types"
+import { DAMAGE_AS_OF, type DamageBasis, type DamageCategory, type DamageClaim, type DamagesSummary } from "@/lib/terminal/types"
 
 // Pure helpers behind the Damages & Remedies panel: money formatting per tenant currency, the
 // ring's segment geometry, and the order heads are shown in. The figures themselves always come
@@ -97,6 +97,17 @@ export function monthsBetween(from: string, until: string): number | undefined {
   return Math.round((months + days / 30) * 100) / 100
 }
 
+/** Months a RATE_X_PERIOD basis covers, with an accruing period (untilDate "asOf") run to `today`. */
+export function basisMonths(
+  basis: Extract<DamageBasis, { kind: "RATE_X_PERIOD" }>,
+  today: Date = new Date(),
+): number | undefined {
+  if (basis.months !== undefined) return basis.months
+  if (!basis.fromDate || !basis.untilDate) return undefined
+  const until = basis.untilDate === DAMAGE_AS_OF ? today.toISOString().slice(0, 10) : basis.untilDate
+  return monthsBetween(basis.fromDate, until)
+}
+
 /**
  * The amount the editor shows while the lawyer types — a preview; the server's recompute is
  * what gets stored. `baseAmounts` is each non-derived head's current amount by category, for a
@@ -106,13 +117,33 @@ export function previewAmount(
   basis: DamageBasis,
   fixedAmount: number | null,
   baseAmounts: Partial<Record<DamageCategory, number>>,
+  today: Date = new Date(),
 ): number | undefined {
   if (basis.kind === "FIXED") return fixedAmount ?? undefined
   if (basis.kind === "RATE_X_PERIOD") {
-    const months =
-      basis.months ?? (basis.fromDate && basis.untilDate ? monthsBetween(basis.fromDate, basis.untilDate) : undefined)
+    const months = basisMonths(basis, today)
     return months === undefined ? undefined : Math.round(basis.monthlyRate * months * 100) / 100
   }
   const sum = basis.categories.reduce((total, c) => total + (baseAmounts[c] ?? 0), 0)
   return Math.round(sum * basis.percent) / 100
+}
+
+/** Do two sets of figures a document can state match — a FIXED amount, a monthly rate (and stated
+ * months), a percentage and what it's of? Mirrors figuresDiffer in the API's damages-proposal.ts,
+ * so the panel can tell "confirms the figure" from "states a new one" without comparing text. */
+export function sameFigures(
+  a: { basis: DamageBasis | null; amount: number | null },
+  b: { basis: DamageBasis | null; amount: number | null },
+): boolean {
+  const x = a.basis ?? { kind: "FIXED" as const }
+  const y = b.basis ?? { kind: "FIXED" as const }
+  if (x.kind !== y.kind) return false
+  if (x.kind === "FIXED") return a.amount === b.amount
+  if (x.kind === "RATE_X_PERIOD" && y.kind === "RATE_X_PERIOD") {
+    return x.monthlyRate === y.monthlyRate && (y.months === undefined || x.months === y.months)
+  }
+  if (x.kind === "PERCENT_OF" && y.kind === "PERCENT_OF") {
+    return x.percent === y.percent && [...x.categories].sort().join() === [...y.categories].sort().join()
+  }
+  return false
 }

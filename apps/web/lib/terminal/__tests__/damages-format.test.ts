@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
+  basisMonths,
   formatMoney,
   formatMoneyCompact,
   formatShare,
@@ -7,6 +8,7 @@ import {
   previewAmount,
   rangePercent,
   ringSegments,
+  sameFigures,
   sortDamageHeads,
 } from "../damages-format"
 
@@ -111,5 +113,31 @@ describe("previewAmount", () => {
     expect(monthsBetween("2025-01-15", "2026-07-15")).toBe(18)
     expect(monthsBetween("2025-01-31", "2025-03-01")).toBe(1.03)
     expect(monthsBetween("2025-03-01", "2025-01-01")).toBeUndefined()
+  })
+})
+
+describe("accruing periods", () => {
+  const today = new Date("2026-09-28T08:00:00Z")
+  const accruing = { kind: "RATE_X_PERIOD" as const, monthlyRate: 27000, fromDate: "2025-03-28", untilDate: "asOf" }
+
+  it("runs an accruing period to today, the way the API computes it", () => {
+    expect(basisMonths(accruing, today)).toBe(18)
+    expect(previewAmount(accruing, null, {}, today)).toBe(486000)
+    expect(previewAmount(accruing, null, {}, new Date("2026-10-28T08:00:00Z"))).toBe(27000 * 19)
+  })
+
+  it("prefers stated months, and needs a start date otherwise", () => {
+    expect(basisMonths({ kind: "RATE_X_PERIOD", monthlyRate: 1, months: 4 }, today)).toBe(4)
+    expect(basisMonths({ kind: "RATE_X_PERIOD", monthlyRate: 1, untilDate: "asOf" }, today)).toBeUndefined()
+  })
+})
+
+describe("sameFigures", () => {
+  const rate = (monthlyRate: number, extra = {}) => ({ basis: { kind: "RATE_X_PERIOD" as const, monthlyRate, ...extra }, amount: null })
+  it("matches the API's figuresDiffer", () => {
+    expect(sameFigures(rate(27000, { fromDate: "2025-03-28", untilDate: "asOf" }), rate(27000))).toBe(true)
+    expect(sameFigures(rate(27000), rate(28500))).toBe(false)
+    expect(sameFigures({ basis: null, amount: 5 }, { basis: { kind: "FIXED" }, amount: 5 })).toBe(true)
+    expect(sameFigures({ basis: null, amount: 5 }, rate(5))).toBe(false)
   })
 })

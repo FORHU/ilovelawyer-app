@@ -1,12 +1,13 @@
 import { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
-import type {
-  DamageBasis,
-  DamageCategory,
-  DamageClaim,
-  DamageClaimBody,
-  DamageStatus,
-  DamagesSummary,
+import {
+  DAMAGE_AS_OF,
+  type DamageBasis,
+  type DamageCategory,
+  type DamageClaim,
+  type DamageClaimBody,
+  type DamageStatus,
+  type DamagesSummary,
 } from "@/lib/terminal/types"
 import { DAMAGE_CATEGORY_ORDER, formatMoney, previewAmount } from "@/lib/terminal/damages-format"
 import { Field, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
@@ -46,6 +47,9 @@ interface Draft {
   months: string
   fromDate: string
   untilDate: string
+  /** Backwages keep running until the decision is final: the period ends "today" (untilDate asOf). */
+  accruing: boolean
+  highUntilDate: string
   percent: string
   categories: DamageCategory[]
   amountLow: string
@@ -59,24 +63,32 @@ interface Draft {
 const str = (n: number | null | undefined) => (n == null ? "" : String(n))
 const num = (s: string): number | null => (s.trim() === "" ? null : Number(s))
 
-function draftFrom(head: DamageClaim | null): Draft {
+function draftFrom(head: DamageClaim | null, accept: boolean): Draft {
   const basis = head?.basis ?? { kind: "FIXED" as const }
   const fees = !head || head.category === "ATTORNEYS_FEES"
+  // A rate with no period yet (an AI head from a payslip): start from "since a date, accruing to
+  // today" — how backwages usually run — so the lawyer only has to pick the start date.
+  const rateWithoutPeriod =
+    basis.kind === "RATE_X_PERIOD" && basis.months === undefined && !(basis.fromDate && basis.untilDate)
   return {
     category: head?.category ?? "ACTUAL",
     label: head?.label ?? "",
     kind: basis.kind,
     amount: basis.kind === "FIXED" ? str(head?.amount) : "",
     monthlyRate: basis.kind === "RATE_X_PERIOD" ? str(basis.monthlyRate) : "",
-    periodMode: basis.kind === "RATE_X_PERIOD" && basis.fromDate ? "dates" : "months",
+    periodMode: basis.kind === "RATE_X_PERIOD" && (basis.fromDate || rateWithoutPeriod) ? "dates" : "months",
     months: basis.kind === "RATE_X_PERIOD" ? str(basis.months) : "",
     fromDate: basis.kind === "RATE_X_PERIOD" ? (basis.fromDate ?? "").slice(0, 10) : "",
-    untilDate: basis.kind === "RATE_X_PERIOD" ? (basis.untilDate ?? "").slice(0, 10) : "",
+    untilDate:
+      basis.kind === "RATE_X_PERIOD" && basis.untilDate !== DAMAGE_AS_OF ? (basis.untilDate ?? "").slice(0, 10) : "",
+    accruing: basis.kind === "RATE_X_PERIOD" && (basis.untilDate === DAMAGE_AS_OF || rateWithoutPeriod),
+    highUntilDate: basis.kind === "RATE_X_PERIOD" ? (basis.highUntilDate ?? "").slice(0, 10) : "",
     percent: basis.kind === "PERCENT_OF" ? str(basis.percent) : fees ? DEFAULT_FEE_BASIS.percent : "",
     categories: basis.kind === "PERCENT_OF" ? basis.categories : DEFAULT_FEE_BASIS.categories,
     amountLow: str(head?.amountLow),
     amountHigh: str(head?.amountHigh),
-    status: head?.status ?? "PROVISIONAL",
+    // Accepting an AI head moves it to Supported, as the row's Accept button does.
+    status: accept && head?.status === "PROVISIONAL" ? "SUPPORTED" : (head?.status ?? "PROVISIONAL"),
     pendingEvidence: head?.pendingEvidence ?? "",
     legalBasis: head?.legalBasis ?? "",
     description: head?.description ?? "",
@@ -93,8 +105,16 @@ function basisFrom(d: Draft): DamageBasis | null {
       const months = num(d.months)
       return months == null ? null : { kind: "RATE_X_PERIOD", monthlyRate, months }
     }
-    if (!d.fromDate || !d.untilDate || d.untilDate < d.fromDate) return null
-    return { kind: "RATE_X_PERIOD", monthlyRate, fromDate: d.fromDate, untilDate: d.untilDate }
+    if (!d.fromDate) return null
+    if (!d.accruing && (!d.untilDate || d.untilDate < d.fromDate)) return null
+    if (d.highUntilDate && d.highUntilDate < d.fromDate) return null
+    return {
+      kind: "RATE_X_PERIOD",
+      monthlyRate,
+      fromDate: d.fromDate,
+      untilDate: d.accruing ? DAMAGE_AS_OF : d.untilDate,
+      ...(d.highUntilDate ? { highUntilDate: d.highUntilDate } : {}),
+    }
   }
   const percent = num(d.percent)
   if (percent == null || d.categories.length === 0) return null
@@ -105,11 +125,14 @@ export function DamageHeadEditor({
   head,
   summary,
   pending,
+  accept = false,
   onSave,
   onCancel,
 }: {
   /** The head being edited, or null to add a new one. */
   head: DamageClaim | null
+  /** Opened from "Set period & accept": saving also accepts the head (status Supported). */
+  accept?: boolean
   summary: DamagesSummary
   pending: boolean
   onSave: (body: DamageClaimBody & { category: DamageCategory }) => void
@@ -117,7 +140,7 @@ export function DamageHeadEditor({
 }) {
   const { t } = useTranslation("terminal")
   const id = useId()
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(head))
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(head, accept))
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
 
   const basis = basisFrom(draft)
@@ -158,6 +181,7 @@ export function DamageHeadEditor({
       }}
     >
       <p className={labelTextClass}>{head ? t("damageEditorEdit") : t("damageEditorAdd")}</p>
+      {accept ? <p className="text-[12px] text-muted-foreground">{t("damageEditorAcceptHint")}</p> : null}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label={t("damageCategoryLabel")} htmlFor={fid("category")}>
@@ -270,10 +294,34 @@ export function DamageHeadEditor({
                 <input
                   id={fid("until")}
                   type="date"
-                  required
+                  required={!draft.accruing}
+                  disabled={draft.accruing}
                   min={draft.fromDate || undefined}
-                  value={draft.untilDate}
+                  value={draft.accruing ? "" : draft.untilDate}
                   onChange={(e) => set("untilDate", e.target.value)}
+                  className={`${fieldClass} disabled:opacity-50`}
+                />
+              </Field>
+              <label
+                htmlFor={fid("accruing")}
+                className="inline-flex items-center gap-1.5 text-[13px] text-foreground sm:col-span-2"
+              >
+                <input
+                  id={fid("accruing")}
+                  type="checkbox"
+                  checked={draft.accruing}
+                  onChange={(e) => set("accruing", e.target.checked)}
+                  className="accent-brand-gold"
+                />
+                {t("damageAccruing")}
+              </label>
+              <Field label={t("damageHighUntilDate")} htmlFor={fid("highUntil")} hint={t("damageHighUntilDateHint")}>
+                <input
+                  id={fid("highUntil")}
+                  type="date"
+                  min={draft.fromDate || undefined}
+                  value={draft.highUntilDate}
+                  onChange={(e) => set("highUntilDate", e.target.value)}
                   className={fieldClass}
                 />
               </Field>
