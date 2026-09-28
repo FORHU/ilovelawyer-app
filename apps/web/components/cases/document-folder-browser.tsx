@@ -468,7 +468,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // there's no separate standalone-button state to render here anymore). Folders and documents
   // share this bar since acting on a folder just means bulk-acting on the documents in it (see
   // resolveSelectedDocumentIds above). Active and Archived share this bar but get different
-  // action buttons below (Archive/Delete vs. Restore) — selectableCount/selectedCount switch
+  // action buttons below (Archive vs. Restore/Delete) — selectableCount/selectedCount switch
   // source (active `documents` vs. `archivedDocuments`) based on showArchived, see their
   // derivation above.
   const selectionBar = selectableCount > 0 && selectMode && (
@@ -498,49 +498,31 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-1.5 @xs:gap-2">
         {showArchived ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                disabled={selectedCount === 0 || isBulkRestoring}
-                onClick={() => setConfirmingBulkRestore(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-blue-400"
-              >
-                {isBulkRestoring ? (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                ) : (
-                  <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                )}
-                <span className="hidden @xs:inline">{t("detail.restoreSelected")}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t("detail.restoreSelected")}</TooltipContent>
-          </Tooltip>
-        ) : (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
-                  onClick={() => setConfirmingBulkArchive(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-amber-400"
+                  disabled={selectedCount === 0 || isBulkRestoring || isBulkDeleting}
+                  onClick={() => setConfirmingBulkRestore(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-blue-600 transition-colors hover:border-blue-500/50 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-blue-400"
                 >
-                  {isBulkArchiving ? (
+                  {isBulkRestoring ? (
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
                   ) : (
-                    <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <ArchiveRestore className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   )}
-                  <span className="hidden @xs:inline">{t("detail.archiveSelected")}</span>
+                  <span className="hidden @xs:inline">{t("detail.restoreSelected")}</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
+              <TooltipContent>{t("detail.restoreSelected")}</TooltipContent>
             </Tooltip>
+            {/* Delete lives only in the Archived view — an active document has to be archived first. */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  disabled={selectedCount === 0 || isBulkDeleting || isBulkArchiving}
+                  disabled={selectedCount === 0 || isBulkRestoring || isBulkDeleting}
                   onClick={() => setConfirmingBulkDelete(true)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-red-400"
                 >
@@ -555,6 +537,25 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               <TooltipContent>{t("detail.deleteSelected")}</TooltipContent>
             </Tooltip>
           </>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={selectedCount === 0 || isBulkArchiving}
+                onClick={() => setConfirmingBulkArchive(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-xs font-semibold whitespace-nowrap text-amber-600 transition-colors hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 @xs:py-1 @xs:pr-3 @xs:pl-2.5 dark:text-amber-400"
+              >
+                {isBulkArchiving ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Archive className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                )}
+                <span className="hidden @xs:inline">{t("detail.archiveSelected")}</span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("detail.archiveSelected")}</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>
