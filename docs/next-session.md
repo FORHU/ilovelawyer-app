@@ -3,21 +3,11 @@
 Short list of what's open, most urgent first. Detail lives in the linked write-ups rather than
 being repeated here. Delete an item once it's done; delete the file when it's empty.
 
-## ⚠ Nothing from 2026-09-28 is committed yet
+## 2026-09-28 work is committed — not pushed
 
-All of it is sitting in two working trees:
-
-- **`ilovelawyer-app`** (`feature/tauri-migration`) — en-GB placeholder fix; `src-tauri/src` split
-  into one file per job; `.xlsx` preview sanitising (DOMPurify); production build fix
-  (`scripts/stage-web.js`); Google sign-in popup; drag-and-drop; stranded-pane fix; Legal Terminal
-  opens in the same window; UK/PH site chooser + memory; site in the title bar; new-tab links open
-  in the default browser; desktop ↔ browser login handoff (web + `src-tauri` deep links);
-  `src-tauri/.env.example` rewrite; docs.
-- **`ilovelawyer-api`** (`feature/tauri-desktop-poc`) — `ph.localhost` / `uk.localhost` in
-  `src/utils/tenant-host.ts`; login handoff endpoints (`POST /api/auth/handoff`,
-  `/handoff/preview`, `/handoff/consume`, `src/utils/handoff.ts`); tests for both.
-
-Commit them first — one commit per change reads best.
+One commit per feature on `feature/tauri-migration` (app) and `feature/tauri-desktop-poc` (api);
+`git log` has the detail. The Rust side is one commit, because its features share files. Nothing
+has been pushed yet. Left out on purpose: `ilovelawyer-api/yarn.lock` (line endings only).
 
 ## What changed on 2026-09-28, in one place
 
