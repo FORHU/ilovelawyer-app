@@ -21,6 +21,7 @@ const STRENGTHS: RatedFindingConfig = {
   jevFlagKeys: (jev) => (jev as StrengthJevCheck).flags.map((flag) => `strengthJevFlag.${flag}`),
   dimSubLine: (jev) => (jev as StrengthJevCheck).flags.includes("NOT_BORNE_OUT"),
   JevDetail: StrengthJevDetail,
+  upload: true,
 }
 
 function StrengthJevDetail({ finding }: { finding: CaseFinding }) {
