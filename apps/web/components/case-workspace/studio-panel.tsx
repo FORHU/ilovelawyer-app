@@ -12,6 +12,9 @@ import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import type { DecisionRecordPayload, FindingCategory } from "@/lib/terminal/types";
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
+import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history";
+import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs";
+import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
@@ -130,6 +133,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  const [audioOverviewView, setAudioOverviewView] = useState<AudioOverviewView>("current");
   // Collapsed by default — a sub-section of the Decisions tile (ilovelawyer-api#119's replay),
   // not its own tile, since it's turn-scoped the same way a decision is and would otherwise
   // compete with Decisions for the same "this turn's reasoning" attention. Keyed by promptIndex
@@ -951,7 +955,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 {t("workspace.dataTableEmpty")}
               </p>
             )
-          ) : audioConsultationId ? (
+          ) : (
+            <div className="flex h-full flex-col gap-3">
+              <AudioOverviewViewTabs view={audioOverviewView} onChange={setAudioOverviewView} />
+              <div className="min-h-0 flex-1">
+                {audioOverviewView === "history" ? <AudioOverviewHistory caseId={caseId} /> : audioConsultationId ? (
             activeAudioOverviewMessage ? (
               <div className="flex h-full flex-col gap-3">
                 {audioRenderError && (
@@ -981,14 +989,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   </div>
                 )}
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                  {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
-                    <div key={i}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold">
-                        {turn.speaker === "HOST_A" ? t("workspace.audioOverviewHostA") : t("workspace.audioOverviewHostB")}
-                      </p>
-                      <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
-                    </div>
-                  ))}
+                  <AudioOverviewTurns
+                    turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
+                    checks={activeAudioOverviewMessage.audioOverview?.checks}
+                  />
                 </div>
               </div>
             ) : (
@@ -1023,6 +1027,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
               {t("workspace.audioOverviewNoConsultation")}
             </p>
+          )}
+              </div>
+            </div>
           )}
         </div>
       )}

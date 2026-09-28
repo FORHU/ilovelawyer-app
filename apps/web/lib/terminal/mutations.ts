@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
+import type { AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
@@ -56,6 +57,8 @@ export const terminalKeys = {
     [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
   caseBriefHistory: (caseId: string) =>
     [...terminalKeys.all, "case-brief-history", caseId] as const,
+  audioOverviewHistory: (caseId: string) =>
+    [...terminalKeys.all, "audio-overview-history", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -1228,6 +1231,44 @@ export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled,
+  })
+}
+
+export interface AudioOverviewHistoryEntry {
+  id: string
+  messageId: string
+  consultationId: string
+  createdAt: string
+  status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
+  turns: AudioOverviewTurn[]
+  checks: AudioOverviewTurnCheck[]
+  /** null until the audio has been rendered (the script alone is generated first). */
+  audio: { id: string; fileUrl: string } | null
+}
+
+interface AudioOverviewHistoryPage {
+  items: AudioOverviewHistoryEntry[]
+  nextCursor: string | null
+}
+
+const AUDIO_OVERVIEW_HISTORY_PAGE_SIZE = 20
+
+/** Every Audio Overview generated for the case, newest first — same infinite-query shape as
+ * useCaseBriefHistoryQuery (limit always sent, since the backend only computes nextCursor when
+ * given one). Always refetched on mount: a new overview is created from chat, not from here, so
+ * there's no mutation in this file to invalidate it. */
+export function useAudioOverviewHistoryQuery(caseId: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: terminalKeys.audioOverviewHistory(caseId),
+    queryFn: ({ pageParam }: { pageParam: string | null }) => {
+      const params = new URLSearchParams({ limit: String(AUDIO_OVERVIEW_HISTORY_PAGE_SIZE) })
+      if (pageParam) params.set("cursor", pageParam)
+      return apiFetch<AudioOverviewHistoryPage>(`/api/my-cases/${caseId}/audio-overview/history?${params.toString()}`)
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    refetchOnMount: "always",
     enabled,
   })
 }

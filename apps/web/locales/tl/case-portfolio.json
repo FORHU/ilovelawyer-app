@@ -156,6 +156,15 @@
     "audioOverviewRenderError": "Hindi nagawa ang audio. Subukan ulit.",
     "audioOverviewHostA": "Host A",
     "audioOverviewHostB": "Host B",
+    "audioOverviewCurrentTab": "Kasalukuyan",
+    "audioOverviewHistoryTab": "Kasaysayan",
+    "audioOverviewHistoryLoading": "Nilo-load ang kasaysayan…",
+    "audioOverviewHistoryError": "Hindi ma-load ang kasaysayan ng audio overview.",
+    "audioOverviewHistoryEmpty": "Wala pang nagawang audio overview.",
+    "audioOverviewHistoryNoAudio": "Hindi pa na-render ang audio",
+    "audioOverviewHistoryTurns": "{{count}} linya",
+    "audioOverviewHistoryShowScript": "Ipakita ang script",
+    "audioOverviewHistoryHideScript": "Itago ang script",
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
   },
   "mindMapExpand": {
@@ -214,6 +223,11 @@
     "showLevels": "Ipakita ang mga antas",
     "upToLevel": "Hanggang antas {{level}}",
     "expandAll": "Buksan lahat"
+  },
+  "audioOverviewCheck": {
+    "supported": "Suportado ng datos ng kaso",
+    "unsupported": "Hindi suportado ng datos ng kaso",
+    "contradicted": "Salungat sa datos ng kaso"
   },
   "mindMapCheck": {
     "notFound": "Hindi makita sa binanggit na dokumento",

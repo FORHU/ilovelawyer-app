@@ -1,9 +1,13 @@
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2, Volume2 } from "lucide-react"
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
+import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history"
+import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs"
+import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
 import { EmptyNote, PanelBody, PanelRow, PanelRowList, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 // Not to be confused with CaseReconstructionPanel's audio (a single narrator reading Polly's
@@ -14,6 +18,26 @@ import { EmptyNote, PanelBody, PanelRow, PanelRowList, primaryBtnClass } from "@
 // use-audio-overview-player.tsx) instead of a plain native <audio controls> — the two surfaces
 // used to ship two different player UIs for the same data.
 export function AudioOverviewPanel({ caseId }: { caseId: string }) {
+  const [view, setView] = useState<AudioOverviewView>("current")
+
+  // The current view stays mounted (just hidden) while History is open, so the player's <audio>
+  // element — and whatever is playing — survives a tab switch.
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <AudioOverviewViewTabs view={view} onChange={setView} />
+      <div className={view === "current" ? "min-h-0 flex-1" : "hidden"}>
+        <AudioOverviewCurrent caseId={caseId} />
+      </div>
+      {view === "history" && (
+        <div className="min-h-0 flex-1 px-1 pb-1">
+          <AudioOverviewHistory caseId={caseId} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AudioOverviewCurrent({ caseId }: { caseId: string }) {
   const { t } = useTranslation(["terminal", "case-portfolio"])
   const { data: caseConsultations } = useConsultationsQuery(caseId)
   const consultationId = caseConsultations?.[0]?.id ?? null
@@ -117,18 +141,12 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
         </div>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <PanelRowList>
-          {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
-            <PanelRow key={i} className="flex-col items-start gap-1">
-              <p className="text-[10px] font-semibold tracking-wider text-brand-gold uppercase">
-                {turn.speaker === "HOST_A"
-                  ? t("case-portfolio:workspace.audioOverviewHostA")
-                  : t("case-portfolio:workspace.audioOverviewHostB")}
-              </p>
-              <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
-            </PanelRow>
-          ))}
-        </PanelRowList>
+        <div className="px-1">
+          <AudioOverviewTurns
+            turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
+            checks={activeAudioOverviewMessage.audioOverview?.checks}
+          />
+        </div>
       </div>
       {renderedAudioUrl && !playerBarDismissed && (
         <AudioOverviewPlayerBar
