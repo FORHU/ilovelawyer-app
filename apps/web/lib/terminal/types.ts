@@ -290,6 +290,13 @@ export interface SnapshotProcedureItem {
   /** Which source document an AI-generated item is grounded in. Null for lawyer-entered items
    * and for AI items the model didn't attribute to a specific document. */
   sourceLabel: string | null
+  /** Jev's verdict on a recommended-approach item against the case data. Absent/null for to-dos,
+   * lawyer-entered items, and while USE_JEV_CASE_STRATEGY is off server-side. */
+  check?: {
+    verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+    confidence: number
+    checkedAt: string
+  } | null
 }
 
 export interface SnapshotAuditEvent {
@@ -304,6 +311,15 @@ export interface SnapshotStaleness {
   refId: string
   staleReason: string
   staleAt: string
+}
+
+/** The Case Strategy panel's own freshness: when its plan/to-dos/dates were last generated, and
+ * how many case changes (documents, findings, evidence…) landed since. Absent on an API that
+ * predates it. */
+export interface SnapshotStrategyPanelStatus {
+  lastGeneratedAt: string | null
+  isStale: boolean
+  changedSince: number
 }
 
 export interface SnapshotMindMapStatus {
@@ -369,6 +385,7 @@ export interface CaseSnapshot {
   theories: CaseTheory[]
   annotations: Annotation[]
   staleness: SnapshotStaleness[]
+  strategyPanel?: SnapshotStrategyPanelStatus
   mindMap: SnapshotMindMapStatus
   /** Null until the case's first build; absent on an API that predates it. */
   caseMindMap?: SnapshotCaseMindMapStatus | null
