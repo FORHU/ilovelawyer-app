@@ -18,16 +18,29 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/node"],
+    "externalBin": [
+      "binaries/node"
+    ],
     "resources": {
       "C:\\.ilw-build\\web-standalone": "web-standalone"
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "ilovelawyer"
+        ]
+      }
     }
   }
 }

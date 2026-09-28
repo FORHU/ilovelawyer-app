@@ -1,111 +1,58 @@
+//! The I Love Lawyer desktop app: a native shell (Tauri) around the Next.js web app.
+//!
+//! The web app owns everything about cases, documents and the API. This Rust side only does what
+//! a browser tab can't: open real OS windows, place them on specific monitors, and notice other
+//! apps' windows. New here? Read `docs/desktop/getting-started.md` first.
+//!
+//! ## Where things live
+//!
+//! | File               | What it does                                                        |
+//! |--------------------|---------------------------------------------------------------------|
+//! | `lib.rs` (this)    | Startup: registers everything with Tauri and opens the first window |
+//! | `config.rs`        | Settings read from `src-tauri/.env`                                 |
+//! | `sidecar.rs`       | Starts/waits for the web server the windows load                    |
+//! | `shell.rs`         | Shared window helpers, id checks, the dashboard (`main`) window     |
+//! | `monitors.rs`      | Choosing which screen a window opens on                             |
+//! | `case_terminal.rs` | Command: open a case's Terminal window                              |
+//! | `panels.rs`        | Command: pop a panel out into its own window; closing rules         |
+//! | `docking.rs`       | Command + logic: dock a panel beside another app's window           |
+//! | `popups.rs`        | New windows/tabs: Google sign-in in-app, links → default browser   |
+//! | `deep_links.rs`    | `ilovelawyer://` links — a browser handing its sign-in to this app  |
+//! | `tenant_site.rs`   | Which site (UK/PH) the app opens on — remembers the last one        |
+//! | `window_intel/`    | Watching *other* apps' windows (Windows API)                        |
+//!
+//! A **command** is a Rust function the web page can call (marked `#[tauri::command]`). An
+//! **event** is a message Rust sends to the page (`app.emit(...)`). Both are reached from the web
+//! side only through `apps/web/lib/desktop/index.ts`.
+
+// Each `mod` line pulls in the file of the same name (or the folder, for `window_intel`).
+mod case_terminal;
+mod config;
+mod deep_links;
+mod docking;
+mod monitors;
+mod panels;
+mod popups;
+mod shell;
+mod sidecar;
+mod tenant_site;
 mod window_intel;
 
-use std::collections::HashMap;
-use std::sync::Mutex;
-use tauri::{
-    AppHandle, Emitter, Manager, Monitor, PhysicalPosition, PhysicalSize, RunEvent, Runtime, State,
-    WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
-};
-use window_intel::{DockGeometry, DockTarget, Rect};
-use tauri_plugin_shell::process::CommandChild;
-use tauri_plugin_shell::ShellExt;
+// `Manager` is a *trait*: importing it is what makes methods like `window.app_handle()` available.
+use tauri::{Manager, RunEvent, WindowEvent};
+use tauri_plugin_deep_link::DeepLinkExt;
 
-const HEALTH_CHECK_TIMEOUT_SECS: u64 = 20;
-const HEALTH_CHECK_REQUEST_TIMEOUT_SECS: u64 = 3;
-const DEFAULT_FRONTEND_PORT: u16 = 3002;
-const DEFAULT_WINDOW_TITLE: &str = "I Love Lawyer Terminal!";
+use config::Config;
+use deep_links::PendingLink;
+use panels::PanelWindows;
+use shell::{Shell, MAIN_WINDOW_LABEL};
+use sidecar::SidecarProcess;
 
-const MAIN_WINDOW_LABEL: &str = "main";
-const CASE_TERMINAL_LABEL_PREFIX: &str = "case-terminal-";
-const PANEL_LABEL_PREFIX: &str = "panel-";
-/// Separates the two ids in a panel's label. Must be a character Tauri allows in a window label
-/// (alphanumeric, `-`, `/`, `:`, `_`) but `validate_id` rejects, so the split is unambiguous:
-/// with a `-` separator, `("case-1", "notes")` and `("case", "1-notes")` produce the same label,
-/// and the second pop-out would focus the first's window and report the wrong ids on close.
-const PANEL_ID_SEPARATOR: char = ':';
-const PANEL_WIDTH: f64 = 560.0;
-const PANEL_HEIGHT: f64 = 680.0;
-/// Event sent to every window when a popped-out panel window closes, so the Terminal that
-/// popped it out can put the pane back on its grid (see ilovelawyer-app's lib/desktop).
-const PANEL_WINDOW_CLOSED_EVENT: &str = "panel-window-closed";
-
-/// Holds the sidecar's child process handle so it can be killed on app exit (see `run`'s
-/// `RunEvent::Exit` handling below). `None` whenever no local sidecar was spawned — dev mode,
-/// or `frontend_url` pointing at an already-deployed remote server.
-#[derive(Default)]
-struct SidecarProcess(Mutex<Option<CommandChild>>);
-
-/// What the window commands need to build a window: every window loads a path under the same
-/// base URL and shares one title.
-struct Shell {
-    base_url: String,
-    window_title: String,
-}
-
-/// One popped-out panel window: which window popped it out (closing that window closes the
-/// panel) and which case/panel it shows (sent back in `PANEL_WINDOW_CLOSED_EVENT`).
-struct PanelWindow {
-    owner_label: String,
-    case_id: String,
-    panel_id: String,
-}
-
-/// Popped-out panel windows, keyed by their window label.
-#[derive(Default)]
-struct PanelWindows(Mutex<HashMap<String, PanelWindow>>);
-
-#[derive(Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PanelWindowClosed {
-    case_id: String,
-    panel_id: String,
-}
-
-/// Desktop-shell-only config, loaded from `.env` (see `.env.example`) with hardcoded
-/// fallbacks. Deliberately just things specific to this Tauri shell itself — no app/API
-/// secrets belong here (this shell orchestrates windows,
-/// it never holds the application's own credentials).
-struct Config {
-    frontend_port: u16,
-    window_title: String,
-    /// Full base URL override (e.g. `https://ph-dev.ilovelawyer.com`) — points every window at
-    /// an already-deployed remote server instead of a local dev server/sidecar. When set, the
-    /// local sidecar is never spawned, since there's nothing local to run.
-    frontend_url: Option<String>,
-}
-
-impl Config {
-    fn load() -> Self {
-        // Missing .env is fine (e.g. a packaged production build) — fall back to defaults.
-        let _ = dotenvy::dotenv();
-
-        let frontend_port = std::env::var("FRONTEND_PORT")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(DEFAULT_FRONTEND_PORT);
-
-        let window_title =
-            std::env::var("WINDOW_TITLE").unwrap_or_else(|_| DEFAULT_WINDOW_TITLE.to_string());
-
-        let frontend_url = std::env::var("FRONTEND_URL")
-            .ok()
-            .map(|v| v.trim_end_matches('/').to_string())
-            .filter(|v| !v.is_empty());
-
-        Self { frontend_port, window_title, frontend_url }
-    }
-
-    /// The base origin every window loads, e.g. `http://localhost:3002` or
-    /// `https://ph-dev.ilovelawyer.com`. Deliberately `localhost`, not `127.0.0.1`, for the
-    /// local case — ilovelawyer-api's CORS allowlist (`CLIENT_URL`) is keyed off exact origin
-    /// strings and only lists the `localhost` form.
-    fn base_url(&self) -> String {
-        self.frontend_url
-            .clone()
-            .unwrap_or_else(|| format!("http://localhost:{}", self.frontend_port))
-    }
-}
-
+/// Starts the app. Called from `main.rs`.
+///
+/// Reading top to bottom: register shared state (`.manage`), register the commands the page may
+/// call (`.invoke_handler`), react to windows closing (`.on_window_event`), then once Tauri is
+/// ready (`.setup`) start the web server if needed and open the dashboard.
 pub fn run() {
     let config = Config::load();
     let base_url = config.base_url();
@@ -114,21 +61,69 @@ pub fn run() {
     let is_remote = config.frontend_url.is_some();
 
     tauri::Builder::default()
+        // Must be the first plugin. Clicking an `ilovelawyer://` link while the app is open makes
+        // Windows start a second copy; this stops it and passes the link to the running one
+        // (through the deep-link plugin below — see deep_links.rs). Also brings the window forward.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
+        // Shared state. Any command can ask for these by type, e.g. `State<'_, Shell>`.
         .manage(SidecarProcess::default())
         .manage(PanelWindows::default())
+        .manage(PendingLink::default())
         .manage(Shell { base_url: base_url.clone(), window_title: window_title.clone() })
-        .invoke_handler(tauri::generate_handler![open_case_terminal, open_panel_window, current_dock_target])
+        // Every command must be listed here — and in build.rs and capabilities/default.json —
+        // or the page can't call it. See docs/desktop/adding-features.md §3.
+        .invoke_handler(tauri::generate_handler![
+            case_terminal::open_case_terminal,
+            panels::open_panel_window,
+            docking::current_dock_target,
+        ])
         .on_window_event(|window, event| {
             if let WindowEvent::Destroyed = event {
-                handle_window_destroyed(window.app_handle(), window.label());
+                // Closing the dashboard quits the app (which also stops the sidecar — see the
+                // Exit handler below). Anything else might own or be a popped-out panel.
+                if window.label() == MAIN_WINDOW_LABEL {
+                    window.app_handle().exit(0);
+                } else {
+                    panels::handle_panel_windows_on_destroy(window.app_handle(), window.label());
+                }
             }
         })
         .setup(move |app| {
             window_intel::start(app.handle().clone());
+
+            // `ilovelawyer://` links (a browser handing over its sign-in — see deep_links.rs).
+            // register_all writes the scheme to the Windows registry, so links reach even a
+            // `tauri dev` build; the installer registers it too. Best-effort: without it, only
+            // that one feature is missing.
+            #[cfg(windows)]
+            if let Err(err) = app.deep_link().register_all() {
+                eprintln!("could not register ilovelawyer:// links: {err}");
+            }
+            let link_app = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for link in event.urls() {
+                    deep_links::handle(&link_app, &link);
+                }
+            });
+            // The app may have been *started* by a link, before anything was listening.
+            if let Ok(Some(links)) = app.deep_link().get_current() {
+                for link in links {
+                    deep_links::handle(app.handle(), &link);
+                }
+            }
+
             let app_handle = app.handle().clone();
             let base_url = base_url.clone();
             let window_title = window_title.clone();
+            // Startup waits on the network, so it runs in the background (`async`) rather than
+            // blocking Tauri while the web server comes up.
             tauri::async_runtime::spawn(async move {
                 // Spawn the bundled Next.js standalone server as a local sidecar only when
                 // there's no remote override and this isn't `tauri dev` (which expects
@@ -139,14 +134,18 @@ pub fn run() {
                 // true for `tauri build --debug`, a debug-profile *production* bundle that
                 // still needs its sidecar spawned like any other build.
                 if !is_remote && !cfg!(dev) {
-                    if let Err(err) = spawn_web_server_sidecar(&app_handle, frontend_port) {
+                    if let Err(err) = sidecar::spawn_web_server_sidecar(&app_handle, frontend_port) {
                         eprintln!("failed to spawn web server sidecar: {err}");
                         app_handle.exit(1);
                         return;
                     }
                 }
 
-                if let Err(err) = wait_for_server_ready(&base_url).await {
+                // The UK/PH site this user last ended up on, if it's a sibling of the configured
+                // address — so a PH user isn't sent to the UK site (and made to log in twice).
+                let start_url = tenant_site::start_url(&app_handle, &base_url);
+
+                if let Err(err) = sidecar::wait_for_server_ready(&start_url).await {
                     eprintln!("web server did not become ready: {err}");
                     app_handle.exit(1);
                     return;
@@ -155,10 +154,13 @@ pub fn run() {
                 // Every branch here exits rather than just logging: with no window open and no
                 // tray icon, a surviving process is invisible to the user, who sees the app
                 // "not start" and has to kill it from Task Manager.
-                if let Err(err) = open_main_window(&app_handle, &base_url, &window_title) {
+                if let Err(err) = shell::open_main_window(&app_handle, &start_url, &base_url, &window_title) {
                     eprintln!("failed to open main window: {err}");
                     app_handle.exit(1);
+                    return;
                 }
+                // A handoff link that started the app, now that there's a window to open it in.
+                deep_links::open_pending(&app_handle);
             });
 
             Ok(())
@@ -166,425 +168,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building the I Love Lawyer desktop app")
         .run(|app_handle, event| {
-            // Kill the sidecar (if one was spawned) when the app exits, so a closed desktop app
-            // never leaves an orphaned `node server.js` process running.
             if let RunEvent::Exit = event {
-                let state = app_handle.state::<SidecarProcess>();
-                let mut guard = state.0.lock().unwrap();
-                if let Some(child) = guard.take() {
-                    let _ = child.kill();
-                }
+                sidecar::stop(app_handle);
             }
         });
-}
-
-/// Spawns the bundled Next.js standalone server (`server.js`) via a portable Node sidecar
-/// binary. The sidecar name/binary must match `bundle.externalBin` in tauri.conf.json.
-/// Only used for a local production build — not `tauri dev`, and not when `FRONTEND_URL`
-/// points at an already-deployed remote server.
-fn spawn_web_server_sidecar(app: &AppHandle, frontend_port: u16) -> tauri::Result<()> {
-    let resource_dir = app.path().resource_dir()?;
-    let standalone_dir = resource_dir.join("web-standalone");
-
-    let (mut rx, child) = app
-        .shell()
-        .sidecar("node")
-        .map_err(|err| tauri::Error::Anyhow(err.into()))?
-        .current_dir(standalone_dir.clone())
-        .args(["server.js"])
-        .env("PORT", frontend_port.to_string())
-        // `localhost`, not `127.0.0.1`, so the sidecar binds whatever address the windows will
-        // actually resolve `localhost` to. These are *different addresses* on an IPv6-enabled
-        // machine: `localhost` resolves to `::1` first, so a sidecar bound to `127.0.0.1` is
-        // not reachable at the URL every window loads (see `Config::base_url`, which uses
-        // `localhost` deliberately for the API's CORS allowlist). Two processes can even hold
-        // the same port at once — one on `[::1]`, one on `127.0.0.1` — without either
-        // reporting EADDRINUSE, in which case the health check passes against whatever
-        // unrelated server got there first and the windows silently show *that* app.
-        .env("HOSTNAME", "localhost")
-        .spawn()
-        .map_err(|err| tauri::Error::Anyhow(err.into()))?;
-
-    *app.state::<SidecarProcess>().0.lock().unwrap() = Some(child);
-
-    // Surface sidecar stdout/stderr in the app's own log output for now; nothing in this
-    // pass depends on parsing it.
-    tauri::async_runtime::spawn(async move {
-        use tauri_plugin_shell::process::CommandEvent;
-        while let Some(event) = rx.recv().await {
-            match event {
-                CommandEvent::Stdout(line) => {
-                    print!("[web-server] {}", String::from_utf8_lossy(&line))
-                }
-                CommandEvent::Stderr(line) => {
-                    eprint!("[web-server] {}", String::from_utf8_lossy(&line))
-                }
-                CommandEvent::Error(err) => eprintln!("[web-server] error: {err}"),
-                _ => {}
-            }
-        }
-    });
-
-    Ok(())
-}
-
-/// Polls `{base_url}/homepage/terminal` until it responds or `HEALTH_CHECK_TIMEOUT_SECS`
-/// elapses. In local dev, this is really just waiting for `next dev` to finish its first
-/// compile; against a remote `base_url` it's just confirming the deployment is reachable.
-///
-/// Each attempt gets its own `HEALTH_CHECK_REQUEST_TIMEOUT_SECS` timeout — `reqwest::get`'s
-/// default client has none, so a connection that's accepted but never answered (a dead port
-/// still held open, a firewall dropping packets after the SYN) would hang that single `.await`
-/// forever, and the outer deadline below, only checked between completed attempts, would never
-/// be reached.
-async fn wait_for_server_ready(base_url: &str) -> Result<(), String> {
-    let url = format!("{base_url}/homepage/terminal");
-    let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(HEALTH_CHECK_TIMEOUT_SECS);
-    let client = reqwest::Client::builder()
-        .timeout(tokio::time::Duration::from_secs(HEALTH_CHECK_REQUEST_TIMEOUT_SECS))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    loop {
-        if client.get(&url).send().await.is_ok() {
-            return Ok(());
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return Err(format!("timed out waiting for {url}"));
-        }
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
-    }
-}
-
-/// Opens the one window that exists at launch: the dashboard (`{base_url}/homepage`), maximized
-/// on the primary monitor. Case Terminals and panels are opened later, on demand, by the web app
-/// calling `open_case_terminal` / `open_panel_window` — Tauri owns every window because it
-/// creates every window, rather than trying to find windows the page opened itself.
-fn open_main_window(app: &AppHandle, base_url: &str, window_title: &str) -> tauri::Result<()> {
-    let monitor = match app.primary_monitor()? {
-        Some(monitor) => Some(monitor),
-        None => sorted_monitors(app)?.into_iter().next(),
-    };
-
-    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, external_url(base_url, "/homepage"))
-        .title(window_title);
-
-    // Fallback for the (unexpected) case where the OS reports no monitors: still open a window
-    // so the app isn't unusable.
-    match monitor {
-        Some(monitor) => maximized_on(builder, &monitor).build()?,
-        None => builder.inner_size(1280.0, 800.0).build()?,
-    };
-    Ok(())
-}
-
-/// Opens the Case Terminal for `case_id`, or focuses it if it's already open — one window per
-/// case, labeled `case-terminal-{case_id}`, so later calls target that exact window.
-///
-/// Placed on the first monitor (left to right) that isn't the calling window's, so opening a
-/// case from the dashboard puts its Terminal beside it; with a single monitor it opens on top.
-/// Async because creating a window from a synchronous command deadlocks on Windows.
-#[tauri::command]
-async fn open_case_terminal(
-    app: AppHandle,
-    window: WebviewWindow,
-    shell: State<'_, Shell>,
-    case_id: String,
-) -> Result<(), String> {
-    validate_id("caseId", &case_id)?;
-    let label = format!("{CASE_TERMINAL_LABEL_PREFIX}{case_id}");
-    if focus_existing(&app, &label) {
-        return Ok(());
-    }
-
-    let current = window.current_monitor().map_err(|e| e.to_string())?;
-    let monitors = sorted_monitors(&app).map_err(|e| e.to_string())?;
-    let target = monitors
-        .iter()
-        .find(|m| current.as_ref().map_or(true, |c| !same_monitor(m, c)))
-        .or(current.as_ref())
-        .or(monitors.first());
-
-    let url = external_url(&shell.base_url, &format!("/homepage/terminal/{case_id}"));
-    let builder = WebviewWindowBuilder::new(&app, label, url).title(&shell.window_title);
-    let built = match target {
-        Some(monitor) => maximized_on(builder, monitor).build(),
-        None => builder.inner_size(1280.0, 800.0).build(),
-    };
-    built.map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-/// Pops a Terminal panel out into its own window (`panel-{case_id}-{panel_id}`), or focuses it
-/// if it's already out. The calling window becomes the panel's owner: when the owner closes,
-/// the panel closes with it (see `handle_window_destroyed`).
-///
-/// Placed near the right edge of the calling window's monitor, cascading when several are out —
-/// or, given `beside_window` (a `DockTarget::runtime_id`), docked beside that other app's window.
-/// Docking is best-effort: if that window has since closed or been minimized, the panel still
-/// opens, in its normal place.
-#[tauri::command]
-async fn open_panel_window(
-    app: AppHandle,
-    window: WebviewWindow,
-    shell: State<'_, Shell>,
-    panels: State<'_, PanelWindows>,
-    case_id: String,
-    panel_id: String,
-    beside_window: Option<u64>,
-) -> Result<(), String> {
-    validate_id("caseId", &case_id)?;
-    validate_id("panelId", &panel_id)?;
-    let label = panel_label(&case_id, &panel_id);
-    let dock = beside_window.and_then(|id| match window_intel::target_geometry(id) {
-        Ok(geometry) => Some(geometry),
-        Err(err) => {
-            eprintln!("docking skipped, using default placement: {err}");
-            None
-        }
-    });
-    if focus_existing(&app, &label) {
-        if let (Some(dock), Some(panel)) = (dock, app.get_webview_window(&label)) {
-            dock_panel(&panel, &dock).map_err(|e| e.to_string())?;
-        }
-        return Ok(());
-    }
-
-    // Resolve everything fallible up front, so the only thing that can fail after this panel's
-    // slot is reserved below is the window build itself (which rolls the slot back).
-    let url = external_url(&shell.base_url, &format!("/homepage/terminal/{case_id}/panel/{panel_id}"));
-    let current_monitor = window.current_monitor().map_err(|e| e.to_string())?;
-
-    // Read the count and insert under one lock: doing them separately lets two `open_panel_window`
-    // calls arriving close together (two pop-out buttons clicked in quick succession) both read
-    // the same count before either inserts, so both windows land on the same cascade offset
-    // instead of stacking distinctly.
-    let open_count = {
-        let mut map = panels.0.lock().unwrap();
-        let count = map.len() as f64;
-        map.insert(
-            label.clone(),
-            PanelWindow {
-                owner_label: window.label().to_string(),
-                case_id: case_id.clone(),
-                panel_id: panel_id.clone(),
-            },
-        );
-        count
-    };
-
-    let mut builder = WebviewWindowBuilder::new(&app, label.clone(), url)
-        .title(&shell.window_title)
-        .inner_size(PANEL_WIDTH, PANEL_HEIGHT)
-        // A docked panel is built hidden and shown once it's in place, so it never flashes at
-        // the default position first.
-        .visible(dock.is_none());
-
-    if dock.is_some() {
-        // Placed by `dock_panel` below.
-    } else if let Some(monitor) = current_monitor {
-        let scale = monitor.scale_factor();
-        let origin = monitor.position().to_logical::<f64>(scale);
-        let size = monitor.size().to_logical::<f64>(scale);
-        let cascade = (open_count % 8.0) * 32.0;
-        let x = origin.x + (size.width - PANEL_WIDTH - 48.0 - cascade).max(0.0);
-        let y = origin.y + 80.0 + cascade;
-        builder = builder.position(x, y);
-    }
-
-    let panel = match builder.build() {
-        Ok(panel) => panel,
-        Err(err) => {
-            panels.0.lock().unwrap().remove(&label);
-            return Err(err.to_string());
-        }
-    };
-    if let Some(dock) = dock {
-        // Whatever happens while docking, show the window: a built-but-hidden panel would leave
-        // its pane missing from the grid with no window to bring it back from.
-        let docked = dock_panel(&panel, &dock);
-        let _ = panel.show();
-        let _ = panel.set_focus();
-        docked.map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// The other app's window a panel can be docked beside right now, if any — for pages that mount
-/// after the last `window_intel::DOCK_TARGET_CHANGED_EVENT`.
-#[tauri::command]
-fn current_dock_target() -> Option<DockTarget> {
-    window_intel::current()
-}
-
-/// Moves and sizes `panel` beside the dock target, in physical pixels on the target's monitor.
-fn dock_panel(panel: &WebviewWindow, dock: &DockGeometry) -> tauri::Result<()> {
-    let width = (PANEL_WIDTH * dock.scale).round() as i32;
-    let min_height = (PANEL_HEIGHT * dock.scale).round() as i32;
-    // `rect` is where the panel's *visible* frame should go. Tauri positions and sizes the whole
-    // window, which on Windows 10/11 includes invisible resize borders around that frame (15px
-    // each side at 300%) — grow the rect by them, or the panel sits that far from the target.
-    let visible = window_intel::place_beside(dock.target, dock.work_area, width, min_height);
-    let borders = invisible_borders(panel);
-    let rect = Rect {
-        left: visible.left - borders.left,
-        top: visible.top - borders.top,
-        right: visible.right + borders.right,
-        bottom: visible.bottom + borders.bottom,
-    };
-
-    // Position first: crossing to a monitor with a different scale makes the window resize
-    // itself, and the size set afterwards has to win.
-    panel.set_position(PhysicalPosition::new(rect.left, rect.top))?;
-    // `set_size` sets the inner (web content) size. Subtract this window's own title bar and
-    // borders so its outer frame lines up with the target's.
-    let outer = panel.outer_size()?;
-    let inner = panel.inner_size()?;
-    let frame_width = outer.width.saturating_sub(inner.width);
-    let frame_height = outer.height.saturating_sub(inner.height);
-    panel.set_size(PhysicalSize::new(
-        (rect.width().max(0) as u32).saturating_sub(frame_width),
-        (rect.height().max(0) as u32).saturating_sub(frame_height),
-    ))
-}
-
-#[cfg(windows)]
-fn invisible_borders(window: &WebviewWindow) -> Rect {
-    window.hwnd().map(|hwnd| window_intel::invisible_borders(hwnd.0 as isize)).unwrap_or_default()
-}
-
-#[cfg(not(windows))]
-fn invisible_borders(_window: &WebviewWindow) -> Rect {
-    Rect::default()
-}
-
-/// Window lifecycle rules, run whenever any window is destroyed:
-/// - `main` closing exits the app (which also stops the sidecar — see `run`'s Exit handler).
-/// - A panel closing tells every window, so its Terminal can put the pane back on the grid.
-/// - Any other window closing closes the panels it popped out, so none are left orphaned.
-fn handle_window_destroyed(app: &AppHandle, label: &str) {
-    if label == MAIN_WINDOW_LABEL {
-        app.exit(0);
-        return;
-    }
-
-    let panels = app.state::<PanelWindows>();
-    // Collect under the lock, act after releasing it: closing a panel re-enters this handler.
-    let (closed_panel, owned_panels) = {
-        let mut map = panels.0.lock().unwrap();
-        let closed_panel = map.remove(label);
-        let owned: Vec<String> = map
-            .iter()
-            .filter(|(_, panel)| panel.owner_label == label)
-            .map(|(panel_label, _)| panel_label.clone())
-            .collect();
-        (closed_panel, owned)
-    };
-
-    if let Some(panel) = closed_panel {
-        let _ = app.emit(
-            PANEL_WINDOW_CLOSED_EVENT,
-            PanelWindowClosed { case_id: panel.case_id, panel_id: panel.panel_id },
-        );
-    }
-    for panel_label in owned_panels {
-        if let Some(panel_window) = app.get_webview_window(&panel_label) {
-            let _ = panel_window.close();
-        }
-    }
-}
-
-/// The label for a popped-out panel window. See `PANEL_ID_SEPARATOR` for why it isn't `-`.
-fn panel_label(case_id: &str, panel_id: &str) -> String {
-    format!("{PANEL_LABEL_PREFIX}{case_id}{PANEL_ID_SEPARATOR}{panel_id}")
-}
-
-/// Case and panel ids become part of a window label and a URL path, so only plain id
-/// characters are accepted — anything else (`/`, `..`, `?`) is rejected outright.
-fn validate_id(name: &str, value: &str) -> Result<(), String> {
-    let valid = !value.is_empty()
-        && value.len() <= 64
-        && value.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-    if valid {
-        Ok(())
-    } else {
-        Err(format!("invalid {name}"))
-    }
-}
-
-/// Brings an already-open window to the front. Returns false if no window has that label.
-fn focus_existing(app: &AppHandle, label: &str) -> bool {
-    let Some(window) = app.get_webview_window(label) else {
-        return false;
-    };
-    let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
-    true
-}
-
-/// Connected monitors sorted by physical position (x, then y for stacked monitors) rather than
-/// raw OS enumeration order, which isn't documented as stable or spatially meaningful.
-/// Detected on each call, so a monitor plugged in mid-session is picked up by the next window.
-fn sorted_monitors(app: &AppHandle) -> tauri::Result<Vec<Monitor>> {
-    let mut monitors = app.available_monitors()?;
-    monitors.sort_by_key(|m| (m.position().x, m.position().y));
-    Ok(monitors)
-}
-
-fn same_monitor(a: &Monitor, b: &Monitor) -> bool {
-    a.position() == b.position() && a.size() == b.size()
-}
-
-/// Maximized, not fullscreen: fills the monitor's actual work area and respects the taskbar,
-/// while keeping normal window chrome (title bar, controls).
-fn maximized_on<'a, R: Runtime, M: Manager<R>>(
-    builder: WebviewWindowBuilder<'a, R, M>,
-    monitor: &Monitor,
-) -> WebviewWindowBuilder<'a, R, M> {
-    let position = monitor.position().to_logical::<f64>(monitor.scale_factor());
-    builder.position(position.x, position.y).maximized(true)
-}
-
-/// `path` is always built here from ids already passed through `validate_id`, never handed in
-/// by the page — that's what keeps this concatenation safe, since an id can't contain the `@`,
-/// `/` or `:` needed to retarget the URL's authority. Keep it that way: if a command ever takes
-/// a caller-supplied path, this must resolve it against `base_url` and reject anything landing
-/// outside that origin instead. A parse failure here can therefore only mean a malformed base
-/// URL in config — a startup misconfiguration, not a runtime input error.
-fn external_url(base_url: &str, path: &str) -> WebviewUrl {
-    WebviewUrl::External(
-        format!("{base_url}{path}")
-            .parse()
-            .expect("configured frontend URL must be a valid URL"),
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn accepts_plain_ids() {
-        let max_len = "x".repeat(64);
-        for id in ["a", "A1", "case-123", "with_underscore", max_len.as_str()] {
-            assert!(validate_id("id", id).is_ok(), "{id:?} should be accepted");
-        }
-    }
-
-    /// These are the characters that would let an id escape its window label or URL path.
-    #[test]
-    fn rejects_ids_that_could_escape_a_label_or_path() {
-        let too_long = "x".repeat(65);
-        for id in ["", "a/b", "..", "a?b", "a b", "@evil.com", "é", ":", too_long.as_str()] {
-            assert!(validate_id("id", id).is_err(), "{id:?} should be rejected");
-        }
-    }
-
-    /// `-` is a legal id character, so a `-` separator would collide these two labels: the
-    /// second pop-out would focus the first's window instead of opening its own.
-    #[test]
-    fn panel_labels_are_unambiguous() {
-        assert_ne!(panel_label("case-1", "notes"), panel_label("case", "1-notes"));
-    }
 }
