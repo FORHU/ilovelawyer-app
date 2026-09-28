@@ -8,8 +8,10 @@ import {
   useDeleteWitnessMutation,
   useScoreWitnessesMutation,
   useUpdateWitnessMutation,
+  useSetWitnessFactorMutation,
 } from "@/lib/terminal/mutations"
-import type { Witness, WitnessStatus } from "@/lib/terminal/types"
+import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } from "@/lib/terminal/types"
+import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
@@ -24,11 +26,31 @@ type WitnessData = Partial<Witness> & { name: string }
 
 // Reads the graph-view projection (view_type=witnesses) instead of slicing CaseSnapshot, so a
 // witness added/removed from any mounted panel refreshes this one via the shared query cache.
-export function WitnessPanel({ caseId }: { caseId: string }) {
+// A proof only reads as "Matches" when the server's check was this sure; otherwise it is shown as
+// not confirmed. Mirrors PROOF_CONFIRM_MIN_CONFIDENCE in the API.
+const PROOF_CONFIRM_MIN_CONFIDENCE = 0.6
+
+// The score reads by its value, not by the status the lawyer has set: an 85 on an Incomplete
+// witness is still a strong score. Cut-offs match the API's bands.
+function scoreTextClass(value: number): string {
+  if (value >= 75) return "text-emerald-500"
+  if (value >= 55) return "text-amber-500"
+  if (value >= 35) return "text-orange-500"
+  return "text-red-400"
+}
+
+export function WitnessPanel({
+  caseId,
+  onJumpToPanel,
+}: {
+  caseId: string
+  onJumpToPanel?: (id: PanelId) => void
+}) {
   const { t } = useTranslation("terminal")
   const queryClient = useQueryClient()
   const create = useCreateWitnessMutation(caseId)
   const update = useUpdateWitnessMutation(caseId)
+  const setFactor = useSetWitnessFactorMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
   const score = useScoreWitnessesMutation(caseId)
   const job = useAiJobStatus(caseId, "witnessScoring")
@@ -39,6 +61,14 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
   const [summary, setSummary] = useState("")
   const [openReasons, setOpenReasons] = useState<Set<string>>(new Set())
   const [openQuotes, setOpenQuotes] = useState<Set<string>>(new Set())
+  const [proofFor, setProofFor] = useState<{ nodeId: string; key: string } | null>(null)
+  const [proofDoc, setProofDoc] = useState("")
+  const [proofNote, setProofNote] = useState("")
+  const [factorFor, setFactorFor] = useState<{ nodeId: string; factor: string } | null>(null)
+  const [factorAnswer, setFactorAnswer] = useState("")
+  const [factorNote, setFactorNote] = useState("")
+  const docs = useCaseDocumentsQuery(caseId).data ?? []
+  const docName = (id: string) => docs.find((d) => d.id === id)?.name ?? t("witnessProofDocGone")
   const graphView = useGraphViewQuery(caseId, "witnesses")
   const witnesses = (graphView.data?.nodes ?? []).map((node) => ({
     node,
@@ -173,6 +203,33 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
             const reasonsOpen = openReasons.has(node.id)
             const quoteOpen = openQuotes.has(node.id)
             const aiFound = w.source === "AI"
+            // Old ticks were bare keys with no proof; only entries with a proof document count.
+            const doneList = (w.needsDone ?? []).filter((d): d is WitnessNeedDone => typeof d === "object" && d !== null)
+            const doneByKey = new Map(doneList.map((d) => [d.key, d]))
+            const needs: WitnessNeed[] = w.aiFactors?.needs ?? []
+            const openNeeds = needs.filter((n) => !doneByKey.has(n.key))
+            const asInput = (d: WitnessNeedDone) => ({ key: d.key, documentId: d.documentId, note: d.note })
+            const toggleNeed = (key: string) => {
+              if (doneByKey.has(key)) {
+                update.mutate({ id: node.refId, needsDone: doneList.filter((d) => d.key !== key).map(asInput) })
+              } else {
+                setProofFor({ nodeId: node.id, key })
+                setProofDoc("")
+                setProofNote("")
+              }
+            }
+            const confirmProof = () => {
+              if (!proofFor || !proofDoc) return
+              update.mutate(
+                {
+                  id: node.refId,
+                  needsDone: [...doneList.map(asInput), { key: proofFor.key, documentId: proofDoc, note: proofNote.trim() || undefined }],
+                },
+                { onSuccess: () => setProofFor(null) },
+              )
+            }
+            const band = w.aiFactors?.band ?? null
+            const factorView = w.aiFactors?.factorView ?? []
             const commitCredibility = (value: number) => {
               if (value !== credibility) update.mutate({ id: node.refId, credibilityOverride: value })
             }
@@ -259,7 +316,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
                     />
                   </div>
-                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${style.text}`}>
+                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${hasScore ? scoreTextClass(credibility) : style.text}`}>
                     {hasScore ? credibility : "—"}
                   </span>
                 </div>
@@ -268,7 +325,9 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                     {override !== null
                       ? t("witnessManualScore")
                       : ai !== null
-                        ? t("witnessAiScore")
+                        ? band
+                          ? `${t("witnessAiScore")} · ${t(`witnessBand${band[0]}${band.slice(1).toLowerCase()}`)} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}${w.aiFactors?.reviewCount ? ` \u00b7 ${t("witnessLowConfidence", { count: w.aiFactors.reviewCount })}` : ""}`
+                          : t("witnessAiScore")
                         : scoredNoData
                           ? t("witnessNotEnoughData")
                           : t("witnessNotScored")}
@@ -283,7 +342,7 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       {t("witnessResetToAi")} ({ai})
                     </button>
                   ) : null}
-                  {reasons.length > 0 ? (
+                  {reasons.length > 0 || factorView.length > 0 ? (
                     <button
                       type="button"
                       onClick={() => toggleReasons(node.id)}
@@ -307,6 +366,61 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                     </span>
                   ) : null}
                 </div>
+                {reasonsOpen && factorView.length > 0 ? (
+                  <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={labelTextClass}>{t("witnessFactorsTitle")}</p>
+                      {onJumpToPanel ? (
+                        <button
+                          type="button"
+                          onClick={() => onJumpToPanel("evidence")}
+                          className="text-[12px] underline underline-offset-2 hover:text-foreground"
+                        >
+                          {t("witnessShowInDocs")}
+                        </button>
+                      ) : null}
+                    </div>
+                    <ul className="flex flex-col gap-2.5">
+                      {factorView.map((f) => (
+                        <li key={f.factor} className="flex flex-col gap-0.5">
+                          <p>
+                            <span className="font-medium">{f.label}:</span>{" "}
+                            {f.override ? f.override.answerLabel : f.answerLabel ?? t("witnessFactorNotShown")}
+                          </p>
+                          <p className={labelTextClass}>
+                            {f.override
+                              ? t("witnessFactorYours", { answer: f.override.note || "-" })
+                              : f.by === "JEV"
+                                ? t("witnessFactorByJev")
+                                : f.by === "AI"
+                                  ? t("witnessFactorByChatWonder")
+                                  : ""}
+                            {!f.override && f.by === "JEV" && f.confidence !== null
+                              ? ` \u00b7 ${t("witnessFactorSure", { pct: Math.round(f.confidence * 100) })}`
+                              : ""}
+                            {f.lowConfidence ? <span className="text-amber-500">{" \u00b7 "}{t("witnessFactorCheck")}</span> : null}
+                          </p>
+                          {f.quote ? (
+                            <blockquote className="border-l-2 border-border pl-2 italic text-muted-foreground">
+                              {f.quote}
+                              <span className="not-italic">
+                                {" \u2014 "}
+                                {f.quoteVerified
+                                  ? t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })
+                                  : t("witnessFactorQuoteMissing")}
+                              </span>
+                            </blockquote>
+                          ) : f.answerLabel ? (
+                            <p className="text-muted-foreground">{t("witnessFactorNoQuote")}</p>
+                          ) : null}
+                          {f.otherReading ? (
+                            <p className="text-amber-500">{t("witnessFactorOther", { answer: f.otherReading })}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 {reasonsOpen && reasons.length > 0 ? (
                   <ul className="flex flex-col gap-1.5 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
                     {reasons.map((r, i) => (
@@ -316,6 +430,209 @@ export function WitnessPanel({ caseId }: { caseId: string }) {
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {needs.length > 0 ? (
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <p className={labelTextClass}>
+                      {t("witnessNeeds")}
+                      {openNeeds.length > 0 ? ` · ${openNeeds.length}` : ""}
+                    </p>
+                    <ul className="mt-1.5 flex flex-col gap-1.5 text-[12px] text-foreground">
+                      {needs.map((n) => {
+                        const doneItem = doneByKey.get(n.key)
+                        const proofOpen = proofFor?.nodeId === node.id && proofFor.key === n.key
+                        const factorOpen = !!n.factor && factorFor?.nodeId === node.id && factorFor.factor === n.factor
+                        const confirmed =
+                          doneItem?.match?.verdict === "SATISFIES" && doneItem.match.confidence >= PROOF_CONFIRM_MIN_CONFIDENCE
+                        return (
+                        <li key={n.key} className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={!!doneItem}
+                            onChange={() => toggleNeed(n.key)}
+                            disabled={update.isPending}
+                            aria-label={t("witnessNeedsDone")}
+                            className="mt-0.5 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                          <span className={doneItem ? "text-muted-foreground" : undefined}>
+                            {n.text}
+                            {n.link === "STATEMENT" && !w.statementReceived ? (
+                              <>
+                                {" "}
+                                <button
+                                  type="button"
+                                  onClick={() => update.mutate({ id: node.refId, statementReceived: true })}
+                                  disabled={update.isPending}
+                                  className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                                >
+                                  {t("witnessMarkReceived")}
+                                </button>
+                              </>
+                            ) : null}
+                          </span>
+                          {!doneItem && n.link === "EVIDENCE" && onJumpToPanel ? (
+                            <button
+                              type="button"
+                              onClick={() => onJumpToPanel("evidence")}
+                              className="ml-2 text-[12px] underline underline-offset-2 hover:text-foreground"
+                            >
+                              {t("witnessOpenEvidence")}
+                            </button>
+                          ) : null}
+                          {!doneItem && n.link === "FACTOR" && n.options ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFactorFor(factorOpen ? null : { nodeId: node.id, factor: n.factor! })
+                                setFactorAnswer("")
+                                setFactorNote("")
+                              }}
+                              aria-expanded={factorOpen}
+                              className="ml-2 text-[12px] underline underline-offset-2 hover:text-foreground"
+                            >
+                              {t("witnessSetYourself")}
+                            </button>
+                          ) : null}
+                          {factorOpen && n.options ? (
+                            <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
+                              {n.question ? <p className="text-[12px] text-foreground">{n.question}</p> : null}
+                              <select
+                                value={factorAnswer}
+                                onChange={(e) => setFactorAnswer(e.target.value)}
+                                aria-label={t("witnessFactorChoose")}
+                                className={fieldClass}
+                              >
+                                <option value="">{t("witnessFactorChoose")}</option>
+                                {n.options.map((o) => (
+                                  <option key={o.value} value={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={factorNote}
+                                onChange={(e) => setFactorNote(e.target.value)}
+                                placeholder={t("witnessFactorNote")}
+                                aria-label={t("witnessFactorNote")}
+                                className={fieldClass}
+                              />
+                              {setFactor.isError && setFactor.error instanceof Error ? (
+                                <p className="text-[11px] text-danger">{setFactor.error.message}</p>
+                              ) : null}
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!factorAnswer || !factorNote.trim() || setFactor.isPending}
+                                  onClick={() =>
+                                    setFactor.mutate(
+                                      { id: node.refId, factor: n.factor!, answer: factorAnswer, note: factorNote.trim() },
+                                      { onSuccess: () => setFactorFor(null) },
+                                    )
+                                  }
+                                  className={primaryBtnClass}
+                                >
+                                  {t("witnessFactorSave")}
+                                </button>
+                                <button type="button" onClick={() => setFactorFor(null)} className={ghostBtnClass}>
+                                  {t("witnessProofCancel")}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                          {doneItem ? (
+                            <>
+                              <p className={`mt-1 ${labelTextClass}`}>
+                                {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                {" \u00b7 "}
+                                <span className={confirmed ? "text-emerald-500" : "text-amber-500"}>
+                                  {confirmed ? t("witnessProofMatches") : t("witnessProofUnconfirmed")}
+                                </span>
+                                {" \u00b7 "}
+                                {t("witnessNotReflected")}
+                              </p>
+                              {doneItem.note ? <p className="mt-0.5 text-[12px] text-muted-foreground">{doneItem.note}</p> : null}
+                            </>
+                          ) : null}
+                          {proofOpen ? (
+                            <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
+                              <p className="text-[12px] text-foreground">{t("witnessProofPrompt")}</p>
+                              <select
+                                value={proofDoc}
+                                onChange={(e) => setProofDoc(e.target.value)}
+                                aria-label={t("witnessProofSelect")}
+                                className={fieldClass}
+                              >
+                                <option value="">{t("witnessProofSelect")}</option>
+                                {docs.map((d) => (
+                                  <option key={d.id} value={d.id}>
+                                    {d.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                value={proofNote}
+                                onChange={(e) => setProofNote(e.target.value)}
+                                placeholder={t("witnessProofNote")}
+                                aria-label={t("witnessProofNote")}
+                                className={fieldClass}
+                              />
+                              {update.isError && update.error instanceof Error ? (
+                                <p className="text-[11px] text-danger">{update.error.message}</p>
+                              ) : null}
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={confirmProof}
+                                  disabled={!proofDoc || update.isPending}
+                                  className={primaryBtnClass}
+                                >
+                                  {t("witnessProofConfirm")}
+                                </button>
+                                <button type="button" onClick={() => setProofFor(null)} className={ghostBtnClass}>
+                                  {t("witnessProofCancel")}
+                                </button>
+                                {onJumpToPanel ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJumpToPanel("evidence")}
+                                    className="text-[12px] underline underline-offset-2 hover:text-foreground"
+                                  >
+                                    {t("witnessProofOpenDocs")}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          </div>
+                        </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+                {(w.aiFactors?.overrideList?.length ?? 0) > 0 ? (
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <p className={labelTextClass}>{t("witnessSetByYou")}</p>
+                    <ul className="mt-1.5 flex flex-col gap-1.5 text-[12px] text-foreground">
+                      {w.aiFactors!.overrideList!.map((o) => (
+                        <li key={o.factor} className="flex items-start justify-between gap-2">
+                          <span>
+                            <span className="font-medium">{o.label}:</span> {o.answerLabel}
+                            {o.note ? <span className="text-muted-foreground"> — {o.note}</span> : null}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={setFactor.isPending}
+                            onClick={() => setFactor.mutate({ id: node.refId, factor: o.factor, answer: null })}
+                            className="shrink-0 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                          >
+                            {t("witnessFactorRemove")}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
               </PanelRow>
             )

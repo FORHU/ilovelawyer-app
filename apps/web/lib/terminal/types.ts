@@ -408,6 +408,58 @@ export interface CaseFinding {
 
 export type WitnessStatus = "READY" | "ADVERSE" | "OUTSTANDING"
 
+/** One "what's needed" item: a link to where the app settles it, or instructions only. */
+export interface WitnessNeed {
+  key: string
+  text: string
+  link: "STATEMENT" | "EVIDENCE" | "FACTOR" | null
+  factor?: string
+  /** For a FACTOR item: the question and the options a lawyer can pick. */
+  question?: string
+  options?: { value: string; label: string }[]
+}
+
+/** One row of the "Why?" table: a factor's answer, who gave it, and the evidence for it. */
+export interface WitnessFactorView {
+  factor: string
+  label: string
+  answerLabel: string | null
+  by: "JEV" | "AI" | "NONE"
+  confidence: number | null
+  lowConfidence: boolean
+  quote: string | null
+  quoteVerified: boolean
+  documentName: string | null
+  otherReading?: string
+  override?: { answerLabel: string; note: string }
+}
+
+/** Rubric audit written by the scorer. Only the parts the panel reads are typed. */
+export interface WitnessAiFactors {
+  band: "HIGH" | "MODERATE" | "LOW" | "WEAK" | null
+  /** Points that could be assessed, out of 100. */
+  assessable: number
+  insufficientReason: string | null
+  needs?: WitnessNeed[]
+  /** How many counted answers Jev was unsure about. */
+  reviewCount?: number
+  /** The lawyer's own factor answers, in plain words. */
+  overrideList?: { factor: string; label: string; answerLabel: string; note: string; at: string }[]
+  /** The factor table shown under "Why?". */
+  factorView?: WitnessFactorView[]
+}
+
+/** A ticked-off need. The proof is a document or photo from the case's Documents. `match` is what
+ * the server made of the fit between that document and the requirement. */
+export interface WitnessNeedDone {
+  key: string
+  documentId: string
+  note?: string
+  by: string
+  at: string
+  match?: { verdict: "SATISFIES" | "PARTLY" | "CANNOT_TELL"; confidence: number }
+}
+
 export interface Witness {
   id: string
   caseId: string
@@ -425,6 +477,9 @@ export interface Witness {
   aiCredibility: number | null
   aiRationale: { text: string; source: string | null }[] | null
   aiSuggestedStatus: WitnessStatus | null
+  aiFactors: WitnessAiFactors | null
+  /** Keys of "what's needed" items the lawyer has ticked off. */
+  needsDone: (WitnessNeedDone | string)[] | null
   credibilityOverride: number | null
   scoredAt: string | null
   statementDueOn: string | null
