@@ -5,6 +5,7 @@ import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
 import { useAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
+import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history"
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
@@ -185,6 +186,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           onSkip={skip}
           onCycleRate={cycleRate}
           onClose={dismissPlayerBar}
+          onDownload={() => triggerBriefDownload(renderedAudioUrl)}
           formatDuration={formatDuration}
         />
       )}

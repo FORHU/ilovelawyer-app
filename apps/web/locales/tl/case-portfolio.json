@@ -163,6 +163,7 @@
     "audioOverviewHistoryEmpty": "Wala pang nagawang audio overview.",
     "audioOverviewHistoryShowScript": "Ipakita ang script",
     "audioOverviewHistoryHideScript": "Itago ang script",
+    "audioOverviewDownload": "I-download ang audio",
     "audioOverviewStatus": {
       "ready": "Handa",
       "rendering": "Nire-render",

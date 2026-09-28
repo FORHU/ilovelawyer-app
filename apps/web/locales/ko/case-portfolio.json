@@ -163,6 +163,7 @@
     "audioOverviewHistoryEmpty": "아직 생성된 오디오 개요가 없습니다.",
     "audioOverviewHistoryShowScript": "스크립트 보기",
     "audioOverviewHistoryHideScript": "스크립트 숨기기",
+    "audioOverviewDownload": "오디오 다운로드",
     "audioOverviewStatus": {
       "ready": "준비됨",
       "rendering": "렌더링 중",

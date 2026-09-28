@@ -12,6 +12,7 @@ import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import type { DecisionRecordPayload, FindingCategory } from "@/lib/terminal/types";
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
+import { triggerBriefDownload } from "@/lib/terminal/download-brief";
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history";
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs";
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns";
@@ -1046,6 +1047,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onSkip={skipAudioOverview}
           onCycleRate={cycleAudioOverviewRate}
           onClose={dismissPlayerBar}
+          onDownload={() => triggerBriefDownload(renderedAudioUrl)}
           formatDuration={formatDuration}
         />
       )}

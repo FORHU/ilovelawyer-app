@@ -297,6 +297,7 @@
     "audioOverviewHistoryEmpty": "No audio overviews generated yet.",
     "audioOverviewHistoryShowScript": "Show script",
     "audioOverviewHistoryHideScript": "Hide script",
+    "audioOverviewDownload": "Download audio",
     "audioOverviewStatus": {
       "ready": "Ready",
       "rendering": "Rendering",

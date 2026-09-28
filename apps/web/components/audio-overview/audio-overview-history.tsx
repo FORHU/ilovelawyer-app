@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronDown, Loader2, Pause, Play } from "lucide-react"
+import { ChevronDown, Download, Loader2, Pause, Play } from "lucide-react"
 import { useAudioOverviewHistoryQuery, type AudioOverviewHistoryEntry } from "@/lib/terminal/mutations"
+import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
 
 function formatEntryDate(iso: string): string {
@@ -156,6 +157,16 @@ function HistoryEntry({
         >
           {t(`workspace.audioOverviewStatus.${state}`)}
         </span>
+        {entry.audio && (
+          <button
+            type="button"
+            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl)}
+            aria-label={t("workspace.audioOverviewDownload")}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
