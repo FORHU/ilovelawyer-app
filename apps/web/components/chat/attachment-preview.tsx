@@ -16,6 +16,7 @@ import {
   type MessageAttachment,
 } from "@/components/chat/message-attachments";
 import { apiFetch } from "@/lib/fetch";
+import { sanitizeSheetHtml } from "@/lib/chat/sanitize-sheet-html";
 
 interface AttachmentPreviewProps {
   attachment: MessageAttachment;
@@ -194,7 +195,8 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
           separateSheets: true,
         })) as string[];
         if (cancelled) return;
-        setXlsxSheets(sheets.map(fixTransparentCellColors));
+        // Sanitized before it's stored, so nothing unsanitized ever reaches the render below.
+        setXlsxSheets(sheets.map((sheet) => sanitizeSheetHtml(fixTransparentCellColors(sheet))));
       } catch {
         if (!cancelled) setInlineFailed(true);
       } finally {
@@ -330,9 +332,9 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
                   ))}
                 </div>
               )}
-              {/* Each sheet is a self-contained HTML table built from the workbook's own cells —
-               * same trust level as any other document content this app already renders (an
-               * org's own uploaded document, not arbitrary strangers' input). Deliberately NOT
+              {/* Each sheet is a self-contained HTML table built from the workbook's own cells,
+               * already passed through sanitizeSheetHtml in the effect above — xlsx-preview
+               * escapes nothing, so never render its output without it. Deliberately NOT
                * stretched to fill the container — a short sheet is a short table, same as a
                * short PDF page isn't padded out with blank space. text-black because a cell only
                * gets an inline color when the workbook's own font formatting sets one (see
