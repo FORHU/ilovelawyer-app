@@ -91,8 +91,10 @@ async function throwIfNotOk(res: Response): Promise<void> {
   if (res.ok) return
   const error = await res.json().catch(() => ({ message: res.statusText }))
   // `code` is the API's optional machine-readable reason (HttpError.code), e.g. a mind map
-  // expand refused with MAX_NODES — absent on most errors.
-  throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status, code: error.code })
+  // expand refused with MAX_NODES — absent on most errors. `body` is the whole parsed error
+  // object, for the rarer case a caller wants a field beyond message/code (e.g. the events
+  // endpoint's 422 `blockers` array) without every future field needing its own plumbing here.
+  throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status, code: error.code, body: error })
 }
 
 /** Like apiFetch, but returns the raw Response instead of parsing JSON — for streamed bodies. */
