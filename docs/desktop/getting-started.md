@@ -123,7 +123,8 @@ The rule of thumb:
 
 ### The commands that exist today
 
-All live in [`../../src-tauri/src/lib.rs`](../../src-tauri/src/lib.rs):
+Each lives in its own file under [`../../src-tauri/src/`](../../src-tauri/src/) — the table at the
+top of `lib.rs` says which:
 
 - `open_case_terminal(caseId)` — opens (or focuses) that case's Terminal window
 - `open_panel_window(caseId, panelId, besideWindow?)` — pops a panel out into its own
@@ -189,7 +190,7 @@ Trace it end to end — this is the whole system in one flow.
         │  → invoke("open_case_terminal", { caseId: "abc123" })
         ↓
 4. Rust receives it
-        │  src-tauri/src/lib.rs
+        │  src-tauri/src/case_terminal.rs
         ↓
 5. Rust validates the id
         │  only letters/numbers/-/_ allowed — it goes into a URL
@@ -276,7 +277,7 @@ stray `node` process.
 In dev, always — it's pointed at your dev server, so it behaves like any browser tab.
 
 In production the answer depends on **which URL the shipped app loads**, and that's a
-deployment decision, not a code one. `Config::base_url()` in `src-tauri/src/lib.rs` picks
+deployment decision, not a code one. `Config::base_url()` in `src-tauri/src/config.rs` picks
 between two modes:
 
 | Mode | How it's set | Where windows load from |
@@ -301,7 +302,21 @@ That makes remote mode much more attractive for anything shipping regularly. It 
 means the desktop app needs the deployment to be reachable — offline, it has nothing to
 load, whereas the bundled build still opens.
 
-Neither production path is verified yet. Today only `tauri dev` is known to work.
+**Bundled path: verified 2026-09-28.** `pnpm tauri:build` produces
+`src-tauri/target/release/bundle/nsis/I Love Lawyer Terminal!_0.0.1_x64-setup.exe` (~58 MB).
+The release app, run with no `.env`, started its Node sidecar in ~3s, served `/homepage`, opened
+the dashboard window, and on close exited and took the sidecar with it. Getting there needed
+`scripts/stage-web.js` rewritten — its header explains the two pnpm traps.
+
+Still not verified:
+
+- **Installing** the `-setup.exe` and running the *installed* copy (tested: the release exe in
+  `target/release`, which Tauri gives the same resource layout).
+- **The remote path** (`FRONTEND_URL` pointing at a deployment) in a release build.
+- **What the installer ships as config:** `apps/web/.env` is baked in at build time, so a
+  build made on a dev machine points at `NEXT_PUBLIC_API_URL=http://localhost:3001`. A real
+  release must be built with the deployed API's URL.
+- **Code signing** — unsigned, so Windows SmartScreen will warn on first run.
 
 ---
 
@@ -320,7 +335,7 @@ Neither production path is verified yet. Today only `tauri dev` is known to work
 **Concretely:** Rust should never decide *whether a case can be closed*. It should only
 *open the window that shows the case*.
 
-If you find yourself adding case logic, auth, or an API call to `lib.rs`, stop — it
+If you find yourself adding case logic, auth, or an API call to `src-tauri/`, stop — it
 belongs on the other side of the bridge.
 
 ---
@@ -334,14 +349,21 @@ ilovelawyer-app/
 │       ├── index.ts            ← THE BRIDGE. Start here.
 │       └── use-dock-target.ts  ← React hook: the current dock target
 ├── src-tauri/
-│   ├── src/lib.rs              ← commands, our own windows, lifecycle
-│   ├── src/window_intel.rs     ← Win32: watches OTHER apps' windows (Windows only)
+│   ├── src/lib.rs              ← startup + a map of every file below. Read its header first.
+│   ├── src/config.rs           ← settings from src-tauri/.env
+│   ├── src/sidecar.rs          ← starts/waits for the web server
+│   ├── src/shell.rs            ← shared window helpers, id checks, the dashboard window
+│   ├── src/monitors.rs         ← which screen a window opens on
+│   ├── src/case_terminal.rs    ← command: open a case's Terminal
+│   ├── src/panels.rs           ← command: pop a panel out; closing rules
+│   ├── src/docking.rs          ← command: dock a panel beside another app
+│   ├── src/window_intel/       ← Win32: watches OTHER apps' windows (Windows only)
 │   ├── src/main.rs             ← 6 lines; just calls into lib.rs
 │   ├── tauri.conf.json         ← ports, bundling, window settings
 │   ├── capabilities/           ← Tauri permissions (keep minimal)
 │   ├── .env                    ← desktop-only config (port, window title)
 │   └── frontend-dist/          ← a placeholder; see below
-├── scripts/stage-web.js        ← production packaging (UNVERIFIED)
+├── scripts/stage-web.js        ← production packaging: makes the web build shippable
 └── docs/desktop/               ← you are here
 ```
 
@@ -367,14 +389,36 @@ closes those panels too, so none are orphaned.
 **"Why is the panel label `panel-abc:notes` and not `panel-abc-notes`?"** Because case ids
 can contain `-`. With a `-` separator, `("case-1", "notes")` and `("case", "1-notes")`
 produce the same label, and the second pop-out would focus the wrong window. There's a
-test for exactly this in `lib.rs`.
+test for exactly this in `panels.rs`.
 
 **"Coordinates are wrong on my second monitor."** Windows has two coordinate systems —
 physical pixels and logical (DPI-scaled) pixels. Tauri's builder APIs mostly take logical;
 raw Windows APIs return physical. Mixing the two silently breaks positioning on any display
-that isn't at 100% scaling. `window_intel.rs` avoids the problem by staying in physical
+that isn't at 100% scaling. `window_intel/` avoids the problem by staying in physical
 pixels end to end (tao makes the process per-monitor-v2 DPI aware, so Win32 and Tauri's
 `Physical*` types agree) — keep it that way rather than converting halfway.
+
+**"Which site does the app open — UK or PH?"** Neither by itself: it opens `FRONTEND_URL`, and
+the web app redirects to the user's own site (`uk.` / `ph.`) from their organization. The app
+remembers where the dashboard ended up (`%APPDATA%\com.ilovelawyer.desktop\last-site.txt`) and
+starts there next launch, so a PH user only pays the extra redirect — and second login — once.
+Only a `uk.`/`ph.` variant of `FRONTEND_URL` is ever remembered (`src/tenant_site.rs`). Panel and
+Terminal windows open on the site of the window that asked for them, not on `FRONTEND_URL`,
+for the same reason: the two sites don't share a login. Delete that file to reset.
+
+**"Why do I have to log in twice — once in the browser, once in the app?"** They're separate
+clients: the app's built-in browser keeps its own cookies. A **login handoff** carries a sign-in
+across in one click — account menu → *Open in Browser* / *Open in Desktop App*, or *Log in with
+your browser* on the app's sign-in screen. The signed-in side gets a one-time code from the API
+(`POST /api/auth/handoff`: 60 seconds, single use, stored hashed in Redis); the other side trades
+it at `/handoff` for its own login, and nobody is signed out. Desktop → browser rides a normal link
+(the app sends new windows to the default browser — `src/popups.rs`); browser → desktop rides an
+`ilovelawyer://handoff?code=…&site=…&next=…` link (`src/deep_links.rs`, which only accepts the
+configured site or its UK/PH sibling). Web side: `apps/web/lib/desktop/handoff.ts`.
+Because a link can be crafted with a code for *someone else's* account, `/handoff` first asks the
+API whose code it is (`POST /api/auth/handoff/preview`, which doesn't use it up) and shows
+**"Sign in as …? This will switch the desktop app to this account." — Cancel | Continue**. It only
+skips the question when this client is already signed in as that same account.
 
 **"The Dock beside button never shows up."** It only appears in the desktop app, and only
 once you've been in another app's window since launch. The taskbar, desktop, Start menu,
@@ -399,7 +443,8 @@ you were last in (say, Chrome on a court site): to its right if there's room, el
 left, else over the screen's right edge. If that window has closed or been minimized by
 then, the panel opens in its usual place instead.
 
-How it works, in [`../../src-tauri/src/window_intel.rs`](../../src-tauri/src/window_intel.rs):
+How it works, in [`../../src-tauri/src/window_intel/`](../../src-tauri/src/window_intel/)
+(`win.rs` has the Win32 code; `geometry.rs` the placement maths):
 
 - A dedicated thread installs `SetWinEventHook` for foreground changes and window
   destruction, and pumps messages forever. Never Tauri's UI thread.
@@ -442,7 +487,7 @@ Build order we agreed, and where we are:
 
 ```text
 1. Move src-tauri into this repo ................ DONE
-2. Verify the unified repo (tauri dev) .......... DONE  (production build: NOT verified)
+2. Verify the unified repo (tauri dev) .......... DONE  (production build: DONE 2026-09-28)
 3. Win32 tracer bullet .......................... DONE, SEEN WORKING LIVE
 4. Connect it to the existing panel system ...... DONE  (Dock beside = existing pop-out)
 5. Extract a minimal bridge ..................... DONE  (DockTarget / useDockTarget)
@@ -506,7 +551,6 @@ button's own label at click time rather than anything read beforehand.
 ### Next, roughly in order
 
 ```text
-A popped-out pane can be stranded (see below)    ← not new, but now easier to hit
 Following a docked window as it moves/resizes   (EVENT_OBJECT_LOCATIONCHANGE, filtered
                                                  to the one target — it fires constantly)
 Friendly app names ("Google Chrome", not "chrome")
@@ -515,10 +559,16 @@ Stable monitor identity (device path / QueryDisplayConfig — NOT \\.\DISPLAY1, 
                          reshuffles when a monitor is replugged)
 Automatic rules — patterns go INTO Rust, only a rule id comes back out, so a window
                   title never leaves the native layer
-Verified production packaging / installer (sidecar paths likely need updating since src-tauri moved)
+Installer end-to-end: install the -setup.exe, sign it, build with the deployed API URL (see §8)
 ```
 
-### Flagged while testing: a popped-out pane can be stranded
+### ~~Flagged while testing: a popped-out pane can be stranded~~ — FIXED 2026-09-28
+
+**Fix:** the first option below. Which panes are popped out is tracked in memory only
+(`poppedOutRef` in `legal-terminal.tsx`), and the autosave writes `layoutToPersist(...)` from
+`lib/terminal/popped-out.ts`, which keeps those panes on the grid in the saved copy. After a
+restart they're simply back where they were. Original write-up:
+
 
 Not caused by Window Intelligence — it's in the pop-out feature itself, which docking just
 gives another route into. `popOutPanel` marks the pane `visible: false`, and the Terminal's

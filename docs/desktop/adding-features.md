@@ -25,7 +25,7 @@ explains what Tauri is and how the pieces fit. This doc assumes that and gets pr
 │  src-tauri/           Rust                               │
 │                                                          │
 │  Create · position · focus · close windows · monitors ·  │
-│  window lifecycle · the Windows API (window_intel.rs)    │
+│  window lifecycle · the Windows API (window_intel/)      │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -41,7 +41,7 @@ what a browser is physically incapable of.
 | Report which windows exist | Call the API |
 | Focus a window | Hold credentials or session state |
 
-If you're writing `if case.status == ...` in `lib.rs`, stop. That logic is on the wrong
+If you're writing `if case.status == ...` anywhere in `src-tauri/`, stop. That logic is on the wrong
 side of the line.
 
 ---
@@ -73,11 +73,15 @@ it's loading the same pages.
 
 A **command** is a Rust function the web app can call. Four steps.
 
-### Step 1 — Write it in `src-tauri/src/lib.rs`
+### Step 1 — Write it in the module it belongs to
+
+Each job has its own file in `src-tauri/src/` — the table at the top of `lib.rs` lists them.
+This one is about the Case Terminal window, so it goes in `case_terminal.rs`, marked
+`pub(crate)` so `lib.rs` can register it:
 
 ```rust
 #[tauri::command]
-async fn focus_case_terminal(app: AppHandle, case_id: String) -> Result<(), String> {
+pub(crate) async fn focus_case_terminal(app: AppHandle, case_id: String) -> Result<(), String> {
     validate_id("caseId", &case_id)?;
     let label = format!("{CASE_TERMINAL_LABEL_PREFIX}{case_id}");
     if focus_existing(&app, &label) {
@@ -100,12 +104,14 @@ Three things that matter here:
 
 ### Step 2 — Register it
 
+In `src-tauri/src/lib.rs`, with its module name in front:
+
 ```rust
 .invoke_handler(tauri::generate_handler![
-    open_case_terminal,
-    open_panel_window,
-    current_dock_target,
-    focus_case_terminal,   // ← add here, or it doesn't exist to the web side
+    case_terminal::open_case_terminal,
+    panels::open_panel_window,
+    docking::current_dock_target,
+    case_terminal::focus_case_terminal,   // ← add here, or it doesn't exist to the web side
 ])
 ```
 
@@ -313,7 +319,7 @@ be written to disk, sent to the API, or logged.
 □ Errors returned as stable codes, not raw Rust errors?
 □ Event listeners return a working unsubscribe?
 □ cargo check passes?
-□ No case/auth/API logic in lib.rs?
+□ No case/auth/API logic anywhere in src-tauri/?
 ```
 
 The first line is the one that gets missed. The browser build is not a fallback nobody
