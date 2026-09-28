@@ -112,31 +112,15 @@ Then drive it over CDP at `http://127.0.0.1:9333/json` — e.g. `window.__TAURI_
 to call a command exactly as the page does. The separate data folder means it starts logged out.
 For window placement, read rectangles with `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)`.
 
-## 1. Try the 2026-09-28 changes in the running app
+## 1. ~~Try the 2026-09-28 changes in the running app~~ — ✅ VERIFIED 2026-09-28
 
-**Restart `tauri:dev` first** — Next.js only picks up the new `/api/auth/handoff/consume` proxy
-route at startup, and the Rust side needs a rebuild for the deep-link plugins.
+Tested by hand in `tauri:dev` and reported working: the login handoff in both directions
+(Open in Browser, Open in Desktop App, Log in with your browser, and Cancel on the "Sign in as …?"
+prompt), drag-and-drop, the stranded-pane fix, outside links opening in the default browser, the
+site in the title bar, and the UK/PH chooser + site memory.
 
-Built and unit-tested, not yet seen working live:
-
-- **Login handoff** (API endpoints *were* tested live; the three flows below weren't):
-  - Desktop → browser: account menu → **Open in Browser** → browser opens that page, signed in.
-  - Browser → desktop: account menu → **Open in Desktop App** → browser asks to open the app →
-    app shows that page, signed in. ✅ **Seen working 2026-09-28.**
-  - Desktop signed out: **Log in with your browser** → browser `/connect-desktop` → Continue.
-  - Each lands on **"Sign in as …?" — Cancel | Continue** unless already signed in as that
-    account. Try Cancel too: nothing should change, and the code just expires.
-  - `ilovelawyer://` is registered by the running app itself (`register_all`, per user, in
-    HKCU) — so browser → desktop only works once the app has been started at least once.
-
-- **Drag-and-drop** — drop a document on an upload area; drag a Terminal pane.
-- **Stranded pane** — pop a pane out, quit the app with it out, relaunch: it should be back on
-  the grid.
-- **Site chooser + memory** — delete `%APPDATA%\com.ilovelawyer.desktop\last-site.txt`, launch
-  with `FRONTEND_URL=http://localhost:3002`: chooser → pick → log in → relaunch goes straight there.
-- **Google sign-in** — works as far as the popup opening. Whether Google then accepts it depends on
-  the addresses registered for the client ID in Google Cloud (Authorised JavaScript origins); if it
-  shows an origin error, `http://uk.localhost:3002` / `http://ph.localhost:3002` need adding there.
+Still only knowable with more setup: Google sign-in completing (depends on the addresses registered
+for the client ID in Google Cloud — see the traps above if it shows an origin error).
 
 ## 2. ~~Two fixes in `ilovelawyer-api` for the queue loop~~ — DONE 2026-09-28 (uncommitted)
 
