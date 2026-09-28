@@ -168,6 +168,12 @@
   "editCitation": "인용 수정",
   "deleteCitation": "인용 삭제",
   "deleteCitationConfirm": "이 인용을 삭제할까요?",
+  "citationStatus": {
+    "VALID": "인용문 일치",
+    "INVALID": "인용문 불일치",
+    "UNVERIFIED": "미확인",
+    "ADVERSE": "원문과 상충"
+  },
   "propositionType": {
     "QUOTED": "인용",
     "PARAPHRASED": "의역",
@@ -199,6 +205,7 @@
   "genericSaveError": "문제가 발생했습니다. 다시 시도해 주세요.",
   "showMore": "더 보기",
   "showLess": "간략히 보기",
+  "showAllCount": "{{count}}개 모두 보기",
   "newFolder": "새 폴더",
   "folderNamePrompt": "폴더 이름",
   "dropToUpload": "드롭하여 업로드",

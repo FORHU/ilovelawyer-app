@@ -18,6 +18,7 @@
   "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",
   "notePlaceholder": "Note",
+  "linkedCase": "Linked case",
   "noCase": "No linked case",
   "reminderLabel": "Reminder",
   "reminderNone": "No reminder",

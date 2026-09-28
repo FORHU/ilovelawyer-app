@@ -170,6 +170,12 @@
   "editCitation": "I-edit ang citation",
   "deleteCitation": "Burahin ang citation",
   "deleteCitationConfirm": "Burahin ang citation na ito?",
+  "citationStatus": {
+    "VALID": "Tugma ang sipi",
+    "INVALID": "Hindi tugma ang sipi",
+    "UNVERIFIED": "Hindi pa nasuri",
+    "ADVERSE": "Salungat sa pinagmulan"
+  },
   "propositionType": {
     "QUOTED": "Sinipi",
     "PARAPHRASED": "Pinaraphrase",
@@ -201,6 +207,7 @@
   "genericSaveError": "May nangyaring mali. Subukang muli.",
   "showMore": "Ipakita pa",
   "showLess": "Bawasan",
+  "showAllCount": "Ipakita lahat ({{count}})",
   "newFolder": "Bagong folder",
   "folderNamePrompt": "Pangalan ng folder",
   "dropToUpload": "I-drop para i-upload",

@@ -49,6 +49,7 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   xlsm: "application/vnd.ms-excel.sheet.macroEnabled.12",
   xlam: "application/vnd.ms-excel.addin.macroEnabled.12",
+  txt: "text/plain",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
@@ -68,7 +69,7 @@ export function resolveContentType(file: File): string {
  * `isAllowedFileType`. */
 export const ALLOWED_EXTENSIONS = Object.keys(EXTENSION_CONTENT_TYPES)
 
-export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, JPG, PNG, MP3, MP4"
+export const ALLOWED_FILE_TYPES_LABEL = "PDF, DOC, DOCX, XLSX, XLSM, XLAM, TXT, JPG, PNG, MP3, MP4"
 
 export const UNSUPPORTED_FILE_TYPE_MESSAGE = `Unsupported file type. Supported formats: ${ALLOWED_FILE_TYPES_LABEL}.`
 

@@ -36,6 +36,9 @@ export const ghostBtnClass =
   "h-8 shrink-0 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:opacity-50"
 // The shared "delete this row" icon-button look — was duplicated byte-for-byte across 5 panels
 // with a raw hover:text-red-500 before being pulled out here onto the semantic --danger token.
+// Same shape as dangerIconBtnClass, with a neutral hover for a non-destructive action (edit).
+export const editIconBtnClass =
+  "shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground disabled:opacity-50"
 export const dangerIconBtnClass =
   "shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-danger disabled:opacity-50"
 
@@ -443,10 +446,13 @@ export function PanelRowList({
 
   if (rendered.length === 0) return <>{empty ?? null}</>
 
+  // shrink-0: this list is usually a direct flex child of PanelBody's scrolling column, and an
+  // overflow-hidden flex item's min-height resolves to 0 — without it the list shrinks to the pane
+  // height and clips its rows instead of letting PanelBody scroll.
   return (
     <ul
       ref={listRef}
-      className={bare ? "flex flex-col" : "overflow-hidden rounded-lg border border-border divide-y divide-border"}
+      className={bare ? "flex shrink-0 flex-col" : "shrink-0 overflow-hidden rounded-lg border border-border divide-y divide-border"}
     >
       {rendered.map((item) =>
         // `rendered` only re-syncs when the set of keys changes, so a row whose own content changed
