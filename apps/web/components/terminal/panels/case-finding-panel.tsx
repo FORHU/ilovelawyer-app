@@ -37,38 +37,42 @@ export function CaseFindingPanel({
 
   return (
     <PanelBody gap="4">
-      <PanelRowList empty={<EmptyNote>{t("noFindings")}</EmptyNote>}>
-        {items.map((item) => (
-          <PanelRow key={item.id} className="items-start justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
-              {item.notes === "AI" && (
-                <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
-                  <Sparkles className="h-3 w-3" aria-hidden="true" />
-                  {t("aiGenerated")}
-                </span>
-              )}
-              {item.sourceLabel && (
-                <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate" title={item.sourceLabel}>
-                    {t("groundedIn", { doc: item.sourceLabel })}
+      {/* Same shrink-0 wrapper as WitnessPanel: PanelRowList's <ul> is overflow-hidden, so letting
+          it shrink clips the rows instead of scrolling PanelBody. */}
+      <div className="shrink-0">
+        <PanelRowList empty={<EmptyNote>{t("noFindings")}</EmptyNote>}>
+          {items.map((item) => (
+            <PanelRow key={item.id} className="items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] leading-5 text-foreground">{item.label}</p>
+                {item.notes === "AI" && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
+                    <Sparkles className="h-3 w-3" aria-hidden="true" />
+                    {t("aiGenerated")}
                   </span>
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => del.mutate(item.id)}
-              disabled={del.isPending}
-              className={dangerIconBtnClass}
-              aria-label={t("delete")}
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          </PanelRow>
-        ))}
-      </PanelRowList>
+                )}
+                {item.sourceLabel && (
+                  <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate" title={item.sourceLabel}>
+                      {t("groundedIn", { doc: item.sourceLabel })}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => del.mutate(item.id)}
+                disabled={del.isPending}
+                className={dangerIconBtnClass}
+                aria-label={t("delete")}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </PanelRow>
+          ))}
+        </PanelRowList>
+      </div>
       <form
         className="mt-auto flex gap-2"
         onSubmit={(e) => {
