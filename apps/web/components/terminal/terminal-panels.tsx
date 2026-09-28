@@ -17,11 +17,12 @@ import { RedTeamPanel } from "@/components/terminal/panels/red-team-panel"
 import { ProcedurePanel } from "@/components/terminal/panels/procedure-panel"
 import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
 import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
-import { CaseFindingPanel } from "@/components/terminal/panels/case-finding-panel"
 import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
 import { CitationMapPanel } from "@/components/terminal/panels/citation-map-panel"
 import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
 import { StrengthsPanel } from "@/components/terminal/panels/strengths-panel"
+import { AttackStrategyPanel } from "@/components/terminal/panels/attack-strategy-panel"
+import { DefenseStrategyPanel } from "@/components/terminal/panels/defense-strategy-panel"
 import { WitnessPanel } from "@/components/terminal/panels/witness-panel"
 import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
@@ -85,21 +86,9 @@ export function TerminalPanelBody({
     case "strengths":
       return <StrengthsPanel snapshot={snapshot} caseId={caseId} />
     case "attackStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="ATTACK_STRATEGY"
-        />
-      )
+      return <AttackStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "defenseStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="DEFENSE_STRATEGY"
-        />
-      )
+      return <DefenseStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "witnesses":
       return <WitnessPanel caseId={caseId} onJumpToPanel={onJumpToPanel} />
     case "damages":

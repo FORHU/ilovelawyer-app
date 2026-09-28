@@ -415,8 +415,9 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
-/** The pill on a Legal Issues / Weaknesses / Strengths row — mirrors the API's FindingTag, and
- * FINDING_TAGS_BY_CATEGORY there decides which ones a category may use. */
+/** The pill on a Legal Issues / Weaknesses / Strengths / Attack Strategy / Defense Strategy row —
+ * mirrors the API's FindingTag, and FINDING_TAGS_BY_CATEGORY there decides which ones a category
+ * may use. */
 export type FindingTag =
   | "CONTESTED"
   | "BRIEFING"
@@ -427,6 +428,26 @@ export type FindingTag =
   | "CLOSED"
   | "STRONG"
   | "MODERATE"
+  | "READY"
+  | "DRAFTING"
+  | "BLOCKED"
+  | "ANSWERED"
+  | "PARTIAL"
+  | "UNANSWERED"
+
+/** Jev's check of an attack strategy (USE_JEV_ATTACK_STRATEGY) — stored in CaseFinding.jev. */
+export interface AttackStrategyJevCheck {
+  readiness: "READY" | "DRAFTING" | "BLOCKED"
+  readinessConfidence: number
+  uncertain: boolean
+}
+
+/** Jev's check of a defense strategy (USE_JEV_DEFENSE_STRATEGY) — stored in CaseFinding.jev. */
+export interface DefenseStrategyJevCheck {
+  defenseStatus: "ANSWERED" | "PARTIAL" | "UNANSWERED"
+  defenseStatusConfidence: number
+  uncertain: boolean
+}
 
 /** Jev's check of a strength (USE_JEV_STRENGTHS) — stored in CaseFinding.jev. */
 export interface StrengthJevCheck {

@@ -396,6 +396,28 @@
   },
   "addAttackStrategy": "Magdagdag ng attack strategy",
   "addDefenseStrategy": "Magdagdag ng defense strategy",
+  "attackStrategyIntro": "Offensive moves to advance this case, whichever side we represent.",
+  "attackStrategyReady": "Ready",
+  "attackStrategyDrafting": "Drafting",
+  "attackStrategyBlocked": "Blocked",
+  "attackStrategyReadyCount": "{{done}} of {{total}} ready",
+  "attackStrategyDetailPlaceholder": "Why it's ready, what's left, or what's missing",
+  "attackStrategyReadiness": {
+    "READY": "usable now",
+    "DRAFTING": "still being worked on",
+    "BLOCKED": "blocked on a missing prerequisite"
+  },
+  "defenseStrategyIntro": "Defenses the other side is likely to raise against this case, and our answer to each.",
+  "defenseStrategyAnswered": "Answered",
+  "defenseStrategyPartial": "Partial",
+  "defenseStrategyUnanswered": "Unanswered",
+  "defenseStrategyAnsweredCount": "{{done}} of {{total}} answered",
+  "defenseStrategyDetailPlaceholder": "This case's answer to the defense",
+  "defenseStrategyStatus": {
+    "ANSWERED": "fully rebutted",
+    "PARTIAL": "partly rebutted",
+    "UNANSWERED": "not yet rebutted"
+  },
   "noWitnesses": "Wala pang naitalang saksi.",
   "witnessExtracting": "Hinahanap ang mga saksi sa mga dokumento ng kaso…",
   "witnessFoundByAi": "Nahanap ng AI",

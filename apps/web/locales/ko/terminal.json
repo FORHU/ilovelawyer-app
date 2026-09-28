@@ -394,6 +394,28 @@
   },
   "addAttackStrategy": "공격 전략 추가",
   "addDefenseStrategy": "방어 전략 추가",
+  "attackStrategyIntro": "Offensive moves to advance this case, whichever side we represent.",
+  "attackStrategyReady": "Ready",
+  "attackStrategyDrafting": "Drafting",
+  "attackStrategyBlocked": "Blocked",
+  "attackStrategyReadyCount": "{{done}} of {{total}} ready",
+  "attackStrategyDetailPlaceholder": "Why it's ready, what's left, or what's missing",
+  "attackStrategyReadiness": {
+    "READY": "usable now",
+    "DRAFTING": "still being worked on",
+    "BLOCKED": "blocked on a missing prerequisite"
+  },
+  "defenseStrategyIntro": "Defenses the other side is likely to raise against this case, and our answer to each.",
+  "defenseStrategyAnswered": "Answered",
+  "defenseStrategyPartial": "Partial",
+  "defenseStrategyUnanswered": "Unanswered",
+  "defenseStrategyAnsweredCount": "{{done}} of {{total}} answered",
+  "defenseStrategyDetailPlaceholder": "This case's answer to the defense",
+  "defenseStrategyStatus": {
+    "ANSWERED": "fully rebutted",
+    "PARTIAL": "partly rebutted",
+    "UNANSWERED": "not yet rebutted"
+  },
   "noWitnesses": "아직 등록된 증인이 없습니다.",
   "witnessExtracting": "사건 문서에서 증인을 찾는 중…",
   "witnessFoundByAi": "AI가 찾음",
