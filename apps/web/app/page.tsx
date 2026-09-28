@@ -164,7 +164,10 @@ export default async function LandingPage() {
             itself has to be outside it. */}
         <div id="footer-reveal-portal-target" />
         <ScrollSmootherProvider>
-          <main className="flex-1">
+          {/* pointer-events-auto opts this real content back in — #smooth-content (its parent,
+              see scroll-smoother-provider.tsx) is pointer-events-none so the empty footer-reveal
+              gap below stays click-through to the portaled footer. */}
+          <main className="flex-1 pointer-events-auto">
             <UkHeroSection />
             <CapabilitiesSection />
             {SHOW_TESTIMONIALS && <UkFirmQuoteSection />}
@@ -184,7 +187,10 @@ export default async function LandingPage() {
       <LandingNavbar />
       <div id="footer-reveal-portal-target" />
       <ScrollSmootherProvider>
-        <main className="flex-1">
+        {/* pointer-events-auto opts this real content back in — #smooth-content (its parent,
+            see scroll-smoother-provider.tsx) is pointer-events-none so the empty footer-reveal
+            gap below stays click-through to the portaled footer. */}
+        <main className="flex-1 pointer-events-auto">
           <HeroSection />
           <CapabilitiesSection />
           {SHOW_TESTIMONIALS && <FirmQuoteSection />}

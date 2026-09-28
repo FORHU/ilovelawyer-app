@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
@@ -65,31 +66,21 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
         ))}
       </nav>
 
+      {/* `forBackground="current"` (not the dashboard header's `"auto"`) — this logo needs to
+          transition with `LINK_INK` (transparent-over-hero white → solid-ink-on-hover), which a
+          fixed `dark`/`light` pair can't do; `currentColor` inherits that transition directly. */}
       <Link
         href="/"
-        className={`shrink-0 font-display text-[19px] tracking-[-0.02em] lowercase rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/60 ${LINK_INK}`}
+        className={`shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/60 ${LINK_INK}`}
         aria-label="ilovelawyer"
       >
-        ilovelawyer
+        <Logo forBackground="current" size={40} />
       </Link>
 
+      {/* flex-1 (not shrink-to-content) even though this side is lighter now the search box is
+          gone — it balances against the left nav's own flex-1 so the logo in between stays
+          centered rather than drifting toward whichever side is narrower. */}
       <div className={`hidden lg:flex flex-1 items-center justify-end gap-4 shrink-0 ${LINK_INK}`}>
-        <form
-          role="search"
-          onSubmit={(e) => e.preventDefault()}
-          className={`flex items-center gap-2 flex-1 max-w-[220px] rounded-[45px] border px-[15px] py-2.5 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-current/60 ${BORDER_INK}`}
-        >
-          <Search size={12} className="shrink-0 opacity-70" aria-hidden />
-          <label className="sr-only" htmlFor="landing-nav-search">
-            {t("navbar.searchLabel")}
-          </label>
-          <input
-            id="landing-nav-search"
-            type="search"
-            placeholder={t("navbar.searchPlaceholder")}
-            className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-current placeholder:opacity-70"
-          />
-        </form>
         <ThemeToggle />
         {isAuthenticated ? (
           <Tooltip>
