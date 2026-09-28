@@ -400,5 +400,18 @@
   "recomputeAllStale": "오래된 기한 {{count}}개 다시 계산",
   "recomputeSome": "{{count}}개는 다시 계산하지 못해 확인이 필요합니다.",
   "approachUnsupported": "사건 데이터로 뒷받침되지 않음",
-  "approachContradicted": "사건 데이터와 모순됨"
+  "approachContradicted": "사건 데이터와 모순됨",
+  "toChecklist": "체크리스트에 추가",
+  "addedToChecklist": "추가됨",
+  "toChecklistHint": "사건 전략의 할 일로 추가",
+  "flagRisk": "위험 표시",
+  "riskFlagged": "표시됨",
+  "flagRiskHint": "미확인 상태로 위험 등록부에 기록",
+  "findingCategory": {
+    "LEGAL_ISSUE": "법적 쟁점",
+    "WEAKNESS": "약점",
+    "STRENGTH": "강점",
+    "ATTACK_STRATEGY": "공격 전략",
+    "DEFENSE_STRATEGY": "방어 전략"
+  }
 }

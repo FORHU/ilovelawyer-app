@@ -402,5 +402,18 @@
   "recomputeAllStale": "Kalkulahin muli ang {{count}} lumang deadline",
   "recomputeSome": "{{count}} ang hindi nakalkula at kailangan pa ng atensyon.",
   "approachUnsupported": "Hindi suportado ng datos ng kaso",
-  "approachContradicted": "Sinasalungat ng datos ng kaso"
+  "approachContradicted": "Sinasalungat ng datos ng kaso",
+  "toChecklist": "Sa checklist",
+  "addedToChecklist": "Naidagdag",
+  "toChecklistHint": "Idagdag bilang to-do sa Case Strategy",
+  "flagRisk": "I-flag ang panganib",
+  "riskFlagged": "Na-flag",
+  "flagRiskHint": "I-record sa risk register bilang hindi pa na-verify",
+  "findingCategory": {
+    "LEGAL_ISSUE": "Isyung legal",
+    "WEAKNESS": "Kahinaan",
+    "STRENGTH": "Lakas",
+    "ATTACK_STRATEGY": "Estratehiya sa pag-atake",
+    "DEFENSE_STRATEGY": "Estratehiya sa depensa"
+  }
 }

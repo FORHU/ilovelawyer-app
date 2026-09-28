@@ -590,5 +590,18 @@
   "recomputeAllStale": "Recompute {{count}} stale deadlines",
   "recomputeSome": "{{count}} couldn't be recomputed and still need attention.",
   "approachUnsupported": "Not backed by the case data",
-  "approachContradicted": "Contradicted by the case data"
+  "approachContradicted": "Contradicted by the case data",
+  "toChecklist": "To checklist",
+  "addedToChecklist": "Added",
+  "toChecklistHint": "Add this as a to-do in Case Strategy",
+  "flagRisk": "Flag risk",
+  "riskFlagged": "Flagged",
+  "flagRiskHint": "Record this in the risk register, marked unverified",
+  "findingCategory": {
+    "LEGAL_ISSUE": "Legal issue",
+    "WEAKNESS": "Weakness",
+    "STRENGTH": "Strength",
+    "ATTACK_STRATEGY": "Attack strategy",
+    "DEFENSE_STRATEGY": "Defense strategy"
+  }
 }

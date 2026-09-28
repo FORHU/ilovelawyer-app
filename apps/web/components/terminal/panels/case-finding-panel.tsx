@@ -1,7 +1,12 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { FileText, Loader2, Paperclip, Sparkles, Trash2 } from "lucide-react"
-import { useCreateFindingMutation, useDeleteFindingMutation } from "@/lib/terminal/mutations"
+import { Check, CircleCheck, FileText, Loader2, Paperclip, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import {
+  useCreateFindingMutation,
+  useCreateProcedureItemMutation,
+  useCreateRiskMutation,
+  useDeleteFindingMutation,
+} from "@/lib/terminal/mutations"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
 import { useGraphViewQuery } from "@/lib/graph-view/mutations"
@@ -117,6 +122,11 @@ export function CaseFindingPanel({
   const { t } = useTranslation("terminal")
   const create = useCreateFindingMutation(caseId)
   const del = useDeleteFindingMutation(caseId)
+  const sendToChecklist = useCreateProcedureItemMutation(caseId)
+  const flagRisk = useCreateRiskMutation(caseId)
+  // Ids already sent from this panel this session, so a second click can't double-add.
+  const [sentToChecklist, setSentToChecklist] = useState<Set<string>>(new Set())
+  const [flagged, setFlagged] = useState<Set<string>>(new Set())
   const [label, setLabel] = useState("")
   const items = snapshot.findings.filter((f) => f.category === category)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -143,6 +153,46 @@ export function CaseFindingPanel({
                   </span>
                 </p>
               )}
+              <div className="mt-1.5 flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={sentToChecklist.has(item.id) || sendToChecklist.isPending}
+                  onClick={() =>
+                    sendToChecklist.mutate(
+                      { kind: "TODO", label: item.label, sourceLabel: t(`findingCategory.${category}`) },
+                      { onSuccess: () => setSentToChecklist((prev) => new Set(prev).add(item.id)) }
+                    )
+                  }
+                  title={t("toChecklistHint")}
+                  className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase hover:text-foreground disabled:opacity-60"
+                >
+                  {sentToChecklist.has(item.id) ? (
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <CircleCheck className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {sentToChecklist.has(item.id) ? t("addedToChecklist") : t("toChecklist")}
+                </button>
+                <button
+                  type="button"
+                  disabled={flagged.has(item.id) || flagRisk.isPending}
+                  onClick={() =>
+                    flagRisk.mutate(
+                      { title: item.label, severity: "UNVERIFIED" },
+                      { onSuccess: () => setFlagged((prev) => new Set(prev).add(item.id)) }
+                    )
+                  }
+                  title={t("flagRiskHint")}
+                  className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase hover:text-riskmed disabled:opacity-60"
+                >
+                  {flagged.has(item.id) ? (
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {flagged.has(item.id) ? t("riskFlagged") : t("flagRisk")}
+                </button>
+              </div>
             </div>
             <button
               type="button"
