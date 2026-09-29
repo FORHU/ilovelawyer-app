@@ -91,8 +91,7 @@
   },
   "topicNavigator": {
     "label": "Topics",
-    "generating": "Generating topic breakdown…",
-    "hide": "Hide topics"
+    "generating": "Generating topic breakdown…"
   },
   "timeline": {
     "emptyState": "No events on this case yet. Add one below — dates extracted from documents appear here automatically.",
