@@ -166,6 +166,10 @@ export function RatedFindingPanel({
             pct: Math.round((inRing / rows.length) * 100),
             tone: "ok",
             title: t(config.ringTitleKey, { done: inRing, total: rows.length }),
+            label: (() => {
+              const ringTagConfig = config.tags.find((s) => s.tag === config.ringTag)
+              return ringTagConfig ? t(ringTagConfig.label) : undefined
+            })(),
           }}
           segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
             key: s.key,

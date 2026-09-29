@@ -271,6 +271,34 @@ export function useUpdateWorkspaceMutation() {
   })
 }
 
+/** Renames a layout tab. Separate from useUpdateWorkspaceMutation so the tab strip can show the
+ * new name immediately (optimistic write into every cached workspaces list) and roll back if the
+ * PATCH fails — autosaves never send `name`, so they can't clobber a rename in flight. */
+export function useRenameWorkspaceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      }),
+    onMutate: async ({ id, name }) => {
+      await queryClient.cancelQueries({ queryKey: terminalKeys.workspacesAll() })
+      const previous = queryClient.getQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() })
+      queryClient.setQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() }, (list) =>
+        list?.map((w) => (w.id === id ? { ...w, name } : w)),
+      )
+      return { previous }
+    },
+    onError: (_error, _vars, context) => {
+      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
+    },
+  })
+}
+
 export function useApplyWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({

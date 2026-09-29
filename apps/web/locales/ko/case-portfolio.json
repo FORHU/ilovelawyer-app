@@ -147,6 +147,8 @@
     "audioOverviewGenerateCta": "오디오 개요 생성",
     "audioOverviewGenerateError": "오디오 개요를 생성하지 못했습니다. 다시 시도해 주세요.",
     "audioOverviewEmpty": "이 채팅에 대해 생성된 오디오 개요가 아직 없습니다.",
+    "audioOverviewEmptyHint": "이 채팅을 이동 중에도 들을 수 있는 두 진행자의 대화로 만들어 보세요.",
+    "audioOverviewGeneratingHint": "1~2분 정도 걸릴 수 있습니다. 그동안 계속 작업하셔도 됩니다.",
     "audioOverviewNoConsultation": "오디오 개요를 생성하려면 채팅을 시작하세요.",
     "audioOverviewGenerateAudioCta": "오디오 생성",
     "audioOverviewRendering": "오디오 렌더링 중…",

@@ -63,18 +63,21 @@ function CoverageRing({ coverage }: { coverage: number | null }) {
     <div className="relative h-11 w-11 shrink-0">
       <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
         <circle cx="18" cy="18" r={RING_RADIUS} fill="none" strokeWidth="3.5" className="stroke-border" />
-        <circle
-          cx="18"
-          cy="18"
-          r={RING_RADIUS}
-          fill="none"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeDasharray={`${pct} 100`}
-          className="stroke-ok"
-        />
+        {/* Skipped at 0%: a zero-length dash with a round linecap still paints a dot. */}
+        {pct > 0 && (
+          <circle
+            cx="18"
+            cy="18"
+            r={RING_RADIUS}
+            fill="none"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray={`${pct} 100`}
+            className="stroke-ok"
+          />
+        )}
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tabular-nums">
+      <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold tabular-nums ${pct > 0 ? "" : "text-muted-foreground"}`}>
         {coverage === null ? "—" : `${pct}%`}
       </span>
     </div>

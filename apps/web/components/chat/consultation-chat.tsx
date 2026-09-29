@@ -400,6 +400,23 @@ export default function ConsultationChat({
   // A Terminal pane is an independent chat surface. Its topic navigation must be a real
   // column in that pane rather than the full-page navigator's absolute overlay.
   const [terminalTopicsOpen, setTerminalTopicsOpen] = useState(true);
+  // …except when the pane is too narrow to spare that column (a resized Terminal pane can be
+  // ~300px): below this width the Topics panel starts collapsed and, when opened, overlays the
+  // transcript instead of squeezing it down to a word per line. Tracks the pane live, not the
+  // viewport, since panes resize independently of the window.
+  // Callback-ref'd element (not useRef) so the observer attaches whenever <main> actually mounts.
+  const [embeddedMainEl, embeddedMainRef] = useState<HTMLElement | null>(null);
+  const [terminalChatNarrow, setTerminalChatNarrow] = useState(false);
+  useEffect(() => {
+    const el = embeddedMainEl;
+    if (!embedded || !el) return;
+    const observer = new ResizeObserver(([entry]) => setTerminalChatNarrow((entry?.contentRect.width ?? 0) < 560));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [embedded, embeddedMainEl]);
+  useEffect(() => {
+    if (terminalChatNarrow) setTerminalTopicsOpen(false);
+  }, [terminalChatNarrow]);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -2045,7 +2062,7 @@ export default function ConsultationChat({
 
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
-      <main className={`relative z-10 w-full mx-auto flex flex-1 min-h-0 ${embedded ? "max-w-none flex-row" : "max-w-5xl flex-col"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+      <main ref={embeddedMainRef} className={`relative z-10 w-full mx-auto flex flex-1 min-h-0 ${embedded ? "max-w-none flex-row" : "max-w-5xl flex-col"} ${headerSlot || embedded ? "" : "pt-16"}`}>
 
         <div className="relative z-10 flex min-w-0 flex-col flex-1 min-h-0">
         {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
@@ -2152,7 +2169,7 @@ export default function ConsultationChat({
                         type="button"
                         onClick={() => void doSend(AUTO_MINDMAP_PROMPT)}
                         disabled={!session}
-                        className="rounded-full bg-brand-navy-950 text-white px-5 py-2.5 text-[13px] font-['Inter'] font-medium shadow-md hover:bg-[#162244] transition-colors disabled:opacity-50"
+                        className="rounded-full bg-brand-navy-950 text-white px-5 py-2.5 text-[13px] font-['Inter'] font-medium shadow-md hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 transition-colors disabled:opacity-50"
                       >
                         {t("mindMap.generateCta")}
                       </button>
@@ -2514,7 +2531,15 @@ export default function ConsultationChat({
         {terminalTopicsPanelVisible && (
           // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics,
           // decisions and related cases, collapsing to an icon rail — docked on this pane's right.
-          <div className="ml-2 flex shrink-0 overflow-hidden rounded-lg">
+          // In a narrow pane (terminalChatNarrow) the expanded panel overlays the transcript
+          // instead of squeezing it; the collapsed icon rail is slim enough to stay inline.
+          <div
+            className={
+              terminalChatNarrow && terminalTopicsOpen
+                ? "absolute inset-y-0 right-0 z-20 flex overflow-hidden rounded-lg shadow-xl"
+                : "ml-2 flex shrink-0 overflow-hidden rounded-lg"
+            }
+          >
             <SourcesPanel
               side="right"
               expanded={terminalTopicsOpen}
