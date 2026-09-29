@@ -46,6 +46,7 @@ import {
 } from "@/lib/terminal/multi-screen"
 import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
+import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import {
@@ -219,6 +220,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Starts empty: users name their own layout, and the name is required to create it.
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
+  const [presetsModalOpen, setPresetsModalOpen] = useState(false)
+  // Populated by handlePresetModalOpen and handed to the modal as a prop — getScreenDetails() is
+  // permission-gated and must be called synchronously from the click handler itself (Chromium's
+  // transient-activation rule, same as usePopOutToNextScreen), not from an effect reacting to
+  // presetsModalOpen flipping true. The modal is fully parent-controlled (no DialogTrigger), so
+  // its own onOpenChange never fires on that transition — detection has to happen here instead.
+  // The modal's own "DETECT" button re-detects internally (its click is its own fresh gesture).
+  const [detectedScreenCount, setDetectedScreenCount] = useState<number | null>(null)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
   const highDensity = useTerminalDisplayStore((state) => state.highDensity)
@@ -810,6 +819,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const labelFor = (panel: PanelLayout | { id: PanelId }) =>
     PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
 
+
+  const handlePresetModalOpen = () => {
+    setDetectedScreenCount(null)
+    setPresetsModalOpen(true)
+    if (!window.getScreenDetails) return
+    window
+      .getScreenDetails()
+      .then((details) => setDetectedScreenCount(1 + sortedSecondaryScreens(details).length))
+      .catch(() => setPresetsModalOpen(false))
+  }
+
   return (
     <PaneActivityContext.Provider value={paneActivity}>
     <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
@@ -866,6 +886,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             </button>
           </div>
         </div>
+        <ScreenPresetsModal
+          open={presetsModalOpen}
+          onOpenChange={setPresetsModalOpen}
+          detectedCount={detectedScreenCount}
+          caseId={caseId}
+          layout={layout}
+          setLayout={setLayout}
+          canvasWindowsRef={canvasWindowsRef}
+        />
         <Sheet open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen}>
           <SheetContent side="right" className="w-full sm:max-w-xl">
             <SheetHeader>
@@ -894,12 +923,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           />
           <div className="ml-auto flex shrink-0 items-center gap-3">
             {isExtendedScreen && (
-              <TonePill tone="neutral" title={t("multiScreenAvailable")}>
-                <span className="flex items-center gap-1">
-                  <Monitor className="h-3 w-3" aria-hidden="true" />
-                  {t("multiScreen")}
-                </span>
-              </TonePill>
+              <button
+                type="button"
+                onClick={() => handlePresetModalOpen()}
+                title={t("multiScreenAvailable")}
+                className="inline-flex shrink-0 appearance-none border-0 bg-transparent p-0"
+              >
+                <TonePill tone="neutral">
+                  <span className="flex items-center gap-1">
+                    <Monitor className="h-3 w-3" aria-hidden="true" />
+                    {t("multiScreen")}
+                  </span>
+                </TonePill>
+              </button>
             )}
             <ArrangementSwitcher
               arrangement={arrangement}
