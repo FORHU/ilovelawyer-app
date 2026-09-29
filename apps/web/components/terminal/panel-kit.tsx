@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
+import { ShieldCheck } from "lucide-react"
 import gsap from "gsap"
 import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -258,6 +259,79 @@ export function Field({
 export function JevNotChecked() {
   const { t } = useTranslation("terminal")
   return <p className="text-warn">{t("jevNotChecked")}</p>
+}
+
+// ── LLM review ─────────────────────────────────────────────────────────────────────────────
+// How Legal Issues, Weaknesses, Strengths and the Citation Map show the second model's check of
+// a row: labelled "AI review", in plain words rather than scores — each point's exact confidence
+// is on hover. The other panels keep JevCheck / JevFlag / JevNotChecked above.
+
+export type Certainty = "sure" | "likely" | "possibly" | "unclear"
+
+/** Bands match the checks' own cut-offs: 0.7 is the floor for a harsh verdict, 0.5 the
+ * "uncertain" line. */
+export function certaintyOf(confidence: number): Certainty {
+  if (confidence >= 0.85) return "sure"
+  if (confidence >= 0.7) return "likely"
+  if (confidence >= 0.5) return "possibly"
+  return "unclear"
+}
+
+/** One point of the review — stated plainly when the model was sure, otherwise followed by how
+ * sure it was ("· likely"). */
+export function ReviewPoint({ text, confidence, children }: { text: string; confidence: number; children?: ReactNode }) {
+  const { t } = useTranslation("terminal")
+  const certainty = certaintyOf(confidence)
+  return (
+    <li title={t("llmConfidence", { pct: Math.round(confidence * 100) })}>
+      <span className="text-foreground">{text}</span>
+      {certainty !== "sure" ? <span> · {t(`llmCertainty.${certainty}`)}</span> : null}
+      {children}
+    </li>
+  )
+}
+
+export function LlmReview({
+  uncertain,
+  draftRating,
+  children,
+}: {
+  uncertain?: boolean
+  /** "AI draft said: Open" — when the review changed the drafting model's pill. */
+  draftRating?: string | null
+  children: ReactNode
+}) {
+  const { t } = useTranslation("terminal")
+  return (
+    <div className="flex flex-col gap-1 border-t border-border pt-1.5 text-muted-foreground">
+      <p className={cn("inline-flex items-center gap-1", labelTextClass)}>
+        <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+        {t("llmReview")}
+      </p>
+      <ul className="flex flex-col gap-0.5">{children}</ul>
+      {uncertain ? <p className="text-warn">{t("llmUncertain")}</p> : null}
+      {draftRating ? <p>{draftRating}</p> : null}
+    </div>
+  )
+}
+
+/** The chip beside a row's title when the LLM review disagrees with it; `title` says how. */
+export function LlmFlag({ title }: { title: string }) {
+  const { t } = useTranslation("terminal")
+  return (
+    <span
+      className="rounded border border-warn/50 px-1 text-[9px] font-semibold uppercase tracking-[1px] text-warn"
+      title={`${t("llmReview")}: ${title}`}
+    >
+      {t("llmFlag")}
+    </span>
+  )
+}
+
+/** For a row in a reviewed batch whose own review failed. */
+export function LlmNotReviewed() {
+  const { t } = useTranslation("terminal")
+  return <p className="text-warn">{t("llmNotReviewed")}</p>
 }
 
 // ── Pane code chip ─────────────────────────────────────────────────────────────────────────

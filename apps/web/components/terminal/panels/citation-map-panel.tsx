@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { FileText, Loader2, Sparkles, Trash2, Workflow } from "lucide-react"
+import { ExternalLink, FileText, Loader2, Sparkles, Trash2, Workflow } from "lucide-react"
 import { CitationMap } from "@/components/citation-map"
 import { citationMapKeys, useCitationMapQuery } from "@/lib/citation-map/mutations"
 import type { AdverseCitationHit, CitationGround, CitationMapClaim, CitationMapSeedItem, CitationMapSweep } from "@/lib/citation-map/types"
@@ -20,8 +20,9 @@ import {
 import { useAuthStore } from "@/lib/store/auth.store"
 import {
   EmptyNote,
-  JevCheck,
-  JevFlag,
+  LlmReview,
+  ReviewPoint,
+  LlmFlag,
   MutationError,
   PanelBody,
   PanelRow,
@@ -71,8 +72,11 @@ export function CitationMapPanel({ caseId }: { caseId: string }) {
 
   if (tenantCode !== "PH" && tenantCode !== "UK") return <CitationMap caseId={caseId} />
 
+  // h-full, not flex-1: the pane mounts every panel in a plain (non-flex) block, so flex-1 never
+  // bounded this wrapper — it grew to its content and the pane's overflow-hidden cut the list off
+  // with no scrollbar. The list area scrolls on its own too, so a short pane can't clip it.
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 justify-end gap-1 px-3 pt-2" role="tablist">
         {(["list", "graph"] as const).map((v) => (
           <button
@@ -91,7 +95,7 @@ export function CitationMapPanel({ caseId }: { caseId: string }) {
         ))}
       </div>
       {view === "list" ? (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <CitationGroundsList caseId={caseId} />
         </div>
       ) : (
@@ -237,7 +241,7 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
                   <span className="min-w-0 flex-1">
                     <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {authorityLabel(citationById.get(g.citationCheckId)!)} → {claimById.get(g.claimId)!.title}
-                      {state === "NOT_APPLY" ? <JevFlag title={t("groundJevFlag")} /> : null}
+                      {state === "NOT_APPLY" ? <LlmFlag title={t("groundJevFlag")} /> : null}
                     </span>
                     <span className={catalogSubClass}>
                       {t(`groundRole.${g.role}`)}
@@ -250,7 +254,12 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
                     {g.reason ? <p>{g.reason}</p> : null}
                     <p className="text-muted-foreground">“{citationById.get(g.citationCheckId)!.quotedText}”</p>
-                    {g.jev ? <JevCheck verdict={t(`groundJev.${g.jev.attaches}`)} confidence={g.jev.confidence} /> : null}
+                    <ViewCitationLink citation={citationById.get(g.citationCheckId)!} />
+                    {g.jev ? (
+                      <LlmReview>
+                        <ReviewPoint text={t(`groundJev.${g.jev.attaches}`)} confidence={g.jev.confidence} />
+                      </LlmReview>
+                    ) : null}
                     <div className="flex justify-end border-t border-border pt-2">
                       <button
                         type="button"
@@ -286,6 +295,7 @@ function CitationGroundsList({ caseId }: { caseId: string }) {
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
                     <p className="text-muted-foreground">“{c.quotedText}”</p>
+                    <ViewCitationLink citation={c} />
                     {claims.length === 0 ? (
                       <p className="text-muted-foreground">{t("groundsNeedClaims")}</p>
                     ) : (
@@ -447,7 +457,11 @@ function SweepHit({
         </span>
       </p>
       {hit.excerpt ? <p className="text-muted-foreground">“{hit.excerpt}”</p> : null}
-      {hit.jev ? <JevCheck verdict={t(`sweepJev.${hit.jev.effect}`)} confidence={hit.jev.confidence} /> : null}
+      {hit.jev ? (
+        <LlmReview>
+          <ReviewPoint text={t(`sweepJev.${hit.jev.effect}`)} confidence={hit.jev.confidence} />
+        </LlmReview>
+      ) : null}
       {hit.suggestionStatus === "ACCEPTED" ? (
         <p className="text-ok">{t("sweepAdded")}</p>
       ) : hit.suggestionStatus === "DISMISSED" ? (
@@ -463,6 +477,36 @@ function SweepHit({
         </div>
       ) : null}
     </div>
+  )
+}
+
+// Opens the authority's Library page in a new browser tab, so the lawyer can read the law being
+// cited without leaving the Terminal. An authority that never resolved to a Library entry has no
+// page to open — say so instead of linking nowhere.
+function ViewCitationLink({ citation }: { citation: CitationMapSeedItem }) {
+  const { t } = useTranslation("terminal")
+  const href = citation.resolved?.libraryHref
+  if (!href) return <p className="text-muted-foreground italic">{t("citationNotInLibrary")}</p>
+  return <NewTabLink href={href} label={t("viewCitation")} />
+}
+
+// A gold link that opens `href` in a new browser tab.
+function NewTabLink({ href, label, className }: { href: string; label: string; className?: string }) {
+  const { t } = useTranslation("terminal")
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline",
+        className,
+      )}
+    >
+      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+      {label}
+      <span className="sr-only"> ({t("opensInNewTab")})</span>
+    </a>
   )
 }
 
@@ -490,7 +534,22 @@ function ClaimsSection({ caseId, claims }: { caseId: string; claims: CitationMap
                     <Sparkles className="h-3 w-3" aria-hidden="true" />
                     {t("aiGenerated")}
                   </span>
-                  {claim.sourceLabel ? (
+                  {/* Opens the pleading the claim was found in (a signed file link) in a new tab;
+                      plain text when that document is gone. */}
+                  {claim.sourceDocument ? (
+                    <a
+                      href={claim.sourceDocument.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-w-0 items-center gap-1 hover:text-brand-gold hover:underline"
+                      title={claim.sourceQuote ?? undefined}
+                    >
+                      <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{t("groundedIn", { doc: claim.sourceLabel ?? claim.sourceDocument.name })}</span>
+                      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="sr-only"> ({t("opensInNewTab")})</span>
+                    </a>
+                  ) : claim.sourceLabel ? (
                     <span className="inline-flex min-w-0 items-center gap-1" title={claim.sourceQuote ?? undefined}>
                       <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                       <span className="truncate">{t("groundedIn", { doc: claim.sourceLabel })}</span>

@@ -15,6 +15,8 @@ export interface CitationMapSeedItem {
     jurisUrl: string
     pdfUrl: string | null
     citationsExtractedAt: string | null
+    /** The authority's page in the app's Library, for "View citation". */
+    libraryHref: string
   } | null
 }
 
@@ -27,6 +29,8 @@ export interface CitationMapClaim {
   source: "MANUAL" | "AI"
   sourceLabel: string | null
   sourceQuote: string | null
+  /** The case document the claim was found in; null for a manual claim or a deleted document. */
+  sourceDocument: { id: string; name: string; fileUrl: string } | null
 }
 
 /** Jev's check of one link (USE_JEV_CITATION_GROUNDS). */

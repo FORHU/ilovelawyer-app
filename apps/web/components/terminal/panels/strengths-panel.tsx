@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import type { CaseFinding, CaseSnapshot, StrengthJevCheck } from "@/lib/terminal/types"
-import { JevCheck } from "@/components/terminal/panel-kit"
+import { LlmReview, ReviewPoint } from "@/components/terminal/panel-kit"
 import { RatedFindingPanel, modelTagLabelKey, type RatedFindingConfig } from "@/components/terminal/panels/rated-finding-panel"
 
 const STRENGTHS: RatedFindingConfig = {
@@ -19,27 +19,27 @@ const STRENGTHS: RatedFindingConfig = {
   // The design shows the document a strength rests on under it.
   detailFallback: (f) => f.sourceLabel,
   jevFlagKeys: (jev) => (jev as StrengthJevCheck).flags.map((flag) => `strengthJevFlag.${flag}`),
+  llmWording: true,
   dimSubLine: (jev) => (jev as StrengthJevCheck).flags.includes("NOT_BORNE_OUT"),
   JevDetail: StrengthJevDetail,
   upload: true,
 }
 
+// The weight Score comes back normalized to 0..1 over four levels (strength-jev.ts).
+const level = (score: number) => Math.min(3, Math.max(0, Math.round(score * 3)))
+
 function StrengthJevDetail({ finding }: { finding: CaseFinding }) {
   const { t } = useTranslation("terminal")
   const jev = finding.jev as unknown as StrengthJevCheck
   const modelTag = modelTagLabelKey(finding, STRENGTHS)
-  const pct = (n: number) => Math.round(n * 100)
   return (
-    <JevCheck
-      verdict={t(`strengthJevSupport.${jev.support}`)}
-      confidence={jev.supportConfidence}
-      uncertain={jev.uncertain}
-      modelRating={modelTag ? t("findingJevModelRating", { tag: t(modelTag) }) : null}
-    >
-      {!jev.sourceRead ? <p className="text-warn">{t("strengthJevNoSourceText")}</p> : null}
-      <p>{t("strengthJevWeightLine", { pct: pct(jev.weight), conf: pct(jev.weightConfidence) })}</p>
-      <p>{t("strengthJevRebuttalLine", { verdict: t(`strengthJevRebuttal.${jev.rebuttal}`), pct: pct(jev.rebuttalConfidence) })}</p>
-    </JevCheck>
+    <LlmReview uncertain={jev.uncertain} draftRating={modelTag ? t("llmDraftSaid", { tag: t(modelTag) }) : null}>
+      <ReviewPoint text={t(`strengthJevSupport.${jev.support}`)} confidence={jev.supportConfidence}>
+        {!jev.sourceRead ? <span className="text-warn"> {t("strengthJevNoSourceText")}</span> : null}
+      </ReviewPoint>
+      <ReviewPoint text={t(`strengthWeightLevel.${level(jev.weight)}`)} confidence={jev.weightConfidence} />
+      <ReviewPoint text={t(`strengthJevRebuttal.${jev.rebuttal}`)} confidence={jev.rebuttalConfidence} />
+    </LlmReview>
   )
 }
 
