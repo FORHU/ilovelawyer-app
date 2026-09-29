@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Check, ChevronRight, FileText, Pencil, Scale, Trash2, TriangleAlert } from "lucide-react"
+import { Check, ChevronRight, FileText, Pencil, Scale, Trash2 } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -47,19 +47,6 @@ const STATUS_TONE: Record<DamageStatus, "caution" | "neutral" | "success"> = {
 
 // Editor target: a head's id, "new" for the add form, or null when closed.
 type EditorTarget = string | "new" | null
-
-// Below this Jev's answer is spread across options, so the row says "uncertain" rather than
-// presenting the flag as settled. Mirrors UNCERTAIN_SCORE_CONFIDENCE in the API's red-team-jev.ts.
-const JEV_UNCERTAIN_CONFIDENCE = 0.5
-
-/** What Jev flags on a head, if anything worth showing: its quote not bearing out the figures,
- * or the head being unlikely to be awarded. Null when Jev hasn't rated it (flag off) or is happy. */
-function jevFlags(d: DamageClaim) {
-  const support = d.jevSupport === "UNSUPPORTED" || d.jevSupport === "CONTRADICTED" ? d.jevSupport : null
-  const unlikely = d.jevAwardability != null && d.jevAwardability <= 1
-  if (!support && !unlikely) return null
-  return { support, unlikely, uncertain: d.jevConfidence != null && d.jevConfidence < JEV_UNCERTAIN_CONFIDENCE }
-}
 
 export function DamagePanel({
   snapshot,
@@ -240,7 +227,6 @@ export function DamagePanel({
               const hasRange = low != null && high != null && (low !== amount || high !== amount)
               const basis = basisText(d)
               const sourceDoc = d.sourceDocumentId ? documentName.get(d.sourceDocumentId) : undefined
-              const flags = jevFlags(d)
               const aiPending = d.source === "AI" && d.status === "PROVISIONAL"
               // A monthly rate with no period can't be turned into a figure, so it adds nothing to the
               // total — say so rather than showing a silent "—".
@@ -330,41 +316,6 @@ export function DamagePanel({
                         <Badge tone={STATUS_TONE[status]}>{t(DAMAGE_STATUS_KEYS[status])}</Badge>
                         {basis ? <span className="font-mono text-[12px] text-foreground">{basis}</span> : null}
                       </div>
-                      {flags ? (
-                        <div className="flex flex-col gap-1.5 rounded-md bg-muted px-2.5 py-2">
-                          {flags.support ? (
-                            <p className="flex items-start gap-1.5 text-[12px] text-foreground">
-                              <TriangleAlert
-                                className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", flags.support === "CONTRADICTED" ? "text-danger" : "text-riskmed")}
-                                aria-hidden="true"
-                              />
-                              <span>
-                                {t(flags.support === "CONTRADICTED" ? "damageJevContradicted" : "damageJevUnsupported")}
-                                {flags.uncertain ? ` ${t("damageJevUncertain")}` : ""}
-                              </span>
-                            </p>
-                          ) : null}
-                          {flags.unlikely ? (
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-foreground">
-                              <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" />
-                              <span>
-                                {t("damageJevUnlikely")}
-                                {flags.uncertain ? ` ${t("damageJevUncertain")}` : ""}
-                              </span>
-                              {d.amountLow !== 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => update.mutate({ id: d.id, amountLow: 0 })}
-                                  disabled={update.isPending}
-                                  className="underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-                                >
-                                  {t("damageApplySuggestedLow", { amount: money(0) })}
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
                       {needsPeriod ? (
                         // The fix is the row's own "Set period & accept" (or Edit, once accepted) below.
                         <p className="rounded-md bg-muted px-2.5 py-2 text-[12px] text-foreground">{t("damageNoPeriod")}</p>
