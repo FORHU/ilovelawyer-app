@@ -18,6 +18,7 @@ import type {
   CaseTheory,
   DamageCategory,
   DamageClaim,
+  DamageClaimBody,
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
@@ -82,6 +83,7 @@ export type AiGenerationKind =
   | "caseStrategyRefresh"
   | "witnessScoring"
   | "witnessExtract"
+  | "damagesExtract"
   | "claimExtract"
   | "citationGrounds"
   | "adverseSweep"
@@ -1001,15 +1003,64 @@ export function useDeleteWitnessMutation(caseId: string) {
 export function useCreateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: {
-      category: DamageCategory
-      description?: string
-      amount?: number
-    }) =>
+    mutationFn: (body: DamageClaimBody & { category: DamageCategory }) =>
       apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Editing one head can change others (attorney's fees are recomputed from the heads they're a
+// percentage of), so this refreshes the whole snapshot rather than patching one row in place.
+export function useUpdateDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: DamageClaimBody & { id: string }) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Queues a damages pass over every document of the case (DamagesExtractSvc.propose); progress and
+// completion come through useAiJobStatus(caseId, "damagesExtract").
+export function useProposeDamagesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/damages/propose`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
+    },
+  })
+}
+
+// A suggested update from new evidence (DamageClaim.aiProposedBasis): apply replaces the head's
+// figures (and certifies it when the document was the awaited evidence), dismiss drops it. Both can
+// move other heads (attorney's fees), so both refresh the whole snapshot.
+export function useApplyDamageProposalMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/apply`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDismissDamageProposalMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/dismiss`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
