@@ -10,6 +10,12 @@ function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
 }
 
+/** Fallback download name, matching the API's own audioOverviewFilename — the Content-Disposition
+ * header normally supplies the real name, so this only matters when that's missing. */
+function audioOverviewFallbackFilename(iso: string): string {
+  return `audio-overview-${iso.slice(0, 16).replace("T", "-").replace(":", "")}.mp3`
+}
+
 function formatClock(seconds: number): string {
   const s = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
@@ -161,7 +167,7 @@ function HistoryEntry({
         {entry.audio && (
           <button
             type="button"
-            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl)}
+            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl, audioOverviewFallbackFilename(entry.createdAt))}
             aria-label={t("workspace.audioOverviewDownload")}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >
