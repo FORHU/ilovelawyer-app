@@ -10,6 +10,12 @@ interface AuthTokensResponse {
   accessToken: string
 }
 
+// verify-otp returns the full /me-shaped user, including approvalStatus — ACTIVE here means
+// the Tenant auto-approved the account at verification (see AuthSvc.autoApproveIfEnabled).
+interface VerifyOtpResponse extends AuthTokensResponse {
+  user: AuthUser & { approvalStatus: "PENDING" | "ACTIVE" | "DENIED" | "BLOCKED" }
+}
+
 interface SignupResponse {
   id: string
   username: string
@@ -181,7 +187,7 @@ export function useVerifyOtpMutation() {
 
   return useMutation({
     mutationFn: ({ email, code }: { email: string; code: string }) =>
-      apiFetch<AuthTokensResponse>("/api/auth/verify-otp", {
+      apiFetch<VerifyOtpResponse>("/api/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ email, code }),
         skipAuthRefresh: true,
