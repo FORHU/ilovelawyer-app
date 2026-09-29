@@ -45,6 +45,11 @@ export interface PanelLayout {
    * Columns/Tabs. Never disables a divider shared with a neighboring, unpinned pane — see
    * PaneHeaderActions' pin handling in legal-terminal.tsx. No-op in Focus mode. */
   pinned?: boolean
+  /** Which screen this pane renders in. 0 or absent = primary (today's only behavior, and the
+   * only thing Firefox/Safari ever see). 1-5 = a secondary canvas window, numbered left-to-right
+   * by physical position and recomputed fresh each session — screens have no durable
+   * cross-session identity. See canvas/[screenIndex]/page.tsx. */
+  screen?: number
 }
 
 export interface WorkspaceLayout {
@@ -60,6 +65,19 @@ export interface WorkspaceLayout {
   tabsSplit?: number
   tabsActiveA?: PanelId
   tabsActiveB?: PanelId
+  /** Per-secondary-screen arrangement state, keyed by screen index (1-5). The top-level
+   * arrangement/columnCount/columnWidths/tabsSplit/tabsActiveA/B fields above are unchanged and
+   * now implicitly mean "screen 0 (primary)'s settings" — zero migration for every workspace
+   * saved before multi-screen shipped. Each screen runs its own independent arrangement mode,
+   * not one grid stretched across windows. An absent index means "free, nothing assigned yet". */
+  screenLayouts?: Record<number, {
+    arrangement?: ArrangementValue
+    columnCount?: number
+    columnWidths?: number[]
+    tabsSplit?: number
+    tabsActiveA?: PanelId
+    tabsActiveB?: PanelId
+  }>
 }
 
 export interface PanelCatalogEntry {
