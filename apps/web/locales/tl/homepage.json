@@ -91,7 +91,8 @@
   "topicNavigator": {
     "label": "Mga Paksa",
     "generating": "Ginagawa ang breakdown ng paksa…",
-    "hide": "Itago ang mga paksa"
+    "hide": "Itago ang mga paksa",
+    "show": "Ipakita ang mga paksa"
   },
   "timeline": {
     "emptyState": "Wala pang event sa kasong ito. Magdagdag sa ibaba — awtomatikong lalabas dito ang mga petsang nakuha mula sa mga dokumento.",

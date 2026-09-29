@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, ChevronRight } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, PanelRightClose } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -822,10 +822,11 @@ export default function ConsultationChat({
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
-  // Terminal's inline Topics panel. While it's showing, the picker row's "Topics" toggle button
-  // is hidden (rendering both side by side was redundant); the panel's edge arrow collapses it.
+  // Terminal's inline Topics panel — once there are topics it's always shown, either open or
+  // minimized to an icon rail (`terminalTopicsOpen`), so the picker row's "Topics" button is
+  // only left for the disabled "nothing yet" hint.
   const terminalTopicsPanelVisible = Boolean(
-    embedded && showTopicNavigator && terminalTopicsOpen && (splitTopics.length > 0 || isGeneratingTopics),
+    embedded && showTopicNavigator && (splitTopics.length > 0 || isGeneratingTopics),
   );
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
@@ -2059,21 +2060,20 @@ export default function ConsultationChat({
             {embedded && showTopicNavigator && !terminalTopicsPanelVisible && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setTerminalTopicsOpen((open) => !open)}
-                    aria-expanded={terminalTopicsOpen}
-                    aria-controls={terminalTopicsOpen ? `${chatInstanceId}-topics` : undefined}
-                    className="relative top-1.5 right-2 flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
-                    disabled={splitTopics.length === 0 && !isGeneratingTopics}
-                  >
-                    <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
-                    Topics
-                  </button>
+                  {/* Disabled placeholder only — once topics exist the panel (open or icon rail)
+                      replaces it. A span wrapper keeps the tooltip working on a disabled button. */}
+                  <span className="relative top-1.5 right-2 inline-flex shrink-0">
+                    <button
+                      type="button"
+                      className="flex h-8 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled
+                    >
+                      <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
+                      Topics
+                    </button>
+                  </span>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {splitTopics.length === 0 && !isGeneratingTopics ? "Topics appear after a structured AI response" : "Show response topics"}
-                </TooltipContent>
+                <TooltipContent>Topics appear after a structured AI response</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -2530,34 +2530,59 @@ export default function ConsultationChat({
         })()}
         </div>
         {terminalTopicsPanelVisible && (
-          // The picker row's "Topics" button is hidden while this panel is open (see
-          // terminalTopicsPanelVisible) so there's a single Topics control at a time — the arrow
-          // tab straddling the panel's left edge is how it's collapsed again. It lives outside
-          // the <aside> because that clips its overflow.
-          <div className="relative ml-2 flex shrink-0">
-            <button
-              type="button"
-              onClick={() => setTerminalTopicsOpen(false)}
-              aria-label={t("topicNavigator.hide")}
-              title={t("topicNavigator.hide")}
-              className="absolute top-1/2 left-0 z-10 flex h-10 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
-            >
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+          // Open: full list with a hide button in its header. Minimized: an icon-only rail — the
+          // Topics icon reopens it, and each topic stays a clickable dot (title in a tooltip).
+          <div className="ml-2 flex shrink-0">
             <aside
               id={`${chatInstanceId}-topics`}
               aria-label={t("topicNavigator.label")}
-              className="flex w-52 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
+              className={`flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card transition-[width] duration-200 ${
+                terminalTopicsOpen ? "w-52" : "w-10"
+              }`}
             >
-              <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
-                <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
-                {t("topicNavigator.label")}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {terminalTopicsOpen ? (
+                <div className="flex shrink-0 items-center gap-1.5 border-b border-border py-1.5 pl-3 pr-1.5 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
+                  <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+                  <span className="flex-1 truncate">{t("topicNavigator.label")}</span>
+                  <button
+                    type="button"
+                    onClick={() => setTerminalTopicsOpen(false)}
+                    aria-label={t("topicNavigator.hide")}
+                    title={t("topicNavigator.hide")}
+                    aria-expanded
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 dark:hover:bg-overlay-hover"
+                  >
+                    <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex shrink-0 justify-center border-b border-border py-1.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setTerminalTopicsOpen(true)}
+                        aria-label={t("topicNavigator.show")}
+                        aria-expanded={false}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-brand-gold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 dark:hover:bg-overlay-hover"
+                      >
+                        <ListTree className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">{t("topicNavigator.show")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+              <div className={`min-h-0 flex-1 overflow-y-auto ${terminalTopicsOpen ? "p-2" : "px-1 py-2"}`}>
                 {splitTopics.length === 0 ? (
-                  <TopicNavigatorLoading label={t("topicNavigator.generating")} />
+                  <TopicNavigatorLoading label={t("topicNavigator.generating")} compact={!terminalTopicsOpen} />
                 ) : (
-                  <TopicNavigatorList groups={splitTopicGroups} activeIndex={activeTopicIndex} onJump={scrollToTopic} />
+                  <TopicNavigatorList
+                    groups={splitTopicGroups}
+                    activeIndex={activeTopicIndex}
+                    onJump={scrollToTopic}
+                    compact={!terminalTopicsOpen}
+                  />
                 )}
               </div>
             </aside>

@@ -36,10 +36,10 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
   ),
 }) as React.ForwardRefExoticComponent<MindMap3DProps & React.RefAttributes<MindMap3DHandle>>;
 
-/** Levels open when a map is first shown (root = 0): the five branches, their points, and one
- * level of detail under each point. Saved with the collapse state (`collapseDefault`), so a map
- * whose fold was seeded under a different default is re-seeded once when this changes. */
-const DEFAULT_VISIBLE_LEVELS = 3;
+/** Levels open when a map is first shown (root = 0) — `'all'` shows every node; the user folds
+ * from there. Saved with the collapse state (`collapseDefault`), so a map whose fold was seeded
+ * under a different default is re-seeded once when this changes. */
+const DEFAULT_VISIBLE_LEVELS: number | 'all' = 'all';
 
 const nodeTypes = {
   custom: CustomNode,
@@ -135,15 +135,14 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     setCollapseDefaultPending(true);
   }, [localStorageKey]);
 
-  // First time this map is shown here: open at root + branches + points + their detail (levels 0–3) and
-  // fold everything deeper, so a 100-node map opens looking like a readable overview. The
-  // Structure menu's "Show levels" and each node's toggle open the rest.
+  // First time this map is shown here: open with every node visible. The Structure menu's
+  // "Show levels" and each node's toggle fold it down.
   useEffect(() => {
     if (!collapseDefaultPending || !data || typeof data !== 'object') return;
     // Has to wait for `data`, which can arrive after the cache check above — same one-shot
     // seeding as that effect, not a render loop (it clears its own trigger).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCollapsedIds(collapseBelowLevel(data, DEFAULT_VISIBLE_LEVELS));
+    setCollapsedIds(DEFAULT_VISIBLE_LEVELS === 'all' ? new Set() : collapseBelowLevel(data, DEFAULT_VISIBLE_LEVELS));
     setCollapseDefaultPending(false);
   }, [collapseDefaultPending, data]);
 
@@ -457,9 +456,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   }, [selectedNodeId]);
 
   return (
+    // `isolate`: the canvas controls use z-(--z-canvas-overlay) (9999) to sit above React Flow —
+    // this keeps that local to the map, so they can't paint over a neighbouring or maximized
+    // Terminal pane. Every overlay (menus, portals via containerRef) renders inside this box.
     <div
       ref={containerRef}
-      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
+      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative isolate transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
     >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none !important; }
