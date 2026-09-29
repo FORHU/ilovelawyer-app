@@ -126,7 +126,9 @@ export function TagMixSummary({
   segments,
   catalog,
 }: {
-  ring?: { pct: number; tone: Tone; title: string }
+  /** `label` names what the ring counts (e.g. "Closed") and sits under it — without it a bare
+   * "0%" beside a full tag bar reads as a broken chart rather than "none closed yet". */
+  ring?: { pct: number; tone: Tone; title: string; label?: string }
   segments: TagMixSegment[]
   /** The Terminal panel catalog's sizing — used by Legal Issues, Weaknesses, Strengths and the
    * Citation Map list. */
@@ -140,28 +142,39 @@ export function TagMixSummary({
   return (
     <div className="flex items-center gap-3">
       {ring ? (
-        <div className="relative h-10 w-10 shrink-0" title={ring.title}>
-          <svg viewBox={`0 0 ${box} ${box}`} className="h-full w-full -rotate-90" aria-hidden="true">
-            <circle cx={box / 2} cy={box / 2} r={ringR} fill="none" strokeWidth={stroke} className={catalog ? "stroke-muted" : "stroke-border"} />
-            <circle
-              cx={box / 2}
-              cy={box / 2}
-              r={ringR}
-              fill="none"
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              className={TONE_STYLE[ring.tone].stroke}
-              strokeDasharray={`${(ring.pct / 100) * ringC} ${ringC}`}
-            />
-          </svg>
-          <span
-            className={cn(
-              "absolute inset-0 flex items-center justify-center text-foreground",
-              catalog ? "font-mono text-[9.5px] font-bold tabular-nums" : "text-[10px] font-semibold",
-            )}
-          >
-            {ring.pct}%
-          </span>
+        <div className="flex shrink-0 flex-col items-center gap-1" title={ring.title}>
+          <div className="relative h-10 w-10">
+            <svg viewBox={`0 0 ${box} ${box}`} className="h-full w-full -rotate-90" aria-hidden="true">
+              <circle cx={box / 2} cy={box / 2} r={ringR} fill="none" strokeWidth={stroke} className={catalog ? "stroke-muted" : "stroke-border"} />
+              {/* Skipped at 0%: a zero-length dash with a round linecap still paints a dot. */}
+              {ring.pct > 0 && (
+                <circle
+                  cx={box / 2}
+                  cy={box / 2}
+                  r={ringR}
+                  fill="none"
+                  strokeWidth={stroke}
+                  strokeLinecap="round"
+                  className={TONE_STYLE[ring.tone].stroke}
+                  strokeDasharray={`${(ring.pct / 100) * ringC} ${ringC}`}
+                />
+              )}
+            </svg>
+            <span
+              className={cn(
+                "absolute inset-0 flex items-center justify-center",
+                ring.pct > 0 ? "text-foreground" : "text-muted-foreground",
+                catalog ? "font-mono text-[9.5px] font-bold tabular-nums" : "text-[10px] font-semibold",
+              )}
+            >
+              {ring.pct}%
+            </span>
+          </div>
+          {ring.label ? (
+            <span className="max-w-14 truncate font-mono text-[8.5px] font-semibold uppercase tracking-[0.4px] text-muted-foreground" aria-hidden="true">
+              {ring.label}
+            </span>
+          ) : null}
           <span className="sr-only">{ring.title}</span>
         </div>
       ) : null}

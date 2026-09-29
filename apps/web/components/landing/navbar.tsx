@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { ScrollSmoother } from "gsap/ScrollSmoother";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 
 const NAV_LINKS = [
@@ -19,7 +20,7 @@ const NAV_LINKS = [
   { key: "resources", href: "#footer-spacer", tooltip: "Help centre, support and legal resources" },
 ] as const;
 
-// Transparent-over-hero at rest, frosted on hover of the header itself (handoff §1) — one
+// Transparent-over-hero at rest, frosted on hover or once scrolled (handoff §1) — one
 // `group` on <header> drives every child's color/border/text-shadow flip in the same 300ms.
 // Pages with no hero underneath (`overHero={false}`, e.g. the neutral jurisdiction splash)
 // get the frosted look permanently instead, since white-on-transparent has nothing dark
@@ -34,16 +35,40 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   const { t } = useTranslation("landing");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const [scrolled, setScrolled] = useState(false);
 
-  const LINK_INK = `transition-colors duration-300 ${overHero ? OVER_HERO_INK : SOLID_INK}`;
-  const BORDER_INK = `transition-colors duration-300 ${overHero ? OVER_HERO_BORDER : SOLID_BORDER}`;
+  useEffect(() => {
+    // Capture-phase on document (not a bubbling window listener) and every scroll-position
+    // source — html is the scroller here (`overflow-y: auto`, globals.css), with ScrollSmoother
+    // layered on top, so no single one is guaranteed to be the one that moves.
+    const onScroll = () => {
+      const y = Math.max(
+        window.scrollY,
+        document.documentElement.scrollTop,
+        document.body.scrollTop,
+        ScrollSmoother.get()?.scrollTop() ?? 0,
+      );
+      setScrolled(y > 0);
+    };
+    onScroll();
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
 
+  // Once the page is scrolled the hero is no longer guaranteed to sit behind the header, so it
+  // locks into the same frosted look hover gives it.
+  const transparent = overHero && !scrolled;
+  const LINK_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_INK : SOLID_INK}`;
+  const BORDER_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_BORDER : SOLID_BORDER}`;
+
+  // `bg-clip-padding` keeps the frosted white fill out from under the bottom border — otherwise
+  // the translucent white border sits on white and never shows against the page below.
   return (
     <header
-      className={`group fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b transition-[background-color,backdrop-filter,border-color] duration-300 ${
-        overHero
-          ? "bg-transparent border-transparent hover:bg-white/92 hover:backdrop-blur-lg hover:border-b-[#1a1a1a]/8"
-          : "bg-white/92 backdrop-blur-lg border-b-[#1a1a1a]/8"
+      className={`group fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b bg-clip-padding transition-[background-color,backdrop-filter,border-color] duration-300 ${
+        transparent
+          ? "bg-transparent border-transparent hover:bg-white/92 hover:backdrop-blur-lg hover:border-b-white/25"
+          : "bg-white/92 backdrop-blur-lg border-b-white/25"
       }`}
     >
       <nav className={`hidden lg:flex flex-1 items-center gap-1 text-[15px] tracking-[-0.018em] ${LINK_INK}`}>

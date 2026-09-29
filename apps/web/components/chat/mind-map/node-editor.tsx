@@ -148,7 +148,7 @@ export function NodeEditor({ node, onEdit, onSaved, disabledReason, atNodeCap }:
         <button
           type="submit"
           disabled={saving || !trimmed}
-          className="flex items-center gap-1.5 rounded-lg bg-brand-navy-950 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#162244] disabled:opacity-60"
+          className="flex items-center gap-1.5 rounded-lg bg-brand-navy-950 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-60"
         >
           {saving && <Loader2 size={12} className="animate-spin" />}
           {mode === 'add' ? t('mindMapEdit.addPoint') : t('mindMapEdit.save')}
