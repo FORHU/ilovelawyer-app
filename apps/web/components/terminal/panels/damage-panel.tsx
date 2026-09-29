@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Check, ChevronRight, FileText, Pencil, Scale, Trash2 } from "lucide-react"
+import { Check, ChevronRight, FileText, Pencil, Trash2 } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -173,48 +173,26 @@ export function DamagePanel({
         </p>
       ) : null}
 
-      {heads.length === 0 && editing === null ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/60 px-4 py-6 text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted-foreground">
-            <Scale className="h-4.5 w-4.5" aria-hidden="true" />
-          </span>
-          <p className="font-['Libre_Caslon_Text'] text-lg font-normal tracking-[-0.02em] text-foreground">
-            {t("damagesEmptyTitle")}
-          </p>
-          <p className={cn(secondaryTextClass, "max-w-[42ch]")}>{t("damagesEmptyBody")}</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={() => openEditor("new")} className={primaryBtnClass}>
-              {t("damageEditorAdd")}
-            </button>
-            <button
-              type="button"
-              onClick={() => propose.mutate()}
-              disabled={updating}
-              title={t("damagesProposeHint")}
-              className={ghostBtnClass}
-            >
-              {t("damagesPropose")}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {/* Ring and heads as one block that never shrinks: PanelBody is a scrolling flex column, and
           PanelRowList's overflow-hidden would otherwise let it collapse to a hairline in a short
           pane. When the pane is wide enough, the ring sits beside the heads so both are in view
-          without scrolling. */}
+          without scrolling. With no heads yet, the ring is shown on its own — an empty track at £0 —
+          instead of a separate empty state. */}
       <div className="@container shrink-0">
-        <div className="grid gap-4 @[34rem]:grid-cols-[11rem_minmax(0,1fr)] @[34rem]:items-start">
-          {heads.length > 0 ? (
-            <DamagesRing
-              heads={orderedComputed.map((h) => ({ id: h.id, category: h.category, share: h.share }))}
-              label={ringLabel}
-              eyebrow={t("damagesTotalClaim")}
-              total={compact(displayTotal)}
-              caption={caption}
-              dimmed={updating}
-            />
-          ) : null}
+        <div
+          className={cn(
+            "grid gap-4",
+            heads.length > 0 && "@[34rem]:grid-cols-[11rem_minmax(0,1fr)] @[34rem]:items-start",
+          )}
+        >
+          <DamagesRing
+            heads={orderedComputed.map((h) => ({ id: h.id, category: h.category, share: h.share }))}
+            label={heads.length > 0 ? ringLabel : `${t("damagesTotalClaim")} ${money(0)}: ${t("damagesCaptionEmpty")}`}
+            eyebrow={t("damagesTotalClaim")}
+            total={compact(displayTotal)}
+            caption={heads.length > 0 ? caption : t("damagesCaptionEmpty")}
+            dimmed={updating}
+          />
 
           <PanelRowList>
             {heads.map((d) => {
@@ -430,9 +408,10 @@ export function DamagePanel({
             else create.mutate(body, done)
           }}
         />
-      ) : heads.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => openEditor("new")} className={ghostBtnClass}>
+      ) : (
+        <div className={cn("flex flex-wrap gap-2", heads.length === 0 && "justify-center")}>
+          {/* The main action while the model is empty; an ordinary one once it has heads. */}
+          <button type="button" onClick={() => openEditor("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
             {t("damageEditorAdd")}
           </button>
           <button
@@ -445,7 +424,7 @@ export function DamagePanel({
             {t("damagesPropose")}
           </button>
         </div>
-      ) : null}
+      )}
 
       <MutationError
         show={create.isError || update.isError || del.isError || propose.isError || applyProposal.isError || dismissProposal.isError}

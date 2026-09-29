@@ -148,7 +148,9 @@ export function DamagesRing({
   return (
     <div role="img" aria-label={label} className={cn("relative mx-auto aspect-square w-44 max-w-full", className)}>
       <svg viewBox="0 0 200 200" aria-hidden="true" className="h-full w-full -rotate-90">
-        <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-muted" />
+        {/* The empty track — also the whole ring when there are no heads yet. Not text-muted: in dark
+            mode --muted is the same colour as the card behind it, so the circle would vanish. */}
+        <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-foreground/10" />
         {segments.map((s) => (
           <circle
             key={s.id}
