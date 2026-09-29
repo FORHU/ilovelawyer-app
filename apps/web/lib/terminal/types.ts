@@ -376,6 +376,9 @@ export interface CaseSnapshot {
   findings: CaseFinding[]
   witnesses: Witness[]
   damages: DamageClaim[]
+  // Computed server-side from `damages` (api utils/damages-compute.ts): amounts, shares, the
+  // exposure range and what is still provisional. Don't re-derive these on the client.
+  damagesSummary: DamagesSummary
   reconstruction: CaseReconstruction | null
   // The dated event chain (Events tab) — separate from `reconstruction`, which only exists once a
   // narrative has been generated. Named apart from `dates`/`nextDate` above, which are the calendar.
@@ -612,14 +615,107 @@ export type DamageCategory =
   | "ATTORNEYS_FEES"
   | "OTHER"
 
+export type DamageStatus = "PROVISIONAL" | "SUPPORTED" | "CERTIFIED"
+export type DamageSource = "MANUAL" | "AI"
+export type DamageJevSupport = "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+
+/** How a head's amount is reached; null on a DamageClaim reads as FIXED. */
+export type DamageBasis =
+  | { kind: "FIXED" }
+  | {
+      kind: "RATE_X_PERIOD"
+      monthlyRate: number
+      months?: number
+      fromDate?: string
+      /** An ISO date, or DAMAGE_AS_OF to keep accruing to today (backwages run until finality). */
+      untilDate?: string
+      /** Projected finality date — sets the head's high end when no amountHigh is given. */
+      highUntilDate?: string
+    }
+  | { kind: "PERCENT_OF"; percent: number; categories: DamageCategory[] }
+
+/** untilDate value meaning "up to today" — mirrors AS_OF in the API's damages-compute.ts. */
+export const DAMAGE_AS_OF = "asOf"
+
+/** A suggested update to a head from a newly read document (API: damages-proposal.ts). Never
+ * applied on its own — the lawyer applies or dismisses it. */
+export interface DamageProposal {
+  basis: DamageBasis
+  amount: number | null
+  sourceDocumentId: string
+  documentName: string
+  sourceQuote: string
+  /** true: the document is the evidence the head was waiting on, so applying also certifies it. */
+  satisfiesPending: boolean | null
+  proposedAt: string
+}
+
 export interface DamageClaim {
   id: string
   caseId: string
   category: DamageCategory
+  label: string | null
   description: string | null
+  /** For any basis other than FIXED, the server's computed value. */
   amount: number | null
+  basis: DamageBasis | null
+  amountLow: number | null
+  amountHigh: number | null
+  status: DamageStatus
+  pendingEvidence: string | null
+  legalBasis: string | null
+  source: DamageSource
+  sourceDocumentId: string | null
+  sourceQuote: string | null
+  aiProposedBasis: DamageProposal | null
+  jevSupport: DamageJevSupport | null
+  jevAwardability: number | null
+  jevConfidence: number | null
+  jevCheckedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface DamageHeadSummary {
+  id: string
+  category: DamageCategory
+  amount: number | null
+  low: number | null
+  high: number | null
+  /** 0..1 of the total. */
+  share: number
+  /** A derived head (attorney's fees) is only as firm as the weakest head it's computed from. */
+  effectiveStatus: DamageStatus
+  derived: boolean
+}
+
+export interface DamagesSummary {
+  currency: "PHP" | "GBP"
+  total: number
+  low: number
+  high: number
+  /** Readable ceiling for the exposure bar's scale. */
+  scaleMax: number
+  headCount: number
+  heads: DamageHeadSummary[]
+  provisional: boolean
+  pendingEvidence: string[]
+  /** YYYY-MM-DD the accruing heads were computed to; null when none accrues. */
+  asOf: string | null
+}
+
+/** Fields the damages create/update endpoints accept. */
+export interface DamageClaimBody {
+  category?: DamageCategory
+  label?: string | null
+  description?: string
+  amount?: number | null
+  basis?: DamageBasis | null
+  amountLow?: number | null
+  amountHigh?: number | null
+  status?: DamageStatus
+  pendingEvidence?: string | null
+  legalBasis?: string | null
 }
 
 export interface CaseReconstruction {
