@@ -21,6 +21,7 @@ import {
   useForgotPasswordMutation,
   useGoogleAuthMutation,
   useLoginMutation,
+  useLogoutMutation,
   useSendOtpMutation,
   useSignupMutation,
   useUpdateRequiredPasswordMutation,
@@ -85,6 +86,10 @@ function UnifiedAuthContent() {
   const [otpStep, setOtpStep] = useState(false);
   // Post-verification workspace step (solo / create org / join org)
   const [workspaceStep, setWorkspaceStep] = useState(false);
+  // The Tenant auto-approved the account at verification — after workspace setup the user
+  // is signed out and asked to sign in again, instead of going straight into the app.
+  const [signInAfterSetup, setSignInAfterSetup] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -97,6 +102,7 @@ function UnifiedAuthContent() {
   const sendOtpMutation = useSendOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
   const cancelSignupMutation = useCancelSignupMutation();
+  const logoutMutation = useLogoutMutation();
 
 
   useEffect(() => {
@@ -248,13 +254,34 @@ function UnifiedAuthContent() {
     verifyOtpMutation.mutate(
       { email: signupEmail, code: otpDigits.join("") },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          setSignInAfterSetup(data.user.approvalStatus === "ACTIVE");
           setOtpStep(false);
           setWorkspaceStep(true);
         },
         onError: (err) => setError((err as Error).message),
       }
     );
+  }
+
+  function handleWorkspaceDone() {
+    if (!signInAfterSetup) {
+      router.push(sanitizeNextPath(searchParams.get("next")));
+      return;
+    }
+    // Revokes the verification session (useLogoutMutation also clears auth/query state and
+    // routes to /login — this same page, so the local state below survives).
+    logoutMutation.mutate(undefined, {
+      onSettled: () => {
+        setWorkspaceStep(false);
+        setSignInAfterSetup(false);
+        setSigninEmail(signupEmail);
+        setSigninPassword("");
+        setTab("signin");
+        setError(null);
+        setAccountReady(true);
+      },
+    });
   }
 
   function handleResendOtp() {
@@ -335,7 +362,7 @@ function UnifiedAuthContent() {
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
           {workspaceStep ? (
-            <WorkspaceSetup defaultOrgName={name} onDone={() => router.push(sanitizeNextPath(searchParams.get("next")))} />
+            <WorkspaceSetup defaultOrgName={name} onDone={handleWorkspaceDone} />
           ) : otpStep ? (
             <>
               <div className="flex flex-col gap-1 pt-20">
@@ -587,10 +614,10 @@ function UnifiedAuthContent() {
                 )}
               </div>
 
-              {legacySignupSuccess && tab === "signin" && (
+              {(legacySignupSuccess || accountReady) && tab === "signin" && (
                 <div className="border border-brand-gold bg-accent px-4 py-3">
                   <p className="text-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                    {t("login.signupSuccess")}
+                    {accountReady ? t("login.accountReady") : t("login.signupSuccess")}
                   </p>
                 </div>
               )}
