@@ -88,6 +88,10 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
           setAudioRendering(false);
           if (result.status === "COMPLETED" && result.audioFile?.fileUrl) {
             setRenderedAudioUrl(result.audioFile.fileUrl);
+            // The message list was last fetched while this was still IN_PROGRESS (turnTimings
+            // null) — refetch now so AudioOverviewTurns gets the timings this render just
+            // produced, without waiting on some unrelated refetch to happen to pick it up.
+            void queryClient.invalidateQueries({ queryKey: chatKeys.messages(consultationId) });
           } else if (result.status === "FAILED") {
             setAudioRenderError(true);
           }

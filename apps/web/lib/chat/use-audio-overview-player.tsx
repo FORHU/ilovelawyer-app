@@ -12,6 +12,10 @@ import { useEffect, useRef, useState } from "react";
  */
 export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefined, messageId: string | null | undefined) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Reactive twin of audioRef — a plain ref attaching doesn't itself trigger a re-render, but
+  // AudioOverviewWaveform (a sibling of the <audio> element below, not a child of it) needs to
+  // know the moment it's available, to bind wavesurfer.js to it.
+  const [mediaElement, setMediaElement] = useState<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
@@ -87,7 +91,10 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
   const audioElement =
     renderedAudioUrl && messageId ? (
       <audio
-        ref={audioRef}
+        ref={(el) => {
+          audioRef.current = el;
+          setMediaElement(el);
+        }}
         src={renderedAudioUrl}
         onPlay={() => setIsPlaying(true)}
         onPause={() => {
@@ -127,6 +134,7 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
 
   return {
     audioElement,
+    mediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,

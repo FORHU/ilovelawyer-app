@@ -4,9 +4,16 @@ import { ChevronDown, Download, Loader2, Pause, Play } from "lucide-react"
 import { useAudioOverviewHistoryQuery, type AudioOverviewHistoryEntry } from "@/lib/terminal/mutations"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
+import { AudioOverviewWaveform } from "@/components/audio-overview/audio-overview-waveform"
 
 function formatEntryDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+}
+
+/** Fallback download name, matching the API's own audioOverviewFilename — the Content-Disposition
+ * header normally supplies the real name, so this only matters when that's missing. */
+function audioOverviewFallbackFilename(iso: string): string {
+  return `audio-overview-${iso.slice(0, 16).replace("T", "-").replace(":", "")}.mp3`
 }
 
 function formatClock(seconds: number): string {
@@ -123,11 +130,6 @@ function HistoryEntry({
     else audio.pause()
   }
 
-  const seekTo = (fraction: number) => {
-    const audio = audioRef.current
-    if (audio && duration) audio.currentTime = fraction * duration
-  }
-
   return (
     <li
       className={`rounded-lg border transition-colors ${
@@ -160,7 +162,7 @@ function HistoryEntry({
         {entry.audio && (
           <button
             type="button"
-            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl, "audio-overview.mp3")}
+            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl, audioOverviewFallbackFilename(entry.createdAt))}
             aria-label={t("workspace.audioOverviewDownload")}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >
@@ -191,78 +193,11 @@ function HistoryEntry({
       )}
       {open && (
         <div className="flex flex-col gap-3 border-t border-border px-3 py-3">
-          {entry.audio && (
-            <Waveform url={entry.audio.fileUrl} progress={duration ? currentTime / duration : 0} onSeek={seekTo} />
-          )}
-          <AudioOverviewTurns turns={entry.turns} checks={entry.checks} />
+          {entry.audio && <AudioOverviewWaveform url={entry.audio.fileUrl} mediaElement={audioRef.current} />}
+          <AudioOverviewTurns turns={entry.turns} checks={entry.checks} currentTime={currentTime} turnTimings={entry.turnTimings} />
         </div>
       )}
     </li>
   )
 }
 
-const WAVEFORM_BARS = 96
-
-/** Peak-per-bucket amplitudes of the rendered audio, decoded in the browser (there's no stored
- * waveform). Null while loading or if the file can't be fetched/decoded — the caller then shows
- * a plain progress bar rather than an invented shape. */
-function useWaveformPeaks(url: string): number[] | null {
-  const [peaks, setPeaks] = useState<number[] | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    const ctx = new AudioContext()
-    fetch(url, { credentials: "include" })
-      .then((res) => res.arrayBuffer())
-      .then((buf) => ctx.decodeAudioData(buf))
-      .then((decoded) => {
-        const data = decoded.getChannelData(0)
-        const size = Math.max(1, Math.floor(data.length / WAVEFORM_BARS))
-        const out: number[] = []
-        for (let i = 0; i < WAVEFORM_BARS; i++) {
-          let max = 0
-          for (let j = i * size; j < Math.min(data.length, (i + 1) * size); j++) max = Math.max(max, Math.abs(data[j]!))
-          out.push(max)
-        }
-        const top = Math.max(...out, 0.01)
-        if (!cancelled) setPeaks(out.map((p) => p / top))
-      })
-      .catch(() => {
-        if (!cancelled) setPeaks(null)
-      })
-    return () => {
-      cancelled = true
-      void ctx.close()
-    }
-  }, [url])
-  return peaks
-}
-
-function Waveform({ url, progress, onSeek }: { url: string; progress: number; onSeek: (fraction: number) => void }) {
-  const peaks = useWaveformPeaks(url)
-  return (
-    <div
-      role="slider"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(progress * 100)}
-      tabIndex={0}
-      onClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect()
-        onSeek((e.clientX - rect.left) / rect.width)
-      }}
-      className="relative flex h-14 cursor-pointer items-center gap-px overflow-hidden rounded-md bg-muted/20"
-    >
-      {peaks ? (
-        peaks.map((p, i) => (
-          <span
-            key={i}
-            className={`flex-1 rounded-full ${i / peaks.length < progress ? "bg-brand-gold" : "bg-brand-gold/40"}`}
-            style={{ height: `${Math.max(6, p * 100)}%` }}
-          />
-        ))
-      ) : (
-        <span className="absolute inset-y-0 left-0 bg-brand-gold/40" style={{ width: `${progress * 100}%` }} />
-      )}
-    </div>
-  )
-}
