@@ -19,6 +19,7 @@
   "noNextDate": "예정된 날짜 없음",
   "loadWorkspace": "워크스페이스 불러오기",
   "workspaceName": "워크스페이스 이름",
+  "workspaceNameRequired": "워크스페이스 이름을 입력하세요",
   "untitledLayout": "제목 없음",
   "layoutTabsScrollLeft": "레이아웃 왼쪽으로 스크롤",
   "layoutTabsScrollRight": "레이아웃 오른쪽으로 스크롤",
@@ -26,6 +27,12 @@
   "saveChanges": "변경사항 저장",
   "reset": "레이아웃 초기화",
   "closeLayout": "Close layout",
+  "renameLayout": "레이아웃 이름 변경",
+  "renameLayoutHint": "두 번 클릭하여 이름 변경",
+  "renameLayoutKeys": "Enter 저장 · Esc 취소",
+  "deleteLayoutTitle": "레이아웃을 삭제할까요?",
+  "deleteLayoutBody": "“{{name}}” 레이아웃과 패널 배치가 영구적으로 삭제됩니다. 되돌릴 수 없습니다.",
+  "deleteLayoutConfirm": "레이아웃 삭제",
   "closeDialog": "대화상자 닫기",
   "refresh": "분석 새로고침",
   "refreshing": "새로고침 중…",
@@ -280,12 +287,15 @@
   "groundPickClaim": "청구",
   "groundLink": "연결",
   "groundRemove": "연결 삭제",
+  "viewCitation": "인용 보기",
+  "opensInNewTab": "새 탭에서 열림",
+  "citationNotInLibrary": "라이브러리에 없음",
   "groundJev": {
     "SUPPORTS_GROUND": "이 청구와 직접 관련됨",
     "TANGENTIAL": "이 청구와 간접적으로만 관련됨",
     "DOES_NOT_APPLY": "이 청구와 관련 없음"
   },
-  "groundJevFlag": "Jev는 이 법원이 청구와 관련 없다고 봅니다",
+  "groundJevFlag": "이 청구와 관련 없음",
   "claimsTitle": "주장된 청구 ({{n}})",
   "claimsEmpty": "아직 청구가 없습니다. 소장에서 찾거나 직접 추가하세요.",
   "claimTitlePlaceholder": "청구, 예: 부당해고",
@@ -333,7 +343,6 @@
   "findingJevChecking": "확인 중…",
   "findingJevOff": "이 패널의 Jev 확인이 꺼져 있습니다.",
   "findingJevFailed": "Jev가 확인하지 못했습니다. 다시 시도하세요.",
-  "issueJevRaisedLine": "Jev 판단: {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
     "RAISED": "사건에서 제기된 쟁점",
     "NOT_RAISED": "사건에서 제기되지 않은 쟁점"
@@ -343,18 +352,52 @@
     "UNCONTESTED": "다툼 없음",
     "UNCLEAR": "다툼 여부 불분명"
   },
-  "issueJevBurdenLine": "입증 책임: {{party}} ({{pct}}%).",
   "issueJevBurden": {
     "CLAIMANT": "신청인 측",
     "RESPONDENT": "피신청인 측",
     "SHARED": "양측",
     "UNCLEAR": "불분명"
   },
-  "issueJevBurdenDisputed": "작성 AI는 {{party}}에 두었습니다.",
+  "issueJevBurdenDisputed": "AI 초안은 {{party}}에 두었습니다.",
   "findingJevModelRating": "작성 AI의 표시: {{tag}}.",
+  "llmReview": "AI 검토",
+  "llmFlag": "검토",
+  "llmUncertain": "AI가 확신하지 못했습니다 — 근거를 먼저 확인하세요.",
+  "llmNotReviewed": "AI 검토를 받지 못했습니다 (검토 실패) — AI 초안의 평가입니다.",
+  "llmConfidence": "확신도 {{pct}}%",
+  "llmCertainty": {
+    "likely": "가능성 높음",
+    "possibly": "가능성 있음",
+    "unclear": "불분명"
+  },
+  "llmRun": "AI 검토 실행",
+  "llmReviewing": "검토 중…",
+  "llmOff": "이 패널의 AI 검토가 꺼져 있습니다.",
+  "llmFailed": "AI 검토를 실행하지 못했습니다. 다시 시도하세요.",
+  "llmDraftSaid": "AI 초안: {{tag}}",
+  "issueBurdenOn": "입증 책임: {{party}}",
+  "issueBurdenUnclear": "입증 책임 소재 불분명",
+  "weaknessSeverityLevel": {
+    "0": "경미한 사항",
+    "1": "구제 범위를 제한함",
+    "2": "청구의 일부를 무너뜨림",
+    "3": "사건 전체를 끝낼 수 있음"
+  },
+  "weaknessSurfacingLevel": {
+    "0": "항소 단계에서만 드러남",
+    "1": "심리 단계에서 드러남",
+    "2": "서면 제출 단계에서 드러남",
+    "3": "즉시 드러남"
+  },
+  "strengthWeightLevel": {
+    "0": "부수적인 사항",
+    "1": "구제를 뒷받침함",
+    "2": "청구 입증에 도움이 됨",
+    "3": "그 자체로 청구를 뒷받침함"
+  },
   "issueJevFlag": {
-    "NOT_RAISED": "Jev는 사건 자료에서 이 쟁점을 찾지 못했습니다",
-    "BURDEN_DISPUTED": "Jev는 입증 책임을 상대방에게 둡니다"
+    "NOT_RAISED": "사건 자료에서 찾을 수 없음",
+    "BURDEN_DISPUTED": "입증 책임이 상대방에게 있을 수 있음"
   },
   "addWeakness": "약점 추가",
   "weaknessesIntro": "우리 사건의 취약점 — 드러날 순서대로.",
@@ -370,15 +413,13 @@
     "UNSUPPORTED": "사건 자료로 뒷받침되지 않음",
     "CONTRADICTED": "사건 자료와 모순됨"
   },
-  "weaknessJevScores": "심각도 {{sev}}% (신뢰도 {{sevConf}}%) · 조기 노출 {{sur}}% (신뢰도 {{surConf}}%)",
-  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
   "weaknessJevCurable": {
     "BY_EVIDENCE": "증거로 해소 가능",
     "BY_ARGUMENT": "주장으로 대응 가능",
     "NOT_CURABLE": "기록상 해소할 방법 없음"
   },
   "weaknessJevFlag": {
-    "NOT_BORNE_OUT": "Jev는 사건 자료에서 이 취약점을 확인하지 못했습니다"
+    "NOT_BORNE_OUT": "사건 자료로 뒷받침되지 않음"
   },
   "addStrength": "강점 추가",
   "strengthsIntro": "우리 사건 이론을 뒷받침하는 사실.",
@@ -388,20 +429,18 @@
   "strengthDetailPlaceholder": "문서 번호와 그 내용",
   "strengthImpact": "사건에서 차지하는 비중 (클수록 유리)",
   "strengthJevSupport": {
-    "SUPPORTED": "출처 문서로 뒷받침됨",
-    "UNSUPPORTED": "출처 문서로 뒷받침되지 않음",
+    "SUPPORTED": "출처 문서에서 확인됨",
+    "UNSUPPORTED": "출처 문서에서 찾을 수 없음",
     "CONTRADICTED": "출처 문서와 모순됨"
   },
-  "strengthJevNoSourceText": "인용된 문서의 본문을 찾지 못해 Jev가 사건 자료만으로 확인했습니다.",
-  "strengthJevWeightLine": "비중 {{pct}}% (신뢰도 {{conf}}%)",
-  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevNoSourceText": "(문서 본문을 찾지 못해 사건 자료만으로 확인함)",
   "strengthJevRebuttal": {
     "UNREBUTTED": "기록상 반박할 내용 없음",
     "REBUTTABLE": "상대방에게 대응해야 할 반박이 있음",
     "ALREADY_REBUTTED": "기록상 이미 반박됨"
   },
   "strengthJevFlag": {
-    "NOT_BORNE_OUT": "Jev는 출처 문서에서 이 내용을 찾지 못했습니다"
+    "NOT_BORNE_OUT": "출처 문서에서 찾을 수 없음"
   },
   "addAttackStrategy": "공격 전략 추가",
   "addDefenseStrategy": "방어 전략 추가",

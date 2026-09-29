@@ -839,12 +839,19 @@ function UnifiedAuthContent() {
                         <input
                           type={showSignupPw ? "text" : "password"}
                           value={signupPassword}
-                          onChange={(e) => setSignupPassword(e.target.value)}
-                          placeholder="••••••••"
+                          onChange={(e) => {
+                            setSignupPassword(e.target.value);
+                            // The toggle disappears with the last character — re-mask so the next
+                            // entry doesn't start out revealed with no visible way to hide it.
+                            if (!e.target.value) setShowSignupPw(false);
+                          }}
+                          placeholder={t("signup.passwordPlaceholder")}
                           required
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
+                        {/* Only offered once there's something to reveal. */}
+                        {signupPassword && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -858,6 +865,7 @@ function UnifiedAuthContent() {
                           </TooltipTrigger>
                           <TooltipContent>{showSignupPw ? "Hide password" : "Show password"}</TooltipContent>
                         </Tooltip>
+                        )}
                       </div>
                       {signupPassword && (
                         <PasswordRequirements
@@ -884,12 +892,16 @@ function UnifiedAuthContent() {
                         <input
                           type={showConfirmSignupPw ? "text" : "password"}
                           value={confirmSignupPassword}
-                          onChange={(e) => setConfirmSignupPassword(e.target.value)}
-                          placeholder="••••••••"
+                          onChange={(e) => {
+                            setConfirmSignupPassword(e.target.value);
+                            if (!e.target.value) setShowConfirmSignupPw(false);
+                          }}
+                          placeholder={t("signup.confirmPasswordPlaceholder")}
                           required
                           className={`${inputClass} pr-10`}
                           style={{ fontFamily: "Inter, sans-serif" }}
                         />
+                        {confirmSignupPassword && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -903,6 +915,7 @@ function UnifiedAuthContent() {
                           </TooltipTrigger>
                           <TooltipContent>{showConfirmSignupPw ? "Hide password" : "Show password"}</TooltipContent>
                         </Tooltip>
+                        )}
                       </div>
                       {confirmSignupPassword && signupPassword !== confirmSignupPassword && (
                         <p className="text-red-500 text-xs" style={{ fontFamily: "Inter, sans-serif" }}>

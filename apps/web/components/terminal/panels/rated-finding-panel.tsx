@@ -20,6 +20,8 @@ import {
   EmptyNote,
   JevFlag,
   JevNotChecked,
+  LlmFlag,
+  LlmNotReviewed,
   MutationError,
   PanelBody,
   PanelRow,
@@ -65,6 +67,9 @@ export interface RatedFindingConfig {
   subHintKey?(jev: unknown): string | null
   /** Jev's read, in the expanded row. */
   JevDetail: ComponentType<{ finding: CaseFinding }>
+  /** Present the second check as an "AI review" in plain words (Legal Issues, Weaknesses,
+   * Strengths) instead of the Jev wording the other finding panels still use. */
+  llmWording?: boolean
   /** Show the attach-documents button beside the add field (Weaknesses, Strengths). */
   upload?: boolean
 }
@@ -161,6 +166,10 @@ export function RatedFindingPanel({
             pct: Math.round((inRing / rows.length) * 100),
             tone: "ok",
             title: t(config.ringTitleKey, { done: inRing, total: rows.length }),
+            label: (() => {
+              const ringTagConfig = config.tags.find((s) => s.tag === config.ringTag)
+              return ringTagConfig ? t(ringTagConfig.label) : undefined
+            })(),
           }}
           segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
             key: s.key,
@@ -194,7 +203,13 @@ export function RatedFindingPanel({
                   <span className="min-w-0 flex-1">
                     <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {f.label}
-                      {flags.length > 0 ? <JevFlag title={flags.map((key) => t(key)).join(" · ")} /> : null}
+                      {flags.length > 0 ? (
+                        config.llmWording ? (
+                          <LlmFlag title={flags.map((key) => t(key)).join(" · ")} />
+                        ) : (
+                          <JevFlag title={flags.map((key) => t(key)).join(" · ")} />
+                        )
+                      ) : null}
                     </span>
                     {subLine || hint ? (
                       <span className={catalogSubClass}>
@@ -282,7 +297,11 @@ export function RatedFindingPanel({
                       </p>
                     ) : null}
 
-                    {f.jev ? <config.JevDetail finding={f} /> : anyJev && isAi ? <JevNotChecked /> : null}
+                    {f.jev ? (
+                      <config.JevDetail finding={f} />
+                    ) : anyJev && isAi ? (
+                      config.llmWording ? <LlmNotReviewed /> : <JevNotChecked />
+                    ) : null}
 
                     <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -299,7 +318,9 @@ export function RatedFindingPanel({
                             ) : (
                               <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                             )}
-                            {jevCheck.isPending ? t("findingJevChecking") : t("findingJevCheck")}
+                            {jevCheck.isPending
+                              ? t(config.llmWording ? "llmReviewing" : "findingJevChecking")
+                              : t(config.llmWording ? "llmRun" : "findingJevCheck")}
                           </button>
                         ) : null}
                         {/* Cross-panel: send this finding to Case Strategy's to-dos or the risk register. */}
@@ -353,7 +374,9 @@ export function RatedFindingPanel({
                       </button>
                     </div>
                     <MutationError show={jevCheck.isError}>
-                      {jevError?.status === 409 ? t("findingJevOff") : t("findingJevFailed")}
+                      {jevError?.status === 409
+                        ? t(config.llmWording ? "llmOff" : "findingJevOff")
+                        : t(config.llmWording ? "llmFailed" : "findingJevFailed")}
                     </MutationError>
                   </div>
                 ) : null}

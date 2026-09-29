@@ -35,6 +35,7 @@ import {
   Minimize2,
   Settings,
   X,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 import { FatalRiskBanner, TerminalPanelBody } from "@/components/terminal/terminal-panels"
@@ -51,6 +52,7 @@ import {
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
+  useRenameWorkspaceMutation,
 } from "@/lib/terminal/mutations"
 import type {
   ArrangementValue,
@@ -245,6 +247,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const snapshot = useCaseSnapshotQuery(caseId)
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
+  const renameWorkspace = useRenameWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const deleteWorkspace = useDeleteWorkspaceMutation()
   // No manual "Refresh analysis" trigger — the Legal Terminal relies entirely on the automatic
@@ -279,6 +282,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [newLayoutPreset, setNewLayoutPreset] = useState<PresetValue>("PANE_4")
   // Starts empty: users name their own layout, and the name is required to create it.
   const [newLayoutName, setNewLayoutName] = useState("")
+  // Flips on blur or a create attempt, so the empty-name error doesn't greet users before they've typed.
+  const [newLayoutNameTouched, setNewLayoutNameTouched] = useState(false)
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
@@ -459,6 +464,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     if (!layout) return []
     return [...layout.panels].filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).sort((a, b) => a.order - b.order)
   }, [layout])
+
+  // Free canvas renders panes in a stable DOM order (by id) rather than `visiblePanels`' order:
+  // stacking there comes from the inline `zIndex: panel.order + 1`, and rendering by `order` made
+  // every bringToFront physically move the pane's node to the end of the list. A DOM move
+  // mid-gesture silently drops pointer capture (killing resize drags after the first pointermove —
+  // see onResizePointerMove's safety net) and can swallow clicks/focus inside the raised pane.
+  const freeCanvasPanels = useMemo(() => [...visiblePanels].sort((a, b) => a.id.localeCompare(b.id)), [visiblePanels])
 
   const availablePanels = useMemo(
     () => catalog.data?.panels.filter((panel) => panel.available && !HIDDEN_PANELS.has(panel.id)) ?? [],
@@ -933,6 +945,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const openNewLayoutDialog = () => {
     setNewLayoutPreset(catalog.data?.defaultPreset ?? "PANE_4")
     setNewLayoutName("")
+    setNewLayoutNameTouched(false)
     setNewLayoutOpen(true)
   }
 
@@ -992,6 +1005,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
   // is allowed and leaves the terminal in an empty state until the user creates a new one.
+  // The tab strip's × asks first (see the delete-layout dialog below): closing a layout tab
+  // deletes that saved workspace outright, with no undo.
+  const [layoutPendingDelete, setLayoutPendingDelete] = useState<{ id: string; name: string } | null>(null)
+
   const closeWorkspaceTab = (id: string) => {
     const [fallback] = (workspaces.data ?? []).filter((w) => w.id !== id)
     deleteWorkspace.mutate(id, {
@@ -1122,13 +1139,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             tabs={workspaces.data ?? []}
             activeId={selectedWorkspaceId}
             onSelect={selectWorkspace}
-            onClose={closeWorkspaceTab}
+            onClose={(id) => {
+              const tab = workspaces.data?.find((w) => w.id === id)
+              if (tab) setLayoutPendingDelete({ id: tab.id, name: tab.name })
+            }}
             onNew={openNewLayoutDialog}
+            onRename={(id, name) => renameWorkspace.mutate({ id, name })}
             labels={{
               close: t("closeLayout"),
               newLayout: t("newLayout"),
               scrollLeft: t("layoutTabsScrollLeft"),
               scrollRight: t("layoutTabsScrollRight"),
+              rename: t("renameLayout"),
+              renameHint: t("renameLayoutHint"),
+              renameKeys: t("renameLayoutKeys"),
             }}
           />
           <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -1330,7 +1354,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   rect={dragPreview}
                 />
               )}
-              {visiblePanels.map((panel) => {
+              {freeCanvasPanels.map((panel) => {
                 const rect = panelRect(panel)
                 const label = labelFor(panel)
                 const isDragging = draggingId === panel.id
@@ -1488,6 +1512,55 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             />
           )}
 
+          {layoutPendingDelete && (
+            <ModalOverlay
+              onClose={() => setLayoutPendingDelete(null)}
+              labelledBy="delete-layout-title"
+              aria-describedby="delete-layout-body"
+              role="alertdialog"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+            >
+              {(close) => (
+                <>
+                  <div className="mb-3 flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p id="delete-layout-title" className="text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                        {t("deleteLayoutTitle")}
+                      </p>
+                      <p id="delete-layout-body" className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                        {t("deleteLayoutBody", { name: layoutPendingDelete.name })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      autoFocus
+                      onClick={close}
+                      className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    >
+                      {t("cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeWorkspaceTab(layoutPendingDelete.id)
+                        close()
+                      }}
+                      className="h-8 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50"
+                    >
+                      {t("deleteLayoutConfirm")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </ModalOverlay>
+          )}
+
           {newLayoutOpen && catalog.data && (
             <ModalOverlay
               onClose={() => setNewLayoutOpen(false)}
@@ -1519,17 +1592,32 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     autoFocus
                     required
                     aria-required="true"
+                    aria-invalid={newLayoutNameTouched && !newLayoutName.trim()}
+                    aria-describedby={newLayoutNameTouched && !newLayoutName.trim() ? "new-layout-name-error" : undefined}
                     value={newLayoutName}
                     onChange={(e) => setNewLayoutName(e.target.value)}
+                    onBlur={() => setNewLayoutNameTouched(true)}
                     placeholder={t("workspaceName")}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && newLayoutName.trim()) {
-                        commitNewLayout()
-                        close()
+                      if (e.key !== "Enter") return
+                      if (!newLayoutName.trim()) {
+                        setNewLayoutNameTouched(true)
+                        return
                       }
+                      commitNewLayout()
+                      close()
                     }}
-                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-brand-gold/60"
+                    className={`h-8 w-full rounded-md border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground ${
+                      newLayoutNameTouched && !newLayoutName.trim()
+                        ? "mb-1 border-danger focus:border-danger"
+                        : "mb-3 border-border focus:border-brand-gold/60"
+                    }`}
                   />
+                  {newLayoutNameTouched && !newLayoutName.trim() && (
+                    <p id="new-layout-name-error" role="alert" className="mb-3 text-[11px] text-danger">
+                      {t("workspaceNameRequired")}
+                    </p>
+                  )}
                   <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
                   <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {catalog.data.presets.map((preset) => (
@@ -1559,12 +1647,19 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                     </button>
                     <button
                       type="button"
-                      disabled={!newLayoutName.trim()}
+                      // Not `disabled` on an empty name: a disabled button swallows the click silently,
+                      // whereas this surfaces the required-field error instead.
+                      aria-disabled={!newLayoutName.trim()}
                       onClick={() => {
+                        if (!newLayoutName.trim()) {
+                          setNewLayoutNameTouched(true)
+                          document.getElementById("new-layout-name")?.focus()
+                          return
+                        }
                         commitNewLayout()
                         close()
                       }}
-                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
+                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-brand-gold"
                     >
                       {t("createLayout")}
                     </button>

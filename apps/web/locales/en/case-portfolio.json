@@ -53,12 +53,12 @@
     "documents": "Documents",
     "noDocuments": "No documents attached yet.",
     "manageDocuments": "Manage in Workspace",
+    "jurisdiction": "Jurisdiction",
     "upcoming": "Upcoming",
     "noUpcoming": "No upcoming dates.",
     "consultations": "Consultations",
     "noConsultations": "No consultations yet.",
-    "openWorkspace": "Open workspace",
-    "openTerminal": "Open in Legal Terminal"
+    "openWorkspace": "Open workspace"
   },
   "tools": {
     "mindMap": "Mind Map",
@@ -281,6 +281,8 @@
     "audioOverviewGenerateCta": "Generate audio overview",
     "audioOverviewGenerateError": "Couldn't generate an audio overview. Try again.",
     "audioOverviewEmpty": "No audio overview generated for this chat yet.",
+    "audioOverviewEmptyHint": "Turn this chat into a two-host conversation you can listen to on the go.",
+    "audioOverviewGeneratingHint": "This can take a minute or two — you can keep working while it runs.",
     "audioOverviewNoConsultation": "Start a chat to generate an audio overview.",
     "audioOverviewGenerateAudioCta": "Generate audio",
     "audioOverviewRendering": "Rendering audio…",
