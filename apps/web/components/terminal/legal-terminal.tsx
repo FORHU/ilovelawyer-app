@@ -522,8 +522,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           ? t("badgeUpdating")
           : damagesActivity === "fresh"
             ? t("badgeNew")
-            : data.damagesSummary.headCount > 0
-              ? t("badgeHeads", { count: data.damagesSummary.headCount })
+            : (data.damagesSummary?.headCount ?? 0) > 0
+              ? t("badgeHeads", { count: data.damagesSummary!.headCount })
               : undefined,
       caseReconstruction: data.reconstruction ? t("badgeReady") : undefined,
       audioOverview: data.reconstruction?.audioFileId ? t("badgeReady") : undefined,

@@ -130,11 +130,6 @@ function HistoryEntry({
     else audio.pause()
   }
 
-  const seekTo = (fraction: number) => {
-    const audio = audioRef.current
-    if (audio && duration) audio.currentTime = fraction * duration
-  }
-
   return (
     <li
       className={`rounded-lg border transition-colors ${
@@ -198,10 +193,8 @@ function HistoryEntry({
       )}
       {open && (
         <div className="flex flex-col gap-3 border-t border-border px-3 py-3">
-          {entry.audio && (
-            <AudioOverviewWaveform url={entry.audio.fileUrl} progress={duration ? currentTime / duration : 0} onSeek={seekTo} />
-          )}
-          <AudioOverviewTurns turns={entry.turns} checks={entry.checks} />
+          {entry.audio && <AudioOverviewWaveform url={entry.audio.fileUrl} mediaElement={audioRef.current} />}
+          <AudioOverviewTurns turns={entry.turns} checks={entry.checks} currentTime={currentTime} turnTimings={entry.turnTimings} />
         </div>
       )}
     </li>

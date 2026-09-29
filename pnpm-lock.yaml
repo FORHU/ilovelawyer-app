@@ -117,6 +117,9 @@ importers:
       three:
         specifier: ^0.183.2
         version: 0.183.2
+      wavesurfer.js:
+        specifier: ^7.8.6
+        version: 7.12.12
       xlsx-preview:
         specifier: ^1.0.5
         version: 1.0.5
@@ -5551,6 +5554,9 @@ packages:
         optional: true
       jsdom:
         optional: true
+
+  wavesurfer.js@7.12.12:
+    resolution: {integrity: sha512-fyKNuREQTliCl4b9w7pUzpFXQIkX5tcdYu1o6vBdH+NlUXvTxshvfbG2hj8OxDevzQNZlDTHzZGyAT3FhuutWw==}
 
   which-boxed-primitive@1.1.1:
     resolution: {integrity: sha512-TbX3mj8n0odCBFVlY8AxkqcHASw3L60jIuF8jFP78az3C2YhmGvqbHBpAjTRH2/xqYunrJ9g1jSyjCjpoWzIAA==}
@@ -11486,6 +11492,8 @@ snapshots:
       '@types/node': 20.19.43
     transitivePeerDependencies:
       - msw
+
+  wavesurfer.js@7.12.12: {}
 
   which-boxed-primitive@1.1.1:
     dependencies:

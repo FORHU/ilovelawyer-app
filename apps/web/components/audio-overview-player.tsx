@@ -27,6 +27,7 @@ export function AudioOverviewPlayerBar({
   onClose,
   onDownload,
   waveformUrl,
+  waveformMedia,
   formatDuration,
 }: {
   title: string;
@@ -41,26 +42,23 @@ export function AudioOverviewPlayerBar({
   onClose: () => void;
   /** Saves the rendered audio; the button only shows when given. */
   onDownload?: () => void;
-  /** The audio being played, so this bar can show the same waveform History rows show (same
-   * component) instead of a bare range input. Undefined until rendering finishes — the plain
-   * slider is the fallback for that gap, not a degraded state to fix. */
+  /** The audio being played, so this bar can show the same wavesurfer.js waveform History rows
+   * show (same component) instead of a bare range input. `waveformMedia` is the `<audio>` element
+   * wavesurfer binds playback/seeking to — the plain slider is the fallback while either is
+   * missing (rendering not finished yet), not a degraded state to fix. */
   waveformUrl?: string;
+  waveformMedia?: HTMLAudioElement | null;
   formatDuration: (seconds: number) => string;
 }) {
+  // This bar is Audio Overview's Current view specifically (both its callers — Studio and the
+  // terminal panel — use it that way); History gets the default "amber" scheme instead, via
+  // AudioOverviewWaveform's own default, so the two views stay visually distinct at a glance.
+  // "emerald" here: a muted slate-gray for what's unplayed against a vivid green-to-cyan for
+  // what's played.
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card px-3 py-2.5">
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 truncate text-[12px] font-medium text-foreground">{title}</p>
-        {onDownload && (
-          <button
-            type="button"
-            onClick={onDownload}
-            aria-label="Download audio"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        )}
         <button
           type="button"
           onClick={onClose}
@@ -71,13 +69,8 @@ export function AudioOverviewPlayerBar({
         </button>
       </div>
       <div className="flex flex-col gap-1">
-        {waveformUrl ? (
-          <AudioOverviewWaveform
-            url={waveformUrl}
-            progress={duration ? currentTime / duration : 0}
-            onSeek={(fraction) => onSeek(fraction * duration)}
-            className="h-10"
-          />
+        {waveformUrl && waveformMedia ? (
+          <AudioOverviewWaveform url={waveformUrl} mediaElement={waveformMedia} scheme="emerald" className="h-10" />
         ) : (
           <input
             type="range"
@@ -127,7 +120,18 @@ export function AudioOverviewPlayerBar({
         >
           <RotateCw className="h-4 w-4" aria-hidden="true" />
         </button>
-        <div className="w-9 shrink-0" aria-hidden="true" />
+        {onDownload ? (
+          <button
+            type="button"
+            onClick={onDownload}
+            aria-label="Download audio"
+            className="flex w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="w-9 shrink-0" aria-hidden="true" />
+        )}
       </div>
     </div>
   );

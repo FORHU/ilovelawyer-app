@@ -1503,6 +1503,9 @@ export interface AudioOverviewHistoryEntry {
   status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
   turns: AudioOverviewTurn[]
   checks: AudioOverviewTurnCheck[]
+  /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
+   * `turns` — null until the audio has been rendered. */
+  turnTimings: number[] | null
   /** null until the audio has been rendered (the script alone is generated first). */
   audio: { id: string; fileUrl: string } | null
 }

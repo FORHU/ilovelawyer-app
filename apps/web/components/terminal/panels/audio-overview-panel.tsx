@@ -56,6 +56,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
   const audioOverviewMessageId = activeAudioOverviewMessage?.id
   const {
     audioElement,
+    mediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,
@@ -166,13 +167,14 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
             : t("case-portfolio:workspace.audioOverviewGenerateCta")}
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="px-1">
-          <AudioOverviewTurns
-            turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
-            checks={activeAudioOverviewMessage.audioOverview?.checks}
-          />
-        </div>
+      <div className="min-h-0 flex-1">
+        <AudioOverviewTurns
+          turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
+          checks={activeAudioOverviewMessage.audioOverview?.checks}
+          currentTime={playbackTime}
+          turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+          className="h-full overflow-y-auto px-1"
+        />
       </div>
       {renderedAudioUrl && !playerBarDismissed && (
         <AudioOverviewPlayerBar
@@ -188,6 +190,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           onClose={dismissPlayerBar}
           onDownload={() => triggerBriefDownload(renderedAudioUrl, "audio-overview.mp3")}
           waveformUrl={renderedAudioUrl}
+          waveformMedia={mediaElement}
           formatDuration={formatDuration}
         />
       )}

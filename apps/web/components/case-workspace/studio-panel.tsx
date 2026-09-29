@@ -471,6 +471,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   const {
     audioElement,
+    mediaElement: audioOverviewMediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,
@@ -989,10 +990,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     </button>
                   </div>
                 )}
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                <div className="min-h-0 flex-1">
                   <AudioOverviewTurns
                     turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
                     checks={activeAudioOverviewMessage.audioOverview?.checks}
+                    currentTime={playbackTime}
+                    turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+                    className="h-full overflow-y-auto"
                   />
                 </div>
               </div>
@@ -1049,6 +1053,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onClose={dismissPlayerBar}
           onDownload={() => triggerBriefDownload(renderedAudioUrl, "audio-overview.mp3")}
           waveformUrl={renderedAudioUrl}
+          waveformMedia={audioOverviewMediaElement}
           formatDuration={formatDuration}
         />
       )}

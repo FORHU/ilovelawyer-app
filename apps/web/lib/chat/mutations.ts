@@ -49,6 +49,10 @@ export interface AudioOverviewTurnCheck {
 export interface MessageAudioOverview {
   turns: AudioOverviewTurn[]
   checks?: AudioOverviewTurnCheck[] | null
+  /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
+   * `turns` — lets AudioOverviewTurns sync its highlight/auto-scroll to playback. Null until
+   * audioStatus reaches COMPLETED, and on any overview rendered before this shipped. */
+  turnTimings?: number[] | null
   audioFileId: string | null
   audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
 }
