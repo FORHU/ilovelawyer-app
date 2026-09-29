@@ -1,7 +1,8 @@
-import { useState, type ComponentPropsWithoutRef } from "react"
+import { useId, useState, type ComponentPropsWithoutRef } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, MapPin, Pencil, Quote, Sparkles, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   useDeleteCitationMutation,
   useRemoveAuthorityMutation,
@@ -17,13 +18,17 @@ import type {
 } from "@/lib/terminal/types"
 import {
   EmptyNote,
+  Field,
   MutationError,
   PanelBody,
   PanelRow,
   PanelRowList,
-  SectionLabel,
+  TONE_STYLE,
+  TonePill,
+  type Tone,
   bodyTextClass,
   dangerIconBtnClass,
+  editIconBtnClass,
   fieldClass,
   ghostBtnClass,
   labelTextClass,
@@ -42,7 +47,14 @@ const JEV_MIN_CONFIDENCE = 0.7
 
 const STANCE_BADGE_TONE = { STATUTE: "neutral", ON_POINT: "success", ADVERSE: "danger" } as const
 const STANCE_BAR_CLASS = { STATUTE: "bg-muted-foreground/40", ON_POINT: "bg-ok", ADVERSE: "bg-danger" } as const
-const STANCE_SUMMARY_KEY = { STATUTE: "statute", ON_POINT: "onPoint", ADVERSE: "adverse" } as const
+// Does the quote match its source: VALID yes; INVALID no; ADVERSE the source says the opposite.
+const CITATION_STATUS_TONE: Record<SnapshotCitation["status"], Tone> = {
+  VALID: "ok",
+  INVALID: "danger",
+  ADVERSE: "danger",
+  UNVERIFIED: "neutral",
+}
+const STANCE_SUMMARY_KEY ={ STATUTE: "statute", ON_POINT: "onPoint", ADVERSE: "adverse" } as const
 
 const RING_RADIUS = 15.9155 // circumference ≈ 100, so the dash length is the percentage
 function CoverageRing({ coverage }: { coverage: number | null }) {
@@ -94,9 +106,6 @@ function AuthoritySummaryHeader({ summary }: { summary: SnapshotAuthoritySummary
     </div>
   )
 }
-// Same shape as the shared danger icon button (delete), with a neutral hover for a non-destructive action.
-const editIconBtnClass =
-  "shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground disabled:opacity-50"
 
 export function LawPanel({
   snapshot,
@@ -207,7 +216,12 @@ export function LawPanel({
         <AuthorityComposer caseId={caseId} grounds={grounds} />
         <MutationError show={updateAuthority.isError || removeAuthority.isError} />
       </div>
-      <SectionLabel>{t("quoteCheck")}</SectionLabel>
+      <div className="flex items-baseline justify-between gap-2 border-t border-border pt-4">
+        <p className={labelTextClass}>{t("quoteCheck")}</p>
+        {snapshot.law.citations.length > 0 && (
+          <span className={`${labelTextClass} tabular-nums`}>{snapshot.law.citations.length}</span>
+        )}
+      </div>
       <PanelRowList empty={<EmptyNote>{t("noCitations")}</EmptyNote>}>
         {snapshot.law.citations.map((citation) => (
           <CitationRow key={citation.id} citation={citation} caseId={caseId} />
@@ -230,6 +244,7 @@ function CitationRow({
   const del = useDeleteCitationMutation(caseId)
   const [mode, setMode] = useState<"view" | "edit" | "confirmDelete">("view")
   const [expanded, setExpanded] = useState(false)
+  const uid = useId()
 
   const [quotedText, setQuotedText] = useState(citation.quotedText)
   const [citedReference, setCitedReference] = useState(citation.citedReference ?? "")
@@ -249,9 +264,10 @@ function CitationRow({
 
   if (mode === "edit") {
     return (
-      <PanelRow className="flex-col items-stretch gap-2" {...rest}>
+      <PanelRow className="@container flex-col items-stretch gap-2" {...rest}>
         <form
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-3"
+          onKeyDown={(e) => e.key === "Escape" && !update.isPending && setMode("view")}
           onSubmit={(e) => {
             e.preventDefault()
             const quote = quotedText.trim()
@@ -263,36 +279,49 @@ function CitationRow({
             )
           }}
         >
-          <textarea
-            value={quotedText}
-            onChange={(e) => setQuotedText(e.target.value)}
-            placeholder={t("quote")}
-            aria-label={t("quote")}
-            rows={3}
-            autoFocus
-            className={`resize-none py-1.5 ${fieldClass} h-auto`}
-          />
-          <input
-            value={citedReference}
-            onChange={(e) => setCitedReference(e.target.value)}
-            placeholder={t("citedReference")}
-            aria-label={t("citedReference")}
-            className={fieldClass}
-          />
-          <input
-            value={pinpoint}
-            onChange={(e) => setPinpoint(e.target.value)}
-            placeholder={t("pinpoint")}
-            aria-label={t("pinpoint")}
-            className={fieldClass}
-          />
-          <input
-            value={officialText}
-            onChange={(e) => setOfficialText(e.target.value)}
-            placeholder={t("officialText")}
-            aria-label={t("officialText")}
-            className={fieldClass}
-          />
+          <Field label={t("quote")} htmlFor={`${uid}-quote`}>
+            <textarea
+              id={`${uid}-quote`}
+              value={quotedText}
+              onChange={(e) => setQuotedText(e.target.value)}
+              rows={3}
+              autoFocus
+              required
+              className={`${fieldClass} h-auto resize-none py-1.5`}
+            />
+          </Field>
+          {/* Reference and pinpoint side by side once the row is wide enough — a pinpoint is short. */}
+          <div className="grid grid-cols-1 gap-3 @xs:grid-cols-[1fr_7.5rem]">
+            <Field label={t("citedReference")} htmlFor={`${uid}-reference`}>
+              <input
+                id={`${uid}-reference`}
+                value={citedReference}
+                onChange={(e) => setCitedReference(e.target.value)}
+                placeholder={t("citedReferenceExample")}
+                className={fieldClass}
+              />
+            </Field>
+            <Field label={t("pinpoint")} htmlFor={`${uid}-pinpoint`}>
+              <input
+                id={`${uid}-pinpoint`}
+                value={pinpoint}
+                onChange={(e) => setPinpoint(e.target.value)}
+                placeholder={t("pinpointExample")}
+                className={fieldClass}
+              />
+            </Field>
+          </div>
+          <Field label={t("officialText")} htmlFor={`${uid}-official`} hint={t("officialTextHint")}>
+            <textarea
+              id={`${uid}-official`}
+              value={officialText}
+              onChange={(e) => setOfficialText(e.target.value)}
+              placeholder={t("officialTextExample")}
+              rows={2}
+              className={`${fieldClass} h-auto resize-none py-1.5`}
+            />
+          </Field>
+          <MutationError show={update.isError} />
           <div className="flex items-center gap-2">
             <button type="submit" disabled={update.isPending || !quotedText.trim()} className={primaryBtnClass}>
               {update.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("save")}
@@ -301,35 +330,28 @@ function CitationRow({
               {t("cancel")}
             </button>
           </div>
-          <MutationError show={update.isError} />
         </form>
       </PanelRow>
     )
   }
 
+  const tone = CITATION_STATUS_TONE[citation.status]
+  const metaClass = "flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase"
+
   return (
-    <PanelRow className="flex-col items-start gap-1.5" {...rest}>
-      <div className="flex w-full items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-          <p className={expanded ? "text-[13px] leading-5" : "line-clamp-3 text-[13px] leading-5"}>{citation.quotedText}</p>
-          {citation.quotedText.length > QUOTE_CLAMP_THRESHOLD && (
-            <button
-              type="button"
-              onClick={() => setExpanded((cur) => !cur)}
-              className="text-[10px] font-semibold uppercase tracking-wide text-brand-gold hover:underline"
-            >
-              {expanded ? t("showLess") : t("showMore")}
-            </button>
-          )}
-          {citation.citedReference && (
-            <p className="text-[13px] text-muted-foreground">
-              {citation.citedReference}
-              {citation.pinpoint && `, ${citation.pinpoint}`}
-            </p>
+    <PanelRow className="group/citation flex-col items-stretch gap-2" {...rest}>
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <TonePill tone={tone}>{t(`citationStatus.${citation.status}`)}</TonePill>
+          {citation.propositionType && (
+            <span className={metaClass}>
+              <Quote size={10} aria-hidden="true" />
+              {t(`propositionType.${citation.propositionType}`)}
+            </span>
           )}
         </div>
         {mode === "view" && (
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover/citation:opacity-100">
             <button type="button" onClick={startEdit} className={editIconBtnClass} aria-label={t("editCitation")} title={t("editCitation")}>
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -339,38 +361,58 @@ function CitationRow({
           </div>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge tone="neutral" shape="pill">
-          {citation.status}
-        </Badge>
-        {citation.propositionType && (
-          <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-            <Quote size={10} />
-            {t(`propositionType.${citation.propositionType}`)}
-          </p>
+
+      {/* The quote, set off like a blockquote and edged in the check's tone, so a mismatch reads
+       * at a glance without hunting for the pill. */}
+      <blockquote className={cn("flex flex-col items-start gap-1 border-l-2 pl-3", TONE_STYLE[tone].edge)}>
+        <p className={cn("text-[13px] leading-5 text-foreground", !expanded && "line-clamp-3")}>
+          “{citation.quotedText}”
+        </p>
+        {citation.quotedText.length > QUOTE_CLAMP_THRESHOLD && (
+          <button
+            type="button"
+            onClick={() => setExpanded((cur) => !cur)}
+            className="text-[10px] font-semibold uppercase tracking-wide text-brand-gold hover:underline"
+          >
+            {expanded ? t("showLess") : t("showMore")}
+          </button>
         )}
-        {citation.pinpoint && (
-          <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-            <MapPin size={10} />
-            {citation.pinpoint}
-          </p>
-        )}
-      </div>
-      {citation.citedReference &&
-        (citation.resolvedAuthority ? (
-          <a href={citation.resolvedAuthority.jurisUrl} target="_blank" rel="noreferrer" className="hover:underline">
-            <Badge tone="success" shape="pill">
-              <CheckCircle2 size={11} />
-              {t("authorityVerified")}
-              <ExternalLink size={10} />
-            </Badge>
-          </a>
-        ) : (
-          <Badge tone="caution" shape="pill">
-            <AlertTriangle size={11} />
-            {t("authorityNotVerified")}
-          </Badge>
-        ))}
+      </blockquote>
+
+      {/* Where the quote comes from, with whether the authority itself was found (separate from
+       * whether the quote matches it — that's the pill above). */}
+      {citation.citedReference && (
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px]">
+          {citation.resolvedAuthority ? (
+            <a
+              href={citation.resolvedAuthority.jurisUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={`${t("authorityVerified")}: ${citation.resolvedAuthority.title}`}
+              className="inline-flex min-w-0 items-center gap-1 text-foreground hover:underline"
+            >
+              <CheckCircle2 size={12} className="shrink-0 text-ok" aria-hidden="true" />
+              <span className="sr-only">{t("authorityVerified")}:</span>
+              <span className="truncate">{citation.citedReference}</span>
+              <ExternalLink size={10} className="shrink-0 text-muted-foreground" aria-hidden="true" />
+            </a>
+          ) : (
+            <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground" title={t("authorityNotVerified")}>
+              <AlertTriangle size={12} className="shrink-0 text-warn" aria-hidden="true" />
+              <span className="sr-only">{t("authorityNotVerified")}:</span>
+              <span className="truncate">{citation.citedReference}</span>
+            </span>
+          )}
+          {citation.pinpoint && (
+            <span className={metaClass}>
+              <MapPin size={10} aria-hidden="true" />
+              {citation.pinpoint}
+            </span>
+          )}
+        </div>
+      )}
+
+      {citation.notes && <p className="text-[12px] leading-5 text-muted-foreground">{citation.notes}</p>}
       {mode === "confirmDelete" && (
         <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
           <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteCitationConfirm")}</p>

@@ -19,3 +19,23 @@ export function formatRelativeTime(isoDate: string): string {
 
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
+
+/** Event notifications are written server-side as "<title> — <date/time>", but the API formats
+ * that time in the server's own timezone (UTC), not the lawyer's — e.g. a 12:00 PM Manila
+ * appointment read "4:00 AM". The link carries the exact instant (`?date=<ISO>`), so re-render
+ * the time part from it in the viewer's timezone. Anything that doesn't fit that shape (other
+ * types, older links without a date) is shown as stored. */
+export function formatNotificationMessage(notification: { type: string; message: string; link: string | null }): string {
+  const { type, message, link } = notification
+  if (type !== "EVENT_REMINDER" || !link) return message
+
+  const separator = " — "
+  const cut = message.lastIndexOf(separator)
+  if (cut === -1) return message
+
+  const iso = new URLSearchParams(link.split("?")[1] ?? "").get("date")
+  const date = iso ? new Date(iso) : null
+  if (!date || Number.isNaN(date.getTime())) return message
+
+  return `${message.slice(0, cut)}${separator}${date.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}`
+}

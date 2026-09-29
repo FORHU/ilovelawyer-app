@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Children, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
-import { GitFork, Loader2, MessageSquareWarning, Send, Sparkles } from "lucide-react"
+import { Check, ChevronDown, CornerDownLeft, GitFork, Loader2, MessageSquareWarning, Pencil, Plus, Send, Sparkles, Trash2, X } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { Badge } from "@workspace/ui/components/badge"
 import {
@@ -13,16 +13,23 @@ import {
   useAddTheoryOpenQuestionMutation,
   useAiJobStatus,
   useCreateTheoryMutation,
+  useDeleteTheoryItemMutation,
+  useDeleteTheoryMutation,
   useForkTheoryMutation,
   useGenerateTheoryDiffMutation,
   usePublishTheoryMutation,
   useProposeTheoryMutation,
   useRetireTheoryMutation,
   useTheoryDiffQuery,
+  useUpdateTheoryItemMutation,
+  type TheoryItemKind,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/panel-kit"
+import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote } from "@/components/terminal/panel-kit"
+
+// Rows a section shows before collapsing behind "Show all N" (only when that hides 2+ rows).
+const COLLAPSED_ITEM_LIMIT = 4
 
 const STATUS_TONE: Record<CaseTheory["status"], "neutral" | "success" | "danger"> = {
   DRAFT: "neutral",
@@ -57,6 +64,9 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
 
   const [diffA, setDiffA] = useState("")
   const [diffB, setDiffB] = useState("")
+  // A picked theory can disappear (a fork gets deleted) — treat it as unpicked, not a dead id.
+  const pickedA = theories.some((th) => th.id === diffA) ? diffA : ""
+  const pickedB = theories.some((th) => th.id === diffB) ? diffB : ""
 
   return (
     <PanelBody gap="4">
@@ -136,33 +146,33 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
           <SectionLabel>{t("diffTheories")}</SectionLabel>
           <div className="flex flex-col gap-2 sm:flex-row">
             <select
-              value={diffA}
+              value={pickedA}
               onChange={(e) => setDiffA(e.target.value)}
               aria-label={t("theoryA")}
               className={`flex-1 ${fieldClass}`}
             >
               <option value="">{t("theoryA")}</option>
               {theories.map((th) => (
-                <option key={th.id} value={th.id} disabled={th.id === diffB}>
+                <option key={th.id} value={th.id} disabled={th.id === pickedB}>
                   {th.title}
                 </option>
               ))}
             </select>
             <select
-              value={diffB}
+              value={pickedB}
               onChange={(e) => setDiffB(e.target.value)}
               aria-label={t("theoryB")}
               className={`flex-1 ${fieldClass}`}
             >
               <option value="">{t("theoryB")}</option>
               {theories.map((th) => (
-                <option key={th.id} value={th.id} disabled={th.id === diffA}>
+                <option key={th.id} value={th.id} disabled={th.id === pickedA}>
                   {th.title}
                 </option>
               ))}
             </select>
           </div>
-          {diffA && diffB && <TheoryDiffSection caseId={caseId} theoryAId={diffA} theoryBId={diffB} />}
+          {pickedA && pickedB && <TheoryDiffSection caseId={caseId} theoryAId={pickedA} theoryBId={pickedB} />}
         </div>
       )}
     </PanelBody>
@@ -173,18 +183,17 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
   const { t } = useTranslation("terminal")
   const publish = usePublishTheoryMutation(caseId)
   const retire = useRetireTheoryMutation(caseId)
+  const remove = useDeleteTheoryMutation(caseId)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const isFork = !!theory.forkedFromId
   const fork = useForkTheoryMutation(caseId)
   const addClaim = useAddTheoryClaimMutation(caseId)
   const addAssumption = useAddTheoryAssumptionMutation(caseId)
   const addOpenQuestion = useAddTheoryOpenQuestionMutation(caseId)
-
-  const [claimStatement, setClaimStatement] = useState("")
-  const [claimStance, setClaimStance] = useState<TheoryStance>("ASSERTS")
-  const [assumptionText, setAssumptionText] = useState("")
-  const [questionText, setQuestionText] = useState("")
   const [showAnnotations, setShowAnnotations] = useState(false)
 
   const isAiProposed = theory.authorUserId === null
+  const bullet = <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" aria-hidden="true" />
 
   return (
     <li className="rounded-md border border-border px-3 py-2.5">
@@ -196,6 +205,13 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
         <Badge tone={STATUS_TONE[theory.status]}>{theory.status}</Badge>
       </div>
 
+      {isFork && (
+        <span className="mt-1.5 mr-3 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+          <GitFork className="h-3 w-3" aria-hidden="true" />
+          {t("forkedTheory")}
+        </span>
+      )}
+
       {isAiProposed && (
         <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase">
           <Sparkles className="h-3 w-3" aria-hidden="true" />
@@ -203,127 +219,84 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
         </span>
       )}
 
-      {theory.claims.length > 0 && (
-        <div className="mt-2">
-          <SectionLabel>{t("theoryClaims")}</SectionLabel>
-          {/* Fixed-width badge + top-aligned, wrapping text column so every claim's text starts at
-              the same x and the badge sits beside the first line, not centered on a tall block. */}
-          <ul className="space-y-2.5">
-            {theory.claims.map((c) => (
-              <li key={c.id} className="flex items-start gap-2 text-[12px] leading-5 text-muted-foreground">
+      <div className="mt-3 flex flex-col gap-3">
+        <TheorySection
+          label={t("theoryClaims")}
+          count={theory.claims.length}
+          canAdd={isMine}
+          withStance
+          placeholder={t("addClaimPlaceholder")}
+          isPending={addClaim.isPending}
+          isError={addClaim.isError}
+          onAdd={(text, stance, done) =>
+            addClaim.mutate({ theoryId: theory.id, statement: text, stance: stance ?? "ASSERTS" }, { onSuccess: done })
+          }
+        >
+          {theory.claims.map((c) => (
+            <TheoryItemRow
+              key={c.id}
+              caseId={caseId}
+              theoryId={theory.id}
+              kind="claims"
+              id={c.id}
+              text={c.statement}
+              stance={c.stance}
+              editable={isMine}
+              lead={
                 <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"} className="mt-0.5 w-16 justify-center">
-                  {c.stance}
+                  {c.stance === "ASSERTS" ? t("asserts") : t("denies")}
                 </Badge>
-                <span className="min-w-0 flex-1 wrap-break-word">{c.statement}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {theory.assumptions.length > 0 && (
-        <div className="mt-2">
-          <SectionLabel>{t("theoryAssumptions")}</SectionLabel>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {theory.assumptions.map((a) => (
-              <li key={a.id} className="text-[12px] leading-4 text-muted-foreground">
-                {a.statement}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {theory.openQuestions.length > 0 && (
-        <div className="mt-2">
-          <SectionLabel>{t("theoryOpenQuestions")}</SectionLabel>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {theory.openQuestions.map((q) => (
-              <li key={q.id} className="text-[12px] leading-4 text-muted-foreground">
-                {q.question}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {isMine && (
-        <div className="mt-2.5 flex flex-col gap-1.5">
-          <form
-            className="flex gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const v = claimStatement.trim()
-              if (!v) return
-              addClaim.mutate({ theoryId: theory.id, statement: v, stance: claimStance })
-              setClaimStatement("")
-            }}
-          >
-            <select
-              value={claimStance}
-              onChange={(e) => setClaimStance(e.target.value as TheoryStance)}
-              aria-label={t("claimStance")}
-              className={fieldClass}
-            >
-              <option value="ASSERTS">{t("asserts")}</option>
-              <option value="DENIES">{t("denies")}</option>
-            </select>
-            <input
-              value={claimStatement}
-              onChange={(e) => setClaimStatement(e.target.value)}
-              placeholder={t("addClaimPlaceholder")}
-              aria-label={t("addClaimPlaceholder")}
-              className={`flex-1 ${fieldClass}`}
+              }
             />
-            <button type="submit" disabled={addClaim.isPending} className={primaryBtnClass}>
-              {t("add")}
-            </button>
-          </form>
-          <form
-            className="flex gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const v = assumptionText.trim()
-              if (!v) return
-              addAssumption.mutate({ theoryId: theory.id, statement: v })
-              setAssumptionText("")
-            }}
-          >
-            <input
-              value={assumptionText}
-              onChange={(e) => setAssumptionText(e.target.value)}
-              placeholder={t("addAssumptionPlaceholder")}
-              aria-label={t("addAssumptionPlaceholder")}
-              className={`flex-1 ${fieldClass}`}
+          ))}
+        </TheorySection>
+
+        <TheorySection
+          label={t("theoryAssumptions")}
+          count={theory.assumptions.length}
+          canAdd={isMine}
+          placeholder={t("addAssumptionPlaceholder")}
+          isPending={addAssumption.isPending}
+          isError={addAssumption.isError}
+          onAdd={(text, _stance, done) => addAssumption.mutate({ theoryId: theory.id, statement: text }, { onSuccess: done })}
+        >
+          {theory.assumptions.map((a) => (
+            <TheoryItemRow
+              key={a.id}
+              caseId={caseId}
+              theoryId={theory.id}
+              kind="assumptions"
+              id={a.id}
+              text={a.statement}
+              editable={isMine}
+              lead={bullet}
             />
-            <button type="submit" disabled={addAssumption.isPending} className={primaryBtnClass}>
-              {t("add")}
-            </button>
-          </form>
-          <form
-            className="flex gap-1.5"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const v = questionText.trim()
-              if (!v) return
-              addOpenQuestion.mutate({ theoryId: theory.id, question: v })
-              setQuestionText("")
-            }}
-          >
-            <input
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-              placeholder={t("addOpenQuestionPlaceholder")}
-              aria-label={t("addOpenQuestionPlaceholder")}
-              className={`flex-1 ${fieldClass}`}
+          ))}
+        </TheorySection>
+
+        <TheorySection
+          label={t("theoryOpenQuestions")}
+          count={theory.openQuestions.length}
+          canAdd={isMine}
+          placeholder={t("addOpenQuestionPlaceholder")}
+          isPending={addOpenQuestion.isPending}
+          isError={addOpenQuestion.isError}
+          onAdd={(text, _stance, done) => addOpenQuestion.mutate({ theoryId: theory.id, question: text }, { onSuccess: done })}
+        >
+          {theory.openQuestions.map((q) => (
+            <TheoryItemRow
+              key={q.id}
+              caseId={caseId}
+              theoryId={theory.id}
+              kind="open-questions"
+              id={q.id}
+              text={q.question}
+              editable={isMine}
+              lead={bullet}
             />
-            <button type="submit" disabled={addOpenQuestion.isPending} className={primaryBtnClass}>
-              {t("add")}
-            </button>
-          </form>
-          <MutationError show={addClaim.isError || addAssumption.isError || addOpenQuestion.isError} />
-        </div>
-      )}
+          ))}
+        </TheorySection>
+      </div>
 
       <div className="mt-2.5 flex items-center justify-end gap-2">
         <button
@@ -354,6 +327,16 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
             {t("retire")}
           </button>
         )}
+        {isMine && isFork && !confirmDelete && (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className={`inline-flex items-center gap-1.5 ${ghostBtnClass} hover:border-danger/40 hover:text-danger`}
+          >
+            <Trash2 className="h-3 w-3" aria-hidden="true" />
+            {t("delete")}
+          </button>
+        )}
         {!isMine && (
           <button
             type="button"
@@ -366,13 +349,386 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
           </button>
         )}
       </div>
-      <MutationError show={publish.isError || retire.isError || fork.isError} />
+      {confirmDelete && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
+          <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteForkedTheoryConfirm")}</p>
+          <button type="button" onClick={() => setConfirmDelete(false)} disabled={remove.isPending} className={ghostBtnClass}>
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={() => remove.mutate(theory.id)}
+            disabled={remove.isPending}
+            className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+          >
+            {remove.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
+          </button>
+        </div>
+      )}
+      <MutationError show={publish.isError || retire.isError || fork.isError || remove.isError} />
 
       {showAnnotations && (
         <div className="mt-2.5 border-t border-border pt-2.5">
           <AnnotationThread caseId={caseId} targetType="NODE" targetId={theory.id} />
         </div>
       )}
+    </li>
+  )
+}
+
+// A claims/assumptions/open-questions block: label + count, with a quiet "+ Add" beside it that
+// opens a single inline composer under the list (instead of three always-open forms stacked at
+// the bottom of the card). Enter adds and keeps the composer open for the next one; Esc closes.
+// Hidden entirely when there's nothing to show and nothing the viewer can add.
+function TheorySection({
+  label,
+  count,
+  canAdd,
+  withStance,
+  placeholder,
+  isPending,
+  isError,
+  onAdd,
+  children,
+}: {
+  label: string
+  count: number
+  canAdd: boolean
+  withStance?: boolean
+  placeholder: string
+  isPending: boolean
+  isError: boolean
+  onAdd: (text: string, stance: TheoryStance | undefined, done: () => void) => void
+  children: ReactNode
+}) {
+  const { t } = useTranslation("terminal")
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState("")
+  const [stance, setStance] = useState<TheoryStance>("ASSERTS")
+
+  // Long lists collapse to their first few rows behind a "Show all N" toggle — the pane itself
+  // scrolls, so no nested scroll box to fight with. Adding an item expands the list, since new
+  // items land at the end and would otherwise be hidden behind the toggle.
+  const [expanded, setExpanded] = useState(false)
+
+  // Toggling changes the pane body's height by several rows at once, and the browser moves the
+  // scroll position on its own when that happens: scroll anchoring can shift it by the inserted
+  // height on expand, and collapsing while scrolled into the list clamps it to the new (shorter)
+  // max — either way the pane jumps to its top or bottom, worst in a small pane when several are
+  // open. So: expanding keeps the exact scroll position (rows just appear below), collapsing
+  // brings the toggle back into view so you stay where you were.
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const pendingScroll = useRef<{ scroller: HTMLElement; top: number } | null>(null)
+  const toggleExpanded = () => {
+    const scroller = toggleRef.current?.closest<HTMLElement>("[data-panel-scroll]")
+    pendingScroll.current = scroller ? { scroller, top: scroller.scrollTop } : null
+    setExpanded((v) => !v)
+  }
+  useLayoutEffect(() => {
+    const pending = pendingScroll.current
+    if (!pending) return
+    pendingScroll.current = null
+    const { scroller, top } = pending
+    scroller.scrollTop = top
+    // Adjusts only the pane body — scrollIntoView would also scroll the terminal canvas behind it.
+    const toggle = toggleRef.current
+    if (!expanded && toggle) {
+      const bounds = scroller.getBoundingClientRect()
+      const rect = toggle.getBoundingClientRect()
+      if (rect.top < bounds.top) scroller.scrollTop -= bounds.top - rect.top + 8
+      else if (rect.bottom > bounds.bottom) scroller.scrollTop += rect.bottom - bounds.bottom + 8
+    }
+  }, [expanded])
+
+  const prevCount = useRef(count)
+  useEffect(() => {
+    if (count > prevCount.current) setExpanded(true)
+    prevCount.current = count
+  }, [count])
+  const items = Children.toArray(children)
+  const collapsible = items.length > COLLAPSED_ITEM_LIMIT + 1
+  const visibleItems = collapsible && !expanded ? items.slice(0, COLLAPSED_ITEM_LIMIT) : items
+
+  if (count === 0 && !canAdd) return null
+
+  const close = () => {
+    setOpen(false)
+    setText("")
+  }
+
+  return (
+    <section className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase">
+          {label}
+          {count > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground/60">{count}</span>}
+        </p>
+        {canAdd && !open && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none"
+          >
+            <Plus className="h-3 w-3" aria-hidden="true" />
+            {t("add")}
+          </button>
+        )}
+      </div>
+
+      {count > 0 && <ul className="-mx-1.5 flex flex-col">{visibleItems}</ul>}
+      {collapsible && (
+        <button
+          type="button"
+          ref={toggleRef}
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+          className="inline-flex items-center gap-1 self-start rounded px-1.5 py-0.5 text-[11px] font-medium text-brand-gold transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none"
+        >
+          <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+          {expanded ? t("showLess") : t("showAllCount", { count: items.length })}
+        </button>
+      )}
+
+      {open && (
+        <TheoryInlineInput
+          value={text}
+          onChange={setText}
+          stance={withStance ? stance : undefined}
+          onStanceChange={setStance}
+          placeholder={placeholder}
+          isPending={isPending}
+          submitLabel={t("add")}
+          submitIcon={<CornerDownLeft className="h-3.5 w-3.5" aria-hidden="true" />}
+          onSubmit={(v) => onAdd(v, withStance ? stance : undefined, () => setText(""))}
+          onCancel={close}
+        />
+      )}
+      <MutationError show={isError} />
+    </section>
+  )
+}
+
+// The one-line input bar both adding and editing an item use: optional Asserts/Denies toggle,
+// borderless input, then submit + cancel icon buttons, all inside one rounded field.
+// Enter submits, Esc cancels.
+function TheoryInlineInput({
+  value,
+  onChange,
+  stance,
+  onStanceChange,
+  placeholder,
+  isPending,
+  submitLabel,
+  submitIcon,
+  onSubmit,
+  onCancel,
+}: {
+  value: string
+  onChange: (value: string) => void
+  /** Present only for claims — shows the stance toggle. */
+  stance?: TheoryStance
+  onStanceChange: (stance: TheoryStance) => void
+  placeholder: string
+  isPending: boolean
+  submitLabel: string
+  submitIcon: ReactNode
+  onSubmit: (value: string) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation("terminal")
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Opening to edit puts the caret after the existing text rather than at the start.
+  useEffect(() => {
+    const el = inputRef.current
+    if (el) el.setSelectionRange(el.value.length, el.value.length)
+  }, [])
+
+  // Grows with the text up to its max-h (then scrolls) — same approach as the new-theory thesis
+  // box above. Reset to "auto" first so it shrinks back when text is removed or cleared.
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+
+  return (
+    <form
+      className="flex items-end gap-1.5 rounded-lg border border-border bg-muted/40 p-1 transition-colors focus-within:border-brand-gold/50"
+      onKeyDown={(e) => e.key === "Escape" && onCancel()}
+      onSubmit={(e) => {
+        e.preventDefault()
+        const v = value.trim()
+        if (!v || isPending) return
+        onSubmit(v)
+      }}
+    >
+      {stance && (
+        <div role="radiogroup" aria-label={t("claimStance")} className="flex shrink-0 rounded-md bg-background p-0.5">
+          {(["ASSERTS", "DENIES"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={stance === option}
+              onClick={() => onStanceChange(option)}
+              className={`h-6 rounded px-2 text-[10px] font-semibold tracking-[0.8px] uppercase transition-colors ${
+                stance === option
+                  ? option === "ASSERTS"
+                    ? "bg-ok/15 text-ok"
+                    : "bg-danger/15 text-danger"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option === "ASSERTS" ? t("asserts") : t("denies")}
+            </button>
+          ))}
+        </div>
+      )}
+      <textarea
+        ref={inputRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter submits (Shift+Enter for a new line); skipped mid-IME-composition so confirming
+          // a Korean/Japanese candidate doesn't submit half a word.
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault()
+            e.currentTarget.form?.requestSubmit()
+          }
+        }}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        rows={1}
+        autoFocus
+        className="max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-1.5 text-xs leading-4 text-foreground outline-none wrap-break-word placeholder:text-muted-foreground"
+      />
+      <button
+        type="submit"
+        disabled={isPending || !value.trim()}
+        aria-label={submitLabel}
+        title={submitLabel}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-40"
+      >
+        {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : submitIcon}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label={t("cancel")}
+        title={t("cancel")}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+    </form>
+  )
+}
+
+// One claim/assumption/open question, with in-place edit and a confirm-before-delete — only for
+// the theory's author (the API rejects anyone else; see assertAuthor in CaseTheorySvc).
+// `lead` renders before the text (a claim's stance badge, or a bullet).
+function TheoryItemRow({
+  caseId,
+  theoryId,
+  kind,
+  id,
+  text,
+  stance,
+  lead,
+  editable,
+}: {
+  caseId: string
+  theoryId: string
+  kind: TheoryItemKind
+  id: string
+  text: string
+  stance?: TheoryStance
+  lead: ReactNode
+  editable: boolean
+}) {
+  const { t } = useTranslation("terminal")
+  const update = useUpdateTheoryItemMutation(caseId, kind)
+  const del = useDeleteTheoryItemMutation(caseId, kind)
+  const [mode, setMode] = useState<"view" | "edit" | "confirmDelete">("view")
+  const [draft, setDraft] = useState(text)
+  const [draftStance, setDraftStance] = useState<TheoryStance>(stance ?? "ASSERTS")
+
+  if (mode === "edit") {
+    return (
+      <li className="flex flex-col gap-1.5 py-1">
+        <TheoryInlineInput
+          value={draft}
+          onChange={setDraft}
+          stance={kind === "claims" ? draftStance : undefined}
+          onStanceChange={setDraftStance}
+          placeholder={t("edit")}
+          isPending={update.isPending}
+          submitLabel={t("save")}
+          submitIcon={<Check className="h-3.5 w-3.5" aria-hidden="true" />}
+          onSubmit={(v) => {
+            const body =
+              kind === "claims" ? { statement: v, stance: draftStance } : kind === "assumptions" ? { statement: v } : { question: v }
+            update.mutate({ theoryId, id, ...body }, { onSuccess: () => setMode("view") })
+          }}
+          onCancel={() => !update.isPending && setMode("view")}
+        />
+        <MutationError show={update.isError} />
+      </li>
+    )
+  }
+
+  return (
+    <li className="group/item flex flex-col gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+      <div className="flex items-start gap-2 text-[12px] leading-5 text-muted-foreground">
+        {lead}
+        <span className="min-w-0 flex-1 wrap-break-word">{text}</span>
+        {editable && mode === "view" && (
+          <span className="flex shrink-0 items-center -my-0.5 gap-0.5 opacity-0 transition-opacity group-hover/item:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(text)
+                setDraftStance(stance ?? "ASSERTS")
+                update.reset()
+                setMode("edit")
+              }}
+              className={editIconBtnClass}
+              aria-label={t("edit")}
+              title={t("edit")}
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("confirmDelete")}
+              className={dangerIconBtnClass}
+              aria-label={t("delete")}
+              title={t("delete")}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </span>
+        )}
+      </div>
+      {mode === "confirmDelete" && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-1.5">
+          <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteTheoryItemConfirm")}</p>
+          <button type="button" onClick={() => setMode("view")} disabled={del.isPending} className={ghostBtnClass}>
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={() => del.mutate({ theoryId, id }, { onSuccess: () => setMode("view") })}
+            disabled={del.isPending}
+            className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+          >
+            {del.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
+          </button>
+        </div>
+      )}
+      <MutationError show={del.isError} />
     </li>
   )
 }

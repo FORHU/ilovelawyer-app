@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { Button } from "@workspace/ui/components/button";
@@ -14,7 +15,7 @@ import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, Clock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
+import { AlertCircle, Ban, Briefcase, Clock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TimePicker } from "@/components/calendar/time-picker";
 import {
@@ -73,7 +74,7 @@ function autoGrowTextarea(el: HTMLTextAreaElement | null) {
 /* ==========================================
    MONTH GRID DAY CELL (appointments)
    ========================================== */
-type DayItem = { id: string; title: string; time: string | null; sortKey: string; kind: "appointment" | "note"; cancelled?: boolean };
+type DayItem = { id: string; title: string; time: string | null; sortKey: string; kind: "appointment" | "note"; cancelled?: boolean; caseName?: string | null };
 type DayItems = { visible: DayItem[]; overflowCount: number };
 
 const CalendarItemsContext = React.createContext<{
@@ -173,6 +174,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
                     {format(day.date, "EEEE, MMM d")}
                     {item.time ? ` · ${item.time}` : ""}
                     {item.cancelled ? ` · ${t("statusCancelled")}` : ""}
+                    {item.caseName ? ` · ${item.caseName}` : ""}
                   </p>
                 </div>
               </div>
@@ -538,6 +540,17 @@ function PlannerPanel({
                         ? `${formatTime12h(appt.startTime)} – ${formatTime12h(appt.endTime)}`
                         : formatTime12h(appt.startTime)}
                     </p>
+                    {appt.caseId && (
+                      // Only active cases are in the picker's list — an archived/other case still
+                      // shows as linked, just without its name.
+                      <Link
+                        href={`/homepage/case-portfolio/${appt.caseId}`}
+                        className="mt-0.5 inline-flex max-w-full items-center gap-1 font-medium underline-offset-2 hover:underline"
+                      >
+                        <Briefcase className="size-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{cases.find((c) => c.id === appt.caseId)?.caseName ?? t("linkedCase")}</span>
+                      </Link>
+                    )}
                     {appt.description && <p className="mt-0.5 line-clamp-4 break-words">{appt.description}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
@@ -829,6 +842,12 @@ export default function CalendarPage() {
   const appointments = appointmentsQuery.data ?? [];
   const notesQuery = useNotesQuery(from, to);
   const notes = notesQuery.data ?? [];
+  // Same query (and cache entry) as the appointment form's case picker, so this costs no extra request.
+  const casesQuery = useCasesQuery(1, 100);
+  const caseNameById = React.useMemo(
+    () => new Map((casesQuery.data?.data ?? []).map((c) => [c.id, c.caseName])),
+    [casesQuery.data]
+  );
   const showCalendarSkeleton = useDelayedLoading(appointmentsQuery.isLoading || notesQuery.isLoading);
 
   const handleSelectDay = React.useCallback(
@@ -853,6 +872,7 @@ export default function CalendarPage() {
         sortKey: appt.startTime,
         kind: "appointment",
         cancelled: appt.status === "cancelled",
+        caseName: appt.caseId ? (caseNameById.get(appt.caseId) ?? t("linkedCase")) : null,
       });
       grouped.set(appt.date, list);
     }
@@ -879,7 +899,7 @@ export default function CalendarPage() {
       });
     }
     return result;
-  }, [appointments, notes]);
+  }, [appointments, notes, caseNameById, t]);
 
   const datesWithItems = React.useMemo(() => new Set(itemsByDate.keys()), [itemsByDate]);
 

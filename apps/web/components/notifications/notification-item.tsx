@@ -1,7 +1,7 @@
 "use client"
 import { AlertTriangle, Briefcase, CalendarClock } from "lucide-react"
 import type { Notification, NotificationType } from "@/lib/notifications/queries"
-import { formatRelativeTime } from "@/lib/notifications/format"
+import { formatNotificationMessage, formatRelativeTime } from "@/lib/notifications/format"
 
 const TYPE_ICON: Record<NotificationType, typeof CalendarClock> = {
   EVENT_REMINDER: CalendarClock,
@@ -44,7 +44,7 @@ export function NotificationItem({ notification, onOpen, dense = true }: Notific
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden="true" />
           )}
         </span>
-        <span className={`mt-0.5 block text-[11px] text-muted-foreground ${dense ? "line-clamp-2" : ""}`}>{notification.message}</span>
+        <span className={`mt-0.5 block text-[11px] text-muted-foreground ${dense ? "line-clamp-2" : ""}`}>{formatNotificationMessage(notification)}</span>
         <span className="mt-1 block text-[10px] uppercase tracking-wide text-muted-foreground/70">
           {formatRelativeTime(notification.createdAt)}
         </span>

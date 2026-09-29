@@ -17,6 +17,7 @@
   "notifyEmailPlaceholder": "알림 받을 이메일 (선택 사항)",
   "descriptionPlaceholder": "설명 (선택 사항)",
   "notePlaceholder": "메모",
+  "linkedCase": "연결된 사건",
   "noCase": "연결된 사건 없음",
   "reminderLabel": "리마인더",
   "reminderNone": "리마인더 없음",

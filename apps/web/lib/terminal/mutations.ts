@@ -1198,6 +1198,17 @@ function useTheoryLifecycleMutation(caseId: string, action: "publish" | "retire"
   })
 }
 
+// Server only allows this for the caller's own forks (CaseTheorySvc.remove) — originals retire.
+export function useDeleteTheoryMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/api/my-cases/${caseId}/theories/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
 export const usePublishTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "publish")
 export const useRetireTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "retire")
 // Copies an AI-proposed (or another lawyer's) theory into a new DRAFT owned by the caller —
@@ -1231,6 +1242,32 @@ export function useAddTheoryOpenQuestionMutation(caseId: string) {
   return useMutation({
     mutationFn: ({ theoryId, question }: { theoryId: string; question: string }) =>
       apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/open-questions`, { method: "POST", body: JSON.stringify({ question }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Claims, assumptions and open questions share one edit/delete shape — only the path segment
+// and the text field's name differ (claims can also change stance).
+export type TheoryItemKind = "claims" | "assumptions" | "open-questions"
+
+export function useUpdateTheoryItemMutation(caseId: string, kind: TheoryItemKind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, id, ...body }: { theoryId: string; id: string; statement?: string; question?: string; stance?: TheoryStance }) =>
+      apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteTheoryItemMutation(caseId: string, kind: TheoryItemKind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, id }: { theoryId: string; id: string }) =>
+      apiFetch<void>(`/api/my-cases/${caseId}/theories/${theoryId}/${kind}/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
