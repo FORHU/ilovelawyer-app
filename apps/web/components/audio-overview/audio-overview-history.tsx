@@ -160,7 +160,7 @@ function HistoryEntry({
         {entry.audio && (
           <button
             type="button"
-            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl)}
+            onClick={() => entry.audio && triggerBriefDownload(entry.audio.fileUrl, "audio-overview.mp3")}
             aria-label={t("workspace.audioOverviewDownload")}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >

@@ -186,7 +186,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           onSkip={skip}
           onCycleRate={cycleRate}
           onClose={dismissPlayerBar}
-          onDownload={() => triggerBriefDownload(renderedAudioUrl)}
+          onDownload={() => triggerBriefDownload(renderedAudioUrl, "audio-overview.mp3")}
           formatDuration={formatDuration}
         />
       )}
