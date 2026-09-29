@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, PanelRightClose } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -17,7 +17,7 @@ import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/co
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
-import TopicNavigator, { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
+import TopicNavigator from "@/components/chat/topic-navigator";
 import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
@@ -27,6 +27,7 @@ import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { composerAction, shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
 import { shouldScrollTranscriptToBottom } from "@/lib/chat/transcript-scroll";
 import { ThreadPicker } from "@/components/chat/thread-picker";
+import { SourcesPanel } from "@/components/case-workspace/sources-panel";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
@@ -136,6 +137,9 @@ interface DisplayMessage {
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
 // the attachment-chip row or upload/indexing time getting unwieldy.
 const MAX_ATTACHED_FILES = 10;
+/** Expanded width of the Terminal chat pane's Topics panel — fixed, unlike Case Workspace's
+ * resizable one, since a Terminal pane is itself resized as a whole. */
+const TERMINAL_TOPICS_WIDTH = 260;
 
 // How many pills show under the empty-state composer, and how many of those slots (at
 // most) get pulled from the case's own uploaded documents / the user's consultation
@@ -822,12 +826,9 @@ export default function ConsultationChat({
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
-  // Terminal's inline Topics panel — once there are topics it's always shown, either open or
-  // minimized to an icon rail (`terminalTopicsOpen`), so the picker row's "Topics" button is
-  // only left for the disabled "nothing yet" hint.
-  const terminalTopicsPanelVisible = Boolean(
-    embedded && showTopicNavigator && (splitTopics.length > 0 || isGeneratingTopics),
-  );
+  // Terminal's inline Topics panel (Case Workspace's SourcesPanel, docked right) — shown for any
+  // open consultation, either expanded or minimized to its icon rail (`terminalTopicsOpen`).
+  const terminalTopicsPanelVisible = Boolean(embedded && showTopicNavigator && consultationId);
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
   // the transcript so each can highlight yellow whichever quotes actually appear in its own
@@ -2057,25 +2058,6 @@ export default function ConsultationChat({
         {isolateConsultation && !mindMapOnly && caseId && (
           <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
             <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />
-            {embedded && showTopicNavigator && !terminalTopicsPanelVisible && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* Disabled placeholder only — once topics exist the panel (open or icon rail)
-                      replaces it. A span wrapper keeps the tooltip working on a disabled button. */}
-                  <span className="relative top-1.5 right-2 inline-flex shrink-0">
-                    <button
-                      type="button"
-                      className="flex h-8 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground disabled:cursor-not-allowed disabled:opacity-45"
-                      disabled
-                    >
-                      <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
-                      Topics
-                    </button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Topics appear after a structured AI response</TooltipContent>
-              </Tooltip>
-            )}
           </div>
         )}
         {(() => {
@@ -2530,62 +2512,20 @@ export default function ConsultationChat({
         })()}
         </div>
         {terminalTopicsPanelVisible && (
-          // Open: full list with a hide button in its header. Minimized: an icon-only rail — the
-          // Topics icon reopens it, and each topic stays a clickable dot (title in a tooltip).
-          <div className="ml-2 flex shrink-0">
-            <aside
-              id={`${chatInstanceId}-topics`}
-              aria-label={t("topicNavigator.label")}
-              className={`flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card transition-[width] duration-200 ${
-                terminalTopicsOpen ? "w-52" : "w-10"
-              }`}
-            >
-              {terminalTopicsOpen ? (
-                <div className="flex shrink-0 items-center gap-1.5 border-b border-border py-1.5 pl-3 pr-1.5 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
-                  <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
-                  <span className="flex-1 truncate">{t("topicNavigator.label")}</span>
-                  <button
-                    type="button"
-                    onClick={() => setTerminalTopicsOpen(false)}
-                    aria-label={t("topicNavigator.hide")}
-                    title={t("topicNavigator.hide")}
-                    aria-expanded
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 dark:hover:bg-overlay-hover"
-                  >
-                    <PanelRightClose className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex shrink-0 justify-center border-b border-border py-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setTerminalTopicsOpen(true)}
-                        aria-label={t("topicNavigator.show")}
-                        aria-expanded={false}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-brand-gold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30 dark:hover:bg-overlay-hover"
-                      >
-                        <ListTree className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{t("topicNavigator.show")}</TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-              <div className={`min-h-0 flex-1 overflow-y-auto ${terminalTopicsOpen ? "p-2" : "px-1 py-2"}`}>
-                {splitTopics.length === 0 ? (
-                  <TopicNavigatorLoading label={t("topicNavigator.generating")} compact={!terminalTopicsOpen} />
-                ) : (
-                  <TopicNavigatorList
-                    groups={splitTopicGroups}
-                    activeIndex={activeTopicIndex}
-                    onJump={scrollToTopic}
-                    compact={!terminalTopicsOpen}
-                  />
-                )}
-              </div>
-            </aside>
+          // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics,
+          // decisions and related cases, collapsing to an icon rail — docked on this pane's right.
+          <div className="ml-2 flex shrink-0 overflow-hidden rounded-lg">
+            <SourcesPanel
+              side="right"
+              expanded={terminalTopicsOpen}
+              onExpandedChange={setTerminalTopicsOpen}
+              activeConsultationId={consultationId ?? null}
+              instanceId={chatInstanceId}
+              transcriptRef={transcriptRef}
+              width={TERMINAL_TOPICS_WIDTH}
+              isResizing={false}
+              className="flex rounded-lg border"
+            />
           </div>
         )}
       </main>
