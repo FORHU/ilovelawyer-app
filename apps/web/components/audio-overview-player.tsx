@@ -1,4 +1,5 @@
 import { Download, Pause, Play, RotateCcw, RotateCw, X } from "lucide-react";
+import { AudioOverviewWaveform } from "@/components/audio-overview/audio-overview-waveform";
 
 // Extracted out of Case Workspace's Studio panel so Legal Terminal's Audio Overview panel can
 // use the same richer player instead of a bare native <audio controls> — see
@@ -25,6 +26,7 @@ export function AudioOverviewPlayerBar({
   onCycleRate,
   onClose,
   onDownload,
+  waveformUrl,
   formatDuration,
 }: {
   title: string;
@@ -39,6 +41,10 @@ export function AudioOverviewPlayerBar({
   onClose: () => void;
   /** Saves the rendered audio; the button only shows when given. */
   onDownload?: () => void;
+  /** The audio being played, so this bar can show the same waveform History rows show (same
+   * component) instead of a bare range input. Undefined until rendering finishes — the plain
+   * slider is the fallback for that gap, not a degraded state to fix. */
+  waveformUrl?: string;
   formatDuration: (seconds: number) => string;
 }) {
   return (
@@ -65,16 +71,25 @@ export function AudioOverviewPlayerBar({
         </button>
       </div>
       <div className="flex flex-col gap-1">
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.1}
-          value={Math.min(currentTime, duration || currentTime)}
-          onChange={(e) => onSeek(Number(e.target.value))}
-          className="w-full accent-brand-gold"
-          aria-label="Seek"
-        />
+        {waveformUrl ? (
+          <AudioOverviewWaveform
+            url={waveformUrl}
+            progress={duration ? currentTime / duration : 0}
+            onSeek={(fraction) => onSeek(fraction * duration)}
+            className="h-10"
+          />
+        ) : (
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={Math.min(currentTime, duration || currentTime)}
+            onChange={(e) => onSeek(Number(e.target.value))}
+            className="w-full accent-brand-gold"
+            aria-label="Seek"
+          />
+        )}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>{formatDuration(currentTime)}</span>
           <span>{formatDuration(duration)}</span>

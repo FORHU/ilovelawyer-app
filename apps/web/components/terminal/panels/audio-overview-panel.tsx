@@ -187,6 +187,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           onCycleRate={cycleRate}
           onClose={dismissPlayerBar}
           onDownload={() => triggerBriefDownload(renderedAudioUrl)}
+          waveformUrl={renderedAudioUrl}
           formatDuration={formatDuration}
         />
       )}

@@ -1048,6 +1048,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onCycleRate={cycleAudioOverviewRate}
           onClose={dismissPlayerBar}
           onDownload={() => triggerBriefDownload(renderedAudioUrl)}
+          waveformUrl={renderedAudioUrl}
           formatDuration={formatDuration}
         />
       )}
