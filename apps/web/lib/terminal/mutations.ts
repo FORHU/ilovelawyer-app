@@ -26,6 +26,7 @@ import type {
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
+  ScreenPresetRow,
   SnapshotCustodyEvent,
   SnapshotEvidenceMatrixItem,
   TerminalCatalog,
@@ -46,6 +47,11 @@ export const terminalKeys = {
   // know which case's list is currently on screen.
   workspacesAll: () => [...terminalKeys.all, "workspaces"] as const,
   workspaces: (caseId: string) => [...terminalKeys.all, "workspaces", caseId] as const,
+  // Prefix shared by every screenCount's cached list, for invalidating all of them after a
+  // create/delete (mirrors workspacesAll's same reasoning) — a mutation doesn't know which
+  // screenCount is currently on screen.
+  screenPresetsAll: () => [...terminalKeys.all, "screen-presets"] as const,
+  screenPresets: (screenCount: number) => [...terminalKeys.all, "screen-presets", screenCount] as const,
   snapshot: (caseId: string) =>
     [...terminalKeys.all, "snapshot", caseId] as const,
   timeline: (caseId: string) =>
@@ -334,6 +340,42 @@ export function useDeleteWorkspaceMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
+    },
+  })
+}
+
+// System presets (userId: null, seeded) and this caller's own, for the given screen count —
+// see lib/terminal/screen-presets.ts, which wraps each row into a ScreenPresetDef.
+export function useScreenPresetsQuery(screenCount: number) {
+  return useQuery({
+    queryKey: terminalKeys.screenPresets(screenCount),
+    queryFn: () => apiFetch<ScreenPresetRow[]>(`/api/terminal/screen-presets?screenCount=${screenCount}`),
+    enabled: screenCount > 0,
+  })
+}
+
+export function useCreateScreenPresetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; description?: string; screens: { arrangement: string; panelIds: string[] }[] }) =>
+      apiFetch<ScreenPresetRow>("/api/terminal/screen-presets", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.screenPresetsAll() })
+    },
+  })
+}
+
+export function useDeleteScreenPresetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/terminal/screen-presets/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.screenPresetsAll() })
     },
   })
 }
