@@ -402,13 +402,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       .sort((a, b) => a.order - b.order)
   }, [layout])
 
-  // Free canvas renders panes in a stable DOM order (by id) rather than `visiblePanels`' order:
-  // stacking there comes from the inline `zIndex: panel.order + 1`, and rendering by `order` made
-  // every bringToFront physically move the pane's node to the end of the list. A DOM move
-  // mid-gesture silently drops pointer capture (killing resize drags after the first pointermove —
-  // see onResizePointerMove's safety net) and can swallow clicks/focus inside the raised pane.
-  const freeCanvasPanels = useMemo(() => [...visiblePanels].sort((a, b) => a.id.localeCompare(b.id)), [visiblePanels])
-
   const availablePanels = useMemo(
     () => catalog.data?.panels.filter((panel) => panel.available && !HIDDEN_PANELS.has(panel.id)) ?? [],
     [catalog.data],

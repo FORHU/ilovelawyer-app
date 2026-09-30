@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -1280,6 +1281,13 @@ export function TerminalCanvas({
   // grid-snapping is applied only once, on pointer-up.
   const liveStyleRafRef = useRef<number | null>(null)
 
+  // Free canvas renders panes in a stable DOM order (by id) rather than visiblePanels' own order:
+  // stacking there comes from the inline `zIndex: panel.order + 1`, and rendering by `order` made
+  // every bringToFront physically move the pane's node to the end of the list. A DOM move
+  // mid-gesture silently drops pointer capture (killing resize drags after the first pointermove —
+  // see onResizePointerMove's safety net) and can swallow clicks/focus inside the raised pane.
+  const freeCanvasPanels = useMemo(() => [...visiblePanels].sort((a, b) => a.id.localeCompare(b.id)), [visiblePanels])
+
   const scheduleFrame = (fn: () => void) => {
     if (liveStyleRafRef.current != null) cancelAnimationFrame(liveStyleRafRef.current)
     liveStyleRafRef.current = requestAnimationFrame(() => {
@@ -1490,7 +1498,7 @@ export function TerminalCanvas({
           {dragPreview && (
             <PaneDragGhost label={labelFor({ id: dragPreview.panelId })} badge={panelBadges[dragPreview.panelId]} rect={dragPreview} />
           )}
-          {visiblePanels.map((panel) => {
+          {freeCanvasPanels.map((panel) => {
             const rect = panelRect(panel)
             const label = labelFor(panel)
             const isDragging = draggingId === panel.id
