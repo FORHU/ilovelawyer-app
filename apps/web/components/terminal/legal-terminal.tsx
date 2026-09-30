@@ -44,11 +44,12 @@ import {
   screenIndicesInUse,
   sortedSecondaryScreens,
 } from "@/lib/terminal/multi-screen"
-import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
+import { useCanvasWindowReaper, useCloseCanvasWindowsOnUnload, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import {
   useAiJobStatus,
   useApplyWorkspaceMutation,
@@ -221,6 +222,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const [presetsModalOpen, setPresetsModalOpen] = useState(false)
+  // True auto-open on load isn't possible — window.open() with no fresh click is silently eaten
+  // by the popup blocker in every major browser. This is the closest thing: a modal in front of
+  // the user immediately on load (not a dismissible banner easy to miss) asking to resume, one
+  // click opens every missing screen under that click's gesture. Dismissing it just hides it for
+  // this mount — it isn't a "never ask again" preference, since a fresh load is a fresh chance to
+  // resume cleanly.
+  const [resumePromptDismissed, setResumePromptDismissed] = useState(false)
   // Populated by handlePresetModalOpen and handed to the modal as a prop — getScreenDetails() is
   // permission-gated and must be called synchronously from the click handler itself (Chromium's
   // transient-activation rule, same as usePopOutToNextScreen), not from an effect reacting to
@@ -251,9 +259,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Window Management API) simply never flips this true, so they see zero change.
   const isExtendedScreen = useIsExtendedScreen()
 
+  // The reverse direction: this window owns every canvas window it opened, so it closes them too
+  // when it goes away. unloadingRef flips true right before that happens, so the reaper and the
+  // sync channel below can skip reacting to the close-echo it causes — see the hook's own doc
+  // comment for why that echo is otherwise destructive.
+  const unloadingRef = useCloseCanvasWindowsOnUnload(canvasWindowsRef)
+
   // Only reliable cross-window signal a canvas window gives its opener without any cooperation
   // from the popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
-  useCanvasWindowReaper(canvasWindowsRef, setLayout)
+  useCanvasWindowReaper(canvasWindowsRef, setLayout, unloadingRef)
 
   // Instant cross-window layout sync + close notifications, additive to the poll above — see
   // lib/terminal/layout-sync-channel.ts.
@@ -264,6 +278,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     setLayout,
     lastSavedLayoutRef,
     canvasWindowsRef,
+    unloadingRef,
   })
 
   useEffect(() => {
@@ -310,8 +325,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null
       const pending = pendingSaveRef.current
-      pendingSaveRef.current = null
       if (!pending) return
+      // NOT cleared here — a normal (non-keepalive) fetch is cancelled if the tab closes while
+      // it's still in flight, which used to silently drop the save (e.g. a just-made screen
+      // assignment never reaching the backend, so reopening found nothing to restore). Leaving
+      // `pending` in place until the save actually confirms means flushOnHide below can still
+      // catch and resend it with keepalive if that happens.
       const save = updateWorkspace.mutateAsync({
         id: pending.workspaceId,
         preset: pending.layoutJson.preset,
@@ -319,8 +338,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       })
       inFlightSaveRef.current = save
       save.then(() => {
-        if (lastSavedLayoutRef.current === JSON.stringify(pending.layoutJson)) return
         lastSavedLayoutRef.current = JSON.stringify(pending.layoutJson)
+        // Only clear if nothing newer has been queued since this save started — a later edit
+        // already replaced `pending` with fresher content that still needs its own save.
+        if (pendingSaveRef.current === pending) pendingSaveRef.current = null
       }).finally(() => {
         if (inFlightSaveRef.current === save) inFlightSaveRef.current = null
       })
@@ -1021,23 +1042,42 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        {isExtendedScreen && (() => {
+        {isExtendedScreen && !resumePromptDismissed && (() => {
           const missingScreens = screenIndicesInUse(layout.panels).filter((idx) => !canvasWindowsRef.current.has(idx))
           if (missingScreens.length === 0) return null
           const panelCount = layout.panels.filter((p) => missingScreens.includes(p.screen ?? 0)).length
           return (
-            <div className="px-3 pt-3">
-              <div className="flex items-center gap-3 rounded-md border border-brand-gold/30 bg-brand-gold/10 px-3 py-2 text-xs text-foreground">
-                <span className="flex-1">{t("reopenScreensBanner", { count: panelCount })}</span>
-                <button
-                  type="button"
-                  onClick={reopenAllScreens}
-                  className="shrink-0 rounded-md bg-brand-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
-                >
-                  {t("reopenScreensAction")}
-                </button>
-              </div>
-            </div>
+            <Dialog open onOpenChange={(open) => !open && setResumePromptDismissed(true)}>
+              <DialogContent className="max-w-sm gap-0 overflow-hidden p-0">
+                <div className="px-6 py-5">
+                  <DialogTitle asChild>
+                    <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("resumeScreensTitle")}</h2>
+                  </DialogTitle>
+                  <DialogDescription asChild>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("reopenScreensBanner", { count: panelCount })}</p>
+                  </DialogDescription>
+                </div>
+                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/40">
+                  <button
+                    type="button"
+                    onClick={() => setResumePromptDismissed(true)}
+                    className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-full transition-colors"
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResumePromptDismissed(true)
+                      reopenAllScreens()
+                    }}
+                    className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
+                  >
+                    {t("reopenScreensAction")}
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
           )
         })()}
 
@@ -1253,9 +1293,12 @@ function columnCount(preset: PresetValue, n: number) {
   return 2
 }
 
+// Scoped to screen 0 (primary) only — a secondary screen's own panels are a different canvas
+// with their own independent tiling (multi-screen.ts's autoTileLayout), and mixing them into
+// this pass would squeeze the primary's own panels into a grid sized for both screens combined.
 function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
   const visible = [...layout.panels]
-    .filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+    .filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id) && (panel.screen ?? 0) === 0)
     .sort((a, b) => a.order - b.order)
   const cols = columnCount(layout.preset, visible.length)
   const rows = Math.max(1, Math.ceil(visible.length / cols))
@@ -1287,7 +1330,10 @@ function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
 // missing x/y, which showPanelAt/applyPreset always set) it'll reset that layout's in-column
 // stack proportions too. Give Columns its own height-like field if that turns out to matter.
 function hydrateFreeform(layout: WorkspaceLayout): WorkspaceLayout {
-  const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id))
+  // Screen 0 only — a secondary screen's panel legitimately has no x/y when that screen's own
+  // arrangement is Tabs/Columns (neither reads x/y), and that must never be read as "the primary
+  // needs retiling" and bulldoze whatever Free-canvas arrangement it already has.
+  const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id) && (panel.screen ?? 0) === 0)
   if (visible.some((panel) => !Number.isFinite(panel.x) || !Number.isFinite(panel.y))) {
     return tileLayout(layout)
   }

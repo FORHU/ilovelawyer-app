@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react"
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import type { PanelId, WorkspaceLayout } from "@/lib/terminal/types"
 import {
   applyScreenClosedFallback,
@@ -27,12 +27,19 @@ export function useIsExtendedScreen(): boolean {
 // secondary-screen canvas windows (canvasWindowsRef, keyed by screen index — every panel that was
 // on that screen falls back to `screen: undefined`) every 500ms. Shared by legal-terminal.tsx and
 // every canvas window — same poll, same fallback mechanic.
+//
+// `unloadingRef` (from useCloseCanvasWindowsOnUnload, primary window only) skips the fallback
+// while this window is itself going down — see that hook's doc comment for why: reassigning
+// panels back to screen 0 there means resuming as a scattered single-screen mess instead of a
+// clean reopen-banner restore.
 export function useCanvasWindowReaper(
   canvasWindowsRef: React.RefObject<Map<number, Window>>,
   setLayout: Dispatch<SetStateAction<WorkspaceLayout | null>>,
+  unloadingRef?: React.RefObject<boolean>,
 ): void {
   useEffect(() => {
     const interval = setInterval(() => {
+      if (unloadingRef?.current) return
       for (const [screenIndex, win] of canvasWindowsRef.current) {
         if (!win.closed) continue
         canvasWindowsRef.current.delete(screenIndex)
@@ -40,7 +47,39 @@ export function useCanvasWindowReaper(
       }
     }, 500)
     return () => clearInterval(interval)
-  }, [canvasWindowsRef, setLayout])
+  }, [canvasWindowsRef, setLayout, unloadingRef])
+}
+
+// The primary window owns every canvas window it opened — when it goes away (tab close, refresh,
+// or navigating off this case's terminal route in the SPA), every tracked canvas window closes
+// with it rather than being left orphaned. `pagehide` and refresh fire the same signal (no
+// reliable way to tell them apart beforehand), so a refresh closes pop-outs too — same "just
+// reopen via a preset" expectation the reopenScreensBanner already relies on.
+//
+// Closing a canvas window this way makes IT fire its own pagehide, which broadcasts
+// "screen-closing" back over the same channel the primary listens on (layout-sync-channel.ts) —
+// and that message can land before the primary is fully torn down. Left unguarded, the primary's
+// own handler would reassign those panels back to screen 0 (applyScreenClosedFallback, which
+// doesn't retile) using rects that were computed for the secondary's own canvas — exactly the
+// "scattered on reopen" bug this ref exists to prevent. The returned ref flips true before any
+// window closes, so the primary's other multi-screen effects (the reaper above, and
+// useLayoutSyncChannel's "screen-closing" handler) can check it and skip their fallback,
+// leaving the persisted layout's screen assignments untouched for the next reopen-banner restore.
+export function useCloseCanvasWindowsOnUnload(canvasWindowsRef: React.RefObject<Map<number, Window>>): React.RefObject<boolean> {
+  const unloadingRef = useRef(false)
+  useEffect(() => {
+    const closeAll = () => {
+      unloadingRef.current = true
+      for (const win of canvasWindowsRef.current.values()) win.close()
+      canvasWindowsRef.current.clear()
+    }
+    window.addEventListener("pagehide", closeAll)
+    return () => {
+      window.removeEventListener("pagehide", closeAll)
+      closeAll()
+    }
+  }, [canvasWindowsRef])
+  return unloadingRef
 }
 
 // Pop-out: advances a pane to the next physical screen in sequence (primary -> 1 -> 2 -> ... -> N

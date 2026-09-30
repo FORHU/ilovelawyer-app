@@ -36,6 +36,7 @@ export function useLayoutSyncChannel({
   lastSavedLayoutRef,
   canvasWindowsRef,
   setWorkspaceId,
+  unloadingRef,
 }: {
   caseId: string
   workspaceId: string
@@ -50,6 +51,11 @@ export function useLayoutSyncChannel({
    * legal-terminal.tsx doesn't need this: the primary window is always the one that creates and
    * already knows its own workspaceId, never adopts one from a broadcast. */
   setWorkspaceId?: Dispatch<SetStateAction<string>>
+  /** From useCloseCanvasWindowsOnUnload (primary window only) — true once this window has started
+   * closing its own canvas windows. Closing one makes it fire its own pagehide and broadcast
+   * "screen-closing" right back here; reacting to that echo while going down ourselves would
+   * reassign those panels to screen 0 without retiling, scattering them for the next reopen. */
+  unloadingRef?: React.RefObject<boolean>
 }): { broadcastLayout: (layoutJson: WorkspaceLayout) => void } {
   const channelRef = useRef<BroadcastChannel | null>(null)
   // Read inside the message handler without re-subscribing on every change — this hook's own
@@ -92,6 +98,7 @@ export function useLayoutSyncChannel({
         }
         case "screen-closing": {
           canvasWindowsRef.current.delete(msg.screenIndex)
+          if (unloadingRef?.current) return
           setLayout((prev) => (prev ? applyScreenClosedFallback(prev, msg.screenIndex) : prev))
           return
         }

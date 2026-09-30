@@ -92,6 +92,7 @@
   "presetSettlementPrepDesc": "Settlement and mediation — case summary and damages on the primary screen, witnesses and theories on the second, decisions and procedure on the third.",
   "presetCrossExamPrep": "Cross-Exam Prep",
   "presetCrossExamPrepDesc": "Cross-examination — case summary on the primary screen, witnesses and contradictions on the second, attack and defense strategies on the third.",
+  "resumeScreensTitle": "Resume multi-screen setup?",
   "reopenScreensBanner": "{{count}} panels are on other screens — reopen them",
   "reopenScreensAction": "Reopen",
   "comingSoon": "Coming soon",

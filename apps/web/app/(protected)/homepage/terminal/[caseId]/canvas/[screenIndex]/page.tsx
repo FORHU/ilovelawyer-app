@@ -20,6 +20,7 @@ import { autoTileLayout, computeFocusStackSummaries, computePanelBadges } from "
 import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { announceWindowClosing, useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ArrangementSwitcher } from "@/components/terminal/arrangement-switcher"
+import { apiFetch } from "@/lib/fetch"
 
 // Pop-out target for one secondary physical screen (see legal-terminal.tsx's pop-out action and
 // the reopen banner) — a minimal, chrome-less page: no PageShell/GlobalHeader/sidebar, its own
@@ -44,6 +45,7 @@ export default function TerminalCanvasWindowPage() {
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const lastSavedLayoutRef = useRef("")
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<{ workspaceId: string; layoutJson: WorkspaceLayout } | null>(null)
 
   // Ephemeral per-window UI state — never persisted, never shared with the primary window or
   // any other canvas window (mirrors legal-terminal.tsx's own local state for the same fields).
@@ -73,8 +75,24 @@ export default function TerminalCanvasWindowPage() {
 
   // This window closing is itself the signal the primary window (or any other window) needs to
   // instantly fall this screen's panels back to primary, rather than waiting on its own poll.
+  // Also flushes whatever save is still outstanding with `keepalive` so it survives — a normal
+  // (non-keepalive) fetch is cancelled by the window closing, same gap legal-terminal.tsx's own
+  // autosave had. This mattered more than it looked: when the primary closes and force-closes
+  // this window too, whichever of the two windows' saves was going to be the authoritative "last
+  // write" (both PATCH the same workspace row independently) needs to actually survive its own
+  // window's closure, or the persisted layout silently reverts to an older state.
   useEffect(() => {
-    const onHide = () => announceWindowClosing(caseId, { type: "screen-closing", screenIndex })
+    const onHide = () => {
+      announceWindowClosing(caseId, { type: "screen-closing", screenIndex })
+      const pending = pendingSaveRef.current
+      if (!pending) return
+      pendingSaveRef.current = null
+      apiFetch(`/api/terminal/workspaces/${pending.workspaceId}`, {
+        method: "PATCH",
+        keepalive: true,
+        body: JSON.stringify({ preset: pending.layoutJson.preset, layoutJson: pending.layoutJson }),
+      }).catch(() => {})
+    }
     window.addEventListener("pagehide", onHide)
     return () => window.removeEventListener("pagehide", onHide)
   }, [caseId, screenIndex])
@@ -104,11 +122,23 @@ export default function TerminalCanvasWindowPage() {
     // one.
     broadcastLayout(layout)
 
+    pendingSaveRef.current = { workspaceId, layoutJson: layout }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null
-      lastSavedLayoutRef.current = serialized
-      updateWorkspace.mutate({ id: workspaceId, preset: layout.preset, layoutJson: layout })
+      const pending = pendingSaveRef.current
+      if (!pending) return
+      // NOT cleared here — see the pagehide handler above: a normal fetch dies if this window
+      // closes while it's still in flight, so `pending` stays put until the save confirms.
+      updateWorkspace.mutate(
+        { id: pending.workspaceId, preset: pending.layoutJson.preset, layoutJson: pending.layoutJson },
+        {
+          onSuccess: () => {
+            lastSavedLayoutRef.current = JSON.stringify(pending.layoutJson)
+            if (pendingSaveRef.current === pending) pendingSaveRef.current = null
+          },
+        },
+      )
     }, 1200)
     return () => {
       if (saveTimerRef.current) {

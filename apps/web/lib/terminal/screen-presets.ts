@@ -176,23 +176,43 @@ export function panelsHiddenByPreset(layout: WorkspaceLayout, preset: ScreenPres
   return layout.panels.filter((p) => p.visible && !included.has(p.id)).map((p) => p.id)
 }
 
+// Columns mode auto-balances any panel with no (or an out-of-range) columnIndex across however
+// many columns exist (see columnsOf in terminal-canvas.tsx) — but it still needs an explicit
+// columnCount. Leaving it unset is worse than just cosmetic: legal-terminal.tsx's own legacy-save
+// migration (asLayout) reads "arrangement is columns with no columnCount" as a pre-rework save and
+// silently reinterprets the whole screen as Free, rendering it with whatever stale x/y those
+// panels happened to carry from before — exactly the overlapping-panels bug this avoids.
+function columnCountFor(panelCount: number): number {
+  return Math.min(3, Math.max(2, panelCount))
+}
+
 // Applies a preset: every panel the preset lists becomes visible on its screen; every other
 // panel is hidden. Each screen's arrangement is written (screen 0 -> top-level fields, 1+ ->
-// screenLayouts[n]), then autoTileLayout fills in rects for any screen that came out "free" —
-// Columns/Tabs/Focus don't need seeded rects, same as any other arrangement switch.
+// screenLayouts[n]); a Columns screen also gets a columnCount (see columnCountFor above), and a
+// Free screen gets its rects seeded by autoTileLayout. Tabs/Focus need neither — Tabs
+// auto-balances into its 2 groups the same way Columns does, Focus just needs an active pane.
 export function applyScreenPreset(layout: WorkspaceLayout, preset: ScreenPresetDef): WorkspaceLayout {
   const placement = new Map<PanelId, { screen: number; order: number }>()
   preset.screens.forEach((screen, screenIndex) => {
     screen.panelIds.forEach((id, order) => placement.set(id, { screen: screenIndex, order }))
   })
 
+  const primary = preset.screens[0]!
   let next: WorkspaceLayout = {
     ...layout,
-    arrangement: preset.screens[0]!.arrangement,
+    arrangement: primary.arrangement,
+    columnCount: primary.arrangement === "columns" ? columnCountFor(primary.panelIds.length) : layout.columnCount,
     screenLayouts: {
       ...layout.screenLayouts,
       ...Object.fromEntries(
-        preset.screens.slice(1).map((screen, index) => [index + 1, { ...layout.screenLayouts?.[index + 1], arrangement: screen.arrangement }]),
+        preset.screens.slice(1).map((screen, index) => [
+          index + 1,
+          {
+            ...layout.screenLayouts?.[index + 1],
+            arrangement: screen.arrangement,
+            columnCount: screen.arrangement === "columns" ? columnCountFor(screen.panelIds.length) : layout.screenLayouts?.[index + 1]?.columnCount,
+          },
+        ]),
       ),
     },
     panels: layout.panels.map((panel) => {
