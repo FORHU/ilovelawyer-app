@@ -17,9 +17,11 @@ import { WorkspaceSetup } from "./workspace-setup";
 
 import {
   sanitizeNextPath,
+  type OrganizationStatus,
   useCancelSignupMutation,
   useForgotPasswordMutation,
   useGoogleAuthMutation,
+  useGoogleLinkMutation,
   useLoginMutation,
   useSendOtpMutation,
   useSignupMutation,
@@ -89,10 +91,29 @@ function UnifiedAuthContent() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Google sign-in. The popup's onSuccess is a single callback shared by both tabs, so which
+  // tab launched it — and the remember/Terms choices in effect at that moment — are captured
+  // in refs by launchGoogle rather than read from (possibly stale) state inside the callback.
+  const googleTokenRef = useRef<string | null>(null);
+  const googleRememberRef = useRef(true);
+  const googleAcceptedTermsRef = useRef(false);
+  // Sign-up tab's Google button clicked before agreeing — resume the popup once they agree.
+  const googleAfterTermsRef = useRef(false);
+  // A 428 TERMS_ACCEPTANCE_REQUIRED (a brand-new Google identity, e.g. from the sign-in tab)
+  // opens its own Terms dialog; this tells its close handler whether it closed by agreeing.
+  const [googleTermsOpen, setGoogleTermsOpen] = useState(false);
+  const googleTermsAgreedRef = useRef(false);
+  // Set by a GOOGLE_LINK_REQUIRED 409 — the existing password account's email, which the
+  // link step asks the password for.
+  const [googleLinkEmail, setGoogleLinkEmail] = useState<string | null>(null);
+  const [linkPassword, setLinkPassword] = useState("");
+  const [showLinkPw, setShowLinkPw] = useState(false);
+
   const loginMutation = useLoginMutation();
   const updateRequiredPasswordMutation = useUpdateRequiredPasswordMutation();
   const signupMutation = useSignupMutation();
   const googleMutation = useGoogleAuthMutation();
+  const googleLinkMutation = useGoogleLinkMutation();
   const forgotPasswordMutation = useForgotPasswordMutation();
   const sendOtpMutation = useSendOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
@@ -111,16 +132,120 @@ function UnifiedAuthContent() {
     router.replace(next === "signin" ? "/login" : `/login?tab=${next}`, { scroll: false });
   }
 
+  /** A Google user with no organization yet (new, or one who abandoned onboarding) goes
+   * through the same WorkspaceSetup step as a freshly-verified password signup; everyone else
+   * continues to `next`. "unknown" (the org lookup failed) also continues — the protected
+   * layout re-checks from there. */
+  function finishGoogleAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+    googleTokenRef.current = null;
+    if (data.organizationStatus === "none") {
+      setName(data.user.name ?? "");
+      setWorkspaceStep(true);
+      return;
+    }
+    router.push(sanitizeNextPath(searchParams.get("next")));
+  }
+
+  function submitGoogle(idToken: string, acceptedTerms: boolean) {
+    setError(null);
+    googleMutation.mutate(
+      { idToken, remember: googleRememberRef.current, acceptedTerms },
+      {
+        onSuccess: finishGoogleAuth,
+        onError: (err) => {
+          const { code, body } = err as Error & { code?: string; body?: { email?: string } };
+          // Brand-new Google identity with no Terms acceptance yet — nothing was created.
+          // Keep the token and retry with it once they agree (see the second
+          // TermsReviewDialog below), rather than sending them through the popup again.
+          if (code === "TERMS_ACCEPTANCE_REQUIRED") {
+            googleTermsAgreedRef.current = false;
+            setGoogleTermsOpen(true);
+            return;
+          }
+          // An existing password account owns this email — offer to connect Google to it,
+          // which requires that account's password (AuthSvc.linkGoogle).
+          if (code === "GOOGLE_LINK_REQUIRED" && body?.email) {
+            setLinkPassword("");
+            setGoogleLinkEmail(body.email);
+            return;
+          }
+          googleTokenRef.current = null;
+          setError((err as Error).message);
+        },
+      }
+    );
+  }
+
   const googleLogin = useGoogleLogin({
     onSuccess: ({ access_token }) => {
-      setError(null);
-      googleMutation.mutate(
-        { idToken: access_token },
-        { onError: (err) => setError((err as Error).message) }
-      );
+      googleTokenRef.current = access_token;
+      submitGoogle(access_token, googleAcceptedTermsRef.current);
     },
     onError: () => setError(t("login.googleError")),
   });
+
+  /** The sign-in tab honors its Remember checkbox; the sign-up tab always remembers, same as
+   * a password signup's verify-otp session. The sign-up tab also requires the Terms first —
+   * if not yet agreed, the Terms dialog opens and its onAgree resumes the popup. */
+  function launchGoogle(source: "signin" | "signup") {
+    setError(null);
+    googleRememberRef.current = source === "signin" ? remember : true;
+    if (source === "signup" && !agreed) {
+      googleAfterTermsRef.current = true;
+      setTermsDialogOpen(true);
+      return;
+    }
+    googleAcceptedTermsRef.current = source === "signup";
+    googleLogin();
+  }
+
+  function handleGoogleTermsOpenChange(open: boolean) {
+    setGoogleTermsOpen(open);
+    if (!open && !googleTermsAgreedRef.current) {
+      googleTokenRef.current = null;
+      setError(t("login.googleTermsDeclined"));
+    }
+  }
+
+  function exitGoogleLink() {
+    googleTokenRef.current = null;
+    setGoogleLinkEmail(null);
+    setLinkPassword("");
+    setShowLinkPw(false);
+    setError(null);
+  }
+
+  function handleGoogleLink(e: React.SyntheticEvent) {
+    e.preventDefault();
+    const idToken = googleTokenRef.current;
+    const linkEmail = googleLinkEmail;
+    if (!idToken || !linkEmail) return;
+    setError(null);
+    googleLinkMutation.mutate(
+      { idToken, password: linkPassword, remember: googleRememberRef.current },
+      {
+        onSuccess: (data) => {
+          setGoogleLinkEmail(null);
+          setLinkPassword("");
+          finishGoogleAuth(data);
+        },
+        onError: (err) => {
+          // Same forced-update gate as a password sign-in (see handleSignIn): the password
+          // they just entered is the "current password" proof for that step. Google stays
+          // unlinked; they can connect it again after updating.
+          if ((err as Error & { status?: number }).status === 428) {
+            setSigninEmail(linkEmail);
+            setSigninPassword(linkPassword);
+            setRemember(googleRememberRef.current);
+            exitGoogleLink();
+            setPasswordUpdateRequired(true);
+            return;
+          }
+          setError((err as Error).message);
+        },
+      }
+    );
+  }
 
   function handleSignIn(e: React.SyntheticEvent) {
     e.preventDefault();
@@ -275,6 +400,7 @@ function UnifiedAuthContent() {
     updateRequiredPasswordMutation.isPending ||
     signupMutation.isPending ||
     googleMutation.isPending ||
+    googleLinkMutation.isPending ||
     sendOtpMutation.isPending ||
     verifyOtpMutation.isPending;
   
@@ -429,6 +555,112 @@ function UnifiedAuthContent() {
                   </Tooltip>
                 </div>
               </div>
+            </>
+          ) : googleLinkEmail ? (
+            <>
+              <div className="flex flex-col gap-1 pt-20">
+                <h1 className="font-['Libre_Caslon_Text'] font-normal text-[40px] text-foreground leading-12">
+                  {t("googleLink.heading")}
+                </h1>
+                <p className="text-muted-foreground text-base leading-6" style={{ fontFamily: "Inter, sans-serif" }}>
+                  {t("googleLink.subheadingPrefix")} <span className="font-semibold text-foreground">{googleLinkEmail}</span>
+                  {t("googleLink.subheadingSuffix")}
+                </p>
+              </div>
+
+              <form onSubmit={handleGoogleLink} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label
+                    className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {t("googleLink.passwordLabel")}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showLinkPw ? "text" : "password"}
+                      value={linkPassword}
+                      onChange={(e) => setLinkPassword(e.target.value)}
+                      placeholder={t("login.passwordPlaceholder")}
+                      required
+                      autoFocus
+                      className={`${inputClass} pr-10`}
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setShowLinkPw(!showLinkPw)}
+                          aria-label={showLinkPw ? "Hide password" : "Show password"}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer bg-transparent border-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showLinkPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{showLinkPw ? "Hide password" : "Show password"}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+                    {error}
+                  </p>
+                )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="submit"
+                      disabled={isPending || !linkPassword}
+                      className="w-full bg-primary text-primary-foreground rounded-xl text-base tracking-[1.6px] uppercase font-semibold py-4 cursor-pointer hover:opacity-90 transition-opacity border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {googleLinkMutation.isPending ? t("googleLink.connecting") : t("googleLink.connect")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Confirm your password to connect Google sign-in to this account</TooltipContent>
+                </Tooltip>
+
+                <div className="flex items-center justify-between">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const linkEmail = googleLinkEmail;
+                          exitGoogleLink();
+                          setRecoverEmail(linkEmail);
+                          setRecoverSent(false);
+                          selectTab("recover");
+                        }}
+                        className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {t("googleLink.forgotPassword")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Recover access to your account</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exitGoogleLink();
+                          selectTab("signin");
+                        }}
+                        className="text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        {t("googleLink.back")}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Return to the sign-in form</TooltipContent>
+                  </Tooltip>
+                </div>
+              </form>
             </>
           ) : passwordUpdateRequired ? (
             <>
@@ -741,7 +973,7 @@ function UnifiedAuthContent() {
                       <button
                         type="button"
                         disabled={isPending}
-                        onClick={() => googleLogin()}
+                        onClick={() => launchGoogle("signin")}
                         className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover dark:hover:bg-overlay-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span
@@ -769,7 +1001,7 @@ function UnifiedAuthContent() {
                       <button
                         type="button"
                         disabled={isPending}
-                        onClick={() => googleLogin()}
+                        onClick={() => launchGoogle("signup")}
                         className="w-full bg-background border border-border rounded-xl flex items-center justify-center gap-3 px-px py-4.25 cursor-pointer hover:bg-accent dark:hover:bg-overlay-hover dark:hover:bg-overlay-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="text-foreground text-base font-semibold" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -953,10 +1185,20 @@ function UnifiedAuthContent() {
 
                     <TermsReviewDialog
                       open={termsDialogOpen}
-                      onOpenChange={setTermsDialogOpen}
+                      onOpenChange={(open) => {
+                        setTermsDialogOpen(open);
+                        if (!open) googleAfterTermsRef.current = false;
+                      }}
                       onAgree={() => {
                         setHasReadTerms(true);
                         setAgreed(true);
+                        // Opened by the sign-up tab's Google button — resume it. Still inside
+                        // the Agree click, so the browser treats the popup as user-initiated.
+                        if (googleAfterTermsRef.current) {
+                          googleAfterTermsRef.current = false;
+                          googleAcceptedTermsRef.current = true;
+                          googleLogin();
+                        }
                       }}
                     />
 
@@ -1074,6 +1316,17 @@ function UnifiedAuthContent() {
                 ))}
             </>
           )}
+
+          <TermsReviewDialog
+            open={googleTermsOpen}
+            onOpenChange={handleGoogleTermsOpenChange}
+            onAgree={() => {
+              googleTermsAgreedRef.current = true;
+              setHasReadTerms(true);
+              setAgreed(true);
+              if (googleTokenRef.current) submitGoogle(googleTokenRef.current, true);
+            }}
+          />
 
           <div className="flex items-center justify-between border-t border-border pt-8">
             <span

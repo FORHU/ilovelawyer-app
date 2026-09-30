@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
+    "dev:https": "next dev -p 3002 --experimental-https --hostname uk-local.ilovelawyer.com",
+    "dev:https:ph": "next dev -p 3002 --experimental-https --hostname ph-local.ilovelawyer.com",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint",
