@@ -96,6 +96,22 @@ export interface TerminalCatalog {
   defaultPreset: PresetValue
 }
 
+// A DB-persisted multi-screen preset row — see lib/terminal/screen-presets.ts's ScreenPresetDef,
+// which wraps this into the shape the presets modal actually renders. `userId: null` is a system
+// preset (seeded, global); otherwise it's the caller's own saved preset.
+export interface ScreenPresetRow {
+  id: string
+  userId: string | null
+  labelKey: string | null
+  descriptionKey: string | null
+  name: string
+  description: string | null
+  screenCount: number
+  screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface TerminalWorkspace {
   id: string
   userId: string

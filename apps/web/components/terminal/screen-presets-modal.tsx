@@ -2,12 +2,23 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react"
 import { useTranslation } from "react-i18next"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
 import { openCanvasWindow, sortedSecondaryScreens } from "@/lib/terminal/multi-screen"
-import { applyScreenPreset, panelShortCode, panelsHiddenByPreset, presetsForScreenCount, type ScreenPresetDef } from "@/lib/terminal/screen-presets"
+import {
+  applyScreenPreset,
+  captureCurrentScreens,
+  fromRow,
+  generateSpreadPreset,
+  panelShortCode,
+  panelsHiddenByPreset,
+  presetDescription,
+  presetLabel,
+  type ScreenPresetDef,
+} from "@/lib/terminal/screen-presets"
+import { useCreateScreenPresetMutation, useDeleteScreenPresetMutation, useScreenPresetsQuery } from "@/lib/terminal/mutations"
 import type { WorkspaceLayout } from "@/lib/terminal/types"
 
 interface ScreenPresetsModalProps {
@@ -27,23 +38,31 @@ interface ScreenPresetsModalProps {
 }
 
 // Two-column layout-template picker for the multi-screen capability pill: a list of named
-// workflows on the left, filtered to however many screens are actually connected (shown as a
+// workflows on the left (system presets seeded server-side + this lawyer's own saved ones,
+// fetched by screen count), filtered to however many screens are actually connected (shown as a
 // plain indicator, not something to override — a preset for more screens than exist has nowhere
 // to send its extra panes), and the selected one's per-display pane breakdown + Apply on the
 // right. Applying is immediate unless it would hide a panel the lawyer currently has visible,
 // which shows an inline confirm naming what's about to disappear before committing.
 //
-// Skipped vs. the mockup: drag-drop pane rebalancing across displays, a deadline-driven
-// "recommended" badge, and "save as my own phase" — each is its own real feature (live case-data
-// wiring, a custom-preset persistence layer, a DnD rebuild), not a reskin. Add if wanted.
+// Skipped vs. the original mockup: drag-drop pane rebalancing across displays and a
+// deadline-driven "recommended" badge — each is its own real feature (a DnD rebuild, live
+// case-data wiring), not a reskin. Add if wanted.
 export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, layout, setLayout, canvasWindowsRef }: ScreenPresetsModalProps) {
   const { t } = useTranslation("terminal")
   const [liveCount, setLiveCount] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [saveName, setSaveName] = useState("")
 
   const count = liveCount ?? detectedCount
-  const presets = count ? presetsForScreenCount(count) : null
+  const presetsQuery = useScreenPresetsQuery(count ?? 0)
+  const createPreset = useCreateScreenPresetMutation()
+  const deletePreset = useDeleteScreenPresetMutation()
+
+  const presets: ScreenPresetDef[] | null = count
+    ? [...(presetsQuery.data?.map(fromRow) ?? []), ...(count > 3 ? [generateSpreadPreset(count)] : [])]
+    : null
   const selected = presets?.find((p) => p.id === selectedId) ?? presets?.[0] ?? null
 
   const handleOpenChange = (next: boolean) => {
@@ -52,6 +71,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
       setLiveCount(null)
       setSelectedId(null)
       setConfirming(false)
+      setSaveName("")
     }
   }
 
@@ -94,6 +114,14 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
     apply(selected)
   }
 
+  const handleSave = () => {
+    if (!layout || !count || !saveName.trim()) return
+    const screens = captureCurrentScreens(layout, count)
+    if (screens.length === 0) return
+    createPreset.mutate({ name: saveName.trim(), screens })
+    setSaveName("")
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl gap-0 overflow-hidden p-0">
@@ -128,38 +156,73 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
           </div>
         </div>
 
-        {!count ? (
+        {!count || presetsQuery.isLoading ? (
           <p className="px-6 py-6 text-sm text-muted-foreground">{t("detectingScreens")}</p>
         ) : (
           <div className="flex min-h-0">
-            <div className="w-56 shrink-0 border-r border-border/70 py-2">
-              {presets!.map((preset) => (
+            <div className="flex w-56 shrink-0 flex-col border-r border-border/70">
+              <div className="flex-1 overflow-y-auto py-2">
+                {presets!.map((preset) => (
+                  <div
+                    key={preset.id}
+                    className={`group flex w-full items-center gap-1 px-2 transition-colors ${
+                      (selected?.id ?? presets![0]!.id) === preset.id ? "bg-brand-gold/10 text-foreground" : "text-muted-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(preset.id)
+                        setConfirming(false)
+                      }}
+                      className="flex flex-1 items-center justify-between gap-2 py-2.5 pl-2 text-left text-xs hover:text-foreground"
+                    >
+                      <span className="font-semibold uppercase tracking-[0.5px]">{presetLabel(preset, t)}</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {preset.screens.reduce((n, s) => n + s.panelIds.length, 0)}
+                      </span>
+                    </button>
+                    {preset.userId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          deletePreset.mutate(preset.id)
+                          if (selectedId === preset.id) setSelectedId(null)
+                        }}
+                        aria-label={t("deletePreset")}
+                        className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 border-t border-border/70 p-2">
+                <input
+                  type="text"
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  placeholder={t("savePresetPlaceholder")}
+                  className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
                 <button
-                  key={preset.id}
                   type="button"
-                  onClick={() => {
-                    setSelectedId(preset.id)
-                    setConfirming(false)
-                  }}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-xs transition-colors ${
-                    (selected?.id ?? presets![0]!.id) === preset.id
-                      ? "bg-brand-gold/10 text-foreground"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  }`}
+                  onClick={handleSave}
+                  disabled={!saveName.trim() || createPreset.isPending}
+                  className="h-7 shrink-0 rounded border border-border px-2 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 >
-                  <span className="font-semibold uppercase tracking-[0.5px]">{t(preset.labelKey)}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {preset.screens.reduce((n, s) => n + s.panelIds.length, 0)}
-                  </span>
+                  {t("savePreset")}
                 </button>
-              ))}
+              </div>
             </div>
 
             <div className="flex-1 px-6 py-5">
               {selected && !confirming && (
                 <>
-                  <h3 className="font-['Libre_Caslon_Text'] text-base text-foreground font-normal">{t(selected.labelKey)}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{t(selected.descriptionKey)}</p>
+                  <h3 className="font-['Libre_Caslon_Text'] text-base text-foreground font-normal">{presetLabel(selected, t)}</h3>
+                  {presetDescription(selected, t) && <p className="mt-1 text-xs text-muted-foreground">{presetDescription(selected, t)}</p>}
 
                   <div className="mt-4 flex gap-3 overflow-x-auto">
                     {selected.screens.map((screen, index) => (

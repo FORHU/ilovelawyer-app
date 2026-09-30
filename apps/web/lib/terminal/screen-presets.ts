@@ -1,145 +1,50 @@
 import { HIDDEN_PANELS } from "@/components/terminal/terminal-canvas"
-import { autoTileLayout } from "@/lib/terminal/multi-screen"
+import { arrangementForScreen, autoTileLayout } from "@/lib/terminal/multi-screen"
 import { PANEL_IDS } from "@/lib/terminal/types"
-import type { ArrangementValue, PanelId, WorkspaceLayout } from "@/lib/terminal/types"
+import type { ArrangementValue, PanelId, ScreenPresetRow, WorkspaceLayout } from "@/lib/terminal/types"
 
 // One named multi-screen workspace template. `screens[0]` is always the primary window;
 // screens[1+] are secondary canvas windows, matching PanelLayout.screen's numbering.
+//
+// `userId` mirrors the DB row this came from: null for a system preset (seeded, global — see
+// ilovelawyer-api's prisma/seeders/screen-preset.seeder.ts) or the generated "Spread Evenly"
+// preset below (never a DB row, but conceptually global too); a real id for the caller's own
+// saved preset. `labelKey`/`descriptionKey` are set only for system/generated presets, resolved
+// through terminal.json — presetLabel/presetDescription below fall back to the plain `name`/
+// `description` text a user's own preset actually has.
 export interface ScreenPresetDef {
   id: string
-  labelKey: string
-  descriptionKey: string
+  userId: string | null
+  labelKey?: string
+  descriptionKey?: string
+  name: string
+  description?: string
   screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
 }
 
-// Hand-authored, one per real day-to-day litigation workflow. Panels not listed by a preset are
-// hidden when it's applied; verification/HIDDEN_PANELS are never included, same as everywhere
-// else panels are listed for a user-facing picker.
-export const TWO_SCREEN_PRESETS: ScreenPresetDef[] = [
-  {
-    id: "trial-prep",
-    labelKey: "presetTrialPrep",
-    descriptionKey: "presetTrialPrepDesc",
-    screens: [
-      { arrangement: "columns", panelIds: ["command", "chat", "evidence", "procedure"] },
-      { arrangement: "free", panelIds: ["law", "mindMap", "redTeam", "citationMap"] },
-    ],
-  },
-  {
-    id: "document-review",
-    labelKey: "presetDocumentReview",
-    descriptionKey: "presetDocumentReviewDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["evidence", "contradictions", "command"] },
-      { arrangement: "tabs", panelIds: ["witnesses", "damages", "procedure", "teamAudit"] },
-    ],
-  },
-  {
-    id: "research-deep-dive",
-    labelKey: "presetResearchDeepDive",
-    descriptionKey: "presetResearchDeepDiveDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat", "law"] },
-      {
-        arrangement: "tabs",
-        panelIds: ["citationMap", "redTeam", "legalIssues", "weaknesses", "strengths", "attackStrategy", "defenseStrategy", "theories"],
-      },
-    ],
-  },
-  {
-    id: "client-intake",
-    labelKey: "presetClientIntake",
-    descriptionKey: "presetClientIntakeDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat"] },
-      { arrangement: "free", panelIds: ["evidence", "procedure"] },
-    ],
-  },
-  {
-    id: "witness-prep",
-    labelKey: "presetWitnessPrep",
-    descriptionKey: "presetWitnessPrepDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat", "witnesses"] },
-      { arrangement: "tabs", panelIds: ["contradictions", "redTeam", "teamAudit"] },
-    ],
-  },
-  {
-    id: "client-reporting",
-    labelKey: "presetClientReporting",
-    descriptionKey: "presetClientReportingDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat"] },
-      { arrangement: "free", panelIds: ["decisions", "mindMap"] },
-    ],
-  },
-]
+export function fromRow(row: ScreenPresetRow): ScreenPresetDef {
+  return {
+    id: row.id,
+    userId: row.userId,
+    labelKey: row.labelKey ?? undefined,
+    descriptionKey: row.descriptionKey ?? undefined,
+    name: row.name,
+    description: row.description ?? undefined,
+    screens: row.screens,
+  }
+}
 
-export const THREE_SCREEN_PRESETS: ScreenPresetDef[] = [
-  {
-    id: "full-workspace",
-    labelKey: "presetFullWorkspace",
-    descriptionKey: "presetFullWorkspaceDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat"] },
-      { arrangement: "columns", panelIds: ["evidence", "contradictions", "witnesses"] },
-      { arrangement: "tabs", panelIds: ["law", "procedure", "mindMap", "damages", "caseReconstruction", "theories", "decisions"] },
-    ],
-  },
-  {
-    id: "trial-day",
-    labelKey: "presetTrialDay",
-    descriptionKey: "presetTrialDayDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat"] },
-      { arrangement: "columns", panelIds: ["evidence", "witnesses", "contradictions"] },
-      { arrangement: "tabs", panelIds: ["law", "redTeam", "attackStrategy", "defenseStrategy", "legalIssues", "weaknesses", "strengths"] },
-    ],
-  },
-  {
-    id: "strategy-session",
-    labelKey: "presetStrategySession",
-    descriptionKey: "presetStrategySessionDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat", "procedure"] },
-      { arrangement: "columns", panelIds: ["mindMap", "redTeam", "theories", "decisions"] },
-      { arrangement: "tabs", panelIds: ["law", "citationMap", "damages", "witnesses", "caseReconstruction", "audioOverview", "teamAudit"] },
-    ],
-  },
-  {
-    id: "motion-drafting",
-    labelKey: "presetMotionDrafting",
-    descriptionKey: "presetMotionDraftingDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat", "procedure"] },
-      { arrangement: "free", panelIds: ["law", "citationMap"] },
-      { arrangement: "tabs", panelIds: ["decisions", "legalIssues", "theories"] },
-    ],
-  },
-  {
-    id: "settlement-prep",
-    labelKey: "presetSettlementPrep",
-    descriptionKey: "presetSettlementPrepDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat", "damages"] },
-      { arrangement: "free", panelIds: ["witnesses", "theories"] },
-      { arrangement: "tabs", panelIds: ["decisions", "procedure", "teamAudit"] },
-    ],
-  },
-  {
-    id: "cross-exam-prep",
-    labelKey: "presetCrossExamPrep",
-    descriptionKey: "presetCrossExamPrepDesc",
-    screens: [
-      { arrangement: "free", panelIds: ["command", "chat"] },
-      { arrangement: "columns", panelIds: ["witnesses", "contradictions"] },
-      { arrangement: "tabs", panelIds: ["attackStrategy", "defenseStrategy", "redTeam"] },
-    ],
-  },
-]
+export function presetLabel(preset: ScreenPresetDef, t: (key: string) => string): string {
+  return preset.labelKey ? t(preset.labelKey) : preset.name
+}
+
+export function presetDescription(preset: ScreenPresetDef, t: (key: string) => string): string | undefined {
+  return preset.descriptionKey ? t(preset.descriptionKey) : preset.description
+}
 
 // 4-6 screens: no hand-curated content, just evenly round-robin every real panel (every PanelId
-// minus verification/HIDDEN_PANELS) across however many screens are actually connected.
+// minus verification/HIDDEN_PANELS) across however many screens are actually connected. Purely
+// client-side/algorithmic (depends on live screen count) — never a DB row.
 export function generateSpreadPreset(totalScreens: number): ScreenPresetDef {
   const allIds = PANEL_IDS.filter((id) => !HIDDEN_PANELS.has(id) && id !== "verification")
   const screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[] = Array.from({ length: totalScreens }, () => ({
@@ -149,7 +54,14 @@ export function generateSpreadPreset(totalScreens: number): ScreenPresetDef {
   allIds.forEach((id, index) => {
     screens[index % totalScreens]!.panelIds.push(id)
   })
-  return { id: "spread-evenly", labelKey: "presetSpreadEvenly", descriptionKey: "presetSpreadEvenlyDesc", screens }
+  return {
+    id: "spread-evenly",
+    userId: null,
+    labelKey: "presetSpreadEvenly",
+    descriptionKey: "presetSpreadEvenlyDesc",
+    name: "Spread Evenly",
+    screens,
+  }
 }
 
 // 2-letter chip code for a panel's card in the modal's per-display preview — initials of the
@@ -160,20 +72,28 @@ export function panelShortCode(title: string): string {
   return words.length >= 2 ? (words[0]![0]! + words[1]![0]!).toUpperCase() : title.slice(0, 2).toUpperCase()
 }
 
-// totalScreens = 1 (primary) + however many secondary screens getScreenDetails() found, matching
-// sortedSecondaryScreens' count. 1 (no secondary screens) is never called — the presets button is
-// only rendered when isExtendedScreen is true.
-export function presetsForScreenCount(totalScreens: number): ScreenPresetDef[] {
-  if (totalScreens <= 2) return TWO_SCREEN_PRESETS
-  if (totalScreens === 3) return THREE_SCREEN_PRESETS
-  return [generateSpreadPreset(totalScreens)]
-}
-
 // Currently-visible panels a preset would hide (assigned to no screen in it) — drives the
 // presets modal's confirm-before-apply gate.
 export function panelsHiddenByPreset(layout: WorkspaceLayout, preset: ScreenPresetDef): PanelId[] {
   const included = new Set(preset.screens.flatMap((s) => s.panelIds))
   return layout.panels.filter((p) => p.visible && !included.has(p.id)).map((p) => p.id)
+}
+
+// Snapshot of the live layout's own screens (visible panels grouped by which screen they're on,
+// each screen's current arrangement) — the "Save as preset" action's source data. Only screens
+// 0..screenCount-1 that actually have a visible panel are included; an in-between empty screen
+// (e.g. screen 1 has nothing, screen 2 does — the reaper hasn't caught up yet) is skipped rather
+// than saved as a dead entry a future apply would just hide everything on.
+export function captureCurrentScreens(layout: WorkspaceLayout, screenCount: number): { arrangement: ArrangementValue; panelIds: PanelId[] }[] {
+  const screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[] = []
+  for (let screen = 0; screen < screenCount; screen++) {
+    const panelIds = layout.panels
+      .filter((p) => p.visible && (p.screen ?? 0) === screen && !HIDDEN_PANELS.has(p.id))
+      .sort((a, b) => a.order - b.order)
+      .map((p) => p.id)
+    if (panelIds.length > 0) screens.push({ arrangement: arrangementForScreen(layout, screen), panelIds })
+  }
+  return screens
 }
 
 // Columns mode auto-balances any panel with no (or an out-of-range) columnIndex across however
