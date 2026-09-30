@@ -63,6 +63,7 @@ import type {
   PresetValue,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
+import { PANEL_TITLES } from "@/lib/terminal/panel-titles"
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
@@ -77,31 +78,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 // null) — redTeam is a real, addable panel now, not force-hidden the way it used to be.
 const HIDDEN_PANELS = new Set<PanelId>(["dates"])
 
-export const PANEL_TITLES: Record<PanelId, string> = {
-  command: "Case Summary",
-  evidence: "Evidence & Timeline",
-  law: "Law & Precedent",
-  dates: "Timeline",
-  chat: "AI Legal Assistant",
-  mindMap: "Visual Strategy Map",
-  citationMap: "Citation Map",
-  redTeam: "Red Team",
-  procedure: "Case Strategy",
-  teamAudit: "Team & Audit",
-  contradictions: "Contradictions",
-  legalIssues: "Legal Issues",
-  weaknesses: "Weaknesses",
-  strengths: "Strengths",
-  attackStrategy: "Attack Strategies",
-  defenseStrategy: "Defense Strategies",
-  witnesses: "Witnesses",
-  damages: "Damages & Remedies",
-  caseReconstruction: "Case Reconstruction",
-  audioOverview: "Audio Overview",
-  decisions: "Decisions",
-  theories: "Theories",
-  verification: "Verification",
-}
+export { PANEL_TITLES }
 
 const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }[] = [
   { id: "free", labelKey: "arrangementFree", icon: Move },

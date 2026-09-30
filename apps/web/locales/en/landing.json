@@ -86,30 +86,41 @@
   },
   "terminal": {
     "heading": "One workspace, arranged your way",
-    "body": "The Legal Terminal is a litigation cockpit you arrange yourself. Nineteen pane types, dragged and resized freely, not locked to a grid. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
+    "body": "The Legal Terminal is a litigation cockpit you arrange yourself. {{count}} pane types, dragged and resized freely, not locked to a grid. Start from one, two, four or six panes, then save your own layout and reload it on any machine.",
     "cta": "Open the terminal",
-    "panels": {
-      "caseSummary": {
-        "title": "Case Summary",
-        "subtitle": "Parties, claims, and risk register at a glance"
-      },
-      "evidenceTimeline": {
-        "title": "Evidence & Timeline",
-        "subtitle": "Every document and date, laid out in order"
-      },
-      "redTeam": {
-        "title": "Red Team",
-        "subtitle": "The argument the other side will make"
-      },
-      "chat": {
-        "title": "AI Legal Assistant",
-        "subtitle": "Ask questions, get answers grounded in the case"
-      }
+    "categories": {
+      "all": "All",
+      "facts": "Facts",
+      "law": "Law",
+      "strategy": "Strategy",
+      "risk": "Risk",
+      "team": "Team"
+    },
+    "cards": {
+      "command": "Case header, next date, risk checklist and next actions.",
+      "evidence": "Documents with source links, and the case timeline they support.",
+      "contradictions": "Where the documents disagree with each other, found by the evidence scan.",
+      "witnesses": "The witness roster, with role, contact details and notes.",
+      "caseReconstruction": "A chronological narrative of the case, drafted by AI and editable.",
+      "law": "The statutes, precedents and citations behind the case.",
+      "citationMap": "A network of the case's cited jurisprudence, expandable into what those decisions cite.",
+      "legalIssues": "The legal questions and causes of action the case raises.",
+      "decisions": "The why behind each answer: the rule, evidence for and against, and what would change it.",
+      "procedure": "Deadlines and the filing checklist that keep the case on track.",
+      "mindMap": "The case strategy as a mind map, generated from the consultation.",
+      "attackStrategy": "Affirmative moves to advance the case.",
+      "defenseStrategy": "Moves to protect the case's position.",
+      "theories": "Each lawyer's theory of the case side by side, never merged.",
+      "audioOverview": "A two-host spoken discussion of the case, generated on demand.",
+      "redTeam": "Opposing counsel's likely attacks on the case, generated on demand.",
+      "weaknesses": "Points that hurt the case's persuasive strength.",
+      "strengths": "Points that help the case's persuasive strength.",
+      "damages": "Claimed damages and remedies by category, with a running total.",
+      "teamAudit": "Assignments, approvals and the audit trail. Professional plan and up.",
+      "chat": "Ask questions and get answers grounded in the case."
     },
     "mocks": {
       "caseSummary": {
-        "shortcut": "⌘1",
-        "title": "CASE SUMMARY",
         "partyOne": "Petitioner",
         "partyOneName": "Maria Reyes",
         "partyTwo": "Respondent",
@@ -124,8 +135,6 @@
         ]
       },
       "evidenceTimeline": {
-        "shortcut": "⌘2",
-        "title": "EVIDENCE & TIMELINE",
         "documents": "Documents · 6",
         "hint": "Click a row",
         "docs": [
@@ -141,8 +150,6 @@
         ]
       },
       "redTeam": {
-        "shortcut": "⌘5",
-        "title": "RED TEAM",
         "intro": "Best arguments available to Northbridge, ranked by expected impact.",
         "arguments": [
           { "title": "AWOL from 4 August", "strength": "STRONG", "note": "Facially neutral just cause" },
@@ -151,8 +158,6 @@
         ]
       },
       "chat": {
-        "shortcut": "⌘9",
-        "title": "AI LEGAL ASSISTANT",
         "anchored": "Anchored",
         "thread": "Retaliatory dismissal ▾",
         "scope": "● Case + 5 panels",
@@ -166,8 +171,6 @@
     },
     "mocks_UK": {
       "caseSummary": {
-        "shortcut": "⌘1",
-        "title": "CASE SUMMARY",
         "partyOne": "Claimant",
         "partyOneName": "Helen Fairholme",
         "partyTwo": "Defendant",
@@ -182,8 +185,6 @@
         ]
       },
       "evidenceTimeline": {
-        "shortcut": "⌘2",
-        "title": "EVIDENCE & TIMELINE",
         "documents": "Documents · 6",
         "hint": "Click a row",
         "docs": [
@@ -199,8 +200,6 @@
         ]
       },
       "redTeam": {
-        "shortcut": "⌘5",
-        "title": "RED TEAM",
         "intro": "Best arguments available to Sterling Trustees, ranked by expected impact.",
         "arguments": [
           { "title": "Claimant is financially independent", "strength": "STRONG", "note": "Adult child, not maintained by the deceased" },
@@ -209,8 +208,6 @@
         ]
       },
       "chat": {
-        "shortcut": "⌘9",
-        "title": "AI LEGAL ASSISTANT",
         "anchored": "Anchored",
         "thread": "Estate exclusion claim ▾",
         "scope": "● Case + 5 panels",
@@ -220,6 +217,276 @@
         "chips": ["EVIDENCE ↗", "CONTRADICTIONS ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
+      }
+    },
+    "samples": {
+      "contradictions": {
+        "intro": "Found by the evidence scan across 6 documents.",
+        "rows": [
+          { "title": "Abandonment dated from 4 Aug", "note": "Termination letter vs. payroll through 8 Aug", "status": "DIRECT" },
+          { "title": "\"Report for a meeting\", 6 Aug", "note": "HR email vs. the abandonment claim", "status": "DIRECT" },
+          { "title": "Last day worked", "note": "Complaint vs. HR memo", "status": "INDIRECT" }
+        ]
+      },
+      "witnesses": {
+        "intro": "Witness roster · 3",
+        "rows": [
+          { "title": "Maria Reyes", "note": "Petitioner · attended the 6 Aug meeting", "status": "KEY" },
+          { "title": "J. Dominguez", "note": "HR Manager · sent the 6 Aug email", "status": "ADVERSE" },
+          { "title": "R. Santos", "note": "Shift supervisor · statement pending", "status": "OUTSTANDING" }
+        ]
+      },
+      "caseReconstruction": {
+        "intro": "Drafted from the case documents · editable",
+        "rows": [
+          { "title": "28 Jul · complaint docketed", "note": "NLRC NCR No. 2026-0412", "status": "VERIFIED" },
+          { "title": "04 Aug · abandonment alleged", "note": "Termination letter only", "status": "DISPUTED" },
+          { "title": "06 Aug · HR asks her to report", "note": "HR email", "status": "VERIFIED" },
+          { "title": "11 Aug · termination effective", "note": "Letter cites AWOL", "status": "VERIFIED" }
+        ]
+      },
+      "law": {
+        "intro": "Authorities for illegal dismissal and due process.",
+        "rows": [
+          { "title": "Labor Code, Art. 297", "note": "Just causes for termination", "status": "STATUTE" },
+          { "title": "Agabon v. NLRC", "note": "G.R. No. 158693", "status": "ON POINT" },
+          { "title": "Abbott Laboratories v. Alcaraz", "note": "G.R. No. 192571", "status": "ADVERSE" }
+        ]
+      },
+      "citationMap": {
+        "intro": "Cited jurisprudence · expand any decision into what it cites.",
+        "rows": [
+          { "title": "Agabon v. NLRC", "note": "G.R. No. 158693 · cited in the answer", "status": "CITED" },
+          { "title": "Serrano v. NLRC", "note": "G.R. No. 117040 · revisited in Agabon", "status": "BRANCH" }
+        ]
+      },
+      "legalIssues": {
+        "intro": "Questions the Labor Arbiter will have to decide.",
+        "rows": [
+          { "title": "Was abandonment proven?", "note": "The employer bears the burden", "status": "CONTESTED" },
+          { "title": "Was the twin-notice rule met?", "note": "No notice to explain on record", "status": "OPEN" },
+          { "title": "Was the dismissal retaliatory?", "note": "Complaint filed 14 days earlier", "status": "OPEN" }
+        ]
+      },
+      "decisions": {
+        "intro": "From the latest answer · rule, evidence and the alternative rejected.",
+        "rows": [
+          { "title": "Abandonment is not established", "note": "For: payroll logs attendance to 8 Aug", "status": "FAVOURS" },
+          { "title": "Twin-notice rule was not met", "note": "No notice to explain was produced", "status": "FAVOURS" },
+          { "title": "Alternative: dismissal for just cause", "note": "Rejected · no proof of AWOL", "status": "REJECTED" }
+        ]
+      },
+      "procedure": {
+        "intro": "Deadlines and filing checklist.",
+        "rows": [
+          { "title": "File the NLRC complaint", "note": "Docketed 28 July", "status": "DONE" },
+          { "title": "Position paper", "note": "Deadline to confirm with the Arbiter", "status": "OPEN" },
+          { "title": "Payroll certification", "note": "Request from HR", "status": "OPEN" }
+        ]
+      },
+      "mindMap": {
+        "intro": "Generated from the consultation · 19 nodes",
+        "rows": [
+          { "title": "Legal basis", "note": "Dismissal · twin-notice · timing", "status": "NODE" },
+          { "title": "Key facts", "note": "Complaint · HR email · payroll", "status": "NODE" },
+          { "title": "Remedies", "note": "Backwages · reinstatement", "status": "NODE" },
+          { "title": "Risks", "note": "No protest · missing statement", "status": "NODE" }
+        ]
+      },
+      "attackStrategy": {
+        "intro": "Moves to advance the case.",
+        "rows": [
+          { "title": "Rebut abandonment with payroll", "note": "Needs the payroll certification", "status": "BLOCKED" },
+          { "title": "Press the twin-notice gap", "note": "For the position paper", "status": "READY" },
+          { "title": "Frame the timing as retaliation", "note": "Needs the docket stamp", "status": "DRAFTING" }
+        ]
+      },
+      "defenseStrategy": {
+        "intro": "Answers to Northbridge's likely defenses.",
+        "rows": [
+          { "title": "AWOL from 4 August", "note": "Attendance logged to 8 Aug", "status": "ANSWERED" },
+          { "title": "The 6 Aug email was routine", "note": "It presumes she was still employed", "status": "ANSWERED" },
+          { "title": "No written protest", "note": "None required · the complaint came first", "status": "PARTIAL" }
+        ]
+      },
+      "theories": {
+        "intro": "2 theories side by side · never merged",
+        "rows": [
+          { "title": "A. Cruz · retaliatory dismissal", "note": "Rests on the 14-day gap", "status": "THEORY" },
+          { "title": "L. Chen · no just cause", "note": "Rests on payroll to 8 Aug", "status": "THEORY" },
+          { "title": "Where they differ", "note": "Whether retaliation must be proven", "status": "OPEN" }
+        ]
+      },
+      "audioOverview": {
+        "intro": "Two-host discussion · 3 min 41 s",
+        "rows": [
+          { "title": "Posture and claims", "note": "00:00 – 01:02", "status": "READY" },
+          { "title": "The abandonment question", "note": "01:02 – 02:30", "status": "READY" },
+          { "title": "Remedies", "note": "02:30 – 03:41", "status": "READY" }
+        ]
+      },
+      "weaknesses": {
+        "intro": "Points that hurt the case.",
+        "rows": [
+          { "title": "No written protest, 4–11 Aug", "note": "Could be read as acquiescence", "status": "MATERIAL" },
+          { "title": "Supervisor statement outstanding", "note": "Payroll stands alone", "status": "MATERIAL" },
+          { "title": "Payroll not yet certified", "note": "Needed for the position paper", "status": "OPEN" }
+        ]
+      },
+      "strengths": {
+        "intro": "Points that help the case.",
+        "rows": [
+          { "title": "Attendance logged through 8 Aug", "note": "Payroll 2018–2026", "status": "KEY" },
+          { "title": "HR's own 6 Aug email", "note": "Asks her to report for a meeting", "status": "KEY" }
+        ]
+      },
+      "damages": {
+        "intro": "Claimed so far · provisional",
+        "rows": [
+          { "title": "Actual damages (backwages)", "note": "₱486,000", "status": "MODELED" },
+          { "title": "Moral damages", "note": "₱200,000", "status": "CONTESTED" },
+          { "title": "Exemplary damages", "note": "₱100,000", "status": "PROVISIONAL" },
+          { "title": "Attorney's fees", "note": "10% of the award", "status": "MODELED" }
+        ]
+      },
+      "teamAudit": {
+        "intro": "Team · 3 · audit trail",
+        "rows": [
+          { "title": "A. Cruz assigned as lead counsel", "note": "09:12", "status": "ASSIGNED" },
+          { "title": "Position paper draft approved", "note": "09:28 · L. Chen", "status": "APPROVED" },
+          { "title": "Risk \"No written protest\" added", "note": "08:47 · L. Chen", "status": "OPEN" }
+        ]
+      }
+    },
+    "samples_UK": {
+      "contradictions": {
+        "intro": "Found by the evidence scan across 6 documents.",
+        "rows": [
+          { "title": "\"No contact since 2018\"", "note": "Letter of wishes vs. transfers to 2023", "status": "DIRECT" },
+          { "title": "Claimant \"self-sufficient\"", "note": "Executor's note vs. benefits letter", "status": "DIRECT" },
+          { "title": "Date of last visit", "note": "Witness statement vs. care home log", "status": "INDIRECT" }
+        ]
+      },
+      "witnesses": {
+        "intro": "Witness roster · 3",
+        "rows": [
+          { "title": "Helen Fairholme", "note": "Claimant · received the transfers", "status": "KEY" },
+          { "title": "Mark Ellery", "note": "Executor · Sterling Trustees", "status": "ADVERSE" },
+          { "title": "Dr A. Price", "note": "GP · claimant's health needs", "status": "OUTSTANDING" }
+        ]
+      },
+      "caseReconstruction": {
+        "intro": "Drafted from the case documents · editable",
+        "rows": [
+          { "title": "2019 – 2023 · monthly transfers", "note": "Bank statements", "status": "VERIFIED" },
+          { "title": "2021 · letter to the claimant", "note": "Meaning disputed", "status": "DISPUTED" },
+          { "title": "12 Mar · testator dies", "note": "Will leaves the estate to a charity", "status": "VERIFIED" },
+          { "title": "02 Sep · grant of probate", "note": "Six-month window starts", "status": "VERIFIED" }
+        ]
+      },
+      "law": {
+        "intro": "Authorities for a claim by an adult child.",
+        "rows": [
+          { "title": "Inheritance (Provision for Family and Dependants) Act 1975, s 1(1)(c)", "note": "Claim by a child of the deceased", "status": "STATUTE" },
+          { "title": "Ilott v The Blood Foundation", "note": "[2017] UKSC 17", "status": "ON POINT" },
+          { "title": "Re Jennings", "note": "[1994] Ch 286", "status": "ADVERSE" }
+        ]
+      },
+      "legalIssues": {
+        "intro": "Questions the court will have to decide.",
+        "rows": [
+          { "title": "Is the claim in time?", "note": "s 4 · six months from the grant", "status": "OPEN" },
+          { "title": "Was reasonable provision made?", "note": "s 1(2)(b) · maintenance standard", "status": "CONTESTED" },
+          { "title": "How much do her stated reasons weigh?", "note": "s 3 factors", "status": "OPEN" }
+        ]
+      },
+      "decisions": {
+        "intro": "From the latest answer · rule, evidence and the alternative rejected.",
+        "rows": [
+          { "title": "The claimant was maintained", "note": "For: monthly transfers 2019–2023", "status": "FAVOURS" },
+          { "title": "Her stated reasons carry weight", "note": "Against: the letter of wishes", "status": "ADVERSE" },
+          { "title": "Alternative: no maintenance", "note": "Rejected · the transfers were regular", "status": "REJECTED" }
+        ]
+      },
+      "procedure": {
+        "intro": "Deadlines and filing checklist.",
+        "rows": [
+          { "title": "Issue the claim form (Part 8)", "note": "Within six months of the grant", "status": "OPEN" },
+          { "title": "Claimant's witness statement", "note": "Filed with the claim form", "status": "DRAFTING" },
+          { "title": "Standstill agreement", "note": "Proposed to the executors", "status": "OPEN" }
+        ]
+      },
+      "mindMap": {
+        "intro": "Generated from the consultation · 17 nodes",
+        "rows": [
+          { "title": "Legal basis", "note": "s 1(1)(c) · s 1(2)(b) · s 3", "status": "NODE" },
+          { "title": "Key facts", "note": "Transfers · will · 2021 letter", "status": "NODE" },
+          { "title": "Remedies", "note": "Lump sum · periodical payments", "status": "NODE" },
+          { "title": "Risks", "note": "Independence · stated wishes", "status": "NODE" }
+        ]
+      },
+      "attackStrategy": {
+        "intro": "Moves to advance the case.",
+        "rows": [
+          { "title": "Prove maintenance with bank records", "note": "Statements 2019–2023", "status": "READY" },
+          { "title": "Challenge the letter of wishes", "note": "Needs the 2021 letter", "status": "DRAFTING" },
+          { "title": "Evidence the claimant's needs", "note": "GP statement outstanding", "status": "BLOCKED" }
+        ]
+      },
+      "defenseStrategy": {
+        "intro": "Answers to the executors' likely defences.",
+        "rows": [
+          { "title": "The claimant is independent", "note": "Benefits letter shows need", "status": "ANSWERED" },
+          { "title": "The testator gave her reasons", "note": "Ilott: wishes are one factor of many", "status": "ANSWERED" },
+          { "title": "The claim is out of time", "note": "Standstill not yet signed", "status": "PARTIAL" }
+        ]
+      },
+      "theories": {
+        "intro": "2 theories side by side · never merged",
+        "rows": [
+          { "title": "J. Patel · maintenance claim", "note": "Rests on the transfers", "status": "THEORY" },
+          { "title": "S. Okafor · unmet needs", "note": "Rests on the GP evidence", "status": "THEORY" },
+          { "title": "Where they differ", "note": "Weight of the letter of wishes", "status": "OPEN" }
+        ]
+      },
+      "audioOverview": {
+        "intro": "Two-host discussion · 3 min 55 s",
+        "rows": [
+          { "title": "The claim and the parties", "note": "00:00 – 01:05", "status": "READY" },
+          { "title": "Was she maintained?", "note": "01:05 – 02:40", "status": "READY" },
+          { "title": "What a court might order", "note": "02:40 – 03:55", "status": "READY" }
+        ]
+      },
+      "weaknesses": {
+        "intro": "Points that hurt the case.",
+        "rows": [
+          { "title": "The claimant is in work", "note": "Suggests independence", "status": "MATERIAL" },
+          { "title": "Letter of wishes explains the exclusion", "note": "Weighed under s 3", "status": "MATERIAL" },
+          { "title": "GP evidence outstanding", "note": "Her needs are unproven", "status": "OPEN" }
+        ]
+      },
+      "strengths": {
+        "intro": "Points that help the case.",
+        "rows": [
+          { "title": "Regular transfers 2019–2023", "note": "Bank statements", "status": "KEY" },
+          { "title": "No competing need from the charity", "note": "Beneficiary's position under s 3", "status": "KEY" }
+        ]
+      },
+      "damages": {
+        "intro": "Orders sought under s 2 · provisional",
+        "rows": [
+          { "title": "Lump sum", "note": "s 2(1)(c) · £60,000 sought", "status": "PROVISIONAL" },
+          { "title": "Periodical payments", "note": "s 2(1)(a)", "status": "CONTESTED" },
+          { "title": "Costs", "note": "From the estate", "status": "OPEN" }
+        ]
+      },
+      "teamAudit": {
+        "intro": "Team · 3 · audit trail",
+        "rows": [
+          { "title": "J. Patel assigned as lead counsel", "note": "09:12", "status": "ASSIGNED" },
+          { "title": "Claim form draft approved", "note": "09:28 · S. Okafor", "status": "APPROVED" },
+          { "title": "Risk \"Claimant in work\" added", "note": "08:47 · S. Okafor", "status": "OPEN" }
+        ]
       }
     }
   },

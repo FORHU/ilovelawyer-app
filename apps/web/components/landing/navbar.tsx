@@ -8,7 +8,6 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { ScrollSmoother } from "gsap/ScrollSmoother";
 import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
 
 const NAV_LINKS = [
@@ -20,13 +19,13 @@ const NAV_LINKS = [
   { key: "resources", href: "#footer-spacer", tooltip: "Help centre, support and legal resources" },
 ] as const;
 
-// Transparent-over-hero at rest, frosted on hover or once scrolled (handoff §1) — one
-// `group` on <header> drives every child's color/border/text-shadow flip in the same 300ms.
-// Pages with no hero underneath (`overHero={false}`, e.g. the neutral jurisdiction splash)
-// get the frosted look permanently instead, since white-on-transparent has nothing dark
-// behind it to stay legible against.
-const OVER_HERO_INK = "text-white group-hover:text-[#1a1a1a] [text-shadow:0_1px_4px_rgba(0,0,0,0.5)] group-hover:[text-shadow:none]";
-const OVER_HERO_BORDER = "border-white/75 group-hover:border-[#1a1a1a]/20";
+// Fully transparent over the hero while at the top, frosted once scrolled. Hover deliberately
+// does not frost it — scrolling back up with the cursor resting on the header left it frosted
+// at the top. Pages with no hero underneath (`overHero={false}`, e.g. the neutral jurisdiction
+// splash) get the frosted look permanently instead, since white-on-transparent has nothing
+// dark behind it to stay legible against.
+const OVER_HERO_INK = "text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]";
+const OVER_HERO_BORDER = "border-white/75";
 const SOLID_INK = "text-[#1a1a1a]";
 const SOLID_BORDER = "border-[#1a1a1a]/20";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]";
@@ -38,16 +37,12 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Capture-phase on document (not a bubbling window listener) and every scroll-position
-    // source — html is the scroller here (`overflow-y: auto`, globals.css), with ScrollSmoother
-    // layered on top, so no single one is guaranteed to be the one that moves.
+    // Capture-phase on document (not a bubbling window listener) — html is the scroller here
+    // (`overflow-y: auto`, globals.css). Only native positions are read: ScrollSmoother's
+    // `scrollTop()` trails the native scroll by its `smooth` duration, so on the last scroll
+    // event at the top it still reads > 0 and (under Math.max) pinned the header frosted.
     const onScroll = () => {
-      const y = Math.max(
-        window.scrollY,
-        document.documentElement.scrollTop,
-        document.body.scrollTop,
-        ScrollSmoother.get()?.scrollTop() ?? 0,
-      );
+      const y = Math.max(window.scrollY, document.documentElement.scrollTop, document.body.scrollTop);
       setScrolled(y > 0);
     };
     onScroll();
@@ -56,7 +51,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   }, []);
 
   // Once the page is scrolled the hero is no longer guaranteed to sit behind the header, so it
-  // locks into the same frosted look hover gives it.
+  // switches to the frosted look.
   const transparent = overHero && !scrolled;
   const LINK_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_INK : SOLID_INK}`;
   const BORDER_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_BORDER : SOLID_BORDER}`;
@@ -65,10 +60,10 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   // the translucent white border sits on white and never shows against the page below.
   return (
     <header
-      className={`group fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b bg-clip-padding transition-[background-color,backdrop-filter,border-color] duration-300 ${
+      className={`fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b bg-clip-padding transition-[background-color,backdrop-filter,border-color] duration-300 ${
         transparent
-          ? "bg-transparent border-transparent hover:bg-white/92 hover:backdrop-blur-lg hover:border-b-white/25"
-          : "bg-white/92 backdrop-blur-lg border-b-white/25"
+          ? "bg-transparent border-transparent"
+          : "bg-white/75 backdrop-blur-lg border-b-white/25"
       }`}
     >
       <nav className={`hidden lg:flex flex-1 items-center gap-1 text-[15px] tracking-[-0.018em] ${LINK_INK}`}>
