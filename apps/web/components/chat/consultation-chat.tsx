@@ -341,6 +341,11 @@ interface ConsultationChatProps {
    * page or in Case Workspace. */
   panelTitles?: Record<string, string>;
   onJumpToPanel?: (panelId: string) => void;
+  /** 0-based position of a user prompt among the visible ones — once history loads, the
+   * transcript lands on that prompt instead of the bottom (Case Overview's per-prompt links).
+   * `onScrolledToPrompt` fires once it has, so the caller can drop the one-shot URL param. */
+  scrollToPromptNumber?: number | null;
+  onScrolledToPrompt?: () => void;
 }
 
 // Mirrors the alternating user/assistant bubble shapes below so switching
@@ -377,6 +382,8 @@ export default function ConsultationChat({
   enableFileChips = false,
   panelTitles,
   onJumpToPanel,
+  scrollToPromptNumber,
+  onScrolledToPrompt,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -1003,6 +1010,23 @@ export default function ConsultationChat({
     });
     if (shouldScroll) transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
   }, [messages, consultationKey]);
+
+  // Declared after the bottom-scroll effect above so, in the commit where history lands, this
+  // runs second and overrides it. Landing mid-thread also turns "follow" off (scroll listener),
+  // so later refetches leave the reader where they are.
+  useEffect(() => {
+    if (scrollToPromptNumber == null) return;
+    let seen = -1;
+    const index = visibleMessages.findIndex((m) => m.role === "user" && ++seen === scrollToPromptNumber);
+    if (index === -1) return;
+    const el = transcriptRef.current?.querySelector<HTMLElement>(`[data-chat-prompt-index="${index}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "auto", block: "start" });
+    // Set here rather than left to the scroll listener, whose event lands a frame later — a
+    // history refetch in between would otherwise still see "follow" and snap back to the bottom.
+    shouldFollowTranscriptRef.current = false;
+    onScrolledToPrompt?.();
+  }, [scrollToPromptNumber, visibleMessages, onScrolledToPrompt]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -2349,7 +2373,9 @@ export default function ConsultationChat({
                   if (m.role === "user") {
                     return (
                       <React.Fragment key={i}>
-                        <div className="flex flex-col items-end gap-2">
+                        {/* data attribute, not a `chat-msg-*` id — the topic navigator's
+                            scroll-spy matches every `chat-msg-*` id and must only see replies. */}
+                        <div data-chat-prompt-index={i} className="flex flex-col items-end gap-2 scroll-mt-4">
                           {m.attachments && m.attachments.length > 0 && (
                             <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
                           )}

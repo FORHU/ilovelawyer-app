@@ -4,14 +4,28 @@ import type { ReactNode } from "react";
 import { Maximize2, Pin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+import { PANEL_TITLES } from "@/lib/terminal/panel-titles";
+import type { DetailedMockKey, LandingPanel } from "@/components/landing/terminal-panel-cards";
 
-// Static miniature "screenshots" of four Legal Terminal panes for the landing page's terminal
-// showcase. Purely presentational — every string comes from `terminal.mocks` in landing.json
-// (with a `_UK` variant so a UK visitor sees UK sample data instead of a Philippine case), and
-// the type sizes are deliberately tiny because each window is meant to read as a scaled-down
-// product screenshot, not as page copy.
+// Static miniature "screenshots" of Legal Terminal panes for the landing page's panel carousel.
+// Purely presentational. Four panes have a hand-built layout (`terminal.mocks`); every other pane
+// uses the generic list layout below, fed by `terminal.samples` — both with a `_UK` variant so a
+// UK visitor sees a UK sample case instead of a Philippine one. The pane header uses the
+// Terminal's own PANEL_TITLES and the same pin / maximise / close controls a real pane has (no
+// keyboard-shortcut badge — the Terminal has no per-pane shortcuts). Type sizes are deliberately
+// tiny: each window reads as a scaled-down product screenshot, not as page copy.
 
-export type TerminalMockKey = "caseSummary" | "evidenceTimeline" | "redTeam" | "chat";
+
+
+interface SampleRow {
+  title: string;
+  note: string;
+  status: string;
+}
+interface PanelSample {
+  intro: string;
+  rows: SampleRow[];
+}
 
 interface RiskMock {
   level: string;
@@ -21,8 +35,6 @@ interface RiskMock {
 
 interface Mocks {
   caseSummary: {
-    shortcut: string;
-    title: string;
     partyOne: string;
     partyOneName: string;
     partyTwo: string;
@@ -34,8 +46,6 @@ interface Mocks {
     risks: RiskMock[];
   };
   evidenceTimeline: {
-    shortcut: string;
-    title: string;
     documents: string;
     hint: string;
     docs: { name: string; status: string }[];
@@ -43,14 +53,10 @@ interface Mocks {
     events: { date: string; tone: string; text: string }[];
   };
   redTeam: {
-    shortcut: string;
-    title: string;
     intro: string;
     arguments: { title: string; strength: string; note: string }[];
   };
   chat: {
-    shortcut: string;
-    title: string;
     anchored: string;
     thread: string;
     scope: string;
@@ -63,31 +69,25 @@ interface Mocks {
   };
 }
 
-// Product-chrome labels shown in the window's top bar (bold = the active tab). These mirror the
-// app's own navigation, so they're not translated.
-const CHROME: Record<TerminalMockKey, { label: string; active: boolean }[]> = {
-  caseSummary: [
-    { label: "Case", active: true },
-    { label: "Legal Terminal", active: false },
-  ],
-  evidenceTimeline: [{ label: "Legal Terminal", active: true }],
-  redTeam: [{ label: "Legal Terminal", active: true }],
-  chat: [{ label: "Case", active: false }],
-};
-
+const RED = "text-red-400 border-red-400/40";
+const ORANGE = "text-orange-400 border-orange-400/40";
+const GREEN = "text-green-400 border-green-400/40";
+const GOLD = "text-brand-gold border-brand-gold/40";
+// Status words the sample data uses, by the tone the real panes give them (red = hurts us /
+// blocked, orange = unresolved, green = done / helps us, gold = neutral highlight).
 const TEXT_TONE: Record<string, string> = {
-  HIGH: "text-red-400 border-red-400/40",
-  STRONG: "text-red-400 border-red-400/40",
-  MEDIUM: "text-orange-400 border-orange-400/40",
-  MODERATE: "text-orange-400 border-orange-400/40",
-  READY: "text-green-400 border-green-400/40",
-  PENDING: "text-orange-400 border-orange-400/40",
+  HIGH: RED, STRONG: RED, DIRECT: RED, ADVERSE: RED, BLOCKED: RED, MATERIAL: RED, FAILED: RED, DISPUTED: RED,
+  MEDIUM: ORANGE, MODERATE: ORANGE, PENDING: ORANGE, OPEN: ORANGE, CONTESTED: ORANGE, DRAFTING: ORANGE,
+  PARTIAL: ORANGE, OUTSTANDING: ORANGE, PROVISIONAL: ORANGE, INDIRECT: ORANGE, STALE: ORANGE, REJECTED: ORANGE,
+  READY: GREEN, DONE: GREEN, VERIFIED: GREEN, "ON POINT": GREEN, ANSWERED: GREEN, KEY: GREEN, CONFIRMED: GREEN,
+  MODELED: GREEN, APPROVED: GREEN, FAVOURS: GREEN, FAVORS: GREEN, WEAK: GREEN, SUPPORTS: GREEN,
+  STATUTE: GOLD, ASSIGNED: GOLD, CITED: GOLD, NODE: GOLD, SHARED: GOLD, BRANCH: GOLD,
 };
 const BAR_TONE: Record<string, string> = { HIGH: "bg-red-400", MEDIUM: "bg-orange-400" };
 
 function Badge({ value }: { value: string }) {
   return (
-    <span className={`rounded-[3px] border px-[3px] font-bold ${TEXT_TONE[value] ?? "text-white/60 border-white/20"}`}>
+    <span className={`shrink-0 rounded-[3px] border px-[3px] font-bold ${TEXT_TONE[value] ?? "text-white/60 border-white/20"}`}>
       {value}
     </span>
   );
@@ -97,13 +97,10 @@ function Label({ children }: { children: ReactNode }) {
   return <div className="text-[6.5px] uppercase tracking-[0.05em] text-white/50">{children}</div>;
 }
 
-function PaneHeader({ shortcut, title, extra }: { shortcut: string; title: string; extra?: ReactNode }) {
+function PaneHeader({ title, extra }: { title: string; extra?: ReactNode }) {
   return (
     <div className="flex items-center gap-[5px] border-b border-white/[0.12] pb-1.5">
-      <span className="rounded-[3px] border border-white/[0.18] px-[3px] py-px font-mono text-[7px] text-white/50">
-        {shortcut}
-      </span>
-      <span className="flex-1 text-[8.5px] font-semibold tracking-[0.06em] text-white">{title}</span>
+      <span className="flex-1 truncate text-[8.5px] font-semibold uppercase tracking-[0.06em] text-white">{title}</span>
       {extra ?? (
         <span className="flex items-center gap-[5px] text-white/40" aria-hidden="true">
           <Pin size={8} />
@@ -115,18 +112,45 @@ function PaneHeader({ shortcut, title, extra }: { shortcut: string; title: strin
   );
 }
 
-export function TerminalMockWindow({ mock, tenantCode }: { mock: TerminalMockKey; tenantCode: TenantCode }) {
+export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel; tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
+  const isUk = tenantCode === "UK";
   // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
   // value is a nested object, so it would silently keep returning the Philippine sample data.
-  const mocks = t(tenantCode === "UK" ? "terminal.mocks_UK" : "terminal.mocks", { returnObjects: true }) as unknown as Mocks;
+  const mocks = t(isUk ? "terminal.mocks_UK" : "terminal.mocks", { returnObjects: true }) as unknown as Mocks;
+  const title = PANEL_TITLES[panel.id];
+  const mock = panel.detailedMock;
 
   let body: ReactNode;
-  if (mock === "caseSummary") {
+  if (!mock) {
+    const sample = t(`${isUk ? "terminal.samples_UK" : "terminal.samples"}.${panel.id}`, {
+      returnObjects: true,
+    }) as unknown as PanelSample;
+    body = (
+      <>
+        <PaneHeader title={title} />
+        <div className="leading-[1.4] text-white/60">{sample.intro}</div>
+        <div className="flex flex-col">
+          {sample.rows.map((row, i) => (
+            <div
+              key={row.title}
+              className={`flex items-start justify-between gap-2 py-[5px] ${i < sample.rows.length - 1 ? "border-b border-white/[0.08]" : ""}`}
+            >
+              <div className="min-w-0">
+                <div className="font-semibold text-white">{row.title}</div>
+                <div className="mt-px text-[6.5px] uppercase text-white/50">{row.note}</div>
+              </div>
+              <Badge value={row.status} />
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  } else if (mock === "caseSummary") {
     const m = mocks.caseSummary;
     body = (
       <>
-        <PaneHeader shortcut={m.shortcut} title={m.title} />
+        <PaneHeader title={title} />
         <div className="grid grid-cols-2 gap-1.5">
           <div>
             <Label>{m.partyOne}</Label>
@@ -168,7 +192,7 @@ export function TerminalMockWindow({ mock, tenantCode }: { mock: TerminalMockKey
     const m = mocks.evidenceTimeline;
     body = (
       <>
-        <PaneHeader shortcut={m.shortcut} title={m.title} />
+        <PaneHeader title={title} />
         <div className="flex items-center justify-between text-[6.5px] uppercase tracking-[0.05em] text-white/50">
           <span>{m.documents}</span>
           <span>{m.hint}</span>
@@ -206,7 +230,7 @@ export function TerminalMockWindow({ mock, tenantCode }: { mock: TerminalMockKey
     const m = mocks.redTeam;
     body = (
       <>
-        <PaneHeader shortcut={m.shortcut} title={m.title} />
+        <PaneHeader title={title} />
         <div className="leading-[1.4] text-white/60">{m.intro}</div>
         <div className="flex flex-col gap-1.5">
           {m.arguments.map((arg) => (
@@ -226,8 +250,7 @@ export function TerminalMockWindow({ mock, tenantCode }: { mock: TerminalMockKey
     body = (
       <>
         <PaneHeader
-          shortcut={m.shortcut}
-          title={m.title}
+          title={title}
           extra={<span className="text-[6.5px] uppercase text-brand-gold">{m.anchored}</span>}
         />
         <div className="flex items-center justify-between gap-2">
@@ -259,14 +282,8 @@ export function TerminalMockWindow({ mock, tenantCode }: { mock: TerminalMockKey
     >
       <div className="flex h-7 shrink-0 items-center gap-2.5 border-b border-white/10 px-2.5">
         <span className="font-['Libre_Caslon_Text'] text-[11px] tracking-[-0.02em] text-white">ilovelawyer</span>
-        {CHROME[mock].map(({ label, active }) => (
-          <span
-            key={label}
-            className={`text-[7px] uppercase tracking-[0.08em] ${active ? "font-bold text-white" : "text-white/60"}`}
-          >
-            {label}
-          </span>
-        ))}
+        {/* Every card is a Terminal pane, so the window is always on the Legal Terminal tab. */}
+        <span className="text-[7px] font-bold uppercase tracking-[0.08em] text-white">Legal Terminal</span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-[7px] overflow-hidden p-2.5 text-[8px]">{body}</div>
     </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import ConsultationChat from "@/components/chat/consultation-chat";
@@ -55,6 +55,16 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeConsultationId = searchParams.get("c");
+  // One-shot `?p=` (0-based prompt number) from Case Overview's per-prompt links — ConsultationChat
+  // lands on that prompt instead of the bottom, then it's dropped so a reload behaves normally.
+  const promptParam = searchParams.get("p");
+  const scrollToPromptNumber = promptParam !== null && /^\d+$/.test(promptParam) ? Number(promptParam) : null;
+  const clearPromptParam = useCallback(() => {
+    const next = new URLSearchParams(window.location.search);
+    next.delete("p");
+    const qs = next.toString();
+    router.replace(`${window.location.pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+  }, [router]);
   const { data: caseRecord } = useCaseQuery(caseId);
   // StudioPanel's tiles (Mind Map, Timeline) poll their AiGenerationJob status via
   // useAiJobStatus, which is purely event-driven after its first fetch — it relies entirely on
@@ -207,6 +217,8 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
           // the message and are linked to it — so the reply waits for them to finish indexing
           // instead of answering as if nothing was attached.
           enableFileChips
+          scrollToPromptNumber={scrollToPromptNumber}
+          onScrolledToPrompt={clearPromptParam}
           caseId={caseId}
           basePath={basePath}
           emptyStateHeading={caseRecord ? t("chat.emptyHeading", { caseName: caseRecord.caseName }) : undefined}

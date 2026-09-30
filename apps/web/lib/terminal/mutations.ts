@@ -440,6 +440,30 @@ export function useCreateRiskMutation(caseId: string) {
   })
 }
 
+export function useUpdateRiskMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ riskId, title }: { riskId: string; title: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteRiskMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (riskId: string) => apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
 // Queued server-side (AiGenerationQueue/SQS) — a full-bundle scan can run for minutes. This POST
 // returns once the job is claimed; ContradictionsPanel follows useAiJobStatus(caseId,
 // "contradictions") and refreshes the graph view itself when that flips to DONE.
