@@ -18,11 +18,9 @@ import {
   Monitor,
   PanelLeft,
   Settings,
-  X,
 } from "lucide-react"
 import { FatalRiskBanner } from "@/components/terminal/terminal-panels"
 import { PaneActivityContext, useDamagesActivity } from "@/components/terminal/pane-activity"
-import { TonePill } from "@/components/terminal/panel-kit"
 import {
   HIDDEN_PANELS,
   ModalOverlay,
@@ -47,6 +45,7 @@ import {
 import { useCanvasWindowReaper, useCloseCanvasWindowsOnUnload, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
+import { applyScreenPreset, type ScreenPresetDef } from "@/lib/terminal/screen-presets"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
@@ -102,15 +101,6 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   decisions: "Decisions",
   theories: "Theories",
   verification: "Verification",
-}
-
-// Drives the New Layout dialog's preset picker — labels already exist in every locale (see
-// terminal.json's preset1/preset2/preset4/preset6), just never rendered anywhere until now.
-const PRESET_LABEL_KEYS: Record<PresetValue, string> = {
-  PANE_1: "preset1",
-  PANE_2: "preset2",
-  PANE_4: "preset4",
-  PANE_6: "preset6",
 }
 
 // How many panes a single column can stack before it's "full" and adding another pane
@@ -216,12 +206,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Set while Columns mode is full and the user just tried to add this pane — opens the
   // "replace which pane?" picker. Null the rest of the time.
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
-  const [newLayoutOpen, setNewLayoutOpen] = useState(false)
-  const [newLayoutPreset, setNewLayoutPreset] = useState<PresetValue>("PANE_4")
-  // Starts empty: users name their own layout, and the name is required to create it.
-  const [newLayoutName, setNewLayoutName] = useState("")
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
   const [presetsModalOpen, setPresetsModalOpen] = useState(false)
+  // "apply" (toolbar Workflows button, rearranges the current tab) or "create" (+ New Layout,
+  // creates a new tab) — same ScreenPresetsModal component, see openPresetsModal below.
+  const [presetsModalMode, setPresetsModalMode] = useState<"apply" | "create">("apply")
   // True auto-open on load isn't possible — window.open() with no fresh click is silently eaten
   // by the popup blocker in every major browser. This is the closest thing: a modal in front of
   // the user immediately on load (not a dismissible banner easy to miss) asking to resume, one
@@ -721,31 +710,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     applyWorkspace.mutate(id)
   }
 
-  // Opens the New Layout dialog defaulted to the account's own default preset, with a blank name
-  // for the user to fill in (not derived from the preset, so it can't drift out of sync with it).
-  const openNewLayoutDialog = () => {
-    setNewLayoutPreset(catalog.data?.defaultPreset ?? "PANE_4")
-    setNewLayoutName("")
-    setNewLayoutOpen(true)
-  }
-
-  const selectPresetForNewLayout = (preset: PresetValue) => setNewLayoutPreset(preset)
-
-  // Builds the new layout from the CHOSEN preset (applyPreset — the same function Reset and
-  // initial-load already use) instead of cloning whatever arrangement happens to be on screen,
-  // which is what this used to do before the preset picker existed.
-  const commitNewLayout = () => {
-    const name = newLayoutName.trim()
+  // The ScreenPresetsModal's onCreate callback (mode="create") — builds the new tab's layout from
+  // the CHOSEN preset (applyScreenPreset, the same function Workflows' apply mode uses) instead of
+  // cloning whatever arrangement happens to be on screen, which is what this used to do before the
+  // preset picker existed.
+  const handleCreateLayout = (name: string, preset: ScreenPresetDef) => {
     if (!catalog.data || !name) return
     const fallback: WorkspaceLayout = {
-      preset: newLayoutPreset,
+      preset: catalog.data.defaultPreset,
       arrangement: "free",
       panels: catalog.data.panels.map((panel, index) => ({ id: panel.id, visible: false, order: index, width: 1, height: 1 })),
     }
-    const availableIds = catalog.data.panels.filter((p) => p.available).map((p) => p.id)
-    const layoutJson = applyPreset(fallback, newLayoutPreset, availableIds)
+    const layoutJson = applyScreenPreset(fallback, preset)
     createWorkspace.mutate(
-      { caseId, name, preset: newLayoutPreset, layoutJson },
+      { caseId, name, layoutJson },
       {
         onSuccess: (workspace) => {
           lastSavedLayoutRef.current = JSON.stringify(layoutJson)
@@ -841,14 +819,24 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
 
 
-  const handlePresetModalOpen = () => {
+  // Shared opener for both the toolbar "Workflows" button (apply mode) and "+ New Layout" (create
+  // mode) — same screen-detection flow either way. Workflows is available on any screen count now,
+  // not just multi-monitor setups — a single-screen lawyer just never sees more than the
+  // screenCount:1 presets. Detection failing (no Window Management API, or permission denied)
+  // used to mean "give up" when this button was multi-screen-only; now it just means "assume the
+  // one screen this page is already on."
+  const openPresetsModal = (mode: "apply" | "create") => {
+    setPresetsModalMode(mode)
     setDetectedScreenCount(null)
     setPresetsModalOpen(true)
-    if (!window.getScreenDetails) return
+    if (!window.getScreenDetails) {
+      setDetectedScreenCount(1)
+      return
+    }
     window
       .getScreenDetails()
       .then((details) => setDetectedScreenCount(1 + sortedSecondaryScreens(details).length))
-      .catch(() => setPresetsModalOpen(false))
+      .catch(() => setDetectedScreenCount(1))
   }
 
   return (
@@ -915,6 +903,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           layout={layout}
           setLayout={setLayout}
           canvasWindowsRef={canvasWindowsRef}
+          mode={presetsModalMode}
+          onCreate={handleCreateLayout}
         />
         <Sheet open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen}>
           <SheetContent side="right" className="w-full sm:max-w-xl">
@@ -934,7 +924,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             activeId={selectedWorkspaceId}
             onSelect={selectWorkspace}
             onClose={closeWorkspaceTab}
-            onNew={openNewLayoutDialog}
+            onNew={() => openPresetsModal("create")}
             labels={{
               close: t("closeLayout"),
               newLayout: t("newLayout"),
@@ -943,21 +933,17 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             }}
           />
           <div className="ml-auto flex shrink-0 items-center gap-3">
-            {isExtendedScreen && (
+            <div className="flex shrink-0 items-center rounded-full border border-border p-0.5">
               <button
                 type="button"
-                onClick={() => handlePresetModalOpen()}
-                title={t("multiScreenAvailable")}
-                className="inline-flex shrink-0 appearance-none border-0 bg-transparent p-0"
+                onClick={() => openPresetsModal("apply")}
+                title={t("workflowsAvailable")}
+                className="flex h-7 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
               >
-                <TonePill tone="neutral">
-                  <span className="flex items-center gap-1">
-                    <Monitor className="h-3 w-3" aria-hidden="true" />
-                    {t("multiScreen")}
-                  </span>
-                </TonePill>
+                <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("workflows")}
               </button>
-            )}
+            </div>
             <ArrangementSwitcher
               arrangement={arrangement}
               onSetArrangement={setArrangement}
@@ -1117,94 +1103,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           onDropNew={requestAddPanel}
           onDropAtRect={dropPanelAtRect}
           onDragPreviewUpdate={updateDragPreview}
-          emptyStateAction={{ label: t("addNewLayout"), onClick: openNewLayoutDialog }}
+          emptyStateAction={{ label: t("addNewLayout"), onClick: () => openPresetsModal("create") }}
         >
-          {newLayoutOpen && catalog.data && (
-            <ModalOverlay
-              onClose={() => setNewLayoutOpen(false)}
-              labelledBy="new-layout-prompt"
-              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
-              className="w-[min(28rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
-            >
-              {(close) => (
-                <>
-                  <div className="mb-3 flex items-start gap-3">
-                    <p id="new-layout-prompt" className="min-w-0 flex-1 pt-1 text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
-                      {t("newLayout")}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={close}
-                      aria-label={t("closeDialog")}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
-                    >
-                      <X className="h-4 w-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <label htmlFor="new-layout-name" className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
-                    {t("workspaceName")}
-                    <span className="ml-0.5 text-danger" aria-hidden="true">*</span>
-                  </label>
-                  <input
-                    id="new-layout-name"
-                    autoFocus
-                    required
-                    aria-required="true"
-                    value={newLayoutName}
-                    onChange={(e) => setNewLayoutName(e.target.value)}
-                    placeholder={t("workspaceName")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newLayoutName.trim()) {
-                        commitNewLayout()
-                        close()
-                      }
-                    }}
-                    className="mb-3 h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-brand-gold/60"
-                  />
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">{t("preset")}</p>
-                  <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {catalog.data.presets.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => selectPresetForNewLayout(preset)}
-                        aria-pressed={newLayoutPreset === preset}
-                        className={`rounded-md border p-2 text-left transition-colors ${
-                          newLayoutPreset === preset
-                            ? "border-brand-gold bg-brand-gold/10 text-foreground"
-                            : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                        }`}
-                      >
-                        <span className="mb-1.5 block text-xs font-medium">{t(PRESET_LABEL_KEYS[preset])}</span>
-                        <PresetLayoutPreview preset={preset} selected={newLayoutPreset === preset} />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={close}
-                      className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-                    >
-                      {t("cancel")}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!newLayoutName.trim()}
-                      onClick={() => {
-                        commitNewLayout()
-                        close()
-                      }}
-                      className="h-8 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
-                    >
-                      {t("createLayout")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </ModalOverlay>
-          )}
-
           {replaceTarget && layout && (
             <ModalOverlay
               onClose={() => setReplaceTarget(null)}
@@ -1340,59 +1240,3 @@ function hydrateFreeform(layout: WorkspaceLayout): WorkspaceLayout {
   return layout
 }
 
-function applyPreset(layout: WorkspaceLayout, preset: PresetValue, availableIds: PanelId[]): WorkspaceLayout {
-  const merged = mergeCatalogPanels(layout, availableIds)
-  const visibleIds = defaultIdsForPreset(preset).filter((id) => availableIds.includes(id) && !HIDDEN_PANELS.has(id))
-  return tileLayout({
-    ...layout,
-    preset,
-    panels: merged.panels.map((panel, index) => {
-      const visibleIndex = visibleIds.indexOf(panel.id)
-      const visible = visibleIndex !== -1
-      return {
-        ...panel,
-        visible,
-        order: visible ? visibleIndex : 100 + index,
-      }
-    }),
-  })
-}
-
-function defaultIdsForPreset(preset: PresetValue): PanelId[] {
-  switch (preset) {
-    case "PANE_1":
-      return ["command"]
-    case "PANE_2":
-      return ["command", "evidence"]
-    case "PANE_4":
-      return ["command", "evidence", "chat", "procedure"]
-    case "PANE_6":
-      return ["command", "evidence", "law", "mindMap", "procedure", "chat"]
-    default:
-      return ["command", "evidence"]
-  }
-}
-
-function PresetLayoutPreview({ preset, selected }: { preset: PresetValue; selected: boolean }) {
-  const panelIds = defaultIdsForPreset(preset)
-  const columns = preset === "PANE_1" ? 1 : preset === "PANE_6" ? 3 : 2
-
-  return (
-    <span
-      aria-hidden="true"
-      className={`grid h-20 w-full gap-1 rounded border p-1.5 transition-colors ${
-        selected ? "border-brand-gold/60 bg-brand-navy-950/70" : "border-border/70 bg-muted/60"
-      }`}
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-    >
-      {panelIds.map((panelId, index) => (
-        <span
-          key={`${panelId}-${index}`}
-          className={`min-h-0 rounded-sm border ${
-            selected ? "border-brand-gold/35 bg-brand-gold/35" : "border-foreground/10 bg-foreground/15"
-          }`}
-        />
-      ))}
-    </span>
-  )
-}

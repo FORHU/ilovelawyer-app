@@ -35,6 +35,12 @@ interface ScreenPresetsModalProps {
   layout: WorkspaceLayout | null
   setLayout: Dispatch<SetStateAction<WorkspaceLayout | null>>
   canvasWindowsRef: React.RefObject<Map<number, Window>>
+  // "apply" (default): rearrange the caller's current tab in place. "create": this is the "+ New
+  // Layout" flow instead — collects a name and hands (name, preset) to onCreate rather than
+  // touching `layout` itself, and skips the hide-panels confirm gate (nothing to hide on a fresh
+  // tab). Both modes share the same preset list/preview/canvas-window-opening logic.
+  mode?: "apply" | "create"
+  onCreate?: (name: string, preset: ScreenPresetDef) => void
 }
 
 // Two-column layout-template picker for the multi-screen capability pill: a list of named
@@ -48,12 +54,23 @@ interface ScreenPresetsModalProps {
 // Skipped vs. the original mockup: drag-drop pane rebalancing across displays and a
 // deadline-driven "recommended" badge — each is its own real feature (a DnD rebuild, live
 // case-data wiring), not a reskin. Add if wanted.
-export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, layout, setLayout, canvasWindowsRef }: ScreenPresetsModalProps) {
+export function ScreenPresetsModal({
+  open,
+  onOpenChange,
+  detectedCount,
+  caseId,
+  layout,
+  setLayout,
+  canvasWindowsRef,
+  mode = "apply",
+  onCreate,
+}: ScreenPresetsModalProps) {
   const { t } = useTranslation("terminal")
   const [liveCount, setLiveCount] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [saveName, setSaveName] = useState("")
+  const [createName, setCreateName] = useState("")
 
   const count = liveCount ?? detectedCount
   const presetsQuery = useScreenPresetsQuery(count ?? 0)
@@ -72,6 +89,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
       setSelectedId(null)
       setConfirming(false)
       setSaveName("")
+      setCreateName("")
     }
   }
 
@@ -88,9 +106,17 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
       .finally(() => setDetecting(false))
   }
 
-  const apply = (preset: ScreenPresetDef) => {
-    if (!layout) return
-    setLayout((prev) => (prev ? applyScreenPreset(prev, preset) : prev))
+  // Mode-specific part (create: hand off to the caller; apply: mutate the current tab in place),
+  // then the shared part (open any canvas windows the preset's non-primary screens need) either
+  // way — a freshly-created tab needs its secondary screens opened exactly like an in-place apply
+  // does.
+  const commit = (preset: ScreenPresetDef) => {
+    if (mode === "create") {
+      onCreate?.(createName.trim(), preset)
+    } else {
+      if (!layout) return
+      setLayout((prev) => (prev ? applyScreenPreset(prev, preset) : prev))
+    }
     if (window.getScreenDetails) {
       window.getScreenDetails().then((details) => {
         const secondary = sortedSecondaryScreens(details)
@@ -105,13 +131,19 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
     onOpenChange(false)
   }
 
-  const handleApplyClick = () => {
-    if (!layout || !selected) return
+  const handlePrimaryClick = () => {
+    if (!selected) return
+    if (mode === "create") {
+      if (!createName.trim()) return
+      commit(selected)
+      return
+    }
+    if (!layout) return
     if (panelsHiddenByPreset(layout, selected).length > 0) {
       setConfirming(true)
       return
     }
-    apply(selected)
+    commit(selected)
   }
 
   const handleSave = () => {
@@ -128,7 +160,9 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 py-5 pl-6 pr-12">
           <div>
             <DialogTitle asChild>
-              <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">{t("screenPresets")}</h2>
+              <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
+                {mode === "create" ? t("newLayout") : t("screenPresets")}
+              </h2>
             </DialogTitle>
             <DialogDescription asChild>
               <p className="mt-1 text-xs text-muted-foreground">{t("screenPresetsHint")}</p>
@@ -199,23 +233,38 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
                 ))}
               </div>
 
-              <div className="flex items-center gap-1.5 border-t border-border/70 p-2">
-                <input
-                  type="text"
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  placeholder={t("savePresetPlaceholder")}
-                  className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={!saveName.trim() || createPreset.isPending}
-                  className="h-7 shrink-0 rounded border border-border px-2 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-                >
-                  {t("savePreset")}
-                </button>
-              </div>
+              {mode === "create" ? (
+                <div className="border-t border-border/70 p-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    required
+                    aria-required="true"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder={t("workspaceName")}
+                    className="h-8 w-full rounded-md border border-border bg-muted px-2.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-brand-gold/60"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 border-t border-border/70 p-2">
+                  <input
+                    type="text"
+                    value={saveName}
+                    onChange={(e) => setSaveName(e.target.value)}
+                    placeholder={t("savePresetPlaceholder")}
+                    className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={!saveName.trim() || createPreset.isPending}
+                    className="h-7 shrink-0 rounded border border-border px-2 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+                  >
+                    {t("savePreset")}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 px-6 py-5">
@@ -247,10 +296,15 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
                   <div className="mt-5 flex justify-end">
                     <button
                       type="button"
-                      onClick={handleApplyClick}
-                      className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
+                      onClick={handlePrimaryClick}
+                      disabled={mode === "create" && !createName.trim()}
+                      className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
                     >
-                      {count > 1 ? t("presetApplyToDisplays", { count }) : t("presetApplyConfirm")}
+                      {mode === "create"
+                        ? t("createLayout")
+                        : count > 1
+                          ? t("presetApplyToDisplays", { count })
+                          : t("presetApplyConfirm")}
                     </button>
                   </div>
                 </>
@@ -271,7 +325,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
                     </button>
                     <button
                       type="button"
-                      onClick={() => apply(selected)}
+                      onClick={() => commit(selected)}
                       className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
                     >
                       {t("presetApplyConfirm")}
