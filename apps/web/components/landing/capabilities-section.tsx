@@ -112,12 +112,12 @@ export function CapabilitiesSection() {
               <TooltipTrigger asChild>
                 <Link
                   href={loginHref(route)}
-                  ref={(el) => {
+                  ref={(el: HTMLAnchorElement | null) => {
                     cardRefs.current[i] = el;
                   }}
                   onMouseEnter={() => handleEnter(i)}
                   onMouseLeave={handleLeave}
-                  onClick={(e) => void handleClick(e, route)}
+                  onClick={(e: React.MouseEvent<HTMLAnchorElement>) => void handleClick(e, route)}
                   className={`group flex flex-col items-center gap-3 text-center transition-transform duration-[260ms] ease-[cubic-bezier(.16,1,.3,1)] will-change-transform rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy-950 ${i === LAST_ROW_START ? "lg:col-start-2" : ""}`}
                 >
                   <span className="w-12 h-12 rounded-full border border-white/35 flex items-center justify-center text-white transition-all duration-200 group-hover:text-brand-gold group-hover:border-brand-gold group-hover:bg-brand-gold/10 group-hover:-translate-y-1 group-hover:scale-[1.06] group-hover:shadow-[0_8px_18px_rgba(201,164,76,0.25)]">

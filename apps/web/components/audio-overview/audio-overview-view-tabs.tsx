@@ -26,7 +26,7 @@ export function AudioOverviewViewTabs({
           aria-selected={view === tab.key}
           onClick={() => onChange(tab.key)}
           className={`rounded-full px-3 py-1 text-xs font-medium ${
-            view === tab.key ? "bg-brand-navy-950 text-white" : "text-muted-foreground hover:text-foreground"
+            view === tab.key ? "bg-brand-navy-950 text-white dark:bg-foreground dark:text-background" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {tab.label}

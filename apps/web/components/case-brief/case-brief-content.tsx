@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, Download, History, FileText } from "lucide-react"
+import { Loader2, Download, ExternalLink, History, FileText } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
 import {
@@ -181,7 +181,7 @@ function CaseBriefPreview({
             format === "docx" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {t("downloadWord")}
+          {t("caseBriefFormatWord", { defaultValue: "Word" })}
         </button>
         <button
           type="button"
@@ -190,7 +190,7 @@ function CaseBriefPreview({
             format === "pdf" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {t("downloadPdf")}
+          {t("caseBriefFormatPdf", { defaultValue: "PDF" })}
         </button>
       </div>
 
@@ -206,6 +206,7 @@ function CaseBriefPreview({
                   ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   : "application/pdf",
             }}
+            hidePdfToolbar
           />
         ) : (
           <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
@@ -229,10 +230,22 @@ function CaseBriefPreview({
             {t("caseBriefRegenerateCta")}
           </button>
         </div>
-        <Button disabled={!url} onClick={() => url && triggerBriefDownload(url, briefFilename(format))}>
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {format === "docx" ? t("downloadWord") : t("downloadPdf")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The preview's native PDF toolbar is hidden (it clips in a narrow Studio panel), so
+              zoom/print/rotate live one click away in the browser's full-size viewer instead. */}
+          {format === "pdf" && url && (
+            <Button variant="outline" asChild>
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                {t("caseBriefOpenInNewTab", { defaultValue: "Open in new tab" })}
+              </a>
+            </Button>
+          )}
+          <Button disabled={!url} onClick={() => url && triggerBriefDownload(url, briefFilename(format))}>
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {format === "docx" ? t("downloadWord") : t("downloadPdf")}
+          </Button>
+        </div>
       </div>
     </div>
   )

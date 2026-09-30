@@ -19,6 +19,7 @@
   "noNextDate": "Walang paparating na petsa",
   "loadWorkspace": "I-load ang workspace",
   "workspaceName": "Pangalan ng workspace",
+  "workspaceNameRequired": "Kailangan ang pangalan ng workspace",
   "untitledLayout": "Walang pamagat",
   "layoutTabsScrollLeft": "I-scroll pakaliwa ang mga layout",
   "layoutTabsScrollRight": "I-scroll pakanan ang mga layout",
@@ -26,6 +27,12 @@
   "saveChanges": "I-save ang mga pagbabago",
   "reset": "I-reset ang layout",
   "closeLayout": "Close layout",
+  "renameLayout": "Palitan ang pangalan ng layout",
+  "renameLayoutHint": "I-double-click para palitan ang pangalan",
+  "renameLayoutKeys": "Enter para i-save · Esc para kanselahin",
+  "deleteLayoutTitle": "Burahin ang layout?",
+  "deleteLayoutBody": "Permanenteng mabubura ang “{{name}}” at ang ayos ng mga pane nito. Hindi na ito maibabalik.",
+  "deleteLayoutConfirm": "Burahin ang layout",
   "closeDialog": "Isara ang dialog",
   "refresh": "I-refresh ang analysis",
   "refreshing": "Nire-refresh…",
@@ -339,12 +346,15 @@
   "groundPickClaim": "Claim",
   "groundLink": "Ikabit",
   "groundRemove": "Alisin ang ugnay",
+  "viewCitation": "Tingnan ang citation",
+  "opensInNewTab": "magbubukas sa bagong tab",
+  "citationNotInLibrary": "Wala sa Library",
   "groundJev": {
-    "SUPPORTS_GROUND": "may kinalaman sa claim na ito",
-    "TANGENTIAL": "bahagya lamang ang kinalaman sa claim na ito",
-    "DOES_NOT_APPLY": "walang kinalaman sa claim na ito"
+    "SUPPORTS_GROUND": "May kinalaman sa claim na ito",
+    "TANGENTIAL": "Bahagya lamang ang kinalaman sa claim na ito",
+    "DOES_NOT_APPLY": "Walang kinalaman sa claim na ito"
   },
-  "groundJevFlag": "Nakikita ni Jev na walang kinalaman ang awtoridad na ito sa claim",
+  "groundJevFlag": "Walang kinalaman sa claim na ito",
   "claimsTitle": "Mga isinampang claim ({{n}})",
   "claimsEmpty": "Wala pang claim. Hanapin sa mga pleading, o magdagdag.",
   "claimTitlePlaceholder": "Claim, hal. Illegal dismissal",
@@ -369,9 +379,9 @@
     "DISTINGUISHED": "pinag-iba"
   },
   "sweepJev": {
-    "DEFEATS_PROPOSITION": "sinisira ang dahilan ng pagbanggit",
-    "DISTINGUISHABLE": "maaaring pag-ibahin",
-    "NOT_ADVERSE": "walang epekto sa dahilan ng pagbanggit"
+    "DEFEATS_PROPOSITION": "Sinisira ang dahilan ng pagbanggit",
+    "DISTINGUISHABLE": "Maaaring pag-ibahin",
+    "NOT_ADVERSE": "Walang epekto sa dahilan ng pagbanggit"
   },
   "sweepAddWeakness": "Idagdag bilang kahinaan",
   "sweepDismiss": "Balewalain",
@@ -392,28 +402,61 @@
   "findingJevChecking": "Sinusuri…",
   "findingJevOff": "Naka-off ang pagsusuri ni Jev para sa panel na ito.",
   "findingJevFailed": "Hindi ito nasuri ni Jev. Subukang muli.",
-  "issueJevRaisedLine": "Basa ni Jev: {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
-    "RAISED": "itinataas ng kaso",
-    "NOT_RAISED": "hindi itinataas ng kaso"
+    "RAISED": "Itinataas ng kaso",
+    "NOT_RAISED": "Hindi itinataas ng kaso"
   },
   "issueJevContested": {
-    "CONTESTED": "pinagtatalunan",
-    "UNCONTESTED": "hindi pinagtatalunan",
-    "UNCLEAR": "hindi malinaw kung pinagtatalunan"
+    "CONTESTED": "Pinagtatalunan",
+    "UNCONTESTED": "Hindi pinagtatalunan",
+    "UNCLEAR": "Hindi malinaw kung pinagtatalunan"
   },
-  "issueJevBurdenLine": "Pasanin ng patunay: {{party}} ({{pct}}%).",
   "issueJevBurden": {
     "CLAIMANT": "ang nagsampa",
     "RESPONDENT": "ang respondent",
     "SHARED": "magkabilang panig",
     "UNCLEAR": "hindi malinaw"
   },
-  "issueJevBurdenDisputed": "Inilagay ito ng AI na sumulat sa {{party}}.",
+  "issueJevBurdenDisputed": "Inilagay ito ng AI draft sa {{party}}.",
   "findingJevModelRating": "Minarkahan ito ng AI na sumulat bilang {{tag}}.",
+  "llmReview": "Pagsusuri ng AI",
+  "llmFlag": "Suriin",
+  "llmUncertain": "Hindi sigurado ang AI — basahin muna ang paliwanag bago umasa rito.",
+  "llmNotReviewed": "Hindi nasuri ng AI (nabigo ang pagsusuri) — rating ito ng AI draft.",
+  "llmConfidence": "{{pct}}% kumpiyansa",
+  "llmCertainty": {
+    "likely": "malamang",
+    "possibly": "maaari",
+    "unclear": "hindi malinaw"
+  },
+  "llmRun": "Patakbuhin ang pagsusuri ng AI",
+  "llmReviewing": "Sinusuri…",
+  "llmOff": "Naka-off ang pagsusuri ng AI para sa panel na ito.",
+  "llmFailed": "Hindi natuloy ang pagsusuri ng AI. Subukang muli.",
+  "llmDraftSaid": "Sabi ng AI draft: {{tag}}",
+  "issueBurdenOn": "Pasanin ng patunay: {{party}}",
+  "issueBurdenUnclear": "Hindi malinaw kung sino ang may pasanin ng patunay",
+  "weaknessSeverityLevel": {
+    "0": "Maliit na punto",
+    "1": "Nililimitahan ang remedyo",
+    "2": "Tinatalo ang bahagi ng claim",
+    "3": "Maaaring tapusin ang kaso"
+  },
+  "weaknessSurfacingLevel": {
+    "0": "Lilitaw lamang sa apela",
+    "1": "Lilitaw sa pagdinig",
+    "2": "Lilitaw sa mga nakasulat na isinumite",
+    "3": "Lilitaw agad"
+  },
+  "strengthWeightLevel": {
+    "0": "Pangalawang punto",
+    "1": "Sinusuportahan ang remedyo",
+    "2": "Tumutulong patunayan ang claim",
+    "3": "Kaya nang dalhin ang claim nang mag-isa"
+  },
   "issueJevFlag": {
-    "NOT_RAISED": "Hindi nakikita ni Jev ang isyung ito sa datos ng kaso",
-    "BURDEN_DISPUTED": "Inilalagay ni Jev ang pasanin sa kabilang panig"
+    "NOT_RAISED": "Hindi nakita sa datos ng kaso",
+    "BURDEN_DISPUTED": "Maaaring nasa kabilang panig ang pasanin"
   },
   "addWeakness": "Magdagdag ng kahinaan",
   "weaknessesIntro": "Mga kahinaan ng sarili nating kaso, ayon sa kung gaano kaaga lilitaw.",
@@ -425,19 +468,17 @@
   "weaknessImpact": "Inaasahang epekto sa kaso (ang positibo ay laban sa iyo)",
   "weaknessNoFix": "Walang lunas sa rekord",
   "weaknessJevSupport": {
-    "SUPPORTED": "pinatutunayan ng datos ng kaso",
-    "UNSUPPORTED": "hindi pinatutunayan ng datos ng kaso",
-    "CONTRADICTED": "sinasalungat ng datos ng kaso"
+    "SUPPORTED": "Pinatutunayan ng datos ng kaso",
+    "UNSUPPORTED": "Hindi pinatutunayan ng datos ng kaso",
+    "CONTRADICTED": "Sinasalungat ng datos ng kaso"
   },
-  "weaknessJevScores": "bigat {{sev}}% (kumpiyansa {{sevConf}}%) · maagang lilitaw {{sur}}% (kumpiyansa {{surConf}}%)",
-  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
   "weaknessJevCurable": {
     "BY_EVIDENCE": "Maisasara sa pamamagitan ng ebidensya",
     "BY_ARGUMENT": "Masasagot sa pamamagitan ng argumento",
     "NOT_CURABLE": "Walang nasa rekord na makakapagsara nito"
   },
   "weaknessJevFlag": {
-    "NOT_BORNE_OUT": "Hindi nakikita ni Jev na pinatutunayan ito ng datos ng kaso"
+    "NOT_BORNE_OUT": "Hindi pinatutunayan ng datos ng kaso"
   },
   "addStrength": "Magdagdag ng lakas",
   "strengthsIntro": "Mga natuklasang nagdadala sa teorya ng ating kaso.",
@@ -447,20 +488,18 @@
   "strengthDetailPlaceholder": "Reference ng dokumento at ang ipinapakita nito",
   "strengthImpact": "Gaano kalaki ang dinadala nito sa kaso (mas mataas ay pabor sa iyo)",
   "strengthJevSupport": {
-    "SUPPORTED": "pinatutunayan ng pinagmulan nito",
-    "UNSUPPORTED": "hindi pinatutunayan ng pinagmulan nito",
-    "CONTRADICTED": "sinasalungat ng pinagmulan nito"
+    "SUPPORTED": "Kumpirmado sa pinagmulan nito",
+    "UNSUPPORTED": "Hindi nakita sa pinagmulan nito",
+    "CONTRADICTED": "Sinasalungat ng pinagmulan nito"
   },
-  "strengthJevNoSourceText": "Walang nahanap na teksto ng binanggit na dokumento, kaya sinuri ito ni Jev laban sa datos ng kaso lamang.",
-  "strengthJevWeightLine": "bigat {{pct}}% (kumpiyansa {{conf}}%)",
-  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevNoSourceText": "(sinuri laban sa datos ng kaso lamang — hindi nakita ang teksto ng dokumento)",
   "strengthJevRebuttal": {
     "UNREBUTTED": "Walang sumasagot dito sa rekord",
     "REBUTTABLE": "May sagot ang kabilang panig na kailangan mong harapin",
     "ALREADY_REBUTTED": "Nasagot na ito ng rekord"
   },
   "strengthJevFlag": {
-    "NOT_BORNE_OUT": "Hindi ito nakikita ni Jev sa pinagmulan nito"
+    "NOT_BORNE_OUT": "Hindi nakita sa pinagmulan nito"
   },
   "addAttackStrategy": "Magdagdag ng attack strategy",
   "addDefenseStrategy": "Magdagdag ng defense strategy",

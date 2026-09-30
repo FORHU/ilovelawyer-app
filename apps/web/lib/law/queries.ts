@@ -235,7 +235,9 @@ export function lawPreviewQueryOptions(category: LawCategoryParam, id: string) {
       apiFetch<LawPreview>(
         `/api/law/preview?category=${category}&id=${encodeURIComponent(id)}`
       ),
-    staleTime: Infinity,
+    // A preview with no snippet may just mean the API's first-time detail fill for that document
+    // is still finishing — refetch it on the next hover instead of caching the empty card.
+    staleTime: (query) => (query.state.data?.snippet ? Infinity : 0),
     gcTime: 30 * 60 * 1000,
     retry: 1,
   })

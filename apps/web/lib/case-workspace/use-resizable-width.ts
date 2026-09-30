@@ -58,6 +58,10 @@ export function useResizableWidth({ storageKey, defaultWidth, min, max, directio
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault();
+      // Captured so every pointer event until release comes to the handle — even while the
+      // cursor is over an iframe (Studio's PDF preview), which otherwise swallows pointermove/
+      // pointerup, so the drag never saw the release and kept following the mouse.
+      (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
       dragStateRef.current = { startX: e.clientX, startWidth: width };
       setIsDragging(true);
     },
@@ -67,21 +71,30 @@ export function useResizableWidth({ storageKey, defaultWidth, min, max, directio
   useEffect(() => {
     if (!isDragging) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
-      const drag = dragStateRef.current;
-      if (!drag) return;
-      const delta = (e.clientX - drag.startX) * direction;
-      setWidth(clamp(drag.startWidth + delta));
-    };
     const handlePointerUp = () => {
       setIsDragging(false);
       dragStateRef.current = null;
     };
+    const handlePointerMove = (e: PointerEvent) => {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      // Button already released without a pointerup reaching us (e.g. let go outside the
+      // window) — end the drag instead of resizing on a bare hover.
+      if (e.pointerType === "mouse" && e.buttons === 0) {
+        handlePointerUp();
+        return;
+      }
+      const delta = (e.clientX - drag.startX) * direction;
+      setWidth(clamp(drag.startWidth + delta));
+    };
 
     // Tracked on `document` (not the handle itself) so the drag keeps following the pointer
-    // even once it moves off the thin divider mid-drag.
+    // even once it moves off the thin divider mid-drag. pointercancel/blur end it too, so a drag
+    // interrupted by the OS or a tab switch can't stay stuck on.
     document.addEventListener("pointermove", handlePointerMove);
     document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    window.addEventListener("blur", handlePointerUp);
     const prevCursor = document.body.style.cursor;
     const prevUserSelect = document.body.style.userSelect;
     document.body.style.cursor = "col-resize";
@@ -90,6 +103,8 @@ export function useResizableWidth({ storageKey, defaultWidth, min, max, directio
     return () => {
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("blur", handlePointerUp);
       document.body.style.cursor = prevCursor;
       document.body.style.userSelect = prevUserSelect;
     };

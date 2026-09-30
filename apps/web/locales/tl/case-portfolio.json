@@ -147,6 +147,8 @@
     "audioOverviewGenerateCta": "Gumawa ng audio overview",
     "audioOverviewGenerateError": "Hindi nagawa ang audio overview. Subukan ulit.",
     "audioOverviewEmpty": "Wala pang audio overview na nabuo para sa chat na ito.",
+    "audioOverviewEmptyHint": "Gawing usapan ng dalawang host ang chat na ito na mapapakinggan mo kahit saan.",
+    "audioOverviewGeneratingHint": "Maaaring tumagal ito nang isa o dalawang minuto — puwede kang magpatuloy sa trabaho habang ginagawa ito.",
     "audioOverviewNoConsultation": "Magsimula ng chat para makagawa ng audio overview.",
     "audioOverviewGenerateAudioCta": "Gumawa ng audio",
     "audioOverviewRendering": "Ginagawa ang audio…",

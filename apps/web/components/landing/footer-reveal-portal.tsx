@@ -33,7 +33,11 @@ export function FooterRevealPortal({ children }: { children: ReactNode }) {
   useEffect(() => {
     const el = footerRef.current;
     if (!el) return;
-    const update = () => setHeight(el.scrollHeight);
+    // Floored and 1px short of the footer's real (often fractional) height, not scrollHeight
+    // (rounded, so it can come out taller than the footer): a spacer even a subpixel taller than
+    // the footer leaves a hairline seam above it where the page's white background shows through.
+    // Undershooting just tucks 1px of the footer's own top padding under the last section.
+    const update = () => setHeight(Math.max(0, Math.floor(el.getBoundingClientRect().height) - 1));
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);

@@ -471,6 +471,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   const {
     audioElement,
+    mediaElement: audioOverviewMediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,
@@ -869,7 +870,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   <button
                     type="button"
                     onClick={() => generateCaseMindMap.mutate()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                   >
                     {t("caseMindMap.buildCta")}
                   </button>
@@ -890,7 +891,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                         type="button"
                         onClick={() => void handleGenerateMindMap()}
                         disabled={!session || isMindMapConsultationBusy}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                       >
                         {t("workspace.mindMapGenerateCta")}
                       </button>
@@ -978,7 +979,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       type="button"
                       onClick={handleGenerateAudioOverviewAudio}
                       disabled={audioRendering || generateAudioOverviewAudioPending}
-                      className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                     >
                       {audioRendering || generateAudioOverviewAudioPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -989,35 +990,72 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     </button>
                   </div>
                 )}
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                <div className="min-h-0 flex-1">
                   <AudioOverviewTurns
                     turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
                     checks={activeAudioOverviewMessage.audioOverview?.checks}
+                    currentTime={playbackTime}
+                    turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+                    className="h-full overflow-y-auto"
                   />
                 </div>
               </div>
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
-                </p>
-                {!isGeneratingAudioOverview && (
+              <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
+                {/* Gold-ringed badge anchors both states: static headphones-style icon while idle,
+                 * live equalizer bars while generating — a tiny grey spinner was easy to miss. */}
+                <div
+                  className={`relative flex h-16 w-16 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/10 ${
+                    isGeneratingAudioOverview ? "shadow-[0_0_24px_-4px] shadow-brand-gold/50" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  {isGeneratingAudioOverview ? (
+                    <>
+                      <span className="absolute inset-0 rounded-full border border-brand-gold/50 motion-safe:animate-ping" />
+                      <span className="flex h-6 items-center gap-0.75">
+                        {[0, 0.15, 0.3, 0.45, 0.6].map((delay) => (
+                          <span
+                            key={delay}
+                            className="h-full w-0.75 origin-center rounded-full bg-brand-gold motion-safe:animate-audio-wave"
+                            style={{ animationDelay: `${delay}s` }}
+                          />
+                        ))}
+                      </span>
+                    </>
+                  ) : (
+                    <AudioLines className="h-7 w-7 text-brand-gold" />
+                  )}
+                </div>
+
+                <div className="flex max-w-xs flex-col gap-1.5" role={isGeneratingAudioOverview ? "status" : undefined}>
+                  <p className="text-[15px] font-semibold text-foreground">
+                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground">
+                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGeneratingHint") : t("workspace.audioOverviewEmptyHint")}
+                  </p>
+                </div>
+
+                {isGeneratingAudioOverview ? (
+                  <div className="h-1 w-48 overflow-hidden rounded-full bg-brand-gold/15" aria-hidden="true">
+                    <div className="h-full w-2/5 rounded-full bg-brand-gold motion-safe:animate-progress-sweep" />
+                  </div>
+                ) : (
                   <>
                     <button
                       type="button"
                       onClick={() => void handleGenerateAudioOverviewScript()}
                       disabled={!session || isAudioOverviewConsultationBusy}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-3 text-[13px] font-semibold text-brand-navy-950 shadow-md shadow-brand-gold/20 transition-all hover:-translate-y-px hover:bg-brand-gold/90 hover:shadow-lg hover:shadow-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
                     >
+                      <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                       {t("workspace.audioOverviewGenerateCta")}
                     </button>
                     {isAudioOverviewConsultationBusy && (
                       <p className="text-xs text-muted-foreground">{t("workspace.replyInProgressHint")}</p>
                     )}
                   </>
-                )}
-                {isGeneratingAudioOverview && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
                 )}
                 {audioOverviewGenerateError && (
                   <p className="text-xs text-red-600 dark:text-red-400">{t("workspace.audioOverviewGenerateError")}</p>
@@ -1047,7 +1085,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onSkip={skipAudioOverview}
           onCycleRate={cycleAudioOverviewRate}
           onClose={dismissPlayerBar}
-          onDownload={() => triggerBriefDownload(renderedAudioUrl)}
+          onDownload={() => triggerBriefDownload(renderedAudioUrl, "audio-overview.mp3")}
+          waveformUrl={renderedAudioUrl}
+          waveformMedia={audioOverviewMediaElement}
           formatDuration={formatDuration}
         />
       )}

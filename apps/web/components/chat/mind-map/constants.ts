@@ -133,7 +133,9 @@ export const MIND_MAP_CHROME = {
     'px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-foreground hover:bg-muted rounded-lg transition-all',
   detail:
     'absolute z-[99999] bg-card/95 backdrop-blur-2xl border border-border rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden inset-x-4 bottom-4 md:inset-auto md:top-28 md:right-10 md:w-[320px]',
-  detailTitle: 'text-xl font-bold text-foreground leading-tight truncate',
+  // Wraps rather than truncates — the details card is the one place a node's full label is
+  // readable (the canvas node itself stays clamped).
+  detailTitle: 'min-w-0 text-xl font-bold text-foreground leading-tight wrap-break-word',
   detailClose:
     'p-1 -mt-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 bg-muted rounded-full hover:bg-muted/80',
   detailLabel: 'text-[10px] font-bold uppercase tracking-[0.2em] text-brand-gold',

@@ -150,18 +150,21 @@ export function WitnessPanel({
           <div className="relative h-10 w-10 shrink-0">
             <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
               <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
-              <circle
-                cx="18"
-                cy="18"
-                r={ringR}
-                fill="none"
-                strokeWidth="3"
-                strokeLinecap="round"
-                className="stroke-emerald-500"
-                strokeDasharray={`${(readyPct / 100) * ringC} ${ringC}`}
-              />
+              {/* Skipped at 0%: a zero-length dash with a round linecap still paints a dot. */}
+              {readyPct > 0 && (
+                <circle
+                  cx="18"
+                  cy="18"
+                  r={ringR}
+                  fill="none"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="stroke-emerald-500"
+                  strokeDasharray={`${(readyPct / 100) * ringC} ${ringC}`}
+                />
+              )}
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-foreground">
+            <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold ${readyPct > 0 ? "text-foreground" : "text-muted-foreground"}`}>
               {readyPct}%
             </span>
           </div>

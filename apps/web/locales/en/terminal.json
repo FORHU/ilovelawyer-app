@@ -19,6 +19,7 @@
   "noNextDate": "No upcoming date",
   "loadWorkspace": "Load workspace",
   "workspaceName": "Workspace name",
+  "workspaceNameRequired": "Workspace name is required",
   "untitledLayout": "Untitled",
   "layoutTabsScrollLeft": "Scroll layouts left",
   "layoutTabsScrollRight": "Scroll layouts right",
@@ -26,6 +27,12 @@
   "saveChanges": "Save changes",
   "reset": "Reset layout",
   "closeLayout": "Close layout",
+  "renameLayout": "Rename layout",
+  "renameLayoutHint": "Double-click to rename",
+  "renameLayoutKeys": "Enter to save · Esc to cancel",
+  "deleteLayoutTitle": "Delete layout?",
+  "deleteLayoutBody": "“{{name}}” and its pane arrangement will be permanently deleted. This can’t be undone.",
+  "deleteLayoutConfirm": "Delete layout",
   "closeDialog": "Close dialog",
   "refresh": "Refresh analysis",
   "refreshing": "Refreshing…",
@@ -365,12 +372,15 @@
   "groundPickClaim": "Claim",
   "groundLink": "Link",
   "groundRemove": "Remove link",
+  "viewCitation": "View citation",
+  "opensInNewTab": "opens in a new tab",
+  "citationNotInLibrary": "Not in the Library",
   "groundJev": {
-    "SUPPORTS_GROUND": "bears on this claim",
-    "TANGENTIAL": "only tangential to this claim",
-    "DOES_NOT_APPLY": "doesn't bear on this claim"
+    "SUPPORTS_GROUND": "Bears on this claim",
+    "TANGENTIAL": "Only tangential to this claim",
+    "DOES_NOT_APPLY": "Doesn't bear on this claim"
   },
-  "groundJevFlag": "Jev reads this authority as not bearing on the claim",
+  "groundJevFlag": "Doesn't bear on this claim",
   "claimsTitle": "Pleaded claims ({{n}})",
   "claimsEmpty": "No claims yet. Find them in the pleadings, or add one.",
   "claimTitlePlaceholder": "Claim, e.g. Illegal dismissal",
@@ -395,9 +405,9 @@
     "DISTINGUISHED": "distinguished"
   },
   "sweepJev": {
-    "DEFEATS_PROPOSITION": "defeats what it's cited for",
-    "DISTINGUISHABLE": "can be distinguished",
-    "NOT_ADVERSE": "doesn't touch what it's cited for"
+    "DEFEATS_PROPOSITION": "Defeats what it's cited for",
+    "DISTINGUISHABLE": "Can be distinguished",
+    "NOT_ADVERSE": "Doesn't touch what it's cited for"
   },
   "sweepAddWeakness": "Add as weakness",
   "sweepDismiss": "Dismiss",
@@ -418,28 +428,61 @@
   "findingJevChecking": "Checking…",
   "findingJevOff": "Jev checks for this panel are turned off.",
   "findingJevFailed": "Jev couldn't check this. Try again.",
-  "issueJevRaisedLine": "Jev reads it as {{verdict}} ({{pct}}%).",
   "issueJevRaised": {
-    "RAISED": "raised by the case",
-    "NOT_RAISED": "not raised by the case"
+    "RAISED": "Raised by the case",
+    "NOT_RAISED": "Not raised by the case"
   },
   "issueJevContested": {
-    "CONTESTED": "contested",
-    "UNCONTESTED": "not contested",
-    "UNCLEAR": "unclear whether contested"
+    "CONTESTED": "Contested",
+    "UNCONTESTED": "Not contested",
+    "UNCLEAR": "Unclear whether contested"
   },
-  "issueJevBurdenLine": "Burden on: {{party}} ({{pct}}%).",
   "issueJevBurden": {
     "CLAIMANT": "the claimant",
     "RESPONDENT": "the respondent",
     "SHARED": "both sides",
     "UNCLEAR": "unclear"
   },
-  "issueJevBurdenDisputed": "The drafting AI put it on {{party}}.",
+  "issueJevBurdenDisputed": "The AI draft put it on {{party}}.",
   "findingJevModelRating": "The drafting AI marked it {{tag}}.",
+  "llmReview": "AI review",
+  "llmFlag": "Review",
+  "llmUncertain": "The AI was unsure — read the reasoning before relying on it.",
+  "llmNotReviewed": "Not reviewed (the AI review failed) — this is the AI draft's rating.",
+  "llmConfidence": "{{pct}}% confident",
+  "llmCertainty": {
+    "likely": "likely",
+    "possibly": "possibly",
+    "unclear": "unclear"
+  },
+  "llmRun": "Run AI review",
+  "llmReviewing": "Reviewing…",
+  "llmOff": "AI review is turned off for this panel.",
+  "llmFailed": "The AI review couldn't run. Try again.",
+  "llmDraftSaid": "AI draft said: {{tag}}",
+  "issueBurdenOn": "Burden on {{party}}",
+  "issueBurdenUnclear": "Unclear who bears the burden",
+  "weaknessSeverityLevel": {
+    "0": "Minor point",
+    "1": "Limits the remedy",
+    "2": "Defeats part of a claim",
+    "3": "Could end the case"
+  },
+  "weaknessSurfacingLevel": {
+    "0": "Surfaces only on appeal",
+    "1": "Surfaces at the hearing",
+    "2": "Surfaces in the written submissions",
+    "3": "Surfaces straight away"
+  },
+  "strengthWeightLevel": {
+    "0": "A side point",
+    "1": "Supports the remedy",
+    "2": "Helps prove a claim",
+    "3": "Carries a claim on its own"
+  },
   "issueJevFlag": {
-    "NOT_RAISED": "Jev doesn't see this issue in the case data",
-    "BURDEN_DISPUTED": "Jev puts the burden on the other side"
+    "NOT_RAISED": "Not found in the case data",
+    "BURDEN_DISPUTED": "Burden may sit with the other side"
   },
   "addWeakness": "Add a weakness",
   "weaknessesIntro": "Exposure in our own case, ordered by how early it will surface.",
@@ -451,19 +494,17 @@
   "weaknessImpact": "Expected impact on the case (positive hurts you)",
   "weaknessNoFix": "No fix on record",
   "weaknessJevSupport": {
-    "SUPPORTED": "borne out by the case data",
-    "UNSUPPORTED": "not borne out by the case data",
-    "CONTRADICTED": "contradicted by the case data"
+    "SUPPORTED": "Borne out by the case data",
+    "UNSUPPORTED": "Not borne out by the case data",
+    "CONTRADICTED": "Contradicted by the case data"
   },
-  "weaknessJevScores": "severity {{sev}}% (conf. {{sevConf}}%) · surfaces early {{sur}}% (conf. {{surConf}}%)",
-  "weaknessJevCurableLine": "{{verdict}} ({{pct}}%).",
   "weaknessJevCurable": {
     "BY_EVIDENCE": "Can be closed with evidence",
     "BY_ARGUMENT": "Can be answered by argument",
     "NOT_CURABLE": "Nothing on the record would close it"
   },
   "weaknessJevFlag": {
-    "NOT_BORNE_OUT": "Jev doesn't find this borne out by the case data"
+    "NOT_BORNE_OUT": "Not borne out by the case data"
   },
   "addStrength": "Add a strength",
   "strengthsIntro": "Findings that carry our theory of the case.",
@@ -473,20 +514,18 @@
   "strengthDetailPlaceholder": "Document reference and what it shows",
   "strengthImpact": "How much of the case it carries (higher helps you)",
   "strengthJevSupport": {
-    "SUPPORTED": "borne out by its source",
-    "UNSUPPORTED": "not borne out by its source",
-    "CONTRADICTED": "contradicted by its source"
+    "SUPPORTED": "Confirmed in its source",
+    "UNSUPPORTED": "Not found in its source",
+    "CONTRADICTED": "Contradicted by its source"
   },
-  "strengthJevNoSourceText": "No text of the cited document was found, so Jev checked this against the case data only.",
-  "strengthJevWeightLine": "weight {{pct}}% (conf. {{conf}}%)",
-  "strengthJevRebuttalLine": "{{verdict}} ({{pct}}%).",
+  "strengthJevNoSourceText": "(checked against the case data only — the document's text wasn't found)",
   "strengthJevRebuttal": {
     "UNREBUTTED": "Nothing on the record answers it",
     "REBUTTABLE": "The other side has an answer you'd need to meet",
     "ALREADY_REBUTTED": "The record already answers it"
   },
   "strengthJevFlag": {
-    "NOT_BORNE_OUT": "Jev doesn't find this in its source"
+    "NOT_BORNE_OUT": "Not found in its source"
   },
   "addAttackStrategy": "Add an attack strategy",
   "addDefenseStrategy": "Add a defense strategy",
@@ -857,6 +896,9 @@
   "caseBriefGenerateCta": "Generate case brief",
   "caseBriefRegenerateHint": "Generate a fresh Word and PDF version from this case's current snapshot. Your previous briefs stay in History.",
   "caseBriefRegenerateCta": "Regenerate case brief",
+  "caseBriefOpenInNewTab": "Open in new tab",
+  "caseBriefFormatWord": "Word",
+  "caseBriefFormatPdf": "PDF",
   "caseBriefLastGenerated": "Generated {{date}}",
   "caseBriefNothingGenerated": "No case brief generated yet — go to Generate first.",
   "caseBriefFormatNotGenerated": "This format hasn't been generated yet.",

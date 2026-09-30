@@ -18,6 +18,7 @@ import {
   Monitor,
   PanelLeft,
   Settings,
+  Trash2,
 } from "lucide-react"
 import { FatalRiskBanner } from "@/components/terminal/terminal-panels"
 import { PaneActivityContext, useDamagesActivity } from "@/components/terminal/pane-activity"
@@ -58,6 +59,7 @@ import {
   useTerminalCatalogQuery,
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
+  useRenameWorkspaceMutation,
 } from "@/lib/terminal/mutations"
 import type {
   ArrangementValue,
@@ -66,6 +68,7 @@ import type {
   PresetValue,
   WorkspaceLayout,
 } from "@/lib/terminal/types"
+import { PANEL_TITLES } from "@/lib/terminal/panel-titles"
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
@@ -77,31 +80,7 @@ import LayoutTabStrip from "@/components/terminal/layout-tab-strip"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 
-export const PANEL_TITLES: Record<PanelId, string> = {
-  command: "Case Summary",
-  evidence: "Evidence & Timeline",
-  law: "Law & Precedent",
-  dates: "Timeline",
-  chat: "AI Legal Assistant",
-  mindMap: "Visual Strategy Map",
-  citationMap: "Citation Map",
-  redTeam: "Red Team",
-  procedure: "Case Strategy",
-  teamAudit: "Team & Audit",
-  contradictions: "Contradictions",
-  legalIssues: "Legal Issues",
-  weaknesses: "Weaknesses",
-  strengths: "Strengths",
-  attackStrategy: "Attack Strategies",
-  defenseStrategy: "Defense Strategies",
-  witnesses: "Witnesses",
-  damages: "Damages & Remedies",
-  caseReconstruction: "Case Reconstruction",
-  audioOverview: "Audio Overview",
-  decisions: "Decisions",
-  theories: "Theories",
-  verification: "Verification",
-}
+export { PANEL_TITLES }
 
 // How many panes a single column can stack before it's "full" and adding another pane
 // requires replacing one instead.
@@ -176,6 +155,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const snapshot = useCaseSnapshotQuery(caseId)
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
+  const renameWorkspace = useRenameWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const deleteWorkspace = useDeleteWorkspaceMutation()
   // No manual "Refresh analysis" trigger — the Legal Terminal relies entirely on the automatic
@@ -422,6 +402,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       .sort((a, b) => a.order - b.order)
   }, [layout])
 
+  // Free canvas renders panes in a stable DOM order (by id) rather than `visiblePanels`' order:
+  // stacking there comes from the inline `zIndex: panel.order + 1`, and rendering by `order` made
+  // every bringToFront physically move the pane's node to the end of the list. A DOM move
+  // mid-gesture silently drops pointer capture (killing resize drags after the first pointermove —
+  // see onResizePointerMove's safety net) and can swallow clicks/focus inside the raised pane.
+  const freeCanvasPanels = useMemo(() => [...visiblePanels].sort((a, b) => a.id.localeCompare(b.id)), [visiblePanels])
+
   const availablePanels = useMemo(
     () => catalog.data?.panels.filter((panel) => panel.available && !HIDDEN_PANELS.has(panel.id)) ?? [],
     [catalog.data],
@@ -460,7 +447,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           : damagesActivity === "fresh"
             ? t("badgeNew")
             : (data.damagesSummary?.headCount ?? 0) > 0
-              ? t("badgeHeads", { count: data.damagesSummary.headCount })
+              ? t("badgeHeads", { count: data.damagesSummary!.headCount })
               : undefined,
     }
   }, [snapshot.data, t, damagesActivity])
@@ -763,6 +750,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   // Deleting the active tab falls back to the first remaining layout. Deleting the final layout
   // is allowed and leaves the terminal in an empty state until the user creates a new one.
+  // The tab strip's × asks first (see the delete-layout dialog below): closing a layout tab
+  // deletes that saved workspace outright, with no undo.
+  const [layoutPendingDelete, setLayoutPendingDelete] = useState<{ id: string; name: string } | null>(null)
+
   const closeWorkspaceTab = (id: string) => {
     const [fallback] = (workspaces.data ?? []).filter((w) => w.id !== id)
     deleteWorkspace.mutate(id, {
@@ -923,13 +914,20 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             tabs={workspaces.data ?? []}
             activeId={selectedWorkspaceId}
             onSelect={selectWorkspace}
-            onClose={closeWorkspaceTab}
+            onClose={(id) => {
+              const tab = workspaces.data?.find((w) => w.id === id)
+              if (tab) setLayoutPendingDelete({ id: tab.id, name: tab.name })
+            }}
             onNew={() => openPresetsModal("create")}
+            onRename={(id, name) => renameWorkspace.mutate({ id, name })}
             labels={{
               close: t("closeLayout"),
               newLayout: t("newLayout"),
               scrollLeft: t("layoutTabsScrollLeft"),
               scrollRight: t("layoutTabsScrollRight"),
+              rename: t("renameLayout"),
+              renameHint: t("renameLayoutHint"),
+              renameKeys: t("renameLayoutKeys"),
             }}
           />
           <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -1105,6 +1103,54 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           onDragPreviewUpdate={updateDragPreview}
           emptyStateAction={{ label: t("addNewLayout"), onClick: () => openPresetsModal("create") }}
         >
+          {layoutPendingDelete && (
+            <ModalOverlay
+              onClose={() => setLayoutPendingDelete(null)}
+              labelledBy="delete-layout-title"
+              aria-describedby="delete-layout-body"
+              role="alertdialog"
+              backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+              className="w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+            >
+              {(close) => (
+                <>
+                  <div className="mb-3 flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p id="delete-layout-title" className="text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                        {t("deleteLayoutTitle")}
+                      </p>
+                      <p id="delete-layout-body" className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                        {t("deleteLayoutBody", { name: layoutPendingDelete.name })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      autoFocus
+                      onClick={close}
+                      className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                    >
+                      {t("cancel")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeWorkspaceTab(layoutPendingDelete.id)
+                        close()
+                      }}
+                      className="h-8 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/50"
+                    >
+                      {t("deleteLayoutConfirm")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </ModalOverlay>
+          )}
           {replaceTarget && layout && (
             <ModalOverlay
               onClose={() => setReplaceTarget(null)}

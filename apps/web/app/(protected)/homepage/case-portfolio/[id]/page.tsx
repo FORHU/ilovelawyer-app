@@ -4,16 +4,20 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
-  ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, AlertCircle, Loader2,
+  LayoutGrid, PanelsTopLeft, Scale, Loader2,
   FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
+import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, useMarkCaseOpened, type UserDocument } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
-import { useConsultationsQuery, type Consultation } from "@/lib/chat/mutations";
+import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
+import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 type DetailTab = "overview" | "workspace";
@@ -28,10 +32,16 @@ export default function CaseDetailPage() {
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
-  const switchTab = (next: DetailTab) => {
+  // `consultationId` lands the workspace on that thread — CaseWorkspace reads the active one
+  // off `?c=`, same param ConsultationChat/ThreadPicker navigate with — and `promptNumber`
+  // (`?p=`) on one prompt within it rather than the bottom.
+  const switchTab = (next: DetailTab, consultationId?: string, promptNumber?: number) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     if (next === "workspace") nextParams.delete("tab");
     else nextParams.set("tab", next);
+    if (consultationId) nextParams.set("c", consultationId);
+    if (promptNumber !== undefined) nextParams.set("p", String(promptNumber));
+    else nextParams.delete("p");
     const qs = nextParams.toString();
     router.push(`/homepage/case-portfolio/${id}${qs ? `?${qs}` : ""}`);
   };
@@ -56,15 +66,6 @@ export default function CaseDetailPage() {
        * h-16, per GlobalHeader's own redesigned height). */}
       <div className="lg:pt-16 flex flex-col min-h-0 flex-1">
         <div className="shrink-0 border-b border-border px-6 md:px-10 pt-4 flex flex-col gap-4">
-          <Link
-            href="/homepage/case-portfolio"
-            aria-label={t("detail.backToPortfolio")}
-            className="self-start flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("detail.backToPortfolio")}</span>
-          </Link>
-
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6 pb-1">
             {/* Dot + meta sits above the title as its own small line (same eyebrow pattern the
              * list page uses above "Case Portfolio"), rather than inline beside it — a status
@@ -129,7 +130,12 @@ export default function CaseDetailPage() {
         </div>
 
         {activeTab === "overview" ? (
-          <OverviewTab id={id} caseId={id} onOpenWorkspace={() => switchTab("workspace")} />
+          <OverviewTab
+            id={id}
+            caseId={id}
+            onOpenWorkspace={() => switchTab("workspace")}
+            onOpenConsultation={(consultationId, promptNumber) => switchTab("workspace", consultationId, promptNumber)}
+          />
         ) : (
           <div className="min-h-0 flex-1">
             <CaseWorkspace caseId={id} />
@@ -274,12 +280,28 @@ function riskLevelLabel(t: (key: string) => string, level: "HIGH" | "MEDIUM" | "
   return t("overview.riskLevelLow");
 }
 
-function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOpenWorkspace: () => void }) {
+function OverviewTab({
+  id,
+  onOpenWorkspace,
+  onOpenConsultation,
+}: {
+  id: string;
+  caseId: string;
+  onOpenWorkspace: () => void;
+  onOpenConsultation: (consultationId: string, promptNumber?: number) => void;
+}) {
   const { t } = useTranslation("case-portfolio");
   const { data: caseRecord } = useCaseQuery(id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useCaseSnapshotQuery(id);
   const { data: documents, isLoading: isDocsLoading } = useCaseDocumentsQuery(id);
   const { data: consultations, isLoading: isConsultationsLoading } = useConsultationsQuery(id);
+
+  const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
+  // UK cases store a sub-jurisdiction (England and Wales / Scotland / Northern Ireland); PH cases
+  // have none, so the tenant's country stands in. The court/venue line only shows once the
+  // snapshot actually carries one.
+  const ukJurisdiction = caseRecord?.ukJurisdiction?.trim() || null;
+  const court = snapshot?.case.jurisdiction?.trim() || null;
 
   const risks: SnapshotRisk[] = snapshot?.risks ?? [];
   const upcomingDates = [...(snapshot?.dates ?? [])]
@@ -288,189 +310,227 @@ function OverviewTab({ id, onOpenWorkspace }: { id: string; caseId: string; onOp
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-10 py-8">
-      <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)] gap-6 items-start">
-        <div className="flex flex-col gap-6 min-w-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <Card title={t("overview.parties")}>
-              {caseRecord && caseRecord.parties.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {caseRecord.parties.map((p) => (
-                    <div key={p.id} className="flex flex-col gap-0.5">
-                      <span className="text-[15px] font-medium text-foreground">{p.name}</span>
-                      <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{p.designation}</span>
-                    </div>
-                  ))}
+      {/* One grid (not two independent columns) so every row's cards share a height: the three
+          summary cards, then each wide card paired with the narrow card beside it. */}
+      <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title={t("overview.parties")}>
+          {caseRecord && caseRecord.parties.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {caseRecord.parties.map((p) => (
+                <div key={p.id} className="flex flex-col gap-0.5">
+                  <span className="text-[15px] font-medium text-foreground">{p.name}</span>
+                  <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{p.designation}</span>
                 </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">{t("noPartyListed")}</span>
-              )}
-            </Card>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">{t("noPartyListed")}</span>
+          )}
+        </Card>
 
-            <Card
-              title={t("overview.risk")}
-              headerRight={
-                snapshot?.riskAnalysis ? (
-                  <span
-                    className={`text-[9.5px] font-semibold tracking-[1px] uppercase px-2 py-1 rounded-md border ${riskLevelClasses(snapshot.riskAnalysis.overall.level)}`}
-                  >
-                    {riskLevelLabel(t, snapshot.riskAnalysis.overall.level)} · {snapshot.riskAnalysis.overall.score}
-                  </span>
-                ) : undefined
-              }
-            >
-              {isSnapshotLoading ? (
-                <LoadingRow />
-              ) : snapshot?.riskAnalysis ? (
-                <div className="flex flex-col gap-3">
-                  <RiskBar label={t("overview.riskOverall")} score={snapshot.riskAnalysis.overall.score} />
-                  <RiskBar label={t("overview.riskLiability")} score={snapshot.riskAnalysis.liability.score} />
-                </div>
-              ) : (
-                <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
-              )}
-            </Card>
+        <Card
+          title={t("overview.risk")}
+          headerRight={
+            snapshot?.riskAnalysis ? (
+              <span
+                className={`text-[9.5px] font-semibold tracking-[1px] uppercase px-2 py-1 rounded-md border ${riskLevelClasses(snapshot.riskAnalysis.overall.level)}`}
+              >
+                {riskLevelLabel(t, snapshot.riskAnalysis.overall.level)} · {snapshot.riskAnalysis.overall.score}
+              </span>
+            ) : undefined
+          }
+        >
+          {isSnapshotLoading ? (
+            <LoadingRow />
+          ) : snapshot?.riskAnalysis ? (
+            <div className="flex flex-col gap-3">
+              <RiskBar label={t("overview.riskOverall")} score={snapshot.riskAnalysis.overall.score} />
+              <RiskBar label={t("overview.riskLiability")} score={snapshot.riskAnalysis.liability.score} />
+            </div>
+          ) : (
+            <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
+          )}
+        </Card>
+
+        <Card title={t("overview.jurisdiction")}>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[15px] font-medium text-foreground">{ukJurisdiction ?? countryName}</span>
+            {ukJurisdiction && (
+              <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{countryName}</span>
+            )}
+            {court && <span className="mt-1.5 text-[13px] text-muted-foreground">{court}</span>}
           </div>
+        </Card>
 
-          <Card title={t("overview.keyIssues")}>
-            {isSnapshotLoading ? (
-              <LoadingRow />
-            ) : risks.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {risks.slice(0, 6).map((risk) => (
-                  <div key={risk.id} className="flex gap-2.5 items-start text-[14px] leading-relaxed text-foreground">
-                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-brand-gold" aria-hidden="true" />
-                    {risk.title}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
-            )}
-          </Card>
+        <Card title={t("overview.keyIssues")} className="lg:col-span-2">
+          {isSnapshotLoading ? (
+            <LoadingRow />
+          ) : risks.length > 0 ? (
+            <KeyIssuesList caseId={id} risks={risks.slice(0, 6)} />
+          ) : (
+            <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
+          )}
+        </Card>
 
-          <Card
-            title={`${t("overview.documents")}${documents ? ` · ${documents.length}` : ""}`}
-            headerRight={
-              <button
-                type="button"
-                onClick={onOpenWorkspace}
-                className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <Plus className="w-3 h-3" aria-hidden="true" />
-                {t("overview.manageDocuments")}
-              </button>
-            }
-            noPadding
-          >
-            {isDocsLoading ? (
-              <LoadingRow className="px-5 py-4" />
-            ) : documents && documents.length > 0 ? (
-              // Was capped to the first 6 with no way to reach the rest, so the header's real
-              // total (documents.length) never matched what was actually visible below it.
-              // Scrolling the full list here (instead of paging it) keeps this a lightweight
-              // preview card rather than turning it into a second document manager — "Manage in
-              // Workspace" above is still where full management (delete, re-upload, etc.) lives.
-              <div className="flex flex-col max-h-76 overflow-y-auto">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-3 px-5 py-3 border-t border-border first:border-t-0 text-[13px]">
-                    <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                    <span className="flex-1 min-w-0 truncate">{doc.name}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
-                    </span>
-                    <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
-                      {ragStatusLabel(t, doc.ragStatus)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="block px-5 py-4 text-[13px] text-muted-foreground">{t("overview.noDocuments")}</span>
-            )}
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-6 min-w-0">
-          <Card title={t("overview.upcoming")}>
-            {isSnapshotLoading ? (
-              <LoadingRow />
-            ) : upcomingDates.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                {upcomingDates.map((d) => {
-                  const dt = new Date(d.dateTime);
-                  return (
-                    <div key={d.id} className="flex gap-3.5 items-start">
-                      <div className="flex flex-col items-center w-9 shrink-0">
-                        <span className="font-['Libre_Caslon_Text'] text-lg leading-none text-foreground">
-                          {dt.toLocaleDateString(undefined, { day: "2-digit" })}
-                        </span>
-                        <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
-                          {dt.toLocaleDateString(undefined, { month: "short" })}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="text-[13.5px] leading-snug text-foreground">{d.title}</span>
-                        {d.type && <span className="text-[11px] text-muted-foreground">{d.type}</span>}
-                      </div>
+        <Card title={t("overview.upcoming")}>
+          {isSnapshotLoading ? (
+            <LoadingRow />
+          ) : upcomingDates.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {upcomingDates.map((d) => {
+                const dt = new Date(d.dateTime);
+                return (
+                  <div key={d.id} className="flex gap-3.5 items-start">
+                    <div className="flex flex-col items-center w-9 shrink-0">
+                      <span className="font-['Libre_Caslon_Text'] text-lg leading-none text-foreground">
+                        {dt.toLocaleDateString(undefined, { day: "2-digit" })}
+                      </span>
+                      <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+                        {dt.toLocaleDateString(undefined, { month: "short" })}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                {t("overview.noUpcoming")}
-              </span>
-            )}
-          </Card>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-[13.5px] leading-snug text-foreground">{d.title}</span>
+                      {d.type && <span className="text-[11px] text-muted-foreground">{d.type}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {t("overview.noUpcoming")}
+            </span>
+          )}
+        </Card>
 
-          <Card
-            title={`${t("overview.consultations")}${consultations ? ` · ${consultations.length}` : ""}`}
-            headerRight={
+        <Card
+          className="lg:col-span-2"
+          title={`${t("overview.documents")}${documents ? ` · ${documents.length}` : ""}`}
+          headerRight={
+            <button
+              type="button"
+              onClick={onOpenWorkspace}
+              className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <Plus className="w-3 h-3" aria-hidden="true" />
+              {t("overview.manageDocuments")}
+            </button>
+          }
+          noPadding
+        >
+          {isDocsLoading ? (
+            <LoadingRow className="px-5 py-4" />
+          ) : documents && documents.length > 0 ? (
+            // Was capped to the first 6 with no way to reach the rest, so the header's real
+            // total (documents.length) never matched what was actually visible below it.
+            // Scrolling the full list here (instead of paging it) keeps this a lightweight
+            // preview card rather than turning it into a second document manager — "Manage in
+            // Workspace" above is still where full management (delete, re-upload, etc.) lives.
+            <div className="flex flex-col max-h-76 overflow-y-auto">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center gap-3 px-5 py-3 border-t border-border first:border-t-0 text-[13px]">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <span className="flex-1 min-w-0 truncate">{doc.name}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
+                  </span>
+                  <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
+                    {ragStatusLabel(t, doc.ragStatus)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="block px-5 py-4 text-[13px] text-muted-foreground">{t("overview.noDocuments")}</span>
+          )}
+        </Card>
+
+        <Card
+          title={t("overview.consultations")}
+          headerRight={
+            <button
+              type="button"
+              onClick={onOpenWorkspace}
+              className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              {t("overview.openWorkspace")}
+            </button>
+          }
+        >
+          {isConsultationsLoading ? (
+            <LoadingRow />
+          ) : consultations && consultations.length > 0 ? (
+            // Full list, scrolled — same reason as the Documents card: a `slice(0, 5)` cap left
+            // the header's total (consultations.length) out of step with what was visible.
+            <div className="flex flex-col gap-2 max-h-76 overflow-y-auto">
+              {consultations.map((c: Consultation) => (
+                <ConsultationRow
+                  key={c.id}
+                  consultation={c}
+                  fallbackTitle={t("overview.consultations")}
+                  onOpen={(promptNumber) => onOpenConsultation(c.id, promptNumber)}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <MessageSquare className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {t("overview.noConsultations")}
+            </span>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/** One consultation plus every prompt asked in it — each prompt opens the chat scrolled to
+ * that prompt (`promptNumber`), the title opens it at the latest reply as before. Prompts are
+ * counted over the same visible list ConsultationChat renders (auto Mind Map / Audio Overview
+ * turns dropped), so a prompt's number here is the same prompt there. */
+function ConsultationRow({
+  consultation,
+  fallbackTitle,
+  onOpen,
+}: {
+  consultation: Consultation;
+  fallbackTitle: string;
+  onOpen: (promptNumber?: number) => void;
+}) {
+  const { data: messages } = useMessagesQuery(consultation.id);
+  const prompts = (messages ?? []).filter(
+    (m) => m.role === "user" && m.content !== AUTO_MINDMAP_PROMPT && m.content !== AUTO_AUDIO_OVERVIEW_PROMPT,
+  );
+
+  return (
+    <div className="flex flex-col border border-border rounded-lg">
+      <button
+        type="button"
+        onClick={() => onOpen()}
+        className="flex flex-col gap-0.5 px-3 py-2.5 text-left rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
+      >
+        <span className="text-[13.5px] font-medium text-foreground truncate">{consultation.title || fallbackTitle}</span>
+        <span className="text-[11px] text-muted-foreground">{new Date(consultation.createdAt).toLocaleDateString()}</span>
+      </button>
+      {prompts.length > 0 && (
+        <ul className="flex flex-col border-t border-border py-1">
+          {prompts.map((m, promptNumber) => (
+            <li key={m.id}>
               <button
                 type="button"
-                onClick={onOpenWorkspace}
-                className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                onClick={() => onOpen(promptNumber)}
+                title={m.content}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
-                {t("overview.openWorkspace")}
+                <MessageSquare className="w-3 h-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{m.content.trim()}</span>
               </button>
-            }
-          >
-            {isConsultationsLoading ? (
-              <LoadingRow />
-            ) : consultations && consultations.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {consultations.slice(0, 5).map((c: Consultation) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={onOpenWorkspace}
-                    className="flex flex-col gap-0.5 px-3 py-2.5 border border-border rounded-lg text-left hover:border-foreground/40 transition-colors cursor-pointer"
-                  >
-                    <span className="text-[13.5px] font-medium text-foreground truncate">
-                      {c.title || t("overview.consultations")}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <MessageSquare className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                {t("overview.noConsultations")}
-              </span>
-            )}
-          </Card>
-
-          <Link
-            href={`/homepage/terminal/${id}`}
-            className="flex items-center justify-center gap-2.5 h-11 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
-          >
-            <Scale className="w-3.5 h-3.5" aria-hidden="true" />
-            {t("overview.openTerminal")}
-          </Link>
-        </div>
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -479,15 +539,17 @@ function Card({
   title,
   headerRight,
   noPadding,
+  className,
   children,
 }: {
   title: string;
   headerRight?: ReactNode;
   noPadding?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="border border-border rounded-2xl bg-card overflow-hidden flex flex-col">
+    <section className={`min-w-0 border border-border rounded-2xl bg-card overflow-hidden flex flex-col ${className ?? ""}`}>
       <div className={`flex items-center justify-between gap-3 ${noPadding ? "px-5 py-4 border-b border-border" : "px-5 pt-5"}`}>
         <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{title}</span>
         {headerRight}

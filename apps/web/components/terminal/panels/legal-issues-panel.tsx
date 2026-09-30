@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { useGraphViewQuery } from "@/lib/graph-view/mutations"
 import type { CaseFinding, LegalIssueJevCheck } from "@/lib/terminal/types"
-import { JevCheck } from "@/components/terminal/panel-kit"
+import { LlmReview, ReviewPoint } from "@/components/terminal/panel-kit"
 import { RatedFindingPanel, modelTagLabelKey, type RatedFindingConfig } from "@/components/terminal/panels/rated-finding-panel"
 
 const LEGAL_ISSUES: RatedFindingConfig = {
@@ -19,6 +19,7 @@ const LEGAL_ISSUES: RatedFindingConfig = {
   ringTitleKey: "issueResolvedCount",
   doneTag: "RESOLVED",
   jevFlagKeys: (jev) => (jev as LegalIssueJevCheck).flags.map((flag) => `issueJevFlag.${flag}`),
+  llmWording: true,
   JevDetail: LegalIssueJevDetail,
 }
 
@@ -27,20 +28,18 @@ function LegalIssueJevDetail({ finding }: { finding: CaseFinding }) {
   const jev = finding.jev as unknown as LegalIssueJevCheck
   const modelTag = modelTagLabelKey(finding, LEGAL_ISSUES)
   return (
-    <JevCheck
-      verdict={t(`issueJevContested.${jev.contested}`)}
-      confidence={jev.contestedConfidence}
-      uncertain={jev.uncertain}
-      modelRating={modelTag ? t("findingJevModelRating", { tag: t(modelTag) }) : null}
-    >
-      <p>{t("issueJevRaisedLine", { verdict: t(`issueJevRaised.${jev.raised}`), pct: Math.round(jev.raisedConfidence * 100) })}</p>
-      <p>
-        {t("issueJevBurdenLine", { party: t(`issueJevBurden.${jev.burden}`), pct: Math.round(jev.burdenConfidence * 100) })}
+    <LlmReview uncertain={jev.uncertain} draftRating={modelTag ? t("llmDraftSaid", { tag: t(modelTag) }) : null}>
+      <ReviewPoint text={t(`issueJevContested.${jev.contested}`)} confidence={jev.contestedConfidence} />
+      <ReviewPoint text={t(`issueJevRaised.${jev.raised}`)} confidence={jev.raisedConfidence} />
+      <ReviewPoint
+        text={jev.burden === "UNCLEAR" ? t("issueBurdenUnclear") : t("issueBurdenOn", { party: t(`issueJevBurden.${jev.burden}`) })}
+        confidence={jev.burdenConfidence}
+      >
         {jev.flags.includes("BURDEN_DISPUTED") && jev.modelBurden ? (
           <span className="text-warn"> {t("issueJevBurdenDisputed", { party: t(`issueJevBurden.${jev.modelBurden}`) })}</span>
         ) : null}
-      </p>
-    </JevCheck>
+      </ReviewPoint>
+    </LlmReview>
   )
 }
 

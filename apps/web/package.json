@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
+    "dev:https": "next dev -p 3002 --experimental-https --hostname uk-local.ilovelawyer.com",
+    "dev:https:ph": "next dev -p 3002 --experimental-https --hostname ph-local.ilovelawyer.com",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint",
@@ -40,6 +42,7 @@
     "socket.io-client": "^4.8.3",
     "sonner": "^2.0.8",
     "three": "^0.183.2",
+    "wavesurfer.js": "^7.8.6",
     "xlsx-preview": "^1.0.5",
     "zustand": "^5.0.14"
   },

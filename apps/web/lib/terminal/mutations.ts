@@ -277,6 +277,34 @@ export function useUpdateWorkspaceMutation() {
   })
 }
 
+/** Renames a layout tab. Separate from useUpdateWorkspaceMutation so the tab strip can show the
+ * new name immediately (optimistic write into every cached workspaces list) and roll back if the
+ * PATCH fails — autosaves never send `name`, so they can't clobber a rename in flight. */
+export function useRenameWorkspaceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      }),
+    onMutate: async ({ id, name }) => {
+      await queryClient.cancelQueries({ queryKey: terminalKeys.workspacesAll() })
+      const previous = queryClient.getQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() })
+      queryClient.setQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() }, (list) =>
+        list?.map((w) => (w.id === id ? { ...w, name } : w)),
+      )
+      return { previous }
+    },
+    onError: (_error, _vars, context) => {
+      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
+    },
+  })
+}
+
 export function useApplyWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -448,6 +476,30 @@ export function useCreateRiskMutation(caseId: string) {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useUpdateRiskMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ riskId, title }: { riskId: string; title: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteRiskMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (riskId: string) => apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -1545,6 +1597,9 @@ export interface AudioOverviewHistoryEntry {
   status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
   turns: AudioOverviewTurn[]
   checks: AudioOverviewTurnCheck[]
+  /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
+   * `turns` — null until the audio has been rendered. */
+  turnTimings: number[] | null
   /** null until the audio has been rendered (the script alone is generated first). */
   audio: { id: string; fileUrl: string } | null
 }

@@ -104,6 +104,34 @@ describe("joinCaseRoom / isCaseRoomSubscribed", () => {
     expect(isCaseRoomSubscribed("caseB")).toBe(false)
   })
 
+  it("only leaves the room once the last holder of a caseId cleans up", () => {
+    const socket = fakeSocket(true)
+    const cleanupA = joinCaseRoom(socket, "caseShared")
+    const cleanupB = joinCaseRoom(socket, "caseShared")
+
+    cleanupA()
+    expect(socket.emit).not.toHaveBeenCalledWith("case:unsubscribe", { caseId: "caseShared" })
+    expect(isCaseRoomSubscribed("caseShared")).toBe(true)
+
+    cleanupB()
+    expect(socket.emit).toHaveBeenCalledWith("case:unsubscribe", { caseId: "caseShared" })
+    expect(isCaseRoomSubscribed("caseShared")).toBe(false)
+  })
+
+  it("ignores a subscribe ack that arrives after cleanup", () => {
+    const socket = fakeSocket(true)
+    let pendingAck: ((res: { ok: boolean }) => void) | undefined
+    socket.emit.mockImplementation((event: string, _payload: unknown, ack?: (res: { ok: boolean }) => void) => {
+      if (event === "case:subscribe") pendingAck = ack
+    })
+
+    const cleanup = joinCaseRoom(socket, "caseLateAck")
+    cleanup()
+    pendingAck?.({ ok: true })
+
+    expect(isCaseRoomSubscribed("caseLateAck")).toBe(false)
+  })
+
   it("returns false for an undefined caseId without throwing", () => {
     expect(isCaseRoomSubscribed(undefined)).toBe(false)
   })
