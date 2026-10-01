@@ -173,6 +173,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           checks={activeAudioOverviewMessage.audioOverview?.checks}
           currentTime={playbackTime}
           turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+          sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
           className="h-full overflow-y-auto px-1"
         />
       </div>
