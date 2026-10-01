@@ -182,7 +182,9 @@ export default function TerminalSettingsSidebar({
     )
 
   const footerHint = (
-    <div className="shrink-0 border-t border-border px-4 py-3 text-[11px] leading-4 text-muted-foreground">
+    // Fixed height (not just padding) so it lines up with LayoutBuilderModal's own footer bar,
+    // which the sidebar now spans the full height of (see that modal's own doc comment).
+    <div className="flex h-[72px] shrink-0 flex-col justify-center overflow-hidden border-t border-border px-4 py-2 text-[11px] leading-4 text-muted-foreground">
       {emptyCount > 0 && (
         <button
           type="button"
@@ -200,7 +202,11 @@ export default function TerminalSettingsSidebar({
   return (
     <>
       <aside
-        className={`absolute inset-y-0 left-0 z-(--z-sidebar) hidden flex-col overflow-hidden border-r border-border bg-sidebar py-3 shadow-lg transition-[width] duration-200 lg:flex ${
+        // pt-3 only (not py-3) — a bottom inset here would otherwise sit the footer hint's
+        // bottom edge above wherever this aside's own bottom edge lands, which in
+        // LayoutBuilderModal is flush with that modal's own footer bar (see its doc comment on
+        // why this aside spans the full body+footer height there).
+        className={`absolute inset-y-0 left-0 z-(--z-sidebar) hidden flex-col overflow-hidden border-r border-border bg-sidebar pt-3 shadow-lg transition-[width] duration-200 lg:flex ${
           expanded ? "w-72" : "w-16"
         }`}
       >
