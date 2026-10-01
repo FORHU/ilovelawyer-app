@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+const PLAYBACK_RATES = [1, 1.25, 1.5, 2, 0.75];
+
 /**
  * Wraps the one shared <audio> element's playback state (play/pause, scrub, duration, rate) plus
  * per-browser resume-position persistence keyed by the Audio Overview message id. Factored out of
@@ -69,7 +71,7 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
   };
   const cycleRate = () => {
     const el = audioRef.current;
-    const next = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+    const next = PLAYBACK_RATES[(PLAYBACK_RATES.indexOf(playbackRate) + 1) % PLAYBACK_RATES.length]!;
     setPlaybackRate(next);
     if (el) el.playbackRate = next;
   };
