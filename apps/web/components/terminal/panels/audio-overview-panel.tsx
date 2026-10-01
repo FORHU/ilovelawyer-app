@@ -271,6 +271,8 @@ function AudioOverviewCurrent({
         turns={turns}
         checks={audio?.checks}
         turnTimings={turnTimings}
+        sentenceTimings={audio?.sentenceTimings}
+        wordTimings={audio?.wordTimings}
         currentTime={playbackTime}
         duration={playbackDuration}
         onSeek={renderedAudioUrl ? seek : undefined}

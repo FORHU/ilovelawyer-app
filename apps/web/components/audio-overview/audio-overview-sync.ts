@@ -1,4 +1,4 @@
-import type { AudioOverviewTurn } from "@/lib/chat/mutations"
+import type { AudioOverviewMarkTiming, AudioOverviewTurn } from "@/lib/chat/mutations"
 
 /** "mm:ss" for transcript gutters and the player's clock. */
 export function formatClock(seconds: number): string {
@@ -50,6 +50,75 @@ export function wordStates(text: string, start: number, end: number, time: numbe
     const state: WordState = fraction >= to ? "spoken" : fraction >= from ? "speaking" : "upcoming"
     return { word, state }
   })
+}
+
+/** A run of a turn's text with one playback state — the unit the transcript renders. */
+export interface TextSegment {
+  text: string
+  state: WordState
+}
+
+/** Index of the last mark whose start is at or before `time`, or -1 before the first one. */
+function lastStartedMark(time: number, marks: AudioOverviewMarkTiming[]): number {
+  let active = -1
+  for (let i = 0; i < marks.length; i++) {
+    if (marks[i]!.time <= time) active = i
+    else break
+  }
+  return active
+}
+
+/** Splits a turn into states using the best timing data available:
+ *  1. `words` — Polly's word speech marks (ilovelawyer-api's wordTimings): exact.
+ *  2. `sentences` — Polly's sentence speech marks: each sentence's span is exact, and words
+ *     within it are estimated by character share (wordStates).
+ *  3. Neither (overviews rendered before either existed): the whole turn estimated by character
+ *     share across [start, end).
+ * Every character of `text` lands in exactly one segment, so the turn always reads as its full
+ * text whatever ranges Polly reported. */
+export function turnSegments(
+  text: string,
+  start: number,
+  end: number,
+  time: number,
+  words?: AudioOverviewMarkTiming[] | null,
+  sentences?: AudioOverviewMarkTiming[] | null,
+): TextSegment[] {
+  if (words?.length) {
+    const active = lastStartedMark(time, words)
+    const segments: TextSegment[] = []
+    let cursor = 0
+    // Text before word i (spaces, punctuation, an opening quote) reads as spoken once the word
+    // before it has started — or, for the leading text, once the first word has.
+    const gap = (i: number): WordState => (active >= Math.max(i - 1, 0) ? "spoken" : "upcoming")
+    words.forEach((word, i) => {
+      const state: WordState = i < active ? "spoken" : i === active ? "speaking" : "upcoming"
+      const from = Math.max(word.start, cursor)
+      if (from > cursor) segments.push({ text: text.slice(cursor, from), state: gap(i) })
+      if (word.end > from) segments.push({ text: text.slice(from, word.end), state })
+      cursor = Math.max(cursor, word.end)
+    })
+    if (cursor < text.length) segments.push({ text: text.slice(cursor), state: gap(words.length) })
+    return segments
+  }
+
+  if (sentences?.length) {
+    const segments: TextSegment[] = []
+    let cursor = 0
+    sentences.forEach((sentence, i) => {
+      const from = Math.max(sentence.start, cursor)
+      if (from > cursor) segments.push({ text: text.slice(cursor, from), state: time >= sentence.time ? "spoken" : "upcoming" })
+      const sentenceEnd = sentences[i + 1]?.time ?? end
+      for (const { word, state } of wordStates(text.slice(from, sentence.end), sentence.time, sentenceEnd, time)) {
+        segments.push({ text: `${word} `, state })
+      }
+      cursor = Math.max(cursor, sentence.end)
+    })
+    if (cursor < text.length) segments.push({ text: text.slice(cursor), state: time >= end ? "spoken" : "upcoming" })
+    return segments
+  }
+
+  return wordStates(text, start, end, time).map(({ word, state }) => ({ text: `${word} `, state }))
 }
 
 /** One host-colored band per turn, as percentages of the recording, for the strip under the

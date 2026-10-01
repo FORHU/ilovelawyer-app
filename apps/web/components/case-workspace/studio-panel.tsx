@@ -1005,6 +1005,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
                     checks={activeAudioOverviewMessage.audioOverview?.checks}
                     turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+                    sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
+                    wordTimings={activeAudioOverviewMessage.audioOverview?.wordTimings}
                     currentTime={playbackTime}
                     duration={playbackDuration}
                     onSeek={renderedAudioUrl ? seekAudioOverview : undefined}

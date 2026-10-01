@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
-import type { AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
+import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
@@ -1611,6 +1611,12 @@ export interface AudioOverviewHistoryEntry {
   /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
    * `turns` — null until the audio has been rendered. */
   turnTimings: number[] | null
+  /** Per turn, where each sentence starts in the audio (Polly sentence speech marks) — null until
+   * the audio has been rendered, and on overviews rendered before sentence timings existed. */
+  sentenceTimings: AudioOverviewMarkTiming[][] | null
+  /** Per turn, where each word starts in the audio (Polly word speech marks) — null until the
+   * audio has been rendered, and on overviews rendered before word timings existed. */
+  wordTimings: AudioOverviewMarkTiming[][] | null
   /** null until the audio has been rendered (the script alone is generated first). */
   audio: { id: string; fileUrl: string } | null
 }

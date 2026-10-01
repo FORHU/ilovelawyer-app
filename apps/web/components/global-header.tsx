@@ -7,6 +7,7 @@ import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, M
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
@@ -257,7 +258,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                   aria-expanded={isUserMenuOpen}
                   aria-label={t("userMenu.accountMenu")}
                 >
-                  {initials}
+                  <UserAvatar avatarUrl={user?.avatarUrl} initials={initials} className="h-full w-full" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>{t("userMenu.accountMenu")}</TooltipContent>
@@ -349,12 +350,11 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       >
         {user && (
           <div className="flex items-center gap-3 border-b border-border px-5 py-5">
-            <span
-              aria-hidden="true"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold tracking-[0.5px] text-foreground"
-            >
-              {initials}
-            </span>
+            <UserAvatar
+              avatarUrl={user.avatarUrl}
+              initials={initials}
+              className="h-11 w-11 border border-border text-xs font-semibold tracking-[0.5px] text-foreground"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-foreground">{user.name ?? user.username}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>

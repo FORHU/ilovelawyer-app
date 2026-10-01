@@ -19,6 +19,11 @@ export interface CurrentUser {
   lastLoginAt: string | null
   deletionRequestedAt: string | null
   hasPassword: boolean
+  /** Same-origin /files/<token> image, or null → show initials. Google signups start with
+   * their Google photo; email signups start with null. */
+  avatarUrl: string | null
+  /** A Google Calendar grant is stored (Connect Google Calendar on the profile page). */
+  googleCalendarConnected: boolean
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -60,6 +65,68 @@ export function useUpdateCurrentUserMutation() {
           ),
       )
     },
+  })
+}
+
+/** Every avatar change returns the full /me shape — apply it everywhere the avatar shows: the
+ * /me cache (profile page), the auth store's copy (header) and cached org member lists. */
+function useApplyAvatarChange() {
+  const queryClient = useQueryClient()
+  const updateStoreUser = useAuthStore((s) => s.updateUser)
+
+  return (updated: CurrentUser) => {
+    queryClient.setQueryData(userKeys.me(), updated)
+    updateStoreUser({ avatarUrl: updated.avatarUrl })
+    queryClient.setQueriesData<OrganizationMemberRecord[]>(
+      { queryKey: organizationKeys.all, predicate: (query) => query.queryKey.at(-1) === "members" },
+      (members) =>
+        members?.map((m) => (m.userId === updated.id ? { ...m, user: { ...m.user, avatarUrl: updated.avatarUrl } } : m)),
+    )
+  }
+}
+
+/** Uploads a JPEG/PNG/WebP (≤ 2 MB, checked again server-side) as the user's avatar. */
+export function useUploadAvatarMutation() {
+  const applyAvatarChange = useApplyAvatarChange()
+
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData()
+      body.append("avatar", file)
+      return apiFetch<CurrentUser>("/api/users/me/avatar", { method: "PUT", body })
+    },
+    onSuccess: applyAvatarChange,
+  })
+}
+
+/** Back to initials. A Google signup's original photo does not come back. */
+export function useRemoveAvatarMutation() {
+  const applyAvatarChange = useApplyAvatarChange()
+
+  return useMutation({
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me/avatar", { method: "DELETE" }),
+    onSuccess: applyAvatarChange,
+  })
+}
+
+/** Sends the one-time code from the Google auth-code popup; the API exchanges it and stores the
+ * refresh token encrypted. Separate from sign-in — never changes how the user signs in. */
+export function useConnectGoogleCalendarMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (code: string) =>
+      apiFetch<CurrentUser>("/api/users/me/google-calendar", { method: "POST", body: JSON.stringify({ code }) }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+  })
+}
+
+export function useDisconnectGoogleCalendarMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me/google-calendar", { method: "DELETE" }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }
 

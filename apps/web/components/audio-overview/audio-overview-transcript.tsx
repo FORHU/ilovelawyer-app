@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { ChevronsUpDown } from "lucide-react"
-import type { AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
+import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { hostLabel, TurnCheckIcon } from "@/components/audio-overview/audio-overview-turns"
 import {
   activeTurnIndex,
   formatClock,
   hasUsableTimings,
   turnEnd,
-  wordStates,
+  turnSegments,
   type WordState,
 } from "@/components/audio-overview/audio-overview-sync"
 
@@ -89,6 +89,8 @@ export function AudioOverviewTranscript({
   turns,
   checks,
   turnTimings,
+  sentenceTimings,
+  wordTimings,
   currentTime,
   duration,
   onSeek,
@@ -108,6 +110,11 @@ export function AudioOverviewTranscript({
   turns: AudioOverviewTurn[]
   checks?: AudioOverviewTurnCheck[] | null
   turnTimings?: number[] | null
+  /** Per turn, Polly's sentence / word speech marks (ilovelawyer-api). With word timings the active
+   * turn lights up word by word exactly as spoken; with only sentence timings, each sentence is
+   * exact and words within it are estimated; with neither, the whole turn is estimated. */
+  sentenceTimings?: AudioOverviewMarkTiming[][] | null
+  wordTimings?: AudioOverviewMarkTiming[][] | null
   currentTime: number
   duration: number
   /** Omit until audio is playable — seeking, highlighting and the focus view all depend on it. */
@@ -183,10 +190,20 @@ export function AudioOverviewTranscript({
     if (expanded && follow && synced) setFollow(false)
   }
 
+  // Per-turn marks only line up when they cover every turn (same rule as turnTimings).
+  const marksFor = (timings: AudioOverviewMarkTiming[][] | null | undefined, i: number) =>
+    timings?.length === turns.length ? timings[i] : undefined
   const words = (i: number) =>
-    wordStates(turns[i]!.text, turnTimings![i]!, turnEnd(i, turnTimings!, duration), currentTime).map(({ word, state }, k) => (
+    turnSegments(
+      turns[i]!.text,
+      turnTimings![i]!,
+      turnEnd(i, turnTimings!, duration),
+      currentTime,
+      marksFor(wordTimings, i),
+      marksFor(sentenceTimings, i),
+    ).map(({ text, state }, k) => (
       <span key={k} className={`transition-colors duration-200 ${WORD_CLASS[state]}`}>
-        {word}{" "}
+        {text}
       </span>
     ))
   const time = (i: number) => (synced ? formatClock(turnTimings![i]!) : "")

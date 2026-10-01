@@ -84,7 +84,13 @@ function CurrentUserSync({
     if (!accessToken || user || !currentUser) return
     setAuth({
       accessToken,
-      user: { id: currentUser.id, username: currentUser.username, email: currentUser.email, name: currentUser.name },
+      user: {
+        id: currentUser.id,
+        username: currentUser.username,
+        email: currentUser.email,
+        name: currentUser.name,
+        avatarUrl: currentUser.avatarUrl,
+      },
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, user, currentUser])
