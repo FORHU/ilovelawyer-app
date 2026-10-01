@@ -51,6 +51,42 @@ describe("CitationLink tier rendering", () => {
   })
 })
 
+describe("citation pill: kind badge and label", () => {
+  const JURIS = "/homepage/library/laws/ph-123?category=jurisprudence"
+  const renderContent = (content: string) =>
+    renderToStaticMarkup(
+      React.createElement(QueryClientProvider, { client: new QueryClient() }, React.createElement(AssistantMessage, { content })),
+    )
+
+  it("shows a Law badge and takes the duplicate ' Law' off the visible label", () => {
+    const html = renderMessage(undefined)
+    expect(html).toContain('data-kind="law"')
+    expect(html).toContain("citationBadge.law")
+    expect(html).not.toContain("s 11 Law")
+  })
+
+  it("shows a Jurisprudence badge for a case and strips its suffix", () => {
+    const html = renderContent(`See [Republic v. Gallo (2018) Jurisprudence](${JURIS}).`)
+    expect(html).toContain('data-kind="jurisprudence"')
+    expect(html).toContain("citationBadge.jurisprudence")
+    expect(html).toContain("Republic v. Gallo (2018)")
+    expect(html).not.toContain("(2018) Jurisprudence")
+  })
+
+  it("uses the italic serif pill style", () => {
+    const html = renderMessage(undefined)
+    expect(html).toContain("italic")
+    expect(html).toContain("Source_Serif_4")
+    expect(html).toContain("rounded-md")
+  })
+
+  it("tints a ranked link by tier but keeps the kind badge", () => {
+    const html = renderMessage([item({ tier: "HIGH" })])
+    expect(html).toContain("bg-emerald-100")
+    expect(html).toContain("citationBadge.law")
+  })
+})
+
 describe("CitationRankNote (the hover explanation)", () => {
   const render = (rank: CitationRankItem) => renderToStaticMarkup(React.createElement(CitationRankNote, { rank }))
 

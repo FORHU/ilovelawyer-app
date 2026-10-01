@@ -135,6 +135,10 @@
     "noSummary": "No summary stored for this document yet.",
     "sheetTitle": "Citation preview"
   },
+  "citationBadge": {
+    "law": "Law",
+    "jurisprudence": "Jurisprudence"
+  },
   "citationRank": {
     "high": "High relevance to your question",
     "medium": "Medium relevance to your question",

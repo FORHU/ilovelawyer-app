@@ -25,36 +25,65 @@ import { lawPreviewQueryOptions } from "@/lib/law/queries";
 import type { CitationRankItem, CitationRankTier } from "@/lib/chat/mutations";
 import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote } from "./citation-preview-card";
 
-// Yellow tint + solid gold underline. Deliberately distinct from the two other inline treatments
-// in a reply (assistant-message.tsx): the active evidence quote is a stronger yellow-200 <mark>
-// with no underline, and a decision anchor is a dotted gold underline with no fill. The two can't
-// nest — quote matching only runs on plain-string children, and a citation is an <a>.
-// box-decoration-clone repeats the padding/rounding on every line of a citation that wraps; the
-// -mx-0.5 cancels the px-0.5 so the tint doesn't shift the surrounding text.
+// A citation reads as a rounded pill in an italic serif, followed by a small badge that says what
+// kind of authority it is (Law, Jurisprudence). The pill is tinted by kind (pink for law, blue for
+// jurisprudence) until the authority has a ranking; a ranked citation tints by tier instead and
+// adds an underline style, so the tier never rides on colour alone: High is solid green, Medium
+// dashed amber, Low dotted slate. The badge keeps its kind colour either way.
+// box-decoration-clone repeats the padding and rounding on every line of a citation that wraps.
 const CITATION_BASE_CLASS =
-  "-mx-0.5 box-decoration-clone cursor-pointer rounded-[3px] px-0.5 font-medium text-foreground " +
-  "underline underline-offset-[3px] transition-colors duration-150 " +
+  "mx-0.5 cursor-pointer box-decoration-clone rounded-md px-1.5 py-0.5 font-['Source_Serif_4'] font-medium italic " +
+  "text-foreground transition-colors duration-150 underline-offset-[3px] " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold";
 
-const CITATION_NEUTRAL_CLASS =
-  "bg-yellow-100 decoration-brand-gold decoration-[1.5px] " +
-  "hover:bg-yellow-200 data-[open]:bg-yellow-200 " +
-  "dark:bg-yellow-400/15 dark:hover:bg-yellow-400/25 dark:data-[open]:bg-yellow-400/25";
+type CitationKind = "law" | "jurisprudence";
 
-// A rated citation changes fill AND underline style, so the tier never rides on colour alone:
-// High is a solid green underline, Medium dashed blue, Low dotted slate. Unrated (no entry in
-// the message's citationRanking) keeps the neutral treatment above.
+const CITATION_KIND_CLASS: Record<CitationKind, string> = {
+  law:
+    "bg-pink-100 hover:bg-pink-200 data-[open]:bg-pink-200 " +
+    "dark:bg-fuchsia-900/45 dark:hover:bg-fuchsia-900/60 dark:data-[open]:bg-fuchsia-900/60",
+  jurisprudence:
+    "bg-sky-100 hover:bg-sky-200 data-[open]:bg-sky-200 " +
+    "dark:bg-sky-900/45 dark:hover:bg-sky-900/60 dark:data-[open]:bg-sky-900/60",
+};
+
+const CITATION_BADGE_CLASS: Record<CitationKind, string> = {
+  law: "bg-pink-300 text-pink-950 dark:bg-fuchsia-700 dark:text-white",
+  jurisprudence: "bg-sky-300 text-sky-950 dark:bg-sky-600 dark:text-white",
+};
+
 const CITATION_TIER_CLASS: Record<CitationRankTier, string> = {
   HIGH:
-    "bg-emerald-100 decoration-emerald-600 decoration-solid decoration-2 hover:bg-emerald-200 data-[open]:bg-emerald-200 " +
-    "dark:bg-emerald-400/15 dark:decoration-emerald-400 dark:hover:bg-emerald-400/25 dark:data-[open]:bg-emerald-400/25",
+    "bg-emerald-100 hover:bg-emerald-200 data-[open]:bg-emerald-200 underline decoration-emerald-600 decoration-solid decoration-2 " +
+    "dark:bg-emerald-900/45 dark:hover:bg-emerald-900/60 dark:data-[open]:bg-emerald-900/60 dark:decoration-emerald-400",
   MEDIUM:
-    "bg-sky-100 decoration-sky-600 decoration-dashed decoration-[1.5px] hover:bg-sky-200 data-[open]:bg-sky-200 " +
-    "dark:bg-sky-400/15 dark:decoration-sky-400 dark:hover:bg-sky-400/25 dark:data-[open]:bg-sky-400/25",
+    "bg-amber-100 hover:bg-amber-200 data-[open]:bg-amber-200 underline decoration-amber-600 decoration-dashed decoration-[1.5px] " +
+    "dark:bg-amber-900/45 dark:hover:bg-amber-900/60 dark:data-[open]:bg-amber-900/60 dark:decoration-amber-400",
   LOW:
-    "bg-slate-100 decoration-slate-500 decoration-dotted decoration-[1.5px] hover:bg-slate-200 data-[open]:bg-slate-200 " +
-    "dark:bg-slate-400/15 dark:decoration-slate-400 dark:hover:bg-slate-400/25 dark:data-[open]:bg-slate-400/25",
+    "bg-slate-100 hover:bg-slate-200 data-[open]:bg-slate-200 underline decoration-slate-500 decoration-dotted decoration-[1.5px] " +
+    "dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:data-[open]:bg-slate-800 dark:decoration-slate-400",
 };
+
+const CITATION_BADGE_BASE_CLASS =
+  "ml-1.5 inline-block rounded px-1.5 py-px align-[1px] font-sans text-[11px] font-semibold not-italic leading-4 no-underline";
+
+/** Law or Jurisprudence, from the Library category in the href. */
+export function citationKindOf(category: string | undefined): CitationKind | null {
+  if (category === "republic-acts" || category === "uk-legislation") return "law";
+  if (category === "jurisprudence" || category === "uk-case-law") return "jurisprudence";
+  return null;
+}
+
+// chat-wonder suffixes a citation's label with a literal " Law" or " Jurisprudence". The badge says
+// that now, so it comes off the visible text rather than being shown twice.
+const BADGE_SUFFIX_RE = /\s+(Law|Jurisprudence)\s*$/i;
+export function stripBadgeSuffix(children: React.ReactNode): React.ReactNode {
+  if (typeof children === "string") return children.replace(BADGE_SUFFIX_RE, "");
+  if (Array.isArray(children) && children.length && typeof children[children.length - 1] === "string") {
+    return [...children.slice(0, -1), (children[children.length - 1] as string).replace(BADGE_SUFFIX_RE, "")];
+  }
+  return children;
+}
 
 // A click is a PointerEvent carrying the real input type in Chromium and Firefox; where it isn't
 // (older iOS Safari), fall back to "this device can't hover", which is what matters here anyway —
@@ -87,6 +116,9 @@ export function CitationLink({ href, children, rank }: { href: string; children:
   const { t } = useTranslation("library");
   const queryClient = useQueryClient();
   const target = React.useMemo(() => parseLibraryHref(href), [href]);
+  const kind = citationKindOf(target?.category);
+  // Only strip the suffix when the badge is going to say it instead.
+  const label = kind ? stripBadgeSuffix(children) : children;
   const [open, setOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
@@ -125,7 +157,8 @@ export function CitationLink({ href, children, rank }: { href: string; children:
         rel="noopener noreferrer"
         data-open={open || sheetOpen ? "" : undefined}
         data-rank={rank?.tier}
-        className={`${CITATION_BASE_CLASS} ${rank ? CITATION_TIER_CLASS[rank.tier] : CITATION_NEUTRAL_CLASS}`}
+        data-kind={kind ?? undefined}
+        className={`${CITATION_BASE_CLASS} ${rank ? CITATION_TIER_CLASS[rank.tier] : kind ? CITATION_KIND_CLASS[kind] : CITATION_KIND_CLASS.law}`}
         {...getReferenceProps({
           onPointerEnter: prefetch,
           onFocus: prefetch,
@@ -137,7 +170,8 @@ export function CitationLink({ href, children, rank }: { href: string; children:
           },
         })}
       >
-        {children}
+        {label}
+        {kind && <span className={`${CITATION_BADGE_BASE_CLASS} ${CITATION_BADGE_CLASS[kind]}`}>{t(`citationBadge.${kind}`)}</span>}
         {rank && (
           <span className="sr-only">
             {" ("}
@@ -157,7 +191,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
             className="z-50"
             {...getFloatingProps()}
           >
-            <CitationPreviewCard target={target} href={href} label={children} rank={rank} />
+            <CitationPreviewCard target={target} href={href} label={label} rank={rank} />
           </div>
         </FloatingPortal>
       )}
@@ -166,7 +200,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetContent side="bottom" className="px-4 pt-12 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <SheetTitle className="sr-only">{t("citationPreview.sheetTitle")}</SheetTitle>
-            <CitationPreviewBody target={target} label={children} />
+            <CitationPreviewBody target={target} label={label} />
             {rank && <CitationRankNote rank={rank} />}
             <CitationCta href={href} onClick={() => setSheetOpen(false)} className="w-full justify-center" />
           </SheetContent>
