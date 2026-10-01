@@ -82,24 +82,34 @@ describe("citation pill: kind badge and label", () => {
 
   it("gives a ranked link a badge in a deeper shade of its own tier colour", () => {
     const html = renderMessage([item({ tier: "HIGH" })])
-    expect(html).toContain("bg-emerald-100")
-    expect(html).toContain("bg-emerald-300")
+    expect(html).toContain("bg-emerald-200")
+    expect(html).toContain("bg-emerald-600")
     expect(html).toContain("citationBadge.law")
-    expect(html).not.toContain("bg-sky-300")
+    expect(html).not.toContain("bg-sky-600")
   })
 
   it("uses blue for an unranked law and indigo for an unranked case, and never pink", () => {
     const law = renderMessage(undefined)
-    expect(law).toContain("bg-sky-100")
-    expect(law).toContain("bg-sky-300")
+    expect(law).toContain("bg-sky-200")
+    expect(law).toContain("bg-sky-600")
     const juris = renderContent(`See [X v. Y Jurisprudence](${JURIS}).`)
-    expect(juris).toContain("bg-indigo-100")
-    expect(juris).toContain("bg-indigo-300")
+    expect(juris).toContain("bg-indigo-200")
+    expect(juris).toContain("bg-indigo-600")
     expect(law + juris).not.toMatch(/pink|fuchsia/)
   })
 
-  it("sets the citation text in bold", () => {
-    expect(renderMessage(undefined)).toContain("font-bold")
+  it("sets the citation text in bold with extra letter and word spacing for readability", () => {
+    const html = renderMessage(undefined)
+    expect(html).toContain("font-bold")
+    expect(html).toContain("tracking-[0.02em]")
+    expect(html).toContain("word-spacing:0.08em")
+  })
+
+  it("is a solid, saturated pill in dark mode and a deep badge in light mode", () => {
+    const html = renderMessage([item({ tier: "HIGH" })])
+    expect(html).toContain("dark:bg-emerald-800")
+    expect(html).toContain("dark:text-white")
+    expect(html).toContain("bg-emerald-600 text-white")
   })
 })
 

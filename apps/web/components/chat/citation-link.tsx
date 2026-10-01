@@ -31,8 +31,8 @@ import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote
 // ranked one takes its tier colour (green, amber, slate) and an underline style as well.
 // box-decoration-clone repeats the padding and rounding on every line of a citation that wraps.
 const CITATION_BASE_CLASS =
-  "mx-0.5 cursor-pointer box-decoration-clone rounded-md px-1.5 py-0.5 font-['Source_Serif_4'] font-bold italic " +
-  "text-foreground transition-colors duration-150 underline-offset-[3px] " +
+  "mx-1 cursor-pointer box-decoration-clone rounded-md px-2 py-[3px] font-['Source_Serif_4'] font-bold italic " +
+  "tracking-[0.02em] [word-spacing:0.08em] transition-colors duration-150 underline-offset-4 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold";
 
 type CitationKind = "law" | "jurisprudence";
@@ -41,23 +41,31 @@ type ColourFamily = "sky" | "indigo" | "emerald" | "amber" | "slate";
 // Every citation is one colour family twice: a light tint for the pill and a deeper shade of the
 // same colour for its badge, so a green pill carries a green badge and a blue one a blue badge.
 const PILL_CLASS: Record<ColourFamily, string> = {
-  sky: "bg-sky-100 hover:bg-sky-200 data-[open]:bg-sky-200 dark:bg-sky-900/45 dark:hover:bg-sky-900/60 dark:data-[open]:bg-sky-900/60",
+  sky:
+    "bg-sky-200 text-sky-950 hover:bg-sky-300 data-[open]:bg-sky-300 " +
+    "dark:bg-sky-800 dark:text-white dark:hover:bg-sky-700 dark:data-[open]:bg-sky-700",
   indigo:
-    "bg-indigo-100 hover:bg-indigo-200 data-[open]:bg-indigo-200 dark:bg-indigo-900/45 dark:hover:bg-indigo-900/60 dark:data-[open]:bg-indigo-900/60",
+    "bg-indigo-200 text-indigo-950 hover:bg-indigo-300 data-[open]:bg-indigo-300 " +
+    "dark:bg-indigo-800 dark:text-white dark:hover:bg-indigo-700 dark:data-[open]:bg-indigo-700",
   emerald:
-    "bg-emerald-100 hover:bg-emerald-200 data-[open]:bg-emerald-200 dark:bg-emerald-900/45 dark:hover:bg-emerald-900/60 dark:data-[open]:bg-emerald-900/60",
+    "bg-emerald-200 text-emerald-950 hover:bg-emerald-300 data-[open]:bg-emerald-300 " +
+    "dark:bg-emerald-800 dark:text-white dark:hover:bg-emerald-700 dark:data-[open]:bg-emerald-700",
   amber:
-    "bg-amber-100 hover:bg-amber-200 data-[open]:bg-amber-200 dark:bg-amber-900/45 dark:hover:bg-amber-900/60 dark:data-[open]:bg-amber-900/60",
+    "bg-amber-200 text-amber-950 hover:bg-amber-300 data-[open]:bg-amber-300 " +
+    "dark:bg-amber-800 dark:text-white dark:hover:bg-amber-700 dark:data-[open]:bg-amber-700",
   slate:
-    "bg-slate-100 hover:bg-slate-200 data-[open]:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:data-[open]:bg-slate-800",
+    "bg-slate-200 text-slate-900 hover:bg-slate-300 data-[open]:bg-slate-300 " +
+    "dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 dark:data-[open]:bg-slate-600",
 };
 
+// The badge is the same colour, deeper, so it reads as part of the pill: strong with white text in
+// light mode, bright with dark text in dark mode.
 const BADGE_CLASS: Record<ColourFamily, string> = {
-  sky: "bg-sky-300 text-sky-950 dark:bg-sky-600 dark:text-white",
-  indigo: "bg-indigo-300 text-indigo-950 dark:bg-indigo-600 dark:text-white",
-  emerald: "bg-emerald-300 text-emerald-950 dark:bg-emerald-600 dark:text-white",
-  amber: "bg-amber-300 text-amber-950 dark:bg-amber-600 dark:text-white",
-  slate: "bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-white",
+  sky: "bg-sky-600 text-white dark:bg-sky-400 dark:text-sky-950",
+  indigo: "bg-indigo-600 text-white dark:bg-indigo-400 dark:text-indigo-950",
+  emerald: "bg-emerald-600 text-white dark:bg-emerald-400 dark:text-emerald-950",
+  amber: "bg-amber-500 text-amber-950 dark:bg-amber-400 dark:text-amber-950",
+  slate: "bg-slate-600 text-white dark:bg-slate-400 dark:text-slate-950",
 };
 
 // An unranked citation takes its colour from what it is: law is blue, jurisprudence indigo.
@@ -67,13 +75,13 @@ const KIND_FAMILY: Record<CitationKind, ColourFamily> = { law: "sky", jurisprude
 // rides on colour alone: High is a solid green underline, Medium dashed amber, Low dotted slate.
 const TIER_FAMILY: Record<CitationRankTier, ColourFamily> = { HIGH: "emerald", MEDIUM: "amber", LOW: "slate" };
 const TIER_UNDERLINE_CLASS: Record<CitationRankTier, string> = {
-  HIGH: "underline decoration-emerald-600 decoration-solid decoration-2 dark:decoration-emerald-400",
-  MEDIUM: "underline decoration-amber-600 decoration-dashed decoration-[1.5px] dark:decoration-amber-400",
-  LOW: "underline decoration-slate-500 decoration-dotted decoration-[1.5px] dark:decoration-slate-400",
+  HIGH: "underline decoration-emerald-700 decoration-solid decoration-2 dark:decoration-emerald-300",
+  MEDIUM: "underline decoration-amber-700 decoration-dashed decoration-2 dark:decoration-amber-300",
+  LOW: "underline decoration-slate-600 decoration-dotted decoration-2 dark:decoration-slate-300",
 };
 
 const CITATION_BADGE_BASE_CLASS =
-  "ml-1.5 inline-block rounded px-1.5 py-px align-[1px] font-sans text-[11px] font-semibold not-italic leading-4 no-underline";
+  "ml-2 inline-block rounded px-1.5 py-px align-[1px] font-sans text-[11px] font-semibold not-italic leading-4 tracking-normal no-underline [word-spacing:normal]";
 
 /** Law or Jurisprudence, from the Library category in the href. */
 export function citationKindOf(category: string | undefined): CitationKind | null {
