@@ -16,7 +16,6 @@ import type {
   CaseReconstruction,
   CaseSnapshot,
   CaseTheory,
-  DamageCategory,
   DamageClaim,
   DamageClaimBody,
   DeadlineRule,
@@ -869,6 +868,9 @@ export function useUpdateProcedureItemMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      // Ticking a to-do sent from another panel settles that item too (a defense Answered, a
+      // witness's statement received…); Legal Issues and Witnesses read the graph view.
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -1105,7 +1107,7 @@ export function useDeleteWitnessMutation(caseId: string) {
 export function useCreateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: DamageClaimBody & { category: DamageCategory }) =>
+    mutationFn: (body: DamageClaimBody & Required<Pick<DamageClaimBody, "kind" | "title">>) =>
       apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -1116,8 +1118,8 @@ export function useCreateDamageMutation(caseId: string) {
   })
 }
 
-// Editing one head can change others (attorney's fees are recomputed from the heads they're a
-// percentage of), so this refreshes the whole snapshot rather than patching one row in place.
+// Refreshes the whole snapshot: marking an entry awarded ticks its Case Strategy to-dos, and a new
+// due date moves them.
 export function useUpdateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1144,25 +1146,11 @@ export function useProposeDamagesMutation(caseId: string) {
   })
 }
 
-// A suggested update from new evidence (DamageClaim.aiProposedBasis): apply replaces the head's
-// figures (and certifies it when the document was the awaited evidence), dismiss drops it. Both can
-// move other heads (attorney's fees), so both refresh the whole snapshot.
-export function useApplyDamageProposalMutation(caseId: string) {
+// Accepts an AI-proposed entry, so it counts in the total.
+export function useAcceptDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/apply`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-    },
-  })
-}
-
-export function useDismissDamageProposalMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/proposal/dismiss`, { method: "POST" }),
+    mutationFn: (id: string) => apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/accept`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },

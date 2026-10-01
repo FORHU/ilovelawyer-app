@@ -243,8 +243,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     });
     snap.damages.forEach((d) => {
       rows.push({
-        type: `${t("workspace.dataTableTypeDamage")} · ${formatCategory(d.category)}`,
-        label: d.description?.trim() || "—",
+        type: `${t("workspace.dataTableTypeDamage")} · ${formatCategory(d.kind)}`,
+        label: d.title,
         detail: d.amount != null ? d.amount.toLocaleString() : "—",
       });
     });

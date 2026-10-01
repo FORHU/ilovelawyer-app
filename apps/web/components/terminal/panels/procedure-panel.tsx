@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
+import { daysUntil } from "@/lib/terminal/damages-format"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -199,7 +200,17 @@ export function ProcedurePanel({
               </span>
             </span>
           )}
-          {/* Ticked by its source (a weakness closed, a head certified…), not by a person. */}
+          {/* A to-do sent from a Damages & Remedies entry carries its deadline. */}
+          {item.dueDate && (
+            <span
+              className={`mt-0.5 block text-[10px] tabular-nums ${!item.done && daysUntil(item.dueDate) < 0 ? "text-danger" : "text-muted-foreground"}`}
+            >
+              {t(!item.done && daysUntil(item.dueDate) < 0 ? "todoOverdue" : "todoDue", {
+                date: new Date(item.dueDate).toLocaleDateString(undefined, { timeZone: "UTC" }),
+              })}
+            </span>
+          )}
+          {/* Ticked by its source (a weakness closed, an entry awarded…), not by a person. */}
           {item.done && item.autoClosedReason && (
             <span className="mt-0.5 block text-[10px] text-ok">
               {t("todoAutoClosed", { reason: t(`todoAutoClosedReason.${item.autoClosedReason}`) })}

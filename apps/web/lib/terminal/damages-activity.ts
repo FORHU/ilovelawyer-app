@@ -24,7 +24,7 @@ export interface DamagesTrackerInput {
   status: AiJobStatus["status"] | undefined
   /** When the job status was last updated (react-query's dataUpdatedAt). */
   jobUpdatedAt: number
-  /** Heads + suggested updates in the current snapshot; null while it hasn't loaded. */
+  /** Entries in the current snapshot; null while it hasn't loaded. */
   count: number | null
   snapshotUpdatedAt: number
   paneVisible: boolean
@@ -34,10 +34,10 @@ export function initialDamagesTracker(snapshotUpdatedAt: number): DamagesTracker
   return { status: undefined, snapshotAt: snapshotUpdatedAt, baseline: null, finishedAt: null, fresh: false }
 }
 
-/** What counts as "something new" in the pane: its heads, plus suggested updates on a head. */
+/** What counts as "something new" in the pane: its entries, AI suggestions included. */
 export function damagesItemCount(snapshot: CaseSnapshot | undefined): number | null {
   if (!snapshot) return null
-  return snapshot.damages.length + snapshot.damages.filter((d) => d.aiProposedBasis).length
+  return snapshot.damages.length
 }
 
 /** The tracker after these inputs — the same object when nothing changed, so a caller holding it
