@@ -74,28 +74,23 @@ function TurnSentences({
   return <>{parts}</>
 }
 
-const SCROLL_SETTLE_MS = 250
-// Matches the scrollIntoView smooth-scroll's own rough duration — past this, any further scroll
-// on the container is the listener's doing, not the tail end of our own auto-scroll animation.
-const AUTO_SCROLL_SETTLE_MS = 600
-
 /** The script as a list of host turns, each with Jev's verdict when there is one. `checks` is
  * empty/absent when the check is off or hasn't finished — turns then render bare.
  *
  * With `currentTime` and `turnTimings` both given, the turn currently playing is picked out
  * (full brightness, a left accent) while the rest dim — Spotify's synced-lyrics look — and the
- * active turn is scrolled into view as playback moves past it. A listener who manually scrolls
- * the transcript re-anchors that sync to wherever they scrolled to, invisibly (a constant
- * seconds-offset applied to `currentTime` from then on, like a subtitle-offset control, but
- * driven by the scroll gesture itself rather than a visible +/- button) — the fix for
- * turnTimings drifting flatter across a long script than the actual audio, without adding any UI
- * chrome for it. Without `currentTime`/`turnTimings` (audio not rendered, or an overview from
- * before this shipped), every turn renders the same as before and the scroll area behaves like
- * a plain list.
+ * active turn is scrolled into view as playback moves past it. Without `currentTime`/
+ * `turnTimings` (audio not rendered, or an overview from before this shipped), every turn
+ * renders the same as before and the scroll area behaves like a plain list.
  *
  * With `sentenceTimings` too, the sentence being spoken within the active turn is highlighted
- * as well, on the same offset-corrected clock. Overviews rendered before sentence timings
- * existed have none and keep the turn-level highlight only. */
+ * as well. Overviews rendered before sentence timings existed have none and keep the
+ * turn-level highlight only.
+ *
+ * turnTimings used to drift later than the audio across a long script, and a manual scroll used
+ * to re-anchor the clock to compensate. The drift was each clip's MP3 header frame being counted
+ * though the merge drops it (ilovelawyer-api's headerFrameSeconds) — fixed at the source, so
+ * scrolling the transcript is just scrolling again. */
 export function AudioOverviewTurns({
   turns,
   checks,
@@ -117,62 +112,19 @@ export function AudioOverviewTurns({
   const { t } = useTranslation("case-portfolio")
   const byTurn = new Map((checks ?? []).map((c) => [c.turn, c]))
 
-  const scrollRef = useRef<HTMLDivElement>(null)
   const turnRefs = useRef<(HTMLDivElement | null)[]>([])
-  const syncOffsetRef = useRef(0)
-  const programmaticScrollRef = useRef(false)
-  const scrollSettleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // A fresh overview starts with no correction — one script's drift has no business surviving
-  // onto a completely different recording.
-  useEffect(() => {
-    syncOffsetRef.current = 0
-  }, [turns])
-
-  const canSync = currentTime !== undefined && !!turnTimings && turnTimings.length === turns.length
-  const effectiveTime = canSync ? currentTime! - syncOffsetRef.current : undefined
-  const activeIndex = activeTurnIndex(effectiveTime, turnTimings, turns.length)
+  const activeIndex = activeTurnIndex(currentTime, turnTimings, turns.length)
   const activeTurnSentences =
     activeIndex !== null && sentenceTimings?.length === turns.length ? sentenceTimings[activeIndex] : undefined
 
   useEffect(() => {
     if (activeIndex === null) return
-    const el = turnRefs.current[activeIndex]
-    if (!el) return
-    programmaticScrollRef.current = true
-    el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-    const timeout = setTimeout(() => {
-      programmaticScrollRef.current = false
-    }, AUTO_SCROLL_SETTLE_MS)
-    return () => clearTimeout(timeout)
+    turnRefs.current[activeIndex]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [activeIndex])
 
-  const handleScroll = () => {
-    if (!canSync || programmaticScrollRef.current) return
-    if (scrollSettleTimeoutRef.current) clearTimeout(scrollSettleTimeoutRef.current)
-    scrollSettleTimeoutRef.current = setTimeout(() => {
-      const container = scrollRef.current
-      if (!container || !turnTimings) return
-      const containerMid = container.getBoundingClientRect().top + container.clientHeight / 2
-      let closestIndex: number | null = null
-      let closestDistance = Infinity
-      turnRefs.current.forEach((el, i) => {
-        if (!el) return
-        const rect = el.getBoundingClientRect()
-        const distance = Math.abs(rect.top + rect.height / 2 - containerMid)
-        if (distance < closestDistance) {
-          closestDistance = distance
-          closestIndex = i
-        }
-      })
-      // Re-anchors so effectiveTime reads as exactly this turn's nominal start right now — the
-      // whole timeline shifts by that same constant from here on, not just this one turn.
-      if (closestIndex !== null) syncOffsetRef.current = currentTime! - turnTimings[closestIndex]!
-    }, SCROLL_SETTLE_MS)
-  }
-
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className={`space-y-3 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       {turns.map((turn, i) => {
         const check = byTurn.get(i)
         const isActive = activeIndex === null || activeIndex === i
@@ -195,7 +147,7 @@ export function AudioOverviewTurns({
                 <TurnSentences
                   text={turn.text}
                   sentences={activeTurnSentences}
-                  activeSentence={activeSentenceIndex(effectiveTime!, activeTurnSentences)}
+                  activeSentence={activeSentenceIndex(currentTime!, activeTurnSentences)}
                 />
               ) : (
                 turn.text
