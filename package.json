@@ -9,7 +9,8 @@
     "dev:https:ph": "pnpm --filter web dev:https:ph",
     "lint": "pnpm -r run lint",
     "format": "pnpm -r run format",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "postinstall": "node -e \"require('node:fs').rmSync('apps/web/.next',{recursive:true,force:true})\""
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
