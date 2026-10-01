@@ -136,9 +136,17 @@ export function useNotificationSocket() {
       })
     }
 
+    // The API ranks a reply's citations in the background after chat:done (and after the live
+    // generation subscription has already gone), so this lives on the long-lived socket: refetch
+    // the messages so each CitationLink picks up its tier.
+    const handleCitationRanking = () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.all })
+    }
+
     socket.on("connect", handleConnect)
     socket.on("notification:new", handleNew)
     socket.on("chat:title-updated", handleTitleUpdated)
+    socket.on("chat:citation-ranking", handleCitationRanking)
     const unregisterDocumentHandlers = registerDocumentSocketHandlers(socket, queryClient)
     socket.connect()
 
@@ -146,6 +154,7 @@ export function useNotificationSocket() {
       socket.off("connect", handleConnect)
       socket.off("notification:new", handleNew)
       socket.off("chat:title-updated", handleTitleUpdated)
+      socket.off("chat:citation-ranking", handleCitationRanking)
       unregisterDocumentHandlers()
       socket.disconnect()
     }

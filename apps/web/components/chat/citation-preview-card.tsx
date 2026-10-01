@@ -6,6 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { lawPreviewQueryOptions, type LawCategoryParam } from "@/lib/law/queries";
+import type { CitationRankItem } from "@/lib/chat/mutations";
 
 export interface CitationTarget {
   category: LawCategoryParam;
@@ -13,13 +14,51 @@ export interface CitationTarget {
 }
 
 /** The hover card CitationLink floats over a chat citation: preview body + "Open in Library". */
-export function CitationPreviewCard({ target, href, label }: { target: CitationTarget; href: string; label: React.ReactNode }) {
+export function CitationPreviewCard({
+  target,
+  href,
+  label,
+  rank,
+}: {
+  target: CitationTarget;
+  href: string;
+  label: React.ReactNode;
+  rank?: CitationRankItem;
+}) {
   return (
     <div className="w-[340px] max-w-[calc(100vw-24px)] rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none">
       <CitationPreviewBody target={target} label={label} />
+      {rank && <CitationRankNote rank={rank} className="mt-3" />}
       {/* tabIndex -1: the citation link itself already opens this same URL, so for keyboard users
           the CTA would only be a redundant tab stop — it's here for the mouse. */}
       <CitationCta href={href} tabIndex={-1} className="mt-4" />
+    </div>
+  );
+}
+
+/** Why a cited authority got its tier, plus the line that says what the tier is not: it is a
+ * reading aid based on the user's question, never a check that the authority or the advice is right. */
+export function CitationRankNote({ rank, className }: { rank: CitationRankItem; className?: string }) {
+  const { t } = useTranslation("library");
+  return (
+    <div className={cn("flex flex-col gap-1.5 border-t border-border pt-3 text-xs", className)}>
+      <p className="font-semibold text-foreground">{t(`citationRank.${rank.tier.toLowerCase()}`)}</p>
+      <dl className="flex flex-col gap-1">
+        {rank.relevance && (
+          <div>
+            <dt className="inline font-medium text-foreground">{t("citationRank.relevanceLabel")}: </dt>
+            <dd className="inline text-muted-foreground">{t(`citationRank.relevance.${rank.relevance.toLowerCase()}`)}</dd>
+          </div>
+        )}
+        {rank.importance && (
+          <div>
+            <dt className="inline font-medium text-foreground">{t("citationRank.importanceLabel")}: </dt>
+            <dd className="inline text-muted-foreground">{t(`citationRank.importance.${rank.importance.toLowerCase()}`)}</dd>
+          </div>
+        )}
+      </dl>
+      {rank.reason && <p className="text-muted-foreground">{rank.reason}</p>}
+      <p className="text-muted-foreground">{t("citationRank.disclaimer")}</p>
     </div>
   );
 }
