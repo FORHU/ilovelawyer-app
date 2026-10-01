@@ -80,10 +80,26 @@ describe("citation pill: kind badge and label", () => {
     expect(html).toContain("rounded-md")
   })
 
-  it("tints a ranked link by tier but keeps the kind badge", () => {
+  it("gives a ranked link a badge in a deeper shade of its own tier colour", () => {
     const html = renderMessage([item({ tier: "HIGH" })])
     expect(html).toContain("bg-emerald-100")
+    expect(html).toContain("bg-emerald-300")
     expect(html).toContain("citationBadge.law")
+    expect(html).not.toContain("bg-sky-300")
+  })
+
+  it("uses blue for an unranked law and indigo for an unranked case, and never pink", () => {
+    const law = renderMessage(undefined)
+    expect(law).toContain("bg-sky-100")
+    expect(law).toContain("bg-sky-300")
+    const juris = renderContent(`See [X v. Y Jurisprudence](${JURIS}).`)
+    expect(juris).toContain("bg-indigo-100")
+    expect(juris).toContain("bg-indigo-300")
+    expect(law + juris).not.toMatch(/pink|fuchsia/)
+  })
+
+  it("sets the citation text in bold", () => {
+    expect(renderMessage(undefined)).toContain("font-bold")
   })
 })
 

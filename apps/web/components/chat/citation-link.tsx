@@ -25,43 +25,51 @@ import { lawPreviewQueryOptions } from "@/lib/law/queries";
 import type { CitationRankItem, CitationRankTier } from "@/lib/chat/mutations";
 import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote } from "./citation-preview-card";
 
-// A citation reads as a rounded pill in an italic serif, followed by a small badge that says what
-// kind of authority it is (Law, Jurisprudence). The pill is tinted by kind (pink for law, blue for
-// jurisprudence) until the authority has a ranking; a ranked citation tints by tier instead and
-// adds an underline style, so the tier never rides on colour alone: High is solid green, Medium
-// dashed amber, Low dotted slate. The badge keeps its kind colour either way.
+// A citation reads as a bold italic serif pill followed by a small badge that says what kind of
+// authority it is (Law, Jurisprudence). Pill and badge are one colour family, light for the pill
+// and deeper for the badge. An unranked citation is blue for law and indigo for jurisprudence; a
+// ranked one takes its tier colour (green, amber, slate) and an underline style as well.
 // box-decoration-clone repeats the padding and rounding on every line of a citation that wraps.
 const CITATION_BASE_CLASS =
-  "mx-0.5 cursor-pointer box-decoration-clone rounded-md px-1.5 py-0.5 font-['Source_Serif_4'] font-medium italic " +
+  "mx-0.5 cursor-pointer box-decoration-clone rounded-md px-1.5 py-0.5 font-['Source_Serif_4'] font-bold italic " +
   "text-foreground transition-colors duration-150 underline-offset-[3px] " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold";
 
 type CitationKind = "law" | "jurisprudence";
+type ColourFamily = "sky" | "indigo" | "emerald" | "amber" | "slate";
 
-const CITATION_KIND_CLASS: Record<CitationKind, string> = {
-  law:
-    "bg-pink-100 hover:bg-pink-200 data-[open]:bg-pink-200 " +
-    "dark:bg-fuchsia-900/45 dark:hover:bg-fuchsia-900/60 dark:data-[open]:bg-fuchsia-900/60",
-  jurisprudence:
-    "bg-sky-100 hover:bg-sky-200 data-[open]:bg-sky-200 " +
-    "dark:bg-sky-900/45 dark:hover:bg-sky-900/60 dark:data-[open]:bg-sky-900/60",
+// Every citation is one colour family twice: a light tint for the pill and a deeper shade of the
+// same colour for its badge, so a green pill carries a green badge and a blue one a blue badge.
+const PILL_CLASS: Record<ColourFamily, string> = {
+  sky: "bg-sky-100 hover:bg-sky-200 data-[open]:bg-sky-200 dark:bg-sky-900/45 dark:hover:bg-sky-900/60 dark:data-[open]:bg-sky-900/60",
+  indigo:
+    "bg-indigo-100 hover:bg-indigo-200 data-[open]:bg-indigo-200 dark:bg-indigo-900/45 dark:hover:bg-indigo-900/60 dark:data-[open]:bg-indigo-900/60",
+  emerald:
+    "bg-emerald-100 hover:bg-emerald-200 data-[open]:bg-emerald-200 dark:bg-emerald-900/45 dark:hover:bg-emerald-900/60 dark:data-[open]:bg-emerald-900/60",
+  amber:
+    "bg-amber-100 hover:bg-amber-200 data-[open]:bg-amber-200 dark:bg-amber-900/45 dark:hover:bg-amber-900/60 dark:data-[open]:bg-amber-900/60",
+  slate:
+    "bg-slate-100 hover:bg-slate-200 data-[open]:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:data-[open]:bg-slate-800",
 };
 
-const CITATION_BADGE_CLASS: Record<CitationKind, string> = {
-  law: "bg-pink-300 text-pink-950 dark:bg-fuchsia-700 dark:text-white",
-  jurisprudence: "bg-sky-300 text-sky-950 dark:bg-sky-600 dark:text-white",
+const BADGE_CLASS: Record<ColourFamily, string> = {
+  sky: "bg-sky-300 text-sky-950 dark:bg-sky-600 dark:text-white",
+  indigo: "bg-indigo-300 text-indigo-950 dark:bg-indigo-600 dark:text-white",
+  emerald: "bg-emerald-300 text-emerald-950 dark:bg-emerald-600 dark:text-white",
+  amber: "bg-amber-300 text-amber-950 dark:bg-amber-600 dark:text-white",
+  slate: "bg-slate-300 text-slate-900 dark:bg-slate-600 dark:text-white",
 };
 
-const CITATION_TIER_CLASS: Record<CitationRankTier, string> = {
-  HIGH:
-    "bg-emerald-100 hover:bg-emerald-200 data-[open]:bg-emerald-200 underline decoration-emerald-600 decoration-solid decoration-2 " +
-    "dark:bg-emerald-900/45 dark:hover:bg-emerald-900/60 dark:data-[open]:bg-emerald-900/60 dark:decoration-emerald-400",
-  MEDIUM:
-    "bg-amber-100 hover:bg-amber-200 data-[open]:bg-amber-200 underline decoration-amber-600 decoration-dashed decoration-[1.5px] " +
-    "dark:bg-amber-900/45 dark:hover:bg-amber-900/60 dark:data-[open]:bg-amber-900/60 dark:decoration-amber-400",
-  LOW:
-    "bg-slate-100 hover:bg-slate-200 data-[open]:bg-slate-200 underline decoration-slate-500 decoration-dotted decoration-[1.5px] " +
-    "dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:data-[open]:bg-slate-800 dark:decoration-slate-400",
+// An unranked citation takes its colour from what it is: law is blue, jurisprudence indigo.
+const KIND_FAMILY: Record<CitationKind, ColourFamily> = { law: "sky", jurisprudence: "indigo" };
+
+// A ranked citation takes its colour from its tier and adds an underline style, so the tier never
+// rides on colour alone: High is a solid green underline, Medium dashed amber, Low dotted slate.
+const TIER_FAMILY: Record<CitationRankTier, ColourFamily> = { HIGH: "emerald", MEDIUM: "amber", LOW: "slate" };
+const TIER_UNDERLINE_CLASS: Record<CitationRankTier, string> = {
+  HIGH: "underline decoration-emerald-600 decoration-solid decoration-2 dark:decoration-emerald-400",
+  MEDIUM: "underline decoration-amber-600 decoration-dashed decoration-[1.5px] dark:decoration-amber-400",
+  LOW: "underline decoration-slate-500 decoration-dotted decoration-[1.5px] dark:decoration-slate-400",
 };
 
 const CITATION_BADGE_BASE_CLASS =
@@ -119,6 +127,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
   const kind = citationKindOf(target?.category);
   // Only strip the suffix when the badge is going to say it instead.
   const label = kind ? stripBadgeSuffix(children) : children;
+  const family: ColourFamily = rank ? TIER_FAMILY[rank.tier] : KIND_FAMILY[kind ?? "law"];
   const [open, setOpen] = React.useState(false);
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
@@ -158,7 +167,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
         data-open={open || sheetOpen ? "" : undefined}
         data-rank={rank?.tier}
         data-kind={kind ?? undefined}
-        className={`${CITATION_BASE_CLASS} ${rank ? CITATION_TIER_CLASS[rank.tier] : kind ? CITATION_KIND_CLASS[kind] : CITATION_KIND_CLASS.law}`}
+        className={`${CITATION_BASE_CLASS} ${PILL_CLASS[family]}${rank ? ` ${TIER_UNDERLINE_CLASS[rank.tier]}` : ""}`}
         {...getReferenceProps({
           onPointerEnter: prefetch,
           onFocus: prefetch,
@@ -171,7 +180,7 @@ export function CitationLink({ href, children, rank }: { href: string; children:
         })}
       >
         {label}
-        {kind && <span className={`${CITATION_BADGE_BASE_CLASS} ${CITATION_BADGE_CLASS[kind]}`}>{t(`citationBadge.${kind}`)}</span>}
+        {kind && <span className={`${CITATION_BADGE_BASE_CLASS} ${BADGE_CLASS[family]}`}>{t(`citationBadge.${kind}`)}</span>}
         {rank && (
           <span className="sr-only">
             {" ("}
