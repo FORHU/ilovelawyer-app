@@ -200,6 +200,7 @@ function HistoryEntry({
             currentTime={currentTime}
             turnTimings={entry.turnTimings}
             sentenceTimings={entry.sentenceTimings}
+            wordTimings={entry.wordTimings}
           />
         </div>
       )}

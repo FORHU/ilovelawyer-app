@@ -174,6 +174,7 @@ function AudioOverviewCurrent({ caseId }: { caseId: string }) {
           currentTime={playbackTime}
           turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
           sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
+          wordTimings={activeAudioOverviewMessage.audioOverview?.wordTimings}
           className="h-full overflow-y-auto px-1"
         />
       </div>
