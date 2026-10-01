@@ -26,6 +26,7 @@ import type {
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
+  ProcedureSourceKind,
   ScreenPresetRow,
   SnapshotCustodyEvent,
   SnapshotEvidenceMatrixItem,
@@ -840,7 +841,14 @@ export function useCreateDeadlineMutation(caseId: string) {
 export function useCreateProcedureItemMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { kind: string; label: string; sourceLabel?: string }) =>
+    mutationFn: (body: {
+      kind: string
+      label: string
+      sourceLabel?: string
+      sourceKind?: ProcedureSourceKind
+      sourceId?: string
+      sourceKey?: string
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/items`, {
         method: "POST",
         body: JSON.stringify(body),

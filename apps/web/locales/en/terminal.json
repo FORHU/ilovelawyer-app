@@ -981,6 +981,23 @@
   "toChecklist": "To checklist",
   "addedToChecklist": "Added",
   "toChecklistHint": "Add this as a to-do in Case Strategy",
+  "addedToChecklistHint": "Already a to-do in Case Strategy. It ticks itself once this is settled.",
+  "defenseStrategyTodo": "Prepare an answer to “{{defense}}”",
+  "damageTodo": "Get the {{evidence}}",
+  "todoSource": {
+    "DAMAGE": "Damages",
+    "WITNESS": "Witness"
+  },
+  "todoAutoClosed": "Closed itself: {{reason}}",
+  "todoAutoClosedReason": {
+    "ISSUE_RESOLVED": "legal issue marked Resolved",
+    "WEAKNESS_CLOSED": "weakness marked Closed",
+    "ATTACK_READY": "attack strategy marked Ready",
+    "DEFENSE_ANSWERED": "defense marked Answered",
+    "DAMAGE_CERTIFIED": "damage head certified",
+    "DAMAGE_EVIDENCE_IN": "damage head no longer waiting on evidence",
+    "WITNESS_NEED_DONE": "witness item marked done"
+  },
   "flagRisk": "Flag risk",
   "riskFlagged": "Flagged",
   "flagRiskHint": "Record this in the risk register, marked unverified",

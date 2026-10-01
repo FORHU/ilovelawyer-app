@@ -787,6 +787,23 @@
   "toChecklist": "Sa checklist",
   "addedToChecklist": "Naidagdag",
   "toChecklistHint": "Idagdag bilang to-do sa Case Strategy",
+  "addedToChecklistHint": "To-do na ito sa Case Strategy. Kusa itong mamarkahan kapag naayos na ito.",
+  "defenseStrategyTodo": "Maghanda ng sagot sa “{{defense}}”",
+  "damageTodo": "Kunin ang {{evidence}}",
+  "todoSource": {
+    "DAMAGE": "Danyos",
+    "WITNESS": "Saksi"
+  },
+  "todoAutoClosed": "Kusang natapos: {{reason}}",
+  "todoAutoClosedReason": {
+    "ISSUE_RESOLVED": "minarkahang Resolved ang legal issue",
+    "WEAKNESS_CLOSED": "minarkahang Closed ang kahinaan",
+    "ATTACK_READY": "minarkahang Ready ang attack strategy",
+    "DEFENSE_ANSWERED": "minarkahang Answered ang depensa",
+    "DAMAGE_CERTIFIED": "na-certify ang danyos",
+    "DAMAGE_EVIDENCE_IN": "hindi na naghihintay ng ebidensya ang danyos",
+    "WITNESS_NEED_DONE": "minarkahang tapos ang kailangan sa saksi"
+  },
   "flagRisk": "I-flag ang panganib",
   "riskFlagged": "Na-flag",
   "flagRiskHint": "I-record sa risk register bilang hindi pa na-verify",

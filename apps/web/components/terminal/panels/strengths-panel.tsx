@@ -23,6 +23,8 @@ const STRENGTHS: RatedFindingConfig = {
   dimSubLine: (jev) => (jev as StrengthJevCheck).flags.includes("NOT_BORNE_OUT"),
   JevDetail: StrengthJevDetail,
   upload: true,
+  // No fixed state: a strength's to-do only closes by hand.
+  checklist: {},
 }
 
 // The weight Score comes back normalized to 0..1 over four levels (strength-jev.ts).

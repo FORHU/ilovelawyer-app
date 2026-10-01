@@ -23,6 +23,8 @@ const WEAKNESSES: RatedFindingConfig = {
   subHintKey: (jev) => ((jev as WeaknessJevCheck).curable === "NOT_CURABLE" ? "weaknessNoFix" : null),
   JevDetail: WeaknessJevDetail,
   upload: true,
+  // The to-do is the fix ("What would close it"), not the weakness itself.
+  checklist: { fixedTag: "CLOSED", todoLabel: (f) => f.detail?.trim() || f.label },
 }
 
 // Scores come back normalized to 0..1 over four levels (weakness-jev.ts) — back to the level index.

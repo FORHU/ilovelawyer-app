@@ -331,7 +331,27 @@ export interface SnapshotProcedureItem {
     confidence: number
     checkedAt: string
   } | null
+  /** The item a to-do was sent over from ("To checklist"), so it can tick itself once that item
+   * is fixed — see ilovelawyer-api utils/procedure-link.ts. Null on every other to-do; absent on
+   * an API that predates it. */
+  sourceKind?: ProcedureSourceKind | null
+  sourceId?: string | null
+  /** A witness need's key, for WITNESS_NEED only. */
+  sourceKey?: string | null
+  /** Set when the source ticked it, with why. */
+  autoClosedAt?: string | null
+  autoClosedReason?: ProcedureAutoCloseReason | null
 }
+
+export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED"
+export type ProcedureAutoCloseReason =
+  | "ISSUE_RESOLVED"
+  | "WEAKNESS_CLOSED"
+  | "ATTACK_READY"
+  | "DEFENSE_ANSWERED"
+  | "DAMAGE_CERTIFIED"
+  | "DAMAGE_EVIDENCE_IN"
+  | "WITNESS_NEED_DONE"
 
 export interface SnapshotAuditEvent {
   id: string

@@ -13,6 +13,8 @@ import {
 import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } from "@/lib/terminal/types"
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
+import { useLinkedTodos } from "@/lib/terminal/linked-todos"
+import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
@@ -68,6 +70,7 @@ export function WitnessPanel({
   const [factorAnswer, setFactorAnswer] = useState("")
   const [factorNote, setFactorNote] = useState("")
   const docs = useCaseDocumentsQuery(caseId).data ?? []
+  const todos = useLinkedTodos(caseId)
   const docName = (id: string) => docs.find((d) => d.id === id)?.name ?? t("witnessProofDocGone")
   const graphView = useGraphViewQuery(caseId, "witnesses")
   const witnesses = (graphView.data?.nodes ?? []).map((node) => ({
@@ -497,6 +500,17 @@ export function WitnessPanel({
                               {t("witnessSetYourself")}
                             </button>
                           ) : null}
+                          {/* Ticking the need (or marking the statement received) ticks this to-do too. */}
+                          {!doneItem && !(n.link === "STATEMENT" && w.statementReceived) ? (
+                            <span className="ml-2 inline-flex align-middle">
+                              <ToChecklistButton
+                                todos={todos}
+                                source={{ kind: "WITNESS_NEED", id: node.refId, key: n.key }}
+                                label={n.text}
+                                sourceLabel={`${t("todoSource.WITNESS")}: ${w.name}`.slice(0, 200)}
+                              />
+                            </span>
+                          ) : null}
                           {factorOpen && n.options ? (
                             <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
                               {n.question ? <p className="text-[12px] text-foreground">{n.question}</p> : null}
@@ -685,7 +699,7 @@ export function WitnessPanel({
           </button>
         </div>
       </form>
-      <MutationError show={create.isError || update.isError || del.isError} />
+      <MutationError show={create.isError || update.isError || del.isError || todos.isError} />
     </PanelBody>
   )
 }

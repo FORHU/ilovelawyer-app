@@ -781,6 +781,23 @@
   "toChecklist": "체크리스트에 추가",
   "addedToChecklist": "추가됨",
   "toChecklistHint": "사건 전략의 할 일로 추가",
+  "addedToChecklistHint": "이미 사건 전략의 할 일입니다. 이 항목이 해결되면 자동으로 완료됩니다.",
+  "defenseStrategyTodo": "“{{defense}}”에 대한 답변 준비",
+  "damageTodo": "{{evidence}} 확보",
+  "todoSource": {
+    "DAMAGE": "손해배상",
+    "WITNESS": "증인"
+  },
+  "todoAutoClosed": "자동 완료: {{reason}}",
+  "todoAutoClosedReason": {
+    "ISSUE_RESOLVED": "법적 쟁점이 해결됨으로 표시됨",
+    "WEAKNESS_CLOSED": "약점이 종결됨으로 표시됨",
+    "ATTACK_READY": "공격 전략이 준비됨으로 표시됨",
+    "DEFENSE_ANSWERED": "방어가 답변됨으로 표시됨",
+    "DAMAGE_CERTIFIED": "손해 항목이 인증됨",
+    "DAMAGE_EVIDENCE_IN": "손해 항목이 더 이상 증거를 기다리지 않음",
+    "WITNESS_NEED_DONE": "증인 필요 항목이 완료됨으로 표시됨"
+  },
   "flagRisk": "위험 표시",
   "riskFlagged": "표시됨",
   "flagRiskHint": "미확인 상태로 위험 등록부에 기록",

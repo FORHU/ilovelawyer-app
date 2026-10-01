@@ -38,6 +38,8 @@ import {
 import { DAMAGE_TONE, DamagesRing, ExposureRange } from "@/components/terminal/panels/summary-visuals"
 import { DAMAGE_CATEGORY_KEYS, DAMAGE_STATUS_KEYS, DamageHeadEditor } from "@/components/terminal/panels/damage-head-editor"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
+import { useLinkedTodos } from "@/lib/terminal/linked-todos"
+import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
 
 const STATUS_TONE: Record<DamageStatus, "caution" | "neutral" | "success"> = {
   PROVISIONAL: "caution",
@@ -64,6 +66,7 @@ export function DamagePanel({
   const propose = useProposeDamagesMutation(caseId)
   const applyProposal = useApplyDamageProposalMutation(caseId)
   const dismissProposal = useDismissDamageProposalMutation(caseId)
+  const todos = useLinkedTodos(caseId)
   // Runs on its own after documents finish extracting, or from "Propose from documents" — see
   // DamagesExtractSvc. useAiJobStatus refreshes the snapshot when it finishes. While it runs, the
   // pane header shows a spinner (PaneActivityMark); here it only disables Propose and dims the total.
@@ -341,6 +344,18 @@ export function DamagePanel({
                         </div>
                       ) : null}
                       <div className="flex items-center justify-end gap-1">
+                        {/* The head's to-do is the evidence it waits on; it ticks itself once the head
+                         * is certified or stops waiting. */}
+                        {d.pendingEvidence && status !== "CERTIFIED" ? (
+                          <span className="mr-auto">
+                            <ToChecklistButton
+                              todos={todos}
+                              source={{ kind: "DAMAGE", id: d.id }}
+                              label={t("damageTodo", { evidence: d.pendingEvidence })}
+                              sourceLabel={`${t("todoSource.DAMAGE")}: ${nameOf(d)}`.slice(0, 200)}
+                            />
+                          </span>
+                        ) : null}
                         {aiPending ? (
                           <button
                             type="button"
@@ -427,7 +442,7 @@ export function DamagePanel({
       )}
 
       <MutationError
-        show={create.isError || update.isError || del.isError || propose.isError || applyProposal.isError || dismissProposal.isError}
+        show={create.isError || update.isError || del.isError || propose.isError || applyProposal.isError || dismissProposal.isError || todos.isError}
       />
     </PanelBody>
   )

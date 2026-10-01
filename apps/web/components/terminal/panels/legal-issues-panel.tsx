@@ -21,6 +21,7 @@ const LEGAL_ISSUES: RatedFindingConfig = {
   jevFlagKeys: (jev) => (jev as LegalIssueJevCheck).flags.map((flag) => `issueJevFlag.${flag}`),
   llmWording: true,
   JevDetail: LegalIssueJevDetail,
+  checklist: { fixedTag: "RESOLVED" },
 }
 
 function LegalIssueJevDetail({ finding }: { finding: CaseFinding }) {

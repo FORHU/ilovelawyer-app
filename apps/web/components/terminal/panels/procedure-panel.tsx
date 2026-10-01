@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, FileText, Loader2, RefreshCw } from "lucide-react"
+import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -189,10 +189,20 @@ export function ProcedurePanel({
           </span>
           {item.sourceLabel && (
             <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-              <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {item.sourceKind ? (
+                <Link2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+              ) : (
+                <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              )}
               <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
                 {t("groundedIn", { doc: item.sourceLabel })}
               </span>
+            </span>
+          )}
+          {/* Ticked by its source (a weakness closed, a head certified…), not by a person. */}
+          {item.done && item.autoClosedReason && (
+            <span className="mt-0.5 block text-[10px] text-ok">
+              {t("todoAutoClosed", { reason: t(`todoAutoClosedReason.${item.autoClosedReason}`) })}
             </span>
           )}
         </span>

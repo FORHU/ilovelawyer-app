@@ -20,6 +20,7 @@ const DEFENSE_STRATEGY: RatedFindingConfig = {
   jevFlagKeys: () => [],
   JevDetail: DefenseStrategyJevDetail,
   upload: true,
+  checklist: { fixedTag: "ANSWERED", todoLabel: (f, t) => t("defenseStrategyTodo", { defense: f.label }) },
 }
 
 function DefenseStrategyJevDetail({ finding }: { finding: CaseFinding }) {
