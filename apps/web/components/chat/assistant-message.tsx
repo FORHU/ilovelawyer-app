@@ -13,7 +13,7 @@ import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared
 import { decisionAnchorElementId, reapplyFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
-import type { MessageGroundingCheck } from "@/lib/chat/mutations";
+import type { CitationRankItem, MessageGroundingCheck } from "@/lib/chat/mutations";
 import { GroundingSummary } from "./grounding-summary";
 
 /** One piece of evidence's quote (evidenceFor/evidenceAgainst), searched for and highlighted
@@ -134,6 +134,7 @@ function buildComponents(
   messageIndex: number | undefined,
   quoteHighlights: QuoteHighlight[],
   activeHighlightId: string | null,
+  ranks: ReadonlyMap<string, CitationRankItem>,
 ): Components {
   return {
     h1: ({ children }) => <p className="text-[18px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
@@ -172,7 +173,11 @@ function buildComponents(
         return <span className="font-medium text-muted-foreground">{children}</span>;
       }
       if (isInternalLibraryHref(href)) {
-        return <CitationLink href={href}>{children}</CitationLink>;
+        return (
+          <CitationLink href={href} rank={ranks.get(href)}>
+            {children}
+          </CitationLink>
+        );
       }
       return (
         <a
@@ -326,6 +331,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
   messageIndex,
   quoteHighlights = NO_QUOTE_HIGHLIGHTS,
   groundingChecks,
+  citationRanking,
 }: {
   content: string;
   className?: string;
@@ -348,15 +354,20 @@ const AssistantMessage = React.memo(function AssistantMessage({
    * omitted entirely when absent (the verifier is flag-gated on the API, and a freshly streamed
    * reply has none until the next messages fetch). */
   groundingChecks?: MessageGroundingCheck[];
+  /** How relevant each cited authority is to the user's question, keyed by the link's Library
+   * href. A link with no entry renders neutral: ranking runs after the reply is saved, and only
+   * when enabled on the API. */
+  citationRanking?: CitationRankItem[];
 }) {
   const cleaned = cleanAssistantContent(content);
+  const ranks = React.useMemo(() => new Map((citationRanking ?? []).map((r) => [r.href, r])), [citationRanking]);
   // Subscribed directly (not a prop) so a click anywhere that calls setActiveHighlight —
   // currently only SourcesPanel — re-renders every bubble to move the highlight, without
   // ConsultationChat needing to know or forward that state itself.
   const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const components = React.useMemo(
-    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId),
-    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId],
+    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId, ranks),
+    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId, ranks],
   );
   // A new `components` object (any prop/highlight change above) remounts every <p>/<li> in this
   // bubble, dropping the paragraph-level highlight SourcesPanel put on one of them — see

@@ -49,6 +49,7 @@ import {
   type ChatMessage,
   type MessageReasoning,
   type MessageGroundingCheck,
+  type CitationRankItem,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
@@ -95,6 +96,9 @@ interface DisplayMessage {
    * GroundingSummary. Undefined for user turns, for replies generated before the verifier ran,
    * and whenever it is disabled on the API. */
   groundingChecks?: MessageGroundingCheck[];
+  /** Per-citation relevance tiers for this reply, straight off the messages API — see
+   * CitationLink. Undefined until the background ranking has run, and whenever it is disabled. */
+  citationRanking?: CitationRankItem[];
   /** Jev triage for this user turn — drives the urgency chip under the prompt. */
   urgent?: boolean | null;
   intent?: string | null;
@@ -640,6 +644,7 @@ export default function ConsultationChat({
               reasoning: m.reasoning ?? undefined,
               researchSteps: m.researchSteps?.steps,
               groundingChecks: m.groundingChecks,
+              citationRanking: m.citationRanking?.items,
               urgent: m.urgent,
               intent: m.intent,
             }))
@@ -2483,6 +2488,7 @@ export default function ConsultationChat({
                             messageIndex={i}
                             quoteHighlights={evidenceQuoteHighlights}
                             groundingChecks={m.groundingChecks}
+                            citationRanking={m.citationRanking}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
                           {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {

@@ -22,7 +22,8 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@workspace/ui/components/sheet";
 import { parseLibraryHref } from "@/lib/law/internal-library-link";
 import { lawPreviewQueryOptions } from "@/lib/law/queries";
-import { CitationCta, CitationPreviewBody, CitationPreviewCard } from "./citation-preview-card";
+import type { CitationRankItem, CitationRankTier } from "@/lib/chat/mutations";
+import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote } from "./citation-preview-card";
 
 // Yellow tint + solid gold underline. Deliberately distinct from the two other inline treatments
 // in a reply (assistant-message.tsx): the active evidence quote is a stronger yellow-200 <mark>
@@ -30,12 +31,30 @@ import { CitationCta, CitationPreviewBody, CitationPreviewCard } from "./citatio
 // nest — quote matching only runs on plain-string children, and a citation is an <a>.
 // box-decoration-clone repeats the padding/rounding on every line of a citation that wraps; the
 // -mx-0.5 cancels the px-0.5 so the tint doesn't shift the surrounding text.
-const CITATION_CLASS =
-  "-mx-0.5 box-decoration-clone cursor-pointer rounded-[3px] bg-yellow-100 px-0.5 font-medium text-foreground " +
-  "underline decoration-brand-gold decoration-[1.5px] underline-offset-[3px] transition-colors duration-150 " +
+const CITATION_BASE_CLASS =
+  "-mx-0.5 box-decoration-clone cursor-pointer rounded-[3px] px-0.5 font-medium text-foreground " +
+  "underline underline-offset-[3px] transition-colors duration-150 " +
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold";
+
+const CITATION_NEUTRAL_CLASS =
+  "bg-yellow-100 decoration-brand-gold decoration-[1.5px] " +
   "hover:bg-yellow-200 data-[open]:bg-yellow-200 " +
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold " +
   "dark:bg-yellow-400/15 dark:hover:bg-yellow-400/25 dark:data-[open]:bg-yellow-400/25";
+
+// A rated citation changes fill AND underline style, so the tier never rides on colour alone:
+// High is a solid green underline, Medium dashed blue, Low dotted slate. Unrated (no entry in
+// the message's citationRanking) keeps the neutral treatment above.
+const CITATION_TIER_CLASS: Record<CitationRankTier, string> = {
+  HIGH:
+    "bg-emerald-100 decoration-emerald-600 decoration-solid decoration-2 hover:bg-emerald-200 data-[open]:bg-emerald-200 " +
+    "dark:bg-emerald-400/15 dark:decoration-emerald-400 dark:hover:bg-emerald-400/25 dark:data-[open]:bg-emerald-400/25",
+  MEDIUM:
+    "bg-sky-100 decoration-sky-600 decoration-dashed decoration-[1.5px] hover:bg-sky-200 data-[open]:bg-sky-200 " +
+    "dark:bg-sky-400/15 dark:decoration-sky-400 dark:hover:bg-sky-400/25 dark:data-[open]:bg-sky-400/25",
+  LOW:
+    "bg-slate-100 decoration-slate-500 decoration-dotted decoration-[1.5px] hover:bg-slate-200 data-[open]:bg-slate-200 " +
+    "dark:bg-slate-400/15 dark:decoration-slate-400 dark:hover:bg-slate-400/25 dark:data-[open]:bg-slate-400/25",
+};
 
 // A click is a PointerEvent carrying the real input type in Chromium and Firefox; where it isn't
 // (older iOS Safari), fall back to "this device can't hover", which is what matters here anyway —
@@ -64,7 +83,7 @@ function isTouchClick(e: React.MouseEvent): boolean {
  * where the hover delay comes from, and what lets the card move between adjacent citations
  * without re-waiting.
  */
-export function CitationLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function CitationLink({ href, children, rank }: { href: string; children: React.ReactNode; rank?: CitationRankItem }) {
   const { t } = useTranslation("library");
   const queryClient = useQueryClient();
   const target = React.useMemo(() => parseLibraryHref(href), [href]);
@@ -105,7 +124,8 @@ export function CitationLink({ href, children }: { href: string; children: React
         target="_blank"
         rel="noopener noreferrer"
         data-open={open || sheetOpen ? "" : undefined}
-        className={CITATION_CLASS}
+        data-rank={rank?.tier}
+        className={`${CITATION_BASE_CLASS} ${rank ? CITATION_TIER_CLASS[rank.tier] : CITATION_NEUTRAL_CLASS}`}
         {...getReferenceProps({
           onPointerEnter: prefetch,
           onFocus: prefetch,
@@ -118,6 +138,14 @@ export function CitationLink({ href, children }: { href: string; children: React
         })}
       >
         {children}
+        {rank && (
+          <span className="sr-only">
+            {" ("}
+            {t("citationRank.srPrefix")}
+            {t(`citationRank.${rank.tier.toLowerCase()}`)}
+            {")"}
+          </span>
+        )}
         <span className="sr-only">{t("citationPreview.opensInNewTab")}</span>
       </a>
 
@@ -129,7 +157,7 @@ export function CitationLink({ href, children }: { href: string; children: React
             className="z-50"
             {...getFloatingProps()}
           >
-            <CitationPreviewCard target={target} href={href} label={children} />
+            <CitationPreviewCard target={target} href={href} label={children} rank={rank} />
           </div>
         </FloatingPortal>
       )}
@@ -139,6 +167,7 @@ export function CitationLink({ href, children }: { href: string; children: React
           <SheetContent side="bottom" className="px-4 pt-12 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <SheetTitle className="sr-only">{t("citationPreview.sheetTitle")}</SheetTitle>
             <CitationPreviewBody target={target} label={children} />
+            {rank && <CitationRankNote rank={rank} />}
             <CitationCta href={href} onClick={() => setSheetOpen(false)} className="w-full justify-center" />
           </SheetContent>
         </Sheet>

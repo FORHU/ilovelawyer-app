@@ -140,11 +140,32 @@ export interface ChatMessage {
    * `passage` is excluded server-side: it is a slab of bundle text, fetched per-row only when a
    * verdict is actually being audited. */
   groundingChecks?: MessageGroundingCheck[]
+  /** How relevant each cited authority is to the USER's question (ilovelawyer-api citation-rank),
+   * keyed by the link's Library href. Written after the reply is persisted, so a freshly streamed
+   * reply has none until the next messages fetch, and absent unless USE_JEV_CITATION_RANK is on.
+   * A link with no entry is unrated and renders neutral. */
+  citationRanking?: { items: CitationRankItem[] } | null
   /** Jev triage for a user turn (ilovelawyer-api message-triage.ts): whether the message reads as
    * time-critical, and what it is asking for. Written on send when USE_JEV_MESSAGE_TRIAGE is on;
    * absent otherwise and on assistant messages. */
   urgent?: boolean | null
   intent?: string | null
+}
+
+export type CitationRankTier = "HIGH" | "MEDIUM" | "LOW"
+
+export interface CitationRankItem {
+  /** The link's Library href, exactly as it appears in the message text. */
+  href: string
+  tier: CitationRankTier
+  /** How directly the authority addresses what the user asked, and how much a lawyer advising them
+   * would need to read it. Either is null when Jev gave no usable verdict for that axis. */
+  relevance: CitationRankTier | null
+  importance: CitationRankTier | null
+  /** Facts the levels can't carry ("You named it in your question", the deciding court). Empty when
+   * there are none. Never says the authority is correct. */
+  reason: string
+  namedByUser: boolean
 }
 
 export interface MessageGroundingCheck {
