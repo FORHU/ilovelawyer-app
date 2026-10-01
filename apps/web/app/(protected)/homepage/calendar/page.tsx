@@ -18,6 +18,7 @@ import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMon
 import { AlertCircle, Ban, Briefcase, Clock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TimePicker } from "@/components/calendar/time-picker";
+import { toMinutes, toValue } from "@/components/calendar/time-picker-utils";
 import {
   useAppointmentsQuery,
   useCreateAppointmentMutation,
@@ -288,6 +289,18 @@ function PlannerPanel({
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
+  const pickerDateLabel = selectedDate ? format(selectedDate, "MMM d, yyyy") : undefined;
+
+  /** Picking a start time pre-fills a one-hour end time when the end is empty or would
+   * now fall at/before the start, so the common case is a single pick. */
+  function handleStartTimeChange(next: string) {
+    setStartTime(next);
+    const start = toMinutes(next);
+    const end = toMinutes(endTime);
+    if (start !== null && (end === null || end <= start)) {
+      setEndTime(toValue(Math.min(start + 60, 23 * 60 + 59)));
+    }
+  }
 
   function resetAppointmentFields() {
     setTitle("");
@@ -713,8 +726,23 @@ function PlannerPanel({
                 className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
               />
               <div className="flex gap-2">
-                <TimePicker value={startTime} onChange={setStartTime} placeholder={t("startTime")} aria-label={t("startTime")} />
-                <TimePicker value={endTime} onChange={setEndTime} placeholder={t("endTime")} aria-label={t("endTime")} />
+                <TimePicker
+                  value={startTime}
+                  onChange={handleStartTimeChange}
+                  placeholder={t("startTime")}
+                  aria-label={t("startTime")}
+                  dateLabel={pickerDateLabel}
+                />
+                <TimePicker
+                  value={endTime}
+                  onChange={setEndTime}
+                  placeholder={t("endTime")}
+                  aria-label={t("endTime")}
+                  dateLabel={pickerDateLabel}
+                  minTime={startTime || undefined}
+                  showDuration
+                  align="end"
+                />
               </div>
               {(() => {
                 // Guidance shown in our own styling instead of a `min` attribute — a `min` on
