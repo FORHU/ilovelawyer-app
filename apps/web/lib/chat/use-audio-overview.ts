@@ -10,8 +10,24 @@ import {
   type ChatMessage,
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
-import { useAiJobStatus } from "@/lib/terminal/mutations";
+import { useAiJobStatus, type AiJobStatus } from "@/lib/terminal/mutations";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
+
+/** How many steps AudioOverviewGenerationSteps shows — see scriptStepFor. */
+export const SCRIPT_STEP_COUNT = 3;
+
+/** Which generation step is running, from the API's real progress (AiGenerationJob.stage): 0
+ * reading the case, 1 the reply streaming, 2 the second model call writing the script, and
+ * SCRIPT_STEP_COUNT (all done) once the job has finished but the caller is still saving/fetching
+ * the result. `localStartedAt` is when this tab's own request began: a DONE row from the previous
+ * generation, still cached in the moment before the new one flips back to IN_PROGRESS, mustn't
+ * read as this one having finished. */
+export function scriptStepFor(job: AiJobStatus | null | undefined, localStartedAt: number | null): number {
+  if (job?.status === "IN_PROGRESS") return job.stage === "extras" ? 2 : job.stage === "answering" ? 1 : 0;
+  const finishedThisRun =
+    job?.status === "DONE" && localStartedAt !== null && !!job.finishedAt && Date.parse(job.finishedAt) >= localStartedAt;
+  return finishedThisRun ? SCRIPT_STEP_COUNT : 0;
+}
 
 /** Script generation → Polly render polling → playable URL, shared by every surface that offers
  * Audio Overview (Case Workspace's Studio panel, the Legal Terminal's Audio Overview panel).
@@ -44,6 +60,10 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
   // generation kicked off from another tab (or this one, before a refresh) still shows as
   // generating here too, rather than looking idle.
   const isGeneratingScript = isGeneratingScriptLocal || scriptJob.data?.status === "IN_PROGRESS";
+  // When this tab's own request started — so a DONE row left over from the previous generation
+  // isn't mistaken for this one having finished, in the moment before the new row flips back.
+  const [localStartedAt, setLocalStartedAt] = useState<number | null>(null);
+  const scriptStep = isGeneratingScript ? scriptStepFor(scriptJob.data, localStartedAt) : null;
 
   const generateAudio = useGenerateAudioOverviewAudioMutation(consultationId ?? "");
   const [audioRendering, setAudioRendering] = useState(false);
@@ -106,6 +126,7 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
   const generateScript = useCallback(async () => {
     if (!consultationId || !session || isGeneratingScript || isConsultationBusy) return;
     setIsGeneratingScript(true);
+    setLocalStartedAt(Date.now());
     setGenerateScriptError(false);
     try {
       await sendChatMessageAndWait(queryClient, {
@@ -137,6 +158,7 @@ export function useAudioOverview(consultationId: string | null, caseId: string |
     session,
     activeAudioOverviewMessage,
     isGeneratingScript,
+    scriptStep,
     isConsultationBusy,
     generateScriptError,
     generateScript,

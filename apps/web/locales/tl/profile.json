@@ -104,8 +104,8 @@
   },
   "googleCalendar": {
     "title": "Google Calendar",
-    "connectedDescription": "Nakakonekta. Maaaring i-sync ang mga event sa iyong Google Calendar.",
-    "disconnectedDescription": "Ikonekta ang isang Google account para i-sync ang mga event sa Google Calendar. Hindi nito binabago kung paano ka nagsa-sign in.",
+    "connectedDescription": "Nakakonekta. Idinadagdag sa iyong Google Calendar ang mga appointment na iniiskedyul mo rito.",
+    "disconnectedDescription": "Ikonekta ang isang Google account para maidagdag sa Google Calendar nito ang mga appointment na iniiskedyul mo rito. Hindi nito binabago kung paano ka nagsa-sign in.",
     "connect": "Ikonekta",
     "connecting": "Ikinokonekta…",
     "disconnect": "Idiskonekta",

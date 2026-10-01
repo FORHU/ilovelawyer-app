@@ -2,7 +2,13 @@ name: Deploy UK
 
 # FORHU/ilovelawyer-app → the London stack (eu-west-2).
 #
-# Same lint/typecheck/build as deploy-production.yml. Two differences:
+# Two jobs, on purpose. `build` runs on every merge and only produces an
+# image; `promote` is what touches the live box, and it declares
+# `environment: production`, so with Required reviewers set on that
+# environment it parks until someone clicks Approve. A merge can no longer
+# reach users on its own.
+#
+# Still true from before:
 #   * NEXT_PUBLIC_* values are baked in at build time, so the UK needs its OWN
 #     image — it points at the UK API, not Singapore's. It is tagged uk-<sha>
 #     so Singapore's :latest and :<sha> are untouched.
@@ -11,17 +17,13 @@ name: Deploy UK
 
 on:
   push:
-      branches: [main]
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag, or SHA to deploy"
+        description: "Branch, tag, or SHA to build"
         required: true
         default: main
-
-concurrency:
-  group: ilovelawyer-uk-deploy        # shared with ilovelawyer-api: one deploy at a time
-  cancel-in-progress: false
 
 env:
   ECR_REPOSITORY: ilovelawyer-app
@@ -35,22 +37,36 @@ env:
   PORT: "3002"
 
 jobs:
-  deploy:
-    name: Lint, Build, Push & Deploy (UK)
+  # ---------------------------------------------------------------- build ---
+  # No `environment:` here: a build must not consume a production approval.
+  # That means every vars./secrets. value this job reads must be visible at
+  # REPOSITORY level — an environment-scoped one resolves to an empty string.
+  # AWS_UK_DEPLOY_ROLE_ARN already is; UK_NEXT_PUBLIC_API_URL and
+  # NEXT_PUBLIC_GOOGLE_CLIENT_ID must be too, or the guard below fails the run.
+  build:
+    name: Lint, Build & Push (UK)
     # Native arm64 — matches Graviton EC2. Do not build linux/arm64 via QEMU on
     # ubuntu-latest; pnpm/next under emulation looks stuck and can take hours.
     runs-on: ubuntu-24.04-arm
-    environment: production
+
+    concurrency:
+      group: ilovelawyer-uk-app-build   # separate from the deploy group: a build
+      cancel-in-progress: false         # must never queue behind a promotion
 
     permissions:
       id-token: write
       contents: read
 
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      registry: ${{ steps.tag.outputs.registry }}
+
     steps:
+      # On push there is no `ref` input, so fall back to the pushed commit.
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ github.event.inputs.ref || github.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -89,6 +105,25 @@ jobs:
           aws ecr get-login-password --region "${{ env.ECR_REGION }}" \
             | docker login --username AWS --password-stdin "${{ steps.tag.outputs.registry }}"
 
+      # A baked-in empty NEXT_PUBLIC_API_URL produces a bundle that compiles,
+      # deploys and serves a page — and fails every API call in the browser,
+      # with nothing in any server log to say why. Fail the build instead.
+      - name: Check build-time web env is populated
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.UK_NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          fail=0
+          for k in NEXT_PUBLIC_API_URL NEXT_PUBLIC_GOOGLE_CLIENT_ID; do
+            if [ -z "${!k}" ]; then
+              echo "::error::$k is empty. It is baked into the client bundle at build time."
+              echo "::error::Check it exists at REPOSITORY level — this job has no environment,"
+              echo "::error::so a value scoped only to 'production' resolves to an empty string."
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] || exit 1
+
       # NEXT_PUBLIC_* values are inlined into the client JS bundle at `next build`
       # time, not read at container runtime — see
       # docs/adr/0005-web-env-vars-baked-at-build-time.md. This file must exist
@@ -106,6 +141,7 @@ jobs:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           EOF
 
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -118,6 +154,86 @@ jobs:
           platforms: linux/arm64
           provenance: false
           tags: ${{ steps.tag.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.tag.outputs.tag }}
+
+
+      - name: Summary
+        run: |
+          {
+            echo "### UK app image ready"
+            echo
+            echo '```'
+            echo "${{ steps.tag.outputs.tag }}"
+            echo '```'
+            echo
+            echo "Awaiting approval on the **Promote to production (UK)** job."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------- gate ---
+  # Exists only to carry the approval click. `production-uk` holds no
+  # secrets and no variables — just Required reviewers.
+  #
+  # The gate deliberately does NOT live on `production`: deploy-production.yml
+  # (PH / Singapore) uses that same environment and must keep deploying
+  # automatically. Putting reviewers on `production` would gate PH too.
+  gate:
+    name: Awaiting approval (UK)
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production-uk
+    steps:
+      - name: Approved
+        run: echo "Promoting ${{ needs.build.outputs.tag }} to the UK stack."
+
+  # -------------------------------------------------------------- promote ---
+  # Runs only after `gate` is approved. Keeps `environment: production` so it
+  # still reads every existing UK secret, unchanged.
+  promote:
+    name: Promote to production (UK)
+    needs: [build, gate]
+    # No build here, so no need for an arm64 runner.
+    runs-on: ubuntu-latest
+    environment: production
+
+    concurrency:
+      group: ilovelawyer-uk-deploy      # shared with ilovelawyer-api: one deploy at a time
+      cancel-in-progress: false
+
+    permissions:
+      id-token: write
+      contents: read
+
+    # Deliberately no checkout: this job must be incapable of building. It
+    # deploys the exact bytes `build` pushed, nothing else.
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_UK_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          echo "tag=${{ needs.build.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "registry=${{ needs.build.outputs.registry }}" >> "$GITHUB_OUTPUT"
+          echo "Promoting ${{ env.ECR_REPOSITORY }}:${{ needs.build.outputs.tag }}"
+
+      # Fail here rather than halfway through an SSM deploy: a missing tag would
+      # otherwise be found only after the running container had been removed.
+      - name: Verify the image exists
+        run: |
+          set -euo pipefail
+          aws ecr describe-images \
+            --region "${{ env.ECR_REGION }}" \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageTag="${{ steps.tag.outputs.tag }}" \
+            --query 'imageDetails[0].[imageTags[0],imagePushedAt]' --output text \
+            || { echo "::error::no such tag in ECR: ${{ steps.tag.outputs.tag }}"; exit 1; }
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "${{ env.ECR_REGION }}" \
+            | docker login --username AWS --password-stdin "${{ steps.tag.outputs.registry }}"
 
       # The same file also serves as the container's runtime env, exactly as in
       # production. It holds no secrets beyond the public client ID, but goes
@@ -144,6 +260,7 @@ jobs:
 
           rm -f env.tmp
 
+
       - name: Deploy via SSM
         id: send
         env:
@@ -160,10 +277,17 @@ jobs:
             "aws ssm get-parameter --name ${{ env.ENV_PARAM }} --with-decryption --region ${{ env.AWS_REGION }} --query Parameter.Value --output text > ${ENVFILE}"
             "chmod 600 ${ENVFILE}"
             "aws ecr get-login-password --region ${{ env.ECR_REGION }} | docker login --username AWS --password-stdin ${REGISTRY}"
+            # Reclaim space BEFORE pulling. The old `docker image prune -f` ran after the
+            # pull and omitted -a, so it only removed DANGLING images -- but every image here
+            # is tagged :<sha>. It freed nothing, 123 images accumulated, and the Singapore
+            # box hit "no space left on device" mid-pull on 2026-10-01.
+            # -a drops every image not backing a running container; they are all re-pullable
+            # from ECR, so this is safe and a rollback simply pulls again.
+            "docker container prune -f || true"
+            "docker image prune -af || true"
             "docker pull --platform linux/arm64 ${IMAGE}"
             "docker rm -f ilovelawyer-app 2>/dev/null || true"
             "docker run -d --name ilovelawyer-app --restart unless-stopped --platform linux/arm64 --env-file ${ENVFILE} -p 127.0.0.1:${{ env.PORT }}:${{ env.PORT }} ${IMAGE}"
-            "docker image prune -f"
           )
 
           PARAMS=$(printf '%s\n' "${COMMANDS[@]}" | jq -R . | jq -sc '{commands: .}')

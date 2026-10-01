@@ -46,9 +46,9 @@ export interface AudioOverviewTurnCheck {
   checkedAt: string
 }
 
-/** One sentence of a turn: `time` is its start second in the merged audio; `start`/`end` are
- * string indices into that turn's `text` (`text.slice(start, end)`). */
-export interface AudioOverviewSentenceTiming {
+/** One sentence or word of a turn: `time` is its start second in the merged audio; `start`/`end`
+ * are string indices into that turn's `text` (`text.slice(start, end)`). */
+export interface AudioOverviewMarkTiming {
   time: number
   start: number
   end: number
@@ -64,7 +64,10 @@ export interface MessageAudioOverview {
   /** Per turn (index-aligned with `turns`), where each sentence starts in the audio — from
    * Polly's sentence speech marks (ilovelawyer-api's sentenceTimingsForTurn). Null until
    * COMPLETED, and on any overview rendered before this shipped. */
-  sentenceTimings?: AudioOverviewSentenceTiming[][] | null
+  sentenceTimings?: AudioOverviewMarkTiming[][] | null
+  /** Same as sentenceTimings, per word (Polly's word speech marks) — the active turn fills in
+   * word by word as it's spoken. Null on overviews rendered before it existed. */
+  wordTimings?: AudioOverviewMarkTiming[][] | null
   audioFileId: string | null
   audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
 }
