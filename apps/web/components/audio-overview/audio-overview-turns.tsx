@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { CheckCircle2, CircleHelp, XCircle } from "lucide-react"
-import type { AudioOverviewSentenceTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
+import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 
 const VERDICT_STYLE = {
   SUPPORTED: { Icon: CheckCircle2, className: "text-emerald-600 dark:text-emerald-400", key: "supported" },
@@ -32,27 +32,43 @@ function activeTurnIndex(time: number | undefined, turnTimings: number[] | null 
   return active
 }
 
-/** Index of the sentence playing at `time` within one turn — the last whose start is at or
- * before it, or the first while the turn's opening silence plays. */
-function activeSentenceIndex(time: number, sentences: AudioOverviewSentenceTiming[]): number {
-  let active = 0
-  for (let i = 0; i < sentences.length; i++) {
-    if (sentences[i]!.time <= time) active = i
+/** Index of the sentence or word playing at `time` within one turn — the last whose start is at
+ * or before it, or -1 while the turn's opening silence plays. */
+function activeMarkIndex(time: number, marks: AudioOverviewMarkTiming[]): number {
+  let active = -1
+  for (let i = 0; i < marks.length; i++) {
+    if (marks[i]!.time <= time) active = i
     else break
   }
   return active
 }
 
-/** A turn's text with the sentence at `activeSentence` picked out. Whatever falls between or
- * after Polly's sentence ranges (spacing, trailing text) renders unhighlighted, so the turn
- * always reads as its full original text. */
+/** A turn's text filling in as it's spoken: everything before the current word at full
+ * brightness, the current word in gold, the rest dimmed — still readable, so a listener can
+ * read ahead. Before the first word starts, the whole turn reads as not-yet-spoken. */
+function TurnWords({ text, words, activeWord }: { text: string; words: AudioOverviewMarkTiming[]; activeWord: number }) {
+  const current = words[activeWord]
+  const spokenEnd = current?.start ?? 0
+  const currentEnd = current?.end ?? 0
+  return (
+    <>
+      {text.slice(0, spokenEnd)}
+      <span className="text-brand-gold">{text.slice(spokenEnd, currentEnd)}</span>
+      <span className="opacity-45">{text.slice(currentEnd)}</span>
+    </>
+  )
+}
+
+/** A turn's text with the sentence at `activeSentence` picked out — the fallback for overviews
+ * rendered before word timings existed. Whatever falls between or after Polly's sentence ranges
+ * (spacing, trailing text) renders unhighlighted, so the turn always reads as its full text. */
 function TurnSentences({
   text,
   sentences,
   activeSentence,
 }: {
   text: string
-  sentences: AudioOverviewSentenceTiming[]
+  sentences: AudioOverviewMarkTiming[]
   activeSentence: number
 }) {
   const parts: ReactNode[] = []
@@ -83,9 +99,9 @@ function TurnSentences({
  * `turnTimings` (audio not rendered, or an overview from before this shipped), every turn
  * renders the same as before and the scroll area behaves like a plain list.
  *
- * With `sentenceTimings` too, the sentence being spoken within the active turn is highlighted
- * as well. Overviews rendered before sentence timings existed have none and keep the
- * turn-level highlight only.
+ * With `wordTimings` too, the active turn fills in word by word as it's spoken (TurnWords).
+ * Overviews rendered before word timings existed fall back to highlighting the sentence being
+ * spoken (`sentenceTimings`), and ones from before that to the turn-level highlight only.
  *
  * turnTimings used to drift later than the audio across a long script, and a manual scroll used
  * to re-anchor the clock to compensate. The drift was each clip's MP3 header frame being counted
@@ -97,13 +113,15 @@ export function AudioOverviewTurns({
   currentTime,
   turnTimings,
   sentenceTimings,
+  wordTimings,
   className = "",
 }: {
   turns: AudioOverviewTurn[]
   checks?: AudioOverviewTurnCheck[] | null
   currentTime?: number
   turnTimings?: number[] | null
-  sentenceTimings?: AudioOverviewSentenceTiming[][] | null
+  sentenceTimings?: AudioOverviewMarkTiming[][] | null
+  wordTimings?: AudioOverviewMarkTiming[][] | null
   /** Applied to the scrolling root alongside the base spacing — pass `"h-full overflow-y-auto"`
    * (or similar) to make this the scroll container itself; omit for a plain, non-scrolling list
    * (History's rows, which scroll as part of the whole list, not per-entry). */
@@ -115,8 +133,10 @@ export function AudioOverviewTurns({
   const turnRefs = useRef<(HTMLDivElement | null)[]>([])
 
   const activeIndex = activeTurnIndex(currentTime, turnTimings, turns.length)
-  const activeTurnSentences =
-    activeIndex !== null && sentenceTimings?.length === turns.length ? sentenceTimings[activeIndex] : undefined
+  const marksForActiveTurn = (timings: AudioOverviewMarkTiming[][] | null | undefined) =>
+    activeIndex !== null && timings?.length === turns.length ? timings[activeIndex] : undefined
+  const activeTurnWords = marksForActiveTurn(wordTimings)
+  const activeTurnSentences = marksForActiveTurn(sentenceTimings)
 
   useEffect(() => {
     if (activeIndex === null) return
@@ -143,11 +163,17 @@ export function AudioOverviewTurns({
               {check && <TurnCheckIcon check={check} />}
             </p>
             <p className="text-[13px] leading-5 text-foreground">
-              {activeIndex === i && activeTurnSentences?.length ? (
+              {activeIndex === i && activeTurnWords?.length ? (
+                <TurnWords
+                  text={turn.text}
+                  words={activeTurnWords}
+                  activeWord={activeMarkIndex(currentTime!, activeTurnWords)}
+                />
+              ) : activeIndex === i && activeTurnSentences?.length ? (
                 <TurnSentences
                   text={turn.text}
                   sentences={activeTurnSentences}
-                  activeSentence={activeSentenceIndex(currentTime!, activeTurnSentences)}
+                  activeSentence={activeMarkIndex(currentTime!, activeTurnSentences)}
                 />
               ) : (
                 turn.text
