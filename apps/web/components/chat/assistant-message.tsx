@@ -377,7 +377,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
     if (messageIndex !== undefined) reapplyFallbackHighlight(messageIndex);
   });
   return (
-    <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
+    <div className={`text-[16px] leading-7 font-[family-name:var(--font-reading)] ${className ?? "text-foreground"}`}>
       {/* Shared hover timing for this bubble's citations (see CitationLink): 300ms before a
           preview opens, 150ms grace to reach it — and once one is open, moving to an adjacent
           citation swaps the card instantly instead of waiting out the delay again. */}
@@ -405,7 +405,7 @@ export default AssistantMessage;
 export function ThinkingIndicator({ label }: { label: string }) {
   return (
     <div role="status" aria-live="polite" className="flex items-center gap-2 text-[15px] font-['Inter']">
-      <span className="font-['Source_Serif_4'] text-muted-foreground">
+      <span className="font-[family-name:var(--font-reading)] text-muted-foreground">
         ilove<span className="text-[#d4af37] font-semibold">lawyer</span>
       </span>
       <span className="text-muted-foreground">{label}</span>

@@ -31,7 +31,7 @@ import { CitationCta, CitationPreviewBody, CitationPreviewCard, CitationRankNote
 // ranked one takes its tier colour (green, amber, slate) and an underline style as well.
 // box-decoration-clone repeats the padding and rounding on every line of a citation that wraps.
 const CITATION_BASE_CLASS =
-  "mx-1 cursor-pointer box-decoration-clone rounded-md px-2 py-[3px] font-['Source_Serif_4'] font-bold italic " +
+  "mx-1 cursor-pointer box-decoration-clone rounded-md px-2 py-[3px] font-[family-name:var(--font-reading)] font-bold italic " +
   "tracking-[0.02em] [word-spacing:0.08em] transition-colors duration-150 underline-offset-4 " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-gold";
 

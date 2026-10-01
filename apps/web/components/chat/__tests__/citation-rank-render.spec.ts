@@ -76,7 +76,7 @@ describe("citation pill: kind badge and label", () => {
   it("uses the italic serif pill style", () => {
     const html = renderMessage(undefined)
     expect(html).toContain("italic")
-    expect(html).toContain("Source_Serif_4")
+    expect(html).toContain("font-[family-name:var(--font-reading)]")
     expect(html).toContain("rounded-md")
   })
 
