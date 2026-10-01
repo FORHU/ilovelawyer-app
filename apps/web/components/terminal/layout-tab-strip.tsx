@@ -122,7 +122,7 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
           const active = tab.id === activeId
           const editing = tab.id === editingId
           return (
-            <span key={tab.id} data-tab-id={tab.id} className="group/tab flex shrink-0 items-center gap-1">
+            <span key={tab.id} data-tab-id={tab.id} className="group/tab flex shrink-0 items-center">
               {editing ? (
                 // Reads as an obvious edit field (gold ring, pencil, key hint), not just a restyled
                 // tab label — the plain underlined input looked almost identical to the tab.
@@ -160,20 +160,18 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                 <button
                   type="button"
                   // Re-selecting the active tab re-hydrates its layout from the cached server copy,
-                  // which can lag unsaved pane edits — and a double-click to rename fires two clicks.
+                  // which can lag unsaved pane edits.
                   onClick={() => {
                     if (!active) onSelect(tab.id)
                   }}
-                  onDoubleClick={() => startEditing(tab)}
                   onKeyDown={(e) => {
-                    // Keyboard equivalent of double-click.
+                    // Keyboard equivalent of the hover edit button below.
                     if (e.key === "F2") {
                       e.preventDefault()
                       startEditing(tab)
                     }
                   }}
-                  // Full name on hover, since long names are truncated below.
-                  title={`${tab.name}\n${labels.renameHint}`}
+                  title={tab.name}
                   className={`max-w-44 truncate whitespace-nowrap border-b-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
                     active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
@@ -182,14 +180,27 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                 </button>
               )}
               {!editing && (
-              <button
-                type="button"
-                onClick={() => onClose(tab.id)}
-                aria-label={labels.close}
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 dark:hover:bg-overlay-hover"
-              >
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
+                // Collapsed to zero width (not just invisible) so an inactive tab doesn't reserve
+                // room for these two buttons — the gap only appears once the tab is hovered/focused.
+                <span className="flex w-0 shrink-0 items-center gap-0.5 overflow-hidden opacity-0 transition-[width,opacity,margin-left] duration-150 group-hover/tab:ml-1 group-hover/tab:w-9 group-hover/tab:opacity-100 group-focus-within/tab:ml-1 group-focus-within/tab:w-9 group-focus-within/tab:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(tab)}
+                    aria-label={labels.rename}
+                    title={labels.renameHint}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground dark:hover:bg-overlay-hover"
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onClose(tab.id)}
+                    aria-label={labels.close}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground dark:hover:bg-overlay-hover"
+                  >
+                    <X className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </span>
               )}
             </span>
           )

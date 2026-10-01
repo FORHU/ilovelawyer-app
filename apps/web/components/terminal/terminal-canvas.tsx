@@ -431,8 +431,10 @@ function AnimatedPanelBody({
   )
 }
 
-// Shared header icon cluster: Maximize/Hide (always available), Pop-out (always available), and
-// Pin (rendered only when the caller passes onTogglePin).
+// Shared header icon cluster: Maximize/Hide (always available), Pop-out (always available),
+// Pin (rendered only when the caller passes onTogglePin), and Move-to-screen (rendered only when
+// the caller passes onMoveToScreen with more than one screen to move to — the layout builder's
+// per-pane screen reassignment; unused in the primary Terminal, which keeps onPopOut instead).
 function PaneHeaderActions({
   t,
   isMaximized,
@@ -441,8 +443,11 @@ function PaneHeaderActions({
   onPopOut,
   pinned,
   onTogglePin,
+  screenCount,
+  currentScreen,
+  onMoveToScreen,
 }: {
-  t: (key: string) => string
+  t: (key: string, opts?: Record<string, unknown>) => string
   isMaximized: boolean
   onToggleMaximize: () => void
   onHide: () => void
@@ -452,9 +457,27 @@ function PaneHeaderActions({
   onPopOut?: () => void
   pinned?: boolean
   onTogglePin?: () => void
+  screenCount?: number
+  currentScreen?: number
+  onMoveToScreen?: (screen: number) => void
 }) {
   return (
     <div className="flex shrink-0 items-center gap-0.5">
+      {onMoveToScreen && screenCount !== undefined && screenCount > 1 && (
+        <select
+          value={currentScreen ?? 0}
+          onChange={(e) => onMoveToScreen(Number(e.target.value))}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={t("moveToScreen")}
+          className="h-6 rounded border border-border bg-background px-1 text-[10px] text-muted-foreground"
+        >
+          {Array.from({ length: screenCount }, (_, i) => (
+            <option key={i} value={i}>
+              {t("builderDisplayLabel", { n: i + 1 })}
+            </option>
+          ))}
+        </select>
+      )}
       {onTogglePin && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -615,6 +638,8 @@ type ArrangementBodyProps = {
   t: (key: string, opts?: Record<string, unknown>) => string
   onDrop: (id: PanelId) => void
   onDragPreview?: (event: DragEvent) => void
+  screenCount?: number
+  onMoveToScreen?: (id: PanelId, screen: number) => void
 }
 
 function dropHandlers(onDrop: (id: PanelId) => void, onDragPreview?: (event: DragEvent) => void) {
@@ -650,6 +675,8 @@ function ColumnsArrangement({
   t,
   onDrop,
   onDragPreview,
+  screenCount,
+  onMoveToScreen,
 }: ArrangementBodyProps & {
   columnCount: number
   columnWidths: number[]
@@ -722,6 +749,8 @@ function ColumnsArrangement({
               onJumpToPanel={onJumpToPanel}
               onPatchPanel={onPatchPanel}
               t={t}
+              screenCount={screenCount}
+              onMoveToScreen={onMoveToScreen}
             />
           </div>
           {columnIndex < columnCount - 1 && (
@@ -756,6 +785,8 @@ function ColumnStack({
   onJumpToPanel,
   onPatchPanel,
   t,
+  screenCount,
+  onMoveToScreen,
 }: {
   panels: PanelLayout[]
   caseId: string
@@ -767,6 +798,8 @@ function ColumnStack({
   onJumpToPanel: (id: PanelId) => void
   onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
   t: (key: string, opts?: Record<string, unknown>) => string
+  screenCount?: number
+  onMoveToScreen?: (id: PanelId, screen: number) => void
 }) {
   const stackRef = useRef<HTMLDivElement>(null)
   const stackDragRef = useRef<{ aboveId: PanelId; belowId: PanelId; startY: number; heightAbove: number; heightBelow: number } | null>(null)
@@ -840,6 +873,9 @@ function ColumnStack({
                   onPopOut={onPopOut ? () => onPopOut(panel.id) : undefined}
                   pinned={!!panel.pinned}
                   onTogglePin={() => onPatchPanel(panel.id, { pinned: !panel.pinned })}
+                  screenCount={screenCount}
+                  currentScreen={panel.screen ?? 0}
+                  onMoveToScreen={onMoveToScreen ? (screen) => onMoveToScreen(panel.id, screen) : undefined}
                 />
               </div>
             }
@@ -889,6 +925,8 @@ function TabsArrangement({
   t,
   onDrop,
   onDragPreview,
+  screenCount,
+  onMoveToScreen,
 }: ArrangementBodyProps & {
   activeA: PanelId | null
   activeB: PanelId | null
@@ -1020,6 +1058,20 @@ function TabsArrangement({
                 })}
                 {activePanel && (
                   <div className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
+                    {onMoveToScreen && screenCount !== undefined && screenCount > 1 && (
+                      <select
+                        value={activePanel.screen ?? 0}
+                        onChange={(e) => onMoveToScreen(activePanel.id, Number(e.target.value))}
+                        aria-label={t("moveToScreen")}
+                        className="h-6 rounded border border-border bg-background px-1 text-[10px] text-muted-foreground"
+                      >
+                        {Array.from({ length: screenCount }, (_, i) => (
+                          <option key={i} value={i}>
+                            {t("builderDisplayLabel", { n: i + 1 })}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {onPopOut && (
                       <button
                         type="button"
@@ -1089,6 +1141,8 @@ function FocusArrangement({
   t,
   onDrop,
   onDragPreview,
+  screenCount,
+  onMoveToScreen,
 }: ArrangementBodyProps & {
   stackSummaries: Partial<Record<PanelId, string>>
   panelBadges: Partial<Record<PanelId, string>>
@@ -1121,6 +1175,9 @@ function FocusArrangement({
                 onToggleMaximize={() => onToggleMaximize(focusPanel.id)}
                 onHide={() => onHide(focusPanel.id)}
                 onPopOut={onPopOut ? () => onPopOut(focusPanel.id) : undefined}
+                screenCount={screenCount}
+                currentScreen={focusPanel.screen ?? 0}
+                onMoveToScreen={onMoveToScreen ? (screen) => onMoveToScreen(focusPanel.id, screen) : undefined}
               />
             </div>
           )
@@ -1205,6 +1262,12 @@ export interface TerminalCanvasProps {
   onPopOut?: (id: PanelId) => void
   onJumpToPanel: (id: PanelId) => void
   onBringToFront: (id: PanelId) => void
+  /** How many screens the caller's whole workspace spans (1 = just this one) and a handler to
+   * reassign a pane to a different one — the layout builder's per-pane "move to screen" control.
+   * Omitted (or screenCount <= 1) hides the control entirely; the primary Terminal doesn't pass
+   * these (it keeps onPopOut instead). */
+  screenCount?: number
+  onMoveToScreen?: (id: PanelId, screen: number) => void
 
   maximizedId: PanelId | null
   onToggleMaximize: (id: PanelId) => void
@@ -1260,6 +1323,8 @@ export function TerminalCanvas({
   onPopOut,
   onJumpToPanel,
   onBringToFront,
+  screenCount,
+  onMoveToScreen,
   maximizedId,
   onToggleMaximize,
   focusedId,
@@ -1549,6 +1614,9 @@ export function TerminalCanvas({
                       onPopOut={onPopOut ? () => onPopOut(panel.id) : undefined}
                       pinned={isPinned}
                       onTogglePin={() => onPatchPanel(panel.id, { pinned: !isPinned })}
+                      screenCount={screenCount}
+                      currentScreen={panel.screen ?? 0}
+                      onMoveToScreen={onMoveToScreen ? (screen) => onMoveToScreen(panel.id, screen) : undefined}
                     />
                   </div>
                 }
@@ -1604,6 +1672,8 @@ export function TerminalCanvas({
           t={t}
           onDrop={onDropNew}
           onDragPreview={onDragPreviewUpdate}
+          screenCount={screenCount}
+          onMoveToScreen={onMoveToScreen}
         />
       )}
 
@@ -1627,6 +1697,8 @@ export function TerminalCanvas({
           t={t}
           onDrop={onDropNew}
           onDragPreview={onDragPreviewUpdate}
+          screenCount={screenCount}
+          onMoveToScreen={onMoveToScreen}
         />
       )}
 
@@ -1647,6 +1719,8 @@ export function TerminalCanvas({
           t={t}
           onDrop={onDropNew}
           onDragPreview={onDragPreviewUpdate}
+          screenCount={screenCount}
+          onMoveToScreen={onMoveToScreen}
         />
       )}
 
@@ -1676,6 +1750,9 @@ export function TerminalCanvas({
                   onPopOut={onPopOut ? () => onPopOut(maximizedPanel.id) : undefined}
                   pinned={!!maximizedPanel.pinned}
                   onTogglePin={() => onPatchPanel(maximizedPanel.id, { pinned: !maximizedPanel.pinned })}
+                  screenCount={screenCount}
+                  currentScreen={maximizedPanel.screen ?? 0}
+                  onMoveToScreen={onMoveToScreen ? (screen) => onMoveToScreen(maximizedPanel.id, screen) : undefined}
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-b-lg bg-card">
