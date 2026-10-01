@@ -104,8 +104,8 @@
   },
   "googleCalendar": {
     "title": "Google Calendar",
-    "connectedDescription": "Connected. Appointments you schedule here are added to your Google Calendar.",
-    "disconnectedDescription": "Connect a Google account to add the appointments you schedule here to its Google Calendar. This doesn't change how you sign in.",
+    "connectedDescription": "Connected. Appointments sync both ways: changes here show in Google Calendar, and title, time and note edits made there come back within a few minutes.",
+    "disconnectedDescription": "Connect a Google account to sync your appointments with its Google Calendar, both ways. This doesn't change how you sign in.",
     "connect": "Connect",
     "connecting": "Connecting…",
     "disconnect": "Disconnect",
