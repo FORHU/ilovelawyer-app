@@ -996,6 +996,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     checks={activeAudioOverviewMessage.audioOverview?.checks}
                     currentTime={playbackTime}
                     turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+                    sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
                     className="h-full overflow-y-auto"
                   />
                 </div>

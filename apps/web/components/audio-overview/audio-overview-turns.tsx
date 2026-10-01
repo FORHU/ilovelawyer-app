@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { CheckCircle2, CircleHelp, XCircle } from "lucide-react"
-import type { AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
+import type { AudioOverviewSentenceTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 
 const VERDICT_STYLE = {
   SUPPORTED: { Icon: CheckCircle2, className: "text-emerald-600 dark:text-emerald-400", key: "supported" },
@@ -32,6 +32,48 @@ function activeTurnIndex(time: number | undefined, turnTimings: number[] | null 
   return active
 }
 
+/** Index of the sentence playing at `time` within one turn — the last whose start is at or
+ * before it, or the first while the turn's opening silence plays. */
+function activeSentenceIndex(time: number, sentences: AudioOverviewSentenceTiming[]): number {
+  let active = 0
+  for (let i = 0; i < sentences.length; i++) {
+    if (sentences[i]!.time <= time) active = i
+    else break
+  }
+  return active
+}
+
+/** A turn's text with the sentence at `activeSentence` picked out. Whatever falls between or
+ * after Polly's sentence ranges (spacing, trailing text) renders unhighlighted, so the turn
+ * always reads as its full original text. */
+function TurnSentences({
+  text,
+  sentences,
+  activeSentence,
+}: {
+  text: string
+  sentences: AudioOverviewSentenceTiming[]
+  activeSentence: number
+}) {
+  const parts: ReactNode[] = []
+  let cursor = 0
+  sentences.forEach((sentence, i) => {
+    const start = Math.max(sentence.start, cursor)
+    if (start > cursor) parts.push(text.slice(cursor, start))
+    parts.push(
+      <span
+        key={i}
+        className={`rounded-sm transition-colors duration-200 ${i === activeSentence ? "bg-brand-gold/20" : ""}`}
+      >
+        {text.slice(start, sentence.end)}
+      </span>,
+    )
+    cursor = Math.max(cursor, sentence.end)
+  })
+  if (cursor < text.length) parts.push(text.slice(cursor))
+  return <>{parts}</>
+}
+
 const SCROLL_SETTLE_MS = 250
 // Matches the scrollIntoView smooth-scroll's own rough duration — past this, any further scroll
 // on the container is the listener's doing, not the tail end of our own auto-scroll animation.
@@ -49,18 +91,24 @@ const AUTO_SCROLL_SETTLE_MS = 600
  * turnTimings drifting flatter across a long script than the actual audio, without adding any UI
  * chrome for it. Without `currentTime`/`turnTimings` (audio not rendered, or an overview from
  * before this shipped), every turn renders the same as before and the scroll area behaves like
- * a plain list. */
+ * a plain list.
+ *
+ * With `sentenceTimings` too, the sentence being spoken within the active turn is highlighted
+ * as well, on the same offset-corrected clock. Overviews rendered before sentence timings
+ * existed have none and keep the turn-level highlight only. */
 export function AudioOverviewTurns({
   turns,
   checks,
   currentTime,
   turnTimings,
+  sentenceTimings,
   className = "",
 }: {
   turns: AudioOverviewTurn[]
   checks?: AudioOverviewTurnCheck[] | null
   currentTime?: number
   turnTimings?: number[] | null
+  sentenceTimings?: AudioOverviewSentenceTiming[][] | null
   /** Applied to the scrolling root alongside the base spacing — pass `"h-full overflow-y-auto"`
    * (or similar) to make this the scroll container itself; omit for a plain, non-scrolling list
    * (History's rows, which scroll as part of the whole list, not per-entry). */
@@ -84,6 +132,8 @@ export function AudioOverviewTurns({
   const canSync = currentTime !== undefined && !!turnTimings && turnTimings.length === turns.length
   const effectiveTime = canSync ? currentTime! - syncOffsetRef.current : undefined
   const activeIndex = activeTurnIndex(effectiveTime, turnTimings, turns.length)
+  const activeTurnSentences =
+    activeIndex !== null && sentenceTimings?.length === turns.length ? sentenceTimings[activeIndex] : undefined
 
   useEffect(() => {
     if (activeIndex === null) return
@@ -140,7 +190,17 @@ export function AudioOverviewTurns({
               {turn.speaker === "HOST_A" ? t("workspace.audioOverviewHostA") : t("workspace.audioOverviewHostB")}
               {check && <TurnCheckIcon check={check} />}
             </p>
-            <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
+            <p className="text-[13px] leading-5 text-foreground">
+              {activeIndex === i && activeTurnSentences?.length ? (
+                <TurnSentences
+                  text={turn.text}
+                  sentences={activeTurnSentences}
+                  activeSentence={activeSentenceIndex(effectiveTime!, activeTurnSentences)}
+                />
+              ) : (
+                turn.text
+              )}
+            </p>
           </div>
         )
       })}

@@ -194,7 +194,13 @@ function HistoryEntry({
       {open && (
         <div className="flex flex-col gap-3 border-t border-border px-3 py-3">
           {entry.audio && <AudioOverviewWaveform url={entry.audio.fileUrl} mediaElement={audioRef.current} />}
-          <AudioOverviewTurns turns={entry.turns} checks={entry.checks} currentTime={currentTime} turnTimings={entry.turnTimings} />
+          <AudioOverviewTurns
+            turns={entry.turns}
+            checks={entry.checks}
+            currentTime={currentTime}
+            turnTimings={entry.turnTimings}
+            sentenceTimings={entry.sentenceTimings}
+          />
         </div>
       )}
     </li>
