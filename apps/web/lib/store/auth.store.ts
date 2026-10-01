@@ -7,6 +7,8 @@ export interface AuthUser {
   username: string
   email: string
   name?: string | null
+  /** /files/<token> avatar image, or null → initials (see components/user-avatar.tsx). */
+  avatarUrl?: string | null
 }
 
 export interface ActiveOrganization {

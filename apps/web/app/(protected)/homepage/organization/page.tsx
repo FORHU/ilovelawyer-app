@@ -33,6 +33,7 @@ import {
   type OrganizationRole,
   type PackageSku,
 } from "@/lib/organizations/queries";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -700,9 +701,11 @@ export default function OrganizationPage() {
                 <div className="flex flex-col divide-y divide-border">
                   {membersQuery.data?.map((member) => (
                     <div key={member.id} className="px-6 md:px-8 py-4 flex items-center gap-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-[12px] font-semibold">
-                        {getInitials(member.user.name ?? member.user.username)}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={member.user.avatarUrl}
+                        initials={getInitials(member.user.name ?? member.user.username)}
+                        className="h-9 w-9 bg-secondary text-secondary-foreground text-[12px] font-semibold"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] text-foreground truncate">
                           {member.user.name ?? member.user.username}
