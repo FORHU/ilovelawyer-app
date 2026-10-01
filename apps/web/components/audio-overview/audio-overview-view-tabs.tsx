@@ -17,7 +17,7 @@ export function AudioOverviewViewTabs({
     { key: "history", label: t("workspace.audioOverviewHistoryTab") },
   ]
   return (
-    <div role="tablist" className="flex shrink-0 gap-1">
+    <div role="tablist" aria-label={t("workspace.audioOverviewTile")} className="flex shrink-0 gap-0.5 rounded-full border border-border p-0.5">
       {tabs.map((tab) => (
         <button
           key={tab.key}
@@ -25,8 +25,8 @@ export function AudioOverviewViewTabs({
           role="tab"
           aria-selected={view === tab.key}
           onClick={() => onChange(tab.key)}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            view === tab.key ? "bg-brand-navy-950 text-white dark:bg-foreground dark:text-background" : "text-muted-foreground hover:text-foreground"
+          className={`h-6 rounded-full px-3 text-xs font-medium transition-colors ${
+            view === tab.key ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {tab.label}

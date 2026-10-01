@@ -15,7 +15,9 @@ import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
 import { triggerBriefDownload } from "@/lib/terminal/download-brief";
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history";
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs";
-import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns";
+import { AudioOverviewTranscript } from "@/components/audio-overview/audio-overview-transcript";
+import { AudioOverviewGenerationSteps } from "@/components/audio-overview/audio-overview-generation-steps";
+import { activeTurnIndex, hasUsableTimings, hostBands } from "@/components/audio-overview/audio-overview-sync";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
@@ -444,6 +446,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const {
     activeAudioOverviewMessage,
     isGeneratingScript: isGeneratingAudioOverview,
+    scriptStep: audioOverviewScriptStep,
     isConsultationBusy: isAudioOverviewConsultationBusy,
     generateScriptError: audioOverviewGenerateError,
     generateScript: handleGenerateAudioOverviewScript,
@@ -485,6 +488,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     cycleRate: cycleAudioOverviewRate,
     formatDuration,
   } = useAudioOverviewPlayer(renderedAudioUrl, audioOverviewMessageId);
+
+  const audioOverviewTurnCount = activeAudioOverviewMessage?.audioOverview?.turns.length ?? 0;
+  const audioOverviewTimings = activeAudioOverviewMessage?.audioOverview?.turnTimings;
+  const audioOverviewPosition =
+    renderedAudioUrl && hasUsableTimings(audioOverviewTimings, audioOverviewTurnCount)
+      ? `${String(activeTurnIndex(playbackTime, audioOverviewTimings) + 1).padStart(2, "0")} / ${String(audioOverviewTurnCount).padStart(2, "0")}`
+      : undefined;
 
   // Playback belongs to the Audio Overview view only — leaving it (back arrow, another tile, or
   // collapsing the panel) stops the audio rather than leaving a hidden player running.
@@ -990,15 +1000,20 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     </button>
                   </div>
                 )}
-                <div className="min-h-0 flex-1">
-                  <AudioOverviewTurns
+                <div className="-mx-3 flex min-h-0 flex-1 flex-col">
+                  <AudioOverviewTranscript
                     turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
                     checks={activeAudioOverviewMessage.audioOverview?.checks}
-                    currentTime={playbackTime}
                     turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
                     sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
                     wordTimings={activeAudioOverviewMessage.audioOverview?.wordTimings}
-                    className="h-full overflow-y-auto"
+                    currentTime={playbackTime}
+                    duration={playbackDuration}
+                    onSeek={renderedAudioUrl ? seekAudioOverview : undefined}
+                    caption={t("workspace.audioOverviewCaption", {
+                      date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+                      count: activeAudioOverviewMessage.audioOverview?.turns.length ?? 0,
+                    })}
                   />
                 </div>
               </div>
@@ -1040,9 +1055,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 </div>
 
                 {isGeneratingAudioOverview ? (
-                  <div className="h-1 w-48 overflow-hidden rounded-full bg-brand-gold/15" aria-hidden="true">
-                    <div className="h-full w-2/5 rounded-full bg-brand-gold motion-safe:animate-progress-sweep" />
-                  </div>
+                  <AudioOverviewGenerationSteps step={audioOverviewScriptStep ?? 0} />
                 ) : (
                   <>
                     <button
@@ -1078,6 +1091,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       {expanded && openTile === "audioOverview" && renderedAudioUrl && !playerBarDismissed && (
         <AudioOverviewPlayerBar
           title={t("workspace.audioOverviewTile")}
+          position={audioOverviewPosition}
+          bands={hostBands(
+            activeAudioOverviewMessage?.audioOverview?.turns ?? [],
+            activeAudioOverviewMessage?.audioOverview?.turnTimings,
+            playbackDuration,
+          )}
           isPlaying={isPlaying}
           currentTime={playbackTime}
           duration={playbackDuration}
