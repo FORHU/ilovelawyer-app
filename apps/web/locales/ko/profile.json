@@ -104,8 +104,8 @@
   },
   "googleCalendar": {
     "title": "Google 캘린더",
-    "connectedDescription": "연결됨. 일정을 Google 캘린더와 동기화할 수 있습니다.",
-    "disconnectedDescription": "Google 계정을 연결하여 일정을 Google 캘린더와 동기화하세요. 로그인 방식은 바뀌지 않습니다.",
+    "connectedDescription": "연결됨. 여기에서 예약한 일정이 Google 캘린더에 추가됩니다.",
+    "disconnectedDescription": "Google 계정을 연결하면 여기에서 예약한 일정이 해당 Google 캘린더에 추가됩니다. 로그인 방식은 바뀌지 않습니다.",
     "connect": "연결",
     "connecting": "연결 중…",
     "disconnect": "연결 해제",
