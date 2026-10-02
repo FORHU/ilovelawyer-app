@@ -6,7 +6,6 @@ import {
   useReducer,
   useRef,
   useState,
-  type DragEvent,
 } from "react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
@@ -26,16 +25,9 @@ import {
   HIDDEN_PANELS,
   ModalOverlay,
   TerminalCanvas,
-  cascadeRect,
-  clamp,
-  columnsOf,
-  leastFullColumn,
-  snapValue,
-  GRID_SNAP_STEP,
   type PaneDragPreview,
 } from "@/components/terminal/terminal-canvas"
 import {
-  arrangementForScreen,
   autoTileLayout,
   computeFocusStackSummaries,
   computePanelBadges,
@@ -46,7 +38,8 @@ import {
 import { useCanvasWindowReaper, useCloseCanvasWindowsOnUnload, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
-import { applyScreenPreset, type ScreenPresetDef } from "@/lib/terminal/screen-presets"
+import { LayoutBuilderModal } from "@/components/terminal/layout-builder-modal"
+import { createPanelPlacementActions } from "@/lib/terminal/panel-placement"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
@@ -81,14 +74,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
 
 export { PANEL_TITLES }
-
-// How many panes a single column can stack before it's "full" and adding another pane
-// requires replacing one instead.
-const MAX_PANES_PER_COLUMN = 3
-// Hard ceiling on visible panes regardless of arrangement mode — Free/Tabs/Focus had no cap
-// at all before this, letting the board cascade into an unusable stack of overlapping panes
-// (see #297). Applies on top of (not instead of) Columns' own per-column cap above.
-const MAX_PANES = 10
 
 // Local z-index scale for this file's own stacking context (the terminal-grid stage and its
 // overlays) — deliberately ordered, not arbitrary. Below `z-10`: nothing, panes sit in normal
@@ -187,10 +172,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // "replace which pane?" picker. Null the rest of the time.
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
   const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
+  // Toolbar "Workflows" button — rearranges the current tab via ScreenPresetsModal.
   const [presetsModalOpen, setPresetsModalOpen] = useState(false)
-  // "apply" (toolbar Workflows button, rearranges the current tab) or "create" (+ New Layout,
-  // creates a new tab) — same ScreenPresetsModal component, see openPresetsModal below.
-  const [presetsModalMode, setPresetsModalMode] = useState<"apply" | "create">("apply")
+  // "+ New Layout" — opens the drag-and-drop layout builder instead (LayoutBuilderModal).
+  const [builderOpen, setBuilderOpen] = useState(false)
   // True auto-open on load isn't possible — window.open() with no fresh click is silently eaten
   // by the popup blocker in every major browser. This is the closest thing: a modal in front of
   // the user immediately on load (not a dismissible banner easy to miss) asking to resume, one
@@ -474,139 +459,37 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const panelLibraryRect = (id: PanelId) =>
     document.querySelector<HTMLElement>(`[data-panel-library-id="${CSS.escape(id)}"]`)?.getBoundingClientRect() ?? null
 
-  const dragPreviewRect = (id: PanelId) => {
-    if (dragPreview?.panelId !== id || !arrangementStageRef.current) return null
-    const bounds = arrangementStageRef.current.getBoundingClientRect()
-    return new DOMRect(
-      bounds.left + dragPreview.x * bounds.width,
-      bounds.top + dragPreview.y * bounds.height,
-      dragPreview.width * bounds.width,
-      dragPreview.height * bounds.height,
-    )
-  }
-
-  // `extra` is the Free canvas's drop rect, or a Columns-mode columnIndex; omitted for the Panel
-  // Library's plain click fallback, which keeps today's cascade placement (harmless in modes
-  // that don't use x/y/width/height).
-  const showPanelAt = (id: PanelId, extra?: Partial<PanelLayout>, sourceRect?: DOMRect | null) => {
-    paneAnimations.capturePaneState()
-    paneAnimations.queuePaneEntry(id, sourceRect ?? dragPreviewRect(id) ?? panelLibraryRect(id))
-    setDragPreview(null)
-    setLayout((prev) => {
-      if (!prev) return prev
-      // A panel re-shown from the Panel Library (e.g. after being hidden from inside a canvas
-      // window, where there's no library to re-add it from directly) can still belong to a
-      // secondary screen — its `screen` field survives a hide. Re-tiling must target THAT screen,
-      // not always screen 0, or the panel reappears with a generic cascade rect no auto-tile ever
-      // corrects because autoTileLayout(..., 0) filters it straight out.
-      const targetScreen = prev.panels.find((p) => p.id === id)?.screen ?? 0
-      const screenPanels = prev.panels.filter((p) => (p.screen ?? 0) === targetScreen)
-      const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const next = { id, visible: true, order: maxOrder + 1, ...cascadeRect(screenPanels), ...extra }
-      const panels = prev.panels.some((panel) => panel.id === id)
-        ? prev.panels.map((panel) => (panel.id === id ? { ...panel, ...next } : panel))
-        : [...prev.panels, next]
-      const added = { ...prev, panels }
-      // Free canvas: a plain add (the library's click) tiles the board so the first pane fills it
-      // and each further pane splits the space, instead of floating a cascaded window on top of
-      // the others. A drop rect from an actual drag is a deliberate position, so it's respected —
-      // except for the very first pane, where "where" has no meaning and a full canvas is the
-      // sensible start.
-      const isFree = arrangementForScreen(prev, targetScreen) === "free"
-      const explicitRect = extra?.x !== undefined || extra?.y !== undefined
-      const onlyPane = panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id) && (p.screen ?? 0) === targetScreen).length === 1
-      return isFree && (!explicitRect || onlyPane) ? autoTileLayout(added, id, targetScreen) : added
-    })
-  }
-
-  // Free canvas's drop target — TerminalCanvas computes the drop rect itself (it owns the
-  // pointer coordinates) and hands it back here, same cap-check + placement as before extraction.
-  const dropPanelAtRect = (id: PanelId, rect: { x: number; y: number; width: number; height: number }, sourceRect: DOMRect) => {
-    if (blockIfOverPaneLimit(id)) return
-    showPanelAt(id, rect, sourceRect)
-  }
-
-  const patchPanel = (id: PanelId, patch: Partial<PanelLayout>) => {
-    setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, ...patch } : panel)) } : prev))
-  }
-
-  const setColumnCount = (count: number) => setLayout((prev) => (prev ? { ...prev, columnCount: count } : prev))
-  const setColumnWidths = (widths: number[]) => setLayout((prev) => (prev ? { ...prev, columnWidths: widths } : prev))
-  const setTabsSplit = (value: number) => setLayout((prev) => (prev ? { ...prev, tabsSplit: value } : prev))
-  const setTabsActiveA = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveA: id } : prev))
-  const setTabsActiveB = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveB: id } : prev))
-
-  // Every entry point that can bring a NEW pane onto the board (sidebar add/drag, or a drop
-  // onto the Free canvas / a Tabs or Focus slot) must check this first — showPanelAt itself
-  // can't own the check since replacePaneInColumns also calls it to finish a swap, where the
-  // outgoing pane's hidePanel() hasn't flushed to `visiblePanels` yet and would look like it's
-  // still occupying a slot. Opens the same replace picker Columns mode already uses instead of
-  // silently doing nothing, so hitting the cap always gives the user a way forward. Returns
-  // true when the add was blocked.
-  const blockIfOverPaneLimit = (id: PanelId): boolean => {
-    const alreadyVisible = visiblePanels.some((p) => p.id === id)
-    if (!alreadyVisible && visiblePanels.length >= MAX_PANES) {
-      setReplaceTarget(id)
-      return true
-    }
-    return false
-  }
-
-  // Adding a pane goes through the ordinary cascade placement in every mode except Columns,
-  // where it either auto-joins the least-full column or — if every column is already at
-  // MAX_PANES_PER_COLUMN — opens the replace picker instead of silently growing past the grid.
-  const requestAddPanel = (id: PanelId) => {
-    if (!layout) return
-    if (blockIfOverPaneLimit(id)) return
-    if (arrangement !== "columns") {
-      showPanelAt(id)
-      return
-    }
-    const count = layout.columnCount ?? 3
-    const columns = columnsOf(visiblePanels, count)
-    const alreadyVisible = visiblePanels.some((p) => p.id === id)
-    if (!alreadyVisible && visiblePanels.length >= count * MAX_PANES_PER_COLUMN) {
-      setReplaceTarget(id)
-      return
-    }
-    showPanelAt(id, { columnIndex: leastFullColumn(columns) })
-  }
-
-  const beginPanelDrag = (id: PanelId) => {
-    setDragPreview({ panelId: id, x: 0.34, y: 0.28, width: 0.32, height: 0.32 })
-  }
-
-  const updateDragPreview = (event: DragEvent) => {
-    const id = event.dataTransfer.getData("text/x-panel-id") as PanelId
-    const bounds = arrangementStageRef.current?.getBoundingClientRect()
-    if (!id || !bounds) return
-    const width = 0.32
-    const height = 0.32
-    const x = clamp(snapValue(clamp((event.clientX - bounds.left) / bounds.width, 0, 1 - width), GRID_SNAP_STEP), 0, 1 - width)
-    const y = clamp(snapValue(clamp((event.clientY - bounds.top) / bounds.height, 0, 1 - height), GRID_SNAP_STEP), 0, 1 - height)
-    setDragPreview({ panelId: id, x, y, width, height })
-  }
-
-  const replacePaneInColumns = (oldId: PanelId, newId: PanelId) => {
-    const oldPanel = layout?.panels.find((p) => p.id === oldId)
-    if (!oldPanel) return
-    hidePanel(oldId)
-    showPanelAt(newId, { columnIndex: oldPanel.columnIndex, order: oldPanel.order, height: oldPanel.height })
-    setReplaceTarget(null)
-  }
-
-  const bringToFront = (panelId: PanelId) => {
-    setLayout((prev) => {
-      if (!prev) return prev
-      const maxOrder = Math.max(0, ...prev.panels.filter((p) => p.visible).map((p) => p.order))
-      const current = prev.panels.find((p) => p.id === panelId)
-      if (!current || current.order >= maxOrder) return prev
-      return {
-        ...prev,
-        panels: prev.panels.map((panel) => (panel.id === panelId ? { ...panel, order: maxOrder + 1 } : panel)),
-      }
-    })
-  }
+  // Shared with the layout builder (see lib/terminal/panel-placement.ts) — cascade/auto-tile
+  // placement, Columns-mode replace, drag preview math, all operating on this window's own
+  // `layout`/`setLayout`. A panel re-shown from the Panel Library can still belong to a secondary
+  // screen (its `screen` field survives a hide), hence resolveTargetScreen reads the panel's own
+  // field rather than assuming screen 0.
+  const {
+    dropPanelAtRect,
+    patchPanel,
+    setColumnCount,
+    setColumnWidths,
+    setTabsSplit,
+    setTabsActiveA,
+    setTabsActiveB,
+    requestAddPanel,
+    beginPanelDrag,
+    updateDragPreview,
+    replacePaneInColumns,
+    bringToFront,
+  } = createPanelPlacementActions({
+    layout,
+    setLayout,
+    arrangement,
+    visiblePanels,
+    stageRef: arrangementStageRef,
+    dragPreview,
+    setDragPreview,
+    setReplaceTarget,
+    resolveTargetScreen: (id) => layout?.panels.find((p) => p.id === id)?.screen ?? 0,
+    onHide: hidePanel,
+    animate: { capturePaneState: paneAnimations.capturePaneState, queuePaneEntry: paneAnimations.queuePaneEntry },
+  })
 
   // Pop-out (per-pane header button, gated on isExtendedScreen so it only ever renders on
   // Chrome/Edge with more than one physical screen) — advances the pane to the next physical
@@ -690,29 +573,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     applyWorkspace.mutate(id)
   }
 
-  // The ScreenPresetsModal's onCreate callback (mode="create") — builds the new tab's layout from
-  // the CHOSEN preset (applyScreenPreset, the same function Workflows' apply mode uses) instead of
-  // cloning whatever arrangement happens to be on screen, which is what this used to do before the
-  // preset picker existed.
-  const handleCreateLayout = (name: string, preset: ScreenPresetDef) => {
-    if (!catalog.data || !name) return
-    const fallback: WorkspaceLayout = {
-      preset: catalog.data.defaultPreset,
-      arrangement: "free",
-      panels: catalog.data.panels.map((panel, index) => ({ id: panel.id, visible: false, order: index, width: 1, height: 1 })),
-    }
-    const layoutJson = applyScreenPreset(fallback, preset)
-    createWorkspace.mutate(
-      { caseId, name, layoutJson },
-      {
-        onSuccess: (workspace) => {
-          lastSavedLayoutRef.current = JSON.stringify(layoutJson)
-          setSelectedWorkspaceId(workspace.id)
-          setLayout(layoutJson)
-          applyWorkspace.mutate(workspace.id)
-        },
-      },
-    )
+  // The LayoutBuilderModal's onCreated callback — the builder already POSTed the new workspace
+  // itself (it owns its own createWorkspace mutation), this just adopts it as the active tab.
+  const handleLayoutCreated = (workspace: { id: string }, layoutJson: WorkspaceLayout) => {
+    lastSavedLayoutRef.current = JSON.stringify(layoutJson)
+    setSelectedWorkspaceId(workspace.id)
+    setLayout(layoutJson)
+    applyWorkspace.mutate(workspace.id)
   }
 
   // Resets the CURRENT tab's contents back to empty, in place — previously this called the
@@ -803,16 +670,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
 
 
-  // Shared opener for both the toolbar "Workflows" button (apply mode) and "+ New Layout" (create
-  // mode) — same screen-detection flow either way. Workflows is available on any screen count now,
-  // not just multi-monitor setups — a single-screen lawyer just never sees more than the
-  // screenCount:1 presets. Detection failing (no Window Management API, or permission denied)
-  // used to mean "give up" when this button was multi-screen-only; now it just means "assume the
-  // one screen this page is already on."
-  const openPresetsModal = (mode: "apply" | "create") => {
-    setPresetsModalMode(mode)
+  // Shared screen-detection body for both the toolbar "Workflows" button (apply mode) and
+  // "+ New Layout" (the layout builder) — same flow either way, just opening a different modal.
+  // Available on any screen count now, not just multi-monitor setups — a single-screen lawyer
+  // just never sees more than the screenCount:1 presets. Detection failing (no Window Management
+  // API, or permission denied) used to mean "give up" when this was multi-screen-only; now it
+  // just means "assume the one screen this page is already on."
+  const detectScreenCount = (onOpen: () => void) => {
     setDetectedScreenCount(null)
-    setPresetsModalOpen(true)
+    onOpen()
     if (!window.getScreenDetails) {
       setDetectedScreenCount(1)
       return
@@ -822,6 +688,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       .then((details) => setDetectedScreenCount(1 + sortedSecondaryScreens(details).length))
       .catch(() => setDetectedScreenCount(1))
   }
+  const openWorkflowsModal = () => detectScreenCount(() => setPresetsModalOpen(true))
+  const openLayoutBuilder = () => detectScreenCount(() => setBuilderOpen(true))
 
   return (
     <PaneActivityContext.Provider value={paneActivity}>
@@ -887,8 +755,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           layout={layout}
           setLayout={setLayout}
           canvasWindowsRef={canvasWindowsRef}
-          mode={presetsModalMode}
-          onCreate={handleCreateLayout}
+        />
+        <LayoutBuilderModal
+          open={builderOpen}
+          onOpenChange={setBuilderOpen}
+          detectedCount={detectedScreenCount}
+          caseId={caseId}
+          canvasWindowsRef={canvasWindowsRef}
+          onCreated={handleLayoutCreated}
         />
         <Sheet open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen}>
           <SheetContent side="right" className="w-full sm:max-w-xl">
@@ -911,7 +785,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
               const tab = workspaces.data?.find((w) => w.id === id)
               if (tab) setLayoutPendingDelete({ id: tab.id, name: tab.name })
             }}
-            onNew={() => openPresetsModal("create")}
+            onNew={openLayoutBuilder}
             onRename={(id, name) => renameWorkspace.mutate({ id, name })}
             labels={{
               close: t("closeLayout"),
@@ -927,7 +801,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             <div className="flex shrink-0 items-center rounded-full border border-border p-0.5">
               <button
                 type="button"
-                onClick={() => openPresetsModal("apply")}
+                onClick={openWorkflowsModal}
                 title={t("workflowsAvailable")}
                 className="flex h-7 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
               >
@@ -1094,7 +968,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           onDropNew={requestAddPanel}
           onDropAtRect={dropPanelAtRect}
           onDragPreviewUpdate={updateDragPreview}
-          emptyStateAction={{ label: t("addNewLayout"), onClick: () => openPresetsModal("create") }}
+          emptyStateAction={{ label: t("addNewLayout"), onClick: openLayoutBuilder }}
         >
           {layoutPendingDelete && (
             <ModalOverlay

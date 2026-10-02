@@ -104,8 +104,8 @@
   },
   "googleCalendar": {
     "title": "Google Calendar",
-    "connectedDescription": "Connected. Events can sync with your Google Calendar.",
-    "disconnectedDescription": "Connect a Google account to sync events with Google Calendar. This doesn't change how you sign in.",
+    "connectedDescription": "Connected. Appointments sync both ways: changes here show in Google Calendar, and title, time and note edits made there come back within a few minutes.",
+    "disconnectedDescription": "Connect a Google account to sync your appointments with its Google Calendar, both ways. This doesn't change how you sign in.",
     "connect": "Connect",
     "connecting": "Connecting…",
     "disconnect": "Disconnect",

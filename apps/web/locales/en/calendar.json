@@ -14,6 +14,24 @@
   "endTimeHint": "End time must be after {{time}}.",
   "startTime": "Start time",
   "endTime": "End time",
+  "timePicker": {
+    "set": "Set",
+    "close": "Close",
+    "date": "Date",
+    "time": "Time",
+    "typePlaceholder": "hh:mm AM",
+    "durationMinutes": "{{minutes}}m",
+    "durationHours": "{{hours}}h",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
+    "errors": {
+      "invalid": "Enter a time like 10:05 AM or 14:30.",
+      "required": "Pick a time from the list or type one.",
+      "after": "Pick a time after {{time}}.",
+      "minutes": "Minutes go up to 59.",
+      "hours12": "With AM/PM, use hours 1 to 12.",
+      "hours24": "Hours go up to 23."
+    }
+  },
   "titlePlaceholder": "Title",
   "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",

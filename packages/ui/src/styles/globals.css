@@ -165,6 +165,15 @@
     --claim-inference-fg: #b45309;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.16);
     --claim-unsupported-fg: #b91c1c;
+    /* Audio Overview player (components/audio-overview/*): unplayed wave, the played gradient's
+       two ends, the seek track's tint, and Host B's band color (Host A uses --brand-gold).
+       AudioOverviewWaveform reads these at draw time, since wavesurfer paints a canvas and can't
+       resolve CSS variables itself. */
+    --ao-wave: #c7ced8;
+    --ao-played-from: #059669;
+    --ao-played-to: #0891b2;
+    --ao-tint: rgba(13, 148, 136, 0.08);
+    --ao-host-b: #475d85;
 }
 
 .dark {
@@ -233,6 +242,11 @@
     --claim-inference-fg: #fcd34d;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.22);
     --claim-unsupported-fg: #fca5a5;
+    --ao-wave: #3d4757;
+    --ao-played-from: #34d399;
+    --ao-played-to: #22d3ee;
+    --ao-tint: rgba(45, 212, 191, 0.07);
+    --ao-host-b: #8ea4c8;
 }
 
 /* Documented z-index scale — pick from these instead of a freehand number. Sidebars/rails sit

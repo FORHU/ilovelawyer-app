@@ -135,6 +135,29 @@
     "noSummary": "No summary stored for this document yet.",
     "sheetTitle": "Citation preview"
   },
+  "citationBadge": {
+    "law": "Law",
+    "jurisprudence": "Jurisprudence"
+  },
+  "citationRank": {
+    "high": "High relevance to your question",
+    "medium": "Medium relevance to your question",
+    "low": "Low relevance to your question",
+    "srPrefix": "Relevance: ",
+    "relevanceLabel": "Relevance",
+    "importanceLabel": "Importance",
+    "relevance": {
+      "high": "Squarely on your question",
+      "medium": "Bears on part of your question",
+      "low": "General background, not about your facts"
+    },
+    "importance": {
+      "high": "A lawyer advising you would need to read this",
+      "medium": "Worth reading if time allows",
+      "low": "Not needed to advise on these facts"
+    },
+    "disclaimer": "A reading aid based on your question. It does not check that the advice or the authority is correct."
+  },
   "lawDoc": {
     "back": "Back to library",
     "loading": "Loading document…",

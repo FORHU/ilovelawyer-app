@@ -101,9 +101,18 @@ export interface AiJobStatus {
   startedAt: string
   finishedAt: string | null
   error: string | null
+  /** How far an IN_PROGRESS job has got (ilovelawyer-api's AiGenerationJob.stage) — null until it
+   * reports one, and always null for kinds that don't report stages. Chat-backed generations
+   * (Audio Overview's script, Mind Map) go null → "answering" → "extras"; see AiJobStage. */
+  stage?: AiJobStage | null
 }
 
-/** ai-job:started/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
+/** Chat Wonder's progress through a locked chat turn: null while it reads the case,
+ * "answering" once the reply starts streaming, "extras" once the reply is done and the second
+ * model call (the one that writes the audio overview script / mind map) is running. */
+export type AiJobStage = "answering" | "extras"
+
+/** ai-job:started/progress/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
  * (lib/socket.ts), pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), the single
  * choke point every one of AiGenerationQueue's 8 kinds (including the auto-triggered
  * casePostExtraction, which resolves to the "caseRefresh" lock kind) funnels through. */
@@ -114,9 +123,10 @@ interface AiJobSocketPayload {
   startedAt: string
   finishedAt: string | null
   error: string | null
+  stage?: AiJobStage | null
 }
 
-const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:done", "ai-job:failed"] as const
+const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:progress", "ai-job:done", "ai-job:failed"] as const
 
 /** Whether a Generate/Refresh/Scan action is currently running for this case, regardless of who
  * triggered it or when — a page refresh mid-generation otherwise looks idle even though the
@@ -175,6 +185,7 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
         startedAt: payload.startedAt,
         finishedAt: payload.finishedAt,
         error: payload.error,
+        stage: payload.stage ?? null,
       })
     }
 
@@ -1628,6 +1639,12 @@ export function useAudioOverviewHistoryQuery(caseId: string, enabled = true) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     refetchOnMount: "always",
+    // A row whose audio is still rendering (started from here or elsewhere) flips to Ready on its
+    // own, rather than staying stuck until the panel remounts.
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) => page.items.some((item) => item.status === "IN_PROGRESS" && !item.audio))
+        ? 5000
+        : false,
     enabled,
   })
 }
