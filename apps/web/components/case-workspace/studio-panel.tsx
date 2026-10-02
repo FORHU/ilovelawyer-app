@@ -56,7 +56,10 @@ const FINDING_CATEGORY_ORDER: FindingCategory[] = [
 // PANEL_TITLES in legal-terminal.tsx is the same kind of hardcoded-English precedent for
 // category-ish labels, so this matches rather than introducing a new one-off i18n key per enum
 // value across three languages for what's a data-density convenience view.
-function formatCategory(value: string): string {
+function formatCategory(value: string | null | undefined): string {
+  // A snapshot from an API one deploy behind/ahead of this app can omit the field; a missing
+  // label must not blank the whole workspace.
+  if (!value) return "";
   return value
     .toLowerCase()
     .split("_")
