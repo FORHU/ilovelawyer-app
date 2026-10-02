@@ -11,6 +11,7 @@ import { PageTransition } from "@/components/page-transition"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
+import { TourLayer } from "@/components/tour/tour-layer"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 
@@ -163,5 +164,11 @@ function CurrentUserSync({
   if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown)
     return <LoadingScreen />
 
-  return <PageTransition>{children}</PageTransition>
+  return (
+    <>
+      <PageTransition>{children}</PageTransition>
+      {/* The onboarding tour and Ask the guide, over every signed-in page. */}
+      <TourLayer />
+    </>
+  )
 }

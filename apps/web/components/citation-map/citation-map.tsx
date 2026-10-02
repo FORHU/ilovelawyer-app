@@ -416,7 +416,7 @@ export function CitationMap({ caseId }: CitationMapProps) {
                 href={openUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-[11px] font-bold text-brand-navy-950 hover:scale-105 transition-transform"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-gold px-3 py-1.5 text-[11px] font-bold text-brand-gold-foreground hover:scale-105 transition-transform"
               >
                 <ExternalLink size={12} /> Open Source
               </a>

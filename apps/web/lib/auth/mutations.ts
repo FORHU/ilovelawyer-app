@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
+import { useTourStore } from "@/lib/store/tour.store"
 import { chatKeys } from "@/lib/query-keys"
 import type { OrganizationWithRole } from "@/lib/organizations/queries"
 
@@ -359,6 +360,8 @@ export function useLogoutMutation() {
       // keeps serving the just-logged-out account's cached data/error to whichever
       // account logs in next in the same tab, instead of refetching for the new session.
       queryClient.clear()
+      // The guide's conversation and any open tour belong to the account that just left.
+      useTourStore.getState().reset()
       router.push("/login")
     },
   })

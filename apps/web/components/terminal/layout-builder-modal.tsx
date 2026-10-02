@@ -344,7 +344,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                       disabled={uiState.draggingId !== null && i !== activeScreenTab}
                       onClick={() => setActiveScreenTab(i)}
                       className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                        activeScreenTab === i ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted"
+                        activeScreenTab === i ? "bg-brand-gold text-brand-gold-foreground" : "text-muted-foreground hover:bg-muted"
                       }`}
                     >
                       {t("builderDisplayLabel", { n: i + 1 })}
@@ -521,7 +521,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
             type="button"
             onClick={handleCreate}
             disabled={createWorkspace.isPending}
-            className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
+            className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
           >
             {t("createLayout")}
           </button>

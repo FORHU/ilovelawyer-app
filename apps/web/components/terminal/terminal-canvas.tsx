@@ -1534,7 +1534,7 @@ export function TerminalCanvas({
               <button
                 type="button"
                 onClick={emptyStateAction.onClick}
-                className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold-foreground transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 {emptyStateAction.label}

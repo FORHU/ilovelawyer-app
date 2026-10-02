@@ -12,6 +12,8 @@ All tokens live in `packages/ui/src/styles/globals.css`. Never hardcode hex valu
 | `--brand-navy-900` | `bg-brand-navy-900` | `#1a1a1a` (fixed both themes) |
 | `--brand-navy-800` | `bg-brand-navy-800` | `#1a1a1a` (fixed both themes) |
 | `--brand-gold` | `text-brand-gold` / `bg-brand-gold` | `#8a6200` light / `#c9a44c` dark |
+| `--brand-gold-foreground` | `text-brand-gold-foreground` | `#ffffff` light / `#0b0b0b` dark — text on a gold fill |
+| `--brand-gold-hover` | `hover:bg-brand-gold-hover` | `#6d4d00` light / `#d9b85e` dark |
 | `--brand-status-green` | `text-brand-status-green` | `#2e8b57` |
 | `--brand-oxblood` | `text-brand-oxblood` | `#5c1f28` |
 | `--ok` / `--warn` / `--danger` / `--riskmed` | `bg-ok`/`text-ok` etc. | see `globals.css` — light/dark pairs for risk & status severity |
@@ -46,7 +48,7 @@ A decorative image/gradient that fades into the page background must fade into `
 
 Base primitive: `@workspace/ui`'s `Button` (`packages/ui/src/components/button.tsx`, CVA-based). Add new variants there instead of hand-rolling a one-off button class.
 
-- **Primary/confirming action (the gold pill):** `bg-brand-gold text-brand-navy-950 font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] rounded-full hover:opacity-85`. This is the one "accent" action per page — don't use gold for more than one competing CTA on a screen.
+- **Primary/confirming action (the gold pill):** `Button variant="accent"`, i.e. `bg-brand-gold text-brand-gold-foreground font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] rounded-full hover:bg-brand-gold-hover`. Text on any gold fill is `text-brand-gold-foreground`, never `text-brand-navy-950`: near-black on the light-mode gold is too low-contrast at these label sizes. This is the one "accent" action per page — don't use gold for more than one competing CTA on a screen.
 - **Secondary/outline pill:** `border border-border rounded-full h-9 px-4 text-[11px] font-semibold tracking-[1px] uppercase text-foreground hover:border-foreground/40`.
 - **Icon-only round button:** `h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-background`.
 - Every interactive control gets a `Tooltip`/`TooltipContent` wrapper (`@workspace/ui/components/tooltip`) with a short description — this is used consistently, not occasionally.
@@ -67,7 +69,7 @@ Use `@workspace/ui`'s `Badge` (`packages/ui/src/components/badge.tsx`) for any s
 - **Content width**: pick one of the three named tiers from `apps/web/lib/layout-constants.ts` (`CONTENT_WIDTH_SM` 1000px for legal/reference pages and forms, `CONTENT_WIDTH_MD` 1280px for case list/detail, `CONTENT_WIDTH_LG` 1440px for calendar/terminal/transcription/the header) instead of picking a new pixel value by eye.
 - Section header pattern (title + CTA): flex row, `items-end justify-between gap-6 flex-wrap`, title block on the left (eyebrow dot + title + subtitle stacked), action button on the right.
 - List rows: a single `div` that is `flex flex-col` on mobile and `md:grid md:grid-cols-[...]` on desktop — not two separate mobile/desktop markups. Row actions fade in on `group-hover` at `md:` and up, always-visible below `md:` (no hover on touch).
-- Empty states: icon in a circular `bg-card` badge, Libre Caslon heading, muted-foreground body, one CTA. Never just a bare "No results" string.
+- Empty states: use `@workspace/ui`'s `EmptyState` (`packages/ui/src/components/empty-state.tsx`) — gold icon in a circular bordered badge, Libre Caslon heading, muted-foreground body, at most one CTA, in a dashed rounded box. Never just a bare "No results" string.
 - **Z-index**: pick from the documented scale in `globals.css` (`z-(--z-sidebar)` 40, `z-(--z-modal)` 50, `z-(--z-header-drawer)` 60, `z-(--z-canvas-overlay)` 9999 for controls layered above a self-contained canvas like mind-map) instead of a freehand number.
 
 ## Navigation (`GlobalHeader`, `apps/web/components/global-header.tsx`)

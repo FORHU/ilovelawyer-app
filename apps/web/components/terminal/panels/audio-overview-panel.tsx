@@ -209,7 +209,7 @@ function AudioOverviewCurrent({
           onClick={() => void generateScript()}
           disabled={isConsultationBusy}
           title={isConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
-          className="mt-1 inline-flex h-8 items-center gap-2 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-widest text-brand-navy-950 transition-[filter] hover:brightness-110 disabled:opacity-45"
+          className="mt-1 inline-flex h-8 items-center gap-2 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-widest text-brand-gold-foreground transition-[filter] hover:brightness-110 disabled:opacity-45"
         >
           <Volume2 className="h-3.25 w-3.25" aria-hidden="true" />
           {t("workspace.audioOverviewGenerateCta")}

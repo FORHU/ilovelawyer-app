@@ -1,10 +1,12 @@
 "use client"
 
+import { Suspense } from "react"
 import { useParams } from "next/navigation"
 import { PageShell } from "@/components/page-shell"
 import LegalTerminal from "@/components/terminal/legal-terminal"
 import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-provider"
 import { useMarkCaseOpened } from "@/lib/cases/mutations"
+import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart"
 
 export default function TerminalWorkspacePage() {
   const params = useParams<{ caseId: string }>()
@@ -17,6 +19,10 @@ export default function TerminalWorkspacePage() {
           <LegalTerminal caseId={params.caseId} />
         </TerminalDisplayProvider>
       </div>
+      {/* First visit to any case's Terminal: its tour, on the sample case. */}
+      <Suspense>
+        <SampleTourAutoStart track="terminal" />
+      </Suspense>
     </PageShell>
   )
 }

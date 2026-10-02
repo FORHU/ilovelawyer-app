@@ -1,0 +1,335 @@
+{
+  "tip": {
+    "guideKicker": "Guide",
+    "controls": "Tour controls",
+    "skip": "Skip tour",
+    "previous": "Previous step",
+    "next": "Next step",
+    "finish": "Finish tour",
+    "progress": "Step {{step}} of {{total}}",
+    "backToGuide": "Back to guide",
+    "gotIt": "Got it"
+  },
+  "toasts": {
+    "targetMissing": "That control isn't on this screen right now.",
+    "saveFailed": "Couldn't save your tour progress. Check your connection; you may see this tour again."
+  },
+  "targets": {
+    "composer-input": "Consultation composer",
+    "composer-attach": "Attach file",
+    "composer-mic": "Voice dictation",
+    "consult-new": "New consultation",
+    "consult-history": "Consultation history",
+    "nav-case-portfolio": "Cases tab",
+    "nav-calendar": "Calendar tab",
+    "nav-library": "Library tab",
+    "cases-new": "New case",
+    "cases-create-first": "Create your first case",
+    "cases-search": "Case search",
+    "cases-filters": "Status filter",
+    "case-row-terminal": "Legal Terminal",
+    "case-row-workspace": "Workspace",
+    "header-account": "Account menu",
+    "header-theme": "Theme toggle",
+    "header-guide": "Ask the guide",
+    "header-bell": "Notifications",
+    "header-lang": "Language",
+    "header-menu": "Menu",
+    "library-search": "Library search",
+    "library-cats": "Category tabs",
+    "library-filters": "Library filters",
+    "cal-add": "Add event",
+    "cal-grid": "Month grid",
+    "cal-day": "Day panel"
+  },
+  "guide": {
+    "button": "Guide",
+    "open": "Ask the guide",
+    "eyebrow": "Guide",
+    "title": "Ask the guide",
+    "intro": "Ask how to use ilovelawyer. The guide answers here and lights up the right button. Legal questions go to Consultation, where answers cite their sources.",
+    "startOver": "Start over",
+    "close": "Close guide",
+    "askSomethingElse": "Ask something else",
+    "placeholder": "Ask how to use ilovelawyer…",
+    "send": "Send question",
+    "showing": "Showing: {{label}}",
+    "helpDoc": "Help doc · {{topic}}",
+    "openConsultation": "Ask in Consultation",
+    "minimizedOpen": "Open guide",
+    "dismiss": "Dismiss",
+    "legalAnswer": "That's a legal question, so it belongs in a Consultation, where answers come with citations.",
+    "fallbackAnswer": "I can help with using ilovelawyer: opening cases, uploading documents, the Legal Terminal, the calendar or your team. Try “How do I open a case in the Legal Terminal?”",
+    "tours": "Tours",
+    "tourThisPage": "Tour this page",
+    "tourWorkspace": "Tour the Workspace on a sample case",
+    "tourTerminal": "Tour the Terminal on a sample case"
+  },
+  "answers": {
+    "terminal": "Every case row has two ways in. Choose **Legal Terminal** for the full pane grid, or **Workspace** for chat and sources.",
+    "upload": "Use the **attach** button in the composer to add a contract or filing. Inside a case, the Documents section has its own **Upload** button.",
+    "newCase": "New matters start from **New case** on the Cases page. The wizard asks for the caption, the parties and any documents.",
+    "calendar": "Hearings and deadlines live in the **Calendar**. Link an event to a case and it shows up as the Terminal's next date.",
+    "team": "Invites and member roles are under **Organization** in the account menu.",
+    "team_UK": "Invites and member roles are under **Organisation** in the account menu.",
+    "theme": "The **sun / moon** button in the header switches between light and dark.",
+    "library": "Codals, jurisprudence and Republic Acts are in the **Library**.",
+    "library_UK": "UK case law and legislation are in the **Library**.",
+    "voice": "Tap the **microphone** in the composer to dictate. Your words appear in the box so you can edit them before sending.",
+    "newConsultation": "Use the **+** button at the top of the consultation sidebar to start a new consultation. Earlier ones stay in the history.",
+    "history": "Your past consultations are in the **history** sidebar on the left of Consultation.",
+    "findCase": "Search by case name or party in the **search box** at the top of the Cases page.",
+    "statusFilter": "Use the **Active / Archived** toggle to switch between your current and archived cases. Archived cases keep all their documents.",
+    "workspace": "Every case has a **Workspace**. It opens sources, chat and Studio side by side, where you can make an audio overview, mind map or case brief.",
+    "notifications": "The **bell** in the header shows indexing, hearing and comment alerts. Unread ones have a gold count.",
+    "language": "Switch between English, Tagalog and Korean from the **language** menu in the header.",
+    "profile": "Your name, username and password are under **Profile** in the account menu.",
+    "tour": "You can replay the tour from **Ask the guide**: open it and choose Replay the tour.",
+    "librarySearch": "Type a topic, a code or a G.R. number into the **Library search** to find matching authorities.",
+    "librarySearch_UK": "Type a case name, a neutral citation or an Act title into the **Library search** to find matching authorities.",
+    "libraryCategories": "Use the **category tabs** beside the search box to switch between decisions and statutes.",
+    "libraryCategories_UK": "Use the **category tabs** beside the search box to switch between case law and legislation.",
+    "libraryFilters": "The **filters** under the search box narrow results by case type, topic or court.",
+    "libraryFilters_UK": "The **court filter** under the search box narrows case law by court.",
+    "addEvent": "Pick a day, then press **+** in the day panel. Choose Appointment or Note, set the time and link a case.",
+    "reminder": "When you **add** an event, set a reminder and an optional email to notify.",
+    "editEvent": "Select the day, then edit or delete the event from the **day panel**.",
+    "month": "The **month grid** shows every hearing, deadline and note at a glance. Pick a day to see its events."
+  },
+  "helpTopics": {
+    "casePortfolio": "Cases",
+    "consultation": "Consultation",
+    "calendar": "Calendar",
+    "organization": "Organization",
+    "organization_UK": "Organisation",
+    "settings": "Settings",
+    "library": "Legal Library",
+    "workspace": "Case Workspace",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "tour": "Product tour"
+  },
+  "suggestions": {
+    "addHearing": "How do I add a hearing?",
+    "openTerminal": "How do I open a case in the Legal Terminal?",
+    "upload": "Where do I upload documents?",
+    "invite": "How do I invite my team?",
+    "newConsultation": "How do I start a new consultation?",
+    "dictate": "Can I dictate instead of typing?",
+    "findCase": "How do I find a case?",
+    "workspace": "How do I make a case brief or audio overview?",
+    "notifications": "Where are my notifications?",
+    "searchLibrary": "How do I search the library?",
+    "theme": "How do I switch to light mode?",
+    "language": "Can I change the language?",
+    "filterLibrary": "How do I filter decisions by court?",
+    "filterLibrary_UK": "How do I filter judgments by court?",
+    "switchCategory": "How do I switch to Republic Acts?",
+    "switchCategory_UK": "How do I switch to legislation?",
+    "reminder": "Can I set a reminder?",
+    "editEvent": "How do I reschedule or delete an event?",
+    "archived": "Where are my archived cases?"
+  },
+  "sampleCase": {
+    "badge": "Sample case · read-only",
+    "readOnly": "This is a sample case, so nothing changes. Open your own case to do this for real.",
+    "tabWorkspace": "Workspace",
+    "tabTerminal": "Legal Terminal",
+    "next": "Next: {{date}} · {{label}}",
+    "risk": "Risk",
+    "sources": "Sources · {{count}}",
+    "upload": "Upload",
+    "chatScoped": "Chat · scoped to {{count}} sources",
+    "askPlaceholder": "Ask about this case…",
+    "send": "Send",
+    "studio": "Studio",
+    "pickTile": "Pick a tile to see what it makes from this case.",
+    "rag": {
+      "indexed": "Indexed",
+      "indexing": "Indexing",
+      "failed": "Failed"
+    },
+    "tiles": {
+      "audio": {
+        "name": "Audio Overview",
+        "sub": "Two hosts talk through the case"
+      },
+      "mindmap": {
+        "name": "Mind Map",
+        "sub": "The case as a strategy map"
+      },
+      "timeline": {
+        "name": "Timeline",
+        "sub": "Dates found in the documents"
+      },
+      "datatable": {
+        "name": "Data Table",
+        "sub": "Witnesses, damages, deadlines"
+      },
+      "decisions": {
+        "name": "Decisions",
+        "sub": "Why each answer is the answer"
+      },
+      "brief": {
+        "name": "Case brief",
+        "sub": "Download as PDF or Word"
+      }
+    },
+    "host": "Host {{host}}",
+    "play": "Play",
+    "pause": "Pause",
+    "caseStrategy": "Case strategy",
+    "fromSource": "From {{source}}",
+    "timelineCount": "Timeline · {{count}} events",
+    "dataTableCount": "Data Table · {{count}} facts",
+    "colType": "Type",
+    "colLabel": "Label",
+    "colDetail": "Detail",
+    "briefFacts": "Facts",
+    "briefIssues": "Issues",
+    "briefArguments": "Arguments",
+    "briefRelief": "Relief sought",
+    "downloadPdf": "PDF",
+    "downloadWord": "Word",
+    "arrangement": "Arrangement",
+    "arrangements": {
+      "free": "Free",
+      "columns": "Columns",
+      "tabs": "Tabs",
+      "focus": "Focus"
+    },
+    "paneCount": "{{count}}/21 panes",
+    "refresh": "Refresh analysis",
+    "addPane": "Add pane",
+    "addPaneTitle": "Add a pane",
+    "addPaneBody": "21 panes in five groups. Pick one to add it to the grid.",
+    "onGrid": "On grid",
+    "pin": "Pin {{pane}}",
+    "close": "Close {{pane}}",
+    "closeSheet": "Close",
+    "emptyPane": "In a real case this pane fills in from your documents.",
+    "tour": {
+      "skipped": "Tour skipped.",
+      "studio": {
+        "name": "Workspace",
+        "done": "Workspace tour complete. Your own cases work the same way.",
+        "steps": {
+          "sources": {
+            "title": "Your documents",
+            "body": "Every file in the case, by folder. Tick a document to include it in chat answers. Each one shows whether it's indexed and ready."
+          },
+          "chat": {
+            "title": "Ask about this case",
+            "body": "Chat answers only from the ticked documents, and every claim cites the file and page it came from."
+          },
+          "tiles": {
+            "title": "Studio makes things from the case",
+            "body": "Each tile builds something from the same documents. You'll open each one next."
+          },
+          "audio": {
+            "title": "Audio Overview",
+            "body": "Two hosts talk through the facts and the issues. Generate the script, then render audio you can play or download."
+          },
+          "mindmap": {
+            "title": "Mind Map",
+            "body": "The case as a strategy map: facts, law, the other side's theory, gaps and next steps. Expand any node for more."
+          },
+          "timeline": {
+            "title": "Timeline",
+            "body": "Dates found in your documents, in order. Each event says which document it came from."
+          },
+          "datatable": {
+            "title": "Data Table",
+            "body": "Witnesses, damages, deadlines and findings from the whole case, in one table."
+          },
+          "decisions": {
+            "title": "Decisions",
+            "body": "The reasoning behind each legal answer. If a fact changes, dispute it and the answer is flagged."
+          },
+          "brief": {
+            "title": "Case brief",
+            "body": "Facts, issues, arguments and relief sought, ready to download as PDF or Word."
+          }
+        }
+      },
+      "terminal": {
+        "name": "Terminal",
+        "done": "Terminal tour complete. Add more panes any time from Add pane.",
+        "steps": {
+          "nextdate": {
+            "title": "The next date, always in view",
+            "body": "This chip shows the case's next hearing or deadline, taken from the Calendar."
+          },
+          "command": {
+            "title": "Case Summary: start here",
+            "body": "Case health, the next date and your next actions, all on one card."
+          },
+          "evidence": {
+            "title": "Evidence & Timeline",
+            "body": "Everything you upload lands here, linked to its source, with its status: verified, needs authenticating, or disputed."
+          },
+          "contradictions": {
+            "title": "Contradictions",
+            "body": "Where two documents disagree. Resolve or dismiss each one, with a note so your team knows why. High severity comes first."
+          },
+          "law": {
+            "title": "Law & Precedent",
+            "body": "Statutes and decisions for this case. Check a quote against the source, or look for rulings that go against you."
+          },
+          "legalIssues": {
+            "title": "Legal Issues",
+            "body": "What the court must decide, and who carries the burden on each. Mark them off as you brief them."
+          },
+          "procedure": {
+            "title": "Case Strategy",
+            "body": "Your filing checklist and deadlines. They move on their own when a key date moves."
+          },
+          "redTeam": {
+            "title": "Red Team",
+            "body": "The strongest case against your position, so nothing in court surprises you."
+          },
+          "addPane": {
+            "title": "21 panes, five groups",
+            "body": "Add pane opens every panel, grouped by Facts, Law, Strategy, Risk and Team, each with a one-line description."
+          },
+          "arrange": {
+            "title": "Make it yours",
+            "body": "Switch between Free, Columns, Tabs and Focus. Pin a pane to lock it in place, and save layouts for different kinds of work."
+          }
+        }
+      }
+    }
+  },
+  "pageTour": {
+    "names": {
+      "consultation": "Consultation",
+      "cases": "Cases",
+      "library": "Library",
+      "calendar": "Calendar"
+    },
+    "done": "That's this page. Ask the guide whenever you need it.",
+    "nothing": "There's nothing on this page to point at right now.",
+    "steps": {
+      "composer-input": "Type a legal question in plain language. Answers cite the codals and decisions they rely on.",
+      "composer-input_UK": "Type a legal question in plain language. Answers cite the legislation and judgments they rely on.",
+      "composer-attach": "Attach a contract or filing. You can send right away, and answers cite it once it's indexed.",
+      "composer-mic": "Dictate instead of typing. Your words appear in the box so you can edit them before sending.",
+      "consult-new": "Start a fresh consultation. Earlier ones stay in your history.",
+      "consult-history": "Your past consultations. Open one to pick up where you left off.",
+      "cases-new": "Start a new case: name the matter, add the parties and attach documents.",
+      "cases-search": "Find a case by its name or a party.",
+      "cases-filters": "Switch between your active and archived cases. Archived cases keep all their documents.",
+      "case-row-workspace": "Open a case's Workspace: its documents, chat and Studio side by side.",
+      "case-row-terminal": "Open a case in the Legal Terminal: the full grid of analysis panes.",
+      "library-search": "Search codals, jurisprudence and Republic Acts by topic, title or G.R. number.",
+      "library-search_UK": "Search UK case law and legislation by case name, neutral citation or Act title.",
+      "library-cats": "Switch between decisions and statutes.",
+      "library-cats_UK": "Switch between case law and legislation.",
+      "library-filters": "Narrow the results by case type, topic or court.",
+      "library-filters_UK": "Narrow case law by court.",
+      "cal-grid": "Your month at a glance. Days with hearings, deadlines or notes are marked; pick one to see it.",
+      "cal-day": "The selected day's appointments and notes. Edit or delete them here.",
+      "cal-add": "Add an appointment or a note to the selected day, link a case and set a reminder."
+    }
+  }
+}

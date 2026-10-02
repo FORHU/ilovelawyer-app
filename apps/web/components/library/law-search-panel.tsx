@@ -274,7 +274,7 @@ export function LawSearchPanel() {
         </div>
 
         <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex gap-1">
+          <div data-tour-id="library-cats" className="flex gap-1">
             {cfg.categories.map((c) => (
               <button
                 key={c.value}
@@ -291,7 +291,7 @@ export function LawSearchPanel() {
             ))}
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center rounded-lg border border-border bg-transparent p-1.5 transition-colors focus-within:border-primary sm:max-w-md">
+          <div data-tour-id="library-search" className="flex min-w-0 flex-1 items-center rounded-lg border border-border bg-transparent p-1.5 transition-colors focus-within:border-primary sm:max-w-md">
             <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input
               type="text"
@@ -330,7 +330,7 @@ export function LawSearchPanel() {
 
         {/* ── Filters (browse mode only) ───────────────────────────────── */}
         {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
-          <div className="flex flex-col gap-3 border-y border-border py-3">
+          <div data-tour-id="library-filters" className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
               <FilterChipGroup
                 label={t("lawSearch.filterCaseType")}

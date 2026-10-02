@@ -10,6 +10,7 @@ import enOrganization from "@/locales/en/organization.json"
 import enProfile from "@/locales/en/profile.json"
 import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
+import enTour from "@/locales/en/tour.json"
 import enTranscription from "@/locales/en/transcription.json"
 
 import koAuth from "@/locales/ko/auth.json"
@@ -57,6 +58,7 @@ export const I18N_RESOURCES = {
     organization: enOrganization,
     term: enTerm,
     terminal: enTerminal,
+    tour: enTour,
   },
   ko: {
     common: koCommon,

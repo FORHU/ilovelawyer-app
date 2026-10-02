@@ -922,7 +922,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       setResumePromptDismissed(true)
                       reopenAllScreens()
                     }}
-                    className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
+                    className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
                   >
                     {t("reopenScreensAction")}
                   </button>
