@@ -164,7 +164,13 @@ export function arrangementForScreen(layout: WorkspaceLayout, screen: number): A
 // chips). Computed for every catalog panel, not just hidden ones, so a pane already on the grid
 // still shows its status in the library list. Shared by legal-terminal.tsx (memoized there) and
 // every canvas window (no memoization needed there, one snapshot per render).
-export function computePanelBadges(data: CaseSnapshot, t: (key: string, opts?: Record<string, unknown>) => string): Partial<Record<PanelId, string>> {
+// `extras` carries status that isn't part of the case snapshot: Audio Overview's script lives on
+// a consultation message (see useHasAudioOverview), not on the case.
+export function computePanelBadges(
+  data: CaseSnapshot,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  extras: { hasAudioOverview?: boolean } = {},
+): Partial<Record<PanelId, string>> {
   const found = (n: number) => (n > 0 ? t("badgeFound", { count: n }) : undefined)
   const byCategory = (category: FindingCategory) => found(data.findings.filter((f) => f.category === category).length)
   const badges: Partial<Record<PanelId, string>> = {
@@ -196,7 +202,8 @@ export function computePanelBadges(data: CaseSnapshot, t: (key: string, opts?: R
     // missing field.
     damages: damagesBadge(data.damagesSummary, t),
     caseReconstruction: data.reconstruction ? t("badgeReady") : undefined,
-    audioOverview: data.reconstruction?.audioFileId ? t("badgeReady") : undefined,
+    // Not data.reconstruction's audio — that's Case Reconstruction's narration, a different pane.
+    audioOverview: extras.hasAudioOverview ? t("badgeReady") : undefined,
     decisions: data.decisions.length > 0 ? t("badgeDecisions", { count: data.decisions.length }) : undefined,
     theories: data.theories.length > 0 ? t("badgeTheories", { count: data.theories.length }) : undefined,
   }

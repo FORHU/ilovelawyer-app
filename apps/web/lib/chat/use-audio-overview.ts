@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import {
+  useConsultationsQuery,
   useMessagesQuery,
   useChatSessionQuery,
   sendChatMessageAndWait,
@@ -27,6 +28,16 @@ export function scriptStepFor(job: AiJobStatus | null | undefined, localStartedA
   const finishedThisRun =
     job?.status === "DONE" && localStartedAt !== null && !!job.finishedAt && Date.parse(job.finishedAt) >= localStartedAt;
   return finishedThisRun ? SCRIPT_STEP_COUNT : 0;
+}
+
+/** Whether this case's Audio Overview pane has anything to show — the same lookup
+ * AudioOverviewPanel does (latest consultation for the case → its newest message carrying an
+ * audioOverview script), over the same cached queries, so the Terminal's pane-library badge agrees
+ * with the pane instead of reporting Empty for an overview generated from Case Workspace. */
+export function useHasAudioOverview(caseId: string | null) {
+  const { data: consultations } = useConsultationsQuery(caseId ?? undefined);
+  const { data: history } = useMessagesQuery(caseId ? consultations?.[0]?.id : undefined);
+  return useMemo(() => !!history?.some((m) => m.audioOverview?.turns?.length), [history]);
 }
 
 /** Script generation → Polly render polling → playable URL, shared by every surface that offers

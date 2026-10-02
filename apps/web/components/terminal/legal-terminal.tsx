@@ -1,5 +1,6 @@
 "use client"
 
+import { useHasAudioOverview } from "@/lib/chat/use-audio-overview"
 import {
   useEffect,
   useMemo,
@@ -434,10 +435,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Shared badge computation (computePanelBadges) covers everything identically to a canvas
   // window; damages alone gets an extra layer here for the live busy/fresh activity indicator
   // (useDamagesActivity, primary-window-only context) on top of the shared headline count.
+  const hasAudioOverview = useHasAudioOverview(caseId)
   const panelBadges = useMemo((): Partial<Record<PanelId, string>> => {
     const data = snapshot.data
     if (!data) return {}
-    const base = computePanelBadges(data, t)
+    const base = computePanelBadges(data, t, { hasAudioOverview })
     return {
       ...base,
       // damagesSummary is typed as always present, but a snapshot from before this case's
@@ -449,7 +451,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             ? t("badgeNew")
             : damagesBadge(data.damagesSummary, t),
     }
-  }, [snapshot.data, t, damagesActivity])
+  }, [snapshot.data, t, damagesActivity, hasAudioOverview])
 
   // Richer, still real-data-only summaries for Focus mode's stack cards — composites of 2-3
   // facts per pane (vs panelBadges' single metric), for the handful of pane types the redesign

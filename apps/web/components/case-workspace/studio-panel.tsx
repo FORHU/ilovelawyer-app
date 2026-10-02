@@ -235,6 +235,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // (Witnesses, Damages, Deadlines, Findings) that otherwise only have dedicated views in the
   // Legal Terminal, not here.
   const snapshotQuery = useCaseSnapshotQuery(caseId);
+  // The snapshot query refetches on its own constantly (staleTime 0, idle polling, invalidations
+  // from other mutations), so the tile can't spin on `isFetching` — it'd flip to "Refreshing…"
+  // out of nowhere. Only the initial load and a refresh the user clicked show the spinner.
+  const [isManualSnapshotRefresh, setIsManualSnapshotRefresh] = useState(false);
+  const isDataTableRefreshing = snapshotQuery.isLoading || isManualSnapshotRefresh;
   const dataTableRows = useMemo<DataTableRow[]>(() => {
     const snap = snapshotQuery.data;
     if (!snap) return [];
@@ -731,11 +736,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
              * Refresh-Analysis-populated data, not something to generate on click — so this tile
              * refetches the case snapshot in place. */}
             <StudioTile
-              icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
-              iconSpinning={snapshotQuery.isFetching}
-              label={snapshotQuery.isFetching ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
+              icon={isDataTableRefreshing ? Loader2 : TableIcon}
+              iconSpinning={isDataTableRefreshing}
+              label={isDataTableRefreshing ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
               note={
-                snapshotQuery.isFetching
+                isDataTableRefreshing
                   ? undefined
                   : dataTableRows.length > 0
                     ? t("workspace.dataTableFactCount", { count: dataTableRows.length })
@@ -745,7 +750,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               disabled={noDocuments}
               disabledHint={t("workspace.needsDocumentsHint")}
               onClick={() => {
-                void snapshotQuery.refetch();
+                setIsManualSnapshotRefresh(true);
+                void snapshotQuery.refetch().finally(() => setIsManualSnapshotRefresh(false));
                 openStudioTile("dataTable");
               }}
             />

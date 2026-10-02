@@ -1,5 +1,6 @@
 "use client"
 
+import { useHasAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, RefreshCw } from "lucide-react"
@@ -146,7 +147,8 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
   const tabsActiveA = activeScreenTab === 0 ? (builderLayout?.tabsActiveA ?? null) : (builderLayout?.screenLayouts?.[activeScreenTab]?.tabsActiveA ?? null)
   const tabsActiveB = activeScreenTab === 0 ? (builderLayout?.tabsActiveB ?? null) : (builderLayout?.screenLayouts?.[activeScreenTab]?.tabsActiveB ?? null)
   const availablePanels = useMemo(() => catalog.data?.panels.filter((p) => p.available && !HIDDEN_PANELS.has(p.id)) ?? [], [catalog.data])
-  const panelBadges = snapshot.data ? computePanelBadges(snapshot.data, t) : {}
+  const hasAudioOverview = useHasAudioOverview(caseId)
+  const panelBadges = snapshot.data ? computePanelBadges(snapshot.data, t, { hasAudioOverview }) : {}
   const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}
   const labelFor = (panel: PanelLayout | { id: PanelId }) =>
     PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id

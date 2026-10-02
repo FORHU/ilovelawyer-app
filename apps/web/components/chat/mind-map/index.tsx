@@ -490,6 +490,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
               root={data}
               rootTitle={rootTitle}
               isDark={isDark}
+              focusedNodeId={selectedNodeId}
               onNodeClick={(node: any) => {
                 setSelectedNodeId(node.id);
                 // Store full enriched data so detail panel works in 3D mode
@@ -803,6 +804,8 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
               exit={{ opacity: 0, scale: 0.98, y: 20 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className={MIND_MAP_CHROME.detail}
+              // Measured by MindMap3D to frame the clicked node beside this card, not under it.
+              data-mind-map-detail=""
             >
               {/* Elegant Header Accent */}
               <div
