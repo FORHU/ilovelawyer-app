@@ -32,8 +32,11 @@ import {
   computeFocusStackSummaries,
   computePanelBadges,
   openCanvasWindow,
+  placeCanvasWindow,
   screenIndicesInUse,
   sortedSecondaryScreens,
+  subscribeToScreenChanges,
+  type ScreenDetails,
 } from "@/lib/terminal/multi-screen"
 import { useCanvasWindowReaper, useCloseCanvasWindowsOnUnload, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
@@ -190,6 +193,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // its own onOpenChange never fires on that transition — detection has to happen here instead.
   // The modal's own "DETECT" button re-detects internally (its click is its own fresh gesture).
   const [detectedScreenCount, setDetectedScreenCount] = useState<number | null>(null)
+  // That same detection's screen list. The presets modal opens every display window from it
+  // synchronously on Apply (see ScreenPresetsModal's detectedScreens).
+  const [detectedScreens, setDetectedScreens] = useState<ScreenDetails | null>(null)
   const panelLabels = useTerminalDisplayStore((state) => state.panelLabels)
   const setPanelLabels = useTerminalDisplayStore((state) => state.setPanelLabels)
   const highDensity = useTerminalDisplayStore((state) => state.highDensity)
@@ -222,6 +228,22 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Only reliable cross-window signal a canvas window gives its opener without any cooperation
   // from the popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
   useCanvasWindowReaper(canvasWindowsRef, setLayout, unloadingRef)
+
+  // Monitors coming and going: the OS moves a window off a monitor that's unplugged and doesn't
+  // move it back when the monitor returns, so a display's window would stay stacked on another
+  // one. Once screens have been detected (the Workflows/New Layout buttons), put every open canvas
+  // window back on its own monitor after each change. A window whose monitor is gone is left
+  // where the OS put it, still showing its panels, until that monitor returns.
+  useEffect(() => {
+    if (!detectedScreens) return
+    return subscribeToScreenChanges(detectedScreens, () => {
+      const secondary = sortedSecondaryScreens(detectedScreens)
+      canvasWindowsRef.current.forEach((win, screenIndex) => {
+        const screen = secondary[screenIndex - 1]
+        if (screen && !win.closed) placeCanvasWindow(win, screen)
+      })
+    })
+  }, [detectedScreens])
 
   // Instant cross-window layout sync + close notifications, additive to the poll above — see
   // lib/terminal/layout-sync-channel.ts.
@@ -678,6 +700,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // just means "assume the one screen this page is already on."
   const detectScreenCount = (onOpen: () => void) => {
     setDetectedScreenCount(null)
+    setDetectedScreens(null)
     onOpen()
     if (!window.getScreenDetails) {
       setDetectedScreenCount(1)
@@ -685,7 +708,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     }
     window
       .getScreenDetails()
-      .then((details) => setDetectedScreenCount(1 + sortedSecondaryScreens(details).length))
+      .then((details) => {
+        setDetectedScreens(details)
+        setDetectedScreenCount(1 + sortedSecondaryScreens(details).length)
+      })
       .catch(() => setDetectedScreenCount(1))
   }
   const openWorkflowsModal = () => detectScreenCount(() => setPresetsModalOpen(true))
@@ -751,6 +777,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           open={presetsModalOpen}
           onOpenChange={setPresetsModalOpen}
           detectedCount={detectedScreenCount}
+          detectedScreens={detectedScreens}
           caseId={caseId}
           layout={layout}
           setLayout={setLayout}
@@ -893,7 +920,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           </div>
         )}
 
-        {isExtendedScreen && !resumePromptDismissed && (() => {
+        {/* Not while the presets modal is open: its own "open remaining displays" step covers
+            windows the popup blocker refused on Apply. */}
+        {isExtendedScreen && !resumePromptDismissed && !presetsModalOpen && (() => {
           const missingScreens = screenIndicesInUse(layout.panels).filter((idx) => !canvasWindowsRef.current.has(idx))
           if (missingScreens.length === 0) return null
           const panelCount = layout.panels.filter((p) => missingScreens.includes(p.screen ?? 0)).length

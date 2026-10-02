@@ -22,6 +22,11 @@ export interface ScreenPresetDef {
   screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
 }
 
+// Panel ids this build knows. A stored preset can still list a retired pane (a lawyer's own saved
+// preset, or an API that hasn't dropped it yet — see ilovelawyer-api's dropUnknownPanelIds), and
+// every consumer here looks its title up in PANEL_TITLES.
+const KNOWN_PANEL_IDS = new Set<string>(PANEL_IDS)
+
 export function fromRow(row: ScreenPresetRow): ScreenPresetDef {
   return {
     id: row.id,
@@ -30,7 +35,8 @@ export function fromRow(row: ScreenPresetRow): ScreenPresetDef {
     descriptionKey: row.descriptionKey ?? undefined,
     name: row.name,
     description: row.description ?? undefined,
-    screens: row.screens,
+    // Unknown ids dropped; every screen kept, even one left empty, so screen indices still line up.
+    screens: row.screens.map((screen) => ({ ...screen, panelIds: screen.panelIds.filter((id) => KNOWN_PANEL_IDS.has(id)) })),
   }
 }
 
@@ -72,6 +78,22 @@ export function panelShortCode(title: string): string {
   return words.length >= 2 ? (words[0]![0]! + words[1]![0]!).toUpperCase() : title.slice(0, 2).toUpperCase()
 }
 
+// `preset` with the panels of every screen in `screenIndices` moved onto screen 0 (appended after
+// its own), those screens left empty but in place so every other screen keeps its index. Used
+// when a display's window couldn't be opened (popup blocked, monitor gone): its panels still show,
+// in the primary window, instead of waiting on a window that doesn't exist.
+export function foldScreensIntoPrimary(preset: ScreenPresetDef, screenIndices: number[]): ScreenPresetDef {
+  if (screenIndices.length === 0) return preset
+  const folded = new Set(screenIndices)
+  const moved = preset.screens.flatMap((screen, index) => (folded.has(index) ? screen.panelIds : []))
+  return {
+    ...preset,
+    screens: preset.screens.map((screen, index) =>
+      index === 0 ? { ...screen, panelIds: [...screen.panelIds, ...moved] } : folded.has(index) ? { ...screen, panelIds: [] } : screen,
+    ),
+  }
+}
+
 // Currently-visible panels a preset would hide (assigned to no screen in it) — drives the
 // presets modal's confirm-before-apply gate.
 export function panelsHiddenByPreset(layout: WorkspaceLayout, preset: ScreenPresetDef): PanelId[] {
@@ -107,7 +129,8 @@ function columnCountFor(panelCount: number): number {
 }
 
 // Applies a preset: every panel the preset lists becomes visible on its screen; every other
-// panel is hidden. Each screen's arrangement is written (screen 0 -> top-level fields, 1+ ->
+// panel is hidden and moved back to screen 0, so a display the preset doesn't use isn't still
+// counted as "in use" (and offered for reopening) because of a hidden panel. Each screen's arrangement is written (screen 0 -> top-level fields, 1+ ->
 // screenLayouts[n]); a Columns screen also gets a columnCount (see columnCountFor above), and a
 // Free screen gets its rects seeded by autoTileLayout. Tabs/Focus need neither — Tabs
 // auto-balances into its 2 groups the same way Columns does, Focus just needs an active pane.
@@ -139,7 +162,7 @@ export function applyScreenPreset(layout: WorkspaceLayout, preset: ScreenPresetD
       const spot = placement.get(panel.id)
       return spot
         ? { ...panel, visible: true, screen: spot.screen || undefined, order: spot.order }
-        : { ...panel, visible: false }
+        : { ...panel, visible: false, screen: undefined }
     }),
   }
 

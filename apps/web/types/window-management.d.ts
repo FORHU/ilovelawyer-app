@@ -13,6 +13,15 @@ declare global {
     width: number
     height: number
     isPrimary: boolean
+    /** The monitor's name as the OS reports it (e.g. "DELL U2720Q"); may be empty. */
+    label?: string
+  }
+
+  /** Live: `screens` and `currentScreen` update in place, and `screenschange` fires when a monitor
+   * is plugged in, unplugged or rearranged. */
+  interface ScreenDetailsObject extends EventTarget {
+    readonly screens: ScreenDetailed[]
+    readonly currentScreen?: ScreenDetailed
   }
 
   interface Screen {
@@ -24,6 +33,6 @@ declare global {
   interface Window {
     /** Triggers the browser's multi-screen permission prompt the first time it's called — only
      * ever call this from inside a real click handler, never on mount/effect. */
-    getScreenDetails?(): Promise<{ screens: ScreenDetailed[] }>
+    getScreenDetails?(): Promise<ScreenDetailsObject>
   }
 }

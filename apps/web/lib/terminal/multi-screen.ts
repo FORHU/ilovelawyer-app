@@ -5,12 +5,66 @@ import type { ArrangementValue, CaseSnapshot, FindingCategory, PanelId, PanelLay
 // on PanelLayout.screen.
 export const MAX_SECONDARY_SCREENS = 5
 
-// Secondary screens only, left-to-right by physical position, numbered fresh on every call —
-// screens have no durable cross-session identity, so this is never persisted or cached.
-export function sortedSecondaryScreens(details: { screens: ScreenDetailed[] }): ScreenDetailed[] {
+export type ScreenDetails = { screens: ScreenDetailed[]; currentScreen?: ScreenDetailed }
+
+// Calls `onChange` whenever a monitor is plugged in, unplugged or rearranged, or this window moves
+// to another monitor. ScreenDetails is live, so after a change its `screens` is already current;
+// callers just need to recompute what they derived from it. Returns the unsubscribe.
+export function subscribeToScreenChanges(details: ScreenDetails, onChange: () => void): () => void {
+  const target = details as Partial<EventTarget>
+  if (!target.addEventListener || !target.removeEventListener) return () => {}
+  target.addEventListener("screenschange", onChange)
+  target.addEventListener("currentscreenchange", onChange)
+  return () => {
+    target.removeEventListener!("screenschange", onChange)
+    target.removeEventListener!("currentscreenchange", onChange)
+  }
+}
+
+// The main terminal window — this window, or for a canvas window the first non-canvas window up
+// its opener chain (a canvas window can itself open further canvas windows). Falls back to this
+// window when the opener is gone or unreadable.
+function terminalWindow(): Window {
+  let win: Window = window
+  for (let depth = 0; depth <= MAX_SECONDARY_SCREENS; depth++) {
+    try {
+      if (!win.location.pathname.includes("/canvas/")) return win
+      const opener = win.opener as Window | null
+      if (!opener || opener.closed) return window
+      win = opener
+    } catch {
+      return window
+    }
+  }
+  return window
+}
+
+function screenContaining(screens: ScreenDetailed[], win: Window): ScreenDetailed | undefined {
+  const x = win.screenX + win.outerWidth / 2
+  const y = win.screenY + win.outerHeight / 2
+  return screens.find((s) => x >= s.left && x < s.left + s.width && y >= s.top && y < s.top + s.height)
+}
+
+// The physical screen the main terminal window (screen index 0) sits on. Not necessarily the OS
+// primary: a terminal dragged onto another monitor would otherwise have display 2 opened on top
+// of itself while the real primary monitor went unused.
+function homeScreen(details: ScreenDetails): ScreenDetailed | undefined {
+  const main = terminalWindow()
+  if (main === window && details.currentScreen) return details.currentScreen
+  return screenContaining(details.screens, main) ?? details.screens.find((s) => s.isPrimary)
+}
+
+// Every screen except the main terminal's own, left-to-right (then top-to-bottom for stacked
+// monitors) by physical position, so each display index maps to exactly one distinct monitor.
+// Numbered fresh on every call — screens have no durable cross-session identity, so this is never
+// persisted or cached.
+export function sortedSecondaryScreens(details: ScreenDetails): ScreenDetailed[] {
+  const home = homeScreen(details)
+  const isHome = (s: ScreenDetailed) =>
+    home ? s === home || (s.left === home.left && s.top === home.top && s.width === home.width && s.height === home.height) : s.isPrimary
   return details.screens
-    .filter((s) => !s.isPrimary)
-    .sort((a, b) => a.left - b.left)
+    .filter((s) => !isHome(s))
+    .sort((a, b) => a.left - b.left || a.top - b.top)
     .slice(0, MAX_SECONDARY_SCREENS)
 }
 
@@ -42,6 +96,19 @@ export function canvasWindowName(caseId: string, screenIndex: number): string {
 
 export function canvasWindowUrl(caseId: string, screenIndex: number): string {
   return `/homepage/terminal/${caseId}/canvas/${screenIndex}`
+}
+
+// Moves an already-open canvas window onto `screen` and sizes it to fill it. Needed because the OS
+// moves a window off a monitor that's unplugged (it never closes it), and display numbering can
+// change when monitors come and go; a window left where it is would cover another display.
+// Browsers may ignore the move for a maximized or fullscreen window, so this is best effort.
+export function placeCanvasWindow(win: Window, screen: ScreenDetailed): void {
+  try {
+    win.moveTo(screen.left, screen.top)
+    win.resizeTo(screen.width, screen.height)
+  } catch {
+    // Window gone or cross-origin: nothing to move.
+  }
 }
 
 // Opens (or focuses, via the shared window name) a canvas window positioned on `screen`, and
