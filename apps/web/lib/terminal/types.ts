@@ -675,6 +675,12 @@ export interface DamageClaim {
   description: string | null
   /** None for most remedies. */
   amount: number | null
+  /** Where an AI entry's amount came from: a quoted figure, rate × period from quoted lines, or an
+   * AI estimate for the lawyer to review. Null once a lawyer sets the amount. Missing on a snapshot
+   * cached before the field existed. */
+  amountBasis?: "STATED" | "CALCULATED" | "ESTIMATE" | null
+  /** The working: the calculation, or how the estimate was reached. */
+  amountNote?: string | null
   /** Awarded by the tribunal or received by the client. */
   done: boolean
   dueDate: string | null
@@ -697,6 +703,10 @@ export interface DamagesSummary {
   damageCount: number
   remedyCount: number
   doneCount: number
+  /** AI suggestions waiting for a lawyer, and the sum of their amounts — never in `total`.
+   * Missing on a snapshot cached before the field existed. */
+  suggestedCount?: number
+  suggestedTotal?: number
 }
 
 /** Fields the damages create/update endpoints accept. */

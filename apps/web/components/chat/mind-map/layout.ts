@@ -148,16 +148,22 @@ export function buildMindMapGraph(
         // fall back to the position in this walk, which is the same number.
         depth: typeof item.depth === 'number' ? item.depth : depth,
         hasMore: item.hasMore === true,
-        // Only the verdicts that ask for the lawyer's attention are marked on the canvas;
-        // SUPPORTED stays quiet (the detail panel still says so).
+        // Only the verdicts that ask for the lawyer's attention are marked on the canvas:
+        // contradicted, or its document removed. SUPPORTED stays quiet, and so does UNSUPPORTED
+        // ("not found on the cited page") — every point cites its document, and the cited page is
+        // often a guess, so that flag mostly meant "wrong page", not "wrong point".
         reviewVerdict:
-          item.check?.verdict === 'UNSUPPORTED' || item.check?.verdict === 'CONTRADICTED'
+          item.check?.verdict === 'CONTRADICTED'
             ? item.check.verdict
             : item.sourceRemoved
               ? 'SOURCE_REMOVED'
               : null,
         // Case-data verdicts say "…by the case data", page ones "…the cited document".
         reviewByCase: item.check?.basis === 'caseData',
+        // The document a verdict names: the one Jev read, else the point's own first citation.
+        // A point that cites a document is never labelled "…by the case data".
+        reviewDocumentId: item.check?.documentId ?? item.sources?.[0]?.documentId ?? null,
+        reviewPage: item.check?.documentId ? item.check.page ?? null : item.sources?.[0]?.page ?? null,
         childCount: children.length,
       },
       // (x, y) is the centre of the node's slot; React Flow positions a node by its top-left

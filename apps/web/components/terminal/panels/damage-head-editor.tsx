@@ -1,5 +1,6 @@
 import { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import type { DamageClaim, DamageClaimBody, DamageKind } from "@/lib/terminal/types"
 import { Field, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
@@ -31,8 +32,38 @@ function draftOf(head: DamageClaim | null): Draft {
   }
 }
 
-/** Add or edit one Damages & Remedies entry: kind, title, description, whether it is awarded or
- * received, amount and due date. */
+/** Add or edit one Damages & Remedies entry in a dialog: kind, title, description, whether it is
+ * awarded or received, amount and due date. Closing it (Esc, the overlay, the ✕ or Cancel) drops
+ * the draft. */
+export function DamageHeadEditorDialog({
+  head,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  head: DamageClaim | null
+  pending: boolean
+  onSave: (body: DamageClaimBody & Required<Pick<DamageClaimBody, "kind" | "title">>) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation("terminal")
+  return (
+    <Dialog open onOpenChange={(open) => !open && !pending && onCancel()}>
+      {/* Portaled to <body>, so it has to clear the terminal's own pane layers too — a maximized
+          pane sits at z-[90] and a Free-canvas pane's z-index grows with bringToFront (see the
+          scale in legal-terminal.tsx) — or it opens hidden behind the expanded pane. */}
+      <DialogContent className="z-(--z-canvas-overlay) max-w-lg gap-4" overlayClassName="z-(--z-canvas-overlay)">
+        <DialogTitle className="font-['Libre_Caslon_Text'] text-lg font-normal text-foreground">
+          {head ? t("damageEditorEdit") : t("damageEditorAdd")}
+        </DialogTitle>
+        <DialogDescription className="sr-only">{head ? head.title : t("damageEditorAdd")}</DialogDescription>
+        <DamageHeadEditor head={head} pending={pending} onSave={onSave} onCancel={onCancel} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** The editor's fields and buttons — shown inside DamageHeadEditorDialog. */
 export function DamageHeadEditor({
   head,
   pending,
@@ -56,7 +87,7 @@ export function DamageHeadEditor({
 
   return (
     <form
-      className="flex flex-col gap-3 rounded-lg border border-border p-3"
+      className="flex flex-col gap-3"
       aria-label={head ? t("damageEditorEdit") : t("damageEditorAdd")}
       onSubmit={(e) => {
         e.preventDefault()
@@ -71,8 +102,6 @@ export function DamageHeadEditor({
         })
       }}
     >
-      <p className={labelTextClass}>{head ? t("damageEditorEdit") : t("damageEditorAdd")}</p>
-
       <fieldset className="flex flex-col gap-1.5">
         <legend className={`${labelTextClass} mb-1.5`}>{t("damageKindLabel")}</legend>
         <div className="flex flex-wrap gap-4">
@@ -126,7 +155,11 @@ export function DamageHeadEditor({
       </label>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label={t("damageAmountField")} htmlFor={fid("amount")} hint={t("damageAmountHint")}>
+        <Field
+          label={t("damageAmountField")}
+          htmlFor={fid("amount")}
+          hint={head?.amountBasis === "ESTIMATE" ? t("damageAmountEstimateHint") : t("damageAmountHint")}
+        >
           <input
             id={fid("amount")}
             inputMode="decimal"

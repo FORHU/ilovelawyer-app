@@ -17,6 +17,7 @@ import { PaneActivityContext, useDamagesActivity } from "@/components/terminal/p
 import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-provider"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { autoTileLayout, computeFocusStackSummaries, computePanelBadges } from "@/lib/terminal/multi-screen"
+import { damagesBadge } from "@/lib/terminal/damages-format"
 import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { announceWindowClosing, useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ArrangementSwitcher } from "@/components/terminal/arrangement-switcher"
@@ -196,9 +197,7 @@ export default function TerminalCanvasWindowPage() {
           ? t("badgeUpdating")
           : damagesActivity === "fresh"
             ? t("badgeNew")
-            : (data.damagesSummary?.headCount ?? 0) > 0
-              ? t("badgeHeads", { count: data.damagesSummary.headCount })
-              : undefined,
+            : damagesBadge(data.damagesSummary, t),
     }
   }, [snapshot.data, t, damagesActivity])
   const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}

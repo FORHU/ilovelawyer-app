@@ -16,10 +16,9 @@ import {
 import { AddTimelineEventDialog } from "./add-timeline-event-dialog"
 import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
-import { TONE_TEXT_CLASS, timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
+import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
 
-const RAG_LABEL_KEY = { ready: "ragReady", pending: "ragPending", failed: "ragFailed" } as const
 
 interface CalendarEvent {
   id: string
@@ -52,13 +51,14 @@ function isDateOnly(at: Date) {
 }
 
 // Day + month ("28 JUL"), UTC for date-only events so a midnight-UTC date doesn't slip a day in
-// negative-offset timezones. The year is appended only when the case spans more than one.
+// negative-offset timezones. The year is appended only when the case spans more than one, and in
+// full ("4 Mar 2018"): a two-digit "18" is ambiguous on a legal record.
 function formatDay(at: Date, withYear: boolean) {
   const parts = new Intl.DateTimeFormat(undefined, {
     timeZone: isDateOnly(at) ? "UTC" : undefined,
     day: "numeric",
     month: "short",
-    ...(withYear ? { year: "2-digit" as const } : {}),
+    ...(withYear ? { year: "numeric" as const } : {}),
   }).format(at)
   return parts
 }
@@ -104,11 +104,10 @@ export function CaseTimelineView({
     () => new Map((snapshot.data?.documents ?? []).map((doc) => [doc.id, doc])),
     [snapshot.data?.documents],
   )
-  // "Category · name · status" — the category is the same one the Evidence list and Workspace's
-  // folders group by, so a dot can be traced back to where its document sits.
+  // "Source: <file name>" — just the document, not its folder or indexing status.
   const sourceLabel = (tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
     if (tone === "none" || !sourceDoc) return tt("noSourceDocument")
-    return [sourceDoc.category?.trim(), sourceDoc.name, tt(RAG_LABEL_KEY[tone])].filter(Boolean).join(" · ")
+    return tt("groundedIn", { doc: sourceDoc.name })
   }
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
@@ -297,7 +296,7 @@ export function CaseTimelineView({
                           <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{item.description}</p>
                         ) : null}
                         <p
-                          className={`mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}
+                          className="mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground"
                         >
                           {sourceLabel(tone, sourceDoc)}
                         </p>
@@ -367,7 +366,7 @@ export function CaseTimelineView({
                           {item.description ? (
                             <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
                           ) : null}
-                          <p className={`mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}>
+                          <p className="mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground">
                             {sourceLabel(tone, sourceDoc)}
                           </p>
                         </div>

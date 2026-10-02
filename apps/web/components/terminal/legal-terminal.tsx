@@ -65,6 +65,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { PANEL_TITLES } from "@/lib/terminal/panel-titles"
+import { damagesBadge } from "@/lib/terminal/damages-format"
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { useCaseRoom } from "@/lib/cases/case-room"
@@ -446,9 +447,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           ? t("badgeUpdating")
           : damagesActivity === "fresh"
             ? t("badgeNew")
-            : (data.damagesSummary?.headCount ?? 0) > 0
-              ? t("badgeHeads", { count: data.damagesSummary!.headCount })
-              : undefined,
+            : damagesBadge(data.damagesSummary, t),
     }
   }, [snapshot.data, t, damagesActivity])
 

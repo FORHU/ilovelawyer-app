@@ -72,7 +72,8 @@ describe("buildMindMapGraph", () => {
       ],
     }
     const nodes = byId(buildMindMapGraph(checked, "horizontal", new Set(), "").nodes)
-    expect(["a", "b", "c", "d", "e"].map((id) => nodes.get(id).data.reviewVerdict)).toEqual([null, "UNSUPPORTED", "CONTRADICTED", null, "SOURCE_REMOVED"])
+    // "Not found on the cited page" (UNSUPPORTED) isn't marked: the cited page is often a guess.
+    expect(["a", "b", "c", "d", "e"].map((id) => nodes.get(id).data.reviewVerdict)).toEqual([null, null, "CONTRADICTED", null, "SOURCE_REMOVED"])
   })
 
   it("says whether a verdict was reached on the case data or on a cited page", () => {
