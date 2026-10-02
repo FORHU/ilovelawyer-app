@@ -378,7 +378,7 @@ export default function OrganizationPage() {
   }
 
   return (
-    <PageShell activeTab="organization">
+    <PageShell>
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         <div className="w-full flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">{t("title")}</h1>

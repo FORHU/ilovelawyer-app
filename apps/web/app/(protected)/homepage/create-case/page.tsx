@@ -480,7 +480,7 @@ function CreateCasePageContent() {
   ];
 
   return (
-    <PageShell activeTab="create-case">
+    <PageShell>
       <form onSubmit={handleSubmitFiling} className="flex-1 flex flex-col">
         {/* md+ is pinned to the viewport height (no page-level scroll) — the back link and the
             grid below split that height via flex-1, and the step card scrolls internally as a

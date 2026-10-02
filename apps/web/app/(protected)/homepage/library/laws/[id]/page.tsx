@@ -41,7 +41,7 @@ function dedupeCitations(items: string[]): string[] {
 }
 
 function LawDocumentPageContent() {
-  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) =>
@@ -61,7 +61,7 @@ function LawDocumentPageContent() {
   if (guard) return guard
 
   return (
-    <PageShell activeTab="library">
+    <PageShell>
       <main className="flex w-full flex-1 flex-col pt-16">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-6 py-8 md:px-10">
           <Link

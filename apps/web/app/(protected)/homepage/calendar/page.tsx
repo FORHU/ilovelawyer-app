@@ -946,7 +946,7 @@ export default function CalendarPage() {
   );
 
   return (
-    <PageShell activeTab="calendar">
+    <PageShell>
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-24">
         <div className="mb-8 flex flex-col gap-3.5">
           <span className="flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">

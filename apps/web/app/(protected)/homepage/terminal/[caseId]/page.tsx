@@ -13,7 +13,7 @@ export default function TerminalWorkspacePage() {
   useMarkCaseOpened(params.caseId)
 
   return (
-    <PageShell activeTab="terminal" className="h-screen overflow-hidden">
+    <PageShell className="h-screen overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col pt-16">
         <TerminalDisplayProvider>
           <LegalTerminal caseId={params.caseId} />

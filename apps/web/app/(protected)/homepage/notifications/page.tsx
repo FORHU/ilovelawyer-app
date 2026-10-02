@@ -57,7 +57,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <PageShell activeTab="notifications">
+    <PageShell>
       <main className="max-w-[800px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-8">
         <div className="w-full flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">

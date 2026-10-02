@@ -30,7 +30,6 @@ const ISSUANCES: Issuance[] = [
 export default function JudicialIssuancesPage() {
   return (
     <LegalCodePage
-      activeTab="judicial-issuances"
       eyebrow="Research · Issuance"
       title={<>Judicial <span className="italic">Issuances.</span></>}
       subtitle="Rules and directives through which the Supreme Court exercises its constitutional power to promulgate rules on pleading, practice, and procedure, under Article VIII, Section 5(5) of the 1987 Constitution."

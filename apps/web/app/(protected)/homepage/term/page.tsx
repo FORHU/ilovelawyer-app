@@ -22,7 +22,7 @@ export default function TermsPage() {
   const SECTIONS = t("sections", { returnObjects: true }) as Section[];
 
   return (
-    <PageShell activeTab="term" className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
+    <PageShell className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
       <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border">
           <div className="px-10 pb-4 pt-12 sm:px-14">

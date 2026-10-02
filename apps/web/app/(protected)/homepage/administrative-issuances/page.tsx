@@ -30,7 +30,6 @@ const ISSUANCES: Issuance[] = [
 export default function AdministrativeIssuancesPage() {
   return (
     <LegalCodePage
-      activeTab="administrative-issuances"
       eyebrow="Research · Issuance"
       title={<>Administrative Agency <span className="italic">Issuances.</span></>}
       subtitle="Rules and regulations issued by executive agencies under delegated rule-making power, giving practical effect to the statutes they administer."

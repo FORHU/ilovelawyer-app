@@ -60,7 +60,7 @@ export default function CaseDetailPage() {
     .join(" · ");
 
   return (
-    <PageShell activeTab="case-portfolio" mobileHeaderMerged className="h-screen overflow-hidden">
+    <PageShell mobileHeaderMerged className="h-screen overflow-hidden">
 
       {/* No pt reservation below lg — GlobalHeader renders nothing there itself
        * (mobileHeaderMerged), so there's no bar to clear until it reappears at lg (now
