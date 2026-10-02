@@ -370,6 +370,21 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const [highlightReview, setHighlightReview] = useState(false);
   const hasChecks = useMemo(() => treeHasChecks(data), [data]);
 
+  // A flagged point names the document it cites ("Not found in Termination letter, p. 2"), not
+  // "the case data" — on the case map every point below the headings cites one. The generic
+  // case-data wording is left only for a point with no citation at all (a chat map).
+  const reviewLabelFor = useCallback(
+    (d: { reviewVerdict?: string | null; reviewByCase?: boolean; reviewDocumentId?: string | null; reviewPage?: number | null }) => {
+      const name = d.reviewDocumentId ? documentNames?.[d.reviewDocumentId] : undefined
+      const source = name ? [name, d.reviewPage ? t('mindMapCheck.page', { page: d.reviewPage }) : ''].filter(Boolean).join(', ') : null
+      if (d.reviewVerdict === 'CONTRADICTED') {
+        return source ? t('mindMapCheck.contradictedBy', { source }) : t(d.reviewByCase ? 'mindMapCheck.contradictedByCase' : 'mindMapCheck.contradicted')
+      }
+      return d.reviewVerdict === 'SOURCE_REMOVED' ? t('mindMapCheck.sourceRemoved') : undefined
+    },
+    [documentNames, t],
+  )
+
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map(node => {
       // On the canvas the button only sits on nodes that are leaves or that the AI flagged as
@@ -387,18 +402,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           onExpand: handleExpandNode,
           expand,
           isSelected: node.id === selectedNodeId,
-          reviewLabel: node.data.reviewVerdict === 'CONTRADICTED'
-            ? t(node.data.reviewByCase ? 'mindMapCheck.contradictedByCase' : 'mindMapCheck.contradicted')
-            : node.data.reviewVerdict === 'UNSUPPORTED'
-              ? t(node.data.reviewByCase ? 'mindMapCheck.notSupportedByCase' : 'mindMapCheck.notFound')
-              : node.data.reviewVerdict === 'SOURCE_REMOVED'
-                ? t('mindMapCheck.sourceRemoved')
-                : undefined,
+          reviewLabel: reviewLabelFor(node.data),
           dimmed: highlightReview && hasChecks && !node.data.isRoot && !node.data.reviewVerdict,
         }
       };
     });
-  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, highlightReview, hasChecks, t]);
+  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, highlightReview, hasChecks, t, reviewLabelFor]);
 
   const selectedTreeNode = useMemo(() => locateTreeNode(data, selectedNodeId), [data, selectedNodeId]);
 
@@ -471,9 +480,11 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       `}</style>
 
       <div className="flex-1 relative overflow-hidden">
+        {/* Both layers start below the overlay controls (2D/3D, Structure, Regenerate, Full sit at
+         * top-4 and end above top-14), so a fitted map never draws its nodes underneath them. */}
         {/* 3D Model Layer */}
         {is3D && data && (
-          <div className="absolute inset-x-0 bottom-0 top-0 overflow-hidden z-10">
+          <div className="absolute inset-x-0 bottom-0 top-14 overflow-hidden z-10">
             <MindMap3D
               ref={mindMap3DRef}
               root={data}
@@ -494,7 +505,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           </div>
         )}
 
-        <div className={`absolute inset-0 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`absolute inset-x-0 bottom-0 top-14 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <ReactFlow
             nodes={nodesWithCallbacks}
             edges={edges}

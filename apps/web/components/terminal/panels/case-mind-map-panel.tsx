@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
+import { primaryBtnClass } from "@/components/terminal/panel-kit"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { MindMap } from "@/components/chat/mind-map"
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map"
@@ -14,8 +15,11 @@ import type { CaseSnapshot } from "@/lib/terminal/types"
 /**
  * The Legal Terminal's "Visual Strategy Map" panel. Shows the case's document-built map — the one
  * the case analysis update ("Refresh analysis", and the automatic run after documents change)
- * builds, same as Studio — with expand/edit/Regenerate. Only while the case has no such map does it
- * fall back to the chat-generated map this panel used to show (ConsultationChat's map-only mode).
+ * builds, same as Studio — with expand/edit/Regenerate. With no such map yet, a case that has
+ * indexed documents gets Studio's "Build from documents" prompt: the chat-generated map's
+ * Regenerate posts a whole chat turn and yields a map with no document citations or Jev checks,
+ * which is what this pane is meant to replace. Only a case with no indexed documents still falls
+ * back to the chat-generated map (ConsultationChat's map-only mode).
  *
  * Each branch roots on `h-full`, not `flex-1`: legal-terminal.tsx's panel body wrapper is a plain
  * block, so `flex-1` there left the canvas at its 320px minimum however large the panel was made.
@@ -40,6 +44,8 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
     () => Object.fromEntries((documentsQuery.data ?? []).map((doc) => [doc.id, doc.name])),
     [documentsQuery.data],
   )
+  // Same test as useCaseMindMap's: documents the case map can be built from.
+  const hasIndexedDocuments = (documentsQuery.data ?? []).some((doc) => doc.ragStatus === "READY" && doc.status !== "ARCHIVED")
 
   if (caseMindMap.tree) {
     return (
@@ -65,11 +71,27 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
     )
   }
 
-  if (isBuilding) {
+  if (isBuilding || (hasIndexedDocuments && caseMindMap.refreshWillReplace)) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 p-6 text-center">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
         <p className="max-w-xs text-sm text-muted-foreground">{busyLabel}</p>
+      </div>
+    )
+  }
+
+  if (hasIndexedDocuments) {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="max-w-xs text-sm text-muted-foreground">
+          {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.emptyWithDocuments")}
+        </p>
+        <button type="button" onClick={() => generate.mutate()} disabled={generate.isPending} className={primaryBtnClass}>
+          {t("caseMindMap.buildCta")}
+        </button>
+        {(caseMindMap.buildFailed || generate.isError) && (
+          <p className="text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildError")}</p>
+        )}
       </div>
     )
   }

@@ -18,19 +18,21 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
   };
 
   const check = item.check;
-  // A case-data verdict names the case data; a page verdict names the document and page.
-  const source = check?.documentId ? describe(check.documentId, check.page) : null;
-  const verdictLine = check
+  // A verdict names the document: the page Jev read, else the point's own first citation. Only a
+  // point that cites nothing (a chat map) falls back to "the case data".
+  const cited = item.sources?.[0];
+  const source = check?.documentId
+    ? describe(check.documentId, check.page)
+    : cited
+      ? describe(cited.documentId, cited.page) || null
+      : null;
+  // "Not found in …" (UNSUPPORTED) isn't shown: see reviewVerdict in layout.ts.
+  const verdictLine = check && check.verdict !== 'UNSUPPORTED'
     ? {
         SUPPORTED: {
           Icon: CheckCircle2,
           tone: 'text-emerald-700 dark:text-emerald-400',
           text: source ? t('mindMapCheck.supportedBy', { source }) : t('mindMapCheck.supportedByCase'),
-        },
-        UNSUPPORTED: {
-          Icon: AlertTriangle,
-          tone: 'text-amber-700 dark:text-amber-400',
-          text: source ? t('mindMapCheck.notFoundIn', { source }) : t('mindMapCheck.notSupportedByCase'),
         },
         CONTRADICTED: {
           Icon: XCircle,
@@ -54,7 +56,7 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
           <div className="flex flex-col gap-1">
             <span>
               {verdictLine.text}
-              {check.verdict !== 'UNSUPPORTED' && check.evidenceKind && ` · ${t(`mindMapCheck.kind.${check.evidenceKind}`, { defaultValue: check.evidenceKind })}`}
+              {check.evidenceKind && ` · ${t(`mindMapCheck.kind.${check.evidenceKind}`, { defaultValue: check.evidenceKind })}`}
             </span>
             {check.documentId && !check.located && <span className="text-[12px] font-normal text-muted-foreground">{t('mindMapCheck.fallback')}</span>}
           </div>
