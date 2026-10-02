@@ -337,7 +337,7 @@ export default function ProfilePage() {
                       disabled={avatarBusy}
                       onClick={() => avatarInputRef.current?.click()}
                       aria-label={avatarUrl ? t("avatar.change") : t("avatar.upload")}
-                      className="cursor-pointer absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 shadow ring-2 ring-brand-navy-900 hover:bg-amber-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                      className="cursor-pointer absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground shadow ring-2 ring-brand-navy-900 hover:bg-amber-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Camera className="h-4 w-4" aria-hidden="true" />
                     </button>

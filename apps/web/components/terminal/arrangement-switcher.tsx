@@ -44,7 +44,7 @@ export function ArrangementSwitcher({
                   aria-label={t(labelKey)}
                   aria-pressed={active}
                   className={`flex h-7 w-8 items-center justify-center rounded-full transition-colors ${
-                    active ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                    active ? "bg-brand-gold text-brand-gold-foreground" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -67,7 +67,7 @@ export function ArrangementSwitcher({
                     onClick={() => onSetColumnCount(count)}
                     aria-pressed={active}
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
-                      active ? "bg-brand-gold text-brand-navy-950" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+                      active ? "bg-brand-gold text-brand-gold-foreground" : "text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                     }`}
                   >
                     {count}

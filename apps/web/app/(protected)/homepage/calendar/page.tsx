@@ -484,7 +484,7 @@ function PlannerPanel({
         />
       </CardContent>
 
-      <CardFooter className="flex flex-col items-stretch gap-2 border-t">
+      <CardFooter data-tour-id="cal-day" className="flex flex-col items-stretch gap-2 border-t">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
             {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("selectDay")}
@@ -496,6 +496,7 @@ function PlannerPanel({
                   type="button"
                   onClick={openCreateModal}
                   disabled={!selectedDate}
+                  data-tour-id="cal-add"
                   className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-overlay-hover"
                   aria-label={t("addEntryTooltip")}
                 >
@@ -1006,7 +1007,7 @@ export default function CalendarPage() {
                 </div>
               )}
             </CardHeader>
-            <CardContent className="p-0 md:px-6 md:pb-6">
+            <CardContent data-tour-id="cal-grid" className="p-0 md:px-6 md:pb-6">
               {showCalendarSkeleton ? (
                 <CalendarGridSkeleton />
               ) : (

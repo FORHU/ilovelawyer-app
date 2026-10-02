@@ -202,7 +202,7 @@ export function AudioOverviewPlayerBar({
         onClick={onTogglePlay}
         aria-label={isPlaying ? "Pause" : "Play"}
         style={area("play")}
-        className={`flex shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-[filter] hover:brightness-110 ${
+        className={`flex shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-[filter] hover:brightness-110 ${
           compact ? "h-10 w-10" : "h-11.5 w-11.5"
         }`}
       >
@@ -285,7 +285,7 @@ export function AudioOverviewMiniPlayer({
           onTogglePlay();
         }}
         aria-label={isPlaying ? "Pause" : "Play"}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-colors hover:bg-brand-gold/85"
       >
         {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> : <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />}
       </button>

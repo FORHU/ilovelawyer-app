@@ -35,7 +35,7 @@ export interface PanelLayout {
   y?: number
   /** Columns mode only: which column (0-based) this pane is stacked in. */
   columnIndex?: number
-  /** Tabs mode only: which of the 2 groups this pane's tab lives in. Defaults to 0 when absent. */
+  /** Tabs mode only: which of the 2 groups this pane's tab lives in. When absent, auto-joins the group with fewer tabs. */
   tabGroup?: number
   /** Protects this pane's own slot: no move/resize in Free, no reassignment/replace in
    * Columns/Tabs. Never disables a divider shared with a neighboring, unpinned pane — see

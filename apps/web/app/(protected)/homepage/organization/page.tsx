@@ -412,7 +412,7 @@ export default function OrganizationPage() {
                     type="button"
                     onClick={handleAcceptInvite}
                     disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
-                    className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {acceptInviteMutation.isPending ? t("invite.accepting") : t("invite.accept")}
                   </button>
@@ -485,7 +485,7 @@ export default function OrganizationPage() {
                       return (
                         <label key={sku} className="relative cursor-pointer">
                           {isRecommended && (
-                            <span className="absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-gold px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm">
+                            <span className="absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-gold px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm">
                               {t("create.recommendedBadge")}
                             </span>
                           )}
@@ -516,7 +516,7 @@ export default function OrganizationPage() {
                   <button
                     type="submit"
                     disabled={createOrgMutation.isPending || leaveMutation.isPending}
-                    className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {createOrgMutation.isPending || leaveMutation.isPending ? t("create.creating") : t("create.submit")}
                   </button>
@@ -663,7 +663,7 @@ export default function OrganizationPage() {
                         type="button"
                         onClick={handleConfirmTransferAndLeave}
                         disabled={!successorId || isTransferring}
-                        className="cursor-pointer rounded-full bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isTransferring ? t("overview.leaving") : t("overview.transferConfirm")}
                       </button>
@@ -847,7 +847,7 @@ export default function OrganizationPage() {
                       <button
                         type="submit"
                         disabled={inviteMutation.isPending}
-                        className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {inviteMutation.isPending ? t("invite.sending") : t("invite.submit")}
                       </button>
@@ -930,7 +930,7 @@ export default function OrganizationPage() {
                   <button
                     type="button"
                     onClick={confirmPendingRoleChange}
-                    className="cursor-pointer rounded-xl bg-brand-gold px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2"
+                    className="cursor-pointer rounded-xl bg-brand-gold px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2"
                   >
                     {t("members.roleDowngradeContinue")}
                   </button>

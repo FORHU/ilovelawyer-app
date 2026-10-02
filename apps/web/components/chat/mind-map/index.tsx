@@ -884,7 +884,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                         type="button"
                         onClick={() => void handleExpandNode(selectedTreeNode!.item.id)}
                         disabled={selectedExpandState.disabled}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-brand-navy-950 transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-brand-gold-foreground transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                       >
                         {selectedExpandState.busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                         {selectedExpandState.busy ? t('mindMapExpand.expanding') : t('mindMapExpand.generateMore')}
@@ -970,7 +970,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                             // of never sending a document's URL to a third party.
                             return (
                               <div key={idx} className="flex items-center gap-3 bg-muted p-2.5 rounded-xl border border-border shadow-lg">
-                                <div className="bg-brand-gold text-brand-navy-950 w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
+                                <div className="bg-brand-gold text-brand-gold-foreground w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
                                 <div className="flex flex-col min-w-0 flex-1">
                                   <span className="text-sm font-medium truncate text-foreground">{item.name}</span>
                                   {isMissingUrl ? (

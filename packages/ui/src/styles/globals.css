@@ -12,6 +12,8 @@
     --color-brand-navy-900: var(--brand-navy-900);
     --color-brand-navy-800: var(--brand-navy-800);
     --color-brand-gold: var(--brand-gold);
+    --color-brand-gold-foreground: var(--brand-gold-foreground);
+    --color-brand-gold-hover: var(--brand-gold-hover);
     --color-brand-status-green: var(--brand-status-green);
     --color-brand-oxblood: var(--brand-oxblood);
     --font-heading: var(--font-sans);
@@ -102,6 +104,12 @@
        header/hero chrome, so it needs its own light-mode value (see .dark override below)
        rather than the one dark-tuned hex bleeding into light-mode UI. */
     --brand-gold: #8a6200;
+    /* Text/icons on a gold fill (the gold pill, unread badges). White in light mode: near-black
+       on this darker light-mode gold is under 4.5:1 at the 10–11px label sizes gold pills use.
+       Dark mode's lighter gold takes near-black instead — see .dark. */
+    --brand-gold-foreground: #ffffff;
+    /* Hover fill for the gold pill — a deeper gold in light mode, a brighter one in dark. */
+    --brand-gold-hover: #6d4d00;
     /* Semantic status/verification accent (e.g. "Vetted" citation badges) — kept separate
        from --brand-gold so gold stays reserved for confirming actions, not status states. */
     --brand-status-green: #2e8b57;
@@ -165,6 +173,8 @@
     --claim-inference-fg: #b45309;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.16);
     --claim-unsupported-fg: #b91c1c;
+    /* Onboarding tour spotlight: everything outside the highlighted control dims to this. */
+    --tour-dim: rgba(20, 20, 20, 0.45);
     /* Audio Overview player (components/audio-overview/*): unplayed wave, the played gradient's
        two ends, the seek track's tint, and Host B's band color (Host A uses --brand-gold).
        AudioOverviewWaveform reads these at draw time, since wavesurfer paints a canvas and can't
@@ -206,6 +216,8 @@
     /* Gold's dark-mode value — the one this app was built against, unchanged.
        :root now carries the light-mode value instead of a single fixed hex. */
     --brand-gold: #c9a44c;
+    --brand-gold-foreground: var(--brand-navy-950);
+    --brand-gold-hover: #d9b85e;
     /* Now that --muted/--card/--accent/etc. equal --background, any hover/focus/aria-expanded
        state that relied on one of those for feedback would go visually silent in dark mode —
        this is that feedback instead, added alongside (not replacing) the existing token-based
@@ -242,6 +254,7 @@
     --claim-inference-fg: #fcd34d;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.22);
     --claim-unsupported-fg: #fca5a5;
+    --tour-dim: rgba(0, 0, 0, 0.66);
     --ao-wave: #3d4757;
     --ao-played-from: #34d399;
     --ao-played-to: #22d3ee;

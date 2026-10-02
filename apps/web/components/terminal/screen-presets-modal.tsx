@@ -225,7 +225,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
                     <button
                       type="button"
                       onClick={handlePrimaryClick}
-                      className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
+                      className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
                     >
                       {count > 1 ? t("presetApplyToDisplays", { count }) : t("presetApplyConfirm")}
                     </button>
@@ -249,7 +249,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, caseId, 
                     <button
                       type="button"
                       onClick={() => commit(selected)}
-                      className="bg-brand-gold text-brand-navy-950 text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
+                      className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
                     >
                       {t("presetApplyConfirm")}
                     </button>

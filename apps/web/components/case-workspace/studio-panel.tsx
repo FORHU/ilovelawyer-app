@@ -1062,7 +1062,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       type="button"
                       onClick={() => void handleGenerateAudioOverviewScript()}
                       disabled={!session || isAudioOverviewConsultationBusy}
-                      className="inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-3 text-[13px] font-semibold text-brand-navy-950 shadow-md shadow-brand-gold/20 transition-all hover:-translate-y-px hover:bg-brand-gold/90 hover:shadow-lg hover:shadow-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-3 text-[13px] font-semibold text-brand-gold-foreground shadow-md shadow-brand-gold/20 transition-all hover:-translate-y-px hover:bg-brand-gold/90 hover:shadow-lg hover:shadow-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
                     >
                       <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                       {t("workspace.audioOverviewGenerateCta")}

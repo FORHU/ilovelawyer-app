@@ -3,12 +3,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
+import { useTourStore } from "@/lib/store/tour.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
@@ -82,14 +83,16 @@ const USER_MENU_ITEMS = [
 // Terminal is reached by drilling into a case rather than from top-level nav.
 const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase },
-  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen },
-  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase, tourId: "nav-case-portfolio" },
+  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen, tourId: "nav-library" },
+  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
 
 export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  const { t: tTour } = useTranslation("tour");
   const router = useRouter();
+  const openGuide = useTourStore((s) => s.setGuideOpen);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   // Lifted into a store (not local state) so a page can render its own trigger — see
   // mobileHeaderMerged's doc comment above — that opens this exact same drawer.
@@ -211,7 +214,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               from a top-level nav item. */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>
+              <Link href="/homepage/case-portfolio" data-tour-id="nav-case-portfolio" className={getSubTabClass("case-portfolio")}>
                 <TabLinkContent>{t("nav.cases", { defaultValue: "Cases" }).toUpperCase()}</TabLinkContent>
                 {isCaseTabActive && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -221,7 +224,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/library" className={getSubTabClass("library")}>
+              <Link href="/homepage/library" data-tour-id="nav-library" className={getSubTabClass("library")}>
                 <TabLinkContent>{t("nav.library").toUpperCase()}</TabLinkContent>
                 {activeTab === "library" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -230,7 +233,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>
+              <Link href="/homepage/calendar" data-tour-id="nav-calendar" className={getSubTabClass("calendar")}>
                 <TabLinkContent>{t("nav.calendar").toUpperCase()}</TabLinkContent>
                 {activeTab === "calendar" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -241,11 +244,33 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
         {/* Icons are now inside the main flex row */}
         <div className="hidden lg:flex items-center gap-5 text-foreground">
-          <LanguageSwitcher />
+          <span data-tour-id="header-lang" className="inline-flex">
+            <LanguageSwitcher />
+          </span>
 
-          <ThemeToggle />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                data-tour-id="header-guide"
+                onClick={() => openGuide(true)}
+                aria-label={tTour("guide.open")}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border pl-2.5 pr-3 text-[10px] uppercase tracking-[1px] text-foreground transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Sparkles className="size-3" aria-hidden="true" />
+                {tTour("guide.button")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{tTour("guide.open")}</TooltipContent>
+          </Tooltip>
 
-          <NotificationBell />
+          <span data-tour-id="header-theme" className="inline-flex">
+            <ThemeToggle />
+          </span>
+
+          <span data-tour-id="header-bell" className="inline-flex">
+            <NotificationBell />
+          </span>
 
           <div className="relative" ref={userMenuRef}>
             <Tooltip>
@@ -257,6 +282,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                   aria-haspopup="menu"
                   aria-expanded={isUserMenuOpen}
                   aria-label={t("userMenu.accountMenu")}
+                  data-tour-id="header-account"
                 >
                   <UserAvatar avatarUrl={user?.avatarUrl} initials={initials} className="h-full w-full" />
                 </button>
@@ -325,6 +351,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               <button
                 type="button"
                 onClick={toggleMobileMenu}
+                data-tour-id="header-menu"
                 className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-foreground rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
                 aria-expanded={isMobileMenuOpen}
@@ -387,7 +414,12 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           {MOBILE_NAV_ITEMS.map((item) => (
             <Tooltip key={item.tab}>
               <TooltipTrigger asChild>
-                <Link href={item.href} onClick={closeMobileMenu} className={getMobileTabClass(item.tab)}>
+                <Link
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                  data-tour-id={"tourId" in item ? item.tourId : undefined}
+                  className={getMobileTabClass(item.tab)}
+                >
                   <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
                   <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
                 </Link>
@@ -402,6 +434,22 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  openGuide(true);
+                }}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] tracking-[1px] uppercase text-foreground transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+                {tTour("guide.open")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{tTour("guide.open")}</TooltipContent>
+          </Tooltip>
           {USER_MENU_ITEMS.map((item) => (
             <Tooltip key={item.href}>
               <TooltipTrigger asChild>

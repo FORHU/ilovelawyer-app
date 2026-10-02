@@ -83,7 +83,7 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
             <span className="border border-white/20 rounded-md px-2.5 py-2 text-xs text-white/50">
               {t("firms.membersCard.invitePlaceholder", tCtx)}
             </span>
-            <span className="bg-brand-gold text-brand-navy-950 rounded-md px-2.5 py-2 text-center text-[10.5px] font-semibold tracking-[0.05em] uppercase">
+            <span className="bg-brand-gold text-brand-gold-foreground rounded-md px-2.5 py-2 text-center text-[10.5px] font-semibold tracking-[0.05em] uppercase">
               {t("firms.membersCard.sendInvite")}
             </span>
           </div>

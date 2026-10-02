@@ -107,7 +107,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
             <TooltipTrigger asChild>
               <Link
                 href="/homepage"
-                className={`bg-brand-gold text-brand-navy-950 text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
+                className={`bg-brand-gold text-brand-gold-foreground text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
               >
                 {t("navbar.goToDashboard")}
               </Link>
@@ -183,7 +183,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               <Link
                 href="/homepage"
                 onClick={() => setMobileOpen(false)}
-                className={`flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
+                className={`flex-1 bg-brand-gold text-brand-gold-foreground text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
               >
                 {t("navbar.goToDashboard")}
               </Link>
@@ -199,7 +199,7 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
                 <Link
                   href="/signup"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex-1 bg-brand-gold text-brand-navy-950 text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
+                  className={`flex-1 bg-brand-gold text-brand-gold-foreground text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
                 >
                   {t("navbar.getStarted")}
                 </Link>

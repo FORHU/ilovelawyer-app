@@ -1628,6 +1628,7 @@ export default function ConsultationChat({
   const chatInputBar = (
     <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
       <form
+        data-tour-id="composer-input"
         onSubmit={handleSendMessage}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1849,6 +1850,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
+                      data-tour-id="composer-attach"
                       className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
@@ -1906,7 +1908,7 @@ export default function ConsultationChat({
                       onClick={() => void handleStop()}
                       disabled={!canStop || isStopping}
                       aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
                       {isStopping ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -1924,7 +1926,7 @@ export default function ConsultationChat({
                       type="submit"
                       disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
                       aria-label={t("input.sendMessage")}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
@@ -1947,6 +1949,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
+                      data-tour-id="composer-attach"
                       className={`order-2 ${isComposerMultiline ? "" : "sm:order-1"} w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none`}
                     >
                       <Plus className="w-4 h-4" aria-hidden="true" />
@@ -2317,6 +2320,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={handleNewChat}
                       aria-label={t("sidebar.newChat")}
+                      data-tour-id="consult-new"
                       className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <SquarePen className="h-4 w-4" aria-hidden="true" />

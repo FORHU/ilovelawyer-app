@@ -227,7 +227,8 @@ export default function CaseManagerDashboard() {
               <button
                 type="button"
                 onClick={handleNewFiling}
-                className="flex items-center gap-2.5 bg-brand-gold text-brand-navy-950 font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] rounded-full hover:opacity-85 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                data-tour-id="cases-new"
+                className="flex items-center gap-2.5 bg-brand-gold text-brand-gold-foreground font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] rounded-full hover:opacity-85 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
               >
                 {t("newCase")}
                 <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -238,7 +239,7 @@ export default function CaseManagerDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-            <div className="relative w-full sm:max-w-80 flex items-center">
+            <div data-tour-id="cases-search" className="relative w-full sm:max-w-80 flex items-center">
             <span className="absolute left-4 text-muted-foreground">
               <Search className="w-4 h-4" />
             </span>
@@ -272,7 +273,7 @@ export default function CaseManagerDashboard() {
            * globals.css), so the track and active pill need explicit dark-mode fills
            * (dark:bg-white/*) plus a border — otherwise the whole toggle (and which side is
            * selected) goes invisible in dark mode, leaving bare text with no affordance. */}
-          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted dark:bg-white/[0.06] p-1">
+          <div data-tour-id="cases-filters" className="flex items-center gap-1 rounded-lg border border-border bg-muted dark:bg-white/[0.06] p-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -509,6 +510,7 @@ export default function CaseManagerDashboard() {
                           <TooltipTrigger asChild>
                             <Link
                               href={`/homepage/case-portfolio/${c.id}`}
+                              data-tour-id="case-row-workspace"
                               className="hidden lg:flex h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors"
                             >
                               {t("overview.tabWorkspace")}
@@ -520,6 +522,7 @@ export default function CaseManagerDashboard() {
                           <TooltipTrigger asChild>
                             <Link
                               href={`/homepage/terminal/${c.id}`}
+                              data-tour-id="case-row-terminal"
                               className="flex h-11 md:h-8 items-center px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-brand-gold hover:text-brand-gold transition-colors"
                             >
                               {t("Terminal")}
@@ -634,7 +637,8 @@ export default function CaseManagerDashboard() {
                     <button
                       type="button"
                       onClick={handleNewFiling}
-                      className="self-start flex items-center gap-2.5 bg-brand-gold text-brand-navy-950 font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-11 rounded-full hover:opacity-85 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                      data-tour-id="cases-create-first"
+                      className="self-start flex items-center gap-2.5 bg-brand-gold text-brand-gold-foreground font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-11 rounded-full hover:opacity-85 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
                     >
                       {t("emptyState.cta")}
                       <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />

@@ -226,6 +226,23 @@ export function columnsOf(panels: PanelLayout[], columnCount: number): PanelLayo
   return columns
 }
 
+// Tabs mode's placement rule, same as Columns: an explicit, in-range panel.tabGroup wins;
+// anything else auto-joins whichever of the 2 groups currently has fewer tabs, so switching
+// into Tabs spreads panes across both groups instead of piling them all into the first.
+export function tabGroupsOf(panels: PanelLayout[]): PanelLayout[][] {
+  const groups: PanelLayout[][] = [[], []]
+  const unassigned: PanelLayout[] = []
+  for (const panel of [...panels].sort((a, b) => a.order - b.order)) {
+    if (panel.tabGroup === 0 || panel.tabGroup === 1) groups[panel.tabGroup]!.push(panel)
+    else unassigned.push(panel)
+  }
+  for (const panel of unassigned) {
+    groups[leastFullColumn(groups)]!.push(panel)
+  }
+  for (const group of groups) group.sort((a, b) => a.order - b.order)
+  return groups
+}
+
 export function leastFullColumn(columns: PanelLayout[][]): number {
   let target = 0
   for (let i = 1; i < columns.length; i++) {
@@ -938,7 +955,7 @@ function TabsArrangement({
 }) {
   const groupsRef = useRef<HTMLDivElement>(null)
   const splitDragRef = useRef<{ startX: number; split: number } | null>(null)
-  const groups = [0, 1].map((groupIndex) => panels.filter((p) => (p.tabGroup ?? 0) === groupIndex).sort((a, b) => a.order - b.order))
+  const groups = tabGroupsOf(panels)
   const actives = [activeA, activeB]
   const setActives = [onSetActiveA, onSetActiveB]
   const widths = [split, 1 - split]
@@ -975,6 +992,11 @@ function TabsArrangement({
   }
 
   const moveToGroup = (panelId: PanelId, targetGroupIndex: number) => {
+    // Pin every auto-placed tab to the group it's showing in first, so moving one tab doesn't
+    // re-balance the rest and make other tabs hop groups.
+    groups.forEach((group, groupIndex) => {
+      for (const p of group) if (p.id !== panelId && p.tabGroup !== groupIndex) onPatchPanel(p.id, { tabGroup: groupIndex })
+    })
     const maxOrder = Math.max(0, ...groups[targetGroupIndex]!.map((p) => p.order))
     onPatchPanel(panelId, { tabGroup: targetGroupIndex, order: maxOrder + 1 })
   }
@@ -1512,7 +1534,7 @@ export function TerminalCanvas({
               <button
                 type="button"
                 onClick={emptyStateAction.onClick}
-                className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-navy-950 transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                className="pointer-events-auto mt-5 inline-flex h-9 items-center gap-1.5 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold-foreground transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 {emptyStateAction.label}
