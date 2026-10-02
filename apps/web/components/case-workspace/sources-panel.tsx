@@ -47,6 +47,14 @@ interface SourcesPanelProps {
    * own instance id (several panes can show the same consultation), so jumps must too. */
   instanceId?: string;
   transcriptRef?: RefObject<HTMLElement | null>;
+  /** False hides every Decision Record surface (the per-prompt Decisions dropdowns and the
+   * collapsed-rail Decisions icon) — the Legal Terminal chat pane turns it off, leaving just
+   * Topics and related cases there. */
+  showDecisions?: boolean;
+  /** False drops the collapsed rail's per-section icons, leaving just the expand toggle — every
+   * one of those icons only expands the panel too, so in the Terminal chat pane (where Topics is
+   * the only section left) it was a second button doing exactly what the toggle above it does. */
+  showRailSections?: boolean;
 }
 
 /** Case Workspace's left panel — the material behind the active thread's latest legal answer:
@@ -58,12 +66,16 @@ interface SourcesPanelProps {
  * Collapses to a slim rail. Documents (this case's Case Documents) moved to the Studio panel
  * instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move, only
  * where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef }: SourcesPanelProps) {
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { t: tTerminal } = useTranslation("terminal");
-  const { groups, decisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
+  const { groups, decisionGroups: allDecisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
     useTopicNavigator(activeConsultationId, instanceId, transcriptRef);
+  const decisionGroups = showDecisions ? allDecisionGroups : [];
   const tooltipSide = side === "left" ? "right" : "left";
+  // Collapsed with no section icons to show — the panel drops its column chrome entirely and is
+  // just its toggle, a bare icon button like the pane header's own, instead of an empty column.
+  const compactRail = !expanded && !showRailSections && !fullWidth;
   const CollapseIcon = side === "left" ? PanelLeftClose : PanelRightClose;
   const ExpandIcon = side === "left" ? PanelLeft : PanelRight;
   const { data: relatedCasesData } = useRelatedCasesQuery(activeConsultationId ?? undefined);
@@ -240,13 +252,15 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       // `hidden md:flex` docked/resizable, one `flex md:hidden` always-collapsed mobile rail),
       // and an unprefixed `flex` baked in here would fight an unprefixed `hidden` passed in for
       // the same element at the same breakpoint (undefined which wins).
-      className={`h-full min-h-0 shrink-0 flex-col ${side === "left" ? "border-r" : "border-l"} border-border bg-card ${
+      className={`min-h-0 shrink-0 flex-col ${
+        compactRail ? "self-start" : `h-full ${side === "left" ? "border-r" : "border-l"} border-border bg-card`
+      } ${
         fullWidth ? "w-full" : isResizing ? "" : "transition-[width] duration-200"
-      } ${!fullWidth && !expanded ? "w-14" : ""} ${className}`}
+      } ${!fullWidth && !expanded ? (compactRail ? "w-10" : "w-14") : ""} ${className}`}
       style={expanded && !fullWidth ? { width } : undefined}
     >
       <div
-        className={`flex h-14 shrink-0 items-center border-b border-border ${
+        className={`flex shrink-0 items-center ${compactRail ? "h-10" : "h-14 border-b border-border"} ${
           expanded ? "justify-between px-4" : "justify-center"
         }`}
       >
@@ -280,7 +294,12 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {/* Collapsed rail — one icon per section that actually has content, each expanding the
        * panel straight into that section (rather than the old topic-dots-only rail, which had
        * no way to represent Evidence For/Against or Authorities at all). */}
-      {!expanded && (
+      {compactRail && !hasAnything && isGenerating && (
+        <div className="flex justify-center pb-3">
+          <TopicNavigatorLoading label={t("workspace.topicsGenerating")} compact />
+        </div>
+      )}
+      {!expanded && showRailSections && (
         <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto pt-3">
           {hasAnything ? (
             <>
@@ -318,7 +337,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       )}
 
       {expanded && (
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] p-3">
           {hasAnything ? (
             <div className="flex flex-col gap-4">
               <div className="border-t border-border pt-3 first:border-0 first:pt-0">

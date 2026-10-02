@@ -2565,8 +2565,8 @@ export default function ConsultationChat({
         })()}
         </div>
         {terminalTopicsPanelVisible && (
-          // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics,
-          // decisions and related cases, collapsing to an icon rail — docked on this pane's right.
+          // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics and
+          // related cases (decisions hidden here via showDecisions={false}), collapsing to an icon rail — docked on this pane's right.
           // In a narrow pane (terminalChatNarrow) the expanded panel overlays the transcript
           // instead of squeezing it; the collapsed icon rail is slim enough to stay inline.
           <div
@@ -2583,9 +2583,11 @@ export default function ConsultationChat({
               activeConsultationId={consultationId ?? null}
               instanceId={chatInstanceId}
               transcriptRef={transcriptRef}
+              showDecisions={false}
+              showRailSections={false}
               width={TERMINAL_TOPICS_WIDTH}
               isResizing={false}
-              className="flex rounded-lg border"
+              className={terminalTopicsOpen ? "flex rounded-lg border" : "flex"}
             />
           </div>
         )}

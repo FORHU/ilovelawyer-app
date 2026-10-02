@@ -1,5 +1,6 @@
 "use client"
 
+import { useHasAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { useTranslation } from "react-i18next"
@@ -184,10 +185,11 @@ export default function TerminalCanvasWindowPage() {
     [damagesActivity],
   )
 
+  const hasAudioOverview = useHasAudioOverview(caseId)
   const panelBadges = useMemo((): Partial<Record<PanelId, string>> => {
     const data = snapshot.data
     if (!data) return {}
-    const base = computePanelBadges(data, t)
+    const base = computePanelBadges(data, t, { hasAudioOverview })
     return {
       ...base,
       // damagesSummary is typed as always present, but a snapshot from before this case's
@@ -199,7 +201,7 @@ export default function TerminalCanvasWindowPage() {
             ? t("badgeNew")
             : damagesBadge(data.damagesSummary, t),
     }
-  }, [snapshot.data, t, damagesActivity])
+  }, [snapshot.data, t, damagesActivity, hasAudioOverview])
   const focusStackSummaries = snapshot.data ? computeFocusStackSummaries(snapshot.data, t) : {}
 
   // Mirrors legal-terminal.tsx's setArrangement: Columns must always save an explicit
