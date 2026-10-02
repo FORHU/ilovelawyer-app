@@ -1,5 +1,6 @@
 import { HIDDEN_PANELS, type PaneRect } from "@/components/terminal/terminal-canvas"
 import type { ArrangementValue, CaseSnapshot, FindingCategory, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
+import { damagesBadge } from "@/lib/terminal/damages-format"
 
 // Up to 5 secondary screens (1-5) plus the primary (0) — see the plan's data model doc comment
 // on PanelLayout.screen.
@@ -126,7 +127,7 @@ export function computePanelBadges(data: CaseSnapshot, t: (key: string, opts?: R
     // always present, but a snapshot from before this case's damages computation last ran can
     // still come back without it — guard rather than crash the whole badge computation over one
     // missing field.
-    damages: (data.damagesSummary?.headCount ?? 0) > 0 ? t("badgeHeads", { count: data.damagesSummary.headCount }) : undefined,
+    damages: damagesBadge(data.damagesSummary, t),
     caseReconstruction: data.reconstruction ? t("badgeReady") : undefined,
     audioOverview: data.reconstruction?.audioFileId ? t("badgeReady") : undefined,
     decisions: data.decisions.length > 0 ? t("badgeDecisions", { count: data.decisions.length }) : undefined,

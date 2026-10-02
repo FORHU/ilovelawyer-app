@@ -64,3 +64,14 @@ export function daysUntil(iso: string, today: Date = new Date()): number {
   const day = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   return Math.round((day(new Date(iso)) - day(today)) / 86_400_000)
 }
+
+/** The pane badge: accepted entries, else the AI suggestions waiting, else none. `summary` can be
+ * missing on a snapshot from before the case's damages were first computed. */
+export function damagesBadge(
+  summary: DamagesSummary | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string | undefined {
+  if ((summary?.headCount ?? 0) > 0) return t("badgeHeads", { count: summary!.headCount })
+  if ((summary?.suggestedCount ?? 0) > 0) return t("badgeSuggested", { count: summary!.suggestedCount })
+  return undefined
+}

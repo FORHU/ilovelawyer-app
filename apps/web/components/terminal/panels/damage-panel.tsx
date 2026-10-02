@@ -29,7 +29,7 @@ import {
   TONE_STYLE,
   type Tone,
 } from "@/components/terminal/panel-kit"
-import { DAMAGE_KIND_KEYS, DamageHeadEditor } from "@/components/terminal/panels/damage-head-editor"
+import { DAMAGE_KIND_KEYS, DamageHeadEditorDialog } from "@/components/terminal/panels/damage-head-editor"
 import { DamagesOverview } from "@/components/terminal/panels/damages-overview"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
@@ -149,7 +149,17 @@ export function DamagePanel({
                     ) : null}
                   </button>
                   <span className="flex flex-col items-end gap-0.5 text-right">
-                    <span className="font-mono text-[12px] text-foreground tabular-nums">{d.amount != null ? money(d.amount) : "—"}</span>
+                    <span className="font-mono text-[12px] text-foreground tabular-nums">{d.amount != null ? money(d.amount) : d.kind === "REMEDY" ? (
+                        <span className="font-sans text-[11px] text-muted-foreground">{t("damageNonMonetary")}</span>
+                      ) : (
+                        "—"
+                      )}</span>
+                    {/* An estimate is the AI's own figure, not one from the documents — always said so. */}
+                    {d.amountBasis === "ESTIMATE" && d.amount != null ? (
+                      <span className="text-[11px] text-warn" title={d.amountNote ?? undefined}>
+                        {t("damageEstimateTag")}
+                      </span>
+                    ) : null}
                     {d.dueDate ? (
                       <span className={cn("text-[11px] tabular-nums", overdue ? "text-danger" : "text-muted-foreground")}>
                         {t(overdue ? "damageOverdue" : "damageDue", { date: dateText(d.dueDate) })}
@@ -185,6 +195,14 @@ export function DamagePanel({
                       ))}
                     </div>
                     {d.description ? <p className="text-[13px] text-foreground">{d.description}</p> : null}
+                    {d.amountBasis && d.amountNote ? (
+                      <p className="text-[12px] text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                          {t(d.amountBasis === "ESTIMATE" ? "damageEstimateBasis" : "damageCalculated")}
+                        </span>{" "}
+                        {d.amountNote}
+                      </p>
+                    ) : null}
                     {d.source === "AI" ? (
                       // Where an AI entry came from: the document and the verbatim line it relied on.
                       <div className="flex flex-col gap-2 rounded-md border border-border px-2.5 py-2">
@@ -260,8 +278,18 @@ export function DamagePanel({
         </PanelRowList>
       )}
 
+      <div className={cn("flex flex-wrap gap-2", heads.length === 0 && "justify-center")}>
+        {/* The main action while the list is empty; an ordinary one once it has entries. */}
+        <button type="button" onClick={() => setEditing("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
+          {t("damageEditorAdd")}
+        </button>
+        <button type="button" onClick={() => propose.mutate()} disabled={updating} title={t("damagesProposeHint")} className={ghostBtnClass}>
+          {t("damagesPropose")}
+        </button>
+      </div>
+
       {editing !== null ? (
-        <DamageHeadEditor
+        <DamageHeadEditorDialog
           key={editing}
           head={editorHead}
           pending={saving}
@@ -272,17 +300,7 @@ export function DamagePanel({
             else create.mutate(body, done)
           }}
         />
-      ) : (
-        <div className={cn("flex flex-wrap gap-2", heads.length === 0 && "justify-center")}>
-          {/* The main action while the list is empty; an ordinary one once it has entries. */}
-          <button type="button" onClick={() => setEditing("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
-            {t("damageEditorAdd")}
-          </button>
-          <button type="button" onClick={() => propose.mutate()} disabled={updating} title={t("damagesProposeHint")} className={ghostBtnClass}>
-            {t("damagesPropose")}
-          </button>
-        </div>
-      )}
+      ) : null}
 
       <MutationError show={create.isError || update.isError || del.isError || accept.isError || propose.isError || todos.isError} />
     </PanelBody>

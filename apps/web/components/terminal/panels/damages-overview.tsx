@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { CalendarClock, CircleAlert, CircleCheck, Gavel, Scale } from "lucide-react"
+import { CalendarClock, CircleAlert, CircleCheck, Gavel, Scale, Sparkles } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 import type { DamageClaim, DamagesSummary } from "@/lib/terminal/types"
 import { deadlineStats, formatMoney, formatMoneyCompact } from "@/lib/terminal/damages-format"
@@ -9,10 +9,10 @@ import { labelTextClass } from "@/components/terminal/panel-kit"
 /**
  * The head of the Damages & Remedies pane: the total claimed, how much of it is awarded or
  * received against what is still open (one meter, status colours from the shared ok/warn tokens,
- * each segment named in the legend beside it), and four tiles — damages and remedies in their
- * category colours, overdue and next deadline in status colours. Every tile keeps its colour at
- * zero, so an empty case still reads at a glance; every figure is labelled, so colour is never
- * the only cue.
+ * each segment named in the legend beside it), how many AI suggestions wait for review, and four
+ * tiles — damages and remedies in their category colours, overdue and next deadline in status
+ * colours. Every tile keeps its colour at zero, so an empty case still reads at a glance; every
+ * figure is labelled, so colour is never the only cue.
  */
 export function DamagesOverview({
   summary,
@@ -32,6 +32,8 @@ export function DamagesOverview({
   const awardedShare = summary.total > 0 ? summary.awarded / summary.total : 0
   const pct = (share: number) => Math.round(share * 100)
   const { overdue, next } = deadlineStats(heads)
+  const suggestedCount = summary.suggestedCount ?? 0
+  const suggestedTotal = summary.suggestedTotal ?? 0
   const nextDate = next ? new Date(next.dueDate).toLocaleDateString(i18n.language, { timeZone: "UTC", month: "short", day: "numeric" }) : null
 
   return (
@@ -53,6 +55,16 @@ export function DamagesOverview({
           </p>
         ) : null}
       </div>
+
+      {/* AI suggestions are left out of the total until accepted; this says they are there, and
+          what they would add, so a total of zero beside a list of entries isn't a puzzle. */}
+      {suggestedCount > 0 ? (
+        <p className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground tabular-nums">
+          <Sparkles className="size-3.5 text-warn" aria-hidden="true" />
+          <span className="font-semibold text-foreground">{t("damagesSuggestedWaiting", { count: suggestedCount })}</span>
+          {suggestedTotal > 0 ? <span>· {t("damagesSuggestedAmount", { total: money(suggestedTotal) })}</span> : null}
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-2">
           {/* Awarded | still open, end to end with a 2px gap. The track is the open colour's own
