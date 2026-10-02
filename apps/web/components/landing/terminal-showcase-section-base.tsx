@@ -22,7 +22,7 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 // PH and UK render identical markup (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files), differing only in the sample case shown inside
 // each miniature terminal window (`_UK` variants of `terminal.mocks` / `terminal.samples`) and
-// in the panes offered (Citation Map is Philippines-only — see terminal-panel-cards.ts).
+// in the panes offered (a pane can be Philippines-only — see phOnly in terminal-panel-cards.ts).
 
 const TERMINAL_ROUTE = "/homepage/terminal";
 const loginHref = `/login?next=${encodeURIComponent(TERMINAL_ROUTE)}`;

@@ -10,11 +10,8 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   dates: "Timeline",
   chat: "AI Legal Assistant",
   mindMap: "Visual Strategy Map",
-  citationMap: "Citation Map",
   redTeam: "Red Team",
   procedure: "Case Strategy",
-  teamAudit: "Team & Audit",
-  contradictions: "Contradictions",
   legalIssues: "Legal Issues",
   weaknesses: "Weaknesses",
   strengths: "Strengths",
@@ -26,5 +23,4 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   audioOverview: "Audio Overview",
   decisions: "Decisions",
   theories: "Theories",
-  verification: "Verification",
 }

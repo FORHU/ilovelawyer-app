@@ -19,6 +19,8 @@ const ATTACK_STRATEGY: RatedFindingConfig = {
   jevFlagKeys: () => [],
   JevDetail: AttackStrategyJevDetail,
   upload: true,
+  // The to-do is what's left or missing before the move is usable.
+  checklist: { fixedTag: "READY", todoLabel: (f) => f.detail?.trim() || f.label },
 }
 
 function AttackStrategyJevDetail({ finding }: { finding: CaseFinding }) {

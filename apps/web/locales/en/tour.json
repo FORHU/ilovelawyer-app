@@ -268,10 +268,6 @@
             "title": "Evidence & Timeline",
             "body": "Everything you upload lands here, linked to its source, with its status: verified, needs authenticating, or disputed."
           },
-          "contradictions": {
-            "title": "Contradictions",
-            "body": "Where two documents disagree. Resolve or dismiss each one, with a note so your team knows why. High severity comes first."
-          },
           "law": {
             "title": "Law & Precedent",
             "body": "Statutes and decisions for this case. Check a quote against the source, or look for rulings that go against you."

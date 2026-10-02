@@ -28,7 +28,6 @@ export const SAMPLE_TOURS: Record<SampleTourTrack, SampleTourStep[]> = {
     { id: "nextdate", view: "terminal", target: "nextdate", placement: "bottom" },
     { id: "command", view: "terminal", target: "pane-command", placement: "right" },
     { id: "evidence", view: "terminal", target: "pane-evidence", placement: "left" },
-    { id: "contradictions", view: "terminal", target: "pane-contradictions", placement: "left" },
     { id: "law", view: "terminal", target: "pane-law", placement: "right" },
     { id: "legalIssues", view: "terminal", target: "pane-legalIssues", placement: "left" },
     { id: "procedure", view: "terminal", target: "pane-procedure", placement: "left" },

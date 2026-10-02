@@ -5,6 +5,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
+import { EvidenceContradictions } from "@/components/terminal/panels/evidence-contradictions"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import { useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
@@ -283,6 +284,11 @@ export function EvidencePanel({
 
       <div className="border-t border-border pt-4">
         <CaseTimelineView caseId={caseId} fill={false} title={<p className={labelTextClass}>{t("timeline")}</p>} />
+      </div>
+
+      {/* Moved here from the retired Contradictions pane, so a false conflict can still be dismissed. */}
+      <div className="border-t border-border pt-4">
+        <EvidenceContradictions caseId={caseId} />
       </div>
 
       <EvidenceDetailDrawer

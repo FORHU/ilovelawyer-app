@@ -15,10 +15,7 @@ import { EvidencePanel } from "@/components/terminal/panels/evidence-panel"
 import { LawPanel } from "@/components/terminal/panels/law-panel"
 import { RedTeamPanel } from "@/components/terminal/panels/red-team-panel"
 import { ProcedurePanel } from "@/components/terminal/panels/procedure-panel"
-import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
-import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
 import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
-import { CitationMapPanel } from "@/components/terminal/panels/citation-map-panel"
 import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
 import { StrengthsPanel } from "@/components/terminal/panels/strengths-panel"
 import { AttackStrategyPanel } from "@/components/terminal/panels/attack-strategy-panel"
@@ -28,7 +25,6 @@ import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
 import { AudioOverviewPanel } from "@/components/terminal/panels/audio-overview-panel"
 import { DecisionsPanel } from "@/components/terminal/panels/decisions-panel"
-import { VerificationPanel } from "@/components/terminal/panels/verification-panel"
 import { CaseMindMapPanel } from "@/components/terminal/panels/case-mind-map-panel"
 
 export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
@@ -69,16 +65,10 @@ export function TerminalPanelBody({
       return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} onJumpToPanel={onJumpToPanel} />
     case "mindMap":
       return <CaseMindMapPanel caseId={caseId} snapshot={snapshot} />
-    case "citationMap":
-      return <CitationMapPanel caseId={caseId} />
     case "redTeam":
       return <RedTeamPanel snapshot={snapshot} caseId={caseId} />
     case "procedure":
       return <ProcedurePanel snapshot={snapshot} caseId={caseId} />
-    case "teamAudit":
-      return <TeamAuditPanel snapshot={snapshot} />
-    case "contradictions":
-      return <ContradictionsPanel caseId={caseId} />
     case "legalIssues":
       return <LegalIssuesPanel caseId={caseId} />
     case "weaknesses":
@@ -99,8 +89,6 @@ export function TerminalPanelBody({
       return <AudioOverviewPanel caseId={caseId} />
     case "decisions":
       return <DecisionsPanel snapshot={snapshot} caseId={caseId} />
-    case "verification":
-      return <VerificationPanel caseId={caseId} />
     case "theories":
       return <TheoriesPanel snapshot={snapshot} caseId={caseId} />
     default:

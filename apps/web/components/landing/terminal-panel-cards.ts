@@ -3,8 +3,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // The landing page's panel carousel — one card per pane a lawyer can actually add in the Legal
 // Terminal (ilovelawyer-api's PANEL_CATALOG), named with the Terminal's own PANEL_TITLES. Left
-// out on purpose: "dates" (folded into Evidence & Timeline, never its own pane) and
-// "verification" (renders nothing until the API's USE_GROUNDING_VERIFIER flag is on).
+// out on purpose: "dates" (folded into Evidence & Timeline, never its own pane).
 
 export const PANEL_CATEGORIES = ["facts", "law", "strategy", "risk", "team"] as const;
 export type PanelCategory = (typeof PANEL_CATEGORIES)[number];
@@ -17,18 +16,17 @@ export interface LandingPanel {
   id: PanelId;
   category: PanelCategory;
   detailedMock?: DetailedMockKey;
-  /** Citation Map only works on Philippine jurisprudence (see its catalog description). */
+  /** A pane that only works on Philippine jurisprudence, shown to the PH tenant only. None today
+   * (Citation Map was the one, and it was retired). */
   phOnly?: boolean;
 }
 
 const LANDING_PANELS: LandingPanel[] = [
   { id: "command", category: "facts", detailedMock: "caseSummary" },
   { id: "evidence", category: "facts", detailedMock: "evidenceTimeline" },
-  { id: "contradictions", category: "facts" },
   { id: "witnesses", category: "facts" },
   { id: "caseReconstruction", category: "facts" },
   { id: "law", category: "law" },
-  { id: "citationMap", category: "law", phOnly: true },
   { id: "legalIssues", category: "law" },
   { id: "decisions", category: "law" },
   { id: "procedure", category: "strategy" },
@@ -41,7 +39,6 @@ const LANDING_PANELS: LandingPanel[] = [
   { id: "weaknesses", category: "risk" },
   { id: "strengths", category: "risk" },
   { id: "damages", category: "risk" },
-  { id: "teamAudit", category: "team" },
   { id: "chat", category: "team", detailedMock: "chat" },
 ];
 

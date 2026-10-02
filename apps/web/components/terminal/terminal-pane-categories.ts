@@ -18,11 +18,9 @@ export const PANE_CATEGORY_META: Record<PaneCategory, { labelKey: string; icon: 
 export const PANEL_CATEGORY: Partial<Record<PanelId, PaneCategory>> = {
   command: "facts",
   evidence: "facts",
-  contradictions: "facts",
   witnesses: "facts",
   caseReconstruction: "facts",
   law: "law",
-  citationMap: "law",
   legalIssues: "law",
   procedure: "strategy",
   mindMap: "strategy",
@@ -35,6 +33,5 @@ export const PANEL_CATEGORY: Partial<Record<PanelId, PaneCategory>> = {
   weaknesses: "risk",
   strengths: "risk",
   damages: "risk",
-  teamAudit: "team",
   chat: "team",
 }

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Loader2, Search } from "lucide-react"
 import {
   useAiJobStatus,
-  useScanContradictionsMutation,
   useUpdateContradictionMutation,
   type ContradictionStatus,
 } from "@/lib/terminal/mutations"
@@ -12,11 +10,9 @@ import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import {
   EmptyNote,
   MutationError,
-  PanelBody,
   PanelRow,
   PanelRowList,
   TONE_STYLE,
-  TagMixSummary,
   TonePill,
   fieldClass,
   ghostBtnClass,
@@ -96,19 +92,17 @@ function contradictionHeadline(item: ContradictionMetadata) {
   return label ? `${label}: ${left} vs ${right}` : `${left} vs ${right}`
 }
 
-// Split out of EvidencePanel into its own pane — the underlying data (EvidenceContradiction
-// rows, scanned via regex + an LLM pass through chat-wonder-v2-api) already existed; this is
-// purely giving it dedicated screen space instead of competing with Documents/Timeline for it.
-// Reads the graph-view projection (view_type=contradictions) instead of slicing CaseSnapshot,
-// so a scan triggered from any mounted panel refreshes this one via the shared query cache.
-export function ContradictionsPanel({ caseId }: { caseId: string }) {
+// The Contradictions section of Evidence & Timeline. It used to be its own pane; that pane was
+// retired, and only the part a lawyer acts on came here: reading each conflict, and resolving or
+// dismissing it (a dismissed one is a false positive). The scan itself runs in every analysis
+// refresh, so there is no Scan button. Reads the graph-view projection (view_type=contradictions)
+// instead of slicing CaseSnapshot, which carries no status for these rows.
+export function EvidenceContradictions({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
-  const scan = useScanContradictionsMutation(caseId)
   const update = useUpdateContradictionMutation(caseId)
   const job = useAiJobStatus(caseId, "contradictions")
   const graphView = useGraphViewQuery(caseId, "contradictions")
   const queryClient = useQueryClient()
-  const isScanning = scan.isPending || job.data?.status === "IN_PROGRESS"
   const [open, setOpen] = useState<string | null>(null)
 
   // The scan is queued; useAiJobStatus only refreshes the snapshot when it finishes, and this
@@ -134,10 +128,7 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
         Number(a.handled) - Number(b.handled) ||
         SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
     )
-  const counts = new Map<Severity, number>()
-  rows.forEach((r) => counts.set(r.severity, (counts.get(r.severity) ?? 0) + 1))
   const handledCount = rows.filter((r) => r.handled).length
-  const handledPct = rows.length ? Math.round((handledCount / rows.length) * 100) : 0
 
   const toggle = (id: string) => {
     setOpen(open === id ? null : id)
@@ -149,38 +140,17 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
   }
 
   return (
-    <PanelBody gap="4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[13px] text-muted-foreground">{t("contradictionsIntro")}</p>
-        <button
-          type="button"
-          onClick={() => scan.mutate()}
-          disabled={isScanning}
-          className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
-        >
-          {isScanning ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Search className="h-3 w-3" aria-hidden="true" />
-          )}
-          {isScanning ? t("scanning") : t("scan")}
-        </button>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className={labelTextClass}>{t("contradictionsTitle")}</p>
+        {rows.length > 0 ? (
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {t("contradictionHandled", { done: handledCount, total: rows.length })}
+          </span>
+        ) : null}
       </div>
-      <MutationError show={scan.isError || update.isError || job.data?.status === "FAILED"}>
-        {job.data?.status === "FAILED" && !scan.isError ? t("contradictionScanFailed") : undefined}
-      </MutationError>
-
-      {rows.length > 0 ? (
-        <TagMixSummary
-          ring={{ pct: handledPct, tone: "ok", title: t("contradictionHandled", { done: handledCount, total: rows.length }) }}
-          segments={SEVERITY_ORDER.map((s) => ({
-            key: s,
-            label: t(SEVERITY_STYLE[s].label),
-            count: counts.get(s) ?? 0,
-            tone: SEVERITY_STYLE[s].tone,
-          }))}
-        />
-      ) : null}
+      <p className="text-[13px] text-muted-foreground">{t("contradictionsIntro")}</p>
+      <MutationError show={update.isError} />
 
       {/* Same shrink-0 wrapper as WitnessPanel: PanelRowList's <ul> is overflow-hidden. */}
       <div className="shrink-0">
@@ -309,6 +279,6 @@ export function ContradictionsPanel({ caseId }: { caseId: string }) {
           })}
         </PanelRowList>
       </div>
-    </PanelBody>
+    </div>
   )
 }

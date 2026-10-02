@@ -5,11 +5,8 @@ export const PANEL_IDS = [
   "dates",
   "chat",
   "mindMap",
-  "citationMap",
   "redTeam",
   "procedure",
-  "teamAudit",
-  "contradictions",
   "legalIssues",
   "weaknesses",
   "strengths",
@@ -21,7 +18,6 @@ export const PANEL_IDS = [
   "audioOverview",
   "decisions",
   "theories",
-  "verification",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
@@ -331,7 +327,31 @@ export interface SnapshotProcedureItem {
     confidence: number
     checkedAt: string
   } | null
+  /** The item a to-do was sent over from ("To checklist"), so it can tick itself once that item
+   * is fixed — see ilovelawyer-api utils/procedure-link.ts. Null on every other to-do; absent on
+   * an API that predates it. */
+  sourceKind?: ProcedureSourceKind | null
+  sourceId?: string | null
+  /** A witness need's key, for WITNESS_NEED only. */
+  sourceKey?: string | null
+  /** Set when the source ticked it, with why. */
+  autoClosedAt?: string | null
+  autoClosedReason?: ProcedureAutoCloseReason | null
+  /** A to-do sent from a Damages & Remedies entry carries that entry's due date. */
+  dueDate?: string | null
 }
+
+export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED"
+export type ProcedureAutoCloseReason =
+  | "ISSUE_RESOLVED"
+  | "WEAKNESS_CLOSED"
+  | "ATTACK_READY"
+  | "DEFENSE_ANSWERED"
+  | "DAMAGE_DONE"
+  // On to-dos closed before Damages & Remedies lost its certification status.
+  | "DAMAGE_CERTIFIED"
+  | "DAMAGE_EVIDENCE_IN"
+  | "WITNESS_NEED_DONE"
 
 export interface SnapshotAuditEvent {
   id: string
@@ -410,8 +430,8 @@ export interface CaseSnapshot {
   findings: CaseFinding[]
   witnesses: Witness[]
   damages: DamageClaim[]
-  // Computed server-side from `damages` (api utils/damages-compute.ts): amounts, shares, the
-  // exposure range and what is still provisional. Don't re-derive these on the client.
+  // Computed server-side from `damages` (api utils/damages-compute.ts): the total and counts.
+  // Don't re-derive these on the client.
   damagesSummary: DamagesSummary
   reconstruction: CaseReconstruction | null
   // The dated event chain (Events tab) — separate from `reconstruction`, which only exists once a
@@ -642,114 +662,52 @@ export interface Witness {
   updatedAt: string
 }
 
-export type DamageCategory =
-  | "ACTUAL"
-  | "MORAL"
-  | "EXEMPLARY"
-  | "ATTORNEYS_FEES"
-  | "OTHER"
-
-export type DamageStatus = "PROVISIONAL" | "SUPPORTED" | "CERTIFIED"
+/** Money the client is owed (DAMAGE) or another order the case asks for, such as reinstatement (REMEDY). */
+export type DamageKind = "DAMAGE" | "REMEDY"
 export type DamageSource = "MANUAL" | "AI"
-export type DamageJevSupport = "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
 
-/** How a head's amount is reached; null on a DamageClaim reads as FIXED. */
-export type DamageBasis =
-  | { kind: "FIXED" }
-  | {
-      kind: "RATE_X_PERIOD"
-      monthlyRate: number
-      months?: number
-      fromDate?: string
-      /** An ISO date, or DAMAGE_AS_OF to keep accruing to today (backwages run until finality). */
-      untilDate?: string
-      /** Projected finality date — sets the head's high end when no amountHigh is given. */
-      highUntilDate?: string
-    }
-  | { kind: "PERCENT_OF"; percent: number; categories: DamageCategory[] }
-
-/** untilDate value meaning "up to today" — mirrors AS_OF in the API's damages-compute.ts. */
-export const DAMAGE_AS_OF = "asOf"
-
-/** A suggested update to a head from a newly read document (API: damages-proposal.ts). Never
- * applied on its own — the lawyer applies or dismisses it. */
-export interface DamageProposal {
-  basis: DamageBasis
-  amount: number | null
-  sourceDocumentId: string
-  documentName: string
-  sourceQuote: string
-  /** true: the document is the evidence the head was waiting on, so applying also certifies it. */
-  satisfiesPending: boolean | null
-  proposedAt: string
-}
-
+/** One Damages & Remedies entry. */
 export interface DamageClaim {
   id: string
   caseId: string
-  category: DamageCategory
-  label: string | null
+  kind: DamageKind
+  title: string
   description: string | null
-  /** For any basis other than FIXED, the server's computed value. */
+  /** None for most remedies. */
   amount: number | null
-  basis: DamageBasis | null
-  amountLow: number | null
-  amountHigh: number | null
-  status: DamageStatus
-  pendingEvidence: string | null
-  legalBasis: string | null
+  /** Awarded by the tribunal or received by the client. */
+  done: boolean
+  dueDate: string | null
   source: DamageSource
   sourceDocumentId: string | null
   sourceQuote: string | null
-  aiProposedBasis: DamageProposal | null
-  jevSupport: DamageJevSupport | null
-  jevAwardability: number | null
-  jevConfidence: number | null
-  jevCheckedAt: string | null
+  /** An AI proposal stays a suggestion, outside the total, until a lawyer accepts it. */
+  accepted: boolean
   createdAt: string
   updatedAt: string
 }
 
-export interface DamageHeadSummary {
-  id: string
-  category: DamageCategory
-  amount: number | null
-  low: number | null
-  high: number | null
-  /** 0..1 of the total. */
-  share: number
-  /** A derived head (attorney's fees) is only as firm as the weakest head it's computed from. */
-  effectiveStatus: DamageStatus
-  derived: boolean
-}
-
+/** Computed server-side (API utils/damages-compute.ts) from the accepted entries. */
 export interface DamagesSummary {
   currency: "PHP" | "GBP"
   total: number
-  low: number
-  high: number
-  /** Readable ceiling for the exposure bar's scale. */
-  scaleMax: number
+  /** The part of `total` already awarded or received. */
+  awarded: number
   headCount: number
-  heads: DamageHeadSummary[]
-  provisional: boolean
-  pendingEvidence: string[]
-  /** YYYY-MM-DD the accruing heads were computed to; null when none accrues. */
-  asOf: string | null
+  damageCount: number
+  remedyCount: number
+  doneCount: number
 }
 
 /** Fields the damages create/update endpoints accept. */
 export interface DamageClaimBody {
-  category?: DamageCategory
-  label?: string | null
-  description?: string
+  kind?: DamageKind
+  title?: string
+  description?: string | null
   amount?: number | null
-  basis?: DamageBasis | null
-  amountLow?: number | null
-  amountHigh?: number | null
-  status?: DamageStatus
-  pendingEvidence?: string | null
-  legalBasis?: string | null
+  done?: boolean
+  /** YYYY-MM-DD, or null to clear it. */
+  dueDate?: string | null
 }
 
 export interface CaseReconstruction {

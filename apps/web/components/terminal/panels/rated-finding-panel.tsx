@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, type ComponentType } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Check, CircleCheck, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import { Check, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import {
   useAiJobStatus,
   useCreateFindingMutation,
-  useCreateProcedureItemMutation,
   useCreateRiskMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
@@ -14,6 +13,9 @@ import {
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
+import { useLinkedTodos } from "@/lib/terminal/linked-todos"
+import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
+import type { TFunction } from "i18next"
 import type { CaseFinding, FindingCategory, FindingTag } from "@/lib/terminal/types"
 import {
   DeltaMark,
@@ -72,6 +74,11 @@ export interface RatedFindingConfig {
   llmWording?: boolean
   /** Show the attach-documents button beside the add field (Weaknesses, Strengths). */
   upload?: boolean
+  /** "To checklist" sends the row to Case Strategy as a linked to-do. `fixedTag` is the pill that
+   * settles the row: the button hides there, and the API ticks the to-do when the row reaches it
+   * (keep in step with ilovelawyer-api utils/procedure-link.ts). `todoLabel` is the task the
+   * to-do should say, when that isn't the row's own label. */
+  checklist?: { fixedTag?: FindingTag; todoLabel?(finding: CaseFinding, t: TFunction<"terminal">): string }
 }
 
 const UNRATED = { tone: "neutral" as Tone, label: "findingUnrated" }
@@ -106,10 +113,9 @@ export function RatedFindingPanel({
   const update = useUpdateFindingMutation(caseId)
   const del = useDeleteFindingMutation(caseId)
   const jevCheck = useJevCheckFindingMutation(caseId)
-  const sendToChecklist = useCreateProcedureItemMutation(caseId)
+  const todos = useLinkedTodos(caseId)
   const flagRisk = useCreateRiskMutation(caseId)
-  // Ids already sent from this panel this session, so a second click can't double-add.
-  const [sentToChecklist, setSentToChecklist] = useState<Set<string>>(new Set())
+  // Ids flagged from this panel this session, so a second click can't double-add.
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
   // Findings from an older format regenerate in the background when the Terminal loads the case
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
@@ -324,25 +330,14 @@ export function RatedFindingPanel({
                           </button>
                         ) : null}
                         {/* Cross-panel: send this finding to Case Strategy's to-dos or the risk register. */}
-                        <button
-                          type="button"
-                          disabled={sentToChecklist.has(f.id) || sendToChecklist.isPending}
-                          onClick={() =>
-                            sendToChecklist.mutate(
-                              { kind: "TODO", label: f.label, sourceLabel: t(`findingCategory.${config.category}`) },
-                              { onSuccess: () => setSentToChecklist((prev) => new Set(prev).add(f.id)) },
-                            )
-                          }
-                          title={t("toChecklistHint")}
-                          className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-foreground disabled:opacity-60"
-                        >
-                          {sentToChecklist.has(f.id) ? (
-                            <Check className="h-3 w-3" aria-hidden="true" />
-                          ) : (
-                            <CircleCheck className="h-3 w-3" aria-hidden="true" />
-                          )}
-                          {sentToChecklist.has(f.id) ? t("addedToChecklist") : t("toChecklist")}
-                        </button>
+                        {config.checklist && f.tag !== config.checklist.fixedTag ? (
+                          <ToChecklistButton
+                            todos={todos}
+                            source={{ kind: "FINDING", id: f.id }}
+                            label={config.checklist.todoLabel?.(f, t) ?? f.label}
+                            sourceLabel={`${t(`findingCategory.${config.category}`)}: ${f.label}`.slice(0, 200)}
+                          />
+                        ) : null}
                         <button
                           type="button"
                           disabled={flagged.has(f.id) || flagRisk.isPending}
@@ -453,7 +448,7 @@ export function RatedFindingPanel({
           {t("add")}
         </button>
       </form>
-      <MutationError show={create.isError || update.isError || del.isError || sendToChecklist.isError || flagRisk.isError} />
+      <MutationError show={create.isError || update.isError || del.isError || todos.isError || flagRisk.isError} />
     </PanelBody>
   )
 }

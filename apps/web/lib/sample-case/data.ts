@@ -152,14 +152,6 @@ const PH_CASE: SampleCase = {
       { tag: { label: "Verified", sev: "low" }, title: "Demand letter", detail: "3 Mar 2026" },
       { tag: { label: "Disputed", sev: "high" }, title: "Registry return card", detail: "Signature unclear" },
     ],
-    contradictions: [
-      {
-        tag: { label: "High", sev: "high" },
-        title: "Purpose of the ₱2.4M",
-        detail: "The counter-affidavit (p.2) calls it a capital contribution. The Viber messages ask for it as a permit and construction fee.",
-      },
-      { tag: { label: "Med", sev: "med" }, title: "Date of receipt", detail: "The return card is stamped 5 Mar; Ong's affidavit says the letter came back 9 Mar." },
-    ],
     witnesses: [
       { title: "Celia Ong", detail: "Private complainant", value: "78", meter: 78 },
       { title: "Bank officer", detail: "To be subpoenaed", value: "85", meter: 85 },
@@ -310,18 +302,6 @@ const UK_CASE: SampleCase = {
       { tag: { label: "Verified", sev: "low" }, title: "Letter before claim", detail: "3 Feb 2026" },
       { tag: { label: "Disputed", sev: "high" }, title: "Planning portal search", detail: "Screenshot only; no certified search" },
     ],
-    contradictions: [
-      {
-        tag: { label: "High", sev: "high" },
-        title: "What the £240,000 was for",
-        detail: "The Defence (para 7) calls it an investment in a joint venture. The WhatsApp messages ask for it as the fit-out fee.",
-      },
-      {
-        tag: { label: "Med", sev: "med" },
-        title: "When planning was applied for",
-        detail: "The Defence says an application was lodged on 1 Dec 2025; the planning portal shows none.",
-      },
-    ],
     witnesses: [
       { title: "Claire Whitfield", detail: "Claimant", value: "78", meter: 78 },
       { title: "Council planning officer", detail: "Witness summons to be sought", value: "85", meter: 85 },
@@ -379,11 +359,9 @@ export function sampleCaseFor(tenantCode: TenantCode | null | undefined): Sample
 export const PANE_INFO: Partial<Record<PanelId, { category: PaneCategory; description: string }>> = {
   command: { category: "facts", description: "Case health, the next date and your next actions on one card." },
   evidence: { category: "facts", description: "Every document, linked to its source and placed in time." },
-  contradictions: { category: "facts", description: "Where two documents disagree, highest severity first." },
   witnesses: { category: "facts", description: "Each witness, their statement and a credibility score." },
   caseReconstruction: { category: "facts", description: "The events retold as scenes, with a read-aloud you can listen to." },
   law: { category: "law", description: "Statutes and decisions for this case. Check a quote or look for adverse rulings." },
-  citationMap: { category: "law", description: "How your authorities cite each other. Adverse rulings are flagged." },
   legalIssues: { category: "law", description: "What the court must decide, and who carries the burden." },
   procedure: { category: "strategy", description: "Filing checklist and deadlines that move when key dates move." },
   mindMap: { category: "strategy", description: "The case strategy as a map you can expand node by node." },
@@ -396,9 +374,8 @@ export const PANE_INFO: Partial<Record<PanelId, { category: PaneCategory; descri
   weaknesses: { category: "risk", description: "Gaps in your own case, rated by how much they hurt." },
   strengths: { category: "risk", description: "What your case does well, with the evidence behind it." },
   damages: { category: "risk", description: "Each damages head with its figure, source and total." },
-  teamAudit: { category: "team", description: "Who is on the case, approvals, and a full audit trail." },
   chat: { category: "team", description: "Chat that already knows this case's documents, parties and issues." },
 }
 
 /** The panes on the sample grid when it opens, in order — the same in every jurisdiction. */
-export const SAMPLE_GRID: PanelId[] = ["command", "evidence", "contradictions", "law", "legalIssues", "procedure", "witnesses", "redTeam", "damages"]
+export const SAMPLE_GRID: PanelId[] = ["command", "evidence", "law", "legalIssues", "procedure", "witnesses", "redTeam", "damages"]

@@ -357,11 +357,8 @@ const PANE_CODES: Record<PanelId, [string, Tone]> = {
   dates: ["TL", "neutral"],
   chat: ["AI", "warn"],
   mindMap: ["MP", "riskmed"],
-  citationMap: ["CM", "neutral"],
   redTeam: ["RT", "danger"],
   procedure: ["ST", "neutral"],
-  teamAudit: ["TA", "neutral"],
-  contradictions: ["CX", "danger"],
   legalIssues: ["IS", "warn"],
   weaknesses: ["WK", "danger"],
   strengths: ["SG", "ok"],
@@ -373,7 +370,6 @@ const PANE_CODES: Record<PanelId, [string, Tone]> = {
   audioOverview: ["AU", "neutral"],
   decisions: ["DC", "neutral"],
   theories: ["TH", "neutral"],
-  verification: ["VF", "neutral"],
 }
 
 export function PaneCode({ panelId }: { panelId: PanelId }) {
