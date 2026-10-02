@@ -43,10 +43,10 @@ export function presetDescription(preset: ScreenPresetDef, t: (key: string) => s
 }
 
 // 4-6 screens: no hand-curated content, just evenly round-robin every real panel (every PanelId
-// minus verification/HIDDEN_PANELS) across however many screens are actually connected. Purely
+// minus HIDDEN_PANELS) across however many screens are actually connected. Purely
 // client-side/algorithmic (depends on live screen count) — never a DB row.
 export function generateSpreadPreset(totalScreens: number): ScreenPresetDef {
-  const allIds = PANEL_IDS.filter((id) => !HIDDEN_PANELS.has(id) && id !== "verification")
+  const allIds = PANEL_IDS.filter((id) => !HIDDEN_PANELS.has(id))
   const screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[] = Array.from({ length: totalScreens }, () => ({
     arrangement: "free",
     panelIds: [],

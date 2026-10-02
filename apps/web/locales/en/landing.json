@@ -99,11 +99,9 @@
     "cards": {
       "command": "Case header, next date, risk checklist and next actions.",
       "evidence": "Documents with source links, and the case timeline they support.",
-      "contradictions": "Where the documents disagree with each other, found by the evidence scan.",
       "witnesses": "The witness roster, with role, contact details and notes.",
       "caseReconstruction": "A chronological narrative of the case, drafted by AI and editable.",
       "law": "The statutes, precedents and citations behind the case.",
-      "citationMap": "A network of the case's cited jurisprudence, expandable into what those decisions cite.",
       "legalIssues": "The legal questions and causes of action the case raises.",
       "decisions": "The why behind each answer: the rule, evidence for and against, and what would change it.",
       "procedure": "Deadlines and the filing checklist that keep the case on track.",
@@ -116,7 +114,6 @@
       "weaknesses": "Points that hurt the case's persuasive strength.",
       "strengths": "Points that help the case's persuasive strength.",
       "damages": "Claimed damages and remedies by category, with a running total.",
-      "teamAudit": "Assignments, approvals and the audit trail. Professional plan and up.",
       "chat": "Ask questions and get answers grounded in the case."
     },
     "mocks": {
@@ -164,7 +161,7 @@
         "question": "Which contradictions in the evidence undercut abandonment?",
         "source": "ilovelawyer · from evidence & timeline, contradictions",
         "answer": "Two contradictions do real work against abandonment: the termination letter dates it from 4 August, but payroll logs attendance through 8 August.",
-        "chips": ["EVIDENCE ↗", "CONTRADICTIONS ↗"],
+        "chips": ["EVIDENCE ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
       }
@@ -214,20 +211,12 @@
         "question": "Which documents best show the claimant was maintained?",
         "source": "ilovelawyer · from evidence & timeline, contradictions",
         "answer": "Two documents do real work: the bank statements show regular transfers from the deceased through 2023, while the will records no reason for the exclusion.",
-        "chips": ["EVIDENCE ↗", "CONTRADICTIONS ↗"],
+        "chips": ["EVIDENCE ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
       }
     },
     "samples": {
-      "contradictions": {
-        "intro": "Found by the evidence scan across 6 documents.",
-        "rows": [
-          { "title": "Abandonment dated from 4 Aug", "note": "Termination letter vs. payroll through 8 Aug", "status": "DIRECT" },
-          { "title": "\"Report for a meeting\", 6 Aug", "note": "HR email vs. the abandonment claim", "status": "DIRECT" },
-          { "title": "Last day worked", "note": "Complaint vs. HR memo", "status": "INDIRECT" }
-        ]
-      },
       "witnesses": {
         "intro": "Witness roster · 3",
         "rows": [
@@ -251,13 +240,6 @@
           { "title": "Labor Code, Art. 297", "note": "Just causes for termination", "status": "STATUTE" },
           { "title": "Agabon v. NLRC", "note": "G.R. No. 158693", "status": "ON POINT" },
           { "title": "Abbott Laboratories v. Alcaraz", "note": "G.R. No. 192571", "status": "ADVERSE" }
-        ]
-      },
-      "citationMap": {
-        "intro": "Cited jurisprudence · expand any decision into what it cites.",
-        "rows": [
-          { "title": "Agabon v. NLRC", "note": "G.R. No. 158693 · cited in the answer", "status": "CITED" },
-          { "title": "Serrano v. NLRC", "note": "G.R. No. 117040 · revisited in Agabon", "status": "BRANCH" }
         ]
       },
       "legalIssues": {
@@ -348,25 +330,9 @@
           { "title": "Exemplary damages", "note": "₱100,000", "status": "PROVISIONAL" },
           { "title": "Attorney's fees", "note": "10% of the award", "status": "MODELED" }
         ]
-      },
-      "teamAudit": {
-        "intro": "Team · 3 · audit trail",
-        "rows": [
-          { "title": "A. Cruz assigned as lead counsel", "note": "09:12", "status": "ASSIGNED" },
-          { "title": "Position paper draft approved", "note": "09:28 · L. Chen", "status": "APPROVED" },
-          { "title": "Risk \"No written protest\" added", "note": "08:47 · L. Chen", "status": "OPEN" }
-        ]
       }
     },
     "samples_UK": {
-      "contradictions": {
-        "intro": "Found by the evidence scan across 6 documents.",
-        "rows": [
-          { "title": "\"No contact since 2018\"", "note": "Letter of wishes vs. transfers to 2023", "status": "DIRECT" },
-          { "title": "Claimant \"self-sufficient\"", "note": "Executor's note vs. benefits letter", "status": "DIRECT" },
-          { "title": "Date of last visit", "note": "Witness statement vs. care home log", "status": "INDIRECT" }
-        ]
-      },
       "witnesses": {
         "intro": "Witness roster · 3",
         "rows": [
@@ -478,14 +444,6 @@
           { "title": "Lump sum", "note": "s 2(1)(c) · £60,000 sought", "status": "PROVISIONAL" },
           { "title": "Periodical payments", "note": "s 2(1)(a)", "status": "CONTESTED" },
           { "title": "Costs", "note": "From the estate", "status": "OPEN" }
-        ]
-      },
-      "teamAudit": {
-        "intro": "Team · 3 · audit trail",
-        "rows": [
-          { "title": "J. Patel assigned as lead counsel", "note": "09:12", "status": "ASSIGNED" },
-          { "title": "Claim form draft approved", "note": "09:28 · S. Okafor", "status": "APPROVED" },
-          { "title": "Risk \"Claimant in work\" added", "note": "08:47 · S. Okafor", "status": "OPEN" }
         ]
       }
     }

@@ -103,14 +103,6 @@ export function computePanelBadges(data: CaseSnapshot, t: (key: string, opts?: R
     command: data.case.parties.length > 0 ? t("badgeParties", { count: data.case.parties.length }) : undefined,
     evidence: data.documents.length > 0 ? t("badgeDocs", { count: data.documents.length }) : undefined,
     law: data.law.citations.length > 0 ? t("badgeCited", { count: data.law.citations.length }) : undefined,
-    citationMap: (() => {
-      // "Pending" until the adverse-citation sweep has run once — the design's cue that the map
-      // isn't finished. With no citations there's nothing to sweep, so no badge.
-      if (data.law.citations.length === 0) return undefined
-      if (!data.case.adverseSweptAt) return t("badgePending")
-      const mapped = data.law.citations.filter((c) => c.resolvedAuthority).length
-      return mapped > 0 ? t("badgeMapped", { count: mapped }) : undefined
-    })(),
     // The case's document-built map when it has a live one (what the panel shows), else the
     // chat-generated map the panel falls back to.
     mindMap:
@@ -122,8 +114,6 @@ export function computePanelBadges(data: CaseSnapshot, t: (key: string, opts?: R
       const open = data.procedure.items.filter((i) => !i.done).length
       return open > 0 ? t("badgeToDos", { count: open }) : undefined
     })(),
-    teamAudit: data.teamAudit.audit.length > 0 ? t("badgeEvents", { count: data.teamAudit.audit.length }) : undefined,
-    contradictions: found(data.evidence.contradictions.length),
     legalIssues: byCategory("LEGAL_ISSUE"),
     weaknesses: byCategory("WEAKNESS"),
     strengths: byCategory("STRENGTH"),

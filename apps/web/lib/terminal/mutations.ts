@@ -2,7 +2,6 @@ import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tansta
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
-import { citationMapKeys } from "@/lib/citation-map/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
@@ -517,119 +516,6 @@ export function useDeleteRiskMutation(caseId: string) {
   })
 }
 
-// Queued server-side (AiGenerationQueue/SQS) — a full-bundle scan can run for minutes. This POST
-// returns once the job is claimed; ContradictionsPanel follows useAiJobStatus(caseId,
-// "contradictions") and refreshes the graph view itself when that flips to DONE.
-export function useScanContradictionsMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "contradictions") })
-    },
-  })
-}
-
-// ── Citation Map list view: pleaded claims and authority → claim links ──────────────────────
-// Kept here rather than in lib/citation-map/mutations.ts because they also touch terminalKeys
-// (job status) and graphViewKeys (claims are CLAIM nodes) — and that module is imported here.
-
-/** Queued "Find claims" — AI reads the pleadings for the case's claims (ClaimExtractSvc). */
-export function useExtractClaimsMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/claims/extract`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "claimExtract") })
-    },
-  })
-}
-
-/** Queued "Map authorities" — AI links each cited authority to the claims it bears on. */
-export function useMapCitationGroundsMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
-    },
-  })
-}
-
-/** Queued "Run sweep" — the adverse-citation sweep (AdverseSweepSvc). */
-export function useAdverseSweepMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-map/sweep`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "adverseSweep") })
-    },
-  })
-}
-
-/** Accept (adds the Weakness) or dismiss a sweep hit's suggestion. */
-export function useDecideAdverseHitMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, decision }: { id: string; decision: "accept" | "dismiss" }) =>
-      apiFetch(`/api/my-cases/${caseId}/citation-map/adverse/${id}/${decision}`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
-      // An accepted hit is a new Weakness row.
-      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-    },
-  })
-}
-
-function useInvalidateCitationMap(caseId: string) {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
-    queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
-  }
-}
-
-export function useCreateClaimMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: (body: { title: string; causeOfAction?: string }) =>
-      apiFetch(`/api/my-cases/${caseId}/claims`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: invalidate,
-  })
-}
-
-export function useDeleteClaimMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/claims/${id}`, { method: "DELETE" })
-    },
-    onSuccess: invalidate,
-  })
-}
-
-export function useCreateCitationGroundMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: (body: { citationCheckId: string; claimId: string; role: "SUBSTANTIVE" | "PROCEDURAL" }) =>
-      apiFetch(`/api/my-cases/${caseId}/citation-grounds`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: invalidate,
-  })
-}
-
-export function useDeleteCitationGroundMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/citation-grounds/${id}`, { method: "DELETE" })
-    },
-    onSuccess: invalidate,
-  })
-}
-
 export type ContradictionStatus = "OPEN" | "RESOLVED" | "DISMISSED"
 
 // A contradiction's triage status. The server carries it over to the same contradiction when a
@@ -738,9 +624,6 @@ export function useCheckCitationMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-      // Citation Map's seed is built from citedReference — a fresh check should show up there
-      // without the user having to manually refresh that panel.
-      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
     },
   })
 }
@@ -793,12 +676,10 @@ export function useRemoveAuthorityMutation(caseId: string) {
   })
 }
 
-// Both refresh the snapshot (the Law panel reads citations from it) and Citation Map's seed, which
-// is built from citedReference — an edited or removed citation must not linger there. An edit is
-// re-verified server-side, so the row comes back with a fresh status and authority link.
+// Both refresh the snapshot, which the Law panel reads citations from. An edit is re-verified
+// server-side, so the row comes back with a fresh status and authority link.
 function invalidateCitations(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
   queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-  queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
 }
 
 export function useUpdateCitationMutation(caseId: string) {
