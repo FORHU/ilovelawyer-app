@@ -569,5 +569,6 @@
     "getDesktopApp": "Kunin ang desktop app",
     "dockBeside": "I-dock sa tabi ng {{app}}",
     "dockBesideUnknownApp": "I-dock sa tabi ng huli mong window"
-  }
+  },
+  "windowTitle": "Legal Terminal — {{caseName}}"
 }

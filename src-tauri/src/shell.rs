@@ -135,6 +135,34 @@ pub(crate) fn site_title(shell: &Shell, base_url: &str) -> String {
         .unwrap_or_else(|_| shell.window_title.clone())
 }
 
+/// Keeps a Terminal/panel window's title in step with its page ("Legal Terminal — Smith v Jones",
+/// set by the web app — see apps/web/lib/terminal/use-window-title.ts), with the site in front:
+/// "UK Legal Terminal — Smith v Jones". Every window used to share one title, so the dashboard
+/// and a case's Terminal couldn't be told apart in the title bar or taskbar. `initial` shows until
+/// the page names itself.
+pub(crate) fn titled_by_page<'a, R: Runtime, M: Manager<R>>(
+    builder: WebviewWindowBuilder<'a, R, M>,
+    base_url: &str,
+    initial: String,
+) -> WebviewWindowBuilder<'a, R, M> {
+    let site = Url::parse(base_url).ok().and_then(|url| tenant_site::site_label(&url));
+    builder.title(initial).on_document_title_changed(move |window, page_title| {
+        // Ignore the web app's generic default title — keep the initial one until the page
+        // names itself.
+        if page_title.trim().is_empty() || page_title.starts_with("ilovelawyer") {
+            return;
+        }
+        let title = match &site {
+            Some(site) => format!("{site} {page_title}"),
+            None => page_title,
+        };
+        // Not set_title() directly: this runs inside the webview's own callback; ask afterwards.
+        tauri::async_runtime::spawn(async move {
+            let _ = window.set_title(&title);
+        });
+    })
+}
+
 /// Brings an already-open window to the front. Returns false if no window has that label.
 pub(crate) fn focus_existing(app: &AppHandle, label: &str) -> bool {
     let Some(window) = app.get_webview_window(label) else {

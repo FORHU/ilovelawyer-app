@@ -8,6 +8,7 @@ import { PANEL_IDS, type PanelId } from "@/lib/terminal/types"
 import { TerminalPanelBody } from "@/components/terminal/terminal-panels"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
 import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-provider"
+import { useWindowTitle } from "@/lib/terminal/use-window-title"
 
 // Pop-out target for a single Terminal pane (see popOutPanel in legal-terminal.tsx) — a
 // minimal, independent page, not the full app shell: no PageShell/GlobalHeader, no sidebar.
@@ -21,6 +22,8 @@ export default function TerminalPanelPopoutPage() {
   const panelId = params.panelId as PanelId
   const isValidPanel = (PANEL_IDS as readonly string[]).includes(panelId)
   const snapshot = useCaseSnapshotQuery(caseId)
+  const caseName = snapshot.data?.case.caseName
+  useWindowTitle(isValidPanel && caseName ? `${PANEL_TITLES[panelId]} — ${caseName}` : null)
 
   return (
     <div className="flex h-screen min-h-0 flex-col bg-background font-['Inter'] text-foreground">

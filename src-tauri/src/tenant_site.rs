@@ -66,12 +66,19 @@ pub(crate) fn start_path(start_url: &str) -> &'static str {
 /// whether you're on UK or PH (and on dev) — e.g. "UK I Love Lawyer Terminal!".
 /// Just `base` on a neutral address (the UK/PH chooser), where no site is chosen yet.
 pub(crate) fn window_title(base: &str, url: &Url) -> String {
-    let Some(host) = url.host_str() else { return base.to_string() };
-    let (label, _) = split_host(host);
-    let Some(label) = label else { return base.to_string() };
+    match site_label(url) {
+        Some(site) => format!("{site} {base}"),
+        None => base.to_string(),
+    }
+}
+
+/// "UK", "PH", "UK (dev)"… for a page on `url`; None on a neutral address.
+pub(crate) fn site_label(url: &Url) -> Option<String> {
+    let (label, _) = split_host(url.host_str()?);
+    let label = label?;
     let site = if label.starts_with("uk") { "UK" } else { "PH" };
     let environment = if label.ends_with("-dev") { " (dev)" } else { "" };
-    format!("{site}{environment} {base}")
+    Some(format!("{site}{environment}"))
 }
 
 /// Whether `candidate` is on the configured address itself or one of its UK/PH siblings — the

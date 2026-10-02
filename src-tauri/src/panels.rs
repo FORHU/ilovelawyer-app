@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder};
 
 use crate::docking::{dock_panel, resolve_dock};
-use crate::shell::{caller_base_url, external_url, focus_existing, site_title, validate_id, web_window, Shell};
+use crate::shell::{caller_base_url, external_url, focus_existing, site_title, titled_by_page, validate_id, web_window, Shell};
 
 const PANEL_LABEL_PREFIX: &str = "panel-";
 /// Separates the two ids in a panel's label. Must be a character Tauri allows in a window label
@@ -107,8 +107,11 @@ pub(crate) async fn open_panel_window(
         count
     };
 
-    let mut builder = web_window(WebviewWindowBuilder::new(&app, label.clone(), url))
-        .title(site_title(&shell, &base_url))
+    let mut builder = web_window(titled_by_page(
+        WebviewWindowBuilder::new(&app, label.clone(), url),
+        &base_url,
+        site_title(&shell, &base_url),
+    ))
         .inner_size(PANEL_WIDTH, PANEL_HEIGHT)
         // A docked panel is built hidden and shown once it's in place, so it never flashes at
         // the default position first.

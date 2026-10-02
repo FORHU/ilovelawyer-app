@@ -8,7 +8,7 @@
 use tauri::{AppHandle, State, WebviewWindow, WebviewWindowBuilder};
 
 use crate::monitors::{maximized_on, same_monitor, sorted_monitors};
-use crate::shell::{caller_base_url, external_url, focus_existing, site_title, validate_id, web_window, Shell};
+use crate::shell::{caller_base_url, external_url, focus_existing, site_title, titled_by_page, validate_id, web_window, Shell};
 
 const CASE_TERMINAL_LABEL_PREFIX: &str = "case-terminal-";
 
@@ -44,7 +44,11 @@ pub(crate) async fn open_case_terminal(
 
     let base_url = caller_base_url(&window, &shell);
     let url = external_url(&base_url, &format!("/homepage/terminal/{case_id}"));
-    let builder = web_window(WebviewWindowBuilder::new(&app, label, url).title(site_title(&shell, &base_url)));
+    let builder = web_window(titled_by_page(
+        WebviewWindowBuilder::new(&app, label, url),
+        &base_url,
+        site_title(&shell, &base_url),
+    ));
     let built = match target {
         Some(monitor) => maximized_on(builder, monitor).build(),
         None => builder.inner_size(1280.0, 800.0).build(),

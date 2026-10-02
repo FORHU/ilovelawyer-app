@@ -64,6 +64,7 @@ import type {
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
 import { layoutToPersist } from "@/lib/terminal/popped-out"
+import { useWindowTitle } from "@/lib/terminal/use-window-title"
 import { useCaseRoom } from "@/lib/cases/case-room"
 import { useTerminalPaneAnimations } from "@/lib/terminal/use-terminal-pane-animations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -247,6 +248,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const catalog = useTerminalCatalogQuery()
   const workspaces = useTerminalWorkspacesQuery(caseId)
   const snapshot = useCaseSnapshotQuery(caseId)
+  const caseName = snapshot.data?.case.caseName
+  useWindowTitle(caseName ? t("windowTitle", { caseName }) : null)
   const createWorkspace = useCreateWorkspaceMutation()
   const updateWorkspace = useUpdateWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()

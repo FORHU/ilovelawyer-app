@@ -2,8 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-// DISABLED: terminal-own-window — see lib/desktop/index.ts
-// import { openCaseTerminal } from "@/lib/desktop";
+import { openCaseTerminal } from "@/lib/desktop";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import { Search, Plus, Briefcase } from "lucide-react";
@@ -88,10 +87,9 @@ export default function TerminalLandingPage() {
                 <TooltipTrigger asChild>
                   <Link
                     href={`/homepage/terminal/${c.id}`}
-                    // DISABLED: terminal-own-window — opened the Terminal in its own desktop window
-                    // onClick={(e) => {
-                    //   if (openCaseTerminal(c.id)) e.preventDefault();
-                    // }}
+                    onClick={(e) => {
+                      if (openCaseTerminal(c.id)) e.preventDefault();
+                    }}
                     className="relative min-h-75 bg-card rounded-2xl border border-border p-7 flex flex-col justify-between shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                   >
                     <div>

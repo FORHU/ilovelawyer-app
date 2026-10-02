@@ -757,5 +757,6 @@
     "getDesktopApp": "Get the desktop app",
     "dockBeside": "Dock beside {{app}}",
     "dockBesideUnknownApp": "Dock beside your last window"
-  }
+  },
+  "windowTitle": "Legal Terminal — {{caseName}}"
 }

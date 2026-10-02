@@ -13,7 +13,7 @@ has been pushed yet. Left out on purpose: `ilovelawyer-api/yarn.lock` (line endi
 
 | Change | Where | Why |
 |---|---|---|
-| Legal Terminal opens in the **same window** (desktop too) | 5 links, marked `DISABLED: terminal-own-window` | Product call: only panels get their own windows. Old code kept as comments — search the marker to switch back |
+| Legal Terminal: same window, then **own window again** | reverted the same-window commit | Tried same-window, then went back to the original: its own window, maximized on the next monitor (or on top when there's only one). Watch for a hidden second display — see traps |
 | Google sign-in works in the desktop app | `src-tauri/src/popups.rs` | Tauri blocked the popup Google opens. Only `accounts.google.com` is allowed |
 | Drag-and-drop reaches the page | `web_window` in `src-tauri/src/shell.rs` | Tauri's own drop handler swallowed file drops and pane drags on Windows |
 | A popped-out pane survives a restart | `apps/web/lib/terminal/popped-out.ts` | "Popped out" is memory-only now; the saved layout keeps the pane on the grid |
@@ -147,12 +147,11 @@ that monitor; check it lands there, flush, at the target's height, sized for *th
 scale. Plus two small gaps: the elevated-process label fallback, and the minimized-but-current
 target. [`desktop/getting-started.md`](desktop/getting-started.md) §12.
 
-## 5. Decide: keep or remove `open_case_terminal`
+## 5. ~~Decide: keep or remove `open_case_terminal`~~ — KEPT, in use again
 
-The Rust command (`src-tauri/src/case_terminal.rs`) is still registered and granted, but nothing
-calls it since the Legal Terminal moved to the same window. Keep it if the own-window option may
-come back (the web side is commented out, marker `DISABLED: terminal-own-window`); otherwise
-remove it and its `build.rs` / `capabilities/default.json` entries.
+The Legal Terminal opens in its own window again (the same-window commit was reverted): maximized
+on the first monitor that isn't the dashboard's, or on top of it with a single monitor. If it
+seems not to open, check for a second display Windows reports but you can't see (traps above).
 
 ## 6. Question for whoever owns the legal copy
 
