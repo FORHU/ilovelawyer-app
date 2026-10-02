@@ -609,7 +609,7 @@ function TheoryInlineInput({
         disabled={isPending || !value.trim()}
         aria-label={submitLabel}
         title={submitLabel}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-gold text-brand-navy-950 transition-colors hover:bg-brand-gold/85 disabled:opacity-40"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-gold text-brand-gold-foreground transition-colors hover:bg-brand-gold/85 disabled:opacity-40"
       >
         {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : submitIcon}
       </button>

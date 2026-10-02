@@ -532,7 +532,7 @@ function CreateCasePageContent() {
                       className={`flex flex-1 flex-col items-center gap-1.5 text-center md:flex-none md:flex-row md:items-center md:gap-3.5 md:py-3.5 md:border-t md:border-border md:text-left ${enabled ? "cursor-pointer" : "cursor-default"}`}
                     >
                       {done ? (
-                        <span className="w-6 h-6 md:w-6.5 md:h-6.5 rounded-full bg-brand-gold text-brand-navy-950 flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 md:w-6.5 md:h-6.5 rounded-full bg-brand-gold text-brand-gold-foreground flex items-center justify-center shrink-0">
                           <CircleCheck className="w-3.5 h-3.5" aria-hidden="true" />
                         </span>
                       ) : (
@@ -895,7 +895,7 @@ function CreateCasePageContent() {
                       <button
                         type="button"
                         onClick={handleContinue}
-                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
                       >
                         {t("continue")}
                         <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -909,7 +909,7 @@ function CreateCasePageContent() {
                       <button
                         type="submit"
                         disabled={hasFilesUploading || isSubmitting}
-                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? t("submitting") : t("initiateFiling")}
                         {!isSubmitting && <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />}

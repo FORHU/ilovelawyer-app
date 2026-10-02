@@ -125,7 +125,7 @@ export function CitationCta({ href, className, ...rest }: Omit<React.ComponentPr
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-full bg-brand-gold px-5 text-[11px] font-semibold tracking-[1.2px] text-white uppercase dark:text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:outline-none",
+        "inline-flex h-9 items-center gap-2 rounded-full bg-brand-gold px-5 text-[11px] font-semibold tracking-[1.2px] text-brand-gold-foreground uppercase transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:outline-none",
         className,
       )}
       {...rest}

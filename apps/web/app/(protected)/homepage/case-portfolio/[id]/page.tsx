@@ -19,6 +19,7 @@ import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 
 type DetailTab = "overview" | "workspace";
 
@@ -139,6 +140,8 @@ export default function CaseDetailPage() {
         ) : (
           <div className="min-h-0 flex-1">
             <CaseWorkspace caseId={id} />
+            {/* First visit to any case's Workspace: its tour, on the sample case. */}
+            <SampleTourAutoStart track="studio" />
           </div>
         )}
       </div>

@@ -26,7 +26,7 @@ const buttonVariants = cva(
         // Consultation/Cases redesign's one confirming-action color — see DESIGN.md. Always
         // rounded-full regardless of size, since this variant never appears as a square button.
         accent:
-          "rounded-full bg-brand-gold text-brand-navy-950 font-semibold text-[11px] tracking-[1.2px] uppercase hover:opacity-85",
+          "rounded-full bg-brand-gold text-brand-gold-foreground font-semibold text-[11px] tracking-[1.2px] uppercase hover:bg-brand-gold-hover",
       },
       size: {
         default:

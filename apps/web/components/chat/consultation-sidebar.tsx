@@ -105,6 +105,7 @@ export default function ConsultationSidebar({
               onMobileOpenChange(false);
             }}
             aria-label={t("sidebar.newChat")}
+            data-tour-id="consult-new"
             className={`h-10 flex items-center gap-3 rounded-full border border-border hover:border-foreground shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
               expanded ? "mx-2 px-3 mb-5" : "w-10 mx-auto justify-center px-0"
             }`}
@@ -294,6 +295,7 @@ export default function ConsultationSidebar({
           instead of sitting on top of whatever's underneath it. */}
       <aside
         ref={asideRef}
+        data-tour-id="consult-history"
         className={`hidden lg:flex absolute left-0 bottom-0 bg-background border-r border-border flex-col py-4 z-(--z-sidebar) overflow-hidden transition-[width] duration-200 ${
           compact ? "top-0" : "top-16"
         } ${expanded ? "w-72" : "w-16"}`}
