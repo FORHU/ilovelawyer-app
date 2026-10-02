@@ -163,7 +163,7 @@ export default function TranscriptionLibraryPage() {
   const cases = casesQuery.data?.data ?? [];
 
   return (
-    <PageShell activeTab="transcription">
+    <PageShell>
       <main className="max-w-[1000px] mx-auto w-full min-w-0 overflow-x-hidden px-4 sm:px-6 md:px-12 pt-16 pb-12 md:pb-16 flex flex-col gap-8">
         <div className="flex flex-col gap-3">
           <Tooltip>

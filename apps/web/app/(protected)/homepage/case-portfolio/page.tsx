@@ -206,7 +206,7 @@ export default function CaseManagerDashboard() {
   const isSearchEmpty = !isLoading && !isError && debouncedSearch !== "" && cases.length === 0;
 
   return (
-    <PageShell activeTab="case-portfolio">
+    <PageShell>
       <main className="max-w-[1280px] w-full mx-auto px-6 md:px-12 pt-24 pb-16 relative z-10 flex flex-col gap-8">
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="flex flex-col gap-3.5">

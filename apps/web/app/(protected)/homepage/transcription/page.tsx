@@ -642,7 +642,7 @@ export default function IlovelawyerTranscriptionDashboard() {
   };
 
   return (
-    <PageShell activeTab="transcription">
+    <PageShell>
       <main className="max-w-[1440px] mx-auto pt-16 min-w-0 w-full overflow-x-hidden">
       {/* Desktop / tablet layout — unchanged below, only visible at lg+. Below lg,
           the CaseTape-style redesign further down takes over instead. */}

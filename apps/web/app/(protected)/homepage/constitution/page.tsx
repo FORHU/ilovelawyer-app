@@ -45,7 +45,6 @@ const ARTICLES: Article[] = [
 export default function ConstitutionPage() {
   return (
     <LegalCodePage
-      activeTab="constitution"
       eyebrow="Research · Codals"
       title={<>The 1987 <span className="italic">Constitution.</span></>}
       subtitle="The supreme law of the Republic of the Philippines, ratified February 2, 1987 — the charter from which every statute, regulation, and judicial decision in this library ultimately draws its authority."

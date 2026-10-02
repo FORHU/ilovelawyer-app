@@ -35,7 +35,6 @@ const BOOKS: Book[] = [
 export default function CivilCodePage() {
   return (
     <LegalCodePage
-      activeTab="civil-code"
       eyebrow="Research · Codals"
       title={<>The Civil Code <span className="italic">of the Philippines.</span></>}
       subtitle="Republic Act No. 386 — the general body of private law governing persons, property, and the civil relations arising between them, in force since August 30, 1950."

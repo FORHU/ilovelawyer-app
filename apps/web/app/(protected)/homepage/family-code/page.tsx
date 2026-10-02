@@ -40,7 +40,6 @@ const PROVISIONS: Provision[] = [
 export default function FamilyCodePage() {
   return (
     <LegalCodePage
-      activeTab="family-code"
       eyebrow="Research · Codals"
       title={<>The Family Code <span className="italic">of the Philippines.</span></>}
       subtitle="Executive Order No. 209 — the law governing marriage and family relations, in force since August 3, 1988, superseding Book I of the Civil Code on Persons and Family Relations."

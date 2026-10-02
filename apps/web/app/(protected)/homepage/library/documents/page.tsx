@@ -29,7 +29,7 @@ export default function LegalDocumentsPage() {
 }
 
 function LegalDocumentsPageContent() {
-  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,
@@ -37,7 +37,7 @@ function LegalDocumentsPageContent() {
   // The indexed-corpus pages (/api/legal-rag/*) are still PH-only even where `legalSearch` is
   // enabled — the live UK Library (LawSearchPanel) is a separate surface. Nothing links a UK
   // org here, so this is direct-URL defense-in-depth.
-  const corpusGuard = usePhStatutoryContentGuard("library");
+  const corpusGuard = usePhStatutoryContentGuard();
   const { t } = useTranslation("library");
   const searchParams = useSearchParams();
   const category = searchParams.get("category") || undefined;
@@ -66,7 +66,7 @@ function LegalDocumentsPageContent() {
   if (corpusGuard) return corpusGuard;
 
   return (
-    <PageShell activeTab="library">
+    <PageShell>
       <main className="w-full flex flex-col flex-1 pt-16">
         <section className="bg-card border-b border-border">
           <div className="max-w-[1000px] mx-auto px-6 md:px-10 py-10 flex flex-col gap-4">

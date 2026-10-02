@@ -7,7 +7,6 @@ import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
 import { toActiveOrg } from "@/lib/auth/mutations"
-import { PageTransition } from "@/components/page-transition"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
@@ -166,7 +165,8 @@ function CurrentUserSync({
 
   return (
     <>
-      <PageTransition>{children}</PageTransition>
+      {/* Page transitions live in homepage/layout.tsx, below its persistent header. */}
+      {children}
       {/* The onboarding tour and Ask the guide, over every signed-in page. */}
       <TourLayer />
     </>

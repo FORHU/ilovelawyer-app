@@ -305,7 +305,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <PageShell activeTab="profile">
+    <PageShell>
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2">

@@ -9,7 +9,7 @@ export default function AiConsultationPage() {
   const firstName = user?.name?.split(" ")[0] ?? user?.username;
 
   return (
-    <PageShell activeTab="consultation" className="h-screen overflow-hidden">
+    <PageShell className="h-screen overflow-hidden">
       <ConsultationChat
         basePath="/homepage"
         enableFileChips

@@ -30,7 +30,6 @@ const SOURCES: Source[] = [
 export default function PersuasiveRulingsPage() {
   return (
     <LegalCodePage
-      activeTab="persuasive-rulings"
       eyebrow="Research · Jurisprudence"
       title={<>Persuasive <span className="italic">Lower Court Rulings.</span></>}
       subtitle="Under Article 8 of the Civil Code, only Supreme Court decisions form part of the legal system as binding precedent — rulings from other courts inform, but do not bind."

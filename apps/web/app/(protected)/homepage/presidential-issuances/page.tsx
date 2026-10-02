@@ -30,7 +30,6 @@ const ISSUANCES: Issuance[] = [
 export default function PresidentialIssuancesPage() {
   return (
     <LegalCodePage
-      activeTab="presidential-issuances"
       eyebrow="Research · Issuance"
       title={<>Presidential <span className="italic">Issuances.</span></>}
       subtitle="Instruments through which the President exercises executive power, classified under Book III of the 1987 Administrative Code (Executive Order No. 292)."

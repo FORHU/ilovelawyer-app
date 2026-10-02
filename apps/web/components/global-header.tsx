@@ -19,37 +19,36 @@ import { useNotificationBellState } from "@/components/notifications/use-notific
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
+export const ACTIVE_TABS = [
+  "consultation",
+  "create-case",
+  "library",
+  "case-portfolio",
+  "terminal",
+  "transcription",
+  "calendar",
+  "term",
+  "profile",
+  "organization",
+  "notifications",
+  // Secondary destinations — not part of the primary nav
+  "constitution",
+  "civil-code",
+  "scra-archive",
+  "revised-penal-code",
+  "labor-code",
+  "family-code",
+  "persuasive-rulings",
+  "presidential-issuances",
+  "administrative-issuances",
+  "judicial-issuances",
+] as const;
+
+export type ActiveTab = (typeof ACTIVE_TABS)[number];
+
 interface GlobalHeaderProps {
-  // Enforces passing one of your exact six workspace pages
-  activeTab:
-    | "consultation"
-    | "create-case"
-    | "library"
-    | "case-portfolio"
-    | "terminal"
-    | "transcription"
-    | "calendar"
-    | "term"
-    | "profile"
-    | "organization"
-    | "notifications"
-    // Secondary destinations — not part of the primary nav
-    | "constitution"
-    | "civil-code"
-    | "scra-archive"
-    | "revised-penal-code"
-    | "labor-code"
-    | "family-code"
-    | "persuasive-rulings"
-    | "presidential-issuances"
-    | "administrative-issuances"
-    | "judicial-issuances";
-  /** When true, this header stops managing its own mobile masthead below lg: no bottom border,
-   * and its hamburger trigger is hidden (the page renders its own, inline with page-specific
-   * content, and opens the exact same drawer via useMobileNavStore) — used by the case detail
-   * page, whose own title row takes over that role instead of stacking a second masthead row
-   * underneath a redundant one. Desktop is completely unaffected either way. */
-  mobileHeaderMerged?: boolean;
+  /** Undefined highlights nothing (e.g. a redirect-only route). */
+  activeTab?: ActiveTab;
 }
 
 // Renders inside a <Link>'s children — useLinkStatus only reports the pending
@@ -88,17 +87,24 @@ const MOBILE_NAV_ITEMS = [
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
 
-export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: GlobalHeaderProps) {
+export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
   const openGuide = useTourStore((s) => s.setGuideOpen);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   // Lifted into a store (not local state) so a page can render its own trigger — see
-  // mobileHeaderMerged's doc comment above — that opens this exact same drawer.
+  // mobileHeaderMerged's comment below — that opens this exact same drawer.
   const isMobileMenuOpen = useMobileNavStore((s) => s.isOpen);
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
   const closeMobileMenu = useMobileNavStore((s) => s.close);
+  // When true, this header stops managing its own mobile masthead below lg: no bottom border,
+  // and its hamburger trigger is hidden (the page renders its own, inline with page-specific
+  // content, and opens the exact same drawer via useMobileNavStore) — set by the case detail
+  // page through PageShell's mobileHeaderMerged, whose own title row takes over that role
+  // instead of stacking a second masthead row underneath a redundant one. Desktop is
+  // completely unaffected either way.
+  const mobileHeaderMerged = useMobileNavStore((s) => s.headerMerged);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
   // Mobile only: tapping the bell (moved up into the profile row) sends the user straight to
@@ -185,20 +191,24 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         mobileHeaderMerged ? "lg:border-b lg:border-border" : "border-b border-border"
       }`}
     >
+      {/* Full-width, not capped to a max-w container, so the logo and the icon group sit at
+       * the viewport's own edges. On lg+ it's a 1fr/auto/1fr grid rather than flex: the two
+       * equal outer columns keep the nav at the true horizontal center of the screen, which a
+       * flex-1 nav only manages when the logo and the icon group happen to be the same width. */}
       <div
-        className={`w-full max-w-[1440px] mx-auto h-16 items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8 ${
-          mobileHeaderMerged ? "hidden lg:flex" : "flex"
+        className={`w-full h-16 items-center justify-between gap-4 px-6 md:px-10 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-8 ${
+          mobileHeaderMerged ? "hidden lg:grid" : "flex"
         }`}
       >
         <Link
           href="/"
-          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="shrink-0 justify-self-start rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={t("appName")}
         >
           <Logo forBackground="auto" size={40} />
         </Link>
 
-        <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
+        <nav className="hidden lg:flex items-center justify-center gap-7 text-[10px] tracking-[1px]">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage" className={getSubTabClass("consultation")}>
@@ -243,7 +253,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </nav>
 
         {/* Icons are now inside the main flex row */}
-        <div className="hidden lg:flex items-center gap-5 text-foreground">
+        <div className="hidden lg:flex justify-self-end items-center gap-5 text-foreground">
           <span data-tour-id="header-lang" className="inline-flex">
             <LanguageSwitcher />
           </span>
@@ -344,7 +354,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </div>
 
         {/* Mobile hamburger — replaces the inline nav + account icon below lg. Hidden when a
-         * page owns its own trigger instead (mobileHeaderMerged) — see that prop's comment. */}
+         * page owns its own trigger instead (mobileHeaderMerged) — see its comment above. */}
         {!mobileHeaderMerged && (
           <Tooltip>
             <TooltipTrigger asChild>

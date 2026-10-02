@@ -40,7 +40,6 @@ const PROVISIONS: Provision[] = [
 export default function LaborCodePage() {
   return (
     <LegalCodePage
-      activeTab="labor-code"
       eyebrow="Research · Codals"
       title={<>The Labor Code <span className="italic">of the Philippines.</span></>}
       subtitle="Presidential Decree No. 442 — the consolidated labor and social legislation protecting Filipino workers, in force since November 1, 1974."

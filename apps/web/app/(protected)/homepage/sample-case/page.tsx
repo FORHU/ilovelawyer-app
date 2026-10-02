@@ -6,7 +6,7 @@ import { SampleCaseView } from "@/components/sample-case/sample-case-view"
 
 export default function SampleCasePage() {
   return (
-    <PageShell activeTab="case-portfolio">
+    <PageShell>
       {/* SampleCaseView reads ?view=, ?tour= and ?from= — see useSearchParams in the Next docs. */}
       <Suspense>
         <SampleCaseView />
