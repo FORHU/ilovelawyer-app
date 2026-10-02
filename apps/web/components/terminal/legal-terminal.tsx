@@ -680,13 +680,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     )
   }
 
-  const nextLabel =
-    snapshot.data.nextDate && "dateTime" in snapshot.data.nextDate
-      ? new Date(snapshot.data.nextDate.dateTime).toLocaleDateString()
-      : snapshot.data.nextDate && "occurredOn" in snapshot.data.nextDate && snapshot.data.nextDate.occurredOn
-        ? new Date(snapshot.data.nextDate.occurredOn).toLocaleDateString()
-        : t("noNextDate")
-
   const labelFor = (panel: PanelLayout | { id: PanelId }) =>
     PANEL_TITLES[panel.id] ?? catalog.data?.panels.find((p) => p.id === panel.id)?.label ?? panel.id
 
@@ -752,9 +745,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
             {snapshot.data.case.caseName}
           </h1>
-          <span className="hidden shrink-0 rounded-md border border-riskmed/30 bg-riskmed/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-riskmed sm:inline">
-            {t("next")}: <span className="font-mono normal-case tracking-normal">{nextLabel}</span>
-          </span>
           {shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status) && (
             <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
