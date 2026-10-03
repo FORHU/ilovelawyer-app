@@ -3,10 +3,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Mic, Square, Upload, FileAudio, Trash2, ArrowRight, Radio, Loader2, ChevronDown, Copy, Check, AlertCircle, RotateCcw, FileText, Headphones } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import Link from "next/link";
 import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
-import { useMediaQueueStore, type QueuedTranscript } from "@/lib/store/media-queue.store";
+import { useMediaQueueStore, useOwnQueuedTranscripts, type QueuedTranscript } from "@/lib/store/media-queue.store";
 import {
   useUploadAudioMutation,
   useCreateTranscriptionMutation,
@@ -458,7 +459,8 @@ function MobileTranscriptRow({
 export default function IlovelawyerTranscriptionDashboard() {
   const { t } = useTranslation("transcription");
   const searchParams = useSearchParams();
-  const transcripts = useMediaQueueStore((s) => s.transcripts);
+  // This account's own queue only — the IndexedDB queue is shared by every account on this browser.
+  const transcripts = useOwnQueuedTranscripts();
   const queueTranscript = useMediaQueueStore((s) => s.queueTranscript);
   const removeTranscript = useMediaQueueStore((s) => s.removeTranscript);
   const updateTranscript = useMediaQueueStore((s) => s.updateTranscript);
@@ -558,7 +560,7 @@ export default function IlovelawyerTranscriptionDashboard() {
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
         recognitionRef.current?.stop();
         recognitionRef.current = null;
-        queueTranscript(blob, durationSeconds, finalTranscriptRef.current.trim() || undefined);
+        queueTranscript(blob, durationSeconds, { text: finalTranscriptRef.current.trim() || undefined, source: "recorder" });
         stream.getTracks().forEach((track) => track.stop());
         mediaRecorderRef.current = null;
         setIsRecording(false);
@@ -604,7 +606,16 @@ export default function IlovelawyerTranscriptionDashboard() {
       }, 1000);
     } catch (error) {
       console.error("Microphone access failed:", error);
-      alert(t("microphoneError"));
+      // A toast that says why, not alert(): a blocking alert is easy to miss (and browsers that
+      // suppress dialogs dropped it entirely, so the button seemed to do nothing).
+      const name = error instanceof DOMException ? error.name : "";
+      toast.error(
+        !navigator.mediaDevices?.getUserMedia
+          ? t("microphoneUnsupported")
+          : name === "NotFoundError"
+            ? t("microphoneNotFound")
+            : t("microphoneError"),
+      );
     }
   };
 
@@ -623,7 +634,7 @@ export default function IlovelawyerTranscriptionDashboard() {
     try {
       for (const file of list) {
         const duration = await readAudioDuration(file);
-        queueTranscript(file, duration);
+        queueTranscript(file, duration, { source: "upload" });
       }
     } finally {
       setIsUploading(false);

@@ -34,6 +34,7 @@ import { DamagesOverview } from "@/components/terminal/panels/damages-overview"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 // The status pill, same look as the finding panels' (Weaknesses' Open / Material): done means
 // awarded or received.
@@ -54,7 +55,7 @@ export function DamagePanel({
   caseId: string
   onJumpToPanel?: (id: PanelId) => void
 }) {
-  const { t, i18n } = useTranslation("terminal")
+  const { t } = useTranslation("terminal")
   const create = useCreateDamageMutation(caseId)
   const update = useUpdateDamageMutation(caseId)
   const del = useDeleteDamageMutation(caseId)
@@ -73,7 +74,7 @@ export function DamagePanel({
   const money = (value: number) => formatMoney(value, summary.currency)
   const heads = sortDamageHeads(snapshot.damages)
   const documentName = new Map(snapshot.documents.map((doc) => [doc.id, doc.name]))
-  const dateText = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { timeZone: "UTC" })
+  const dateText = (iso: string) => new Date(iso).toLocaleDateString(dateLocale(), { timeZone: "UTC" })
 
   // The total counts up to a new value instead of snapping — skipped on first mount (nothing to
   // count up from) and under reduced motion.

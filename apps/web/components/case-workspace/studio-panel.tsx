@@ -32,6 +32,8 @@ import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map";
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status";
 import { chatKeys } from "@/lib/query-keys";
+import { dateLocale } from "@/lib/i18n/date-locale";
+import { formatMoney } from "@/lib/terminal/damages-format";
 
 export type StudioTileKind = "documents" | "decisions" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
 
@@ -255,14 +257,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       rows.push({
         type: `${t("workspace.dataTableTypeDamage")} · ${formatCategory(d.kind)}`,
         label: d.title,
-        detail: d.amount != null ? d.amount.toLocaleString() : "—",
+        detail: d.amount != null ? formatMoney(d.amount, snap.damagesSummary.currency) : "—",
       });
     });
     snap.procedure.deadlines.forEach((dl) => {
       rows.push({
         type: t("workspace.dataTableTypeDeadline"),
         label: dl.label,
-        detail: dl.computedDueDate ? new Date(dl.computedDueDate).toLocaleDateString() : "—",
+        detail: dl.computedDueDate ? new Date(dl.computedDueDate).toLocaleDateString(dateLocale()) : "—",
       });
     });
     // Findings arrive in whatever order the API/DB returned them (insertion order), which
@@ -275,7 +277,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       rows.push({
         type: formatCategory(f.category),
         label: f.label,
-        detail: f.notes === "AI" ? t("workspace.dataTableAiGenerated") : "—",
+        // The finding's own sub-line (burden, the work that would close it, the document
+        // reference) and the document it's drawn from — "AI-generated" on every row said nothing.
+        detail:
+          [f.detail, f.sourceLabel].filter((v) => v?.trim()).join(" · ") ||
+          (f.notes === "AI" ? t("workspace.dataTableAiGenerated") : "—"),
       });
     });
     return rows;
@@ -562,7 +568,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             )}
             {openTile ? (
               <span className="flex min-w-0 items-center gap-1 text-[13px] font-semibold">
-                <span className="text-muted-foreground">{t("workspace.studio")}</span>
+                {/* Same action as the chevron — the crumb reads as a link, so it is one. */}
+                <button
+                  type="button"
+                  onClick={() => setOpenTile(null)}
+                  className="rounded-sm text-muted-foreground hover:text-foreground hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  {t("workspace.studio")}
+                </button>
                 <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="truncate text-foreground">{tileLabel}</span>
               </span>
@@ -680,7 +693,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               label={t("workspace.decisionsTile")}
               note={
                 decisionGroups.length > 0
-                  ? t("workspace.decisionsNoteCount", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
+                  ? t("workspace.decisionsNoteThread", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
                   : undefined
               }
               expanded={expanded}
@@ -807,7 +820,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                           {group.promptTitle || "Untitled prompt"}
                         </span>
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {t("workspace.decisionsNoteCount", { count: group.records.length })}
+                          {t("workspace.decisionsNotePrompt", { count: group.records.length })}
                         </span>
                       </button>
                       {isOpen && (
@@ -941,8 +954,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "dataTable" ? (
             dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">
-                {/* Type and Detail hold short labels ("Weakness", "AI-generated") — Label holds
-                 * a full paragraph. Giving all three equal footing (the previous `w-full` +
+                {/* Type holds a short label ("Weakness") and Detail a bounded, wrapping sub-line
+                 * (see its <td>) — Label holds a full paragraph. Giving all three equal footing (the previous `w-full` +
                  * min-width-floor version) meant Label's long content pushed Type and Detail
                  * down to a sliver regardless of how wide the table was allowed to get. `w-1` +
                  * `whitespace-nowrap` on the narrow columns is the standard plain-<table> trick
@@ -957,7 +970,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <th className="w-1 py-2 pr-3 whitespace-nowrap">{t("workspace.dataTableColType")}</th>
                       <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
-                      <th className="w-1 py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
+                      <th className="py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -965,7 +978,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       <tr key={i} className="border-b border-border/60 last:border-0">
                         <td className="py-2 pr-3 align-top whitespace-nowrap text-muted-foreground">{row.type}</td>
                         <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
-                        <td className="py-2 align-top whitespace-nowrap text-muted-foreground">{row.detail}</td>
+                        {/* Wraps within a bounded width now that it carries the finding's own
+                            sub-line and source, not a one-word tag. */}
+                        <td className="min-w-32 max-w-64 py-2 align-top text-[12px] leading-snug text-muted-foreground">{row.detail}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1020,7 +1035,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     duration={playbackDuration}
                     onSeek={renderedAudioUrl ? seekAudioOverview : undefined}
                     caption={t("workspace.audioOverviewCaption", {
-                      date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+                      date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }),
                       count: activeAudioOverviewMessage.audioOverview?.turns.length ?? 0,
                     })}
                   />

@@ -109,6 +109,8 @@
     "documentsIndexing": "Ini-index ang mga dokumento…",
     "decisionsTile": "Mga Desisyon",
     "decisionsNoteCount": "{{count}} (na) desisyon",
+    "decisionsNotePrompt": "{{count}} (na) desisyon mula sa prompt na ito",
+    "decisionsNoteThread": "{{count}} (na) desisyon sa thread na ito",
     "decisionsEmpty": "Wala pang naitalang desisyon para sa chat na ito — awtomatiko itong mapupuno habang nakakagawa ito ng mga sagot na may malinaw na konklusyon.",
     "decisionsNoConsultation": "Magsimula ng chat para makita rito ang mga desisyon.",
     "researchStepsTile": "Paano ito sinuri",

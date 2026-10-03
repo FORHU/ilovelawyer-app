@@ -11,6 +11,7 @@ import {
   type CaseBriefFormat,
 } from "@/lib/terminal/mutations"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 /** Shared by both the Legal Terminal (inside a slide-out Sheet) and Case Workspace's Studio
  * Panel (as an inline tile view, same pattern as Documents/Mind Map/Timeline) — one content
@@ -252,7 +253,7 @@ function CaseBriefPreview({
 }
 
 function formatEntryDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString(dateLocale(), {
     dateStyle: "medium",
     timeStyle: "short",
   })

@@ -15,6 +15,7 @@ import {
 } from "@/components/audio-overview/audio-overview-transcript"
 import { AudioOverviewGenerationSteps } from "@/components/audio-overview/audio-overview-generation-steps"
 import { activeTurnIndex, hasUsableTimings, hostBands } from "@/components/audio-overview/audio-overview-sync"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 // Not to be confused with CaseReconstructionPanel's audio (a single narrator reading Polly's
 // OutputUri directly) — this is the two-host podcast-style script from useAudioOverview (shared
@@ -65,7 +66,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   const synced = !!overview.renderedAudioUrl && hasUsableTimings(activeAudioOverviewMessage?.audioOverview?.turnTimings, turns.length)
   const caption = activeAudioOverviewMessage
     ? t("workspace.audioOverviewCaption", {
-        date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }),
+        date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }),
         count: turns.length,
       })
     : ""

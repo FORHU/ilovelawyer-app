@@ -31,6 +31,7 @@ import {
 } from "@/lib/calendar/mutations";
 import type { Appointment } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
+import { dateLocale, useWeekStartsOn } from "@/lib/i18n/date-locale";
 
 // Day cells have a fixed height (see CalendarDayCell) — 1 visible item plus an overflow
 // label is what reliably fits without the cell growing or clipping mid-line.
@@ -44,6 +45,13 @@ const NOTE_MAX_LENGTH = 500;
 function toDateKey(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
+
+// Locale-aware (en-GB on the UK site: "Thursday 2 Oct", "2 Oct 2026") — date-fns format() patterns
+// hard-code US order.
+const formatWeekdayDay = (d: Date) => d.toLocaleDateString(dateLocale(), { weekday: "long", day: "numeric", month: "short" });
+const formatDayMonth = (d: Date) => d.toLocaleDateString(dateLocale(), { day: "numeric", month: "short" });
+const formatFullDate = (d: Date) => d.toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric" });
+const formatMonthYear = (d: Date) => d.toLocaleDateString(dateLocale(), { month: "long", year: "numeric" });
 
 function isPastDay(date: Date): boolean {
   return isBefore(startOfDay(date), startOfDay(new Date()));
@@ -94,6 +102,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
   const dayItems = itemsByDate?.get(toDateKey(day.date));
   const isSelected = selectedDate ? isSameDay(day.date, selectedDate) : false;
   const isPast = !!modifiers.past && !modifiers.today;
+  const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
   // A day-wide "view or add appointments" tooltip would overlap the per-item ones below once
   // the cell has content, so it's only shown for empty cells.
   const hasItems = !!dayItems && (dayItems.visible.length > 0 || dayItems.overflowCount > 0);
@@ -103,11 +112,17 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
       type="button"
       onClick={() => onSelectDay(day.date)}
       disabled={props.disabled}
+      // Quiet by default — soft surface, hairline border — so appointments and the selected day
+      // carry the colour. Weekends get a faint tint; days outside the month fade back.
       className={cn(
-        "flex w-full min-w-0 flex-col items-start gap-1 overflow-hidden rounded-lg border p-1.5 text-left align-top text-card-foreground transition-colors hover:bg-accent dark:hover:bg-overlay-hover disabled:pointer-events-none disabled:opacity-40",
-        modifiers.outside ? "border-border/50 text-gray-500 dark:text-gray-400" : "border-border",
-        isPast && !modifiers.outside && "bg-muted/30",
-        isSelected && "border-primary bg-primary/10",
+        "flex w-full min-w-0 flex-col items-start gap-1 overflow-hidden rounded-xl border p-2 text-left align-top text-card-foreground transition-[background-color,border-color,box-shadow] cursor-pointer disabled:pointer-events-none disabled:opacity-40",
+        modifiers.outside
+          ? "border-transparent bg-transparent text-muted-foreground/50 hover:bg-muted/40"
+          : cn(
+              "border-border/60 hover:border-foreground/20 hover:shadow-sm",
+              isWeekend ? "bg-muted/50" : "bg-background",
+            ),
+        isSelected && "border-brand-gold/70 bg-brand-gold/6 shadow-sm ring-2 ring-brand-gold/25 hover:border-brand-gold/70",
         className
       )}
       // Inline, not a Tailwind class: guarantees a hard cap regardless of class-merge order
@@ -116,9 +131,9 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
     >
       <span
         className={cn(
-          "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-          modifiers.today && "bg-primary font-bold text-primary-foreground",
-          isPast && "bg-muted text-gray-500 dark:text-gray-400"
+          "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums",
+          modifiers.today && "bg-brand-gold font-semibold text-brand-gold-foreground",
+          isPast && !modifiers.outside && "text-muted-foreground"
         )}
       >
         {day.date.getDate()}
@@ -172,7 +187,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
                   {/* Same fixed-block approach as the title — 2 lines reserved so the full
                       date/time/status text is readable instead of getting ellipsis-cut. */}
                   <p className="mt-1 line-clamp-2 h-8 overflow-hidden text-[11px] break-words opacity-80">
-                    {format(day.date, "EEEE, MMM d")}
+                    {formatWeekdayDay(day.date)}
                     {item.time ? ` · ${item.time}` : ""}
                     {item.cancelled ? ` · ${t("statusCancelled")}` : ""}
                     {item.caseName ? ` · ${item.caseName}` : ""}
@@ -194,7 +209,7 @@ function CalendarDayCell({ className, day, modifiers, ...props }: React.Componen
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent>{isPast ? t("pastDate.tooltip", { date: format(day.date, "MMM d") }) : `View or add appointments on ${format(day.date, "MMM d")}`}</TooltipContent>
+      <TooltipContent>{isPast ? t("pastDate.tooltip", { date: formatDayMonth(day.date) }) : `View or add appointments on ${formatDayMonth(day.date)}`}</TooltipContent>
     </Tooltip>
   );
 }
@@ -228,11 +243,11 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 // days) instead, at the same dimensions the real Calendar renders at.
 function CalendarGridSkeleton() {
   return (
-    <div className="flex flex-col gap-2 p-0.5">
+    <div className="flex flex-col gap-1 p-0.5">
       {Array.from({ length: 6 }).map((_, week) => (
         <div key={week} className="flex w-full items-start gap-1">
           {Array.from({ length: 7 }).map((_, day) => (
-            <Skeleton key={day} className="h-16 flex-1 basis-0 min-w-0 rounded-md" />
+            <Skeleton key={day} className="h-[92px] flex-1 basis-0 min-w-0 rounded-xl" />
           ))}
         </div>
       ))}
@@ -278,6 +293,7 @@ function PlannerPanel({
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
   const { t } = useTranslation("calendar");
+  const weekStartsOn = useWeekStartsOn();
 
   const createAppointment = useCreateAppointmentMutation();
   const updateAppointment = useUpdateAppointmentMutation();
@@ -289,7 +305,7 @@ function PlannerPanel({
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
-  const pickerDateLabel = selectedDate ? format(selectedDate, "MMM d, yyyy") : undefined;
+  const pickerDateLabel = selectedDate ? formatFullDate(selectedDate) : undefined;
 
   /** Picking a start time pre-fills a one-hour end time when the end is empty or would
    * now fall at/before the start, so the common case is a single pick. */
@@ -472,10 +488,12 @@ function PlannerPanel({
           onSelect={(date) => date && onSelectDay(date)}
           month={currentMonth}
           onMonthChange={onMonthChange}
+          weekStartsOn={weekStartsOn}
           fixedWeeks
           modifiers={{ past: isPastDay, hasEvents: (date) => datesWithItems.has(toDateKey(date)) }}
           modifiersClassNames={{
-            past: "rounded-(--cell-radius) bg-muted text-gray-500 dark:text-gray-400 data-[selected=true]:rounded-none",
+            // Muted text only — a grey disc behind every past day made the month look half-disabled.
+            past: "text-muted-foreground/70",
           }}
           classNames={{
             today: "rounded-(--cell-radius) bg-accent text-accent-foreground data-[selected=true]:rounded-none",
@@ -487,7 +505,7 @@ function PlannerPanel({
       <CardFooter data-tour-id="cal-day" className="flex flex-col items-stretch gap-2 border-t">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
-            {selectedDate ? format(selectedDate, "EEEE, MMM d") : t("selectDay")}
+            {selectedDate ? formatWeekdayDay(selectedDate) : t("selectDay")}
           </p>
           {!isPastSelected && (
             <Tooltip>
@@ -666,7 +684,7 @@ function PlannerPanel({
               ? t("editingNote")
               : editingId
                 ? t("editingAppointment")
-                : t("addTo", { date: selectedDate ? format(selectedDate, "MMM d, yyyy") : "" })}
+                : t("addTo", { date: selectedDate ? formatFullDate(selectedDate) : "" })}
           </DialogTitle>
         </DialogHeader>
 
@@ -862,6 +880,7 @@ export default function CalendarPage() {
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   }
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() => startOfMonth(initialDateFromParam()));
+  const weekStartsOn = useWeekStartsOn();
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(initialDateFromParam);
 
   const from = toDateKey(startOfMonth(currentMonth));
@@ -948,15 +967,17 @@ export default function CalendarPage() {
   return (
     <PageShell>
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-6 md:px-16 pb-6 pt-24">
-        <div className="mb-8 flex flex-col gap-3.5">
-          <span className="flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
+        {/* One row: title, subtitle, then the month's count pushed to the far end. Wraps on
+            narrow screens rather than squeezing the subtitle. */}
+        <div className="mb-8 flex flex-wrap items-baseline gap-x-5 gap-y-2">
+          <h1 className="font-['Libre_Caslon_Text'] text-[23px] sm:text-[clamp(28px,2.8vw,38px)] font-light leading-none tracking-[-0.02em] text-foreground">
+            {t("title")}
+          </h1>
+          <p className="min-w-0 text-[13px] text-muted-foreground sm:text-[15px]">{t("subtitle")}</p>
+          <span className="flex shrink-0 items-center gap-2 self-center rounded-full border border-border bg-card px-3 py-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground sm:ml-auto">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />
             {t("monthAppointmentCount", { count: appointments.length })}
           </span>
-          <h1 className="font-['Libre_Caslon_Text'] text-[23px] sm:text-[clamp(34px,3.6vw,48px)] font-light leading-none tracking-[-0.02em] text-foreground">
-            {t("title")}
-          </h1>
-          <p className="max-w-[520px] text-[13px] text-muted-foreground leading-relaxed sm:text-[15px]">{t("subtitle")}</p>
         </div>
 
         <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -976,10 +997,20 @@ export default function CalendarPage() {
               already covers mobile's date-picking and "what's on this day" needs, so this
               month-grid + agenda pairing would otherwise just repeat the same day's notes. */}
           <Card className="hidden w-full flex-1 backdrop-blur-sm md:block">
-            <CardHeader className="flex flex-row items-center gap-3 border-b border-border">
-              <div className="flex flex-1 items-center justify-center gap-2">
-                <CardTitle>{format(currentMonth, "MMMM yyyy")}</CardTitle>
-              </div>
+            {/* Three equal-sided columns so the month stays centred whether or not Today / the
+                error pill are showing on the right. */}
+            <CardHeader className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-6 py-4">
+              <span aria-hidden="true" />
+              <CardTitle className="text-center font-['Libre_Caslon_Text'] text-[22px] font-normal tracking-[-0.01em]">
+                {formatMonthYear(currentMonth)}
+              </CardTitle>
+              {/* Month arrows live on the left card's calendar only; this is just the jump back. */}
+              <div className="flex items-center justify-end gap-2">
+                {!isSameMonth(currentMonth, new Date()) && (
+                  <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => handleSelectDay(new Date())}>
+                    {t("today")}
+                  </Button>
+                )}
 
               {(appointmentsQuery.isError || notesQuery.isError) && (
                 <div
@@ -1006,8 +1037,9 @@ export default function CalendarPage() {
                   </Tooltip>
                 </div>
               )}
+              </div>
             </CardHeader>
-            <CardContent data-tour-id="cal-grid" className="p-0 md:px-6 md:pb-6">
+            <CardContent data-tour-id="cal-grid" className="p-0 md:px-5 md:pt-4 md:pb-5">
               {showCalendarSkeleton ? (
                 <CalendarGridSkeleton />
               ) : (
@@ -1018,6 +1050,7 @@ export default function CalendarPage() {
                   onSelect={(date) => date && handleSelectDay(date)}
                   month={currentMonth}
                   onMonthChange={setCurrentMonth}
+                  weekStartsOn={weekStartsOn}
                   showOutsideDays
                   fixedWeeks
                   components={{ DayButton: CalendarDayCell }}
@@ -1026,7 +1059,8 @@ export default function CalendarPage() {
                     nav: "hidden",
                     month_caption: "hidden",
                     day: "flex-1 basis-0 min-w-0 max-w-full self-start overflow-hidden p-0.5 align-top",
-                    week: "mt-2 flex w-full items-start",
+                    weekday: "flex-1 pb-1 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground",
+                    week: "mt-1 flex w-full items-start",
                     // table-fixed pins each column to an equal share of the table's own width
                     // (set once, by the table itself — not by any cell's content). Without it,
                     // the browser's table auto-layout still sizes columns from each cell's

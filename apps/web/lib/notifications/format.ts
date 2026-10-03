@@ -1,3 +1,5 @@
+import { dateLocale } from "@/lib/i18n/date-locale"
+
 /** Compact relative time ("5m ago", "2h ago", "3d ago") — date-fns's formatDistanceToNow
  * produces "5 minutes ago", too long for a dense notification list. Falls back to a short
  * date once it's more than a week old, since "12d ago" stops being useful at that point. */
@@ -17,7 +19,7 @@ export function formatRelativeTime(isoDate: string): string {
   const diffDay = Math.round(diffHour / 24)
   if (diffDay < 7) return `${diffDay}d ago`
 
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return date.toLocaleDateString(dateLocale(), { month: "short", day: "numeric" })
 }
 
 /** Event notifications are written server-side as "<title> — <date/time>", but the API formats
@@ -37,5 +39,5 @@ export function formatNotificationMessage(notification: { type: string; message:
   const date = iso ? new Date(iso) : null
   if (!date || Number.isNaN(date.getTime())) return message
 
-  return `${message.slice(0, cut)}${separator}${date.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}`
+  return `${message.slice(0, cut)}${separator}${date.toLocaleString(dateLocale(), { dateStyle: "full", timeStyle: "short" })}`
 }

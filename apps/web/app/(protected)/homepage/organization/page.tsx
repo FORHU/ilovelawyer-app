@@ -101,14 +101,16 @@ export default function OrganizationPage() {
   const otherMembers = (membersQuery.data ?? []).filter(
     (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
   );
-  // A solo practitioner's auto-created Organization (packageSku "SOLO") still backs their
-  // chat/documents/etc. under the hood, but is presented as if they have no organization at
-  // all — the create-organization card shows instead of an Overview to manage. See
-  // ilovelawyer-app's onboarding WorkspaceSetup.handleContinueSolo, which creates this org
-  // silently. Once they actually invite someone, this stops applying (real membership, not
-  // the packageSku tag, is what makes it a team from here on).
+  // A solo practitioner's auto-created Organization (packageSku "SOLO", see onboarding
+  // WorkspaceSetup.handleContinueSolo) with nobody else in it yet. They can still be invited to
+  // another organization, which means leaving this one (see handleAcceptInvite).
   const isSoloWithNoTeam = organization?.packageSku === "SOLO" && otherMembers.length === 0;
   const myInviteQuery = useMyInviteQuery({ enabled: !organization || isSoloWithNoTeam });
+  // Anyone who belongs to an organization — solo or not — sees it, its members and the invite
+  // controls (inviting someone is how a solo org becomes a team). Showing an Owner "Create your
+  // organization" read as if their organization didn't exist. The setup screen is only for users
+  // with no organization, or a solo user with an invitation waiting to be answered.
+  const showSetup = !organization || (isSoloWithNoTeam && !!myInviteQuery.data);
   const acceptInviteMutation = useAcceptInviteMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const createOrgMutation = useCreateOrganizationMutation();
@@ -385,7 +387,7 @@ export default function OrganizationPage() {
           <p className="text-muted-foreground text-[16px] md:text-[18px] max-w-[672px] leading-relaxed">{t("subtitle")}</p>
         </div>
 
-        {!organization || isSoloWithNoTeam ? (
+        {showSetup ? (
           myInviteQuery.data ? (
             <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/5 dark:ring-white/[0.06]">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />

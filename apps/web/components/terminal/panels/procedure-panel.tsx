@@ -31,6 +31,7 @@ import {
   formatDate,
   primaryBtnClass,
 } from "@/components/terminal/panel-kit"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 type RiskLevel = "HIGH" | "MEDIUM" | "LOW"
 
@@ -51,6 +52,8 @@ const RISK_DRIVER_KEYS: Record<string, string> = {
   failedDocuments: "riskDriverFailedDocs",
   invalidCitations: "riskDriverInvalidCitations",
   unverifiedEvidence: "riskDriverUnverifiedEvidence",
+  openWeaknesses: "riskDriverOpenWeaknesses",
+  openLegalIssues: "riskDriverOpenLegalIssues",
 }
 
 function RiskMeter({
@@ -206,7 +209,7 @@ export function ProcedurePanel({
               className={`mt-0.5 block text-[10px] tabular-nums ${!item.done && daysUntil(item.dueDate) < 0 ? "text-danger" : "text-muted-foreground"}`}
             >
               {t(!item.done && daysUntil(item.dueDate) < 0 ? "todoOverdue" : "todoDue", {
-                date: new Date(item.dueDate).toLocaleDateString(undefined, { timeZone: "UTC" }),
+                date: new Date(item.dueDate).toLocaleDateString(dateLocale(), { timeZone: "UTC" }),
               })}
             </span>
           )}

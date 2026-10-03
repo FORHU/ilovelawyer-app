@@ -40,6 +40,9 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
  * from there. Saved with the collapse state (`collapseDefault`), so a map whose fold was seeded
  * under a different default is re-seeded once when this changes. */
 const DEFAULT_VISIBLE_LEVELS: number | 'all' = 'all';
+// Auto-fit framing (see fitReadable): root + this many levels, at no less than this zoom.
+const READABLE_FIT_DEPTH = 2;
+const READABLE_MIN_ZOOM = 0.45;
 
 const nodeTypes = {
   custom: CustomNode,
@@ -98,6 +101,18 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const [selected3DNodeData, setSelected3DNodeData] = useState<any>(null);
 
   const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
+  // Fitting the whole map shrank a large one until no label could be read. Automatic fits (first
+  // open, resize, reset, closing a node's details) frame the root and the first two levels
+  // instead, and never go below a readable zoom; the toolbar's fit button still shows it all.
+  const fitReadable = useCallback(() => {
+    const top = getNodes().filter((n) => ((n.data as { depth?: number } | undefined)?.depth ?? 0) <= READABLE_FIT_DEPTH);
+    fitView({
+      nodes: top.length > 0 ? top.map((n) => ({ id: n.id })) : undefined,
+      padding: 0.1,
+      minZoom: READABLE_MIN_ZOOM,
+      duration: 800,
+    });
+  }, [fitView, getNodes]);
   const nodesInitialized = useNodesInitialized();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -227,9 +242,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     if (is3D) {
       mindMap3DRef.current?.recenter();
     } else {
-      fitView({ padding: 0.05, duration: 800 });
+      fitReadable();
     }
-  }, [is3D, fitView]);
+  }, [is3D, fitReadable]);
 
 
   // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
@@ -295,9 +310,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       const { nodes: newNodes, edges: newEdges } = buildMindMapGraph(data, layout, collapsedIds, rootTitle);
       setNodes(newNodes);
       setEdges(newEdges);
-      setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
+      setTimeout(() => fitReadable(), 100);
     }
-  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitView, is3D]);
+  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitReadable, is3D]);
 
   const saveToSlot = (idx: number) => {
     setSlots(prev => {
@@ -333,14 +348,14 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     const applyFitView = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
+        fitReadable();
       }, 100);
     };
 
     if (nodesInitialized && nodes.length > 0) {
       // Initial fit with slightly larger delay to ensure DOM is ready
       setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
+        fitReadable();
       }, 150);
 
       // Listen to window resizes and any changes to layout wrappers
@@ -351,7 +366,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       clearTimeout(timeoutId);
       window.removeEventListener('resize', applyFitView);
     };
-  }, [nodesInitialized, nodes.length, layout, fitView]);
+  }, [nodesInitialized, nodes.length, layout, fitReadable]);
 
   useEffect(() => {
     if (!pendingFocusId || is3D) return;
@@ -538,7 +553,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             zoomOnDoubleClick={false}
             defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
             fitView
-            fitViewOptions={{ padding: 0.05, duration: 1000 }}
+            fitViewOptions={{ padding: 0.05, duration: 1000, minZoom: READABLE_MIN_ZOOM }}
             minZoom={0.05}
             maxZoom={1.5}
             style={{ background: 'transparent', transition: 'all 0.24s ease' }}

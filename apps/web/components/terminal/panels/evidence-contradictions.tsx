@@ -19,6 +19,9 @@ import {
   labelTextClass,
   type Tone,
 } from "@/components/terminal/panel-kit"
+import { dateLocale } from "@/lib/i18n/date-locale"
+import { formatMoney } from "@/lib/terminal/damages-format"
+import { useAuthStore } from "@/lib/store/auth.store"
 
 type ContradictionMetadata = {
   kind: string
@@ -61,7 +64,8 @@ function severityOf(m: ContradictionMetadata): Severity {
 
 function formatContradictionValue(kind: string, value: string) {
   if (kind === "amount_mismatch" && /^\d+(\.\d+)?$/.test(value)) {
-    return `₱${Number(value).toLocaleString()}`
+    // A bare amount carries no currency — it is the tenant's (₱ on the PH site, £ on the UK site).
+    return formatMoney(Number(value), useAuthStore.getState().organization?.tenantCode === "UK" ? "GBP" : "PHP")
   }
   // Full-bundle scan values: "GBP4500.00", "2023-11-14", "11d".
   const money = value.match(/^([A-Z]{3})(\d+(?:\.\d+)?)$/)
@@ -74,7 +78,7 @@ function formatContradictionValue(kind: string, value: string) {
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const d = new Date(`${value}T00:00:00Z`)
-    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
   }
   const days = value.match(/^(\d+)d$/)
   if (days) return `${days[1]} days`

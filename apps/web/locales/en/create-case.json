@@ -10,6 +10,18 @@
   "backToCases": "Cases",
   "continue": "Continue",
   "back": "Back",
+  "draftPrompt": {
+    "withTitle": "You have an unfinished case, “{{title}}”. Pick up where you left off, or start a new one?",
+    "untitled": "You have an unfinished case. Pick up where you left off, or start a new one?",
+    "resume": "Resume draft",
+    "startOver": "Start over"
+  },
+  "filingSummary": {
+    "title": "Case",
+    "parties": "Parties",
+    "noParties": "None named",
+    "edit": "Edit"
+  },
   "openInLabel": "After filing, open in",
   "openInWorkspace": "Workspace",
   "openInTerminal": "Legal Terminal",

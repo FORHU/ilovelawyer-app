@@ -180,7 +180,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
           <Scale className="h-3 w-3 shrink-0 text-brand-gold" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{t("workspace.decisionsTile")}</span>
           <span className="shrink-0 text-[10px] text-muted-foreground">
-            {t("workspace.decisionsNoteCount", { count: group.records.length })}
+            {t("workspace.decisionsNotePrompt", { count: group.records.length })}
           </span>
         </button>
         {isOpen && (
