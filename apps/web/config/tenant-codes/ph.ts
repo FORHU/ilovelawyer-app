@@ -5,6 +5,7 @@ export const phTenantCodeConfig: TenantCodeConfig = {
   displayName: "Philippines",
   countryName: "Philippines",
   locale: "en-PH",
+  languages: ["en", "ko", "tl"],
   branding: {
     flag: "🇵🇭",
   },

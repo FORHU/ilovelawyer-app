@@ -8,9 +8,10 @@ import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
 import { AudioOverviewWaveform } from "@/components/audio-overview/audio-overview-waveform"
 import { formatClock } from "@/components/audio-overview/audio-overview-sync"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 function formatEntryDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+  return new Date(iso).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" })
 }
 
 /** Fallback download name, matching the API's own audioOverviewFilename — the Content-Disposition

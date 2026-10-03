@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import { PageShell } from "@/components/page-shell";
 import { LawSearchPanel } from "@/components/library/law-search-panel";
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard";
@@ -15,7 +16,11 @@ export default function LegalLibraryPage() {
   return (
     <PageShell>
       <main className="w-full flex flex-col flex-1 pt-16">
-        <LawSearchPanel />
+        {/* LawSearchPanel reads its filters from useSearchParams — Next wants a Suspense boundary
+            around that for prerendering. */}
+        <Suspense fallback={null}>
+          <LawSearchPanel />
+        </Suspense>
       </main>
     </PageShell>
   );

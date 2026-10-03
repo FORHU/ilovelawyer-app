@@ -8,15 +8,16 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
+import { FOOTER_HASH, smoothScrollToHash } from "@/lib/landing/smooth-scroll-to";
+import { hasSessionHint } from "@/lib/fetch";
 
 const NAV_LINKS = [
   { key: "capabilities", href: "#capabilities", tooltip: "See every feature the platform ships" },
   { key: "legalTerminal", href: "#control", tooltip: "Preview the Legal Terminal workspace" },
   { key: "firms", href: "#business", tooltip: "How firms and teams work in ilovelawyer" },
-  // The footer is `position: fixed` (see footer-reveal-portal.tsx) — #footer-spacer is the
-  // actual scroll target, not the footer element itself.
-  { key: "resources", href: "#footer-spacer", tooltip: "Help centre, support and legal resources" },
+  // The footer is `position: fixed` (see footer-reveal-portal.tsx) — "#footer" scrolls to the
+  // page's end, where the footer is fully revealed (see smoothScrollToHash).
+  { key: "resources", href: FOOTER_HASH, tooltip: "Help centre, support and legal resources" },
 ] as const;
 
 // Fully transparent over the hero while at the top, frosted once scrolled. Hover deliberately
@@ -33,7 +34,14 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
   const { t } = useTranslation("landing");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const hasAccessToken = useAuthStore((s) => !!s.accessToken);
+  // The public page never runs a silent refresh, so a signed-in visitor arriving fresh has no
+  // access token here. The hasSession cookie says a session exists without spending the
+  // single-use refresh token; /homepage redeems it. Read after mount so SSR and the first
+  // client render agree.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => setHasSession(hasSessionHint()), []);
+  const isAuthenticated = hasAccessToken || hasSession;
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

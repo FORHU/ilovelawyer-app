@@ -19,6 +19,7 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
 import type { PanelId } from "@/lib/terminal/types"
 import { Badge } from "@workspace/ui/components/badge"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 gsap.registerPlugin(Flip)
 
@@ -26,7 +27,7 @@ export function formatDate(value: string | Date | null | undefined) {
   if (!value) return "—"
   const date = typeof value === "string" ? new Date(value) : value
   if (Number.isNaN(date.getTime())) return "—"
-  return date.toLocaleDateString()
+  return date.toLocaleDateString(dateLocale())
 }
 
 export const fieldClass =

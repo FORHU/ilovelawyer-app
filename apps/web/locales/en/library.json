@@ -160,6 +160,9 @@
   },
   "lawDoc": {
     "back": "Back to library",
+    "sectionHeading": "Section {{section}}",
+    "viewWholeAct": "View the whole Act",
+    "viewSection": "Back to section {{section}}",
     "loading": "Loading document…",
     "error": "Couldn't load this document. Please try again.",
     "viewSource": "View source",

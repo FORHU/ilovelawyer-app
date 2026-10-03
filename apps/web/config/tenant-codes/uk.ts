@@ -5,6 +5,7 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
   displayName: "United Kingdom",
   countryName: "United Kingdom",
   locale: "en-GB",
+  languages: ["en"],
   branding: {
     flag: "🇬🇧",
   },

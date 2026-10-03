@@ -35,12 +35,14 @@ import {
 } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Pagination } from "@/components/ui/pagination";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 const PAGE_SIZE = 15;
 
 // "Sep 24, 2026" (US order), pinned to en-US so the table doesn't shift format with the browser's locale.
-const caseDateFormat = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const formatCaseDate = (iso: string) => caseDateFormat.format(new Date(iso));
+// Built per call, not at module load: the locale follows the tenant (en-GB on the UK site).
+const formatCaseDate = (iso: string) =>
+  new Intl.DateTimeFormat(dateLocale(), { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 
 // Mirrors the real row grid below (name/parties, created/updated/opened dates, open-in links,
 // action menu) so the swap from skeleton to real rows doesn't jump layout.
