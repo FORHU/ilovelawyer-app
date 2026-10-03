@@ -371,6 +371,7 @@ const PANE_CODES: Record<PanelId, [string, Tone]> = {
   audioOverview: ["AU", "neutral"],
   decisions: ["DC", "neutral"],
   theories: ["TH", "neutral"],
+  trace: ["AR", "neutral"],
 }
 
 export function PaneCode({ panelId }: { panelId: PanelId }) {

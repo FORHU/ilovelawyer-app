@@ -23,4 +23,5 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   audioOverview: "Audio Overview",
   decisions: "Decisions",
   theories: "Theories",
+  trace: "AI Reasoning",
 }

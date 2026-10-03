@@ -18,6 +18,7 @@ export const PANEL_IDS = [
   "audioOverview",
   "decisions",
   "theories",
+  "trace",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
@@ -1052,4 +1053,31 @@ export interface DeadlineRule {
   label: string
   days: number
   ruleSource: string
+}
+
+// ── AI Reasoning trace (the "trace" pane) ────────────────────────────────────────────────────
+// What the AI did to answer each turn, recorded by ilovelawyer-api as the answer is written (see
+// TraceCollectorSvc there) and read back per case. A turn is one question and the reply it got;
+// on a shared case each turn is attributed to the member who asked.
+export interface TraceTurn {
+  turnId: string
+  /** 1-based position among the case's traced turns, oldest first — the pager's "Turn N". */
+  number: number
+  /** What was asked, flattened to one line. */
+  title: string
+  userId: string | null
+  /** Null once the member has been removed; shown as "Former member". */
+  userName: string | null
+  startedAt: string
+  eventCount: number
+}
+
+export type TraceEventType = "request" | "cognition" | "action" | "retrieval" | "control" | "memory"
+
+export interface TraceEvent {
+  seq: number
+  type: TraceEventType | (string & {})
+  /** Plain-language explanation, already written for the customer — never raw model output. */
+  summary: string
+  createdAt: string
 }
