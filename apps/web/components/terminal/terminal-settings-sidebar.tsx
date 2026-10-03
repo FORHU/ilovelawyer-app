@@ -50,7 +50,10 @@ export default function TerminalSettingsSidebar({
   // assistant is useful on any case). Everything else is hidden by default so users aren't
   // offered panes their case has nothing for; searching, or the footer toggle, still reaches
   // them since some empty panes are where content gets created (Witnesses, Red Team, ...).
-  const isPopulated = (id: PanelId) => panelBadges[id] !== undefined || visibleSet.has(id) || id === "chat"
+  // The trace pane's content (the AI's per-turn reasoning) is not in the case snapshot, so it has
+  // no badge to show — like chat, it is useful on any case and always offered.
+  const isPopulated = (id: PanelId) =>
+    panelBadges[id] !== undefined || visibleSet.has(id) || id === "chat" || id === "trace"
 
   const emptyCount = useMemo(
     () => allPanels.filter((panel) => PANEL_CATEGORY[panel.id] && !isPopulated(panel.id)).length,

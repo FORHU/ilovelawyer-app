@@ -927,5 +927,24 @@
     "STRENGTH": "Strength",
     "ATTACK_STRATEGY": "Attack strategy",
     "DEFENSE_STRATEGY": "Defense strategy"
-  }
+  },
+  "traceLoading": "Loading the reasoning trace…",
+  "traceError": "The reasoning trace could not be loaded. It will retry automatically.",
+  "noTrace": "No reasoning recorded yet — each answer the AI gives on this case will show here, step by step, as it is written.",
+  "noTraceForMember": "No traced questions from this member yet.",
+  "traceNoSteps": "The AI answered this one without running any research steps.",
+  "traceFilterMember": "Asked by",
+  "traceAllMembers": "Everyone",
+  "traceMember": "Member",
+  "traceFormerMember": "Former member",
+  "traceTurnNav": "Question navigation",
+  "tracePrevTurn": "Previous question",
+  "traceNextTurn": "Next question",
+  "traceTurnOf": "Question {{current}} of {{total}}",
+  "traceType_request": "Question",
+  "traceType_cognition": "Reasoning",
+  "traceType_action": "Action",
+  "traceType_retrieval": "Research",
+  "traceType_control": "Check",
+  "traceType_memory": "Note"
 }

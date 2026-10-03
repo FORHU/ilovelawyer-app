@@ -23,7 +23,7 @@ export interface TopicNavigatorGroup {
 /** One topic's row — a dot, its title, and a tooltip carrying the full title when truncated
  * (or always, in `compact`, since there's no room for inline text at all). Shared by the
  * flat compact dot-list and each prompt's expanded topic list below. */
-function TopicRow({
+export function TopicRow({
   topic,
   isActive,
   onJump,
