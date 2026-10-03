@@ -19,6 +19,7 @@ import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import { autoTileLayout, computeFocusStackSummaries, computePanelBadges } from "@/lib/terminal/multi-screen"
 import { damagesBadge } from "@/lib/terminal/damages-format"
+import { dropUnknownPanels } from "@/lib/terminal/drop-unknown-panels"
 import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
 import { announceWindowClosing, useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ArrangementSwitcher } from "@/components/terminal/arrangement-switcher"
@@ -105,8 +106,10 @@ export default function TerminalCanvasWindowPage() {
     if (layout || !workspaces.data) return
     const lastUsed = workspaces.data.find((w) => w.isLastUsed)
     if (!lastUsed) return
-    lastSavedLayoutRef.current = JSON.stringify(lastUsed.layoutJson)
-    setLayout(lastUsed.layoutJson)
+    // Same as the primary window: a layout saved before ADR 0016 may list retired panes, which would crash PaneCode.
+    const cleaned = dropUnknownPanels(lastUsed.layoutJson)
+    lastSavedLayoutRef.current = JSON.stringify(cleaned)
+    setLayout(cleaned)
     setWorkspaceId(lastUsed.id)
   }, [workspaces.data, layout])
 
