@@ -127,6 +127,9 @@ interface AiJobSocketPayload {
 
 const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:progress", "ai-job:done", "ai-job:failed"] as const
 
+/** How often a job cached as IN_PROGRESS is re-read — see useAiJobStatus. */
+const AI_JOB_RUNNING_POLL_MS = 5_000
+
 /** Whether a Generate/Refresh/Scan action is currently running for this case, regardless of who
  * triggered it or when — a page refresh mid-generation otherwise looks idle even though the
  * server-side call is still going (see AiGenerationJob). Always enabled while mounted, not just
@@ -146,7 +149,10 @@ const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:progress", "ai-job:done"
  *      socket actually being ready to receive events for it.
  *   2. useNotificationSocket's reconnect handler invalidates every mounted ai-job query — a
  *      dropped/reconnected socket, or a Next soft navigation that reuses this page without truly
- *      remounting it, refetches once on that event instead of on a timer. */
+ *      remounting it, refetches once on that event instead of on a timer.
+ * The one exception: while the cached job is IN_PROGRESS it is re-read every
+ * AI_JOB_RUNNING_POLL_MS, so a done push that never arrives can't leave a panel stuck on the old
+ * results until a reload (Damages and the timeline in the R v Doyle QA run). Idle, it never polls. */
 export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   const queryClient = useQueryClient()
   const pushLive = useIsCaseRoomSubscribed(caseId)
@@ -155,6 +161,7 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
     queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
     enabled: !!caseId,
     staleTime: 0,
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_RUNNING_POLL_MS : false),
   })
 
   const prevStatus = useRef(query.data?.status)
@@ -1027,13 +1034,16 @@ export function useUpdateDamageMutation(caseId: string) {
 }
 
 // Queues a damages pass over every document of the case (DamagesExtractSvc.propose); progress and
-// completion come through useAiJobStatus(caseId, "damagesExtract").
+// completion come through useAiJobStatus(caseId, "damagesExtract"). The 202 carries the new
+// IN_PROGRESS job (the API claims it before queueing), written straight into the cache so the
+// IN_PROGRESS → DONE transition that refreshes the list is seen even if the started push is missed.
 export function useProposeDamagesMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/damages/propose`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
+    onSuccess: (status) => {
+      if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, "damagesExtract"), status)
+      else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
     },
   })
 }
