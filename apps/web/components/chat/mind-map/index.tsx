@@ -10,7 +10,10 @@ import ReactFlow, {
   Node,
   ReactFlowProvider,
   useReactFlow,
-  useNodesInitialized
+  useNodesInitialized,
+  useStoreApi,
+  getRectOfNodes,
+  getTransformForBounds
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,6 +43,13 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
  * from there. Saved with the collapse state (`collapseDefault`), so a map whose fold was seeded
  * under a different default is re-seeded once when this changes. */
 const DEFAULT_VISIBLE_LEVELS: number | 'all' = 'all';
+
+/** Lowest zoom an automatic fit may land on: below it node labels can't be read. A full case map
+ * (60+ points) fitted into a normal Terminal pane went far under it (R v Doyle QA). */
+const READABLE_FIT_ZOOM = 0.45;
+const FIT_PADDING = 0.05;
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 1.5;
 
 const nodeTypes = {
   custom: CustomNode,
@@ -98,7 +108,25 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const [selected3DNodeData, setSelected3DNodeData] = useState<any>(null);
 
   const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
+  const flowStore = useStoreApi();
   const nodesInitialized = useNodesInitialized();
+
+  // The automatic fit (first show, resize, reset): the whole map when it fits at a readable zoom,
+  // else the root and its headings — readable, with the points running off to be panned to. The
+  // toolbar's fit button stays a full overview.
+  const fitReadable = useCallback(() => {
+    const all = getNodes();
+    const { width, height } = flowStore.getState();
+    if (all.length && width && height) {
+      const [, , zoom] = getTransformForBounds(getRectOfNodes(all), width, height, MIN_ZOOM, MAX_ZOOM, FIT_PADDING);
+      if (zoom < READABLE_FIT_ZOOM) {
+        const top = all.filter((n) => (n.data?.depth ?? 0) <= 1);
+        fitView({ nodes: top.map((n) => ({ id: n.id })), padding: 0.15, maxZoom: 1, duration: 800 });
+        return;
+      }
+    }
+    fitView({ padding: FIT_PADDING, duration: 800 });
+  }, [getNodes, flowStore, fitView]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [slots, setSlots] = useState<({ nodes: Node[], edges: Edge[] } | null)[]>(Array(3).fill(null));
@@ -227,9 +255,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     if (is3D) {
       mindMap3DRef.current?.recenter();
     } else {
-      fitView({ padding: 0.05, duration: 800 });
+      fitReadable();
     }
-  }, [is3D, fitView]);
+  }, [is3D, fitReadable]);
 
 
   // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
@@ -295,9 +323,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       const { nodes: newNodes, edges: newEdges } = buildMindMapGraph(data, layout, collapsedIds, rootTitle);
       setNodes(newNodes);
       setEdges(newEdges);
-      setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
+      setTimeout(fitReadable, 100);
     }
-  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitView, is3D]);
+  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitReadable, is3D]);
 
   const saveToSlot = (idx: number) => {
     setSlots(prev => {
@@ -315,7 +343,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     if (slot) {
       setNodes(slot.nodes);
       setEdges(slot.edges);
-      setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
+      setTimeout(fitReadable, 100);
     }
   };
 
@@ -332,16 +360,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
 
     const applyFitView = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
-      }, 100);
+      timeoutId = setTimeout(fitReadable, 100);
     };
 
     if (nodesInitialized && nodes.length > 0) {
       // Initial fit with slightly larger delay to ensure DOM is ready
-      setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
-      }, 150);
+      setTimeout(fitReadable, 150);
 
       // Listen to window resizes and any changes to layout wrappers
       window.addEventListener('resize', applyFitView);
@@ -351,7 +375,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       clearTimeout(timeoutId);
       window.removeEventListener('resize', applyFitView);
     };
-  }, [nodesInitialized, nodes.length, layout, fitView]);
+  }, [nodesInitialized, nodes.length, layout, fitReadable]);
 
   useEffect(() => {
     if (!pendingFocusId || is3D) return;
@@ -537,10 +561,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             zoomOnPinch={true}
             zoomOnDoubleClick={false}
             defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
-            fitView
-            fitViewOptions={{ padding: 0.05, duration: 1000 }}
-            minZoom={0.05}
-            maxZoom={1.5}
+            // No `fitView` prop: its full fit would flash zoomed-out before fitReadable (the
+            // nodesInitialized effect above) lands.
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
             style={{ background: 'transparent', transition: 'all 0.24s ease' }}
             proOptions={{ hideAttribution: true }}
           >
@@ -721,7 +745,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             <Minus size={14} />
           </button>
           <button
-            onClick={() => is3D ? mindMap3DRef.current?.recenter() : fitView({ padding: 0.05, duration: 800 })}
+            onClick={() => is3D ? mindMap3DRef.current?.recenter() : fitView({ padding: FIT_PADDING, duration: 800 })}
             className={MIND_MAP_CHROME.hubBtnSm}
             title="Recenter"
           >
