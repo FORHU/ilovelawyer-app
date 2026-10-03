@@ -79,5 +79,6 @@
   },
   "previousMonth": "Previous month",
   "nextMonth": "Next month",
-  "retry": "Retry"
+  "retry": "Retry",
+  "today": "Today"
 }

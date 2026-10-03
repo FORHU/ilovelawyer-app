@@ -27,6 +27,7 @@ import {
   secondaryTextClass,
 } from "@/components/terminal/panel-kit"
 import { BAND_BADGE, BAND_TONE, ConfidenceMeter, OutlookGauge, Sparkline } from "@/components/terminal/panels/summary-visuals"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 const RISK_TIER: Record<SnapshotRisk["severity"], { label: string; tone: "danger" | "warning" | "success" }> = {
   FATAL: { label: "HIGH", tone: "danger" },
@@ -99,7 +100,7 @@ export function CommandPanel({
 
   const overdue = deadline ? deadline.days < 0 : false
   const dueLabel = deadline
-    ? new Date(deadline.dueISO).toLocaleDateString(i18n.language, { day: "numeric", month: "short" })
+    ? new Date(deadline.dueISO).toLocaleDateString(dateLocale(), { day: "numeric", month: "short" })
     : null
 
   return (

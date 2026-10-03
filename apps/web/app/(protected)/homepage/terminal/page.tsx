@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { ErrorState } from "@/components/error-state";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 // Mirrors the real case-card grid below (title, parties, updated-date footer)
 // so the swap from skeleton to real cards doesn't jump layout.
@@ -103,7 +104,7 @@ export default function TerminalLandingPage() {
                           {t("landing.lastUpdated")}
                         </span>
                         <span className="text-foreground text-[14px] font-semibold">
-                          {new Date(c.updatedAt).toLocaleDateString()}
+                          {new Date(c.updatedAt).toLocaleDateString(dateLocale())}
                         </span>
                       </div>
                     </div>

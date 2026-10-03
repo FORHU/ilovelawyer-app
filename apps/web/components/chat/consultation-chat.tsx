@@ -1883,7 +1883,7 @@ export default function ConsultationChat({
                     // Same queue-then-transcribe pipeline as the non-embedded composer below —
                     // shows up on the Transcription page right away, then transcribeAndSend
                     // drives this row through upload/start-job/poll.
-                    const id = queueTranscript(blob, durationSeconds);
+                    const id = queueTranscript(blob, durationSeconds, { source: "consultation" });
                     void transcribeAndSend(id, blob, durationSeconds);
                   }}
                   onError={() => alert(t("microphoneError"))}
@@ -1967,7 +1967,7 @@ export default function ConsultationChat({
                     // Queued immediately so it shows up on the Transcription page right away —
                     // transcribeAndSend below drives this same row through upload/start-job/poll
                     // rather than creating a second, disconnected backend record for it.
-                    const id = queueTranscript(blob, durationSeconds);
+                    const id = queueTranscript(blob, durationSeconds, { source: "consultation" });
                     void transcribeAndSend(id, blob, durationSeconds);
                   }}
                   onError={() => alert(t("microphoneError"))}

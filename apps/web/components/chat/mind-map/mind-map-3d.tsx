@@ -123,6 +123,20 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
     };
     calculateLeaves(root);
 
+    // Ring radius per depth. A fixed 240 per level crowded a busy ring until its labels sat on
+    // top of each other — each ring is pushed out until its nodes get at least a label's width
+    // of arc apiece, and always at least 240 beyond the ring inside it.
+    const depthCounts: number[] = [];
+    const countDepths = (item: any, depth: number) => {
+      depthCounts[depth] = (depthCounts[depth] ?? 0) + 1;
+      getChildren(item).forEach((c: any) => countDepths(c, depth + 1));
+    };
+    countDepths(root, 0);
+    const ringRadius: number[] = [0];
+    for (let d = 1; d < depthCounts.length; d++) {
+      ringRadius[d] = Math.max(ringRadius[d - 1]! + 240, (depthCounts[d]! * MIN_LABEL_ARC) / (2 * Math.PI));
+    }
+
     // 2. Leaf-Weighted Concentric Radial Layout
     // `branch` = which first-level branch the node is under (-1 for the root): the whole branch
     // shares one colour, same as the 2D canvas (layout.ts).
@@ -136,7 +150,7 @@ export const MindMap3D = forwardRef<MindMap3DHandle, MindMap3DProps>(({ root, ro
       }
 
       const midAngle = (angleStart + angleEnd) / 2;
-      const radius = depth * 240;
+      const radius = ringRadius[depth] ?? depth * 240;
 
       const x = radius * Math.cos(midAngle);
       const y = radius * Math.sin(midAngle);
@@ -375,6 +389,8 @@ interface NodeLabel {
   baseScale: { x: number; y: number };
 }
 
+// Arc each label needs on its ring (see ringRadius) — roughly one label sprite's width.
+const MIN_LABEL_ARC = 260;
 const FOCUS_SCALE = 1.18;
 const BLUR_PADDING = 24;
 

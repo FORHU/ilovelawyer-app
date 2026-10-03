@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -13,6 +13,7 @@ import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, useMarkCaseOpened, type UserDocument } from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
+import { openFindings } from "@/lib/terminal/case-summary-view";
 import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
 import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
@@ -20,6 +21,7 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 type DetailTab = "overview" | "workspace";
 
@@ -54,7 +56,7 @@ export default function CaseDetailPage() {
   const filedLine = [
     snapshot?.case.actionType,
     snapshot?.case.jurisdiction,
-    caseRecord ? t("overview.filed", { date: new Date(caseRecord.createdAt).toLocaleDateString() }) : null,
+    caseRecord ? t("overview.filed", { date: new Date(caseRecord.createdAt).toLocaleDateString(dateLocale()) }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -307,7 +309,22 @@ function OverviewTab({
   const court = snapshot?.case.jurisdiction?.trim() || null;
 
   const risks: SnapshotRisk[] = snapshot?.risks ?? [];
-  const upcomingDates = [...(snapshot?.dates ?? [])]
+  // A case's analysis often lands only in Legal Issues / Weaknesses, never the risk register —
+  // list those rather than claiming there's no analysis.
+  const findings = snapshot && risks.length === 0 ? openFindings(snapshot) : [];
+  // Calendar dates plus the case's procedural deadlines, today onward.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingDates = [
+    ...(snapshot?.dates ?? []).map((d) => ({ id: d.id, title: d.title, dateTime: d.dateTime, type: d.type })),
+    ...(snapshot?.procedure.deadlines ?? []).map((d) => ({
+      id: d.id,
+      title: d.label,
+      dateTime: d.computedDueDate,
+      type: t("overview.deadline"),
+    })),
+  ]
+    .filter((d) => new Date(d.dateTime) >= today)
     .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
     .slice(0, 5);
 
@@ -370,6 +387,21 @@ function OverviewTab({
             <LoadingRow />
           ) : risks.length > 0 ? (
             <KeyIssuesList caseId={id} risks={risks.slice(0, 6)} />
+          ) : findings.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {findings.slice(0, 6).map((f) => (
+                <div key={f.id} className="flex items-start gap-2.5 py-1.5 text-[14px] leading-relaxed text-foreground">
+                  <AlertCircle className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">{f.label}</span>
+                  <span className="mt-0.5 shrink-0 text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+                    {f.category === "WEAKNESS" ? t("overview.weakness") : t("overview.legalIssue")}
+                  </span>
+                </div>
+              ))}
+              {findings.length > 6 && (
+                <span className="text-[12px] text-muted-foreground">{t("overview.moreIssues", { count: findings.length - 6 })}</span>
+              )}
+            </div>
           ) : (
             <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
           )}
@@ -386,10 +418,10 @@ function OverviewTab({
                   <div key={d.id} className="flex gap-3.5 items-start">
                     <div className="flex flex-col items-center w-9 shrink-0">
                       <span className="font-['Libre_Caslon_Text'] text-lg leading-none text-foreground">
-                        {dt.toLocaleDateString(undefined, { day: "2-digit" })}
+                        {dt.toLocaleDateString(dateLocale(), { day: "2-digit" })}
                       </span>
                       <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
-                        {dt.toLocaleDateString(undefined, { month: "short" })}
+                        {dt.toLocaleDateString(dateLocale(), { month: "short" })}
                       </span>
                     </div>
                     <div className="flex flex-col gap-0.5 min-w-0">
@@ -515,7 +547,7 @@ function ConsultationRow({
         className="flex flex-col gap-0.5 px-3 py-2.5 text-left rounded-lg hover:bg-muted/40 transition-colors cursor-pointer"
       >
         <span className="text-[13.5px] font-medium text-foreground truncate">{consultation.title || fallbackTitle}</span>
-        <span className="text-[11px] text-muted-foreground">{new Date(consultation.createdAt).toLocaleDateString()}</span>
+        <span className="text-[11px] text-muted-foreground">{new Date(consultation.createdAt).toLocaleDateString(dateLocale())}</span>
       </button>
       {prompts.length > 0 && (
         <ul className="flex flex-col border-t border-border py-1">

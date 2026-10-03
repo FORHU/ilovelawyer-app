@@ -18,6 +18,7 @@ import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
 import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 
 interface CalendarEvent {
@@ -34,6 +35,9 @@ interface TimelineRow {
   title: string
   description: string | null
   documentId: string | null
+  pageNumber: number | null
+  /** Who added it — AI (extracted from documents), LAWYER or CALENDAR. */
+  source: string | null
   isCalendar: boolean
 }
 
@@ -54,7 +58,7 @@ function isDateOnly(at: Date) {
 // negative-offset timezones. The year is appended only when the case spans more than one, and in
 // full ("4 Mar 2018"): a two-digit "18" is ambiguous on a legal record.
 function formatDay(at: Date, withYear: boolean) {
-  const parts = new Intl.DateTimeFormat(undefined, {
+  const parts = new Intl.DateTimeFormat(dateLocale(), {
     timeZone: isDateOnly(at) ? "UTC" : undefined,
     day: "numeric",
     month: "short",
@@ -104,10 +108,17 @@ export function CaseTimelineView({
     () => new Map((snapshot.data?.documents ?? []).map((doc) => [doc.id, doc])),
     [snapshot.data?.documents],
   )
-  // "Source: <file name>" — just the document, not its folder or indexing status.
-  const sourceLabel = (tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
-    if (tone === "none" || !sourceDoc) return tt("noSourceDocument")
-    return tt("groundedIn", { doc: sourceDoc.name })
+  // "Source: <file name> · p. N" — just the document, not its folder or indexing status. Rows
+  // without a document say where they did come from, rather than one blanket "No source document".
+  const sourceLabel = (item: TimelineRow, tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
+    if (sourceDoc && tone !== "none") {
+      const doc = item.pageNumber ? tt("docWithPage", { doc: sourceDoc.name, page: item.pageNumber }) : sourceDoc.name
+      return tt("groundedIn", { doc })
+    }
+    if (item.isCalendar || item.source === "CALENDAR") return tt("sourceCalendar")
+    if (item.source === "LAWYER") return tt("sourceLawyer")
+    if (item.documentId) return tt("sourceDocumentRemoved")
+    return tt("noSourceDocument")
   }
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
@@ -163,6 +174,8 @@ export function CaseTimelineView({
           title: string
           description: string | null
           documentId?: string | null
+          pageNumber?: number | null
+          source?: string | null
         }
         return {
           id: `tl-${node.refId}`,
@@ -171,6 +184,8 @@ export function CaseTimelineView({
           title: event.title,
           description: event.description,
           documentId: event.documentId ?? null,
+          pageNumber: event.pageNumber ?? null,
+          source: event.source ?? null,
           isCalendar: false,
         }
       })
@@ -181,6 +196,8 @@ export function CaseTimelineView({
       title: event.title,
       description: event.notes,
       documentId: null,
+      pageNumber: null,
+      source: "CALENDAR",
       isCalendar: true,
     }))
     const seen = new Set<string>()
@@ -298,7 +315,7 @@ export function CaseTimelineView({
                         <p
                           className="mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground"
                         >
-                          {sourceLabel(tone, sourceDoc)}
+                          {sourceLabel(item, tone, sourceDoc)}
                         </p>
                         {item.rawId && !isEditing ? (
                           <button
@@ -367,7 +384,7 @@ export function CaseTimelineView({
                             <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
                           ) : null}
                           <p className="mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground">
-                            {sourceLabel(tone, sourceDoc)}
+                            {sourceLabel(item, tone, sourceDoc)}
                           </p>
                         </div>
                       </li>

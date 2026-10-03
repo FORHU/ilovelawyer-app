@@ -1,4 +1,5 @@
 import type { TenantCode } from "@/lib/tenant-code/resolve-host"
+import type { SupportedLanguage } from "@/lib/i18n/languages"
 
 /**
  * Per-tenant feature availability. Mirrors what the backend's registry-selector pattern
@@ -37,6 +38,9 @@ export interface TenantCodeConfig {
   displayName: string
   countryName: string
   locale: string
+  /** Display languages offered on this tenant's site (language menu, landing footer). Korean and
+   * Tagalog serve the PH market; the UK site is English-only. */
+  languages: readonly SupportedLanguage[]
   branding: {
     flag: string
   }

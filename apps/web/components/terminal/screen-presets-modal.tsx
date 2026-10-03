@@ -141,8 +141,13 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
         setLiveScreens(details)
         setLiveCount(1 + sortedSecondaryScreens(details).length)
       })
+      .catch(() => setLiveCount((n) => n ?? 1))
       .finally(() => setDetecting(false))
   }
+  // The Window Management API exists but gave us no screen list (permission denied, dismissed or
+  // never answered — see detectScreenCount's timeout) — presets for one screen still work, but say
+  // how to get the rest.
+  const needsWindowPermission = !!count && !activeScreens && typeof window !== "undefined" && !!window.getScreenDetails
 
   // Gives every display in `preset` a canvas window on its own monitor: an open window is moved
   // onto it (the OS may have moved it when a monitor was unplugged), a missing one is opened, and an
@@ -280,6 +285,11 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
           </div>
         </div>
 
+        {needsWindowPermission && (
+          <p className="shrink-0 border-b border-border/70 bg-amber-500/10 px-6 py-2.5 text-xs text-foreground">
+            {t("screensPermissionHint")}
+          </p>
+        )}
         {!count || presetsQuery.isLoading ? (
           <p className="px-6 py-6 text-sm text-muted-foreground">{t("detectingScreens")}</p>
         ) : (

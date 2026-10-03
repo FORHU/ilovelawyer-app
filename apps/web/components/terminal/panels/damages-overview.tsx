@@ -5,6 +5,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { DamageClaim, DamagesSummary } from "@/lib/terminal/types"
 import { deadlineStats, formatMoney, formatMoneyCompact } from "@/lib/terminal/damages-format"
 import { labelTextClass } from "@/components/terminal/panel-kit"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 /**
  * The head of the Damages & Remedies pane: the total claimed, how much of it is awarded or
@@ -26,7 +27,7 @@ export function DamagesOverview({
   displayTotal: number
   dimmed?: boolean
 }) {
-  const { t, i18n } = useTranslation("terminal")
+  const { t } = useTranslation("terminal")
   const money = (value: number) => formatMoney(value, summary.currency)
   const open = Math.max(0, Math.round((summary.total - summary.awarded) * 100) / 100)
   const awardedShare = summary.total > 0 ? summary.awarded / summary.total : 0
@@ -34,7 +35,7 @@ export function DamagesOverview({
   const { overdue, next } = deadlineStats(heads)
   const suggestedCount = summary.suggestedCount ?? 0
   const suggestedTotal = summary.suggestedTotal ?? 0
-  const nextDate = next ? new Date(next.dueDate).toLocaleDateString(i18n.language, { timeZone: "UTC", month: "short", day: "numeric" }) : null
+  const nextDate = next ? new Date(next.dueDate).toLocaleDateString(dateLocale(), { timeZone: "UTC", month: "short", day: "numeric" }) : null
 
   return (
     <div className={cn("@container flex shrink-0 flex-col gap-3 transition-opacity", dimmed && "opacity-60")}>

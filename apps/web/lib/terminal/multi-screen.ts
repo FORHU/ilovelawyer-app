@@ -1,6 +1,7 @@
 import { HIDDEN_PANELS, type PaneRect } from "@/components/terminal/terminal-canvas"
 import type { ArrangementValue, CaseSnapshot, FindingCategory, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
 import { damagesBadge } from "@/lib/terminal/damages-format"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 // Up to 5 secondary screens (1-5) plus the primary (0) — see the plan's data model doc comment
 // on PanelLayout.screen.
@@ -229,8 +230,8 @@ export function computeFocusStackSummaries(data: CaseSnapshot, t: (key: string, 
   }
   const nextDateLabel = ((): string | null => {
     const next = data.nextDate
-    if (next && "dateTime" in next) return t("focusNext", { date: new Date(next.dateTime).toLocaleDateString() })
-    if (next && "occurredOn" in next && next.occurredOn) return t("focusNext", { date: new Date(next.occurredOn).toLocaleDateString() })
+    if (next && "dateTime" in next) return t("focusNext", { date: new Date(next.dateTime).toLocaleDateString(dateLocale()) })
+    if (next && "occurredOn" in next && next.occurredOn) return t("focusNext", { date: new Date(next.occurredOn).toLocaleDateString(dateLocale()) })
     return null
   })()
 

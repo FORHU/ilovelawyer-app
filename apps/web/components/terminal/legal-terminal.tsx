@@ -133,6 +133,9 @@ function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): Wor
   return extras.length ? { ...layout, panels: [...layout.panels, ...extras] } : layout
 }
 
+// How long to wait on the Window Management permission before treating this as one screen.
+const SCREEN_DETECT_TIMEOUT_MS = 4000
+
 export default function LegalTerminal({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   // Joined once here, at the Terminal's root — every useAiJobStatus(caseId, kind) call below
@@ -700,6 +703,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       setDetectedScreenCount(1)
       return
     }
+    // The permission prompt behind getScreenDetails() can sit unanswered indefinitely (or never
+    // show at all), which left the modal on "Detecting connected screens…" for good. After a few
+    // seconds, carry on with this one screen — the modal explains how to allow more, and its
+    // Detect button retries. A late answer still updates the count.
+    const fallback = setTimeout(() => setDetectedScreenCount((n) => n ?? 1), SCREEN_DETECT_TIMEOUT_MS)
     window
       .getScreenDetails()
       .then((details) => {
@@ -707,6 +715,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         setDetectedScreenCount(1 + sortedSecondaryScreens(details).length)
       })
       .catch(() => setDetectedScreenCount(1))
+      .finally(() => clearTimeout(fallback))
   }
   const openWorkflowsModal = () => detectScreenCount(() => setPresetsModalOpen(true))
   const openLayoutBuilder = () => detectScreenCount(() => setBuilderOpen(true))

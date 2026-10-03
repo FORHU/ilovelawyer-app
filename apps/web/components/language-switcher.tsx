@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown, Globe } from "lucide-react"
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages"
 import { useLanguageStore } from "@/lib/store/language.store"
+import { useTenantLanguages } from "@/lib/i18n/use-tenant-languages"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 
 /**
@@ -27,6 +28,7 @@ export function LanguageSwitcher({
   const setLanguage = useLanguageStore((state) => state.setLanguage)
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const languages = useTenantLanguages()
 
   useEffect(() => {
     if (!isOpen) return
@@ -38,6 +40,9 @@ export function LanguageSwitcher({
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [isOpen])
+
+  // Nothing to switch between (the UK site is English-only).
+  if (languages.length <= 1) return null
 
   const optionButtonClass = (lang: (typeof SUPPORTED_LANGUAGES)[number], inline: boolean) =>
     `block w-full text-left text-[10px] tracking-[1px] uppercase transition-colors ${
@@ -80,7 +85,7 @@ export function LanguageSwitcher({
 
         {isOpen && (
           <div role="menu" className="mt-2 flex flex-col gap-1">
-            {SUPPORTED_LANGUAGES.map((lang) => (
+            {languages.map((lang) => (
               <button
                 key={lang}
                 type="button"
@@ -111,7 +116,7 @@ export function LanguageSwitcher({
             align === "left" ? "left-0" : "right-0"
           }`}
         >
-          {SUPPORTED_LANGUAGES.map((lang) => (
+          {languages.map((lang) => (
             <button
               key={lang}
               type="button"

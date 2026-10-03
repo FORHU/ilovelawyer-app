@@ -13,6 +13,8 @@ import {
 } from "@/lib/transcription/mutations";
 import { useCasesQuery, type CaseRecord } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { dateLocale } from "@/lib/i18n/date-locale";
+import { useOwnQueuedTranscripts } from "@/lib/store/media-queue.store";
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return "—";
@@ -57,7 +59,7 @@ function LibraryRow({ item, cases }: { item: Transcription; cases: CaseRecord[] 
           <div className="min-w-0">
             <p className="truncate text-[14px] font-medium text-foreground">{item.title || t("library.untitled")}</p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {formatDuration(item.duration)} • {new Date(item.createdAt).toLocaleString()}
+              {formatDuration(item.duration)} • {new Date(item.createdAt).toLocaleString(dateLocale())}
             </p>
           </div>
         </div>
@@ -161,6 +163,10 @@ export default function TranscriptionLibraryPage() {
   const { data, isLoading, isError } = useTranscriptionsQuery();
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
+  // The Library is what's been transcribed (server-side). Recordings still sitting in this
+  // browser's queue, not yet sent, aren't in it — say so, rather than the queue showing items
+  // the Library seems to have lost.
+  const waitingCount = useOwnQueuedTranscripts().filter((q) => !q.backendId).length;
 
   return (
     <PageShell>
@@ -182,6 +188,16 @@ export default function TranscriptionLibraryPage() {
             {t("queue.viewFullLibrary")}
           </h1>
         </div>
+
+        {waitingCount > 0 && (
+          <Link
+            href="/homepage/transcription"
+            className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-[13px] text-foreground hover:border-foreground/30"
+          >
+            <FileAudio className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {t("library.waitingInQueue", { count: waitingCount })}
+          </Link>
+        )}
 
         <div className="flex flex-col gap-3">
           {isLoading && (

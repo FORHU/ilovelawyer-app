@@ -1,6 +1,8 @@
+import { useMemo } from "react"
 import { create } from "zustand"
 
 import { generateId } from "@/lib/id"
+import { useAuthStore } from "@/lib/store/auth.store"
 
 // Lifecycle of a queued recording/upload once the user hits "Transcribe":
 // local (never submitted) -> uploading -> starting -> in_progress (AWS Transcribe job running) -> completed | failed
@@ -18,13 +20,44 @@ export interface QueuedTranscript {
   errorMessage?: string
   /** Live-captured speech-to-text transcript, when the browser supports it. Undefined for uploaded files. */
   text?: string
+  /** Where it was queued from. Absent on records that predate it. */
+  source?: QueueSource
+  /** `${userId}:${organizationId}` of whoever queued it — see currentOwnerKey. Absent on records
+   * that predate it. */
+  ownerKey?: string
+}
+
+export type QueueSource = "consultation" | "recorder" | "upload"
+
+const SOURCE_LABEL: Record<QueueSource, string> = {
+  consultation: "QUEUED FROM CONSULTATION",
+  recorder: "RECORDED HERE",
+  upload: "UPLOADED",
+}
+
+/** The queue lives in this browser's IndexedDB, which every account signed in on it shares —
+ * without an owner, one account's recordings showed in another's queue while that account's
+ * Library (server-side, per organization) rightly had none of them. */
+export function currentOwnerKey(): string | null {
+  const { user, organization } = useAuthStore.getState()
+  return user && organization ? `${user.id}:${organization.id}` : null
+}
+
+/** The signed-in account's own queue items. Legacy items with no owner stay visible. */
+export function useOwnQueuedTranscripts(): QueuedTranscript[] {
+  const transcripts = useMediaQueueStore((s) => s.transcripts)
+  const ownerKey = useAuthStore((s) => (s.user && s.organization ? `${s.user.id}:${s.organization.id}` : null))
+  return useMemo(
+    () => transcripts.filter((t) => !t.ownerKey || t.ownerKey === ownerKey),
+    [transcripts, ownerKey],
+  )
 }
 
 interface MediaQueueState {
   transcripts: QueuedTranscript[]
   /** Returns the new local queue id — callers that go on to drive it through the real
    * transcription pipeline (upload → create → start-job → poll) need it for updateTranscript. */
-  queueTranscript: (blob: Blob, durationSeconds: number, text?: string) => string
+  queueTranscript: (blob: Blob, durationSeconds: number, opts?: { text?: string; source: QueueSource }) => string
   removeTranscript: (id: string) => void
   updateTranscript: (id: string, patch: Partial<QueuedTranscript>) => void
 }
@@ -82,15 +115,20 @@ async function dbDelete(storeName: string, id: string): Promise<void> {
 export const useMediaQueueStore = create<MediaQueueState>()((set) => ({
   transcripts: [],
 
-  queueTranscript: (blob, durationSeconds, text) => {
+  queueTranscript: (blob, durationSeconds, { text, source } = { source: "consultation" }) => {
     const transcript: QueuedTranscript = {
       id: generateId(),
-      name: `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
-      meta: `QUEUED FROM CONSULTATION • ${Math.max(1, Math.round(durationSeconds))}s`,
+      name:
+        source === "upload" && blob instanceof File && blob.name
+          ? blob.name
+          : `Recording_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`,
+      meta: `${SOURCE_LABEL[source]} • ${Math.max(1, Math.round(durationSeconds))}s`,
       blob,
       durationSeconds,
       status: "local",
       text,
+      source,
+      ownerKey: currentOwnerKey() ?? undefined,
     }
     set((state) => ({ transcripts: [transcript, ...state.transcripts] }))
     dbPut(TRANSCRIPTS_STORE, transcript).catch((err) => console.error("Failed to persist queued transcript:", err))

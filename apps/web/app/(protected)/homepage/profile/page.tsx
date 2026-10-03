@@ -25,6 +25,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -60,15 +61,15 @@ function suggestUsernames(seed: string, count = 3): string[] {
 }
 
 function formatMonthYear(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(dateLocale(), { month: "long", year: "numeric" }).format(new Date(iso));
 }
 
 function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(dateLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
 
 function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(date);
+  return new Intl.DateTimeFormat(dateLocale(), { dateStyle: "long" }).format(date);
 }
 
 function addDays(iso: string, days: number): Date {

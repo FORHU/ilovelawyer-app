@@ -77,5 +77,6 @@
   },
   "previousMonth": "이전 달",
   "nextMonth": "다음 달",
-  "retry": "다시 시도"
+  "retry": "다시 시도",
+  "today": "오늘"
 }
