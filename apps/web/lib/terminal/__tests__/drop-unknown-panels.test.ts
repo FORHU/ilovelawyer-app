@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { dropUnknownPanels } from "../drop-unknown-panels"
+import { dropUnknownPanels, onlyKnownPanels } from "../drop-unknown-panels"
 import type { PanelId, PanelLayout, WorkspaceLayout } from "../types"
 
 // ADR 0016 retired these four panes. A workspace saved before then still lists them, and the API returns a saved
@@ -68,5 +68,25 @@ describe("dropUnknownPanels", () => {
     const before = JSON.stringify(input)
     dropUnknownPanels(input)
     expect(JSON.stringify(input)).toBe(before)
+  })
+})
+
+// The last line of defence: TerminalCanvas filters what it is asked to render, so an unknown id that reached it by any route
+// (a stored layout, a broadcast from another window, an API newer than the app) is skipped instead of crashing PaneCode.
+describe("onlyKnownPanels", () => {
+  it("filters out panes the app does not know", () => {
+    const panels = [panel("command"), panel("contradictions"), panel("evidence"), panel("somethingNew")]
+    expect(onlyKnownPanels(panels).map((p) => p.id)).toEqual(["command", "evidence"])
+  })
+
+  it("returns the same array when every pane is known, so memoised callers do not re-render", () => {
+    const panels = [panel("command"), panel("evidence")]
+    expect(onlyKnownPanels(panels)).toBe(panels)
+  })
+
+  it("does not mutate its input", () => {
+    const panels = [panel("command"), panel("verification")]
+    onlyKnownPanels(panels)
+    expect(panels.map((p) => p.id)).toEqual(["command", "verification"])
   })
 })

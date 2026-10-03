@@ -31,6 +31,7 @@ import { PaneActivityMark } from "@/components/terminal/pane-activity"
 import { Pane, PaneCode } from "@/components/terminal/panel-kit"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import type { ArrangementValue, CaseSnapshot, PanelId, PanelLayout } from "@/lib/terminal/types"
+import { onlyKnownPanels } from "@/lib/terminal/drop-unknown-panels"
 
 // "dates" is permanently folded into Evidence & Timeline (TerminalPanelBody renders it as
 // null) — redTeam is a real, addable panel now, not force-hidden the way it used to be.
@@ -1324,7 +1325,7 @@ export function TerminalCanvas({
   caseId,
   stageRef,
   snapshot,
-  visiblePanels,
+  visiblePanels: requestedPanels,
   labelFor,
   panelBadges,
   focusStackSummaries,
@@ -1361,6 +1362,9 @@ export function TerminalCanvas({
   emptyStateAction,
   children,
 }: TerminalCanvasProps) {
+  // Last line of defence: render only panes this version knows. Layouts are cleaned where they are loaded
+  // (dropUnknownPanels), but an unknown id that arrives any other way must not reach PaneCode, which crashes on it.
+  const visiblePanels = useMemo(() => onlyKnownPanels(requestedPanels), [requestedPanels])
   const resizeRef = useRef<ResizeDrag | null>(null)
   const moveRef = useRef<MoveDrag | null>(null)
   // Drag/resize used to call a full layout update on every raw pointermove — a measured cause

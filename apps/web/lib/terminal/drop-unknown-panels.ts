@@ -4,6 +4,13 @@ const KNOWN_PANEL_IDS = new Set<string>(PANEL_IDS)
 
 const isKnown = (id: string | undefined): id is PanelId => id !== undefined && KNOWN_PANEL_IDS.has(id)
 
+/** The panes the app can render. TerminalCanvas applies this to whatever it is given, so an id the app does not know
+ * (a stored layout, a broadcast from another window, an API newer than the app) is skipped and never reaches
+ * PaneCode. Returns the same array when every pane is known. */
+export function onlyKnownPanels(panels: PanelLayout[]): PanelLayout[] {
+  return panels.every((panel) => isKnown(panel.id)) ? panels : panels.filter((panel) => isKnown(panel.id))
+}
+
 /**
  * A stored layout, minus any pane the Terminal no longer has.
  *
