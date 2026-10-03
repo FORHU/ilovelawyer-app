@@ -66,6 +66,7 @@ import type {
   WorkspaceLayout,
 } from "@/lib/terminal/types"
 import { PANEL_TITLES } from "@/lib/terminal/panel-titles"
+import { dropUnknownPanels } from "@/lib/terminal/drop-unknown-panels"
 import { damagesBadge } from "@/lib/terminal/damages-format"
 import { apiFetch } from "@/lib/fetch"
 import { shouldShowUpdatingAnalysis } from "@/lib/terminal/refresh-status"
@@ -112,7 +113,8 @@ function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
     raw.arrangement === "columns" && raw.columnCount === undefined
       ? "free"
       : (raw.arrangement ?? fallback.arrangement ?? "free")
-  return {
+  // A layout saved before ADR 0016 retired four panes still lists them; the API returns it as stored.
+  return dropUnknownPanels({
     preset: raw.preset ?? fallback.preset,
     arrangement,
     panels: raw.panels as PanelLayout[],
@@ -122,7 +124,7 @@ function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
     tabsActiveA: raw.tabsActiveA,
     tabsActiveB: raw.tabsActiveB,
     screenLayouts: raw.screenLayouts,
-  }
+  })
 }
 
 function mergeCatalogPanels(layout: WorkspaceLayout, catalogIds: PanelId[]): WorkspaceLayout {
