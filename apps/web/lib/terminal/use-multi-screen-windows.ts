@@ -9,6 +9,7 @@ import {
   screenIsEmpty,
   sortedSecondaryScreens,
 } from "@/lib/terminal/multi-screen"
+import { announceWindowClosing } from "@/lib/terminal/layout-sync-channel"
 
 // window.screen.isExtended is cheap and permission-free, but still only readable client-side —
 // gates every multi-screen affordance (round-robin button, reopen banner) in both the primary
@@ -65,11 +66,16 @@ export function useCanvasWindowReaper(
 // window closes, so the primary's other multi-screen effects (the reaper above, and
 // useLayoutSyncChannel's "screen-closing" handler) can check it and skip their fallback,
 // leaving the persisted layout's screen assignments untouched for the next reopen-banner restore.
-export function useCloseCanvasWindowsOnUnload(canvasWindowsRef: React.RefObject<Map<number, Window>>): React.RefObject<boolean> {
+//
+// Also broadcasts "terminal-closing" so canvas windows opened by OTHER canvas windows (screen 2+
+// in a 3+ monitor setup — not in this ref) close too; each canvas listens in useLayoutSyncChannel.
+export function useCloseCanvasWindowsOnUnload(caseId: string, canvasWindowsRef: React.RefObject<Map<number, Window>>): React.RefObject<boolean> {
   const unloadingRef = useRef(false)
   useEffect(() => {
+    unloadingRef.current = false // re-armed on remount (Strict Mode runs cleanup right after mount)
     const closeAll = () => {
       unloadingRef.current = true
+      announceWindowClosing(caseId, { type: "terminal-closing" })
       for (const win of canvasWindowsRef.current.values()) win.close()
       canvasWindowsRef.current.clear()
     }
@@ -78,7 +84,7 @@ export function useCloseCanvasWindowsOnUnload(canvasWindowsRef: React.RefObject<
       window.removeEventListener("pagehide", closeAll)
       closeAll()
     }
-  }, [canvasWindowsRef])
+  }, [caseId, canvasWindowsRef])
   return unloadingRef
 }
 
