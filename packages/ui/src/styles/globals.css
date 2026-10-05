@@ -66,6 +66,7 @@
     --color-riskmed: var(--riskmed);
     --color-kind-damage: var(--kind-damage);
     --color-kind-remedy: var(--kind-remedy);
+    --color-fork: var(--fork);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -164,6 +165,9 @@
        contrast against this background and the dark one. */
     --kind-damage: #2a78d6;
     --kind-remedy: #d55181;
+    /* Marks a forked case theory (theories-panel.tsx) — its own hue so it reads apart from the
+       gold "AI proposed" cue and the status colors. */
+    --fork: oklch(0.55 0.17 295);
     /* Claim-attribution highlight colors (see components/shared/attributed-text.tsx) —
        kept as vars, not hardcoded in the component, so dark mode can swap in lighter
        foregrounds instead of the light-mode "700" shades going illegible on near-black. */
@@ -245,6 +249,7 @@
     --riskmed: oklch(0.72 0.17 45);
     --kind-damage: #3987e5;
     --kind-remedy: #d55181;
+    --fork: oklch(0.74 0.13 295);
     /* Light-mode foregrounds are "700" shades tuned for a white background — against
        near-black they fall well under 4.5:1 contrast, so dark mode gets lighter "300"
        shades instead (backgrounds bumped slightly too, to stay visible as a tint). */

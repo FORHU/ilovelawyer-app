@@ -294,6 +294,7 @@
   "editCitation": "인용 수정",
   "deleteCitation": "인용 삭제",
   "deleteCitationConfirm": "이 인용을 삭제할까요?",
+  "deleteFindingConfirm": "이 항목을 삭제할까요?",
   "citationStatus": {
     "VALID": "인용문 일치",
     "INVALID": "인용문 불일치",
@@ -381,6 +382,7 @@
   "noFindings": "아직 기록된 항목이 없습니다. 아래에 추가하거나 분석 새로고침으로 제안을 생성하세요.",
   "aiGenerated": "AI 생성",
   "groundedIn": "출처: {{doc}}",
+  "sceneGapSource": "장면 공백: {{scene}}",
   "opensInNewTab": "새 탭에서 열림",
   "addLegalIssue": "법적 쟁점 추가",
   "findingsUpdating": "사건 문서를 바탕으로 업데이트하는 중…",
@@ -662,6 +664,7 @@
   "panelLibrary": "패널 라이브러리",
   "panelLibraryHint": "패널을 그리드로 끌어다 놓거나 클릭하여 추가하세요.",
   "panelLibraryEmpty": "모든 패널이 이미 그리드에 있습니다.",
+  "panelLibraryNoMatch": "“{{query}}”와(과) 일치하는 창이 없습니다.",
   "settingsTab": "Settings",
   "displayPreferences": "표시 환경설정",
   "highDensityMode": "고밀도 모드",
