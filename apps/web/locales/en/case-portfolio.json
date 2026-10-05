@@ -72,7 +72,17 @@
     "moreIssues": "+{{count}} more in the Workspace",
     "consultations": "Consultations",
     "noConsultations": "No consultations yet.",
-    "openWorkspace": "Open workspace"
+    "openWorkspace": "Open workspace",
+    "addParty": "Add party",
+    "editParty": "Edit {{name}}",
+    "removeParty": "Remove {{name}}",
+    "removePartyConfirm": "Remove {{name}} from this case?",
+    "partyNamePlaceholder": "Full name or company",
+    "partyDesignation": "Designation",
+    "saveParty": "Save",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "partySaveError": "Couldn't save the parties. Try again."
   },
   "tools": {
     "mindMap": "Mind Map",
