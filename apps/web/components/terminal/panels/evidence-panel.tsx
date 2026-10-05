@@ -1,4 +1,5 @@
 import { createElement, useRef, useState } from "react"
+import { ViewDocumentButton } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { ChevronDown, Folder, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -123,6 +124,7 @@ function DocumentRow({
         </span>
         <TerminalRagBadge status={doc.ragStatus} />
       </button>
+      <ViewDocumentButton docId={doc.id} />
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -130,7 +132,7 @@ function DocumentRow({
             disabled={isDeleting}
             onClick={onDelete}
             aria-label={t("removeDocument", { documentName: doc.name })}
-            className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             {isDeleting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

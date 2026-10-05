@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, FileText, Loader2, Pencil, Quote, Save, Sparkles, Volume2 } from "lucide-react"
 import gsap from "gsap"
@@ -634,7 +635,7 @@ function EventRow({
         <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="truncate" title={docName ?? undefined}>
-            {docName}
+            <DocumentLink docId={event.sourceRef.docId}>{docName}</DocumentLink>
           </span>
           {event.sourceRef.page != null && <span className="shrink-0">· p.{event.sourceRef.page}</span>}
         </p>
@@ -840,7 +841,7 @@ function StoryboardView({
                   <p className="flex items-center gap-1.5 font-medium text-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={docNameById.get(ref.docId) ?? t("archivedDocument")}>
-                      {docNameById.get(ref.docId) ?? t("archivedDocument")}
+                      <DocumentLink docId={ref.docId}>{docNameById.get(ref.docId) ?? t("archivedDocument")}</DocumentLink>
                     </span>
                     {ref.page != null && (
                       <span className="shrink-0 text-muted-foreground">

@@ -344,6 +344,7 @@
   "pageCountShort": "{{n}}쪽",
   "sheetLabel": "시트 1개",
   "sheetCount": "시트 {{n}}개",
+  "viewDocument": "View document",
   "archivedDocument": "보관된 문서",
   "noSourceDocument": "출처 미기록 — 타임라인을 다시 생성하면 연결됩니다",
   "sourceCalendar": "캘린더에서 추가",

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
@@ -315,7 +316,7 @@ export function CaseTimelineView({
                         <p
                           className="mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground"
                         >
-                          {sourceLabel(item, tone, sourceDoc)}
+                          <DocumentLink docId={item.documentId}>{sourceLabel(item, tone, sourceDoc)}</DocumentLink>
                         </p>
                         {item.rawId && !isEditing ? (
                           <button
@@ -384,7 +385,7 @@ export function CaseTimelineView({
                             <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
                           ) : null}
                           <p className="mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground">
-                            {sourceLabel(item, tone, sourceDoc)}
+                            <DocumentLink docId={item.documentId}>{sourceLabel(item, tone, sourceDoc)}</DocumentLink>
                           </p>
                         </div>
                       </li>

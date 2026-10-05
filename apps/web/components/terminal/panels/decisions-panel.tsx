@@ -100,7 +100,7 @@ function DecisionCard({
       )}
 
       <div className="w-full">
-        <DecisionDetailBody payload={p} caseId={caseId} />
+        <DecisionDetailBody payload={p} />
       </div>
 
       <div className="flex w-full flex-wrap items-center justify-end gap-2">

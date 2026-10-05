@@ -2,8 +2,8 @@ import { CheckCircle2, ExternalLink, Info, Quote, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@workspace/ui/components/badge"
 import type { DecisionAlternative, DecisionEvidence, DecisionRecordPayload, DecisionRule } from "@/lib/terminal/types"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { displayDocumentLabel } from "@/lib/chat/document-label"
-import { documentViewerHref } from "@/lib/terminal/document-viewer"
 
 export const CONFIDENCE_KEYS: Record<DecisionRecordPayload["confidence"], string> = {
   high: "decisionConfidenceHigh",
@@ -37,15 +37,10 @@ export function EvidenceItem({
   evidence,
   onClick,
   active = false,
-  href,
 }: {
   evidence: DecisionEvidence
   onClick?: () => void
   active?: boolean
-  /** Opens the cited document in the Document Viewer tab (documentViewerHref). Alongside
-   * `onClick` only the file name opens it — the rest of the row still jumps to the quote, the
-   * same split RuleItem makes for its title link. */
-  href?: string | null
 }) {
   const { t } = useTranslation("terminal")
   const label = displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))
@@ -77,22 +72,11 @@ export function EvidenceItem({
          * CROWN-MED-001_Forensic_Medical_Report.pdf otherwise wraps mid-token and strands the
          * "· paragraph N" pinpoint beside it. */}
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-          {href ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              title={t("decisionOpenDocument", { doc: label })}
-              className="group/doc min-w-0 rounded-sm font-medium text-foreground wrap-anywhere decoration-dotted underline-offset-2 hover:text-brand-gold hover:underline focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none"
-            >
+          <span className="min-w-0 font-medium text-foreground wrap-anywhere">
+            <DocumentLink docId={evidence.docId} name={evidence.doc}>
               {label}
-              <ExternalLink className="ml-1 inline h-2.5 w-2.5 align-baseline text-muted-foreground group-hover/doc:text-brand-gold" aria-hidden="true" />
-            </a>
-          ) : (
-            <span className="min-w-0 font-medium text-foreground wrap-anywhere">{label}</span>
-          )}
+            </DocumentLink>
+          </span>
           {evidence.pinpoint && (
             <span className="min-w-0 max-w-full rounded bg-muted px-1.5 text-[10.5px] leading-4 text-muted-foreground wrap-break-word dark:bg-overlay-hover">
               {evidence.pinpoint}
@@ -183,11 +167,8 @@ function AlternativeItem({ alternative, rejectedWhyLabel }: { alternative: Decis
  * `verified` flag here was set by chat-wonder-v2-api's audit, never re-derived client-side. */
 export function DecisionDetailBody({
   payload,
-  caseId,
 }: {
   payload: DecisionRecordPayload
-  /** Set by the Terminal's Decisions panel: each cited document then opens in the Document Viewer. */
-  caseId?: string
 }) {
   const { t } = useTranslation("terminal")
 
@@ -228,7 +209,7 @@ export function DecisionDetailBody({
               <Label>{t("decisionEvidenceFor")}</Label>
               <ul className="space-y-2.5">
                 {evidenceFor.map((ev, i) => (
-                  <EvidenceItem key={i} evidence={ev} href={caseId ? documentViewerHref(caseId, ev) : null} />
+                  <EvidenceItem key={i} evidence={ev} />
                 ))}
               </ul>
             </div>
@@ -238,7 +219,7 @@ export function DecisionDetailBody({
               <Label>{t("decisionEvidenceAgainst")}</Label>
               <ul className="space-y-2.5">
                 {evidenceAgainst.map((ev, i) => (
-                  <EvidenceItem key={i} evidence={ev} href={caseId ? documentViewerHref(caseId, ev) : null} />
+                  <EvidenceItem key={i} evidence={ev} />
                 ))}
               </ul>
             </div>
