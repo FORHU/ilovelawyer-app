@@ -45,6 +45,7 @@ import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
 import { LayoutBuilderModal } from "@/components/terminal/layout-builder-modal"
 import { createPanelPlacementActions } from "@/lib/terminal/panel-placement"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
+import { DocumentViewerProvider } from "@/components/shared/document-viewer"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import {
@@ -724,6 +725,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   return (
     <PaneActivityContext.Provider value={paneActivity}>
+    <DocumentViewerProvider caseId={caseId}>
     <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
         {/* Case row */}
         <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
@@ -1098,6 +1100,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       </div>
     </div>
+    </DocumentViewerProvider>
     </PaneActivityContext.Provider>
   )
 }

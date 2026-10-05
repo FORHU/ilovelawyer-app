@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
 import { daysUntil } from "@/lib/terminal/damages-format"
 import gsap from "gsap"
@@ -207,9 +208,13 @@ export function ProcedurePanel({
                     : t("groundedIn", { doc: item.sourceLabel })
                 }
               >
-                {item.sourceKind === "SCENE"
-                  ? t("sceneGapSource", { scene: item.sourceLabel })
-                  : t("groundedIn", { doc: item.sourceLabel })}
+                {item.sourceKind === "SCENE" ? (
+                  t("sceneGapSource", { scene: item.sourceLabel })
+                ) : item.sourceKind ? (
+                  t("groundedIn", { doc: item.sourceLabel })
+                ) : (
+                  <DocumentLink name={item.sourceLabel}>{t("groundedIn", { doc: item.sourceLabel })}</DocumentLink>
+                )}
               </span>
             </span>
           )}
@@ -292,7 +297,7 @@ export function ProcedurePanel({
                   <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
-                      {t("groundedIn", { doc: item.sourceLabel })}
+                      <DocumentLink name={item.sourceLabel}>{t("groundedIn", { doc: item.sourceLabel })}</DocumentLink>
                     </span>
                   </span>
                 )}

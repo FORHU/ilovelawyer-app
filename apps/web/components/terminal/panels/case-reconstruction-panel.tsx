@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, FileText, Loader2, Pencil, Quote, Save, Sparkles, Volume2 } from "lucide-react"
 import gsap from "gsap"
@@ -613,7 +614,13 @@ function EventRow({
   const { t } = useTranslation("terminal")
   const dateLabel = formatEventDate(event.date)
   const docName = event.sourceRef ? (docNameById.get(event.sourceRef.docId) ?? t("archivedDocument")) : null
-  const otherDocNames = (ids: string[]) => ids.map((id) => docNameById.get(id) ?? t("archivedDocument")).join(", ")
+  const otherDocs = (ids: string[]) =>
+    ids.map((id, i) => (
+      <Fragment key={id}>
+        {i > 0 ? ", " : null}
+        <DocumentLink docId={id}>{docNameById.get(id) ?? t("archivedDocument")}</DocumentLink>
+      </Fragment>
+    ))
 
   return (
     <li className="rounded-md border border-border px-3 py-2.5">
@@ -634,7 +641,7 @@ function EventRow({
         <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="truncate" title={docName ?? undefined}>
-            {docName}
+            <DocumentLink docId={event.sourceRef.docId}>{docName}</DocumentLink>
           </span>
           {event.sourceRef.page != null && <span className="shrink-0">· p.{event.sourceRef.page}</span>}
         </p>
@@ -651,13 +658,13 @@ function EventRow({
         <p className="mt-1 text-[10px] text-muted-foreground">
           {event.corroboratedBy?.length ? (
             <>
-              {t("eventCorroboratedBy")} <span className="text-ok">{otherDocNames(event.corroboratedBy)}</span>
+              {t("eventCorroboratedBy")} <span className="text-ok">{otherDocs(event.corroboratedBy)}</span>
             </>
           ) : null}
           {event.corroboratedBy?.length && event.contradictedBy?.length ? " · " : null}
           {event.contradictedBy?.length ? (
             <>
-              {t("eventContradictedBy")} <span className="text-danger">{otherDocNames(event.contradictedBy)}</span>
+              {t("eventContradictedBy")} <span className="text-danger">{otherDocs(event.contradictedBy)}</span>
             </>
           ) : null}
         </p>
@@ -840,7 +847,7 @@ function StoryboardView({
                   <p className="flex items-center gap-1.5 font-medium text-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={docNameById.get(ref.docId) ?? t("archivedDocument")}>
-                      {docNameById.get(ref.docId) ?? t("archivedDocument")}
+                      <DocumentLink docId={ref.docId}>{docNameById.get(ref.docId) ?? t("archivedDocument")}</DocumentLink>
                     </span>
                     {ref.page != null && (
                       <span className="shrink-0 text-muted-foreground">

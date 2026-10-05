@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { Check, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import {
@@ -310,7 +311,7 @@ export function RatedFindingPanel({
                           <span className="inline-flex min-w-0 items-center gap-1">
                             <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                             <span className="truncate" title={f.sourceLabel}>
-                              {t("groundedIn", { doc: f.sourceLabel })}
+                              <DocumentLink name={f.sourceLabel}>{t("groundedIn", { doc: f.sourceLabel })}</DocumentLink>
                             </span>
                           </span>
                         ) : null}

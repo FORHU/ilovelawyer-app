@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { Loader2, Sparkles, Trash2 } from "lucide-react"
 import {
@@ -252,9 +253,13 @@ export function WitnessPanel({
                     {w.contact ? <p className="mt-1 text-[13px] text-muted-foreground">{w.contact}</p> : null}
                     {aiFound ? (
                       <p className={`mt-1 ${labelTextClass}`}>
-                        {w.sourceDocument
-                          ? t("witnessFoundIn", { doc: w.sourceDocument.name })
-                          : t("witnessFoundByAi")}
+                        {w.sourceDocument ? (
+                          <DocumentLink docId={w.sourceDocument.id} name={w.sourceDocument.name}>
+                            {t("witnessFoundIn", { doc: w.sourceDocument.name })}
+                          </DocumentLink>
+                        ) : (
+                          t("witnessFoundByAi")
+                        )}
                         {w.sourceQuote ? (
                           <>
                             {" · "}
@@ -412,7 +417,11 @@ export function WitnessPanel({
                               <span className="not-italic">
                                 {" \u2014 "}
                                 {f.quoteVerified
-                                  ? t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })
+                                  ? (
+                                    <DocumentLink name={f.documentName}>
+                                      {t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })}
+                                    </DocumentLink>
+                                  )
                                   : t("witnessFactorQuoteMissing")}
                               </span>
                             </blockquote>
@@ -560,7 +569,9 @@ export function WitnessPanel({
                           {doneItem ? (
                             <>
                               <p className={`mt-1 ${labelTextClass}`}>
-                                {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                <DocumentLink docId={doneItem.documentId}>
+                                  {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                </DocumentLink>
                                 {" \u00b7 "}
                                 <span className={confirmed ? "text-emerald-500" : "text-amber-500"}>
                                   {confirmed ? t("witnessProofMatches") : t("witnessProofUnconfirmed")}

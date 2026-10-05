@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import {
   useAiJobStatus,
   useUpdateContradictionMutation,
@@ -212,12 +213,12 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px]">
                     {[
-                      { doc: left, excerpt: m.leftExcerpt, value: m.leftValue },
-                      { doc: right, excerpt: m.rightExcerpt, value: m.rightValue },
+                      { doc: left, docId: edge.source, excerpt: m.leftExcerpt, value: m.leftValue },
+                      { doc: right, docId: edge.target, excerpt: m.rightExcerpt, value: m.rightValue },
                     ].map((side, i) => (
                       <div key={i}>
                         <p className={labelTextClass}>
-                          {side.doc} · <span className={tone.text}>{formatContradictionValue(m.kind, side.value)}</span>
+                          <DocumentLink docId={side.docId}>{side.doc}</DocumentLink> · <span className={tone.text}>{formatContradictionValue(m.kind, side.value)}</span>
                         </p>
                         <p className="mt-0.5 leading-5 text-foreground">
                           {side.excerpt ? `“${side.excerpt}”` : t("contradictionNoExcerpt")}
