@@ -5,6 +5,7 @@ import { RatedFindingPanel, modelTagLabelKey, type RatedFindingConfig } from "@/
 
 const STRENGTHS: RatedFindingConfig = {
   category: "STRENGTH",
+  regenerate: "STRENGTH",
   introKey: "strengthsIntro",
   addKey: "addStrength",
   detailPlaceholderKey: "strengthDetailPlaceholder",

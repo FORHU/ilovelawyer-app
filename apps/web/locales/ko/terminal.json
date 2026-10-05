@@ -386,6 +386,8 @@
   "opensInNewTab": "새 탭에서 열림",
   "addLegalIssue": "법적 쟁점 추가",
   "findingsUpdating": "사건 문서를 바탕으로 업데이트하는 중…",
+  "regenerateFindingsHint": "사건 문서에서 이 패널의 AI 항목만 다시 작성합니다. 직접 수정한 항목은 유지되며 다른 패널은 바뀌지 않습니다.",
+  "regenerateFindingsBusy": "사건 분석이 이미 업데이트 중입니다. 끝난 후 다시 시도하세요.",
   "legalIssuesIntro": "재판부가 판단해야 할 미결 쟁점.",
   "issueContested": "다툼 있음",
   "issueBriefing": "서면 준비 중",

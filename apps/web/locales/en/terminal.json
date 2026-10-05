@@ -417,6 +417,8 @@
   "opensInNewTab": "opens in a new tab",
   "addLegalIssue": "Add a legal issue",
   "findingsUpdating": "Updating from the case documents…",
+  "regenerateFindingsHint": "Rewrite this panel's AI items from the case documents. Items you've edited stay, and no other panel changes.",
+  "regenerateFindingsBusy": "The case's analysis is already updating — try again when it finishes.",
   "legalIssuesIntro": "Open questions the tribunal will have to reach.",
   "issueContested": "Contested",
   "issueBriefing": "Briefing",
