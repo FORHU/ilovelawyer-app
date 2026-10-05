@@ -139,7 +139,17 @@
     "deleteConsultation": "Tanggalin",
     "deleteConsultationNamed": "Tanggalin ang {{name}}",
     "deleteConsultationConfirm": "Tanggalin ang konsultasyong ito? Hindi na ito maibabalik.",
-    "collapseSidebar": "I-collapse ang sidebar"
+    "collapseSidebar": "I-collapse ang sidebar",
+    "newConsultation": "Bagong konsultasyon",
+    "draft": "Draft · hindi pa naka-save",
+    "discardDraft": "Itapon ang draft",
+    "you": "Ikaw",
+    "loadingConsultations": "Nilo-load ang mga konsultasyon…",
+    "noConsultations": "Wala pang konsultasyon",
+    "deleteConsultationFailed": "Hindi ma-delete ang konsultasyong ito.",
+    "consultationNotFound": "Ang konsultasyong iyon ay hindi bahagi ng kasong ito.",
+    "showTopics": "Ipakita ang mga paksa sa {{name}}",
+    "hideTopics": "Itago ang mga paksa sa {{name}}"
   },
   "grounding": {
     "summary": "{{checked}} claims checked against the bundle · {{problems}} need attention",

@@ -67,7 +67,8 @@
     "moreIssues": "+{{count}} more in the Workspace",
     "consultations": "Consultations",
     "noConsultations": "No consultations yet.",
-    "openWorkspace": "Open workspace"
+    "openWorkspace": "Open workspace",
+    "newConsultation": "New consultation"
   },
   "tools": {
     "mindMap": "Mind Map",
@@ -349,7 +350,9 @@
       "failed": "Failed",
       "scriptOnly": "Script only"
     },
-    "mindMapNoConsultation": "Start a chat to generate a mind map."
+    "mindMapNoConsultation": "Start a chat to generate a mind map.",
+    "consultationsSectionTitle": "Consultations",
+    "topicsLoading": "Loading topics…"
   },
   "mindMapExpand": {
     "button": "Expand",

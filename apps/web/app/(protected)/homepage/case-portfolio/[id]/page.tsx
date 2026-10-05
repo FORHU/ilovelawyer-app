@@ -16,6 +16,7 @@ import type { SnapshotRisk } from "@/lib/terminal/types";
 import { openFindings } from "@/lib/terminal/case-summary-view";
 import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
 import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
+import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -485,13 +486,25 @@ function OverviewTab({
         <Card
           title={t("overview.consultations")}
           headerRight={
-            <button
-              type="button"
-              onClick={onOpenWorkspace}
-              className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              {t("overview.openWorkspace")}
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Opens the Case's draft Consultation in the Workspace (`?c=new`) — nothing is
+               * saved until its first message. */}
+              <button
+                type="button"
+                onClick={() => onOpenConsultation(DRAFT_CONSULTATION_PARAM)}
+                className="p-2 -m-2 flex items-center gap-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Plus className="h-3 w-3" aria-hidden="true" />
+                {t("overview.newConsultation")}
+              </button>
+              <button
+                type="button"
+                onClick={onOpenWorkspace}
+                className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {t("overview.openWorkspace")}
+              </button>
+            </div>
           }
         >
           {isConsultationsLoading ? (

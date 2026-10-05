@@ -68,6 +68,8 @@ import {
 import { chatKeys } from "@/lib/query-keys";
 import { generateId } from "@/lib/id";
 import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
+import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
+import { DRAFT_CONSULTATION_PARAM, consultationIdFromParam, isDraftConsultationParam, isForeignConsultation } from "@/lib/chat/consultation-param";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 // Copy for the composer's transcribing indicator, keyed off the same media-queue
@@ -476,10 +478,19 @@ export default function ConsultationChat({
   // See isolateConsultation's doc comment above — only set for panes that can be mounted
   // alongside another ConsultationChat sharing the same page URL.
   const [localConsultationId, setLocalConsultationId] = useState<string | null>(null);
-  const urlConsultationId = isolateConsultation ? localConsultationId : searchParams.get("c");
+  const consultationParam = isolateConsultation ? localConsultationId : searchParams.get("c");
   const queryClient = useQueryClient();
 
-  const consultationId = urlConsultationId;
+  const consultationId = consultationIdFromParam(consultationParam);
+  // A Case's URL-driven chat (Case Workspace) can sit on its unsaved draft (`?c=new`, see
+  // consultation-drafts.store.ts) — saved nowhere but this browser until its first message.
+  // Not for Terminal's isolated panes (no URL to hold it) or the case-less /homepage chat.
+  const draftEnabled = Boolean(caseId) && !isolateConsultation;
+  const isDraft = draftEnabled && isDraftConsultationParam(consultationParam);
+  const { draft, hydrated: draftsHydrated } = useConsultationDraft(draftEnabled ? caseId : undefined);
+  const ensureDraft = useConsultationDraftsStore((s) => s.ensureDraft);
+  const updateDraft = useConsultationDraftsStore((s) => s.updateDraft);
+  const clearDraft = useConsultationDraftsStore((s) => s.clearDraft);
   // doSend's fetch/stream-reading loop isn't tied to this component's lifecycle (see
   // sendTokenRef's doc comment below) — switching away from this consultation (e.g. to
   // another case-terminal panel, which unmounts this whole component) doesn't cancel the
@@ -582,7 +593,7 @@ export default function ConsultationChat({
   const createConsultation = useCreateConsultationMutation();
   const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
   const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
-  const { data: caseConsultations } = useConsultationsQuery(caseId);
+  const { data: caseConsultations, isFetching: isFetchingCaseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
   const mindMapJob = useAiJobStatus(caseId ?? "", "mindMap");
   const isGeneratingMindMap = isSending || mindMapJob.data?.status === "IN_PROGRESS";
@@ -927,7 +938,9 @@ export default function ConsultationChat({
   const autoSelectedRef = useRef(false);
   useEffect(() => {
     if (!caseId || autoSelectedRef.current) return;
-    if (consultationId) {
+    // `?c=new` is an explicit "New consultation" — including after a refresh — never "no
+    // selection yet", so it's not redirected away from either.
+    if (consultationId || isDraft) {
       autoSelectedRef.current = true;
       return;
     }
@@ -937,7 +950,7 @@ export default function ConsultationChat({
     if (mostRecent) {
       navigateToConsultation(mostRecent.id);
     }
-  }, [caseId, consultationId, caseConsultations, navigateToConsultation]);
+  }, [caseId, consultationId, isDraft, caseConsultations, navigateToConsultation]);
 
   // CSS max-h-[50vh] on the textarea (below) is the actual visual cap — the browser clamps
   // to it and shows a scrollbar regardless of what height gets set here, so this can just
@@ -1033,6 +1046,68 @@ export default function ConsultationChat({
     onScrolledToPrompt?.();
   }, [scrollToPromptNumber, visibleMessages, onScrolledToPrompt]);
 
+  // Switching consultations from OUTSIDE this component (Case Workspace's switcher, an Overview
+  // link, deleting the open one) only changes `?c=` — handleSelectConsultation/handleNewChat never
+  // run. Without this, a send still in flight in the previous consultation left `isSending` set,
+  // locking the new one's composer until that unrelated reply finished, and left
+  // resolvedConsultationIdRef pointing at the previous consultation, so an attachment uploaded
+  // here would have landed there. The one change that is NOT a switch: null → the id this mount
+  // just created for its first message — the same thread, whose stream must keep going.
+  const previousConsultationIdRef = useRef(consultationId);
+  useEffect(() => {
+    const previous = previousConsultationIdRef.current;
+    previousConsultationIdRef.current = consultationId;
+    if (previous === consultationId) return;
+    if (consultationId && consultationId === resolvedConsultationIdRef.current) return;
+    sendTokenRef.current++;
+    setPendingUrlConsultationId(null);
+    resolvedConsultationIdRef.current = null;
+    consultationCreationRef.current = null;
+    setIsSending(false);
+    setIsFinalizing(false);
+  }, [consultationId]);
+
+  // A `?c=` this Case's list doesn't contain — another Case's consultation (a pasted or stale
+  // link) or one deleted since — must not render here: its messages and Topics would show under
+  // this Case's header, and a send would go to that other Case's thread. Waits for the list to
+  // settle so a refetch in flight can't trigger it, and skips the consultation this mount just
+  // created (seeded into the list too — see useCreateConsultationMutation).
+  useEffect(() => {
+    if (!caseId || isolateConsultation || isFetchingCaseConsultations) return;
+    if (!isForeignConsultation(consultationId, caseConsultations, [resolvedConsultationIdRef.current, pendingUrlConsultationId])) return;
+    toast.error(t("sidebar.consultationNotFound"));
+    navigateToConsultation(caseConsultations?.[0]?.id ?? null);
+  }, [caseId, isolateConsultation, consultationId, caseConsultations, isFetchingCaseConsultations, pendingUrlConsultationId, navigateToConsultation, t]);
+
+  // The draft (`?c=new`): kept saved as it's typed, once its saved text has been put back (below).
+  // Declared before the restore so that, in the pass where the draft opens, this still sees the
+  // previous composer text with the restore not yet armed — and can't save that text over it.
+  const restoredDraftRef = useRef(false);
+  useEffect(() => {
+    if (isDraft && caseId && restoredDraftRef.current) updateDraft(caseId, { text: inputMessage });
+  }, [isDraft, caseId, inputMessage, updateDraft]);
+
+  // Make sure the draft exists (a refreshed or pasted `?c=new` link) and put its unsent text in
+  // the composer, once per visit — after hydration, so a draft that's only still loading from
+  // storage isn't mistaken for an empty one. Replaces whatever was in the composer: text typed in
+  // another consultation stays with that one, not the draft. Leaving the draft takes its text
+  // with it (below).
+  useEffect(() => {
+    if (!isDraft || !caseId || !draftsHydrated) {
+      if (!isDraft) restoredDraftRef.current = false;
+      return;
+    }
+    ensureDraft(caseId);
+    if (restoredDraftRef.current) return;
+    restoredDraftRef.current = true;
+    setInputMessage(useConsultationDraftsStore.getState().drafts[caseId]?.text ?? "");
+  }, [isDraft, caseId, draftsHydrated, ensureDraft]);
+  const wasDraftRef = useRef(isDraft);
+  useEffect(() => {
+    if (wasDraftRef.current && !isDraft && !resolvedConsultationIdRef.current) setInputMessage("");
+    wasDraftRef.current = isDraft;
+  }, [isDraft]);
+
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
     setPendingUrlConsultationId(null);
@@ -1041,7 +1116,7 @@ export default function ConsultationChat({
     setIsSending(false);
     setIsFinalizing(false);
     setActiveTab("chat");
-    navigateToConsultation(null);
+    navigateToConsultation(draftEnabled ? DRAFT_CONSULTATION_PARAM : null);
   };
 
   const handleSelectConsultation = (id: string) => {
@@ -1065,7 +1140,11 @@ export default function ConsultationChat({
     if (resolvedConsultationIdRef.current) return resolvedConsultationIdRef.current;
     if (!consultationCreationRef.current) {
       consultationCreationRef.current = (async () => {
-        const consultation = await createConsultation.mutateAsync({ caseId });
+        // A draft's title rides along (the AI then leaves it alone — see titleSource); the draft
+        // itself is done once its real Consultation exists.
+        const title = isDraft ? draft?.title.trim() || undefined : undefined;
+        const consultation = await createConsultation.mutateAsync({ caseId, title });
+        if (isDraft && caseId) clearDraft(caseId);
         resolvedConsultationIdRef.current = consultation.id;
         setPendingUrlConsultationId(consultation.id);
         navigateToConsultation(consultation.id);
@@ -2078,6 +2157,8 @@ export default function ConsultationChat({
 
   {!embedded && hasTopics && (
         <TopicNavigator
+          // Per consultation: its prompt-group toggles are keyed by prompt index, reused by every thread.
+          key={consultationId ?? "none"}
           groups={splitTopicGroups}
           activeIndex={activeTopicIndex}
           expanded={topicPanelExpanded}
@@ -2102,8 +2183,8 @@ export default function ConsultationChat({
          * already renders its own ThreadPicker above this component — see case-workspace.tsx).
          * Gated on isolateConsultation specifically, not embedded: Case Workspace's chat is
          * embedded too, and would otherwise get this a second time, stacked on top of its own
-         * picker. A Case's chat is a single thread (see thread-picker.tsx), so this is just a
-         * label of what's open, not a switcher — there's nothing else here to reach past. */}
+         * picker. Here it stays a plain label of what's open, not the Case Workspace's switcher:
+         * this pane tracks its consultation in local state, not the `?c=` the switcher drives. */}
         {isolateConsultation && !mindMapOnly && caseId && (
           <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
             <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />

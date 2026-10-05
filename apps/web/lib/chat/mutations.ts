@@ -16,6 +16,12 @@ export interface Consultation {
   title: string | null
   caseId: string | null
   createdAt: string
+  /** Newest message's time — the list's sort key (null with no messages yet). List responses
+   * only; a just-created row (POST) has none of these three. */
+  lastMessageAt?: string | null
+  messageCount?: number
+  /** Who started it — a Case's Consultations are shared with everyone on the Case. */
+  createdBy?: { id: string; name: string | null; username: string } | null
 }
 
 export type MessageRole = "user" | "assistant" | "system"
@@ -199,14 +205,21 @@ export function useCreateConsultationMutation() {
         method: "POST",
         body: JSON.stringify({ title, caseId }),
       }),
-    onSuccess: () => {
+    onSuccess: (consultation, variables) => {
+      const caseId = variables?.caseId
+      // Seeded before the refetch so the new row is in its list the moment the caller navigates
+      // to it — ConsultationChat treats a `?c=` its Case's list doesn't contain as a foreign link
+      // (see isForeignConsultation) and would otherwise bounce off its own new consultation.
+      queryClient.setQueryData<Consultation[]>(chatKeys.consultations(caseId), (list) =>
+        list && !list.some((c) => c.id === consultation.id) ? [consultation, ...list] : list,
+      )
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
   })
 }
 
-/** Lists the current user's consultations, most recently created first. Pass `caseId` to
- * scope the list to a single case's consultations instead of every consultation. */
+/** Lists consultations, most recently active first. Pass `caseId` for one Case's consultations
+ * (everyone's on that Case); without it, only standalone ones. */
 export function useConsultationsQuery(caseId?: string) {
   return useQuery({
     queryKey: chatKeys.consultations(caseId),

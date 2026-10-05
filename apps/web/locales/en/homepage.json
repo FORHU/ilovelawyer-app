@@ -143,7 +143,17 @@
     "deleteConsultation": "Delete",
     "deleteConsultationNamed": "Delete {{name}}",
     "deleteConsultationConfirm": "Delete this consultation? This can't be undone.",
-    "collapseSidebar": "Collapse sidebar"
+    "collapseSidebar": "Collapse sidebar",
+    "newConsultation": "New consultation",
+    "draft": "Draft · not saved yet",
+    "discardDraft": "Discard draft",
+    "you": "You",
+    "loadingConsultations": "Loading consultations…",
+    "noConsultations": "No consultations yet",
+    "deleteConsultationFailed": "Couldn't delete this consultation.",
+    "consultationNotFound": "That consultation isn't part of this case.",
+    "showTopics": "Show topics in {{name}}",
+    "hideTopics": "Hide topics in {{name}}"
   },
   "grounding": {
     "summary": "{{checked}} claims checked against the bundle · {{problems}} need attention",
