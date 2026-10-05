@@ -62,7 +62,9 @@ export default function TerminalCanvasWindowPage() {
   const canvasWindowsRef = useRef<Map<number, Window>>(new Map())
   const isExtendedScreen = useIsExtendedScreen()
 
-  useCanvasWindowReaper(canvasWindowsRef, setLayout)
+  // Flipped by a "terminal-closing" broadcast — see useLayoutSyncChannel's closeOnTerminalClosing.
+  const unloadingRef = useRef(false)
+  useCanvasWindowReaper(canvasWindowsRef, setLayout, unloadingRef)
 
   // Instant cross-window layout sync + close notifications, additive to the poll above — see
   // lib/terminal/layout-sync-channel.ts.
@@ -74,6 +76,8 @@ export default function TerminalCanvasWindowPage() {
     lastSavedLayoutRef,
     canvasWindowsRef,
     setWorkspaceId,
+    unloadingRef,
+    closeOnTerminalClosing: true,
   })
 
   // This window closing is itself the signal the primary window (or any other window) needs to
@@ -86,6 +90,12 @@ export default function TerminalCanvasWindowPage() {
   // window's closure, or the persisted layout silently reverts to an older state.
   useEffect(() => {
     const onHide = () => {
+      // Closing a canvas also closes every canvas it opened further out (screen N -> N+1 ...), so
+      // no window outlives its opener. The primary falls their panels back to screen 0 via the
+      // children's own "screen-closing" broadcasts.
+      unloadingRef.current = true
+      for (const win of canvasWindowsRef.current.values()) win.close()
+      canvasWindowsRef.current.clear()
       announceWindowClosing(caseId, { type: "screen-closing", screenIndex })
       const pending = pendingSaveRef.current
       if (!pending) return

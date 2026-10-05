@@ -230,7 +230,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // when it goes away. unloadingRef flips true right before that happens, so the reaper and the
   // sync channel below can skip reacting to the close-echo it causes — see the hook's own doc
   // comment for why that echo is otherwise destructive.
-  const unloadingRef = useCloseCanvasWindowsOnUnload(canvasWindowsRef)
+  const unloadingRef = useCloseCanvasWindowsOnUnload(caseId, canvasWindowsRef)
 
   // Only reliable cross-window signal a canvas window gives its opener without any cooperation
   // from the popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
