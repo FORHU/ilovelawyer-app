@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, type ComponentType } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
-import { Check, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import { Check, FileText, Loader2, Paperclip, RefreshCw, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import {
   useAiJobStatus,
   useCreateFindingMutation,
   useCreateRiskMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
+  useRegenerateFindingsMutation,
   useUpdateFindingMutation,
 } from "@/lib/terminal/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
@@ -60,7 +61,8 @@ export interface RatedFindingConfig {
   doneTag?: FindingTag
   /** Sub-line when the row has no detail of its own (Strengths: the source document). */
   detailFallback?(finding: CaseFinding): string | null
-  /** Dim the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out). */
+  /** Mute the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out) —
+   * pair it with a subHintKey that says why. */
   dimSubLine?(jev: unknown): boolean
   /** Show the ▲ impact number, and which direction of it is bad. */
   impact?: { badWhenUp: boolean; titleKey: string }
@@ -80,6 +82,8 @@ export interface RatedFindingConfig {
    * (keep in step with ilovelawyer-api utils/procedure-link.ts). `todoLabel` is the task the
    * to-do should say, when that isn't the row's own label. */
   checklist?: { fixedTag?: FindingTag; todoLabel?(finding: CaseFinding, t: TFunction<"terminal">): string }
+  /** Show a Regenerate button that rewrites only this panel's AI rows (Weaknesses, Strengths). */
+  regenerate?: "WEAKNESS" | "STRENGTH"
 }
 
 const UNRATED = { tone: "neutral" as Tone, label: "findingUnrated" }
@@ -100,6 +104,45 @@ function byPanelOrder(doneTag: FindingTag | undefined) {
 // The shared body of the panels whose rows carry a pill, a sub-line and Jev's check: an intro, the
 // done-share ring and tag mix, rows that expand to set the pill, edit the sub-line, read Jev's
 // check and run one on request, and the add form. Each panel supplies its rows and its config.
+/** Regenerates only this panel's AI rows — no other panel, and not the rest of the case analysis.
+ * Disabled while the whole case's findings are updating (`busy`), which rewrites this panel anyway. */
+function RegenerateFindingsButton({
+  caseId,
+  category,
+  busy,
+}: {
+  caseId: string
+  category: "WEAKNESS" | "STRENGTH"
+  busy: boolean
+}) {
+  const { t } = useTranslation("terminal")
+  const regenerate = useRegenerateFindingsMutation(caseId, category)
+  const job = useAiJobStatus(caseId, category === "WEAKNESS" ? "weaknessRegenerate" : "strengthRegenerate")
+  const running = regenerate.isPending || job.data?.status === "IN_PROGRESS"
+  const error = regenerate.error as (Error & { status?: number }) | null
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={() => regenerate.mutate()}
+        disabled={running || busy}
+        title={t("regenerateFindingsHint")}
+        className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:cursor-wait disabled:no-underline disabled:opacity-50"
+      >
+        {running ? (
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+        ) : (
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+        )}
+        {running ? t("generating") : t("regenerate")}
+      </button>
+      <MutationError show={regenerate.isError || job.data?.status === "FAILED"}>
+        {error?.status === 409 ? t("regenerateFindingsBusy") : undefined}
+      </MutationError>
+    </div>
+  )
+}
+
 export function RatedFindingPanel({
   caseId,
   items,
@@ -171,7 +214,14 @@ export function RatedFindingPanel({
 
   return (
     <PanelBody gap="3">
-      <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+      {config.regenerate ? (
+        <div className="flex items-start justify-between gap-3">
+          <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+          <RegenerateFindingsButton caseId={caseId} category={config.regenerate} busy={updating} />
+        </div>
+      ) : (
+        <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+      )}
       {updating ? (
         <p className={cn("inline-flex items-center gap-1.5", catalogBlurbClass)} role="status">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -234,7 +284,8 @@ export function RatedFindingPanel({
                     </span>
                     {subLine || hint ? (
                       <span className={catalogSubClass}>
-                        {subLine ? <span className={cn(dim && "line-through opacity-60")}>{subLine}</span> : null}
+                        {/* Muted, not struck through: the review couldn't confirm it, which isn't the same as wrong. */}
+                        {subLine ? <span className={cn(dim && "opacity-60")}>{subLine}</span> : null}
                         {subLine && hint ? " · " : null}
                         {hint ? <span className="text-warn">{t(hint)}</span> : null}
                       </span>
@@ -258,7 +309,9 @@ export function RatedFindingPanel({
                         <button
                           key={option.tag}
                           type="button"
-                          onClick={() => update.mutate({ id: f.id, tag: option.tag === f.tag ? null : option.tag })}
+                          // Picking the pill already set does nothing — a rating changes by picking another
+                          // pill. Clicking it used to clear the rating, which left AI rows "Unrated" by accident.
+                          onClick={() => option.tag !== f.tag && update.mutate({ id: f.id, tag: option.tag })}
                           disabled={update.isPending}
                           aria-pressed={option.tag === f.tag}
                           className={cn(

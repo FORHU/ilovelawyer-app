@@ -392,6 +392,8 @@
   "opensInNewTab": "magbubukas sa bagong tab",
   "addLegalIssue": "Magdagdag ng legal na isyu",
   "findingsUpdating": "Ina-update mula sa mga dokumento ng kaso…",
+  "regenerateFindingsHint": "Isulat muli ang mga AI item ng panel na ito mula sa mga dokumento ng kaso. Mananatili ang mga item na inedit mo, at walang ibang panel na magbabago.",
+  "regenerateFindingsBusy": "Nag-a-update na ang pagsusuri ng kaso — subukan muli kapag tapos na.",
   "legalIssuesIntro": "Mga bukas na tanong na kailangang pagpasyahan ng tribunal.",
   "issueContested": "Pinagtatalunan",
   "issueBriefing": "Isinusulat",

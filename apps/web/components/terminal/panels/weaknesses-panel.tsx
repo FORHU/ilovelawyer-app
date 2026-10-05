@@ -16,6 +16,7 @@ const WEAKNESSES: RatedFindingConfig = {
   ringTag: "CLOSED",
   ringTitleKey: "weaknessClosedCount",
   doneTag: "CLOSED",
+  regenerate: "WEAKNESS",
   // More impact is worse: a weakness only ever hurts.
   impact: { badWhenUp: true, titleKey: "weaknessImpact" },
   jevFlagKeys: (jev) => (jev as WeaknessJevCheck).flags.map((flag) => `weaknessJevFlag.${flag}`),
