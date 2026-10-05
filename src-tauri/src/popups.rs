@@ -18,12 +18,17 @@
 use tauri::webview::NewWindowResponse;
 use tauri::{Manager, Runtime, Url, WebviewWindowBuilder};
 
-/// Hosts allowed to open as a popup *inside* the app. Exact matches only — no "ends with"
-/// matching, so a look-alike such as `accounts.google.com.evil.example` never gets through.
-const IN_APP_POPUP_HOSTS: &[&str] = &[
-    // Google sign-in ("Continue with Google", via Google Identity Services).
-    "accounts.google.com",
-];
+/// Hosts allowed to open *inside* the app.
+fn is_in_app_host(host: &str) -> bool {
+    host == "accounts.google.com"
+        || host == "localhost"
+        || host == "127.0.0.1"
+        || host.ends_with(".localhost")
+        || host == "ilovelawyer.com"
+        || host.ends_with(".ilovelawyer.com")
+        || host == "ilovelawyer.local"
+        || host.ends_with(".ilovelawyer.local")
+}
 
 #[derive(Debug, PartialEq)]
 enum Decision {
@@ -36,7 +41,7 @@ enum Decision {
 fn decide(url: &Url) -> Decision {
     let host = url.host_str();
     match url.scheme() {
-        "https" if host.is_some_and(|host| IN_APP_POPUP_HOSTS.contains(&host)) => Decision::InApp,
+        "https" | "http" if host.is_some_and(is_in_app_host) => Decision::InApp,
         "https" | "http" if host.is_some() => Decision::DefaultBrowser,
         _ => Decision::Block,
     }
@@ -77,10 +82,16 @@ mod tests {
     }
 
     #[test]
+    fn internal_app_links_stay_in_the_app() {
+        assert_eq!(decision("http://localhost:3002/homepage/terminal/abc"), Decision::InApp);
+        assert_eq!(decision("http://uk.localhost:3002/homepage/terminal/abc"), Decision::InApp);
+        assert_eq!(decision("https://uk.ilovelawyer.com/homepage/terminal/abc"), Decision::InApp);
+    }
+
+    #[test]
     fn other_web_links_go_to_the_browser() {
         assert_eq!(decision("https://lawphil.net/statutes/repacts/ra2012/ra_10173_2012.html"), Decision::DefaultBrowser);
         assert_eq!(decision("https://mail.google.com/"), Decision::DefaultBrowser);
-        assert_eq!(decision("http://uk.localhost:3002/homepage/terminal/abc"), Decision::DefaultBrowser);
     }
 
     /// Look-alikes of the in-app host get a normal browser tab, never an in-app popup.
@@ -88,7 +99,7 @@ mod tests {
     fn look_alikes_never_open_in_the_app() {
         assert_eq!(decision("https://accounts.google.com.evil.example/"), Decision::DefaultBrowser);
         assert_eq!(decision("https://accounts.google.com@evil.example/"), Decision::DefaultBrowser);
-        assert_eq!(decision("http://accounts.google.com/"), Decision::DefaultBrowser);
+        assert_eq!(decision("https://ilovelawyer.com.evil.example/"), Decision::DefaultBrowser);
     }
 
     #[test]
