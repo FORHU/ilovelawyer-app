@@ -1,10 +1,10 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, Trash2, X } from "lucide-react";
+import { Archive, ChevronDown, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
-import { useConsultationsQuery, useDeleteConsultationMutation, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
+import { useArchiveConsultation } from "@/components/chat/archived-consultations";
+import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { buildTopicGroups, promptNumberAt, visibleChatMessages } from "@/lib/chat/use-topic-navigator";
 import { formatRelativeTime } from "@/lib/notifications/format";
@@ -29,7 +29,8 @@ interface ConsultationTreeProps {
  * it), each expanding to its OWN Topics — the open one with the full live Topics panel, any other
  * with a read-only preview built from its own messages, where clicking a topic opens that
  * consultation at that prompt. Topics never mix: each node only ever reads its own consultation's
- * messages. The Case's unsaved draft (`?c=new`) is pinned on top. */
+ * messages. The Case's unsaved draft (`?c=new`) is pinned on top; the archive is a button pinned
+ * under the panel (ArchivedConsultationsButton, rendered by SourcesPanel). */
 export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, onSelect, activeBody }: ConsultationTreeProps) {
   const { t } = useTranslation("homepage");
   const { data: consultations } = useConsultationsQuery(caseId);
@@ -37,7 +38,7 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
   const clearDraft = useConsultationDraftsStore((s) => s.clearDraft);
   const myUserId = useAuthStore((s) => s.user?.id);
   const sendingIds = useSendingConsultationsStore((s) => s.sendingConsultationIds);
-  const deleteConsultation = useDeleteConsultationMutation();
+  const { requestArchive, archiveDialog } = useArchiveConsultation();
 
   // Every consultation starts collapsed — the open one included — and only expands when the user
   // expands it; the chat on screen is already its full conversation, so its Topics stay out of the
@@ -70,15 +71,12 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
     if (isDraftActive) selectNextAfter(null);
   };
 
-  const handleDelete = (consultation: Consultation) => {
-    if (!window.confirm(t("sidebar.deleteConsultationConfirm"))) return;
-    deleteConsultation.mutate(consultation.id, {
-      onSuccess: () => {
+  const handleArchive = (consultation: Consultation) =>
+    requestArchive(consultation.id, titleOf(consultation), {
+      onArchived: () => {
         if (consultation.id === activeConsultationId) selectNextAfter(consultation.id);
       },
-      onError: () => toast.error(t("sidebar.deleteConsultationFailed")),
     });
-  };
 
   const titleOf = (c: Consultation) => c.title?.trim() || t("sidebar.untitledConsultation");
   const metaOf = (c: Consultation) => {
@@ -120,11 +118,18 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
               open={isOpen(c.id)}
               onToggle={() => toggle(c.id)}
               onSelect={() => onSelect(c.id)}
-              // Colleagues can open each other's Consultations; deleting one stays with its creator
-              // here (the API also lets case editors — see ChatSvc.deleteConsultation).
+              // Colleagues can open each other's Consultations; archiving one stays with its creator
+              // here (the API also lets case editors — see ChatSvc.assertCanRemove). Permanent
+              // deletion is only offered from the archive below.
               action={
                 c.userId === myUserId
-                  ? { icon: Trash2, label: t("sidebar.deleteConsultationNamed", { name: titleOf(c) }), onClick: () => handleDelete(c) }
+                  ? {
+                      icon: Archive,
+                      label: t("sidebar.archiveConsultationNamed", { name: titleOf(c) }),
+                      onClick: () => handleArchive(c),
+                      // Unavailable while a reply is generating; the API refuses it too.
+                      disabledReason: sendingIds.has(c.id) ? t("sidebar.archiveWhileGenerating") : undefined,
+                    }
                   : undefined
               }
             >
@@ -133,6 +138,7 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
           );
         })
       )}
+      {archiveDialog}
     </div>
   );
 }
@@ -155,7 +161,8 @@ function ConsultationNode({
   open: boolean;
   onToggle: () => void;
   onSelect: () => void;
-  action?: { icon: typeof Trash2; label: string; onClick: () => void };
+  /** `disabledReason` greys the action out and shows why on hover instead of its label. */
+  action?: { icon: typeof Archive; label: string; onClick: () => void; disabledReason?: string };
   children: ReactNode;
 }) {
   const { t } = useTranslation("homepage");
@@ -193,14 +200,18 @@ function ConsultationNode({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={action.onClick}
+                // aria-disabled rather than disabled, so the tooltip can still say why.
+                onClick={() => {
+                  if (!action.disabledReason) action.onClick();
+                }}
+                aria-disabled={action.disabledReason ? true : undefined}
                 aria-label={action.label}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-card hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-overlay-hover [@media(hover:none)]:opacity-100"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-card hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-overlay-hover [@media(hover:none)]:opacity-100 aria-disabled:cursor-not-allowed aria-disabled:group-hover:opacity-40 aria-disabled:focus-visible:opacity-40 aria-disabled:[@media(hover:none)]:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground dark:aria-disabled:hover:bg-transparent"
               >
                 <ActionIcon className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">{action.label}</TooltipContent>
+            <TooltipContent side="right">{action.disabledReason ?? action.label}</TooltipContent>
           </Tooltip>
         )}
       </div>

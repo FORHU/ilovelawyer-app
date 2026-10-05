@@ -1,3 +1,5 @@
+import type { ConsultationStatus } from "@/lib/chat/mutations"
+
 export const lawyerKeys = {
   all: ["lawyers"] as const,
   lists: () => [...lawyerKeys.all, "list"] as const,
@@ -44,7 +46,8 @@ export const chatKeys = {
   // every per-case list get refetched together, since any consultation could show up in
   // either depending on where it lives.
   consultationsAll: () => [...chatKeys.all, "consultations"] as const,
-  consultations: (caseId?: string) => [...chatKeys.consultationsAll(), caseId ?? null] as const,
+  consultations: (caseId?: string, status: ConsultationStatus = "ACTIVE") =>
+    [...chatKeys.consultationsAll(), caseId ?? null, status] as const,
   messages: (consultationId: string) => [...chatKeys.all, "messages", consultationId] as const,
   relatedCases: (consultationId: string) => [...chatKeys.all, "related-cases", consultationId] as const,
   documents: (consultationId: string) => [...chatKeys.all, "documents", consultationId] as const,

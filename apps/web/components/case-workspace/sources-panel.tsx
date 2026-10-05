@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ListTree, MessagesSquare, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Plus, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { ConsultationTree } from "@/components/case-workspace/consultation-tree";
+import { ArchivedConsultationsButton } from "@/components/chat/archived-consultations";
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, clearFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
@@ -438,6 +439,12 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
           ) : (
             topicsBody
           )}
+        </div>
+      )}
+      {/* Outside the scrolling list, so the archive stays reachable however long the list gets. */}
+      {expanded && consultationList && (
+        <div className="shrink-0 border-t border-border p-2">
+          <ArchivedConsultationsButton caseId={consultationList.caseId} onRestored={(id) => consultationList.onSelect(id)} />
         </div>
       )}
     </aside>

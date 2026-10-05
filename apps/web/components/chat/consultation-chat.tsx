@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
+import { isNotFoundError } from "@/lib/fetch";
 import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
 import {
   DropdownMenu,
@@ -155,6 +156,10 @@ const TERMINAL_TOPICS_WIDTH = 260;
 const SUGGESTED_PROMPT_COUNT = 4;
 const MAX_DOCUMENT_SUGGESTIONS = 2;
 const MAX_HISTORY_SUGGESTIONS = 2;
+
+// One notice for "the open consultation is gone", however many checks notice it — see the
+// foreign-link and deleted-consultation effects.
+const CONSULTATION_GONE_TOAST_ID = "consultation-gone";
 
 // Fisher-Yates — used to randomize which predefined prompts show, and their order,
 // instead of always showing the same static four (see `suggestedPrompts` below).
@@ -591,7 +596,13 @@ export default function ConsultationChat({
 
   const { data: session } = useChatSessionQuery();
   const createConsultation = useCreateConsultationMutation();
-  const { data: history, isLoading: historyLoading } = useMessagesQuery(consultationId ?? undefined);
+  const {
+    data: history,
+    isLoading: historyLoading,
+    error: historyError,
+    refetch: refetchHistory,
+    isRefetching: isRefetchingHistory,
+  } = useMessagesQuery(consultationId ?? undefined);
   const showHistorySkeleton = useDelayedLoading(historyLoading && !!consultationId);
   const { data: caseConsultations, isFetching: isFetchingCaseConsultations } = useConsultationsQuery(caseId);
   const snapshotQuery = useCaseSnapshotQuery(caseId ?? "");
@@ -1075,9 +1086,22 @@ export default function ConsultationChat({
   useEffect(() => {
     if (!caseId || isolateConsultation || isFetchingCaseConsultations) return;
     if (!isForeignConsultation(consultationId, caseConsultations, [resolvedConsultationIdRef.current, pendingUrlConsultationId])) return;
-    toast.error(t("sidebar.consultationNotFound"));
+    toast.error(t("sidebar.consultationNotFound"), { id: CONSULTATION_GONE_TOAST_ID });
     navigateToConsultation(caseConsultations?.[0]?.id ?? null);
   }, [caseId, isolateConsultation, consultationId, caseConsultations, isFetchingCaseConsultations, pendingUrlConsultationId, navigateToConsultation, t]);
+
+  // The open consultation was deleted — by a colleague, in another tab, or before a link to it
+  // was followed. Its history answers 404; without this the transcript just emptied with no
+  // explanation (most visibly on /homepage, which has no Case list to check it against like the
+  // effect above). Says so, refreshes the lists it still sits in, and moves to what's left —
+  // another of this Case's consultations, or the empty state. Same toast id as above, so the two
+  // noticing the same deletion show one notice.
+  useEffect(() => {
+    if (!consultationId || !isNotFoundError(historyError)) return;
+    toast.error(t("sidebar.consultationDeleted"), { id: CONSULTATION_GONE_TOAST_ID });
+    void queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
+    navigateToConsultation(caseConsultations?.find((c) => c.id !== consultationId)?.id ?? null);
+  }, [consultationId, historyError, caseConsultations, queryClient, navigateToConsultation, t]);
 
   // The draft (`?c=new`): kept saved as it's typed, once its saved text has been put back (below).
   // Declared before the restore so that, in the pass where the draft opens, this still sees the
@@ -1139,7 +1163,7 @@ export default function ConsultationChat({
     if (consultationId) return consultationId;
     if (resolvedConsultationIdRef.current) return resolvedConsultationIdRef.current;
     if (!consultationCreationRef.current) {
-      consultationCreationRef.current = (async () => {
+      const creation = (async () => {
         // A draft's title rides along (the AI then leaves it alone — see titleSource); the draft
         // itself is done once its real Consultation exists.
         const title = isDraft ? draft?.title.trim() || undefined : undefined;
@@ -1150,6 +1174,12 @@ export default function ConsultationChat({
         navigateToConsultation(consultation.id);
         return consultation.id;
       })();
+      consultationCreationRef.current = creation;
+      // A failed create must not stay cached — every retry would get the same rejection back
+      // without ever asking the API again.
+      creation.catch(() => {
+        if (consultationCreationRef.current === creation) consultationCreationRef.current = null;
+      });
     }
     return consultationCreationRef.current;
   };
@@ -1346,6 +1376,8 @@ export default function ConsultationChat({
     // Snapshot of how many persisted messages existed before this turn — used below to
     // sanity-check the post-send refetch before trusting it over pendingTurn (see there).
     const messagesBeforeSend = baseMessages.length;
+    // The draft this send is turning into a real Consultation, if any — see the catch below.
+    const sentFromDraftCaseId = isDraft ? caseId : undefined;
 
     // Ended by handleStop. cancelRequest is the API call that actually stops the turn - issued
     // as soon as both the Stop press and the message id (only known once the POST returns) exist,
@@ -1500,6 +1532,19 @@ export default function ConsultationChat({
         return;
       }
       console.error("Failed to send message:", error);
+      // The Consultation itself couldn't be created, so nothing of this message was saved — and
+      // handleSendMessage already emptied the composer (which, on a draft, also emptied the
+      // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
+      // screen: into the composer, whose draft sync re-saves it; left it: straight to the draft.
+      if (!startedConsultationId) {
+        const unsent = opts?.displayText ?? text;
+        if (sendTokenRef.current === myToken) {
+          setInputMessage((current) => current || unsent);
+        } else if (sentFromDraftCaseId) {
+          const saved = useConsultationDraftsStore.getState().drafts[sentFromDraftCaseId];
+          if (saved && !saved.text) updateDraft(sentFromDraftCaseId, { text: unsent });
+        }
+      }
       // Drop (or, for a chat:error, replace with the server's FAILED copy of) the optimistic
       // prompt written above, even if the user has navigated away from this send.
       if (startedConsultationId) {
@@ -1644,7 +1689,15 @@ export default function ConsultationChat({
       // of falling back to the generic per-user key — same idea as a case upload being
       // scoped to its caseId. doSend below reuses this same consultation rather than
       // creating a second one.
-      const resolvedConsultationId = await ensureConsultationId();
+      // If that create fails, nothing is cleared yet — the text and files stay for another try.
+      let resolvedConsultationId: string;
+      try {
+        resolvedConsultationId = await ensureConsultationId();
+      } catch (error) {
+        console.error("Failed to create consultation:", error);
+        toast.error(t("sendError"));
+        return;
+      }
       const settled = await uploadQueuedFiles(needsUpload, resolvedConsultationId);
       // At least one file failed — leave it visible with a retry control instead of
       // sending a message that silently drops the attachment the user asked for.
@@ -2451,7 +2504,28 @@ export default function ConsultationChat({
                  * instead of in the (non-embedded-only) centered landing above. */}
                 {showHistorySkeleton && <ChatHistorySkeleton />}
 
-                {visibleMessages.length === 0 && !historyLoading && !isBusy && (
+                {/* Any other failure to load the history (a 404 is handled above): say so, with a
+                    way to try again, instead of passing it off as an empty consultation. */}
+                {visibleMessages.length === 0 && historyError && !isNotFoundError(historyError) && !isBusy && (
+                  <div role="alert" className="flex flex-col items-center gap-2 rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
+                    <p className="text-xs text-muted-foreground">{t("historyLoadError")}</p>
+                    <button
+                      type="button"
+                      onClick={() => void refetchHistory()}
+                      disabled={isRefetchingHistory}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                    >
+                      {isRefetchingHistory ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                      {t("historyLoadRetry")}
+                    </button>
+                  </div>
+                )}
+
+                {visibleMessages.length === 0 && !historyLoading && !historyError && !isBusy && (
                   <div className="rounded-md bg-muted px-3 py-4 text-center font-['Inter']">
                     {embedded && emptyStateHeading && (
                       <p className="mb-1 text-sm font-medium text-foreground">{emptyStateHeading}</p>

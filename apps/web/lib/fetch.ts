@@ -111,6 +111,11 @@ async function throwIfNotOk(res: Response): Promise<void> {
   throw Object.assign(new Error(error.message ?? "Request failed"), { status: res.status, code: error.code, body: error })
 }
 
+/** Whether an apiFetch rejection was the API answering 404 — the thing asked for doesn't exist. */
+export function isNotFoundError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { status?: unknown }).status === 404
+}
+
 /** Like apiFetch, but returns the raw Response instead of parsing JSON — for streamed bodies. */
 export async function apiFetchRaw(path: string, options?: FetchOptions): Promise<Response> {
   const { skipAuthRefresh, ...fetchOptions } = options ?? {}

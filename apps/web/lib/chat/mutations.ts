@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
-import { apiFetch } from "@/lib/fetch"
+import { apiFetch, isNotFoundError } from "@/lib/fetch"
 import { chatKeys } from "@/lib/query-keys"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import type { MindMapItem, TraceStep } from "@/lib/chat/mind-map-parser"
@@ -10,12 +10,24 @@ export interface ChatSession {
   session_id: string
 }
 
+/** ARCHIVED is the soft delete: out of the lists, restorable, and the only state a consultation
+ * can be deleted from. Deleting moves it to FOR_DELETION — still in the archive (and restorable)
+ * for 30 days before it's purged. Lists are asked for ACTIVE or ARCHIVED; the archive's includes
+ * FOR_DELETION ones. */
+export type ConsultationStatus = "ACTIVE" | "ARCHIVED" | "FOR_DELETION"
+
 export interface Consultation {
   id: string
   userId: string
   title: string | null
   caseId: string | null
   createdAt: string
+  status?: ConsultationStatus
+  /** When it was archived — null while ACTIVE. */
+  archivedAt?: string | null
+  /** When a requested permanent deletion takes effect (30 days after the request) — null when
+   * none is scheduled. Restoring cancels it. */
+  deletionScheduledFor?: string | null
   /** Newest message's time — the list's sort key (null with no messages yet). List responses
    * only; a just-created row (POST) has none of these three. */
   lastMessageAt?: string | null
@@ -219,11 +231,23 @@ export function useCreateConsultationMutation() {
 }
 
 /** Lists consultations, most recently active first. Pass `caseId` for one Case's consultations
- * (everyone's on that Case); without it, only standalone ones. */
-export function useConsultationsQuery(caseId?: string) {
+ * (everyone's on that Case); without it, only standalone ones. `status: "ARCHIVED"` lists the
+ * archive instead, most recently archived first; `enabled: false` holds off fetching it until
+ * it's actually opened. */
+export function useConsultationsQuery(
+  caseId?: string,
+  { status = "ACTIVE", enabled = true }: { status?: Exclude<ConsultationStatus, "FOR_DELETION">; enabled?: boolean } = {},
+) {
   return useQuery({
-    queryKey: chatKeys.consultations(caseId),
-    queryFn: () => apiFetch<Consultation[]>(`/api/chat/consultations${caseId ? `?caseId=${caseId}` : ""}`),
+    queryKey: chatKeys.consultations(caseId, status),
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (caseId) params.set("caseId", caseId)
+      if (status !== "ACTIVE") params.set("status", status)
+      const query = params.toString()
+      return apiFetch<Consultation[]>(`/api/chat/consultations${query ? `?${query}` : ""}`)
+    },
+    enabled,
   })
 }
 
@@ -241,11 +265,37 @@ export function useRenameConsultationMutation() {
   })
 }
 
+/** Soft delete — see ConsultationStatus. Everything stays; useUnarchiveConsultationMutation undoes it. */
+export function useArchiveConsultationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (consultationId: string) =>
+      apiFetch<Consultation>(`/api/chat/consultations/${consultationId}/archive`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
+    },
+  })
+}
+
+export function useUnarchiveConsultationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (consultationId: string) =>
+      apiFetch<Consultation>(`/api/chat/consultations/${consultationId}/unarchive`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
+    },
+  })
+}
+
+/** Schedules permanent deletion, only for an archived consultation (the API answers 409
+ * otherwise). It stays in the archive, restorable, for a 30-day grace period; then its messages go
+ * and the files uploaded only to it are queued for removal from storage. */
 export function useDeleteConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (consultationId: string) =>
-      apiFetch<void>(`/api/chat/consultations/${consultationId}`, {
+      apiFetch<{ deletionScheduledFor: string }>(`/api/chat/consultations/${consultationId}`, {
         method: "DELETE",
       }),
     onSuccess: () => {
@@ -269,6 +319,9 @@ export function useMessagesQuery(consultationId: string | undefined) {
     queryKey: chatKeys.messages(consultationId ?? ""),
     queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
     enabled: !!consultationId,
+    // A 404 means the consultation was deleted (ConsultationChat then says so and moves on) —
+    // asking again only delays that.
+    retry: (failureCount, error) => !isNotFoundError(error) && failureCount < 1,
     refetchInterval: (query) => {
       const messages = query.state.data as ChatMessage[] | undefined
       const last = messages?.filter((m) => m.role !== "system").at(-1)
