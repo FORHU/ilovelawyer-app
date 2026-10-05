@@ -311,6 +311,10 @@ function TraceSteps({
                 compact={false}
                 dotClassName={style.bar}
                 leading={label ? <TracePill type={event.type}>{label}</TracePill> : undefined}
+                // A step's first line can run to a sentence or two: open it above the row, capped
+                // to the window and wrapped, instead of one long line off the left edge.
+                tooltipSide="top"
+                tooltipClassName="max-w-[min(26rem,calc(100vw-2rem))] text-left break-words"
               />
               {open && (
                 <p

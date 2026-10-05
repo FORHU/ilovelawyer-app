@@ -30,6 +30,8 @@ export function TopicRow({
   compact,
   dotClassName,
   leading,
+  tooltipSide = "left",
+  tooltipClassName,
 }: {
   topic: TopicNavigatorItem;
   isActive: boolean;
@@ -40,6 +42,11 @@ export function TopicRow({
   dotClassName?: string;
   /** Shown between the dot and the title. Ignored in `compact`. */
   leading?: ReactNode;
+  /** Which side the tooltip opens on. Defaults to the left, where the chat's topic rail sits. */
+  tooltipSide?: "top" | "right" | "bottom" | "left";
+  /** Extra classes for the tooltip. The shared tooltip has no maximum width, so a long title
+   * stretches in one line until it leaves the window — callers with long titles cap and wrap it. */
+  tooltipClassName?: string;
 }) {
   return (
     <Tooltip>
@@ -67,7 +74,9 @@ export function TopicRow({
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="left">{topic.title}</TooltipContent>
+      <TooltipContent side={tooltipSide} className={tooltipClassName}>
+        {topic.title}
+      </TooltipContent>
     </Tooltip>
   );
 }
