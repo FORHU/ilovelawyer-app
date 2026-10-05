@@ -1061,10 +1061,14 @@ export interface DeadlineRule {
 // on a shared case each turn is attributed to the member who asked.
 export interface TraceTurn {
   turnId: string
-  /** 1-based position among the case's traced turns, oldest first — the pager's "Turn N". */
+  /** What produced the run: "chat" for a question, otherwise the pane's generation ("witnessScoring",
+   * "caseReconstruction", ...). Named and filtered by in the pane. */
+  source: string
+  /** 1-based position among the case's runs of the same source, oldest first — "Question 3",
+   * "Witness scoring 2". Counted over every run of that source, so a filter never renumbers it. */
   number: number
-  /** What was asked, flattened to one line. */
-  title: string
+  /** What was asked, flattened to one line — a chat question only. Null for a pane's generation. */
+  title: string | null
   userId: string | null
   /** Null once the member has been removed; shown as "Former member". */
   userName: string | null

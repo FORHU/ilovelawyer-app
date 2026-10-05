@@ -28,11 +28,18 @@ export function TopicRow({
   isActive,
   onJump,
   compact,
+  dotClassName,
+  leading,
 }: {
   topic: TopicNavigatorItem;
   isActive: boolean;
   onJump: (index: number) => void;
   compact: boolean;
+  /** Colors the dot in both states, replacing the default gold-when-active / gray. For callers
+   * (the Terminal's trace pane) whose rows carry a meaning of their own. */
+  dotClassName?: string;
+  /** Shown between the dot and the title. Ignored in `compact`. */
+  leading?: ReactNode;
 }) {
   return (
     <Tooltip>
@@ -46,14 +53,17 @@ export function TopicRow({
         >
           <span
             className={`shrink-0 rounded-full ${compact ? "w-2 h-2" : "w-1.5 h-1.5"} ${
-              isActive ? "bg-brand-gold" : "bg-border"
+              dotClassName ?? (isActive ? "bg-brand-gold" : "bg-border")
             }`}
             aria-hidden="true"
           />
           {compact ? (
             <span className="sr-only">{topic.title}</span>
           ) : (
-            <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
+            <>
+              {leading}
+              <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
+            </>
           )}
         </button>
       </TooltipTrigger>
