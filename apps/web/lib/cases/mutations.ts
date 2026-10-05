@@ -27,6 +27,9 @@ export interface Party {
  * not yet supported by the backend — see CONTEXT.md pending section. */
 export type CaseStatus = "ACTIVE" | "ARCHIVED"
 
+/** CLAIMANT brought the case (claimant, applicant, the prosecution); RESPONDENT defends it. */
+export type ClientSide = "CLAIMANT" | "RESPONDENT"
+
 /** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
  * not yet supported by the backend — see CONTEXT.md pending section. */
 export interface CaseRecord {
@@ -37,6 +40,8 @@ export interface CaseRecord {
   notes: string | null
   /** England and Wales / Scotland / Northern Ireland — UK-tenant-only. */
   ukJurisdiction?: string | null
+  /** Which side the lawyer acts for; the AI findings are written from it. Null when not set. */
+  clientSide?: ClientSide | null
   status: CaseStatus
   createdAt: string
   /** Last real activity on the case (edits, documents, chat, decisions, events) — not views. */
@@ -115,6 +120,8 @@ export interface UpdateCasePayload {
   caseName?: string
   parties?: { name: string; designation: string }[]
   notes?: string
+  /** Changing it makes the API regenerate the case's findings on the next Terminal load. */
+  clientSide?: ClientSide | null
 }
 
 export function useUpdateCaseMutation() {

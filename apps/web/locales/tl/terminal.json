@@ -298,6 +298,7 @@
   "editCitation": "I-edit ang citation",
   "deleteCitation": "Burahin ang citation",
   "deleteCitationConfirm": "Burahin ang citation na ito?",
+  "deleteFindingConfirm": "Burahin ang item na ito?",
   "citationStatus": {
     "VALID": "Tugma ang sipi",
     "INVALID": "Hindi tugma ang sipi",
@@ -385,6 +386,7 @@
   "noFindings": "Wala pang naitala. Magdagdag sa ibaba — awtomatikong lalabas ang mga mungkahi sa susunod na pag-update ng analysis ng kaso.",
   "aiGenerated": "AI-generated",
   "groundedIn": "Pinagmulan: {{doc}}",
+  "sceneGapSource": "Kulang sa eksena: {{scene}}",
   "opensInNewTab": "magbubukas sa bagong tab",
   "addLegalIssue": "Magdagdag ng legal na isyu",
   "findingsUpdating": "Ina-update mula sa mga dokumento ng kaso…",

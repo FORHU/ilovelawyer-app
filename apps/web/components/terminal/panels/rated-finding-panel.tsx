@@ -117,11 +117,17 @@ export function RatedFindingPanel({
   const flagRisk = useCreateRiskMutation(caseId)
   // Ids flagged from this panel this session, so a second click can't double-add.
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
+  // The row whose delete is waiting for a second click — same confirm step as citations.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   // Findings from an older format regenerate in the background when the Terminal loads the case
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
   // finishes; Legal Issues reads the graph view, so refresh that too.
   const findingsJob = useAiJobStatus(caseId, "caseFinding")
-  const updating = findingsJob.data?.status === "IN_PROGRESS"
+  // "Updating analysis" in the Terminal header is the caseRefresh pipeline, which regenerates the
+  // findings after contradictions and Case Strategy — show the panel updating for the whole run,
+  // not only once its findings step starts (same as the Timeline and Visual Strategy panels).
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  const updating = findingsJob.data?.status === "IN_PROGRESS" || refreshJob.data?.status === "IN_PROGRESS"
   const queryClient = useQueryClient()
   const prevJobStatus = useRef(findingsJob.data?.status)
   useEffect(() => {
@@ -130,6 +136,13 @@ export function RatedFindingPanel({
     }
     prevJobStatus.current = findingsJob.data?.status
   }, [findingsJob.data?.status, caseId, queryClient])
+  const prevRefreshStatus = useRef(refreshJob.data?.status)
+  useEffect(() => {
+    if (prevRefreshStatus.current === "IN_PROGRESS" && refreshJob.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevRefreshStatus.current = refreshJob.data?.status
+  }, [refreshJob.data?.status, caseId, queryClient])
   const [label, setLabel] = useState("")
   const [newTag, setNewTag] = useState<FindingTag | "">("")
   const [open, setOpen] = useState<string | null>(null)
@@ -360,7 +373,7 @@ export function RatedFindingPanel({
                       </div>
                       <button
                         type="button"
-                        onClick={() => del.mutate(f.id)}
+                        onClick={() => setConfirmDelete(f.id)}
                         disabled={del.isPending}
                         className={dangerIconBtnClass}
                         aria-label={t("delete")}
@@ -368,6 +381,27 @@ export function RatedFindingPanel({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </div>
+                    {confirmDelete === f.id && (
+                      <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
+                        <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteFindingConfirm")}</p>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(null)}
+                          disabled={del.isPending}
+                          className={ghostBtnClass}
+                        >
+                          {t("cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => del.mutate(f.id, { onSuccess: () => setConfirmDelete(null) })}
+                          disabled={del.isPending}
+                          className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+                        >
+                          {del.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
+                        </button>
+                      </div>
+                    )}
                     <MutationError show={jevCheck.isError}>
                       {jevError?.status === 409
                         ? t(config.llmWording ? "llmOff" : "findingJevOff")

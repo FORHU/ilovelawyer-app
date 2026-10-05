@@ -342,7 +342,8 @@ export interface SnapshotProcedureItem {
   dueDate?: string | null
 }
 
-export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED"
+/** SCENE: raised by scene generation from a scene's unresolved gap — never sent from a panel. */
+export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED" | "SCENE"
 export type ProcedureAutoCloseReason =
   | "ISSUE_RESOLVED"
   | "WEAKNESS_CLOSED"
