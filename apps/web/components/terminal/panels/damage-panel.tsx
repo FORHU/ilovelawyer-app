@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { Check, ChevronRight, FileText, Pencil, Trash2 } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
@@ -213,7 +214,7 @@ export function DamagePanel({
                           <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[12px] text-foreground">
                             <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                             <span className="truncate" title={sourceDoc}>
-                              {sourceDoc ?? t("damageSourceDocGone")}
+                              {sourceDoc ? <DocumentLink docId={d.sourceDocumentId}>{sourceDoc}</DocumentLink> : t("damageSourceDocGone")}
                             </span>
                           </span>
                           {onJumpToPanel && d.sourceDocumentId && sourceDoc ? (

@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { Loader2, Sparkles } from "lucide-react"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import { useAiJobStatus, useGenerateRedTeamMutation } from "@/lib/terminal/mutations"
@@ -167,7 +168,11 @@ function RankedArguments({ ranked }: { ranked: RedTeamArguments }) {
                   ) : null}
                   <p className="text-muted-foreground">
                     {t("redTeamRestsOn", { kind: t(`redTeamSource.${a.source.kind}`) })}{" "}
-                    <span className="text-foreground">“{a.source.label}”</span>
+                    <span className="text-foreground">
+                      “
+                      {a.source.kind === "DOCUMENT" ? <DocumentLink name={a.source.label}>{a.source.label}</DocumentLink> : a.source.label}
+                      ”
+                    </span>
                   </p>
                 </div>
               ) : null}

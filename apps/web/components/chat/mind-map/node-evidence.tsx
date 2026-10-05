@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, FileText, XCircle } from 'lucide-react';
 import type { MindMapItem } from '@/lib/chat/mind-map-parser';
+import { DocumentLink } from '@/components/shared/document-viewer';
 
 /**
  * A node's evidence in the mind map's detail panel: the case documents it cites, and — once Jev
@@ -27,6 +28,7 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
       ? describe(cited.documentId, cited.page) || null
       : null;
   // "Not found in …" (UNSUPPORTED) isn't shown: see reviewVerdict in layout.ts.
+  const sourceDocId = check?.documentId ?? cited?.documentId;
   const verdictLine = check && check.verdict !== 'UNSUPPORTED'
     ? {
         SUPPORTED: {
@@ -55,7 +57,7 @@ export function NodeEvidence({ item, documentNames }: { item: MindMapItem; docum
           <verdictLine.Icon size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div className="flex flex-col gap-1">
             <span>
-              {verdictLine.text}
+              <DocumentLink docId={sourceDocId}>{verdictLine.text}</DocumentLink>
               {check.evidenceKind && ` · ${t(`mindMapCheck.kind.${check.evidenceKind}`, { defaultValue: check.evidenceKind })}`}
             </span>
             {check.documentId && !check.located && <span className="text-[12px] font-normal text-muted-foreground">{t('mindMapCheck.fallback')}</span>}
