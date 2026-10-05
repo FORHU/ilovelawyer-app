@@ -37,8 +37,37 @@ export interface AudioOverviewTurn {
   text: string
 }
 
+/** Jev's verdict on one script turn (ilovelawyer-api's audio-overview-jev.ts). Only turns that
+ * assert something about the case have one, and none at all when USE_JEV_AUDIO_OVERVIEW is off. */
+export interface AudioOverviewTurnCheck {
+  turn: number
+  verdict: "SUPPORTED" | "UNSUPPORTED" | "CONTRADICTED"
+  confidence: number
+  checkedAt: string
+}
+
+/** One sentence or word of a turn: `time` is its start second in the merged audio; `start`/`end`
+ * are string indices into that turn's `text` (`text.slice(start, end)`). */
+export interface AudioOverviewMarkTiming {
+  time: number
+  start: number
+  end: number
+}
+
 export interface MessageAudioOverview {
   turns: AudioOverviewTurn[]
+  checks?: AudioOverviewTurnCheck[] | null
+  /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
+   * `turns` — lets AudioOverviewTurns sync its highlight/auto-scroll to playback. Null until
+   * audioStatus reaches COMPLETED, and on any overview rendered before this shipped. */
+  turnTimings?: number[] | null
+  /** Per turn (index-aligned with `turns`), where each sentence starts in the audio — from
+   * Polly's sentence speech marks (ilovelawyer-api's sentenceTimingsForTurn). Null until
+   * COMPLETED, and on any overview rendered before this shipped. */
+  sentenceTimings?: AudioOverviewMarkTiming[][] | null
+  /** Same as sentenceTimings, per word (Polly's word speech marks) — the active turn fills in
+   * word by word as it's spoken. Null on overviews rendered before it existed. */
+  wordTimings?: AudioOverviewMarkTiming[][] | null
   audioFileId: string | null
   audioStatus: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
 }
@@ -114,11 +143,32 @@ export interface ChatMessage {
    * `passage` is excluded server-side: it is a slab of bundle text, fetched per-row only when a
    * verdict is actually being audited. */
   groundingChecks?: MessageGroundingCheck[]
+  /** How relevant each cited authority is to the USER's question (ilovelawyer-api citation-rank),
+   * keyed by the link's Library href. Written after the reply is persisted, so a freshly streamed
+   * reply has none until the next messages fetch, and absent unless USE_JEV_CITATION_RANK is on.
+   * A link with no entry is unrated and renders neutral. */
+  citationRanking?: { items: CitationRankItem[] } | null
   /** Jev triage for a user turn (ilovelawyer-api message-triage.ts): whether the message reads as
    * time-critical, and what it is asking for. Written on send when USE_JEV_MESSAGE_TRIAGE is on;
    * absent otherwise and on assistant messages. */
   urgent?: boolean | null
   intent?: string | null
+}
+
+export type CitationRankTier = "HIGH" | "MEDIUM" | "LOW"
+
+export interface CitationRankItem {
+  /** The link's Library href, exactly as it appears in the message text. */
+  href: string
+  tier: CitationRankTier
+  /** How directly the authority addresses what the user asked, and how much a lawyer advising them
+   * would need to read it. Either is null when Jev gave no usable verdict for that axis. */
+  relevance: CitationRankTier | null
+  importance: CitationRankTier | null
+  /** Facts the levels can't carry ("You named it in your question", the deciding court). Empty when
+   * there are none. Never says the authority is correct. */
+  reason: string
+  namedByUser: boolean
 }
 
 export interface MessageGroundingCheck {

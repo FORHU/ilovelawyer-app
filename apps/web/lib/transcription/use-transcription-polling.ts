@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { useMediaQueueStore } from "@/lib/store/media-queue.store"
+import { useMediaQueueStore, useOwnQueuedTranscripts } from "@/lib/store/media-queue.store"
 import { pollTranscriptionJobUntilDone, chunkTranscription } from "@/lib/transcription/mutations"
 
 /**
@@ -10,7 +10,7 @@ import { pollTranscriptionJobUntilDone, chunkTranscription } from "@/lib/transcr
  * loop back up automatically instead of being stuck mid-job forever.
  */
 export function useTranscriptionPolling() {
-  const transcripts = useMediaQueueStore((s) => s.transcripts)
+  const transcripts = useOwnQueuedTranscripts()
   const updateTranscript = useMediaQueueStore((s) => s.updateTranscript)
   const inFlight = useRef(new Set<string>())
 

@@ -15,19 +15,17 @@ import { EvidencePanel } from "@/components/terminal/panels/evidence-panel"
 import { LawPanel } from "@/components/terminal/panels/law-panel"
 import { RedTeamPanel } from "@/components/terminal/panels/red-team-panel"
 import { ProcedurePanel } from "@/components/terminal/panels/procedure-panel"
-import { TeamAuditPanel } from "@/components/terminal/panels/team-audit-panel"
-import { ContradictionsPanel } from "@/components/terminal/panels/contradictions-panel"
-import { CaseFindingPanel } from "@/components/terminal/panels/case-finding-panel"
 import { LegalIssuesPanel } from "@/components/terminal/panels/legal-issues-panel"
-import { CitationMapPanel } from "@/components/terminal/panels/citation-map-panel"
 import { WeaknessesPanel } from "@/components/terminal/panels/weaknesses-panel"
 import { StrengthsPanel } from "@/components/terminal/panels/strengths-panel"
+import { AttackStrategyPanel } from "@/components/terminal/panels/attack-strategy-panel"
+import { DefenseStrategyPanel } from "@/components/terminal/panels/defense-strategy-panel"
 import { WitnessPanel } from "@/components/terminal/panels/witness-panel"
 import { DamagePanel } from "@/components/terminal/panels/damage-panel"
 import { CaseReconstructionPanel } from "@/components/terminal/panels/case-reconstruction-panel"
 import { AudioOverviewPanel } from "@/components/terminal/panels/audio-overview-panel"
 import { DecisionsPanel } from "@/components/terminal/panels/decisions-panel"
-import { VerificationPanel } from "@/components/terminal/panels/verification-panel"
+import { TracePanel } from "@/components/terminal/panels/trace-panel"
 import { CaseMindMapPanel } from "@/components/terminal/panels/case-mind-map-panel"
 
 export function FatalRiskBanner({ risks }: { risks: SnapshotRisk[] }) {
@@ -68,16 +66,10 @@ export function TerminalPanelBody({
       return <ChatPanel caseId={caseId} caseName={snapshot.case.caseName} onJumpToPanel={onJumpToPanel} />
     case "mindMap":
       return <CaseMindMapPanel caseId={caseId} snapshot={snapshot} />
-    case "citationMap":
-      return <CitationMapPanel caseId={caseId} />
     case "redTeam":
       return <RedTeamPanel snapshot={snapshot} caseId={caseId} />
     case "procedure":
       return <ProcedurePanel snapshot={snapshot} caseId={caseId} />
-    case "teamAudit":
-      return <TeamAuditPanel snapshot={snapshot} />
-    case "contradictions":
-      return <ContradictionsPanel caseId={caseId} />
     case "legalIssues":
       return <LegalIssuesPanel caseId={caseId} />
     case "weaknesses":
@@ -85,35 +77,23 @@ export function TerminalPanelBody({
     case "strengths":
       return <StrengthsPanel snapshot={snapshot} caseId={caseId} />
     case "attackStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="ATTACK_STRATEGY"
-        />
-      )
+      return <AttackStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "defenseStrategy":
-      return (
-        <CaseFindingPanel
-          snapshot={snapshot}
-          caseId={caseId}
-          category="DEFENSE_STRATEGY"
-        />
-      )
+      return <DefenseStrategyPanel snapshot={snapshot} caseId={caseId} />
     case "witnesses":
       return <WitnessPanel caseId={caseId} onJumpToPanel={onJumpToPanel} />
     case "damages":
-      return <DamagePanel snapshot={snapshot} caseId={caseId} />
+      return <DamagePanel snapshot={snapshot} caseId={caseId} onJumpToPanel={onJumpToPanel} />
     case "caseReconstruction":
       return <CaseReconstructionPanel snapshot={snapshot} caseId={caseId} />
     case "audioOverview":
       return <AudioOverviewPanel caseId={caseId} />
     case "decisions":
       return <DecisionsPanel snapshot={snapshot} caseId={caseId} />
-    case "verification":
-      return <VerificationPanel caseId={caseId} />
     case "theories":
       return <TheoriesPanel snapshot={snapshot} caseId={caseId} />
+    case "trace":
+      return <TracePanel caseId={caseId} />
     default:
       return null
   }

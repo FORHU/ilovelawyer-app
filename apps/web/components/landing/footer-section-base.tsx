@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { FooterRevealPortal } from "@/components/landing/footer-reveal-portal";
-import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/lib/i18n/languages";
+import { LANGUAGE_LABELS } from "@/lib/i18n/languages";
+import { useTenantLanguages } from "@/lib/i18n/use-tenant-languages";
 import { useLanguageStore } from "@/lib/store/language.store";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
@@ -75,15 +76,21 @@ const UK_COLUMNS = [
 export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
   const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
-  const columns = tenantCode === "UK" ? UK_COLUMNS : PH_COLUMNS;
+  // The Company links (About, Careers, Terms, Privacy, Accessibility) have no public page yet —
+  // a link to "#" went nowhere, so they're left out until those pages exist, and a column with
+  // nothing left in it is dropped.
+  const columns = (tenantCode === "UK" ? UK_COLUMNS : PH_COLUMNS)
+    .map((col) => ({ ...col, links: col.links.filter((link) => (link.href as string) !== "#") }))
+    .filter((col) => col.links.length > 0);
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const languages = useTenantLanguages(tenantCode);
 
   return (
     <FooterRevealPortal>
       <footer id="footer" className="bg-brand-navy-900 text-white py-16 px-6 md:px-16">
         <div className="max-w-[1440px] mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+          <div className={`grid grid-cols-2 gap-8 mb-12 ${columns.length >= 5 ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
             {columns.map((col) => (
               <div key={col.columnKey} className="flex flex-col gap-3 text-sm">
                 <span className="text-[13px] text-white/50">{t(`footer.columns.${col.columnKey}.heading`)}</span>
@@ -103,7 +110,7 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
 
           <div className="pt-5 border-t border-white/[0.16] flex items-center justify-between gap-6 flex-wrap text-[13px] text-white/70">
             <div className="flex gap-2.5">
-              {SUPPORTED_LANGUAGES.map((lang) => (
+              {languages.length > 1 && languages.map((lang) => (
                 <button
                   key={lang}
                   type="button"

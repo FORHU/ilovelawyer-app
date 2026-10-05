@@ -1,4 +1,5 @@
 import type {
+  CaseFinding,
   CaseOutlook,
   CaseSnapshot,
   ConfidenceLevel,
@@ -70,15 +71,26 @@ function nextDeadline(snapshot: CaseSnapshot, now: Date): SummaryView["deadline"
   }
 }
 
+/** Legal issues not RESOLVED and weaknesses not CLOSED — same rule as the API's risk score
+ * (ilovelawyer-api utils/case-risk-score.ts openFindingCounts). */
+export function openFindings(snapshot: Pick<CaseSnapshot, "findings">): CaseFinding[] {
+  return (snapshot.findings ?? []).filter(
+    (f) => (f.category === "LEGAL_ISSUE" && f.tag !== "RESOLVED") || (f.category === "WEAKNESS" && f.tag !== "CLOSED"),
+  )
+}
+
 export function buildSummaryView(snapshot: CaseSnapshot, now = new Date()): SummaryView {
   const { trends } = snapshot
+  const openRisks = snapshot.risks.filter((r) => r.status === "OPEN").length
+  const findingCount = openFindings(snapshot).length
   return {
     outlook: snapshot.outlook ?? null,
     outlookHistory: (snapshot.outlookHistory ?? []).slice(1, 5),
     // riskAnalysis.overall.score is a risk score (higher is worse), so health is its complement.
     health: snapshot.riskAnalysis ? kpi(100 - snapshot.riskAnalysis.overall.score, trends?.health) : null,
     deadline: nextDeadline(snapshot, now),
-    openIssues: kpi(snapshot.risks.filter((r) => r.status === "OPEN").length, trends?.openIssues),
+    // The API's openIssues trend counts risks only, so it isn't comparable once findings are added.
+    openIssues: kpi(openRisks + findingCount, findingCount > 0 ? undefined : trends?.openIssues),
     evidence: kpi(snapshot.documents.length, trends?.evidence),
     parties: snapshot.case.parties,
     claims: snapshot.case.actionType?.trim() || null,

@@ -16,10 +16,10 @@ import {
 import { AddTimelineEventDialog } from "./add-timeline-event-dialog"
 import { useGraphViewQuery, graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
-import { TONE_TEXT_CLASS, timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
+import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
-const RAG_LABEL_KEY = { ready: "ragReady", pending: "ragPending", failed: "ragFailed" } as const
 
 interface CalendarEvent {
   id: string
@@ -35,6 +35,9 @@ interface TimelineRow {
   title: string
   description: string | null
   documentId: string | null
+  pageNumber: number | null
+  /** Who added it — AI (extracted from documents), LAWYER or CALENDAR. */
+  source: string | null
   isCalendar: boolean
 }
 
@@ -52,13 +55,14 @@ function isDateOnly(at: Date) {
 }
 
 // Day + month ("28 JUL"), UTC for date-only events so a midnight-UTC date doesn't slip a day in
-// negative-offset timezones. The year is appended only when the case spans more than one.
+// negative-offset timezones. The year is appended only when the case spans more than one, and in
+// full ("4 Mar 2018"): a two-digit "18" is ambiguous on a legal record.
 function formatDay(at: Date, withYear: boolean) {
-  const parts = new Intl.DateTimeFormat(undefined, {
+  const parts = new Intl.DateTimeFormat(dateLocale(), {
     timeZone: isDateOnly(at) ? "UTC" : undefined,
     day: "numeric",
     month: "short",
-    ...(withYear ? { year: "2-digit" as const } : {}),
+    ...(withYear ? { year: "numeric" as const } : {}),
   }).format(at)
   return parts
 }
@@ -104,11 +108,17 @@ export function CaseTimelineView({
     () => new Map((snapshot.data?.documents ?? []).map((doc) => [doc.id, doc])),
     [snapshot.data?.documents],
   )
-  // "Category · name · status" — the category is the same one the Evidence list and Workspace's
-  // folders group by, so a dot can be traced back to where its document sits.
-  const sourceLabel = (tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
-    if (tone === "none" || !sourceDoc) return tt("noSourceDocument")
-    return [sourceDoc.category?.trim(), sourceDoc.name, tt(RAG_LABEL_KEY[tone])].filter(Boolean).join(" · ")
+  // "Source: <file name> · p. N" — just the document, not its folder or indexing status. Rows
+  // without a document say where they did come from, rather than one blanket "No source document".
+  const sourceLabel = (item: TimelineRow, tone: IngestTone, sourceDoc: SnapshotDocument | undefined) => {
+    if (sourceDoc && tone !== "none") {
+      const doc = item.pageNumber ? tt("docWithPage", { doc: sourceDoc.name, page: item.pageNumber }) : sourceDoc.name
+      return tt("groundedIn", { doc })
+    }
+    if (item.isCalendar || item.source === "CALENDAR") return tt("sourceCalendar")
+    if (item.source === "LAWYER") return tt("sourceLawyer")
+    if (item.documentId) return tt("sourceDocumentRemoved")
+    return tt("noSourceDocument")
   }
   const timeline = useGraphViewQuery(caseId, "timeline")
   const calendar = useQuery({
@@ -164,6 +174,8 @@ export function CaseTimelineView({
           title: string
           description: string | null
           documentId?: string | null
+          pageNumber?: number | null
+          source?: string | null
         }
         return {
           id: `tl-${node.refId}`,
@@ -172,6 +184,8 @@ export function CaseTimelineView({
           title: event.title,
           description: event.description,
           documentId: event.documentId ?? null,
+          pageNumber: event.pageNumber ?? null,
+          source: event.source ?? null,
           isCalendar: false,
         }
       })
@@ -182,6 +196,8 @@ export function CaseTimelineView({
       title: event.title,
       description: event.notes,
       documentId: null,
+      pageNumber: null,
+      source: "CALENDAR",
       isCalendar: true,
     }))
     const seen = new Set<string>()
@@ -297,9 +313,9 @@ export function CaseTimelineView({
                           <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{item.description}</p>
                         ) : null}
                         <p
-                          className={`mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}
+                          className="mt-0.5 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground"
                         >
-                          {sourceLabel(tone, sourceDoc)}
+                          {sourceLabel(item, tone, sourceDoc)}
                         </p>
                         {item.rawId && !isEditing ? (
                           <button
@@ -367,8 +383,8 @@ export function CaseTimelineView({
                           {item.description ? (
                             <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{item.description}</p>
                           ) : null}
-                          <p className={`mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] ${TONE_TEXT_CLASS[tone]}`}>
-                            {sourceLabel(tone, sourceDoc)}
+                          <p className="mt-1 truncate font-mono text-[10px] font-semibold tracking-[0.5px] text-muted-foreground">
+                            {sourceLabel(item, tone, sourceDoc)}
                           </p>
                         </div>
                       </li>

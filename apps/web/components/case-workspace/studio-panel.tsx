@@ -12,6 +12,12 @@ import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import type { DecisionRecordPayload, FindingCategory } from "@/lib/terminal/types";
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player";
+import { triggerBriefDownload } from "@/lib/terminal/download-brief";
+import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history";
+import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs";
+import { AudioOverviewTranscript } from "@/components/audio-overview/audio-overview-transcript";
+import { AudioOverviewGenerationSteps } from "@/components/audio-overview/audio-overview-generation-steps";
+import { activeTurnIndex, hasUsableTimings, hostBands } from "@/components/audio-overview/audio-overview-sync";
 import { AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
 import { useMessagesQuery, useChatSessionQuery, useCreateConsultationMutation, sendChatMessageAndWait } from "@/lib/chat/mutations";
 import { useTopicNavigator } from "@/lib/chat/use-topic-navigator";
@@ -26,6 +32,8 @@ import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map";
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status";
 import { chatKeys } from "@/lib/query-keys";
+import { dateLocale } from "@/lib/i18n/date-locale";
+import { formatMoney } from "@/lib/terminal/damages-format";
 
 export type StudioTileKind = "documents" | "decisions" | "mindmap" | "timeline" | "dataTable" | "audioOverview" | "caseBrief";
 
@@ -50,7 +58,10 @@ const FINDING_CATEGORY_ORDER: FindingCategory[] = [
 // PANEL_TITLES in legal-terminal.tsx is the same kind of hardcoded-English precedent for
 // category-ish labels, so this matches rather than introducing a new one-off i18n key per enum
 // value across three languages for what's a data-density convenience view.
-function formatCategory(value: string): string {
+function formatCategory(value: string | null | undefined): string {
+  // A snapshot from an API one deploy behind/ahead of this app can omit the field; a missing
+  // label must not blank the whole workspace.
+  if (!value) return "";
   return value
     .toLowerCase()
     .split("_")
@@ -130,6 +141,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
   const [isGeneratingLocal, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
+  const [audioOverviewView, setAudioOverviewView] = useState<AudioOverviewView>("current");
   // Collapsed by default — a sub-section of the Decisions tile (ilovelawyer-api#119's replay),
   // not its own tile, since it's turn-scoped the same way a decision is and would otherwise
   // compete with Decisions for the same "this turn's reasoning" attention. Keyed by promptIndex
@@ -225,6 +237,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // (Witnesses, Damages, Deadlines, Findings) that otherwise only have dedicated views in the
   // Legal Terminal, not here.
   const snapshotQuery = useCaseSnapshotQuery(caseId);
+  // The snapshot query refetches on its own constantly (staleTime 0, idle polling, invalidations
+  // from other mutations), so the tile can't spin on `isFetching` — it'd flip to "Refreshing…"
+  // out of nowhere. Only the initial load and a refresh the user clicked show the spinner.
+  const [isManualSnapshotRefresh, setIsManualSnapshotRefresh] = useState(false);
+  const isDataTableRefreshing = snapshotQuery.isLoading || isManualSnapshotRefresh;
   const dataTableRows = useMemo<DataTableRow[]>(() => {
     const snap = snapshotQuery.data;
     if (!snap) return [];
@@ -238,16 +255,16 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     });
     snap.damages.forEach((d) => {
       rows.push({
-        type: `${t("workspace.dataTableTypeDamage")} · ${formatCategory(d.category)}`,
-        label: d.description?.trim() || "—",
-        detail: d.amount != null ? d.amount.toLocaleString() : "—",
+        type: `${t("workspace.dataTableTypeDamage")} · ${formatCategory(d.kind)}`,
+        label: d.title,
+        detail: d.amount != null ? formatMoney(d.amount, snap.damagesSummary.currency) : "—",
       });
     });
     snap.procedure.deadlines.forEach((dl) => {
       rows.push({
         type: t("workspace.dataTableTypeDeadline"),
         label: dl.label,
-        detail: dl.computedDueDate ? new Date(dl.computedDueDate).toLocaleDateString() : "—",
+        detail: dl.computedDueDate ? new Date(dl.computedDueDate).toLocaleDateString(dateLocale()) : "—",
       });
     });
     // Findings arrive in whatever order the API/DB returned them (insertion order), which
@@ -260,7 +277,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
       rows.push({
         type: formatCategory(f.category),
         label: f.label,
-        detail: f.notes === "AI" ? t("workspace.dataTableAiGenerated") : "—",
+        // The finding's own sub-line (burden, the work that would close it, the document
+        // reference) and the document it's drawn from — "AI-generated" on every row said nothing.
+        detail:
+          [f.detail, f.sourceLabel].filter((v) => v?.trim()).join(" · ") ||
+          (f.notes === "AI" ? t("workspace.dataTableAiGenerated") : "—"),
       });
     });
     return rows;
@@ -439,6 +460,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const {
     activeAudioOverviewMessage,
     isGeneratingScript: isGeneratingAudioOverview,
+    scriptStep: audioOverviewScriptStep,
     isConsultationBusy: isAudioOverviewConsultationBusy,
     generateScriptError: audioOverviewGenerateError,
     generateScript: handleGenerateAudioOverviewScript,
@@ -466,6 +488,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
 
   const {
     audioElement,
+    mediaElement: audioOverviewMediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,
@@ -479,6 +502,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     cycleRate: cycleAudioOverviewRate,
     formatDuration,
   } = useAudioOverviewPlayer(renderedAudioUrl, audioOverviewMessageId);
+
+  const audioOverviewTurnCount = activeAudioOverviewMessage?.audioOverview?.turns.length ?? 0;
+  const audioOverviewTimings = activeAudioOverviewMessage?.audioOverview?.turnTimings;
+  const audioOverviewPosition =
+    renderedAudioUrl && hasUsableTimings(audioOverviewTimings, audioOverviewTurnCount)
+      ? `${String(activeTurnIndex(playbackTime, audioOverviewTimings) + 1).padStart(2, "0")} / ${String(audioOverviewTurnCount).padStart(2, "0")}`
+      : undefined;
 
   // Playback belongs to the Audio Overview view only — leaving it (back arrow, another tile, or
   // collapsing the panel) stops the audio rather than leaving a hidden player running.
@@ -538,7 +568,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             )}
             {openTile ? (
               <span className="flex min-w-0 items-center gap-1 text-[13px] font-semibold">
-                <span className="text-muted-foreground">{t("workspace.studio")}</span>
+                {/* Same action as the chevron — the crumb reads as a link, so it is one. */}
+                <button
+                  type="button"
+                  onClick={() => setOpenTile(null)}
+                  className="rounded-sm text-muted-foreground hover:text-foreground hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  {t("workspace.studio")}
+                </button>
                 <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="truncate text-foreground">{tileLabel}</span>
               </span>
@@ -656,7 +693,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               label={t("workspace.decisionsTile")}
               note={
                 decisionGroups.length > 0
-                  ? t("workspace.decisionsNoteCount", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
+                  ? t("workspace.decisionsNoteThread", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
                   : undefined
               }
               expanded={expanded}
@@ -712,11 +749,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
              * Refresh-Analysis-populated data, not something to generate on click — so this tile
              * refetches the case snapshot in place. */}
             <StudioTile
-              icon={snapshotQuery.isFetching ? Loader2 : TableIcon}
-              iconSpinning={snapshotQuery.isFetching}
-              label={snapshotQuery.isFetching ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
+              icon={isDataTableRefreshing ? Loader2 : TableIcon}
+              iconSpinning={isDataTableRefreshing}
+              label={isDataTableRefreshing ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
               note={
-                snapshotQuery.isFetching
+                isDataTableRefreshing
                   ? undefined
                   : dataTableRows.length > 0
                     ? t("workspace.dataTableFactCount", { count: dataTableRows.length })
@@ -726,7 +763,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               disabled={noDocuments}
               disabledHint={t("workspace.needsDocumentsHint")}
               onClick={() => {
-                void snapshotQuery.refetch();
+                setIsManualSnapshotRefresh(true);
+                void snapshotQuery.refetch().finally(() => setIsManualSnapshotRefresh(false));
                 openStudioTile("dataTable");
               }}
             />
@@ -782,7 +820,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                           {group.promptTitle || "Untitled prompt"}
                         </span>
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {t("workspace.decisionsNoteCount", { count: group.records.length })}
+                          {t("workspace.decisionsNotePrompt", { count: group.records.length })}
                         </span>
                       </button>
                       {isOpen && (
@@ -864,7 +902,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   <button
                     type="button"
                     onClick={() => generateCaseMindMap.mutate()}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                   >
                     {t("caseMindMap.buildCta")}
                   </button>
@@ -885,7 +923,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                         type="button"
                         onClick={() => void handleGenerateMindMap()}
                         disabled={!session || isMindMapConsultationBusy}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                       >
                         {t("workspace.mindMapGenerateCta")}
                       </button>
@@ -916,8 +954,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "dataTable" ? (
             dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">
-                {/* Type and Detail hold short labels ("Weakness", "AI-generated") — Label holds
-                 * a full paragraph. Giving all three equal footing (the previous `w-full` +
+                {/* Type holds a short label ("Weakness") and Detail a bounded, wrapping sub-line
+                 * (see its <td>) — Label holds a full paragraph. Giving all three equal footing (the previous `w-full` +
                  * min-width-floor version) meant Label's long content pushed Type and Detail
                  * down to a sliver regardless of how wide the table was allowed to get. `w-1` +
                  * `whitespace-nowrap` on the narrow columns is the standard plain-<table> trick
@@ -932,7 +970,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <th className="w-1 py-2 pr-3 whitespace-nowrap">{t("workspace.dataTableColType")}</th>
                       <th className="py-2 pr-3">{t("workspace.dataTableColLabel")}</th>
-                      <th className="w-1 py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
+                      <th className="py-2 whitespace-nowrap">{t("workspace.dataTableColDetail")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -940,7 +978,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       <tr key={i} className="border-b border-border/60 last:border-0">
                         <td className="py-2 pr-3 align-top whitespace-nowrap text-muted-foreground">{row.type}</td>
                         <td className="py-2 pr-3 align-top text-foreground">{row.label}</td>
-                        <td className="py-2 align-top whitespace-nowrap text-muted-foreground">{row.detail}</td>
+                        {/* Wraps within a bounded width now that it carries the finding's own
+                            sub-line and source, not a one-word tag. */}
+                        <td className="min-w-32 max-w-64 py-2 align-top text-[12px] leading-snug text-muted-foreground">{row.detail}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -951,7 +991,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                 {t("workspace.dataTableEmpty")}
               </p>
             )
-          ) : audioConsultationId ? (
+          ) : (
+            <div className="flex h-full flex-col gap-3">
+              <AudioOverviewViewTabs view={audioOverviewView} onChange={setAudioOverviewView} />
+              <div className="min-h-0 flex-1">
+                {audioOverviewView === "history" ? <AudioOverviewHistory caseId={caseId} /> : audioConsultationId ? (
             activeAudioOverviewMessage ? (
               <div className="flex h-full flex-col gap-3">
                 {audioRenderError && (
@@ -969,7 +1013,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                       type="button"
                       onClick={handleGenerateAudioOverviewAudio}
                       disabled={audioRendering || generateAudioOverviewAudioPending}
-                      className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1.5 self-start rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 disabled:opacity-50"
                     >
                       {audioRendering || generateAudioOverviewAudioPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -980,39 +1024,77 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     </button>
                   </div>
                 )}
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                  {activeAudioOverviewMessage.audioOverview?.turns.map((turn, i) => (
-                    <div key={i}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-gold">
-                        {turn.speaker === "HOST_A" ? t("workspace.audioOverviewHostA") : t("workspace.audioOverviewHostB")}
-                      </p>
-                      <p className="text-[13px] leading-5 text-foreground">{turn.text}</p>
-                    </div>
-                  ))}
+                <div className="-mx-3 flex min-h-0 flex-1 flex-col">
+                  <AudioOverviewTranscript
+                    turns={activeAudioOverviewMessage.audioOverview?.turns ?? []}
+                    checks={activeAudioOverviewMessage.audioOverview?.checks}
+                    turnTimings={activeAudioOverviewMessage.audioOverview?.turnTimings}
+                    sentenceTimings={activeAudioOverviewMessage.audioOverview?.sentenceTimings}
+                    wordTimings={activeAudioOverviewMessage.audioOverview?.wordTimings}
+                    currentTime={playbackTime}
+                    duration={playbackDuration}
+                    onSeek={renderedAudioUrl ? seekAudioOverview : undefined}
+                    caption={t("workspace.audioOverviewCaption", {
+                      date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }),
+                      count: activeAudioOverviewMessage.audioOverview?.turns.length ?? 0,
+                    })}
+                  />
                 </div>
               </div>
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
-                </p>
-                {!isGeneratingAudioOverview && (
+              <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
+                {/* Gold-ringed badge anchors both states: static headphones-style icon while idle,
+                 * live equalizer bars while generating — a tiny grey spinner was easy to miss. */}
+                <div
+                  className={`relative flex h-16 w-16 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/10 ${
+                    isGeneratingAudioOverview ? "shadow-[0_0_24px_-4px] shadow-brand-gold/50" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  {isGeneratingAudioOverview ? (
+                    <>
+                      <span className="absolute inset-0 rounded-full border border-brand-gold/50 motion-safe:animate-ping" />
+                      <span className="flex h-6 items-center gap-0.75">
+                        {[0, 0.15, 0.3, 0.45, 0.6].map((delay) => (
+                          <span
+                            key={delay}
+                            className="h-full w-0.75 origin-center rounded-full bg-brand-gold motion-safe:animate-audio-wave"
+                            style={{ animationDelay: `${delay}s` }}
+                          />
+                        ))}
+                      </span>
+                    </>
+                  ) : (
+                    <AudioLines className="h-7 w-7 text-brand-gold" />
+                  )}
+                </div>
+
+                <div className="flex max-w-xs flex-col gap-1.5" role={isGeneratingAudioOverview ? "status" : undefined}>
+                  <p className="text-[15px] font-semibold text-foreground">
+                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewEmpty")}
+                  </p>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground">
+                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGeneratingHint") : t("workspace.audioOverviewEmptyHint")}
+                  </p>
+                </div>
+
+                {isGeneratingAudioOverview ? (
+                  <AudioOverviewGenerationSteps step={audioOverviewScriptStep ?? 0} />
+                ) : (
                   <>
                     <button
                       type="button"
                       onClick={() => void handleGenerateAudioOverviewScript()}
                       disabled={!session || isAudioOverviewConsultationBusy}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-navy-950 px-5 py-2.5 text-[13px] font-medium text-white shadow-md transition-colors hover:bg-[#162244] disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-gold px-6 py-3 text-[13px] font-semibold text-brand-gold-foreground shadow-md shadow-brand-gold/20 transition-all hover:-translate-y-px hover:bg-brand-gold/90 hover:shadow-lg hover:shadow-brand-gold/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
                     >
+                      <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                       {t("workspace.audioOverviewGenerateCta")}
                     </button>
                     {isAudioOverviewConsultationBusy && (
                       <p className="text-xs text-muted-foreground">{t("workspace.replyInProgressHint")}</p>
                     )}
                   </>
-                )}
-                {isGeneratingAudioOverview && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
                 )}
                 {audioOverviewGenerateError && (
                   <p className="text-xs text-red-600 dark:text-red-400">{t("workspace.audioOverviewGenerateError")}</p>
@@ -1024,12 +1106,21 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               {t("workspace.audioOverviewNoConsultation")}
             </p>
           )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {expanded && openTile === "audioOverview" && renderedAudioUrl && !playerBarDismissed && (
         <AudioOverviewPlayerBar
           title={t("workspace.audioOverviewTile")}
+          position={audioOverviewPosition}
+          bands={hostBands(
+            activeAudioOverviewMessage?.audioOverview?.turns ?? [],
+            activeAudioOverviewMessage?.audioOverview?.turnTimings,
+            playbackDuration,
+          )}
           isPlaying={isPlaying}
           currentTime={playbackTime}
           duration={playbackDuration}
@@ -1039,6 +1130,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           onSkip={skipAudioOverview}
           onCycleRate={cycleAudioOverviewRate}
           onClose={dismissPlayerBar}
+          onDownload={() => triggerBriefDownload(renderedAudioUrl, "audio-overview.mp3")}
+          waveformUrl={renderedAudioUrl}
+          waveformMedia={audioOverviewMediaElement}
           formatDuration={formatDuration}
         />
       )}

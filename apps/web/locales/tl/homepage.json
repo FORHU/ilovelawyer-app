@@ -90,8 +90,7 @@
   },
   "topicNavigator": {
     "label": "Mga Paksa",
-    "generating": "Ginagawa ang breakdown ng paksa…",
-    "hide": "Itago ang mga paksa"
+    "generating": "Ginagawa ang breakdown ng paksa…"
   },
   "timeline": {
     "emptyState": "Wala pang event sa kasong ito. Magdagdag sa ibaba — awtomatikong lalabas dito ang mga petsang nakuha mula sa mga dokumento.",

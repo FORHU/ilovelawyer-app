@@ -97,21 +97,9 @@ function clearDraft() {
   }
 }
 
-// A plain property on `window` itself (not sessionStorage) — the one thing that's true for the
-// lifetime of the JS runtime but false again after an actual browser refresh. Next.js's <Link>/
-// router.push navigations are client-side: the tab's `window` object is never torn down, so this
-// flag survives them and correctly marks a second visit within the same load as "not a refresh."
-// A real refresh (or closing and reopening the tab) discards `window` entirely along with it,
-// while sessionStorage.getItem(DRAFT_STORAGE_KEY) survives — which is exactly the distinction
-// isPageRevisit() below needs to make.
-const CREATE_CASE_VISITED_FLAG = "__createCaseVisitedThisLoad";
-
-function isPageRevisit(): boolean {
-  if (typeof window === "undefined") return false;
-  const w = window as unknown as Record<string, boolean>;
-  if (w[CREATE_CASE_VISITED_FLAG]) return true;
-  w[CREATE_CASE_VISITED_FLAG] = true;
-  return false;
+/** Step II is complete once every party row has a name — a blank party isn't a party. */
+function partiesComplete(parties: Party[]): boolean {
+  return parties.length > 0 && parties.every((p) => p.name.trim());
 }
 
 export default function CreateCasePage() {
@@ -162,24 +150,28 @@ function CreateCasePageContent() {
   const { mutateAsync: uploadDocuments } = useUploadCaseDocumentsMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
 
-  // Rehydrate a draft left behind by a refresh — runs once, after mount (not in a lazy useState
-  // initializer), so the client's first render still matches the server's and React doesn't
-  // flag a hydration mismatch. A brief flash of the empty step 1 is the tradeoff.
+  // A draft left behind (a refresh, or a case started earlier and abandoned) is offered, never
+  // restored silently: that used to drop the user straight onto step III of an old case, one
+  // click from filing it. Read once after mount (not in a lazy useState initializer), so the
+  // client's first render still matches the server's.
+  const [pendingDraft, setPendingDraft] = useState<CaseDraft | null>(null);
   const hasHydratedRef = useRef(false);
   useEffect(() => {
     if (hasHydratedRef.current) return;
     hasHydratedRef.current = true;
-    if (isPageRevisit()) {
-      // We've already mounted this page once during this same browser-tab session — arriving
-      // here again means the user left (clicked another top-nav tab, hit back, started a fresh
-      // "New case") and came back, not that they refreshed. Treat any leftover draft as
-      // abandoned rather than resurrecting it into what the user expects to be a blank form.
-      clearDraft();
-      return;
-    }
     const draft = loadDraft();
-    if (!draft) return;
+    if (draft) setPendingDraft(draft);
+  }, []);
 
+  const discardDraft = () => {
+    clearDraft();
+    setPendingDraft(null);
+  };
+
+  const resumeDraft = () => {
+    const draft = pendingDraft;
+    if (!draft) return;
+    setPendingDraft(null);
     setFormData((prev) => ({
       ...prev,
       caseTitle: draft.caseTitle,
@@ -187,17 +179,20 @@ function CreateCasePageContent() {
       ukJurisdiction: draft.ukJurisdiction,
       parties: draft.parties.length > 0 ? draft.parties : prev.parties,
     }));
-    setStep(draft.step);
+    // The first incomplete step, not necessarily the one it was left on.
+    const resumeStep = !draft.caseTitle.trim() ? 1 : !partiesComplete(draft.parties) ? Math.min(draft.step, 2) : draft.step;
+    setStep(resumeStep);
     setMaxStepReached(draft.maxStepReached);
     setOpenTarget(draft.openTarget);
     setCreatedCaseId(draft.createdCaseId);
+    stepEnteredAtRef.current = Date.now();
 
     const highestPartyId = draft.parties.reduce((max, p) => {
       const match = /^party-(\d+)$/.exec(p.id);
       return match ? Math.max(max, Number(match[1])) : max;
     }, 1);
     nextPartyIdRef.current = highestPartyId + 1;
-  }, []);
+  };
 
   // Keeps the draft in sync as the user types — skipped while everything is still at its
   // pristine default so an untouched visit never writes an empty draft to storage.
@@ -210,6 +205,8 @@ function CreateCasePageContent() {
       !formData.ukJurisdiction.trim() &&
       formData.parties.every((p) => !p.name.trim());
     if (isPristine) return;
+    // Typing into the fresh form while a draft is on offer means starting over.
+    setPendingDraft(null);
 
     saveDraft({
       caseTitle: formData.caseTitle,
@@ -439,16 +436,15 @@ function CreateCasePageContent() {
       let caseId = createdCaseId;
       if (!caseId) {
         // Free-text Jurisdiction has no home on the backend yet (see CONTEXT.md pending
-        // section) — it's captured in the form but not sent. Parties collapse into the
-        // single `partyInvolved` string the backend does support.
-        const partyInvolved = formData.parties
+        // section) — it's captured in the form but not sent. Parties go as an array, one entry
+        // per party: the old joined `partyInvolved` string came back as a single party.
+        const parties = formData.parties
           .filter((p) => p.name.trim())
-          .map((p) => `${p.name.trim()} (${p.designation})`)
-          .join("; ");
+          .map((p) => ({ name: p.name.trim(), designation: p.designation }));
 
         const newCase = await createCase({
           caseName: formData.caseTitle.trim(),
-          partyInvolved: partyInvolved || undefined,
+          parties: parties.length > 0 ? parties : undefined,
           ukJurisdiction: formData.ukJurisdiction || undefined,
         });
         caseId = newCase.id;
@@ -477,6 +473,12 @@ function CreateCasePageContent() {
     }
   };
 
+  // A step only shows its tick once it's actually filled in — passing through step II with a
+  // blank party used to tick it anyway.
+  const stepComplete = (n: number) =>
+    n === 1 ? !!formData.caseTitle.trim() : n === 2 ? partiesComplete(formData.parties) : false;
+  const namedParties = formData.parties.filter((p) => p.name.trim());
+
   const steps = [
     { n: 1, numeral: t("steps.identity.numeral"), title: t("steps.identity.title"), hint: t("steps.identity.hint") },
     { n: 2, numeral: t("steps.parties.numeral"), title: t("steps.parties.title"), hint: t("steps.parties.hint") },
@@ -484,7 +486,7 @@ function CreateCasePageContent() {
   ];
 
   return (
-    <PageShell activeTab="create-case">
+    <PageShell>
       <form onSubmit={handleSubmitFiling} className="flex-1 flex flex-col">
         {/* md+ is pinned to the viewport height (no page-level scroll) — the back link and the
             grid below split that height via flex-1, and the step card scrolls internally as a
@@ -526,7 +528,7 @@ function CreateCasePageContent() {
                * where it sits beside the form instead of stacked above it. */}
               <ol className="flex items-start justify-between gap-1 md:flex-col">
                 {steps.map((s) => {
-                  const done = s.n < step;
+                  const done = s.n < step && stepComplete(s.n);
                   const current = s.n === step;
                   const enabled = s.n <= maxStepReached;
                   return (
@@ -536,7 +538,7 @@ function CreateCasePageContent() {
                       className={`flex flex-1 flex-col items-center gap-1.5 text-center md:flex-none md:flex-row md:items-center md:gap-3.5 md:py-3.5 md:border-t md:border-border md:text-left ${enabled ? "cursor-pointer" : "cursor-default"}`}
                     >
                       {done ? (
-                        <span className="w-6 h-6 md:w-6.5 md:h-6.5 rounded-full bg-brand-gold text-brand-navy-950 flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 md:w-6.5 md:h-6.5 rounded-full bg-brand-gold text-brand-gold-foreground flex items-center justify-center shrink-0">
                           <CircleCheck className="w-3.5 h-3.5" aria-hidden="true" />
                         </span>
                       ) : (
@@ -561,6 +563,35 @@ function CreateCasePageContent() {
             </div>
 
             <div className="flex flex-col gap-5 min-w-0 md:min-h-0">
+              {pendingDraft && (
+                <div
+                  role="status"
+                  className="flex flex-col gap-3 rounded-xl border border-brand-gold/40 bg-brand-gold/5 px-4 py-3 sm:flex-row sm:items-center md:shrink-0"
+                >
+                  <p className="flex-1 text-sm text-foreground">
+                    {pendingDraft.caseTitle.trim()
+                      ? t("draftPrompt.withTitle", { title: pendingDraft.caseTitle.trim() })
+                      : t("draftPrompt.untitled")}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={resumeDraft}
+                      className="h-9 px-4 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
+                    >
+                      {t("draftPrompt.resume")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={discardDraft}
+                      className="h-9 px-4 rounded-full border border-border text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                    >
+                      {t("draftPrompt.startOver")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {submitError && (
                 <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300 rounded-xl px-4 py-3 md:shrink-0" role="alert">
                   <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -758,6 +789,25 @@ function CreateCasePageContent() {
                     <p className="text-[13px] text-muted-foreground">{t("sectionEvidence.subheading")}</p>
                   </div>
 
+                  {/* What's about to be filed — the title and parties aren't visible on this step
+                      otherwise, and Initiate Filing creates the case. */}
+                  <dl className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2 rounded-xl border border-border bg-background px-4 py-3 text-[13px]">
+                    <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("filingSummary.title")}</dt>
+                    <dd className="truncate font-['Libre_Caslon_Text'] text-foreground">{formData.caseTitle.trim()}</dd>
+                    <button type="button" onClick={() => goToStep(1)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
+                      {t("filingSummary.edit")}
+                    </button>
+                    <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("filingSummary.parties")}</dt>
+                    <dd className="truncate text-foreground">
+                      {namedParties.length > 0
+                        ? namedParties.map((p) => p.name.trim()).join(", ")
+                        : <span className="text-muted-foreground">{t("filingSummary.noParties")}</span>}
+                    </dd>
+                    <button type="button" onClick={() => goToStep(2)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
+                      {t("filingSummary.edit")}
+                    </button>
+                  </dl>
+
                   <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -899,7 +949,7 @@ function CreateCasePageContent() {
                       <button
                         type="button"
                         onClick={handleContinue}
-                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer"
                       >
                         {t("continue")}
                         <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -913,7 +963,7 @@ function CreateCasePageContent() {
                       <button
                         type="submit"
                         disabled={hasFilesUploading || isSubmitting}
-                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-navy-950 text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? t("submitting") : t("initiateFiling")}
                         {!isSubmitting && <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />}

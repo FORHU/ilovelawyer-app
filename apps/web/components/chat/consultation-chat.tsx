@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, ChevronRight } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -17,7 +17,7 @@ import AssistantMessage, { ThinkingIndicator, cleanAssistantContent } from "@/co
 import { DecisionDrawer } from "@/components/chat/decision-drawer";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
 import ConsultationSidebar from "@/components/chat/consultation-sidebar";
-import TopicNavigator, { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
+import TopicNavigator from "@/components/chat/topic-navigator";
 import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
@@ -27,6 +27,7 @@ import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { composerAction, shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
 import { shouldScrollTranscriptToBottom } from "@/lib/chat/transcript-scroll";
 import { ThreadPicker } from "@/components/chat/thread-picker";
+import { SourcesPanel } from "@/components/case-workspace/sources-panel";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import { ReasoningPanel } from "@/components/chat/reasoning-panel";
 import { MessageAttachments, type MessageAttachment } from "@/components/chat/message-attachments";
@@ -48,6 +49,7 @@ import {
   type ChatMessage,
   type MessageReasoning,
   type MessageGroundingCheck,
+  type CitationRankItem,
 } from "@/lib/chat/mutations";
 import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
@@ -94,6 +96,9 @@ interface DisplayMessage {
    * GroundingSummary. Undefined for user turns, for replies generated before the verifier ran,
    * and whenever it is disabled on the API. */
   groundingChecks?: MessageGroundingCheck[];
+  /** Per-citation relevance tiers for this reply, straight off the messages API — see
+   * CitationLink. Undefined until the background ranking has run, and whenever it is disabled. */
+  citationRanking?: CitationRankItem[];
   /** Jev triage for this user turn — drives the urgency chip under the prompt. */
   urgent?: boolean | null;
   intent?: string | null;
@@ -136,6 +141,9 @@ interface DisplayMessage {
 // Matches the ChatGPT/Claude convention — generous for a batch of case exhibits without
 // the attachment-chip row or upload/indexing time getting unwieldy.
 const MAX_ATTACHED_FILES = 10;
+/** Expanded width of the Terminal chat pane's Topics panel — fixed, unlike Case Workspace's
+ * resizable one, since a Terminal pane is itself resized as a whole. */
+const TERMINAL_TOPICS_WIDTH = 260;
 
 // How many pills show under the empty-state composer, and how many of those slots (at
 // most) get pulled from the case's own uploaded documents / the user's consultation
@@ -337,6 +345,11 @@ interface ConsultationChatProps {
    * page or in Case Workspace. */
   panelTitles?: Record<string, string>;
   onJumpToPanel?: (panelId: string) => void;
+  /** 0-based position of a user prompt among the visible ones — once history loads, the
+   * transcript lands on that prompt instead of the bottom (Case Overview's per-prompt links).
+   * `onScrolledToPrompt` fires once it has, so the caller can drop the one-shot URL param. */
+  scrollToPromptNumber?: number | null;
+  onScrolledToPrompt?: () => void;
 }
 
 // Mirrors the alternating user/assistant bubble shapes below so switching
@@ -373,6 +386,8 @@ export default function ConsultationChat({
   enableFileChips = false,
   panelTitles,
   onJumpToPanel,
+  scrollToPromptNumber,
+  onScrolledToPrompt,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -396,6 +411,23 @@ export default function ConsultationChat({
   // A Terminal pane is an independent chat surface. Its topic navigation must be a real
   // column in that pane rather than the full-page navigator's absolute overlay.
   const [terminalTopicsOpen, setTerminalTopicsOpen] = useState(true);
+  // …except when the pane is too narrow to spare that column (a resized Terminal pane can be
+  // ~300px): below this width the Topics panel starts collapsed and, when opened, overlays the
+  // transcript instead of squeezing it down to a word per line. Tracks the pane live, not the
+  // viewport, since panes resize independently of the window.
+  // Callback-ref'd element (not useRef) so the observer attaches whenever <main> actually mounts.
+  const [embeddedMainEl, embeddedMainRef] = useState<HTMLElement | null>(null);
+  const [terminalChatNarrow, setTerminalChatNarrow] = useState(false);
+  useEffect(() => {
+    const el = embeddedMainEl;
+    if (!embedded || !el) return;
+    const observer = new ResizeObserver(([entry]) => setTerminalChatNarrow((entry?.contentRect.width ?? 0) < 560));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [embedded, embeddedMainEl]);
+  useEffect(() => {
+    if (terminalChatNarrow) setTerminalTopicsOpen(false);
+  }, [terminalChatNarrow]);
   // Each selected/dropped file queues locally as "pending" — nothing uploads until Send is
   // clicked, since (unlike create-case) there's no earlier "creation" step to anchor an
   // eager upload to. "doc" is set once that entry's presign→PUT→confirm sequence resolves.
@@ -612,6 +644,7 @@ export default function ConsultationChat({
               reasoning: m.reasoning ?? undefined,
               researchSteps: m.researchSteps?.steps,
               groundingChecks: m.groundingChecks,
+              citationRanking: m.citationRanking?.items,
               urgent: m.urgent,
               intent: m.intent,
             }))
@@ -822,11 +855,9 @@ export default function ConsultationChat({
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
-  // Terminal's inline Topics panel. While it's showing, the picker row's "Topics" toggle button
-  // is hidden (rendering both side by side was redundant); the panel's edge arrow collapses it.
-  const terminalTopicsPanelVisible = Boolean(
-    embedded && showTopicNavigator && terminalTopicsOpen && (splitTopics.length > 0 || isGeneratingTopics),
-  );
+  // Terminal's inline Topics panel (Case Workspace's SourcesPanel, docked right) — shown for any
+  // open consultation, either expanded or minimized to its icon rail (`terminalTopicsOpen`).
+  const terminalTopicsPanelVisible = Boolean(embedded && showTopicNavigator && consultationId);
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
   // the transcript so each can highlight yellow whichever quotes actually appear in its own
@@ -984,6 +1015,23 @@ export default function ConsultationChat({
     });
     if (shouldScroll) transcript.scrollTo({ top: transcript.scrollHeight, behavior: "auto" });
   }, [messages, consultationKey]);
+
+  // Declared after the bottom-scroll effect above so, in the commit where history lands, this
+  // runs second and overrides it. Landing mid-thread also turns "follow" off (scroll listener),
+  // so later refetches leave the reader where they are.
+  useEffect(() => {
+    if (scrollToPromptNumber == null) return;
+    let seen = -1;
+    const index = visibleMessages.findIndex((m) => m.role === "user" && ++seen === scrollToPromptNumber);
+    if (index === -1) return;
+    const el = transcriptRef.current?.querySelector<HTMLElement>(`[data-chat-prompt-index="${index}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "auto", block: "start" });
+    // Set here rather than left to the scroll listener, whose event lands a frame later — a
+    // history refetch in between would otherwise still see "follow" and snap back to the bottom.
+    shouldFollowTranscriptRef.current = false;
+    onScrolledToPrompt?.();
+  }, [scrollToPromptNumber, visibleMessages, onScrolledToPrompt]);
 
   const handleNewChat = () => {
     sendTokenRef.current++; // abandon any in-flight send for the consultation we're leaving
@@ -1580,6 +1628,7 @@ export default function ConsultationChat({
   const chatInputBar = (
     <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
       <form
+        data-tour-id="composer-input"
         onSubmit={handleSendMessage}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -1801,6 +1850,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
+                      data-tour-id="composer-attach"
                       className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
                     >
                       <Paperclip className="h-4 w-4" aria-hidden="true" />
@@ -1833,7 +1883,7 @@ export default function ConsultationChat({
                     // Same queue-then-transcribe pipeline as the non-embedded composer below —
                     // shows up on the Transcription page right away, then transcribeAndSend
                     // drives this row through upload/start-job/poll.
-                    const id = queueTranscript(blob, durationSeconds);
+                    const id = queueTranscript(blob, durationSeconds, { source: "consultation" });
                     void transcribeAndSend(id, blob, durationSeconds);
                   }}
                   onError={() => alert(t("microphoneError"))}
@@ -1858,7 +1908,7 @@ export default function ConsultationChat({
                       onClick={() => void handleStop()}
                       disabled={!canStop || isStopping}
                       aria-label={t("input.stopGenerating", { defaultValue: "Stop generating" })}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
                       {isStopping ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -1876,7 +1926,7 @@ export default function ConsultationChat({
                       type="submit"
                       disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
                       aria-label={t("input.sendMessage")}
-                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-navy-950 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
+                      className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
@@ -1899,6 +1949,7 @@ export default function ConsultationChat({
                       onClick={handleClipClick}
                       disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
+                      data-tour-id="composer-attach"
                       className={`order-2 ${isComposerMultiline ? "" : "sm:order-1"} w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none`}
                     >
                       <Plus className="w-4 h-4" aria-hidden="true" />
@@ -1916,7 +1967,7 @@ export default function ConsultationChat({
                     // Queued immediately so it shows up on the Transcription page right away —
                     // transcribeAndSend below drives this same row through upload/start-job/poll
                     // rather than creating a second, disconnected backend record for it.
-                    const id = queueTranscript(blob, durationSeconds);
+                    const id = queueTranscript(blob, durationSeconds, { source: "consultation" });
                     void transcribeAndSend(id, blob, durationSeconds);
                   }}
                   onError={() => alert(t("microphoneError"))}
@@ -2043,7 +2094,7 @@ export default function ConsultationChat({
 
       {headerSlot && !embedded && <div className="relative z-20 shrink-0 pt-16 pb-4">{headerSlot}</div>}
 
-      <main className={`relative z-10 w-full mx-auto flex flex-1 min-h-0 ${embedded ? "max-w-none flex-row" : "max-w-5xl flex-col"} ${headerSlot || embedded ? "" : "pt-16"}`}>
+      <main ref={embeddedMainRef} className={`relative z-10 w-full mx-auto flex flex-1 min-h-0 ${embedded ? "max-w-none flex-row" : "max-w-5xl flex-col"} ${headerSlot || embedded ? "" : "pt-16"}`}>
 
         <div className="relative z-10 flex min-w-0 flex-col flex-1 min-h-0">
         {/* Terminal's Chat pane has no ConsultationSidebar (that's a full-page rail — see
@@ -2056,26 +2107,6 @@ export default function ConsultationChat({
         {isolateConsultation && !mindMapOnly && caseId && (
           <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
             <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />
-            {embedded && showTopicNavigator && !terminalTopicsPanelVisible && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => setTerminalTopicsOpen((open) => !open)}
-                    aria-expanded={terminalTopicsOpen}
-                    aria-controls={terminalTopicsOpen ? `${chatInstanceId}-topics` : undefined}
-                    className="relative top-1.5 right-2 flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
-                    disabled={splitTopics.length === 0 && !isGeneratingTopics}
-                  >
-                    <ListTree className="h-3.5 w-3.5" aria-hidden="true" />
-                    Topics
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {splitTopics.length === 0 && !isGeneratingTopics ? "Topics appear after a structured AI response" : "Show response topics"}
-                </TooltipContent>
-              </Tooltip>
-            )}
           </div>
         )}
         {(() => {
@@ -2170,7 +2201,7 @@ export default function ConsultationChat({
                         type="button"
                         onClick={() => void doSend(AUTO_MINDMAP_PROMPT)}
                         disabled={!session}
-                        className="rounded-full bg-brand-navy-950 text-white px-5 py-2.5 text-[13px] font-['Inter'] font-medium shadow-md hover:bg-[#162244] transition-colors disabled:opacity-50"
+                        className="rounded-full bg-brand-navy-950 text-white px-5 py-2.5 text-[13px] font-['Inter'] font-medium shadow-md hover:bg-[#162244] dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 transition-colors disabled:opacity-50"
                       >
                         {t("mindMap.generateCta")}
                       </button>
@@ -2289,6 +2320,7 @@ export default function ConsultationChat({
                       type="button"
                       onClick={handleNewChat}
                       aria-label={t("sidebar.newChat")}
+                      data-tour-id="consult-new"
                       className="flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <SquarePen className="h-4 w-4" aria-hidden="true" />
@@ -2350,7 +2382,9 @@ export default function ConsultationChat({
                   if (m.role === "user") {
                     return (
                       <React.Fragment key={i}>
-                        <div className="flex flex-col items-end gap-2">
+                        {/* data attribute, not a `chat-msg-*` id — the topic navigator's
+                            scroll-spy matches every `chat-msg-*` id and must only see replies. */}
+                        <div data-chat-prompt-index={i} className="flex flex-col items-end gap-2 scroll-mt-4">
                           {m.attachments && m.attachments.length > 0 && (
                             <MessageAttachments attachments={m.attachments} onSelect={setPreviewAttachment} ragStatusById={ragStatusById} />
                           )}
@@ -2458,6 +2492,7 @@ export default function ConsultationChat({
                             messageIndex={i}
                             quoteHighlights={evidenceQuoteHighlights}
                             groundingChecks={m.groundingChecks}
+                            citationRanking={m.citationRanking}
                           />
                           <ReasoningPanel reasoning={m.reasoning} />
                           {!isStreamingThis && m.content && isolateConsultation && onJumpToPanel && (() => {
@@ -2530,37 +2565,30 @@ export default function ConsultationChat({
         })()}
         </div>
         {terminalTopicsPanelVisible && (
-          // The picker row's "Topics" button is hidden while this panel is open (see
-          // terminalTopicsPanelVisible) so there's a single Topics control at a time — the arrow
-          // tab straddling the panel's left edge is how it's collapsed again. It lives outside
-          // the <aside> because that clips its overflow.
-          <div className="relative ml-2 flex shrink-0">
-            <button
-              type="button"
-              onClick={() => setTerminalTopicsOpen(false)}
-              aria-label={t("topicNavigator.hide")}
-              title={t("topicNavigator.hide")}
-              className="absolute top-1/2 left-0 z-10 flex h-10 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
-            >
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-            <aside
-              id={`${chatInstanceId}-topics`}
-              aria-label={t("topicNavigator.label")}
-              className="flex w-52 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card"
-            >
-              <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-[1px] text-foreground">
-                <ListTree className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
-                {t("topicNavigator.label")}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                {splitTopics.length === 0 ? (
-                  <TopicNavigatorLoading label={t("topicNavigator.generating")} />
-                ) : (
-                  <TopicNavigatorList groups={splitTopicGroups} activeIndex={activeTopicIndex} onJump={scrollToTopic} />
-                )}
-              </div>
-            </aside>
+          // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics and
+          // related cases (decisions hidden here via showDecisions={false}), collapsing to an icon rail — docked on this pane's right.
+          // In a narrow pane (terminalChatNarrow) the expanded panel overlays the transcript
+          // instead of squeezing it; the collapsed icon rail is slim enough to stay inline.
+          <div
+            className={
+              terminalChatNarrow && terminalTopicsOpen
+                ? "absolute inset-y-0 right-0 z-20 flex overflow-hidden rounded-lg shadow-xl"
+                : "ml-2 flex shrink-0 overflow-hidden rounded-lg"
+            }
+          >
+            <SourcesPanel
+              side="right"
+              expanded={terminalTopicsOpen}
+              onExpandedChange={setTerminalTopicsOpen}
+              activeConsultationId={consultationId ?? null}
+              instanceId={chatInstanceId}
+              transcriptRef={transcriptRef}
+              showDecisions={false}
+              showRailSections={false}
+              width={TERMINAL_TOPICS_WIDTH}
+              isResizing={false}
+              className={terminalTopicsOpen ? "flex rounded-lg border" : "flex"}
+            />
           </div>
         )}
       </main>

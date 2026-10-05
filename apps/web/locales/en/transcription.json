@@ -54,9 +54,13 @@
     "notLinked": "Not linked to a case",
     "save": "Save",
     "saving": "Saving…",
-    "saveFailed": "Couldn't update the linked case."
+    "saveFailed": "Couldn't update the linked case.",
+    "waitingInQueue_one": "1 recording is still in your queue, waiting to be transcribed. Transcribe it to add it here.",
+    "waitingInQueue_other": "{{count}} recordings are still in your queue, waiting to be transcribed. Transcribe them to add them here."
   },
   "delete": "Delete",
   "deleteRecord": "Delete {{name}}",
-  "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again."
+  "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
+  "microphoneUnsupported": "This browser can't record audio here. Use a current browser over a secure (https) connection.",
+  "microphoneNotFound": "No microphone was found. Connect one and try again."
 }

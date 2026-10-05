@@ -13,10 +13,29 @@
   "endTimeHint": "종료 시간은 {{time}} 이후여야 합니다.",
   "startTime": "시작 시간",
   "endTime": "종료 시간",
+  "timePicker": {
+    "set": "설정",
+    "close": "닫기",
+    "date": "날짜",
+    "time": "시간",
+    "typePlaceholder": "hh:mm AM",
+    "durationMinutes": "{{minutes}}분",
+    "durationHours": "{{hours}}시간",
+    "durationHoursMinutes": "{{hours}}시간 {{minutes}}분",
+    "errors": {
+      "invalid": "10:05 AM 또는 14:30 형식으로 시간을 입력하세요.",
+      "required": "목록에서 시간을 선택하거나 직접 입력하세요.",
+      "after": "{{time}} 이후의 시간을 선택하세요.",
+      "minutes": "분은 59까지 입력할 수 있습니다.",
+      "hours12": "AM/PM을 사용할 때는 1~12시로 입력하세요.",
+      "hours24": "시는 23까지 입력할 수 있습니다."
+    }
+  },
   "titlePlaceholder": "제목",
   "notifyEmailPlaceholder": "알림 받을 이메일 (선택 사항)",
   "descriptionPlaceholder": "설명 (선택 사항)",
   "notePlaceholder": "메모",
+  "linkedCase": "연결된 사건",
   "noCase": "연결된 사건 없음",
   "reminderLabel": "리마인더",
   "reminderNone": "리마인더 없음",
@@ -58,5 +77,6 @@
   },
   "previousMonth": "이전 달",
   "nextMonth": "다음 달",
-  "retry": "다시 시도"
+  "retry": "다시 시도",
+  "today": "오늘"
 }

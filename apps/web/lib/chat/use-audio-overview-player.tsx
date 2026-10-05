@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
+const PLAYBACK_RATES = [1, 1.25, 1.5, 2, 0.75];
+
 /**
  * Wraps the one shared <audio> element's playback state (play/pause, scrub, duration, rate) plus
  * per-browser resume-position persistence keyed by the Audio Overview message id. Factored out of
@@ -12,6 +14,10 @@ import { useEffect, useRef, useState } from "react";
  */
 export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefined, messageId: string | null | undefined) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Reactive twin of audioRef — a plain ref attaching doesn't itself trigger a re-render, but
+  // AudioOverviewWaveform (a sibling of the <audio> element below, not a child of it) needs to
+  // know the moment it's available, to bind wavesurfer.js to it.
+  const [mediaElement, setMediaElement] = useState<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [playbackDuration, setPlaybackDuration] = useState(0);
@@ -65,7 +71,7 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
   };
   const cycleRate = () => {
     const el = audioRef.current;
-    const next = playbackRate === 1 ? 1.5 : playbackRate === 1.5 ? 2 : 1;
+    const next = PLAYBACK_RATES[(PLAYBACK_RATES.indexOf(playbackRate) + 1) % PLAYBACK_RATES.length]!;
     setPlaybackRate(next);
     if (el) el.playbackRate = next;
   };
@@ -87,7 +93,10 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
   const audioElement =
     renderedAudioUrl && messageId ? (
       <audio
-        ref={audioRef}
+        ref={(el) => {
+          audioRef.current = el;
+          setMediaElement(el);
+        }}
         src={renderedAudioUrl}
         onPlay={() => setIsPlaying(true)}
         onPause={() => {
@@ -127,6 +136,7 @@ export function useAudioOverviewPlayer(renderedAudioUrl: string | null | undefin
 
   return {
     audioElement,
+    mediaElement,
     isPlaying,
     playbackTime,
     playbackDuration,

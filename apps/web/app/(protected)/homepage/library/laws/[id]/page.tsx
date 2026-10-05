@@ -41,7 +41,7 @@ function dedupeCitations(items: string[]): string[] {
 }
 
 function LawDocumentPageContent() {
-  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) =>
@@ -53,6 +53,15 @@ function LawDocumentPageContent() {
   const category = (searchParams.get("category") ??
     "jurisprudence") as LawCategoryParam
 
+  // The library's own query string (filter + page) it was opened from — the path stays fixed, so
+  // this only ever restores library state, never navigates elsewhere.
+  const from = searchParams.get("from")
+  // A chat citation's pinpoint ("s 49") — UK legislation opens on that section. Same strict
+  // shape the API proxy accepts.
+  const rawSection = searchParams.get("section")
+  const section = rawSection && /^[0-9]+[A-Z]*$/i.test(rawSection) ? rawSection : null
+  const backHref = from ? `/homepage/library?${new URLSearchParams(from)}` : "/homepage/library"
+
   const { data, isLoading, isError } = useLawDocumentQuery({
     category,
     id: params.id,
@@ -61,11 +70,11 @@ function LawDocumentPageContent() {
   if (guard) return guard
 
   return (
-    <PageShell activeTab="library">
+    <PageShell>
       <main className="flex w-full flex-1 flex-col pt-16">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 px-6 py-8 md:px-10">
           <Link
-            href="/homepage/library"
+            href={backHref}
             className="inline-flex w-fit items-center gap-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
@@ -85,28 +94,36 @@ function LawDocumentPageContent() {
             </div>
           )}
 
-          {data && <DocumentBody doc={data} />}
+          {data && <DocumentBody doc={data} section={section} />}
         </div>
       </main>
     </PageShell>
   )
 }
 
-function DocumentBody({ doc }: { doc: LawDocument }) {
+function DocumentBody({ doc, section }: { doc: LawDocument; section: string | null }) {
   const { t } = useTranslation("library")
+  const [wholeAct, setWholeAct] = React.useState(false)
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
   const { item, detail } = doc
   const isRa = cfg.isLegislation(item.dataset)
   const isUk = tenantCode === "UK"
+  // A cited section of a UK Act opens on just that section (the proxy's `?section=`), with a
+  // toggle out to the whole Act.
+  const isUkLegislation = isUk && isRa
+  const showSection = isUkLegislation && !!section && !wholeAct
   // Several upstreams (legislation.gov.uk, the TNA judgment site, and juris.ph itself for PH
   // jurisprudence/republic-acts) send X-Frame-Options/CSP headers that block framing outright —
   // a direct top-level link to the same URL (pdfSourceLink, below) opens fine, but as an
   // <iframe src> it renders blank. Every document loads through our same-origin
   // `/api/law/:id/pdf` proxy instead, which re-serves the bytes without those headers. The proxy
   // 502s (blank frame + "open in a new tab" link) if the upstream is unreachable.
-  const pdfSrc = `${API_BASE_URL}/api/law/${item.stored_id}/pdf`
-  const pdfSourceLink = item.pdf_url || item.source_url || item.juris_url
+  const pdfSrc = `${API_BASE_URL}/api/law/${item.stored_id}/pdf${showSection ? `?section=${encodeURIComponent(section!)}` : ""}`
+  const pdfSourceLink =
+    showSection && item.source_url
+      ? `${item.source_url.replace(/\/+$/, "")}/section/${section}`
+      : item.pdf_url || item.source_url || item.juris_url
   const hasPdf = isUk || !!item.pdf_url
   // Fallback for the common PH case: no framable PDF (every Republic Act, plus any decision
   // juris.ph didn't supply a source_pdf_url for) but a PDF-extracted full text is available —
@@ -280,9 +297,20 @@ function DocumentBody({ doc }: { doc: LawDocument }) {
           </div>
 
           <section className="flex h-[75vh] flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:h-[calc(100vh-7rem)]">
-            <h2 className="px-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              {t("lawDoc.document")}
-            </h2>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                {showSection ? t("lawDoc.sectionHeading", { section }) : t("lawDoc.document")}
+              </h2>
+              {isUkLegislation && section && (
+                <button
+                  type="button"
+                  onClick={() => setWholeAct((v) => !v)}
+                  className="text-xs text-blue-900 hover:underline dark:text-blue-400"
+                >
+                  {wholeAct ? t("lawDoc.viewSection", { section }) : t("lawDoc.viewWholeAct")}
+                </button>
+              )}
+            </div>
             <div className="min-h-0 flex-1">
               {hasPdf ? (
                 <LawPdfViewer url={pdfSrc} sourceUrl={pdfSourceLink} />

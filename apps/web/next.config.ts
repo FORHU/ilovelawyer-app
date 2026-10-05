@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
     "uk.ilovelawyer.local",
     "ph-dev.ilovelawyer.local",
     "uk-dev.ilovelawyer.local",
+    "ph-local.ilovelawyer.com",
+    "uk-local.ilovelawyer.com",
     "ph.localhost",
     "uk.localhost",
   ],

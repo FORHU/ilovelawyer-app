@@ -128,8 +128,41 @@
     "exploreSupremeCourtReports": "Explore Supreme Court Reports",
     "recentDecisions": "Landmark Decisions"
   },
+  "citationPreview": {
+    "openInLibrary": "Open in Library",
+    "opensInNewTab": " (opens in the Library in a new tab)",
+    "unavailable": "Preview unavailable — the full document is still in the Library.",
+    "noSummary": "No summary stored for this document yet.",
+    "sheetTitle": "Citation preview"
+  },
+  "citationBadge": {
+    "law": "Law",
+    "jurisprudence": "Jurisprudence"
+  },
+  "citationRank": {
+    "high": "High relevance to your question",
+    "medium": "Medium relevance to your question",
+    "low": "Low relevance to your question",
+    "srPrefix": "Relevance: ",
+    "relevanceLabel": "Relevance",
+    "importanceLabel": "Importance",
+    "relevance": {
+      "high": "Squarely on your question",
+      "medium": "Bears on part of your question",
+      "low": "General background, not about your facts"
+    },
+    "importance": {
+      "high": "A lawyer advising you would need to read this",
+      "medium": "Worth reading if time allows",
+      "low": "Not needed to advise on these facts"
+    },
+    "disclaimer": "A reading aid based on your question. It does not check that the advice or the authority is correct."
+  },
   "lawDoc": {
     "back": "Back to library",
+    "sectionHeading": "Section {{section}}",
+    "viewWholeAct": "View the whole Act",
+    "viewSection": "Back to section {{section}}",
     "loading": "Loading document…",
     "error": "Couldn't load this document. Please try again.",
     "viewSource": "View source",

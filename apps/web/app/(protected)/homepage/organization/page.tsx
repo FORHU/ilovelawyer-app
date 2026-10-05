@@ -33,6 +33,7 @@ import {
   type OrganizationRole,
   type PackageSku,
 } from "@/lib/organizations/queries";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -100,14 +101,16 @@ export default function OrganizationPage() {
   const otherMembers = (membersQuery.data ?? []).filter(
     (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
   );
-  // A solo practitioner's auto-created Organization (packageSku "SOLO") still backs their
-  // chat/documents/etc. under the hood, but is presented as if they have no organization at
-  // all — the create-organization card shows instead of an Overview to manage. See
-  // ilovelawyer-app's onboarding WorkspaceSetup.handleContinueSolo, which creates this org
-  // silently. Once they actually invite someone, this stops applying (real membership, not
-  // the packageSku tag, is what makes it a team from here on).
+  // A solo practitioner's auto-created Organization (packageSku "SOLO", see onboarding
+  // WorkspaceSetup.handleContinueSolo) with nobody else in it yet. They can still be invited to
+  // another organization, which means leaving this one (see handleAcceptInvite).
   const isSoloWithNoTeam = organization?.packageSku === "SOLO" && otherMembers.length === 0;
   const myInviteQuery = useMyInviteQuery({ enabled: !organization || isSoloWithNoTeam });
+  // Anyone who belongs to an organization — solo or not — sees it, its members and the invite
+  // controls (inviting someone is how a solo org becomes a team). Showing an Owner "Create your
+  // organization" read as if their organization didn't exist. The setup screen is only for users
+  // with no organization, or a solo user with an invitation waiting to be answered.
+  const showSetup = !organization || (isSoloWithNoTeam && !!myInviteQuery.data);
   const acceptInviteMutation = useAcceptInviteMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const createOrgMutation = useCreateOrganizationMutation();
@@ -377,14 +380,14 @@ export default function OrganizationPage() {
   }
 
   return (
-    <PageShell activeTab="organization">
+    <PageShell>
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         <div className="w-full flex flex-col gap-2">
           <h1 className="font-['Libre_Caslon_Text',serif] text-[40px] md:text-[50px] text-foreground">{t("title")}</h1>
           <p className="text-muted-foreground text-[16px] md:text-[18px] max-w-[672px] leading-relaxed">{t("subtitle")}</p>
         </div>
 
-        {!organization || isSoloWithNoTeam ? (
+        {showSetup ? (
           myInviteQuery.data ? (
             <section className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/5 dark:ring-white/[0.06]">
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />
@@ -411,7 +414,7 @@ export default function OrganizationPage() {
                     type="button"
                     onClick={handleAcceptInvite}
                     disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
-                    className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {acceptInviteMutation.isPending ? t("invite.accepting") : t("invite.accept")}
                   </button>
@@ -484,7 +487,7 @@ export default function OrganizationPage() {
                       return (
                         <label key={sku} className="relative cursor-pointer">
                           {isRecommended && (
-                            <span className="absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-gold px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm">
+                            <span className="absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-brand-gold px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm">
                               {t("create.recommendedBadge")}
                             </span>
                           )}
@@ -515,7 +518,7 @@ export default function OrganizationPage() {
                   <button
                     type="submit"
                     disabled={createOrgMutation.isPending || leaveMutation.isPending}
-                    className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {createOrgMutation.isPending || leaveMutation.isPending ? t("create.creating") : t("create.submit")}
                   </button>
@@ -662,7 +665,7 @@ export default function OrganizationPage() {
                         type="button"
                         onClick={handleConfirmTransferAndLeave}
                         disabled={!successorId || isTransferring}
-                        className="cursor-pointer rounded-full bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-4 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isTransferring ? t("overview.leaving") : t("overview.transferConfirm")}
                       </button>
@@ -700,9 +703,11 @@ export default function OrganizationPage() {
                 <div className="flex flex-col divide-y divide-border">
                   {membersQuery.data?.map((member) => (
                     <div key={member.id} className="px-6 md:px-8 py-4 flex items-center gap-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-[12px] font-semibold">
-                        {getInitials(member.user.name ?? member.user.username)}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={member.user.avatarUrl}
+                        initials={getInitials(member.user.name ?? member.user.username)}
+                        className="h-9 w-9 bg-secondary text-secondary-foreground text-[12px] font-semibold"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] text-foreground truncate">
                           {member.user.name ?? member.user.username}
@@ -844,7 +849,7 @@ export default function OrganizationPage() {
                       <button
                         type="submit"
                         disabled={inviteMutation.isPending}
-                        className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="cursor-pointer rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {inviteMutation.isPending ? t("invite.sending") : t("invite.submit")}
                       </button>
@@ -927,7 +932,7 @@ export default function OrganizationPage() {
                   <button
                     type="button"
                     onClick={confirmPendingRoleChange}
-                    className="cursor-pointer rounded-xl bg-brand-gold px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-navy-950 shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2"
+                    className="cursor-pointer rounded-xl bg-brand-gold px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2"
                   >
                     {t("members.roleDowngradeContinue")}
                   </button>

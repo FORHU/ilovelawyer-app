@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, Download, History, FileText } from "lucide-react"
+import { Loader2, Download, ExternalLink, History, FileText } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
 import {
@@ -11,6 +11,7 @@ import {
   type CaseBriefFormat,
 } from "@/lib/terminal/mutations"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 /** Shared by both the Legal Terminal (inside a slide-out Sheet) and Case Workspace's Studio
  * Panel (as an inline tile view, same pattern as Documents/Mind Map/Timeline) — one content
@@ -181,7 +182,7 @@ function CaseBriefPreview({
             format === "docx" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {t("downloadWord")}
+          {t("caseBriefFormatWord", { defaultValue: "Word" })}
         </button>
         <button
           type="button"
@@ -190,7 +191,7 @@ function CaseBriefPreview({
             format === "pdf" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {t("downloadPdf")}
+          {t("caseBriefFormatPdf", { defaultValue: "PDF" })}
         </button>
       </div>
 
@@ -199,13 +200,14 @@ function CaseBriefPreview({
           <AttachmentPreview
             attachment={{
               id: format,
-              name: format === "docx" ? "case-brief.docx" : "case-brief.pdf",
+              name: briefFilename(format),
               url,
               mimeType:
                 format === "docx"
                   ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   : "application/pdf",
             }}
+            hidePdfToolbar
           />
         ) : (
           <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
@@ -229,20 +231,37 @@ function CaseBriefPreview({
             {t("caseBriefRegenerateCta")}
           </button>
         </div>
-        <Button disabled={!url} onClick={() => url && triggerBriefDownload(url)}>
-          <Download className="h-4 w-4" aria-hidden="true" />
-          {format === "docx" ? t("downloadWord") : t("downloadPdf")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The preview's native PDF toolbar is hidden (it clips in a narrow Studio panel), so
+              zoom/print/rotate live one click away in the browser's full-size viewer instead. */}
+          {format === "pdf" && url && (
+            <Button variant="outline" asChild>
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                {t("caseBriefOpenInNewTab", { defaultValue: "Open in new tab" })}
+              </a>
+            </Button>
+          )}
+          <Button disabled={!url} onClick={() => url && triggerBriefDownload(url, briefFilename(format))}>
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {format === "docx" ? t("downloadWord") : t("downloadPdf")}
+          </Button>
+        </div>
       </div>
     </div>
   )
 }
 
 function formatEntryDate(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString(dateLocale(), {
     dateStyle: "medium",
     timeStyle: "short",
   })
+}
+
+/** Fallback save name only — the API's Content-Disposition carries the case-named filename. */
+function briefFilename(format: CaseBriefFormat): string {
+  return `case-brief.${format}`
 }
 
 function formatLabel(format: CaseBriefFormat): string {
@@ -321,8 +340,8 @@ function CaseBriefHistory({ caseId }: { caseId: string }) {
             size="icon-sm"
             variant="outline"
             disabled={!entry.file.fileUrl}
-            aria-label={t("downloadPdf")}
-            onClick={() => entry.file.fileUrl && triggerBriefDownload(entry.file.fileUrl)}
+            aria-label={entry.format === "docx" ? t("downloadWord") : t("downloadPdf")}
+            onClick={() => entry.file.fileUrl && triggerBriefDownload(entry.file.fileUrl, briefFilename(entry.format))}
           >
             <Download className="h-4 w-4" aria-hidden="true" />
           </Button>

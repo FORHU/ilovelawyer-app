@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Ban } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
+import { useAuthStore } from "@/lib/store/auth.store";
 import { Logo } from "@/components/logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -19,10 +20,12 @@ interface Section {
 
 export default function TermsPage() {
   const { t } = useTranslation("term");
-  const SECTIONS = t("sections", { returnObjects: true }) as Section[];
+  // UK copy lives under the `_UK` i18n context (sections_UK, effectiveDate_UK), same as the landing page.
+  const tCtx = useAuthStore((s) => s.organization?.tenantCode) === "UK" ? { context: "UK" } : undefined;
+  const SECTIONS = t("sections", { returnObjects: true, ...tCtx }) as Section[];
 
   return (
-    <PageShell activeTab="term" className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
+    <PageShell className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
       <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
         <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border">
           <div className="px-10 pb-4 pt-12 sm:px-14">
@@ -33,7 +36,7 @@ export default function TermsPage() {
               {t("title")}
             </h1>
             <p className="mt-3 text-sm italic text-muted-foreground">
-              {t("effectiveDate")}
+              {t("effectiveDate", tCtx)}
             </p>
           </div>
 

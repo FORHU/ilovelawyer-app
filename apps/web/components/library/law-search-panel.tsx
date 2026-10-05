@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { ArrowRight, Loader2, Search, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/lib/store/auth.store"
@@ -74,19 +75,39 @@ export function LawSearchPanel() {
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
 
-  // Held loosely: the org (and therefore `cfg`) can resolve after mount, so a stored value from
-  // the wrong tenant is ignored in favour of that tenant's first category rather than reset via
-  // an effect. Stale facet state is already ignored by the facetKind guards below.
-  const [rawCategory, setRawCategory] = useState<LawCategoryParam | null>(null)
+  // Category, facets and page live in the URL (?category=&type=&topics=&courts=&page=), so
+  // opening a judgment and coming back — "Back to library" or the browser's Back — lands on the
+  // same filter and page, and a filtered view can be shared or bookmarked. Values are checked
+  // against the tenant's own vocab, so a hand-edited or other-tenant URL just falls back.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const listParam = (key: string) => (searchParams.get(key) ?? "").split(",").filter(Boolean)
+  const updateParams = (patch: Record<string, string | string[] | null>) => {
+    const next = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(patch)) {
+      const str = Array.isArray(value) ? value.join(",") : value
+      if (str) next.set(key, str)
+      else next.delete(key)
+    }
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  // Held loosely: the org (and therefore `cfg`) can resolve after mount, so a value from the
+  // wrong tenant is ignored in favour of that tenant's first category rather than reset via an
+  // effect. Stale facet state is already ignored by the facetKind guards below.
+  const rawCategory = searchParams.get("category")
   const category: LawCategoryParam =
-    rawCategory && cfg.categories.some((c) => c.value === rawCategory)
-      ? rawCategory
-      : cfg.categories[0]!.value
+    cfg.categories.find((c) => c.value === rawCategory)?.value ?? cfg.categories[0]!.value
 
   const [query, setQuery] = useState("")
-  const [caseType, setCaseType] = useState<LawCaseType | null>(null)
-  const [topics, setTopics] = useState<LawTopic[]>([])
-  const [courts, setCourts] = useState<UkCourt[]>([])
+  const caseType = (cfg.caseTypes.find((c) => c === searchParams.get("type")) ?? null) as LawCaseType | null
+  const topics = listParam("topics").filter((x) => cfg.topics.includes(x)) as LawTopic[]
+  const courts = listParam("courts").filter((x) => cfg.courts.includes(x)) as UkCourt[]
+  const setCaseType = (next: LawCaseType | null) => updateParams({ type: next, page: null })
+  const setTopics = (next: LawTopic[]) => updateParams({ topics: next, page: null })
+  const setCourts = (next: UkCourt[]) => updateParams({ courts: next, page: null })
   // Tracks only a fetch the user is actually waiting on (clicked Next past the fetched
   // pages) — kept separate from react-query's own `isFetchingNextPage`, which also flips
   // on/off for the silent background prefetch below. Wiring the Next button's spinner to
@@ -102,10 +123,9 @@ export function LawSearchPanel() {
   const canBrowse = cfg.browsable(category)
 
   // Browse is cursor-paged (no total), so "page N" is an index into the fetched cursor pages.
-  // Keyed by the active filters so changing category/facets snaps back to page 1 without an effect.
-  const filterKey = JSON.stringify([category, caseType, topics, courts])
-  const [pageState, setPageState] = useState({ key: filterKey, index: 0 })
-  const requestedPage = pageState.key === filterKey ? pageState.index : 0
+  // Every filter change clears ?page=, snapping back to page 1. A restored ?page=3 is reached
+  // by the prefetch effect below, which keeps fetching until that page is in hand.
+  const requestedPage = Math.max(0, (Number.parseInt(searchParams.get("page") ?? "", 10) || 1) - 1)
 
   const browse = useLawBrowseInfiniteQuery({
     category,
@@ -155,19 +175,16 @@ export function LawSearchPanel() {
 
   const pickCategory = (next: LawCategoryParam) => {
     if (next === category) return
-    setRawCategory(next)
-    setCaseType(null)
-    setTopics([])
-    setCourts([])
+    updateParams({ category: next, type: null, topics: null, courts: null, page: null })
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
     backToBrowse()
   }
 
   const toggleTopic = (topic: LawTopic) =>
-    setTopics((cur) => (cur.includes(topic) ? cur.filter((x) => x !== topic) : [...cur, topic]))
+    setTopics(topics.includes(topic) ? topics.filter((x) => x !== topic) : [...topics, topic])
 
   const toggleCourt = (c: UkCourt) =>
-    setCourts((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]))
+    setCourts(courts.includes(c) ? courts.filter((x) => x !== c) : [...courts, c])
 
   const runSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -180,7 +197,7 @@ export function LawSearchPanel() {
   const pageIndex = Math.min(requestedPage, Math.max(0, browsePages.length - 1))
   const browseItems = browsePages[pageIndex]?.items ?? []
   const isLastPage = pageIndex >= browsePages.length - 1 && !browse.hasNextPage
-  const goToPage = (index: number) => setPageState({ key: filterKey, index })
+  const goToPage = (index: number) => updateParams({ page: index > 0 ? String(index + 1) : null })
   const goNext = async () => {
     if (pageIndex + 1 < browsePages.length) return goToPage(pageIndex + 1)
     setIsNavigatingNext(true)
@@ -201,7 +218,7 @@ export function LawSearchPanel() {
     return (
       <Link
         key={rowId}
-        href={`/homepage/library/laws/${item.id}?category=${category}`}
+        href={`/homepage/library/laws/${item.id}?${new URLSearchParams({ category, from: searchParams.toString() })}`}
         className="flex h-full min-h-56 flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-2">
@@ -274,7 +291,7 @@ export function LawSearchPanel() {
         </div>
 
         <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex gap-1">
+          <div data-tour-id="library-cats" className="flex gap-1">
             {cfg.categories.map((c) => (
               <button
                 key={c.value}
@@ -291,7 +308,7 @@ export function LawSearchPanel() {
             ))}
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center rounded-lg border border-border bg-transparent p-1.5 transition-colors focus-within:border-primary sm:max-w-md">
+          <div data-tour-id="library-search" className="flex min-w-0 flex-1 items-center rounded-lg border border-border bg-transparent p-1.5 transition-colors focus-within:border-primary sm:max-w-md">
             <Search className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <input
               type="text"
@@ -330,7 +347,7 @@ export function LawSearchPanel() {
 
         {/* ── Filters (browse mode only) ───────────────────────────────── */}
         {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
-          <div className="flex flex-col gap-3 border-y border-border py-3">
+          <div data-tour-id="library-filters" className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
               <FilterChipGroup
                 label={t("lawSearch.filterCaseType")}

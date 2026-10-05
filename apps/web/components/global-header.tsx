@@ -3,13 +3,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { AppWindow, BookOpen, Briefcase, Building2, CalendarDays, FileText, Globe, LogOut, Menu, MessageCircle, UserCircle, X } from "lucide-react";
+import { AppWindow, BookOpen, Briefcase, Building2, CalendarDays, FileText, Globe, LogOut, Menu, MessageCircle, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { handoffTarget, openInBrowser, openInDesktopApp } from "@/lib/desktop/handoff";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
+import { useTourStore } from "@/lib/store/tour.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
@@ -19,37 +21,36 @@ import { useNotificationBellState } from "@/components/notifications/use-notific
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
+export const ACTIVE_TABS = [
+  "consultation",
+  "create-case",
+  "library",
+  "case-portfolio",
+  "terminal",
+  "transcription",
+  "calendar",
+  "term",
+  "profile",
+  "organization",
+  "notifications",
+  // Secondary destinations — not part of the primary nav
+  "constitution",
+  "civil-code",
+  "scra-archive",
+  "revised-penal-code",
+  "labor-code",
+  "family-code",
+  "persuasive-rulings",
+  "presidential-issuances",
+  "administrative-issuances",
+  "judicial-issuances",
+] as const;
+
+export type ActiveTab = (typeof ACTIVE_TABS)[number];
+
 interface GlobalHeaderProps {
-  // Enforces passing one of your exact six workspace pages
-  activeTab:
-    | "consultation"
-    | "create-case"
-    | "library"
-    | "case-portfolio"
-    | "terminal"
-    | "transcription"
-    | "calendar"
-    | "term"
-    | "profile"
-    | "organization"
-    | "notifications"
-    // Secondary destinations — not part of the primary nav
-    | "constitution"
-    | "civil-code"
-    | "scra-archive"
-    | "revised-penal-code"
-    | "labor-code"
-    | "family-code"
-    | "persuasive-rulings"
-    | "presidential-issuances"
-    | "administrative-issuances"
-    | "judicial-issuances";
-  /** When true, this header stops managing its own mobile masthead below lg: no bottom border,
-   * and its hamburger trigger is hidden (the page renders its own, inline with page-specific
-   * content, and opens the exact same drawer via useMobileNavStore) — used by the case detail
-   * page, whose own title row takes over that role instead of stacking a second masthead row
-   * underneath a redundant one. Desktop is completely unaffected either way. */
-  mobileHeaderMerged?: boolean;
+  /** Undefined highlights nothing (e.g. a redirect-only route). */
+  activeTab?: ActiveTab;
 }
 
 // Renders inside a <Link>'s children — useLinkStatus only reports the pending
@@ -83,20 +84,29 @@ const USER_MENU_ITEMS = [
 // Terminal is reached by drilling into a case rather than from top-level nav.
 const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
-  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase },
-  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen },
-  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays },
+  { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase, tourId: "nav-case-portfolio" },
+  { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen, tourId: "nav-library" },
+  { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
 
-export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: GlobalHeaderProps) {
+export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  const { t: tTour } = useTranslation("tour");
   const router = useRouter();
+  const openGuide = useTourStore((s) => s.setGuideOpen);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   // Lifted into a store (not local state) so a page can render its own trigger — see
-  // mobileHeaderMerged's doc comment above — that opens this exact same drawer.
+  // mobileHeaderMerged's comment below — that opens this exact same drawer.
   const isMobileMenuOpen = useMobileNavStore((s) => s.isOpen);
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
   const closeMobileMenu = useMobileNavStore((s) => s.close);
+  // When true, this header stops managing its own mobile masthead below lg: no bottom border,
+  // and its hamburger trigger is hidden (the page renders its own, inline with page-specific
+  // content, and opens the exact same drawer via useMobileNavStore) — set by the case detail
+  // page through PageShell's mobileHeaderMerged, whose own title row takes over that role
+  // instead of stacking a second masthead row underneath a redundant one. Desktop is
+  // completely unaffected either way.
+  const mobileHeaderMerged = useMobileNavStore((s) => s.headerMerged);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const isCaseTabActive = activeTab === "create-case" || activeTab === "case-portfolio";
   // Mobile only: tapping the bell (moved up into the profile row) sends the user straight to
@@ -183,20 +193,24 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         mobileHeaderMerged ? "lg:border-b lg:border-border" : "border-b border-border"
       }`}
     >
+      {/* Full-width, not capped to a max-w container, so the logo and the icon group sit at
+       * the viewport's own edges. On lg+ it's a 1fr/auto/1fr grid rather than flex: the two
+       * equal outer columns keep the nav at the true horizontal center of the screen, which a
+       * flex-1 nav only manages when the logo and the icon group happen to be the same width. */}
       <div
-        className={`w-full max-w-[1440px] mx-auto h-16 items-center justify-between gap-4 px-6 md:px-16 lg:justify-start lg:gap-8 ${
-          mobileHeaderMerged ? "hidden lg:flex" : "flex"
+        className={`w-full h-16 items-center justify-between gap-4 px-6 md:px-10 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:gap-8 ${
+          mobileHeaderMerged ? "hidden lg:grid" : "flex"
         }`}
       >
         <Link
           href="/"
-          className="shrink-0 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="shrink-0 justify-self-start rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={t("appName")}
         >
           <Logo forBackground="auto" size={40} />
         </Link>
 
-        <nav className="hidden lg:flex flex-1 items-center justify-center gap-7 text-[10px] tracking-[1px]">
+        <nav className="hidden lg:flex items-center justify-center gap-7 text-[10px] tracking-[1px]">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href="/homepage" className={getSubTabClass("consultation")}>
@@ -212,7 +226,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
               from a top-level nav item. */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/case-portfolio" className={getSubTabClass("case-portfolio")}>
+              <Link href="/homepage/case-portfolio" data-tour-id="nav-case-portfolio" className={getSubTabClass("case-portfolio")}>
                 <TabLinkContent>{t("nav.cases", { defaultValue: "Cases" }).toUpperCase()}</TabLinkContent>
                 {isCaseTabActive && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -222,7 +236,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/library" className={getSubTabClass("library")}>
+              <Link href="/homepage/library" data-tour-id="nav-library" className={getSubTabClass("library")}>
                 <TabLinkContent>{t("nav.library").toUpperCase()}</TabLinkContent>
                 {activeTab === "library" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -231,7 +245,7 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/calendar" className={getSubTabClass("calendar")}>
+              <Link href="/homepage/calendar" data-tour-id="nav-calendar" className={getSubTabClass("calendar")}>
                 <TabLinkContent>{t("nav.calendar").toUpperCase()}</TabLinkContent>
                 {activeTab === "calendar" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
               </Link>
@@ -241,12 +255,34 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </nav>
 
         {/* Icons are now inside the main flex row */}
-        <div className="hidden lg:flex items-center gap-5 text-foreground">
-          <LanguageSwitcher />
+        <div className="hidden lg:flex justify-self-end items-center gap-5 text-foreground">
+          <span data-tour-id="header-lang" className="inline-flex">
+            <LanguageSwitcher />
+          </span>
 
-          <ThemeToggle />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                data-tour-id="header-guide"
+                onClick={() => openGuide(true)}
+                aria-label={tTour("guide.open")}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border pl-2.5 pr-3 text-[10px] uppercase tracking-[1px] text-foreground transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Sparkles className="size-3" aria-hidden="true" />
+                {tTour("guide.button")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{tTour("guide.open")}</TooltipContent>
+          </Tooltip>
 
-          <NotificationBell />
+          <span data-tour-id="header-theme" className="inline-flex">
+            <ThemeToggle />
+          </span>
+
+          <span data-tour-id="header-bell" className="inline-flex">
+            <NotificationBell />
+          </span>
 
           <div className="relative" ref={userMenuRef}>
             <Tooltip>
@@ -258,8 +294,9 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
                   aria-haspopup="menu"
                   aria-expanded={isUserMenuOpen}
                   aria-label={t("userMenu.accountMenu")}
+                  data-tour-id="header-account"
                 >
-                  {initials}
+                  <UserAvatar avatarUrl={user?.avatarUrl} initials={initials} className="h-full w-full" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>{t("userMenu.accountMenu")}</TooltipContent>
@@ -346,13 +383,14 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </div>
 
         {/* Mobile hamburger — replaces the inline nav + account icon below lg. Hidden when a
-         * page owns its own trigger instead (mobileHeaderMerged) — see that prop's comment. */}
+         * page owns its own trigger instead (mobileHeaderMerged) — see its comment above. */}
         {!mobileHeaderMerged && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={toggleMobileMenu}
+                data-tour-id="header-menu"
                 className="lg:hidden p-2 -mr-2 cursor-pointer bg-transparent border-0 text-foreground rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={isMobileMenuOpen ? t("mobileMenu.close") : t("mobileMenu.open")}
                 aria-expanded={isMobileMenuOpen}
@@ -378,12 +416,11 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
       >
         {user && (
           <div className="flex items-center gap-3 border-b border-border px-5 py-5">
-            <span
-              aria-hidden="true"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold tracking-[0.5px] text-foreground"
-            >
-              {initials}
-            </span>
+            <UserAvatar
+              avatarUrl={user.avatarUrl}
+              initials={initials}
+              className="h-11 w-11 border border-border text-xs font-semibold tracking-[0.5px] text-foreground"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-foreground">{user.name ?? user.username}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
@@ -416,7 +453,12 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
           {MOBILE_NAV_ITEMS.map((item) => (
             <Tooltip key={item.tab}>
               <TooltipTrigger asChild>
-                <Link href={item.href} onClick={closeMobileMenu} className={getMobileTabClass(item.tab)}>
+                <Link
+                  href={item.href}
+                  onClick={closeMobileMenu}
+                  data-tour-id={"tourId" in item ? item.tourId : undefined}
+                  className={getMobileTabClass(item.tab)}
+                >
                   <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
                   <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
                 </Link>
@@ -431,6 +473,22 @@ export default function GlobalHeader({ activeTab, mobileHeaderMerged = false }: 
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  openGuide(true);
+                }}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] tracking-[1px] uppercase text-foreground transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+                {tTour("guide.open")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{tTour("guide.open")}</TooltipContent>
+          </Tooltip>
           {USER_MENU_ITEMS.map((item) => (
             <Tooltip key={item.href}>
               <TooltipTrigger asChild>

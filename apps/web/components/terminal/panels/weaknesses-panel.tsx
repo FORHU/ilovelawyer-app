@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import type { CaseFinding, CaseSnapshot, WeaknessJevCheck } from "@/lib/terminal/types"
-import { JevCheck } from "@/components/terminal/panel-kit"
+import { LlmReview, ReviewPoint } from "@/components/terminal/panel-kit"
 import { RatedFindingPanel, modelTagLabelKey, type RatedFindingConfig } from "@/components/terminal/panels/rated-finding-panel"
 
 const WEAKNESSES: RatedFindingConfig = {
@@ -19,33 +19,28 @@ const WEAKNESSES: RatedFindingConfig = {
   // More impact is worse: a weakness only ever hurts.
   impact: { badWhenUp: true, titleKey: "weaknessImpact" },
   jevFlagKeys: (jev) => (jev as WeaknessJevCheck).flags.map((flag) => `weaknessJevFlag.${flag}`),
+  llmWording: true,
   subHintKey: (jev) => ((jev as WeaknessJevCheck).curable === "NOT_CURABLE" ? "weaknessNoFix" : null),
   JevDetail: WeaknessJevDetail,
   upload: true,
+  // The to-do is the fix ("What would close it"), not the weakness itself.
+  checklist: { fixedTag: "CLOSED", todoLabel: (f) => f.detail?.trim() || f.label },
 }
+
+// Scores come back normalized to 0..1 over four levels (weakness-jev.ts) — back to the level index.
+const level = (score: number) => Math.min(3, Math.max(0, Math.round(score * 3)))
 
 function WeaknessJevDetail({ finding }: { finding: CaseFinding }) {
   const { t } = useTranslation("terminal")
   const jev = finding.jev as unknown as WeaknessJevCheck
   const modelTag = modelTagLabelKey(finding, WEAKNESSES)
-  const pct = (n: number) => Math.round(n * 100)
   return (
-    <JevCheck
-      verdict={t(`weaknessJevSupport.${jev.support}`)}
-      confidence={jev.supportConfidence}
-      uncertain={jev.uncertain}
-      modelRating={modelTag ? t("findingJevModelRating", { tag: t(modelTag) }) : null}
-    >
-      <p>
-        {t("weaknessJevScores", {
-          sev: pct(jev.severity),
-          sevConf: pct(jev.severityConfidence),
-          sur: pct(jev.surfacing),
-          surConf: pct(jev.surfacingConfidence),
-        })}
-      </p>
-      <p>{t("weaknessJevCurableLine", { verdict: t(`weaknessJevCurable.${jev.curable}`), pct: pct(jev.curableConfidence) })}</p>
-    </JevCheck>
+    <LlmReview uncertain={jev.uncertain} draftRating={modelTag ? t("llmDraftSaid", { tag: t(modelTag) }) : null}>
+      <ReviewPoint text={t(`weaknessJevSupport.${jev.support}`)} confidence={jev.supportConfidence} />
+      <ReviewPoint text={t(`weaknessSeverityLevel.${level(jev.severity)}`)} confidence={jev.severityConfidence} />
+      <ReviewPoint text={t(`weaknessSurfacingLevel.${level(jev.surfacing)}`)} confidence={jev.surfacingConfidence} />
+      <ReviewPoint text={t(`weaknessJevCurable.${jev.curable}`)} confidence={jev.curableConfidence} />
+    </LlmReview>
   )
 }
 

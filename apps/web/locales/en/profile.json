@@ -90,5 +90,27 @@
       "successDescription": "Your account and all associated data will be permanently deleted on {{date}}. You can cancel by signing back in before then. You'll now be logged out.",
       "successLogoutButton": "Log Out"
     }
+  },
+  "avatar": {
+    "upload": "Upload photo",
+    "change": "Change photo",
+    "remove": "Remove photo",
+    "uploading": "Uploading…",
+    "removing": "Removing…",
+    "hint": "JPEG, PNG or WebP, up to 2 MB.",
+    "tooLarge": "Choose an image of 2 MB or less.",
+    "wrongType": "Choose a JPEG, PNG or WebP image.",
+    "genericError": "Couldn't update your photo. Please try again."
+  },
+  "googleCalendar": {
+    "title": "Google Calendar",
+    "connectedDescription": "Connected. Appointments sync both ways: changes here show in Google Calendar, and title, time and note edits made there come back within a few minutes.",
+    "disconnectedDescription": "Connect a Google account to sync your appointments with its Google Calendar, both ways. This doesn't change how you sign in.",
+    "connect": "Connect",
+    "connecting": "Connecting…",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting…",
+    "popupError": "Google didn't complete the connection. Please try again.",
+    "genericError": "Couldn't update Google Calendar. Please try again."
   }
 }

@@ -1,18 +1,19 @@
 import React from "react";
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { FloatingDelayGroup } from "@floating-ui/react";
 import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { CircleHelp, Info, ChevronDown, ChevronRight } from "lucide-react";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { CitationLink } from "./citation-link";
 import { findAnchorMatches } from "@/components/shared/decision-anchor-match";
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail";
 import { decisionAnchorElementId, reapplyFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
-import type { MessageGroundingCheck } from "@/lib/chat/mutations";
+import type { CitationRankItem, MessageGroundingCheck } from "@/lib/chat/mutations";
 import { GroundingSummary } from "./grounding-summary";
 
 /** One piece of evidence's quote (evidenceFor/evidenceAgainst), searched for and highlighted
@@ -25,6 +26,7 @@ export interface QuoteHighlight {
 }
 
 const NO_QUOTE_HIGHLIGHTS: QuoteHighlight[] = [];
+const CITATION_HOVER_DELAY = { open: 300, close: 150 };
 
 // A Decision Record's `anchor` is a verbatim sentence chat-wonder-v2-api copied from this same
 // answer and already verified against it server-side (whitespace-normalized substring check —
@@ -132,6 +134,7 @@ function buildComponents(
   messageIndex: number | undefined,
   quoteHighlights: QuoteHighlight[],
   activeHighlightId: string | null,
+  ranks: ReadonlyMap<string, CitationRankItem>,
 ): Components {
   return {
     h1: ({ children }) => <p className="text-[18px] font-bold mt-4 mb-1 first:mt-0">{children}</p>,
@@ -171,9 +174,9 @@ function buildComponents(
       }
       if (isInternalLibraryHref(href)) {
         return (
-          <Link href={href} className="underline underline-offset-2 font-medium text-primary">
+          <CitationLink href={href} rank={ranks.get(href)}>
             {children}
-          </Link>
+          </CitationLink>
         );
       }
       return (
@@ -328,6 +331,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
   messageIndex,
   quoteHighlights = NO_QUOTE_HIGHLIGHTS,
   groundingChecks,
+  citationRanking,
 }: {
   content: string;
   className?: string;
@@ -350,15 +354,20 @@ const AssistantMessage = React.memo(function AssistantMessage({
    * omitted entirely when absent (the verifier is flag-gated on the API, and a freshly streamed
    * reply has none until the next messages fetch). */
   groundingChecks?: MessageGroundingCheck[];
+  /** How relevant each cited authority is to the user's question, keyed by the link's Library
+   * href. A link with no entry renders neutral: ranking runs after the reply is saved, and only
+   * when enabled on the API. */
+  citationRanking?: CitationRankItem[];
 }) {
   const cleaned = cleanAssistantContent(content);
+  const ranks = React.useMemo(() => new Map((citationRanking ?? []).map((r) => [r.href, r])), [citationRanking]);
   // Subscribed directly (not a prop) so a click anywhere that calls setActiveHighlight —
   // currently only SourcesPanel — re-renders every bubble to move the highlight, without
   // ConsultationChat needing to know or forward that state itself.
   const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const components = React.useMemo(
-    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId),
-    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId],
+    () => buildComponents(decisions, onOpenDecision ?? (() => {}), messageIndex, quoteHighlights, activeHighlightId, ranks),
+    [decisions, onOpenDecision, messageIndex, quoteHighlights, activeHighlightId, ranks],
   );
   // A new `components` object (any prop/highlight change above) remounts every <p>/<li> in this
   // bubble, dropping the paragraph-level highlight SourcesPanel put on one of them — see
@@ -368,10 +377,15 @@ const AssistantMessage = React.memo(function AssistantMessage({
     if (messageIndex !== undefined) reapplyFallbackHighlight(messageIndex);
   });
   return (
-    <div className={`text-[15px] leading-6 font-['Inter'] ${className ?? "text-foreground"}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {cleaned}
-      </ReactMarkdown>
+    <div className={`text-[16px] leading-7 font-[family-name:var(--font-reading)] ${className ?? "text-foreground"}`}>
+      {/* Shared hover timing for this bubble's citations (see CitationLink): 300ms before a
+          preview opens, 150ms grace to reach it — and once one is open, moving to an adjacent
+          citation swaps the card instantly instead of waiting out the delay again. */}
+      <FloatingDelayGroup delay={CITATION_HOVER_DELAY}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+          {cleaned}
+        </ReactMarkdown>
+      </FloatingDelayGroup>
       {decisions.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {decisions.map((decision, i) => (
@@ -391,7 +405,7 @@ export default AssistantMessage;
 export function ThinkingIndicator({ label }: { label: string }) {
   return (
     <div role="status" aria-live="polite" className="flex items-center gap-2 text-[15px] font-['Inter']">
-      <span className="font-['Source_Serif_4'] text-muted-foreground">
+      <span className="font-[family-name:var(--font-reading)] text-muted-foreground">
         ilove<span className="text-[#d4af37] font-semibold">lawyer</span>
       </span>
       <span className="text-muted-foreground">{label}</span>

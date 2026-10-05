@@ -12,6 +12,8 @@
     --color-brand-navy-900: var(--brand-navy-900);
     --color-brand-navy-800: var(--brand-navy-800);
     --color-brand-gold: var(--brand-gold);
+    --color-brand-gold-foreground: var(--brand-gold-foreground);
+    --color-brand-gold-hover: var(--brand-gold-hover);
     --color-brand-status-green: var(--brand-status-green);
     --color-brand-oxblood: var(--brand-oxblood);
     --font-heading: var(--font-sans);
@@ -62,6 +64,8 @@
     --color-warn: var(--warn);
     --color-danger: var(--danger);
     --color-riskmed: var(--riskmed);
+    --color-kind-damage: var(--kind-damage);
+    --color-kind-remedy: var(--kind-remedy);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -70,6 +74,19 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
     --font-sans: var(--font-sans);
+
+    /* Audio Overview's generating state (studio-panel.tsx): equalizer bars + an indeterminate
+       progress sweep, so a multi-minute generation reads as clearly in progress. */
+    --animate-audio-wave: audio-wave 1.1s ease-in-out infinite;
+    --animate-progress-sweep: progress-sweep 1.6s ease-in-out infinite;
+    @keyframes audio-wave {
+        0%, 100% { transform: scaleY(0.3); }
+        50% { transform: scaleY(1); }
+    }
+    @keyframes progress-sweep {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+    }
 }
 
 :root {
@@ -87,6 +104,12 @@
        header/hero chrome, so it needs its own light-mode value (see .dark override below)
        rather than the one dark-tuned hex bleeding into light-mode UI. */
     --brand-gold: #8a6200;
+    /* Text/icons on a gold fill (the gold pill, unread badges). White in light mode: near-black
+       on this darker light-mode gold is under 4.5:1 at the 10–11px label sizes gold pills use.
+       Dark mode's lighter gold takes near-black instead — see .dark. */
+    --brand-gold-foreground: #ffffff;
+    /* Hover fill for the gold pill — a deeper gold in light mode, a brighter one in dark. */
+    --brand-gold-hover: #6d4d00;
     /* Semantic status/verification accent (e.g. "Vetted" citation badges) — kept separate
        from --brand-gold so gold stays reserved for confirming actions, not status states. */
     --brand-status-green: #2e8b57;
@@ -136,6 +159,11 @@
     --warn: oklch(0.7 0.15 85);
     --danger: var(--destructive);
     --riskmed: oklch(0.65 0.19 45);
+    /* Category colors for Damages & Remedies (which kind an entry is), kept apart from the status
+       colors above so neither means the other. Checked as a pair for color-blind separation and
+       contrast against this background and the dark one. */
+    --kind-damage: #2a78d6;
+    --kind-remedy: #d55181;
     /* Claim-attribution highlight colors (see components/shared/attributed-text.tsx) —
        kept as vars, not hardcoded in the component, so dark mode can swap in lighter
        foregrounds instead of the light-mode "700" shades going illegible on near-black. */
@@ -145,6 +173,17 @@
     --claim-inference-fg: #b45309;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.16);
     --claim-unsupported-fg: #b91c1c;
+    /* Onboarding tour spotlight: everything outside the highlighted control dims to this. */
+    --tour-dim: rgba(20, 20, 20, 0.45);
+    /* Audio Overview player (components/audio-overview/*): unplayed wave, the played gradient's
+       two ends, the seek track's tint, and Host B's band color (Host A uses --brand-gold).
+       AudioOverviewWaveform reads these at draw time, since wavesurfer paints a canvas and can't
+       resolve CSS variables itself. */
+    --ao-wave: #c7ced8;
+    --ao-played-from: #059669;
+    --ao-played-to: #0891b2;
+    --ao-tint: rgba(13, 148, 136, 0.08);
+    --ao-host-b: #475d85;
 }
 
 .dark {
@@ -177,6 +216,8 @@
     /* Gold's dark-mode value — the one this app was built against, unchanged.
        :root now carries the light-mode value instead of a single fixed hex. */
     --brand-gold: #c9a44c;
+    --brand-gold-foreground: var(--brand-navy-950);
+    --brand-gold-hover: #d9b85e;
     /* Now that --muted/--card/--accent/etc. equal --background, any hover/focus/aria-expanded
        state that relied on one of those for feedback would go visually silent in dark mode —
        this is that feedback instead, added alongside (not replacing) the existing token-based
@@ -202,6 +243,8 @@
     --warn: oklch(0.78 0.14 85);
     --danger: var(--destructive);
     --riskmed: oklch(0.72 0.17 45);
+    --kind-damage: #3987e5;
+    --kind-remedy: #d55181;
     /* Light-mode foregrounds are "700" shades tuned for a white background — against
        near-black they fall well under 4.5:1 contrast, so dark mode gets lighter "300"
        shades instead (backgrounds bumped slightly too, to stay visible as a tint). */
@@ -211,6 +254,12 @@
     --claim-inference-fg: #fcd34d;
     --claim-unsupported-bg: rgba(220, 38, 38, 0.22);
     --claim-unsupported-fg: #fca5a5;
+    --tour-dim: rgba(0, 0, 0, 0.66);
+    --ao-wave: #3d4757;
+    --ao-played-from: #34d399;
+    --ao-played-to: #22d3ee;
+    --ao-tint: rgba(45, 212, 191, 0.07);
+    --ao-host-b: #8ea4c8;
 }
 
 /* Documented z-index scale — pick from these instead of a freehand number. Sidebars/rails sit
@@ -249,9 +298,16 @@
        value. */
     scrollbar-gutter: stable;
     }
+  /* Inverted like before, but toned down to mid grays — the original near-black/pure-white
+     blocks read as a jarring bar mid-paragraph. Solid, not translucent: a see-through tint
+     washed out against the page instead of reading as a selection. */
   ::selection {
-    background: var(--brand-navy-900);
+    background: #555555;
     color: #fff;
+  }
+  .dark ::selection {
+    background: #c8c8c8;
+    color: #111;
   }
   body {
     @apply bg-background text-foreground;

@@ -3,12 +3,19 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { safeNextPath } from "@/lib/auth/next-path"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
+import { useTourStore } from "@/lib/store/tour.store"
 import { chatKeys } from "@/lib/query-keys"
 import type { OrganizationWithRole } from "@/lib/organizations/queries"
 
 interface AuthTokensResponse {
   user: AuthUser
   accessToken: string
+}
+
+// verify-otp returns the full /me-shaped user, including approvalStatus — ACTIVE here means
+// the Tenant auto-approved the account at verification (see AuthSvc.autoApproveIfEnabled).
+interface VerifyOtpResponse extends AuthTokensResponse {
+  user: AuthUser & { approvalStatus: "PENDING" | "ACTIVE" | "DENIED" | "BLOCKED" }
 }
 
 interface SignupResponse {
@@ -18,17 +25,34 @@ interface SignupResponse {
   name: string | null
 }
 
+/** Whether the just-authenticated user already belongs to an organization: "none" means
+ * they still need the solo/create-org/join-org WorkspaceSetup step; "unknown" means the
+ * lookup itself failed, so callers should fall through to the app and let
+ * (protected)/layout.tsx re-check rather than guess. */
+export type OrganizationStatus = "found" | "none" | "unknown"
+
 /** Fetches the user's orgs right after a session is established and activates the first
  * one — signup only ever creates one, and multi-org selection isn't supported yet. Never
  * throws: a failed fetch here shouldn't block login/signup, just leaves org state empty
  * for whatever next screen/hook re-fetches it. */
-async function hydrateActiveOrganization(setOrganization: (org: ReturnType<typeof toActiveOrg>) => void) {
+async function hydrateActiveOrganization(
+  setOrganization: (org: ReturnType<typeof toActiveOrg>) => void
+): Promise<OrganizationStatus> {
   try {
     const orgs = await apiFetch<OrganizationWithRole[]>("/api/organizations")
-    if (orgs[0]) setOrganization(toActiveOrg(orgs[0]))
+    if (!orgs[0]) return "none"
+    setOrganization(toActiveOrg(orgs[0]))
+    return "found"
   } catch {
     // non-fatal — see doc comment above
+    return "unknown"
   }
+}
+
+/** Trimmed + lowercased, matching the API's normalizeEmail — the API normalizes too, this
+ * just keeps what the UI echoes back (e.g. the OTP screen) consistent with what's stored. */
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase()
 }
 
 export function toActiveOrg(org: OrganizationWithRole) {
@@ -81,7 +105,7 @@ export function useLoginMutation() {
     mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
       apiFetch<AuthTokensResponse>("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password, remember }),
+        body: JSON.stringify({ email: normalizeEmail(email), password, remember }),
         skipAuthRefresh: true,
       }),
     onSuccess: async (data) => {
@@ -121,7 +145,7 @@ export function useUpdateRequiredPasswordMutation() {
     }) =>
       apiFetch<AuthTokensResponse>("/api/auth/update-required-password", {
         method: "POST",
-        body: JSON.stringify({ email, currentPassword, newPassword, remember }),
+        body: JSON.stringify({ email: normalizeEmail(email), currentPassword, newPassword, remember }),
         skipAuthRefresh: true,
       }),
     onSuccess: async (data) => {
@@ -138,7 +162,9 @@ export function useSignupMutation() {
     mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
       apiFetch<SignupResponse>("/api/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ username: generateUsername(name), name, email, password }),
+        // acceptedTerms: callers only fire this after the Terms dialog/checkbox (see
+        // unified-auth.tsx's handleSignUp) — recorded server-side as User.termsAcceptedAt.
+        body: JSON.stringify({ username: generateUsername(name), name, email: normalizeEmail(email), password, acceptedTerms: true }),
         skipAuthRefresh: true,
       }),
   })
@@ -149,7 +175,7 @@ export function useSendOtpMutation() {
     mutationFn: ({ email }: { email: string }) =>
       apiFetch("/api/auth/send-otp", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizeEmail(email) }),
         skipAuthRefresh: true,
       }),
   })
@@ -164,7 +190,7 @@ export function useCancelSignupMutation() {
     mutationFn: ({ email }: { email: string }) =>
       apiFetch("/api/auth/cancel-signup", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizeEmail(email) }),
         skipAuthRefresh: true,
       }),
   })
@@ -181,9 +207,9 @@ export function useVerifyOtpMutation() {
 
   return useMutation({
     mutationFn: ({ email, code }: { email: string; code: string }) =>
-      apiFetch<AuthTokensResponse>("/api/auth/verify-otp", {
+      apiFetch<VerifyOtpResponse>("/api/auth/verify-otp", {
         method: "POST",
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email: normalizeEmail(email), code }),
         skipAuthRefresh: true,
       }),
     onSuccess: async (data) => {
@@ -194,26 +220,62 @@ export function useVerifyOtpMutation() {
   })
 }
 
-export function useGoogleAuthMutation() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+interface GoogleAuthResult extends AuthTokensResponse {
+  organizationStatus: OrganizationStatus
+}
+
+/** Shared by the Google sign-in and Google link mutations: establishes the session and reports
+ * whether the user still needs WorkspaceSetup. Runs inside mutationFn (not onSuccess) so the
+ * caller's own onSuccess receives `organizationStatus` to route on. */
+function useCompleteGoogleAuth() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
+  return async (data: AuthTokensResponse): Promise<GoogleAuthResult> => {
+    setAuth({ accessToken: data.accessToken, user: data.user })
+    queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+    const organizationStatus = await hydrateActiveOrganization(setOrganization)
+    return { ...data, organizationStatus }
+  }
+}
+
+/** Like useVerifyOtpMutation, deliberately does NOT navigate on success: a Google user with no
+ * organization yet (brand new, or one who abandoned onboarding) still needs the
+ * solo/create-org/join-org WorkspaceSetup step, so the caller routes on `organizationStatus`.
+ * `remember` is the sign-in tab's checkbox (the sign-up tab sends true, matching verify-otp).
+ * `acceptedTerms` is only needed when this call would create the account — without it the API
+ * answers 428 TERMS_ACCEPTANCE_REQUIRED and creates nothing. */
+export function useGoogleAuthMutation() {
+  const completeGoogleAuth = useCompleteGoogleAuth()
+
   return useMutation({
-    mutationFn: ({ idToken }: { idToken: string }) =>
-      apiFetch<AuthTokensResponse>("/api/auth/google", {
-        method: "POST",
-        body: JSON.stringify({ idToken }),
-        skipAuthRefresh: true,
-      }),
-    onSuccess: async (data) => {
-      setAuth({ accessToken: data.accessToken, user: data.user })
-      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
-      await hydrateActiveOrganization(setOrganization)
-      router.push(sanitizeNextPath(searchParams.get("next")))
-    },
+    mutationFn: async ({ idToken, remember, acceptedTerms }: { idToken: string; remember: boolean; acceptedTerms?: boolean }) =>
+      completeGoogleAuth(
+        await apiFetch<AuthTokensResponse>("/api/auth/google", {
+          method: "POST",
+          body: JSON.stringify({ idToken, remember, ...(acceptedTerms ? { acceptedTerms: true } : {}) }),
+          skipAuthRefresh: true,
+        })
+      ),
+  })
+}
+
+/** Completes the password-confirmed link a GOOGLE_LINK_REQUIRED 409 from useGoogleAuthMutation
+ * sends the caller to — attaches the Google identity to the existing password account, then
+ * behaves like a completed Google sign-in (same result shape, same no-navigate contract). */
+export function useGoogleLinkMutation() {
+  const completeGoogleAuth = useCompleteGoogleAuth()
+
+  return useMutation({
+    mutationFn: async ({ idToken, password, remember }: { idToken: string; password: string; remember: boolean }) =>
+      completeGoogleAuth(
+        await apiFetch<AuthTokensResponse>("/api/auth/google/link", {
+          method: "POST",
+          body: JSON.stringify({ idToken, password, remember }),
+          skipAuthRefresh: true,
+        })
+      ),
   })
 }
 
@@ -222,7 +284,7 @@ export function useForgotPasswordMutation() {
     mutationFn: ({ email }: { email: string }) =>
       apiFetch<{ message: string }>("/api/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizeEmail(email) }),
         skipAuthRefresh: true,
       }),
   })
@@ -338,6 +400,8 @@ export function useLogoutMutation() {
       // keeps serving the just-logged-out account's cached data/error to whichever
       // account logs in next in the same tab, instead of refetching for the new session.
       queryClient.clear()
+      // The guide's conversation and any open tour belong to the account that just left.
+      useTourStore.getState().reset()
       router.push("/login")
     },
   })

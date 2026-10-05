@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Geist_Mono, Inter, Libre_Caslon_Text } from "next/font/google"
+import { Geist_Mono, Inter, Libre_Caslon_Text, Source_Serif_4 } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
@@ -18,6 +18,16 @@ const libreCaslonText = Libre_Caslon_Text({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-serif",
+})
+
+// The serif the chat answers and citation pills are set in. The code used to name "Source Serif 4"
+// without ever loading it, so it silently rendered as the browser's default serif. Swapping the
+// reading font is now this one declaration (any next/font/google family with an italic).
+const readingSerif = Source_Serif_4({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-reading",
 })
 
 // Fallback origin for metadataBase when the Host header doesn't resolve to a known tenant
@@ -125,7 +135,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, libreCaslonText.variable)}
+      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, libreCaslonText.variable, readingSerif.variable)}
     >
       <body suppressHydrationWarning>
         <Providers tenantCodeHint={tenantCodeHint}>{children}</Providers>

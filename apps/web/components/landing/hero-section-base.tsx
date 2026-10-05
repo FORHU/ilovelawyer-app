@@ -54,7 +54,9 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
     });
     if (active.preload !== "auto") active.preload = "auto";
     active.currentTime = 0;
-    if (!reduce) void active.play();
+    // The browser may refuse or interrupt autoplay (power saving, a background tab, autoplay
+    // policy) — the slide's poster stays up, so that's not an error worth surfacing.
+    if (!reduce) active.play().catch(() => {});
   }, [index, reduce]);
 
   const advance = () => setIndex((i) => (i + 1) % SLIDE_KEYS.length);

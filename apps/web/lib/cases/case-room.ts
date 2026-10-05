@@ -8,6 +8,11 @@ import { getNotificationSocket } from "@/lib/notifications/socket"
 // socket's own connection status (lib/notifications/socket.ts) and the document-indexing flag
 // (lib/cases/document-socket.ts), for the same reason: it isn't server data React Query owns.
 const subscribedCaseIds = new Set<string>()
+// How many live joinCaseRoom calls hold each caseId. The server's room membership is one flag per
+// socket, not a count, so only the LAST holder's cleanup may leave — otherwise one unmount (a
+// StrictMode double-effect, or two mounts overlapping across a navigation) leaves the room out
+// from under another holder that still needs it.
+const holderCounts = new Map<string, number>()
 const listeners = new Set<() => void>()
 let version = 0
 
@@ -63,8 +68,13 @@ interface CaseRoomSocket {
  * clears the local "subscribed" flag.
  */
 export function joinCaseRoom(socket: CaseRoomSocket, caseId: string): () => void {
+  holderCounts.set(caseId, (holderCounts.get(caseId) ?? 0) + 1)
+
   const subscribe = () => {
     socket.emit("case:subscribe", { caseId }, (res) => {
+      // An ack that lands after every holder already cleaned up must not flip the flag back to
+      // true — nothing is subscribed any more, so push would be trusted but never arrive.
+      if (!holderCounts.get(caseId)) return
       setSubscribed(caseId, res?.ok === true)
     })
   }
@@ -74,9 +84,18 @@ export function joinCaseRoom(socket: CaseRoomSocket, caseId: string): () => void
   socket.on("connect", subscribe)
   socket.on("disconnect", handleDisconnect)
 
+  let released = false
   return () => {
+    if (released) return
+    released = true
     socket.off("connect", subscribe)
     socket.off("disconnect", handleDisconnect)
+    const remaining = (holderCounts.get(caseId) ?? 1) - 1
+    if (remaining > 0) {
+      holderCounts.set(caseId, remaining)
+      return
+    }
+    holderCounts.delete(caseId)
     socket.emit("case:unsubscribe", { caseId })
     setSubscribed(caseId, false)
   }

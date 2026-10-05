@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
-import { citationMapKeys } from "@/lib/citation-map/mutations"
+import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
@@ -15,8 +15,8 @@ import type {
   CaseReconstruction,
   CaseSnapshot,
   CaseTheory,
-  DamageCategory,
   DamageClaim,
+  DamageClaimBody,
   DeadlineRule,
   DecisionRecord,
   FindingCategory,
@@ -24,6 +24,8 @@ import type {
   HearsayCategory,
   PresetValue,
   PrivilegeStatus,
+  ProcedureSourceKind,
+  ScreenPresetRow,
   SnapshotCustodyEvent,
   SnapshotEvidenceMatrixItem,
   TerminalCatalog,
@@ -44,6 +46,11 @@ export const terminalKeys = {
   // know which case's list is currently on screen.
   workspacesAll: () => [...terminalKeys.all, "workspaces"] as const,
   workspaces: (caseId: string) => [...terminalKeys.all, "workspaces", caseId] as const,
+  // Prefix shared by every screenCount's cached list, for invalidating all of them after a
+  // create/delete (mirrors workspacesAll's same reasoning) — a mutation doesn't know which
+  // screenCount is currently on screen.
+  screenPresetsAll: () => [...terminalKeys.all, "screen-presets"] as const,
+  screenPresets: (screenCount: number) => [...terminalKeys.all, "screen-presets", screenCount] as const,
   snapshot: (caseId: string) =>
     [...terminalKeys.all, "snapshot", caseId] as const,
   timeline: (caseId: string) =>
@@ -57,6 +64,8 @@ export const terminalKeys = {
     [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
   caseBriefHistory: (caseId: string) =>
     [...terminalKeys.all, "case-brief-history", caseId] as const,
+  audioOverviewHistory: (caseId: string) =>
+    [...terminalKeys.all, "audio-overview-history", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -79,6 +88,7 @@ export type AiGenerationKind =
   | "caseStrategyRefresh"
   | "witnessScoring"
   | "witnessExtract"
+  | "damagesExtract"
   | "claimExtract"
   | "citationGrounds"
   | "adverseSweep"
@@ -90,9 +100,18 @@ export interface AiJobStatus {
   startedAt: string
   finishedAt: string | null
   error: string | null
+  /** How far an IN_PROGRESS job has got (ilovelawyer-api's AiGenerationJob.stage) — null until it
+   * reports one, and always null for kinds that don't report stages. Chat-backed generations
+   * (Audio Overview's script, Mind Map) go null → "answering" → "extras"; see AiJobStage. */
+  stage?: AiJobStage | null
 }
 
-/** ai-job:started/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
+/** Chat Wonder's progress through a locked chat turn: null while it reads the case,
+ * "answering" once the reply starts streaming, "extras" once the reply is done and the second
+ * model call (the one that writes the audio overview script / mind map) is running. */
+export type AiJobStage = "answering" | "extras"
+
+/** ai-job:started/progress/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
  * (lib/socket.ts), pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), the single
  * choke point every one of AiGenerationQueue's 8 kinds (including the auto-triggered
  * casePostExtraction, which resolves to the "caseRefresh" lock kind) funnels through. */
@@ -103,9 +122,13 @@ interface AiJobSocketPayload {
   startedAt: string
   finishedAt: string | null
   error: string | null
+  stage?: AiJobStage | null
 }
 
-const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:done", "ai-job:failed"] as const
+const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:progress", "ai-job:done", "ai-job:failed"] as const
+
+/** How often a job cached as IN_PROGRESS is re-read — see useAiJobStatus. */
+const AI_JOB_RUNNING_POLL_MS = 5_000
 
 /** Whether a Generate/Refresh/Scan action is currently running for this case, regardless of who
  * triggered it or when — a page refresh mid-generation otherwise looks idle even though the
@@ -126,7 +149,10 @@ const AI_JOB_SOCKET_EVENTS = ["ai-job:started", "ai-job:done", "ai-job:failed"] 
  *      socket actually being ready to receive events for it.
  *   2. useNotificationSocket's reconnect handler invalidates every mounted ai-job query — a
  *      dropped/reconnected socket, or a Next soft navigation that reuses this page without truly
- *      remounting it, refetches once on that event instead of on a timer. */
+ *      remounting it, refetches once on that event instead of on a timer.
+ * The one exception: while the cached job is IN_PROGRESS it is re-read every
+ * AI_JOB_RUNNING_POLL_MS, so a done push that never arrives can't leave a panel stuck on the old
+ * results until a reload (Damages and the timeline in the R v Doyle QA run). Idle, it never polls. */
 export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   const queryClient = useQueryClient()
   const pushLive = useIsCaseRoomSubscribed(caseId)
@@ -135,6 +161,7 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
     queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
     enabled: !!caseId,
     staleTime: 0,
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_RUNNING_POLL_MS : false),
   })
 
   const prevStatus = useRef(query.data?.status)
@@ -164,6 +191,7 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
         startedAt: payload.startedAt,
         finishedAt: payload.finishedAt,
         error: payload.error,
+        stage: payload.stage ?? null,
       })
     }
 
@@ -266,6 +294,34 @@ export function useUpdateWorkspaceMutation() {
   })
 }
 
+/** Renames a layout tab. Separate from useUpdateWorkspaceMutation so the tab strip can show the
+ * new name immediately (optimistic write into every cached workspaces list) and roll back if the
+ * PATCH fails — autosaves never send `name`, so they can't clobber a rename in flight. */
+export function useRenameWorkspaceMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiFetch<TerminalWorkspace>(`/api/terminal/workspaces/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      }),
+    onMutate: async ({ id, name }) => {
+      await queryClient.cancelQueries({ queryKey: terminalKeys.workspacesAll() })
+      const previous = queryClient.getQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() })
+      queryClient.setQueriesData<TerminalWorkspace[]>({ queryKey: terminalKeys.workspacesAll() }, (list) =>
+        list?.map((w) => (w.id === id ? { ...w, name } : w)),
+      )
+      return { previous }
+    },
+    onError: (_error, _vars, context) => {
+      for (const [key, data] of context?.previous ?? []) queryClient.setQueryData(key, data)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
+    },
+  })
+}
+
 export function useApplyWorkspaceMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -301,6 +357,42 @@ export function useDeleteWorkspaceMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.workspacesAll() })
+    },
+  })
+}
+
+// System presets (userId: null, seeded) and this caller's own, for the given screen count —
+// see lib/terminal/screen-presets.ts, which wraps each row into a ScreenPresetDef.
+export function useScreenPresetsQuery(screenCount: number) {
+  return useQuery({
+    queryKey: terminalKeys.screenPresets(screenCount),
+    queryFn: () => apiFetch<ScreenPresetRow[]>(`/api/terminal/screen-presets?screenCount=${screenCount}`),
+    enabled: screenCount > 0,
+  })
+}
+
+export function useCreateScreenPresetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; description?: string; screens: { arrangement: string; panelIds: string[] }[] }) =>
+      apiFetch<ScreenPresetRow>("/api/terminal/screen-presets", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.screenPresetsAll() })
+    },
+  })
+}
+
+export function useDeleteScreenPresetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiFetchRaw(`/api/terminal/screen-presets/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.screenPresetsAll() })
     },
   })
 }
@@ -407,116 +499,27 @@ export function useCreateRiskMutation(caseId: string) {
   })
 }
 
-// Queued server-side (AiGenerationQueue/SQS) — a full-bundle scan can run for minutes. This POST
-// returns once the job is claimed; ContradictionsPanel follows useAiJobStatus(caseId,
-// "contradictions") and refreshes the graph view itself when that flips to DONE.
-export function useScanContradictionsMutation(caseId: string) {
+export function useUpdateRiskMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/evidence/contradictions/scan`, {
-        method: "POST",
+    mutationFn: ({ riskId, title }: { riskId: string; title: string }) =>
+      apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "contradictions") })
-    },
-  })
-}
-
-// ── Citation Map list view: pleaded claims and authority → claim links ──────────────────────
-// Kept here rather than in lib/citation-map/mutations.ts because they also touch terminalKeys
-// (job status) and graphViewKeys (claims are CLAIM nodes) — and that module is imported here.
-
-/** Queued "Find claims" — AI reads the pleadings for the case's claims (ClaimExtractSvc). */
-export function useExtractClaimsMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/claims/extract`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "claimExtract") })
-    },
-  })
-}
-
-/** Queued "Map authorities" — AI links each cited authority to the claims it bears on. */
-export function useMapCitationGroundsMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-grounds/map`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "citationGrounds") })
-    },
-  })
-}
-
-/** Queued "Run sweep" — the adverse-citation sweep (AdverseSweepSvc). */
-export function useAdverseSweepMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/citation-map/sweep`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "adverseSweep") })
-    },
-  })
-}
-
-/** Accept (adds the Weakness) or dismiss a sweep hit's suggestion. */
-export function useDecideAdverseHitMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, decision }: { id: string; decision: "accept" | "dismiss" }) =>
-      apiFetch(`/api/my-cases/${caseId}/citation-map/adverse/${id}/${decision}`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
-      // An accepted hit is a new Weakness row.
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }
 
-function useInvalidateCitationMap(caseId: string) {
+export function useDeleteRiskMutation(caseId: string) {
   const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
-    queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
-  }
-}
-
-export function useCreateClaimMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
   return useMutation({
-    mutationFn: (body: { title: string; causeOfAction?: string }) =>
-      apiFetch(`/api/my-cases/${caseId}/claims`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: invalidate,
-  })
-}
-
-export function useDeleteClaimMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/claims/${id}`, { method: "DELETE" })
+    mutationFn: (riskId: string) => apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
-    onSuccess: invalidate,
-  })
-}
-
-export function useCreateCitationGroundMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: (body: { citationCheckId: string; claimId: string; role: "SUBSTANTIVE" | "PROCEDURAL" }) =>
-      apiFetch(`/api/my-cases/${caseId}/citation-grounds`, { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: invalidate,
-  })
-}
-
-export function useDeleteCitationGroundMutation(caseId: string) {
-  const invalidate = useInvalidateCitationMap(caseId)
-  return useMutation({
-    mutationFn: async (id: string) => {
-      await apiFetchRaw(`/api/my-cases/${caseId}/citation-grounds/${id}`, { method: "DELETE" })
-    },
-    onSuccess: invalidate,
   })
 }
 
@@ -628,9 +631,6 @@ export function useCheckCitationMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-      // Citation Map's seed is built from citedReference — a fresh check should show up there
-      // without the user having to manually refresh that panel.
-      queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
     },
   })
 }
@@ -683,12 +683,10 @@ export function useRemoveAuthorityMutation(caseId: string) {
   })
 }
 
-// Both refresh the snapshot (the Law panel reads citations from it) and Citation Map's seed, which
-// is built from citedReference — an edited or removed citation must not linger there. An edit is
-// re-verified server-side, so the row comes back with a fresh status and authority link.
+// Both refresh the snapshot, which the Law panel reads citations from. An edit is re-verified
+// server-side, so the row comes back with a fresh status and authority link.
 function invalidateCitations(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
   queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-  queryClient.invalidateQueries({ queryKey: citationMapKeys.seed(caseId) })
 }
 
 export function useUpdateCitationMutation(caseId: string) {
@@ -741,7 +739,14 @@ export function useCreateDeadlineMutation(caseId: string) {
 export function useCreateProcedureItemMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { kind: string; label: string; sourceLabel?: string }) =>
+    mutationFn: (body: {
+      kind: string
+      label: string
+      sourceLabel?: string
+      sourceKind?: ProcedureSourceKind
+      sourceId?: string
+      sourceKey?: string
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/procedure/items`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -762,6 +767,9 @@ export function useUpdateProcedureItemMutation(caseId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+      // Ticking a to-do sent from another panel settles that item too (a defense Answered, a
+      // witness's statement received…); Legal Issues and Witnesses read the graph view.
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     },
   })
 }
@@ -998,15 +1006,53 @@ export function useDeleteWitnessMutation(caseId: string) {
 export function useCreateDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: {
-      category: DamageCategory
-      description?: string
-      amount?: number
-    }) =>
+    mutationFn: (body: DamageClaimBody & Required<Pick<DamageClaimBody, "kind" | "title">>) =>
       apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages`, {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Refreshes the whole snapshot: marking an entry awarded ticks its Case Strategy to-dos, and a new
+// due date moves them.
+export function useUpdateDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: DamageClaimBody & { id: string }) =>
+      apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Queues a damages pass over every document of the case (DamagesExtractSvc.propose); progress and
+// completion come through useAiJobStatus(caseId, "damagesExtract"). The 202 carries the new
+// IN_PROGRESS job (the API claims it before queueing), written straight into the cache so the
+// IN_PROGRESS → DONE transition that refreshes the list is seen even if the started push is missed.
+export function useProposeDamagesMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/damages/propose`, { method: "POST" }),
+    onSuccess: (status) => {
+      if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, "damagesExtract"), status)
+      else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
+    },
+  })
+}
+
+// Accepts an AI-proposed entry, so it counts in the total.
+export function useAcceptDamageMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<DamageClaim>(`/api/my-cases/${caseId}/damages/${id}/accept`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -1195,6 +1241,17 @@ function useTheoryLifecycleMutation(caseId: string, action: "publish" | "retire"
   })
 }
 
+// Server only allows this for the caller's own forks (CaseTheorySvc.remove) — originals retire.
+export function useDeleteTheoryMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/api/my-cases/${caseId}/theories/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
 export const usePublishTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "publish")
 export const useRetireTheoryMutation = (caseId: string) => useTheoryLifecycleMutation(caseId, "retire")
 // Copies an AI-proposed (or another lawyer's) theory into a new DRAFT owned by the caller —
@@ -1228,6 +1285,32 @@ export function useAddTheoryOpenQuestionMutation(caseId: string) {
   return useMutation({
     mutationFn: ({ theoryId, question }: { theoryId: string; question: string }) =>
       apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/open-questions`, { method: "POST", body: JSON.stringify({ question }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+// Claims, assumptions and open questions share one edit/delete shape — only the path segment
+// and the text field's name differ (claims can also change stance).
+export type TheoryItemKind = "claims" | "assumptions" | "open-questions"
+
+export function useUpdateTheoryItemMutation(caseId: string, kind: TheoryItemKind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, id, ...body }: { theoryId: string; id: string; statement?: string; question?: string; stance?: TheoryStance }) =>
+      apiFetch(`/api/my-cases/${caseId}/theories/${theoryId}/${kind}/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
+    },
+  })
+}
+
+export function useDeleteTheoryItemMutation(caseId: string, kind: TheoryItemKind) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ theoryId, id }: { theoryId: string; id: string }) =>
+      apiFetch<void>(`/api/my-cases/${caseId}/theories/${theoryId}/${kind}/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
@@ -1400,6 +1483,59 @@ export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled,
+  })
+}
+
+export interface AudioOverviewHistoryEntry {
+  id: string
+  messageId: string
+  consultationId: string
+  createdAt: string
+  status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
+  turns: AudioOverviewTurn[]
+  checks: AudioOverviewTurnCheck[]
+  /** Cumulative start second of each turn (ilovelawyer-api's turnStartTimes), index-aligned with
+   * `turns` — null until the audio has been rendered. */
+  turnTimings: number[] | null
+  /** Per turn, where each sentence starts in the audio (Polly sentence speech marks) — null until
+   * the audio has been rendered, and on overviews rendered before sentence timings existed. */
+  sentenceTimings: AudioOverviewMarkTiming[][] | null
+  /** Per turn, where each word starts in the audio (Polly word speech marks) — null until the
+   * audio has been rendered, and on overviews rendered before word timings existed. */
+  wordTimings: AudioOverviewMarkTiming[][] | null
+  /** null until the audio has been rendered (the script alone is generated first). */
+  audio: { id: string; fileUrl: string } | null
+}
+
+interface AudioOverviewHistoryPage {
+  items: AudioOverviewHistoryEntry[]
+  nextCursor: string | null
+}
+
+const AUDIO_OVERVIEW_HISTORY_PAGE_SIZE = 20
+
+/** Every Audio Overview generated for the case, newest first — same infinite-query shape as
+ * useCaseBriefHistoryQuery (limit always sent, since the backend only computes nextCursor when
+ * given one). Always refetched on mount: a new overview is created from chat, not from here, so
+ * there's no mutation in this file to invalidate it. */
+export function useAudioOverviewHistoryQuery(caseId: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: terminalKeys.audioOverviewHistory(caseId),
+    queryFn: ({ pageParam }: { pageParam: string | null }) => {
+      const params = new URLSearchParams({ limit: String(AUDIO_OVERVIEW_HISTORY_PAGE_SIZE) })
+      if (pageParam) params.set("cursor", pageParam)
+      return apiFetch<AudioOverviewHistoryPage>(`/api/my-cases/${caseId}/audio-overview/history?${params.toString()}`)
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    refetchOnMount: "always",
+    // A row whose audio is still rendering (started from here or elsewhere) flips to Ready on its
+    // own, rather than staying stuck until the panel remounts.
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) => page.items.some((item) => item.status === "IN_PROGRESS" && !item.audio))
+        ? 5000
+        : false,
     enabled,
   })
 }

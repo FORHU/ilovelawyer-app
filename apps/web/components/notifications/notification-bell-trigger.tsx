@@ -42,7 +42,7 @@ export const NotificationBellTrigger = forwardRef<HTMLButtonElement, Notificatio
         {hasUnread && (
           <span
             aria-hidden="true"
-            className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white"
+            className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-background bg-brand-gold px-1 text-[9px] font-bold leading-none text-brand-gold-foreground"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>

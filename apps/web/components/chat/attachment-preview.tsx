@@ -20,6 +20,10 @@ import { sanitizeSheetHtml } from "@/lib/chat/sanitize-sheet-html";
 
 interface AttachmentPreviewProps {
   attachment: MessageAttachment;
+  /** Hides the native PDF viewer's toolbar (`#toolbar=0`). Chrome/Edge's toolbar has a fixed
+   * minimum layout and just clips its right-hand actions in a narrow frame — callers in narrow,
+   * resizable panels pass this and supply their own always-reachable actions instead. */
+  hidePdfToolbar?: boolean;
 }
 
 // xlsx-preview's genColor() (src/CSSStyles/inline.ts) converts a cell's ARGB font/fill color
@@ -52,7 +56,7 @@ function fixTransparentCellColors(html: string): string {
  * inline Documents preview, so neither has to duplicate the fetch/render logic below. Fills its
  * parent's height — the caller decides whether that's a modal's fixed h-[80vh] body or a
  * resizable sidebar's available height. */
-export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
+export function AttachmentPreview({ attachment, hidePdfToolbar = false }: AttachmentPreviewProps) {
   const { t } = useTranslation("homepage");
   const [inlineFailed, setInlineFailed] = useState(false);
   const isPdf = isPdfAttachment(attachment);
@@ -248,7 +252,7 @@ export function AttachmentPreview({ attachment }: AttachmentPreviewProps) {
           // zoom, which on a narrow mobile width renders the page wider than the iframe with no
           // way to zoom out first, so it never fits the screen. FitH forces "fit to width" so the
           // page always starts scaled to the frame and only needs vertical scroll.
-          src={isPdf ? `${attachment.url!}#view=FitH` : attachment.url!}
+          src={isPdf ? `${attachment.url!}#${hidePdfToolbar ? "toolbar=0&" : ""}view=FitH` : attachment.url!}
           title={attachment.name}
           className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}

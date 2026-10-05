@@ -58,3 +58,6 @@ src-tauri/binaries/*
 *.tsbuildinfo
 next-env.d.ts
 handoff-chat-wonder-access-issue.md
+
+# local https dev certificates (next dev --experimental-https)
+certificates

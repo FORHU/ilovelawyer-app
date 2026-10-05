@@ -90,5 +90,27 @@
       "successDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}. Maaari mo itong kanselahin sa pamamagitan ng muling pag-sign in bago mangyari iyon. Malo-log out ka na ngayon.",
       "successLogoutButton": "Mag-log Out"
     }
+  },
+  "avatar": {
+    "upload": "Mag-upload ng larawan",
+    "change": "Palitan ang larawan",
+    "remove": "Alisin ang larawan",
+    "uploading": "Nag-a-upload…",
+    "removing": "Inaalis…",
+    "hint": "JPEG, PNG o WebP, hanggang 2 MB.",
+    "tooLarge": "Pumili ng larawang 2 MB o mas maliit.",
+    "wrongType": "Pumili ng JPEG, PNG o WebP na larawan.",
+    "genericError": "Hindi na-update ang iyong larawan. Pakisubukang muli."
+  },
+  "googleCalendar": {
+    "title": "Google Calendar",
+    "connectedDescription": "Nakakonekta. Magkabilang direksyon ang sync: lumalabas sa Google Calendar ang mga pagbabago rito, at bumabalik dito sa loob ng ilang minuto ang mga binago roon sa pamagat, oras at tala.",
+    "disconnectedDescription": "Ikonekta ang isang Google account para i-sync ang iyong mga appointment sa Google Calendar nito, sa magkabilang direksyon. Hindi nito binabago kung paano ka nagsa-sign in.",
+    "connect": "Ikonekta",
+    "connecting": "Ikinokonekta…",
+    "disconnect": "Idiskonekta",
+    "disconnecting": "Dinidiskonekta…",
+    "popupError": "Hindi natapos ng Google ang koneksyon. Pakisubukang muli.",
+    "genericError": "Hindi na-update ang Google Calendar. Pakisubukang muli."
   }
 }

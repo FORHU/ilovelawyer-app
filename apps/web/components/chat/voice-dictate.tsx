@@ -191,6 +191,7 @@ export default function VoiceDictate({
             onClick={() => void start()}
             disabled={disabled}
             aria-label={voiceLabel}
+            data-tour-id="composer-mic"
             className={`h-9 w-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 ${className}`}
           >
             <Mic className="w-4 h-4" aria-hidden="true" />

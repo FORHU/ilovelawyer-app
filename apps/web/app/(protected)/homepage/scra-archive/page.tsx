@@ -20,7 +20,6 @@ const DECISIONS: Decision[] = [
 export default function ScraArchivePage() {
   return (
     <LegalCodePage
-      activeTab="scra-archive"
       eyebrow="Research · Jurisprudence"
       title={<>SCRA <span className="italic">Archive.</span></>}
       subtitle="Supreme Court Reports Annotated — the full-text archive of En Banc and Division decisions, indexed and cross-referenced so the doctrine behind every ruling is one query away."

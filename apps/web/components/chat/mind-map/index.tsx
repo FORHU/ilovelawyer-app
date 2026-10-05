@@ -10,7 +10,10 @@ import ReactFlow, {
   Node,
   ReactFlowProvider,
   useReactFlow,
-  useNodesInitialized
+  useNodesInitialized,
+  useStoreApi,
+  getRectOfNodes,
+  getTransformForBounds
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,10 +39,17 @@ const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), 
   ),
 }) as React.ForwardRefExoticComponent<MindMap3DProps & React.RefAttributes<MindMap3DHandle>>;
 
-/** Levels open when a map is first shown (root = 0): the five branches, their points, and one
- * level of detail under each point. Saved with the collapse state (`collapseDefault`), so a map
- * whose fold was seeded under a different default is re-seeded once when this changes. */
-const DEFAULT_VISIBLE_LEVELS = 3;
+/** Levels open when a map is first shown (root = 0) — `'all'` shows every node; the user folds
+ * from there. Saved with the collapse state (`collapseDefault`), so a map whose fold was seeded
+ * under a different default is re-seeded once when this changes. */
+const DEFAULT_VISIBLE_LEVELS: number | 'all' = 'all';
+
+/** Lowest zoom an automatic fit may land on: below it node labels can't be read. A full case map
+ * (60+ points) fitted into a normal Terminal pane went far under it (R v Doyle QA). */
+const READABLE_FIT_ZOOM = 0.45;
+const FIT_PADDING = 0.05;
+const MIN_ZOOM = 0.05;
+const MAX_ZOOM = 1.5;
 
 const nodeTypes = {
   custom: CustomNode,
@@ -98,7 +108,25 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const [selected3DNodeData, setSelected3DNodeData] = useState<any>(null);
 
   const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
+  const flowStore = useStoreApi();
   const nodesInitialized = useNodesInitialized();
+
+  // The automatic fit (first show, resize, reset): the whole map when it fits at a readable zoom,
+  // else the root and its headings — readable, with the points running off to be panned to. The
+  // toolbar's fit button stays a full overview.
+  const fitReadable = useCallback(() => {
+    const all = getNodes();
+    const { width, height } = flowStore.getState();
+    if (all.length && width && height) {
+      const [, , zoom] = getTransformForBounds(getRectOfNodes(all), width, height, MIN_ZOOM, MAX_ZOOM, FIT_PADDING);
+      if (zoom < READABLE_FIT_ZOOM) {
+        const top = all.filter((n) => (n.data?.depth ?? 0) <= 1);
+        fitView({ nodes: top.map((n) => ({ id: n.id })), padding: 0.15, maxZoom: 1, duration: 800 });
+        return;
+      }
+    }
+    fitView({ padding: FIT_PADDING, duration: 800 });
+  }, [getNodes, flowStore, fitView]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [slots, setSlots] = useState<({ nodes: Node[], edges: Edge[] } | null)[]>(Array(3).fill(null));
@@ -135,15 +163,14 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     setCollapseDefaultPending(true);
   }, [localStorageKey]);
 
-  // First time this map is shown here: open at root + branches + points + their detail (levels 0–3) and
-  // fold everything deeper, so a 100-node map opens looking like a readable overview. The
-  // Structure menu's "Show levels" and each node's toggle open the rest.
+  // First time this map is shown here: open with every node visible. The Structure menu's
+  // "Show levels" and each node's toggle fold it down.
   useEffect(() => {
     if (!collapseDefaultPending || !data || typeof data !== 'object') return;
     // Has to wait for `data`, which can arrive after the cache check above — same one-shot
     // seeding as that effect, not a render loop (it clears its own trigger).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCollapsedIds(collapseBelowLevel(data, DEFAULT_VISIBLE_LEVELS));
+    setCollapsedIds(DEFAULT_VISIBLE_LEVELS === 'all' ? new Set() : collapseBelowLevel(data, DEFAULT_VISIBLE_LEVELS));
     setCollapseDefaultPending(false);
   }, [collapseDefaultPending, data]);
 
@@ -228,9 +255,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     if (is3D) {
       mindMap3DRef.current?.recenter();
     } else {
-      fitView({ padding: 0.05, duration: 800 });
+      fitReadable();
     }
-  }, [is3D, fitView]);
+  }, [is3D, fitReadable]);
 
 
   // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
@@ -296,9 +323,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       const { nodes: newNodes, edges: newEdges } = buildMindMapGraph(data, layout, collapsedIds, rootTitle);
       setNodes(newNodes);
       setEdges(newEdges);
-      setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
+      setTimeout(fitReadable, 100);
     }
-  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitView, is3D]);
+  }, [data, layout, collapsedIds, rootTitle, setNodes, setEdges, fitReadable, is3D]);
 
   const saveToSlot = (idx: number) => {
     setSlots(prev => {
@@ -316,7 +343,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     if (slot) {
       setNodes(slot.nodes);
       setEdges(slot.edges);
-      setTimeout(() => fitView({ padding: 0.05, duration: 800 }), 100);
+      setTimeout(fitReadable, 100);
     }
   };
 
@@ -333,16 +360,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
 
     const applyFitView = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
-      }, 100);
+      timeoutId = setTimeout(fitReadable, 100);
     };
 
     if (nodesInitialized && nodes.length > 0) {
       // Initial fit with slightly larger delay to ensure DOM is ready
-      setTimeout(() => {
-        fitView({ padding: 0.05, duration: 800 });
-      }, 150);
+      setTimeout(fitReadable, 150);
 
       // Listen to window resizes and any changes to layout wrappers
       window.addEventListener('resize', applyFitView);
@@ -352,7 +375,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       clearTimeout(timeoutId);
       window.removeEventListener('resize', applyFitView);
     };
-  }, [nodesInitialized, nodes.length, layout, fitView]);
+  }, [nodesInitialized, nodes.length, layout, fitReadable]);
 
   useEffect(() => {
     if (!pendingFocusId || is3D) return;
@@ -371,6 +394,21 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   const [highlightReview, setHighlightReview] = useState(false);
   const hasChecks = useMemo(() => treeHasChecks(data), [data]);
 
+  // A flagged point names the document it cites ("Not found in Termination letter, p. 2"), not
+  // "the case data" — on the case map every point below the headings cites one. The generic
+  // case-data wording is left only for a point with no citation at all (a chat map).
+  const reviewLabelFor = useCallback(
+    (d: { reviewVerdict?: string | null; reviewByCase?: boolean; reviewDocumentId?: string | null; reviewPage?: number | null }) => {
+      const name = d.reviewDocumentId ? documentNames?.[d.reviewDocumentId] : undefined
+      const source = name ? [name, d.reviewPage ? t('mindMapCheck.page', { page: d.reviewPage }) : ''].filter(Boolean).join(', ') : null
+      if (d.reviewVerdict === 'CONTRADICTED') {
+        return source ? t('mindMapCheck.contradictedBy', { source }) : t(d.reviewByCase ? 'mindMapCheck.contradictedByCase' : 'mindMapCheck.contradicted')
+      }
+      return d.reviewVerdict === 'SOURCE_REMOVED' ? t('mindMapCheck.sourceRemoved') : undefined
+    },
+    [documentNames, t],
+  )
+
   const nodesWithCallbacks = useMemo(() => {
     return nodes.map(node => {
       // On the canvas the button only sits on nodes that are leaves or that the AI flagged as
@@ -388,18 +426,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           onExpand: handleExpandNode,
           expand,
           isSelected: node.id === selectedNodeId,
-          reviewLabel: node.data.reviewVerdict === 'CONTRADICTED'
-            ? t(node.data.reviewByCase ? 'mindMapCheck.contradictedByCase' : 'mindMapCheck.contradicted')
-            : node.data.reviewVerdict === 'UNSUPPORTED'
-              ? t(node.data.reviewByCase ? 'mindMapCheck.notSupportedByCase' : 'mindMapCheck.notFound')
-              : node.data.reviewVerdict === 'SOURCE_REMOVED'
-                ? t('mindMapCheck.sourceRemoved')
-                : undefined,
+          reviewLabel: reviewLabelFor(node.data),
           dimmed: highlightReview && hasChecks && !node.data.isRoot && !node.data.reviewVerdict,
         }
       };
     });
-  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, highlightReview, hasChecks, t]);
+  }, [nodes, handleToggleCollapse, handleExpandNode, expandState, selectedNodeId, highlightReview, hasChecks, t, reviewLabelFor]);
 
   const selectedTreeNode = useMemo(() => locateTreeNode(data, selectedNodeId), [data, selectedNodeId]);
 
@@ -457,9 +489,12 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   }, [selectedNodeId]);
 
   return (
+    // `isolate`: the canvas controls use z-(--z-canvas-overlay) (9999) to sit above React Flow —
+    // this keeps that local to the map, so they can't paint over a neighbouring or maximized
+    // Terminal pane. Every overlay (menus, portals via containerRef) renders inside this box.
     <div
       ref={containerRef}
-      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
+      className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative isolate transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
     >
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none !important; }
@@ -469,14 +504,17 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       `}</style>
 
       <div className="flex-1 relative overflow-hidden">
+        {/* Both layers start below the overlay controls (2D/3D, Structure, Regenerate, Full sit at
+         * top-4 and end above top-14), so a fitted map never draws its nodes underneath them. */}
         {/* 3D Model Layer */}
         {is3D && data && (
-          <div className="absolute inset-x-0 bottom-0 top-0 overflow-hidden z-10">
+          <div className="absolute inset-x-0 bottom-0 top-14 overflow-hidden z-10">
             <MindMap3D
               ref={mindMap3DRef}
               root={data}
               rootTitle={rootTitle}
               isDark={isDark}
+              focusedNodeId={selectedNodeId}
               onNodeClick={(node: any) => {
                 setSelectedNodeId(node.id);
                 // Store full enriched data so detail panel works in 3D mode
@@ -492,7 +530,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           </div>
         )}
 
-        <div className={`absolute inset-0 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`absolute inset-x-0 bottom-0 top-14 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <ReactFlow
             nodes={nodesWithCallbacks}
             edges={edges}
@@ -523,10 +561,10 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             zoomOnPinch={true}
             zoomOnDoubleClick={false}
             defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
-            fitView
-            fitViewOptions={{ padding: 0.05, duration: 1000 }}
-            minZoom={0.05}
-            maxZoom={1.5}
+            // No `fitView` prop: its full fit would flash zoomed-out before fitReadable (the
+            // nodesInitialized effect above) lands.
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
             style={{ background: 'transparent', transition: 'all 0.24s ease' }}
             proOptions={{ hideAttribution: true }}
           >
@@ -707,7 +745,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             <Minus size={14} />
           </button>
           <button
-            onClick={() => is3D ? mindMap3DRef.current?.recenter() : fitView({ padding: 0.05, duration: 800 })}
+            onClick={() => is3D ? mindMap3DRef.current?.recenter() : fitView({ padding: FIT_PADDING, duration: 800 })}
             className={MIND_MAP_CHROME.hubBtnSm}
             title="Recenter"
           >
@@ -790,6 +828,8 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
               exit={{ opacity: 0, scale: 0.98, y: 20 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className={MIND_MAP_CHROME.detail}
+              // Measured by MindMap3D to frame the clicked node beside this card, not under it.
+              data-mind-map-detail=""
             >
               {/* Elegant Header Accent */}
               <div
@@ -882,7 +922,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                         type="button"
                         onClick={() => void handleExpandNode(selectedTreeNode!.item.id)}
                         disabled={selectedExpandState.disabled}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-brand-navy-950 transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-[12px] font-bold uppercase tracking-wider text-brand-gold-foreground transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                       >
                         {selectedExpandState.busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                         {selectedExpandState.busy ? t('mindMapExpand.expanding') : t('mindMapExpand.generateMore')}
@@ -968,7 +1008,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                             // of never sending a document's URL to a third party.
                             return (
                               <div key={idx} className="flex items-center gap-3 bg-muted p-2.5 rounded-xl border border-border shadow-lg">
-                                <div className="bg-brand-gold text-brand-navy-950 w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
+                                <div className="bg-brand-gold text-brand-gold-foreground w-8 h-8 flex items-center justify-center rounded-lg font-bold text-lg shrink-0">📄</div>
                                 <div className="flex flex-col min-w-0 flex-1">
                                   <span className="text-sm font-medium truncate text-foreground">{item.name}</span>
                                   {isMissingUrl ? (

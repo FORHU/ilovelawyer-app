@@ -58,5 +58,7 @@
   },
   "delete": "Burahin",
   "deleteRecord": "Burahin ang {{name}}",
-  "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli."
+  "microphoneError": "Kinakailangan ang access sa mikropono para mag-record. Paki-allow ang mga pahintulot sa mikropono at subukang muli.",
+  "microphoneUnsupported": "Hindi makapag-record ng audio ang browser na ito rito. Gumamit ng bagong browser sa secure (https) na koneksyon.",
+  "microphoneNotFound": "Walang nakitang mikropono. Magkabit ng isa at subukang muli."
 }

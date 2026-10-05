@@ -42,7 +42,6 @@ const PROVISIONS: Provision[] = [
 export default function RevisedPenalCodePage() {
   return (
     <LegalCodePage
-      activeTab="revised-penal-code"
       eyebrow="Research · Codals"
       title={<>The Revised Penal Code <span className="italic">of the Philippines.</span></>}
       subtitle="Act No. 3815 — the general penal statute of the Philippines, defining felonies and their penalties, in force since January 1, 1932."

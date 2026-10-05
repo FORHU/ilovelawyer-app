@@ -16,18 +16,25 @@ export type TenantCode = "PH" | "UK"
  * environment, and its `-dev.ilovelawyer.local` local-dev counterpart (`ph-dev.ilovelawyer.com` /
  * `uk-dev.ilovelawyer.com` / `ph-dev.ilovelawyer.local` / `uk-dev.ilovelawyer.local`). Port is
  * stripped before matching, so `:3002` works on any of them.
+ *
+ * `ph-local.ilovelawyer.com` / `uk-local.ilovelawyer.com` are local dev too — pointed at
+ * 127.0.0.1 in the hosts file and served over https — because Google sign-in rejects every
+ * other local form as a JavaScript origin (it allows plain http only for `localhost`, and
+ * `.local` / bare `.ilovelawyer` aren't public TLDs). Use these to test Google SSO locally.
  */
 const HOST_TENANT_CODE_MAP: Record<string, TenantCode> = {
   "ph.ilovelawyer.com": "PH",
   "ph-dev.ilovelawyer.com": "PH",
   "ph.ilovelawyer.local": "PH",
   "ph-dev.ilovelawyer.local": "PH",
+  "ph-local.ilovelawyer.com": "PH",
   "ph.ilovelawyer": "PH",
   "ph.localhost": "PH",
   "uk.ilovelawyer.com": "UK",
   "uk-dev.ilovelawyer.com": "UK",
   "uk.ilovelawyer.local": "UK",
   "uk-dev.ilovelawyer.local": "UK",
+  "uk-local.ilovelawyer.com": "UK",
   "uk.ilovelawyer": "UK",
   "uk.localhost": "UK",
 }
@@ -58,8 +65,8 @@ export function protocolForHost(host: string): "http" | "https" {
  * the browser is currently on, including the bare apex (no prefix to strip) and `app.` (no
  * longer exempt from the mismatch redirect — see app/(protected)/layout.tsx). */
 export function hostForTenantCode(tenantCode: TenantCode, currentHost: string): string {
-  const prefixMatch = currentHost.match(/^(?:ph|uk|app)(-dev)?\./i)
+  const prefixMatch = currentHost.match(/^(?:ph|uk|app)(-dev|-local)?\./i)
   const devSuffix = prefixMatch?.[1] ?? ""
-  const suffix = currentHost.replace(/^(?:ph|uk|app)(?:-dev)?\./i, "")
+  const suffix = currentHost.replace(/^(?:ph|uk|app)(?:-dev|-local)?\./i, "")
   return `${tenantCode.toLowerCase()}${devSuffix}.${suffix}`
 }

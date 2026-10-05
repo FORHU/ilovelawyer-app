@@ -127,6 +127,13 @@
     "exploreSupremeCourtReports": "대법원 판례집 살펴보기",
     "recentDecisions": "주요 판결"
   },
+  "citationPreview": {
+    "openInLibrary": "라이브러리에서 열기",
+    "opensInNewTab": " (새 탭에서 라이브러리로 열림)",
+    "unavailable": "미리보기를 불러올 수 없습니다. 전체 문서는 라이브러리에서 볼 수 있습니다.",
+    "noSummary": "이 문서에 저장된 요약이 아직 없습니다.",
+    "sheetTitle": "인용 미리보기"
+  },
   "lawDoc": {
     "back": "라이브러리로 돌아가기",
     "loading": "문서 불러오는 중…",

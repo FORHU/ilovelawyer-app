@@ -74,7 +74,7 @@ export function EvidenceItem({
             {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
           </span>
           {evidence.pinpoint && (
-            <span className="shrink-0 rounded bg-muted px-1.5 text-[10.5px] leading-4 text-muted-foreground dark:bg-overlay-hover">
+            <span className="min-w-0 max-w-full rounded bg-muted px-1.5 text-[10.5px] leading-4 text-muted-foreground wrap-break-word dark:bg-overlay-hover">
               {evidence.pinpoint}
             </span>
           )}

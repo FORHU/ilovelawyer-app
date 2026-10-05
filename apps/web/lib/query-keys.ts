@@ -84,3 +84,7 @@ export const legalRagKeys = {
   detail: (id: string | number) => [...legalRagKeys.details(), String(id)] as const,
   sections: () => [...legalRagKeys.all, "sections"] as const,
 }
+export const tourKeys = {
+  all: ["tour"] as const,
+  track: (track: string) => [...tourKeys.all, track] as const,
+}

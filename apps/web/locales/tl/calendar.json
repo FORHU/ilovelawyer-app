@@ -13,10 +13,29 @@
   "endTimeHint": "Ang oras ng pagtatapos ay dapat pagkatapos ng {{time}}.",
   "startTime": "Oras ng simula",
   "endTime": "Oras ng pagtatapos",
+  "timePicker": {
+    "set": "Itakda",
+    "close": "Isara",
+    "date": "Petsa",
+    "time": "Oras",
+    "typePlaceholder": "hh:mm AM",
+    "durationMinutes": "{{minutes}}m",
+    "durationHours": "{{hours}}h",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
+    "errors": {
+      "invalid": "Maglagay ng oras tulad ng 10:05 AM o 14:30.",
+      "required": "Pumili ng oras sa listahan o i-type ito.",
+      "after": "Pumili ng oras pagkatapos ng {{time}}.",
+      "minutes": "Hanggang 59 lang ang minuto.",
+      "hours12": "Kapag may AM/PM, gamitin ang oras 1 hanggang 12.",
+      "hours24": "Hanggang 23 lang ang oras."
+    }
+  },
   "titlePlaceholder": "Pamagat",
   "notifyEmailPlaceholder": "Email na paalalahanan (opsyonal)",
   "descriptionPlaceholder": "Paglalarawan (opsyonal)",
   "notePlaceholder": "Tala",
+  "linkedCase": "Naka-link na kaso",
   "noCase": "Walang naka-link na kaso",
   "reminderLabel": "Paalala",
   "reminderNone": "Walang paalala",
@@ -58,5 +77,6 @@
   },
   "previousMonth": "Nakaraang buwan",
   "nextMonth": "Susunod na buwan",
-  "retry": "Subukan ulit"
+  "retry": "Subukan ulit",
+  "today": "Ngayon"
 }

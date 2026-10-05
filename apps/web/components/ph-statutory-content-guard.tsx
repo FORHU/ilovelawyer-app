@@ -4,23 +4,21 @@ import { PageShell } from "@/components/page-shell"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { getTenantCodeConfig } from "@/config/tenant-codes"
 
-type ActiveTab = Parameters<typeof PageShell>[0]["activeTab"]
-
 /**
  * These PH statute pages (civil-code, labor-code, constitution, etc.) are hardcoded Philippine
  * legal content with no UK equivalent — rather than fabricate one, a UK organization gets this
  * notice instead. Returns null when the content should render normally (PH org, or no active
- * org yet), so callers do `const guard = usePhStatutoryContentGuard("civil-code"); if (guard)
- * return guard;` right at the top of the page component.
+ * org yet), so callers do `const guard = usePhStatutoryContentGuard(); if (guard) return guard;`
+ * right at the top of the page component.
  */
-export function usePhStatutoryContentGuard(activeTab: ActiveTab) {
+export function usePhStatutoryContentGuard() {
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const config = getTenantCodeConfig(tenantCode)
 
   if (config.ui.showPhilippineStatutoryLibrary) return null
 
   return (
-    <PageShell activeTab={activeTab}>
+    <PageShell>
       <main className="max-w-[720px] w-full mx-auto px-6 md:px-[48px] py-24 flex flex-col items-center gap-4 text-center">
         <span className="text-[11px] font-semibold tracking-[1.5px] text-amber-700 dark:text-amber-400 uppercase">Research · Codals</span>
         <h1 className="font-['Libre_Caslon_Text',serif] text-[28px] md:text-[32px] text-foreground">Not available for your jurisdiction</h1>

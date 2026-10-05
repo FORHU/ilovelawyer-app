@@ -11,12 +11,12 @@ import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-gu
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export default function LegalDocumentDetailPage() {
-  const guard = useTenantCodeFeatureGuard("legalSearch", "library", {
+  const guard = useTenantCodeFeatureGuard("legalSearch", {
     eyebrow: "Research · Library",
     heading: "Not available for your jurisdiction",
     body: (displayName) => `The legal research library isn't available for ${displayName} organizations yet.`,
   });
-  const corpusGuard = usePhStatutoryContentGuard("library");
+  const corpusGuard = usePhStatutoryContentGuard();
   const { t } = useTranslation("library");
   const params = useParams<{ id: string }>();
   const { data, isLoading, isError } = useLegalDocumentQuery(params.id);
@@ -27,7 +27,7 @@ export default function LegalDocumentDetailPage() {
   if (corpusGuard) return corpusGuard;
 
   return (
-    <PageShell activeTab="library">
+    <PageShell>
       <main className="w-full flex flex-col flex-1 pt-16">
         <section className="bg-card border-b border-border">
           <div className="max-w-[900px] mx-auto px-6 md:px-10 py-8 flex flex-col gap-3">

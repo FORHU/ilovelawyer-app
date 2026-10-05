@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { ErrorState } from "@/components/error-state";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 // Mirrors the real case-card grid below (title, parties, updated-date footer)
 // so the swap from skeleton to real cards doesn't jump layout.
@@ -49,7 +50,7 @@ export default function TerminalLandingPage() {
   const cases = data?.data ?? [];
 
   return (
-    <PageShell activeTab="terminal">
+    <PageShell>
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 pt-20 pb-14 md:pt-24 md:pb-16">
         <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
         <div className="relative max-w-[1440px] w-full mx-auto px-6 md:px-16 flex flex-col gap-2">
@@ -107,7 +108,7 @@ export default function TerminalLandingPage() {
                           {t("landing.lastUpdated")}
                         </span>
                         <span className="text-foreground text-[14px] font-semibold">
-                          {new Date(c.updatedAt).toLocaleDateString()}
+                          {new Date(c.updatedAt).toLocaleDateString(dateLocale())}
                         </span>
                       </div>
                     </div>

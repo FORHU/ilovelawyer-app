@@ -5,11 +5,8 @@ export const PANEL_IDS = [
   "dates",
   "chat",
   "mindMap",
-  "citationMap",
   "redTeam",
   "procedure",
-  "teamAudit",
-  "contradictions",
   "legalIssues",
   "weaknesses",
   "strengths",
@@ -21,7 +18,7 @@ export const PANEL_IDS = [
   "audioOverview",
   "decisions",
   "theories",
-  "verification",
+  "trace",
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
@@ -39,12 +36,17 @@ export interface PanelLayout {
   y?: number
   /** Columns mode only: which column (0-based) this pane is stacked in. */
   columnIndex?: number
-  /** Tabs mode only: which of the 2 groups this pane's tab lives in. Defaults to 0 when absent. */
+  /** Tabs mode only: which of the 2 groups this pane's tab lives in. When absent, auto-joins the group with fewer tabs. */
   tabGroup?: number
   /** Protects this pane's own slot: no move/resize in Free, no reassignment/replace in
    * Columns/Tabs. Never disables a divider shared with a neighboring, unpinned pane — see
    * PaneHeaderActions' pin handling in legal-terminal.tsx. No-op in Focus mode. */
   pinned?: boolean
+  /** Which screen this pane renders in. 0 or absent = primary (today's only behavior, and the
+   * only thing Firefox/Safari ever see). 1-5 = a secondary canvas window, numbered left-to-right
+   * by physical position and recomputed fresh each session — screens have no durable
+   * cross-session identity. See canvas/[screenIndex]/page.tsx. */
+  screen?: number
 }
 
 export interface WorkspaceLayout {
@@ -60,6 +62,19 @@ export interface WorkspaceLayout {
   tabsSplit?: number
   tabsActiveA?: PanelId
   tabsActiveB?: PanelId
+  /** Per-secondary-screen arrangement state, keyed by screen index (1-5). The top-level
+   * arrangement/columnCount/columnWidths/tabsSplit/tabsActiveA/B fields above are unchanged and
+   * now implicitly mean "screen 0 (primary)'s settings" — zero migration for every workspace
+   * saved before multi-screen shipped. Each screen runs its own independent arrangement mode,
+   * not one grid stretched across windows. An absent index means "free, nothing assigned yet". */
+  screenLayouts?: Record<number, {
+    arrangement?: ArrangementValue
+    columnCount?: number
+    columnWidths?: number[]
+    tabsSplit?: number
+    tabsActiveA?: PanelId
+    tabsActiveB?: PanelId
+  }>
 }
 
 export interface PanelCatalogEntry {
@@ -76,6 +91,22 @@ export interface TerminalCatalog {
   panels: PanelCatalogEntry[]
   presets: PresetValue[]
   defaultPreset: PresetValue
+}
+
+// A DB-persisted multi-screen preset row — see lib/terminal/screen-presets.ts's ScreenPresetDef,
+// which wraps this into the shape the presets modal actually renders. `userId: null` is a system
+// preset (seeded, global); otherwise it's the caller's own saved preset.
+export interface ScreenPresetRow {
+  id: string
+  userId: string | null
+  labelKey: string | null
+  descriptionKey: string | null
+  name: string
+  description: string | null
+  screenCount: number
+  screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
+  createdAt: string
+  updatedAt: string
 }
 
 export interface TerminalWorkspace {
@@ -297,7 +328,31 @@ export interface SnapshotProcedureItem {
     confidence: number
     checkedAt: string
   } | null
+  /** The item a to-do was sent over from ("To checklist"), so it can tick itself once that item
+   * is fixed — see ilovelawyer-api utils/procedure-link.ts. Null on every other to-do; absent on
+   * an API that predates it. */
+  sourceKind?: ProcedureSourceKind | null
+  sourceId?: string | null
+  /** A witness need's key, for WITNESS_NEED only. */
+  sourceKey?: string | null
+  /** Set when the source ticked it, with why. */
+  autoClosedAt?: string | null
+  autoClosedReason?: ProcedureAutoCloseReason | null
+  /** A to-do sent from a Damages & Remedies entry carries that entry's due date. */
+  dueDate?: string | null
 }
+
+export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED"
+export type ProcedureAutoCloseReason =
+  | "ISSUE_RESOLVED"
+  | "WEAKNESS_CLOSED"
+  | "ATTACK_READY"
+  | "DEFENSE_ANSWERED"
+  | "DAMAGE_DONE"
+  // On to-dos closed before Damages & Remedies lost its certification status.
+  | "DAMAGE_CERTIFIED"
+  | "DAMAGE_EVIDENCE_IN"
+  | "WITNESS_NEED_DONE"
 
 export interface SnapshotAuditEvent {
   id: string
@@ -376,6 +431,9 @@ export interface CaseSnapshot {
   findings: CaseFinding[]
   witnesses: Witness[]
   damages: DamageClaim[]
+  // Computed server-side from `damages` (api utils/damages-compute.ts): the total and counts.
+  // Don't re-derive these on the client.
+  damagesSummary: DamagesSummary
   reconstruction: CaseReconstruction | null
   // The dated event chain (Events tab) — separate from `reconstruction`, which only exists once a
   // narrative has been generated. Named apart from `dates`/`nextDate` above, which are the calendar.
@@ -415,8 +473,9 @@ export type FindingCategory =
   | "ATTACK_STRATEGY"
   | "DEFENSE_STRATEGY"
 
-/** The pill on a Legal Issues / Weaknesses / Strengths row — mirrors the API's FindingTag, and
- * FINDING_TAGS_BY_CATEGORY there decides which ones a category may use. */
+/** The pill on a Legal Issues / Weaknesses / Strengths / Attack Strategy / Defense Strategy row —
+ * mirrors the API's FindingTag, and FINDING_TAGS_BY_CATEGORY there decides which ones a category
+ * may use. */
 export type FindingTag =
   | "CONTESTED"
   | "BRIEFING"
@@ -427,6 +486,26 @@ export type FindingTag =
   | "CLOSED"
   | "STRONG"
   | "MODERATE"
+  | "READY"
+  | "DRAFTING"
+  | "BLOCKED"
+  | "ANSWERED"
+  | "PARTIAL"
+  | "UNANSWERED"
+
+/** Jev's check of an attack strategy (USE_JEV_ATTACK_STRATEGY) — stored in CaseFinding.jev. */
+export interface AttackStrategyJevCheck {
+  readiness: "READY" | "DRAFTING" | "BLOCKED"
+  readinessConfidence: number
+  uncertain: boolean
+}
+
+/** Jev's check of a defense strategy (USE_JEV_DEFENSE_STRATEGY) — stored in CaseFinding.jev. */
+export interface DefenseStrategyJevCheck {
+  defenseStatus: "ANSWERED" | "PARTIAL" | "UNANSWERED"
+  defenseStatusConfidence: number
+  uncertain: boolean
+}
 
 /** Jev's check of a strength (USE_JEV_STRENGTHS) — stored in CaseFinding.jev. */
 export interface StrengthJevCheck {
@@ -584,21 +663,62 @@ export interface Witness {
   updatedAt: string
 }
 
-export type DamageCategory =
-  | "ACTUAL"
-  | "MORAL"
-  | "EXEMPLARY"
-  | "ATTORNEYS_FEES"
-  | "OTHER"
+/** Money the client is owed (DAMAGE) or another order the case asks for, such as reinstatement (REMEDY). */
+export type DamageKind = "DAMAGE" | "REMEDY"
+export type DamageSource = "MANUAL" | "AI"
 
+/** One Damages & Remedies entry. */
 export interface DamageClaim {
   id: string
   caseId: string
-  category: DamageCategory
+  kind: DamageKind
+  title: string
   description: string | null
+  /** None for most remedies. */
   amount: number | null
+  /** Where an AI entry's amount came from: a quoted figure, rate × period from quoted lines, or an
+   * AI estimate for the lawyer to review. Null once a lawyer sets the amount. Missing on a snapshot
+   * cached before the field existed. */
+  amountBasis?: "STATED" | "CALCULATED" | "ESTIMATE" | null
+  /** The working: the calculation, or how the estimate was reached. */
+  amountNote?: string | null
+  /** Awarded by the tribunal or received by the client. */
+  done: boolean
+  dueDate: string | null
+  source: DamageSource
+  sourceDocumentId: string | null
+  sourceQuote: string | null
+  /** An AI proposal stays a suggestion, outside the total, until a lawyer accepts it. */
+  accepted: boolean
   createdAt: string
   updatedAt: string
+}
+
+/** Computed server-side (API utils/damages-compute.ts) from the accepted entries. */
+export interface DamagesSummary {
+  currency: "PHP" | "GBP"
+  total: number
+  /** The part of `total` already awarded or received. */
+  awarded: number
+  headCount: number
+  damageCount: number
+  remedyCount: number
+  doneCount: number
+  /** AI suggestions waiting for a lawyer, and the sum of their amounts — never in `total`.
+   * Missing on a snapshot cached before the field existed. */
+  suggestedCount?: number
+  suggestedTotal?: number
+}
+
+/** Fields the damages create/update endpoints accept. */
+export interface DamageClaimBody {
+  kind?: DamageKind
+  title?: string
+  description?: string | null
+  amount?: number | null
+  done?: boolean
+  /** YYYY-MM-DD, or null to clear it. */
+  dueDate?: string | null
 }
 
 export interface CaseReconstruction {
@@ -933,4 +1053,31 @@ export interface DeadlineRule {
   label: string
   days: number
   ruleSource: string
+}
+
+// ── AI Reasoning trace (the "trace" pane) ────────────────────────────────────────────────────
+// What the AI did to answer each turn, recorded by ilovelawyer-api as the answer is written (see
+// TraceCollectorSvc there) and read back per case. A turn is one question and the reply it got;
+// on a shared case each turn is attributed to the member who asked.
+export interface TraceTurn {
+  turnId: string
+  /** 1-based position among the case's traced turns, oldest first — the pager's "Turn N". */
+  number: number
+  /** What was asked, flattened to one line. */
+  title: string
+  userId: string | null
+  /** Null once the member has been removed; shown as "Former member". */
+  userName: string | null
+  startedAt: string
+  eventCount: number
+}
+
+export type TraceEventType = "request" | "cognition" | "action" | "retrieval" | "control" | "memory"
+
+export interface TraceEvent {
+  seq: number
+  type: TraceEventType | (string & {})
+  /** Plain-language explanation, already written for the customer — never raw model output. */
+  summary: string
+  createdAt: string
 }

@@ -87,7 +87,9 @@ export function useMarkCaseOpened(id: string) {
 
 export interface CreateCasePayload {
   caseName: string
+  /** Legacy single-string form ("Name (Designation); …"); prefer `parties`. */
   partyInvolved?: string
+  parties?: { name: string; designation: string }[]
   /** England and Wales / Scotland / Northern Ireland — UK-tenant-only, see Case.ukJurisdiction
    * on the backend. Distinct from the free-text court/venue `jurisdiction` field, which this
    * payload doesn't send yet (see CaseRecord above). */

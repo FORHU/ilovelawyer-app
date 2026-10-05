@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ListTree, PanelLeft, PanelLeftClose, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
+import { ListTree, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, clearFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
@@ -39,6 +39,22 @@ interface SourcesPanelProps {
    * left unset on desktop, where Chat is already mounted alongside this panel and the jump can
    * run immediately. */
   onBeforeJump?: (index: number) => void;
+  /** Which edge of its container the panel docks to — Case Workspace's is on the left, the
+   * Legal Terminal chat pane's (see consultation-chat.tsx) on the right. Flips the border, the
+   * collapse icon and the tooltip side so each points away from the chat. */
+  side?: "left" | "right";
+  /** Passed straight to useTopicNavigator — a Terminal chat pane scopes its bubble ids by its
+   * own instance id (several panes can show the same consultation), so jumps must too. */
+  instanceId?: string;
+  transcriptRef?: RefObject<HTMLElement | null>;
+  /** False hides every Decision Record surface (the per-prompt Decisions dropdowns and the
+   * collapsed-rail Decisions icon) — the Legal Terminal chat pane turns it off, leaving just
+   * Topics and related cases there. */
+  showDecisions?: boolean;
+  /** False drops the collapsed rail's per-section icons, leaving just the expand toggle — every
+   * one of those icons only expands the panel too, so in the Terminal chat pane (where Topics is
+   * the only section left) it was a second button doing exactly what the toggle above it does. */
+  showRailSections?: boolean;
 }
 
 /** Case Workspace's left panel — the material behind the active thread's latest legal answer:
@@ -50,11 +66,18 @@ interface SourcesPanelProps {
  * Collapses to a slim rail. Documents (this case's Case Documents) moved to the Studio panel
  * instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move, only
  * where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump }: SourcesPanelProps) {
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { t: tTerminal } = useTranslation("terminal");
-  const { groups, decisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
-    useTopicNavigator(activeConsultationId);
+  const { groups, decisionGroups: allDecisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
+    useTopicNavigator(activeConsultationId, instanceId, transcriptRef);
+  const decisionGroups = showDecisions ? allDecisionGroups : [];
+  const tooltipSide = side === "left" ? "right" : "left";
+  // Collapsed with no section icons to show — the panel drops its column chrome entirely and is
+  // just its toggle, a bare icon button like the pane header's own, instead of an empty column.
+  const compactRail = !expanded && !showRailSections && !fullWidth;
+  const CollapseIcon = side === "left" ? PanelLeftClose : PanelRightClose;
+  const ExpandIcon = side === "left" ? PanelLeft : PanelRight;
   const { data: relatedCasesData } = useRelatedCasesQuery(activeConsultationId ?? undefined);
   const relatedCases = relatedCasesData?.relatedCases ?? [];
   // Newest prompt's decisions open by default, older prompts collapsed — same "only an explicit
@@ -157,7 +180,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
           <Scale className="h-3 w-3 shrink-0 text-brand-gold" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{t("workspace.decisionsTile")}</span>
           <span className="shrink-0 text-[10px] text-muted-foreground">
-            {t("workspace.decisionsNoteCount", { count: group.records.length })}
+            {t("workspace.decisionsNotePrompt", { count: group.records.length })}
           </span>
         </button>
         {isOpen && (
@@ -229,13 +252,15 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       // `hidden md:flex` docked/resizable, one `flex md:hidden` always-collapsed mobile rail),
       // and an unprefixed `flex` baked in here would fight an unprefixed `hidden` passed in for
       // the same element at the same breakpoint (undefined which wins).
-      className={`h-full min-h-0 shrink-0 flex-col border-r border-border bg-card ${
+      className={`min-h-0 shrink-0 flex-col ${
+        compactRail ? "self-start" : `h-full ${side === "left" ? "border-r" : "border-l"} border-border bg-card`
+      } ${
         fullWidth ? "w-full" : isResizing ? "" : "transition-[width] duration-200"
-      } ${!fullWidth && !expanded ? "w-14" : ""} ${className}`}
+      } ${!fullWidth && !expanded ? (compactRail ? "w-10" : "w-14") : ""} ${className}`}
       style={expanded && !fullWidth ? { width } : undefined}
     >
       <div
-        className={`flex h-14 shrink-0 items-center border-b border-border ${
+        className={`flex shrink-0 items-center ${compactRail ? "h-10" : "h-14 border-b border-border"} ${
           expanded ? "justify-between px-4" : "justify-center"
         }`}
       >
@@ -254,13 +279,13 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {expanded ? (
-                <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+                <CollapseIcon className="h-4 w-4" aria-hidden="true" />
               ) : (
-                <PanelLeft className="h-4 w-4" aria-hidden="true" />
+                <ExpandIcon className="h-4 w-4" aria-hidden="true" />
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">
+          <TooltipContent side={tooltipSide}>
             {expanded ? t("workspace.collapseSources") : t("workspace.expandSources")}
           </TooltipContent>
         </Tooltip>
@@ -269,7 +294,12 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       {/* Collapsed rail — one icon per section that actually has content, each expanding the
        * panel straight into that section (rather than the old topic-dots-only rail, which had
        * no way to represent Evidence For/Against or Authorities at all). */}
-      {!expanded && (
+      {compactRail && !hasAnything && isGenerating && (
+        <div className="flex justify-center pb-3">
+          <TopicNavigatorLoading label={t("workspace.topicsGenerating")} compact />
+        </div>
+      )}
+      {!expanded && showRailSections && (
         <div className="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto pt-3">
           {hasAnything ? (
             <>
@@ -278,6 +308,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                   icon={ListTree}
                   label={`${t("workspace.topicsSectionTitle")} · ${topics.length}`}
                   onClick={() => onExpandedChange(true)}
+                  tooltipSide={tooltipSide}
                 />
               )}
               {hasEvidence && (
@@ -285,6 +316,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                   icon={Scale}
                   label={`${t("workspace.decisionsTile")} · ${totalDecisionRecords}`}
                   onClick={() => onExpandedChange(true)}
+                  tooltipSide={tooltipSide}
                 />
               )}
               {hasAuthorities && (
@@ -292,6 +324,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                   icon={Gavel}
                   label={t("workspace.sourcesAuthorities")}
                   onClick={() => onExpandedChange(true)}
+                  tooltipSide={tooltipSide}
                 />
               )}
             </>
@@ -304,7 +337,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
       )}
 
       {expanded && (
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] p-3">
           {hasAnything ? (
             <div className="flex flex-col gap-4">
               <div className="border-t border-border pt-3 first:border-0 first:pt-0">
@@ -360,10 +393,12 @@ function CollapsedSectionIcon({
   icon: Icon,
   label,
   onClick,
+  tooltipSide = "right",
 }: {
   icon: typeof ListTree;
   label: string;
   onClick: () => void;
+  tooltipSide?: "left" | "right";
 }) {
   return (
     <Tooltip>
@@ -377,7 +412,7 @@ function CollapsedSectionIcon({
           <Icon className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
+      <TooltipContent side={tooltipSide}>{label}</TooltipContent>
     </Tooltip>
   );
 }

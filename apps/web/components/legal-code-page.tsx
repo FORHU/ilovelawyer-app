@@ -5,10 +5,7 @@ import { PageShell } from "@/components/page-shell";
 import { usePhStatutoryContentGuard } from "@/components/ph-statutory-content-guard";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
-type ActiveTab = Parameters<typeof usePhStatutoryContentGuard>[0];
-
 interface LegalCodePageProps {
-  activeTab: ActiveTab;
   eyebrow: string;
   title: ReactNode;
   subtitle: ReactNode;
@@ -29,14 +26,14 @@ interface LegalCodePageProps {
  * middle section -> AI search CTA banner", so only the middle section is a page-specific prop.
  * See DESIGN.md.
  */
-export function LegalCodePage({ activeTab, eyebrow, title, subtitle, aiCta, children }: LegalCodePageProps) {
-  const guard = usePhStatutoryContentGuard(activeTab);
+export function LegalCodePage({ eyebrow, title, subtitle, aiCta, children }: LegalCodePageProps) {
+  const guard = usePhStatutoryContentGuard();
   if (guard) return guard;
 
   const AiIcon = aiCta.icon;
 
   return (
-    <PageShell activeTab={activeTab}>
+    <PageShell>
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         <Tooltip>
           <TooltipTrigger asChild>

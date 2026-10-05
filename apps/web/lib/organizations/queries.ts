@@ -33,7 +33,8 @@ export interface OrganizationMemberRecord {
   status: OrganizationMemberStatus
   createdAt: string
   updatedAt: string
-  user: { id: string; name: string | null; email: string; username: string }
+  /** avatarUrl: null → initials. Only the members list endpoint includes it. */
+  user: { id: string; name: string | null; email: string; username: string; avatarUrl?: string | null }
 }
 
 /** The caller's own pending invite, or null if they don't have one. */

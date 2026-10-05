@@ -12,6 +12,7 @@ import enOrganization from "@/locales/en/organization.json"
 import enProfile from "@/locales/en/profile.json"
 import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
+import enTour from "@/locales/en/tour.json"
 import enTranscription from "@/locales/en/transcription.json"
 
 // en-GB holds only what a transform cannot derive: the terms UK practice uses. British spelling is
@@ -63,6 +64,7 @@ const EN = {
   organization: enOrganization,
   term: enTerm,
   terminal: enTerminal,
+  tour: enTour,
 } as const
 
 // Only the differences British spelling can't derive — the terms UK practice uses. Keyed by

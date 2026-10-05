@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { AtSign, Check, Clock, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { AtSign, CalendarDays, Camera, Check, Clock, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
+import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
+import { UserAvatar } from "@/components/user-avatar";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
 import ChangePasswordModal from "@/components/account/change-password-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -12,6 +14,10 @@ import {
   ACCOUNT_DELETION_GRACE_PERIOD_DAYS,
   useCancelDeletionMutation,
   useChangePasswordMutation,
+  useConnectGoogleCalendarMutation,
+  useDisconnectGoogleCalendarMutation,
+  useRemoveAvatarMutation,
+  useUploadAvatarMutation,
   useCurrentUserQuery,
   useDeleteAccountMutation,
   useUpdateCurrentUserMutation,
@@ -19,6 +25,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
+import { dateLocale } from "@/lib/i18n/date-locale";
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -26,6 +33,11 @@ function getInitials(value: string): string {
   if (!second) return first.slice(0, 2).toUpperCase();
   return `${first[0]}${second[0]}`.toUpperCase();
 }
+
+// Mirrors AVATAR_MAX_BYTES and the accepted types on the API, which re-checks the actual bytes.
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 function slugify(value: string): string {
   return value
@@ -49,15 +61,15 @@ function suggestUsernames(seed: string, count = 3): string[] {
 }
 
 function formatMonthYear(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(dateLocale(), { month: "long", year: "numeric" }).format(new Date(iso));
 }
 
 function formatDateTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+  return new Intl.DateTimeFormat(dateLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
 
 function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(date);
+  return new Intl.DateTimeFormat(dateLocale(), { dateStyle: "long" }).format(date);
 }
 
 function addDays(iso: string, days: number): Date {
@@ -137,6 +149,66 @@ export default function ProfilePage() {
   const deleteAccount = useDeleteAccountMutation();
   const cancelDeletion = useCancelDeletionMutation();
   const changePassword = useChangePasswordMutation();
+  const uploadAvatar = useUploadAvatarMutation();
+  const removeAvatar = useRemoveAvatarMutation();
+  const connectCalendar = useConnectGoogleCalendarMutation();
+  const disconnectCalendar = useDisconnectGoogleCalendarMutation();
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+
+  const avatarUrl = currentUser?.avatarUrl ?? null;
+  const avatarBusy = uploadAvatar.isPending || removeAvatar.isPending;
+  const calendarConnected = !!currentUser?.googleCalendarConnected;
+
+  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again still fires onChange.
+    e.target.value = "";
+    if (!file) return;
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setAvatarError(t("avatar.wrongType"));
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      setAvatarError(t("avatar.tooLarge"));
+      return;
+    }
+    setAvatarError(null);
+    uploadAvatar.mutate(file, { onError: (err) => setAvatarError((err as Error).message || t("avatar.genericError")) });
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarError(null);
+    removeAvatar.mutate(undefined, { onError: (err) => setAvatarError((err as Error).message || t("avatar.genericError")) });
+  };
+
+  // Separate from sign-in: asks only for Calendar access, with any Google account, and hands the
+  // one-time code to the API (never a token to this page). Doesn't change how the user signs in.
+  const launchCalendarConnect = useGoogleLogin({
+    flow: "auth-code",
+    scope: GOOGLE_CALENDAR_SCOPE,
+    select_account: true,
+    onSuccess: ({ code }) => {
+      setCalendarError(null);
+      connectCalendar.mutate(code, {
+        onError: (err) => setCalendarError((err as Error).message || t("googleCalendar.genericError")),
+      });
+    },
+    onError: () => setCalendarError(t("googleCalendar.popupError")),
+    onNonOAuthError: (err) => {
+      // Closing the popup isn't an error worth showing.
+      if (err.type !== "popup_closed") setCalendarError(t("googleCalendar.popupError"));
+    },
+  });
+
+  const handleDisconnectCalendar = () => {
+    setCalendarError(null);
+    disconnectCalendar.mutate(undefined, {
+      onError: (err) => setCalendarError((err as Error).message || t("googleCalendar.genericError")),
+    });
+  };
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletionSuccessDate, setDeletionSuccessDate] = useState<Date | null>(null);
@@ -234,7 +306,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <PageShell activeTab="profile">
+    <PageShell>
       <main className="max-w-[1000px] w-full mx-auto px-6 md:px-[48px] py-16 md:py-[85px] flex flex-col gap-10">
         {/* Module Title Context */}
         <div className="w-full flex flex-col gap-2">
@@ -252,8 +324,46 @@ export default function ProfilePage() {
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy-800 to-brand-navy-950 p-8 md:p-10 text-white shadow-lg">
           <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-brand-gold/10 blur-3xl" aria-hidden="true" />
           <div className="relative flex flex-col sm:flex-row sm:items-center gap-6">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/10 text-brand-gold text-2xl font-['Libre_Caslon_Text',serif] ring-2 ring-brand-gold/40">
-              {displayName ? getInitials(displayName) : "—"}
+            <div className="flex shrink-0 flex-col items-start gap-2">
+              <div className="relative">
+                <UserAvatar
+                  avatarUrl={avatarUrl}
+                  initials={displayName ? getInitials(displayName) : "—"}
+                  className="h-20 w-20 bg-white/10 text-brand-gold text-2xl font-['Libre_Caslon_Text',serif] ring-2 ring-brand-gold/40"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() => avatarInputRef.current?.click()}
+                      aria-label={avatarUrl ? t("avatar.change") : t("avatar.upload")}
+                      className="cursor-pointer absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground shadow ring-2 ring-brand-navy-900 hover:bg-amber-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Camera className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{avatarUrl ? t("avatar.change") : t("avatar.upload")}</TooltipContent>
+                </Tooltip>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept={AVATAR_TYPES.join(",")}
+                  className="hidden"
+                  onChange={handleAvatarFile}
+                />
+              </div>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  disabled={avatarBusy}
+                  onClick={handleRemoveAvatar}
+                  className="cursor-pointer text-[11px] text-white/60 underline-offset-2 hover:text-white hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {removeAvatar.isPending ? t("avatar.removing") : t("avatar.remove")}
+                </button>
+              )}
+              {uploadAvatar.isPending && <span className="text-[11px] text-white/60">{t("avatar.uploading")}</span>}
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-1.5">
               <h2 className="font-['Libre_Caslon_Text',serif] text-[26px] md:text-[28px] leading-tight truncate">
@@ -261,6 +371,12 @@ export default function ProfilePage() {
               </h2>
               {fullName && username && <p className="text-white/60 text-[14px]">@{username}</p>}
               <p className="text-white/80 text-[15px] truncate">{email ?? "—"}</p>
+
+              {avatarError ? (
+                <p role="alert" className="text-[13px] text-red-300">{avatarError}</p>
+              ) : (
+                <p className="text-[12px] text-white/40">{t("avatar.hint")}</p>
+              )}
 
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-gold">
@@ -539,6 +655,46 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+
+            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex gap-4 items-center">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                  <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-[16px]">{t("googleCalendar.title")}</p>
+                  <p className="text-muted-foreground text-[14px]">
+                    {calendarConnected ? t("googleCalendar.connectedDescription") : t("googleCalendar.disconnectedDescription")}
+                  </p>
+                  {calendarError && (
+                    <p role="alert" className="mt-1 text-[13px] text-red-600 dark:text-red-400">{calendarError}</p>
+                  )}
+                </div>
+              </div>
+              {calendarConnected ? (
+                <button
+                  type="button"
+                  disabled={disconnectCalendar.isPending}
+                  onClick={handleDisconnectCalendar}
+                  className="cursor-pointer flex items-center gap-2 border border-border text-foreground px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {disconnectCalendar.isPending ? t("googleCalendar.disconnecting") : t("googleCalendar.disconnect")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={connectCalendar.isPending}
+                  onClick={() => {
+                    setCalendarError(null);
+                    launchCalendarConnect();
+                  }}
+                  className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  {connectCalendar.isPending ? t("googleCalendar.connecting") : t("googleCalendar.connect")}
+                </button>
+              )}
+            </div>
 
             <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
               <div className="flex gap-4 items-center">

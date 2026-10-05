@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, FileText, Loader2, RefreshCw } from "lucide-react"
+import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
+import { daysUntil } from "@/lib/terminal/damages-format"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -30,6 +31,7 @@ import {
   formatDate,
   primaryBtnClass,
 } from "@/components/terminal/panel-kit"
+import { dateLocale } from "@/lib/i18n/date-locale"
 
 type RiskLevel = "HIGH" | "MEDIUM" | "LOW"
 
@@ -50,6 +52,8 @@ const RISK_DRIVER_KEYS: Record<string, string> = {
   failedDocuments: "riskDriverFailedDocs",
   invalidCitations: "riskDriverInvalidCitations",
   unverifiedEvidence: "riskDriverUnverifiedEvidence",
+  openWeaknesses: "riskDriverOpenWeaknesses",
+  openLegalIssues: "riskDriverOpenLegalIssues",
 }
 
 function RiskMeter({
@@ -189,10 +193,30 @@ export function ProcedurePanel({
           </span>
           {item.sourceLabel && (
             <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-              <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {item.sourceKind ? (
+                <Link2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+              ) : (
+                <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+              )}
               <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
                 {t("groundedIn", { doc: item.sourceLabel })}
               </span>
+            </span>
+          )}
+          {/* A to-do sent from a Damages & Remedies entry carries its deadline. */}
+          {item.dueDate && (
+            <span
+              className={`mt-0.5 block text-[10px] tabular-nums ${!item.done && daysUntil(item.dueDate) < 0 ? "text-danger" : "text-muted-foreground"}`}
+            >
+              {t(!item.done && daysUntil(item.dueDate) < 0 ? "todoOverdue" : "todoDue", {
+                date: new Date(item.dueDate).toLocaleDateString(dateLocale(), { timeZone: "UTC" }),
+              })}
+            </span>
+          )}
+          {/* Ticked by its source (a weakness closed, an entry awarded…), not by a person. */}
+          {item.done && item.autoClosedReason && (
+            <span className="mt-0.5 block text-[10px] text-ok">
+              {t("todoAutoClosed", { reason: t(`todoAutoClosedReason.${item.autoClosedReason}`) })}
             </span>
           )}
         </span>
