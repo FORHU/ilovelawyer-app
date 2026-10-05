@@ -131,11 +131,14 @@ pnpm dev
 * You can open Chrome/Edge to test web-only behavior at `http://localhost:3002`.
 
 #### Terminal 2: Run Tauri Desktop Shell
+From `ilovelawyer-app`:
 ```powershell
-cd ilovelawyer-app/src-tauri
-cargo tauri dev --no-watch
+pnpm tauri dev --no-dev-server
 ```
-* Tauri will connect to the already-running Next.js dev server at port 3002 without trying to start a duplicate process.
+*(Or from `ilovelawyer-app/src-tauri`: `cargo tauri dev --no-watch`)*
+
+* Tauri will connect directly to your already-running Next.js dev server at port 3002 without trying to start a duplicate process.
+
 
 ---
 
