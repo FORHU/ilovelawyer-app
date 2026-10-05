@@ -60,7 +60,8 @@ export interface RatedFindingConfig {
   doneTag?: FindingTag
   /** Sub-line when the row has no detail of its own (Strengths: the source document). */
   detailFallback?(finding: CaseFinding): string | null
-  /** Dim the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out). */
+  /** Mute the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out) —
+   * pair it with a subHintKey that says why. */
   dimSubLine?(jev: unknown): boolean
   /** Show the ▲ impact number, and which direction of it is bad. */
   impact?: { badWhenUp: boolean; titleKey: string }
@@ -281,7 +282,8 @@ export function RatedFindingPanel({
                     </span>
                     {subLine || hint ? (
                       <span className={catalogSubClass}>
-                        {subLine ? <span className={cn(dim && "line-through opacity-60")}>{subLine}</span> : null}
+                        {/* Muted, not struck through: the review couldn't confirm it, which isn't the same as wrong. */}
+                        {subLine ? <span className={cn(dim && "opacity-60")}>{subLine}</span> : null}
                         {subLine && hint ? " · " : null}
                         {hint ? <span className="text-warn">{t(hint)}</span> : null}
                       </span>
@@ -305,7 +307,9 @@ export function RatedFindingPanel({
                         <button
                           key={option.tag}
                           type="button"
-                          onClick={() => update.mutate({ id: f.id, tag: option.tag === f.tag ? null : option.tag })}
+                          // Picking the pill already set does nothing — a rating changes by picking another
+                          // pill. Clicking it used to clear the rating, which left AI rows "Unrated" by accident.
+                          onClick={() => option.tag !== f.tag && update.mutate({ id: f.id, tag: option.tag })}
                           disabled={update.isPending}
                           aria-pressed={option.tag === f.tag}
                           className={cn(

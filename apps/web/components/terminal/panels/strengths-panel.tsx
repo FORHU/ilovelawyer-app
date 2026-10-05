@@ -22,6 +22,8 @@ const STRENGTHS: RatedFindingConfig = {
   jevFlagKeys: (jev) => (jev as StrengthJevCheck).flags.map((flag) => `strengthJevFlag.${flag}`),
   llmWording: true,
   dimSubLine: (jev) => (jev as StrengthJevCheck).flags.includes("NOT_BORNE_OUT"),
+  // Says why the sub-line is muted.
+  subHintKey: (jev) => ((jev as StrengthJevCheck).flags.includes("NOT_BORNE_OUT") ? "strengthJevFlag.NOT_BORNE_OUT" : null),
   JevDetail: StrengthJevDetail,
   upload: true,
   // No fixed state: a strength's to-do only closes by hand.
