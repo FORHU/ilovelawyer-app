@@ -123,7 +123,11 @@ export function RatedFindingPanel({
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
   // finishes; Legal Issues reads the graph view, so refresh that too.
   const findingsJob = useAiJobStatus(caseId, "caseFinding")
-  const updating = findingsJob.data?.status === "IN_PROGRESS"
+  // "Updating analysis" in the Terminal header is the caseRefresh pipeline, which regenerates the
+  // findings after contradictions and Case Strategy — show the panel updating for the whole run,
+  // not only once its findings step starts (same as the Timeline and Visual Strategy panels).
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  const updating = findingsJob.data?.status === "IN_PROGRESS" || refreshJob.data?.status === "IN_PROGRESS"
   const queryClient = useQueryClient()
   const prevJobStatus = useRef(findingsJob.data?.status)
   useEffect(() => {
@@ -132,6 +136,13 @@ export function RatedFindingPanel({
     }
     prevJobStatus.current = findingsJob.data?.status
   }, [findingsJob.data?.status, caseId, queryClient])
+  const prevRefreshStatus = useRef(refreshJob.data?.status)
+  useEffect(() => {
+    if (prevRefreshStatus.current === "IN_PROGRESS" && refreshJob.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevRefreshStatus.current = refreshJob.data?.status
+  }, [refreshJob.data?.status, caseId, queryClient])
   const [label, setLabel] = useState("")
   const [newTag, setNewTag] = useState<FindingTag | "">("")
   const [open, setOpen] = useState<string | null>(null)
