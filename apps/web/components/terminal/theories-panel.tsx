@@ -136,7 +136,13 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
       ) : (
         <ul className="space-y-3">
           {theories.map((theory) => (
-            <TheoryCard key={theory.id} theory={theory} caseId={caseId} isMine={!!userId && theory.authorUserId === userId} />
+            <TheoryCard
+              key={theory.id}
+              theory={theory}
+              caseId={caseId}
+              isMine={!!userId && theory.authorUserId === userId}
+              parentTitle={theories.find((th) => th.id === theory.forkedFromId)?.title}
+            />
           ))}
         </ul>
       )}
@@ -179,7 +185,18 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
   )
 }
 
-function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: string; isMine: boolean }) {
+function TheoryCard({
+  theory,
+  caseId,
+  isMine,
+  parentTitle,
+}: {
+  theory: CaseTheory
+  caseId: string
+  isMine: boolean
+  /** Title of the theory this one was forked from, when it's still in the list. */
+  parentTitle?: string
+}) {
   const { t } = useTranslation("terminal")
   const publish = usePublishTheoryMutation(caseId)
   const retire = useRetireTheoryMutation(caseId)
@@ -196,7 +213,13 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
   const bullet = <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" aria-hidden="true" />
 
   return (
-    <li className="rounded-md border border-border px-3 py-2.5">
+    // Forks get a violet left rail and faint tint so they stand apart from originals at a glance,
+    // even with the card scrolled past its header.
+    <li
+      className={`rounded-md border px-3 py-2.5 ${
+        isFork ? "border-fork/35 border-l-[3px] border-l-fork bg-fork/[0.04] pl-2.5" : "border-border"
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="leading-5 font-medium text-foreground">{theory.title}</p>
@@ -206,9 +229,12 @@ function TheoryCard({ theory, caseId, isMine }: { theory: CaseTheory; caseId: st
       </div>
 
       {isFork && (
-        <span className="mt-1.5 mr-3 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-          <GitFork className="h-3 w-3" aria-hidden="true" />
-          {t("forkedTheory")}
+        <span
+          className="mt-2 mr-3 inline-flex max-w-full items-center gap-1 rounded-full bg-fork/15 px-2 py-0.5 text-[11px] font-medium text-fork"
+          title={parentTitle}
+        >
+          <GitFork className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate">{parentTitle ? t("forkedFromTheory", { title: parentTitle }) : t("forkedTheory")}</span>
         </span>
       )}
 

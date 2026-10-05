@@ -131,8 +131,11 @@ export const MIND_MAP_CHROME = {
     'px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-brand-gold hover:bg-brand-gold/10 rounded-lg transition-all',
   memoryLoad:
     'px-2.5 py-1 text-[8px] font-black uppercase tracking-wider text-foreground hover:bg-muted rounded-lg transition-all',
+  // From md up it hangs just under the top-right controls (top-4 + their height), right edge in
+  // line with them, and stops 1rem short of the bottom — taller content scrolls inside it rather
+  // than running off the canvas. Below md it's a bottom sheet.
   detail:
-    'absolute z-[99999] bg-card/95 backdrop-blur-2xl border border-border rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden inset-x-4 bottom-4 md:inset-auto md:top-28 md:right-10 md:w-[320px]',
+    'absolute z-[99999] bg-card/95 backdrop-blur-2xl border border-border rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden inset-x-4 bottom-4 max-h-[70%] md:inset-auto md:top-16 md:right-4 md:w-[320px] md:max-h-[calc(100%-5rem)]',
   // Wraps rather than truncates — the details card is the one place a node's full label is
   // readable (the canvas node itself stays clamped).
   detailTitle: 'min-w-0 text-xl font-bold text-foreground leading-tight wrap-break-word',

@@ -21,6 +21,8 @@ export interface Party {
   id: string
   name: string
   designation: string
+  /** Lawyer-entered note shown under the name (e.g. "Rep. by Hollis & Marr"). */
+  descriptor?: string | null
 }
 
 /** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
@@ -113,7 +115,8 @@ export function useCreateCaseMutation() {
 
 export interface UpdateCasePayload {
   caseName?: string
-  parties?: { name: string; designation: string }[]
+  /** Replaces the case's whole party list — send every party, not just the changed one. */
+  parties?: { name: string; designation: string; descriptor?: string | null }[]
   notes?: string
 }
 
@@ -128,6 +131,8 @@ export function useUpdateCaseMutation() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
       queryClient.invalidateQueries({ queryKey: caseKeys.detail(updated.id) })
+      // The Terminal reads parties (and the case name) off the snapshot, not the case record.
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(updated.id) })
     },
   })
 }

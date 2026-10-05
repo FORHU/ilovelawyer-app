@@ -662,6 +662,7 @@
   "panelLibrary": "패널 라이브러리",
   "panelLibraryHint": "패널을 그리드로 끌어다 놓거나 클릭하여 추가하세요.",
   "panelLibraryEmpty": "모든 패널이 이미 그리드에 있습니다.",
+  "panelLibraryNoMatch": "“{{query}}”와(과) 일치하는 창이 없습니다.",
   "settingsTab": "Settings",
   "displayPreferences": "표시 환경설정",
   "highDensityMode": "고밀도 모드",
