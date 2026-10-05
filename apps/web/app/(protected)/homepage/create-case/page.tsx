@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { openCaseTerminal } from "@/lib/desktop";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
@@ -460,14 +459,7 @@ function CreateCasePageContent() {
       }
 
       clearDraft();
-      // On desktop the Terminal opens in its own window, and this window moves on to the case's
-      // portfolio page rather than staying on a finished form.
-      const terminalInOwnWindow = openTarget === "terminal" && openCaseTerminal(caseId as string);
-      router.push(
-        openTarget === "terminal" && !terminalInOwnWindow
-          ? `/homepage/terminal/${caseId}`
-          : `/homepage/case-portfolio/${caseId}`,
-      );
+      router.push(openTarget === "terminal" ? `/homepage/terminal/${caseId}` : `/homepage/case-portfolio/${caseId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
