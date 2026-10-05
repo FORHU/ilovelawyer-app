@@ -217,9 +217,10 @@ export function RatedFindingPanel({
                   type="button"
                   onClick={() => toggle(f)}
                   aria-expanded={isOpen}
-                  className={cn("flex w-full items-center justify-between gap-2.5 text-left", isDone && "opacity-60")}
+                  className={cn("flex w-full flex-wrap items-center justify-between gap-x-2.5 gap-y-1 text-left", isDone && "opacity-60")}
                 >
-                  <span className="min-w-0 flex-1">
+                  {/* 8rem floor: in a narrow pane the delta and pill drop under the title instead of squeezing it. */}
+                  <span className="min-w-0 flex-[1_1_8rem]">
                     <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {f.label}
                       {flags.length > 0 ? (
@@ -275,7 +276,7 @@ export function RatedFindingPanel({
                     </div>
 
                     <form
-                      className="flex gap-2"
+                      className="flex flex-wrap gap-2"
                       onSubmit={(e) => {
                         e.preventDefault()
                         update.mutate({ id: f.id, detail: detail.trim() || null })
@@ -322,7 +323,7 @@ export function RatedFindingPanel({
                       config.llmWording ? <LlmNotReviewed /> : <JevNotChecked />
                     ) : null}
 
-                    <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {/* Lawyer-entered rows get Jev's read on request; AI ones were read when generated. */}
                         {!isAi ? (
@@ -416,7 +417,7 @@ export function RatedFindingPanel({
       </div>
 
       <form
-        className="mt-auto flex gap-2"
+        className="mt-auto flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault()
           const value = label.trim()
@@ -463,13 +464,13 @@ export function RatedFindingPanel({
           onChange={(e) => setLabel(e.target.value)}
           placeholder={t(config.addKey)}
           aria-label={t(config.addKey)}
-          className={`min-w-0 flex-1 ${fieldClass}`}
+          className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
         />
         <select
           value={newTag}
           onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
           aria-label={t("findingStatus")}
-          className={`w-28 shrink-0 ${fieldClass}`}
+          className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
         >
           <option value="">{t("findingStatus")}</option>
           {config.tags.map((option) => (

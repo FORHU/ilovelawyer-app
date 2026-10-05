@@ -7,12 +7,16 @@ import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/top
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, clearFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { EvidenceItem, RuleItem, Label } from "@/components/shared/decision-detail";
+import { documentViewerHref } from "@/lib/terminal/document-viewer";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
 import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface SourcesPanelProps {
   expanded: boolean;
+  /** The case the active thread belongs to — lets each piece of evidence open its document in
+   * the Document Viewer tab. Unset outside a case (no viewer to open it in). */
+  caseId?: string;
   onExpandedChange: (expanded: boolean) => void;
   /** Evidence, authorities, and topics all come from whichever thread ThreadPicker has active,
    * not a document selection of its own. */
@@ -66,7 +70,7 @@ interface SourcesPanelProps {
  * Collapses to a slim rail. Documents (this case's Case Documents) moved to the Studio panel
  * instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move, only
  * where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true }: SourcesPanelProps) {
+export function SourcesPanel({ caseId, expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
   const { t: tTerminal } = useTranslation("terminal");
   const { groups, decisionGroups: allDecisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
@@ -197,6 +201,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                         evidence={ev}
                         onClick={() => handleJumpToElement(id, group.index, ev.quote)}
                         active={id === activeHighlightId}
+                        href={caseId ? documentViewerHref(caseId, ev) : null}
                       />
                     );
                   })}
@@ -215,6 +220,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
                         evidence={ev}
                         onClick={() => handleJumpToElement(id, group.index, ev.quote)}
                         active={id === activeHighlightId}
+                        href={caseId ? documentViewerHref(caseId, ev) : null}
                       />
                     );
                   })}

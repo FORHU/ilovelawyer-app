@@ -105,10 +105,10 @@ function DocumentRow({
   const sizeLabel = size ? t(size.key, { n: size.n }) : null
   return (
     <li className="group flex w-full items-center gap-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover">
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-left @3xs:gap-3">
         <span
           aria-hidden="true"
-          className={`flex size-10 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
+          className={`hidden size-10 shrink-0 flex-col @3xs:flex items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
         >
           {createElement(fileTypeIcon(doc), { className: "size-4" })}
           <span className="font-mono text-[8px] font-semibold leading-none tracking-[0.5px]">{fileExtensionLabel(doc)}</span>
@@ -184,12 +184,13 @@ export function EvidencePanel({
   return (
     <PanelBody gap="4">
       <div {...dragHandlers} className="relative rounded-lg">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p className={labelTextClass}>
             {t("documents")} · {snapshot.documents.length}
           </p>
           <div className="flex items-center gap-2">
-            <p className={labelTextClass}>{t("clickRowForMetadata")}</p>
+            {/* A hint, not a control — dropped in a narrow pane so the count and upload button keep their row. */}
+            <p className={`hidden @xs:block ${labelTextClass}`}>{t("clickRowForMetadata")}</p>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

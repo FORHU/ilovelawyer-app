@@ -184,9 +184,10 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
                   type="button"
                   onClick={() => toggle(edge.id)}
                   aria-expanded={isOpen}
-                  className={`flex w-full items-center justify-between gap-3 text-left ${handled ? "opacity-60" : ""}`}
+                  className={`flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left ${handled ? "opacity-60" : ""}`}
                 >
-                  <span className="min-w-0 flex-1">
+                  {/* 8rem floor: in a narrow pane the status and pill drop under the headline instead of squeezing it. */}
+                  <span className="min-w-0 flex-[1_1_8rem]">
                     <span className="block text-[13px] font-medium text-foreground first-letter:uppercase">
                       {contradictionHeadline(m)}
                     </span>
@@ -253,7 +254,7 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
                             aria-label={t("contradictionNotePlaceholder")}
                             className={fieldClass}
                           />
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => setStatus(edge.id, "RESOLVED")}

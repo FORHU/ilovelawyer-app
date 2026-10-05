@@ -105,7 +105,7 @@ function RiskMeter({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
           {label}
         </span>
@@ -242,7 +242,7 @@ export function ProcedurePanel({
       {(strategyPanel?.isStale || updatingPlan) && (
         <div
           role="status"
-          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2"
+          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-border bg-muted/50 px-3 py-2"
         >
           <p className="flex items-center gap-2 text-xs text-foreground">
             {updatingPlan ? (
@@ -390,7 +390,7 @@ export function ProcedurePanel({
       </div>
 
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2">
           <SectionLabel>{t("deadlines")}</SectionLabel>
           {deadlinesProvisional && (
             <Badge tone="caution" shape="pill">
@@ -425,7 +425,7 @@ export function ProcedurePanel({
               )
               return (
                 <PanelRow key={deadline.id} className="flex-col items-start gap-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[13px] font-medium">{deadline.label}</p>
                     {stale && (
                       <Badge tone="caution" shape="pill" title={stale.staleReason}>
@@ -440,7 +440,7 @@ export function ProcedurePanel({
                     · {confirms}/{snapshot.procedure.requiredConfirmations}{" "}
                     {t("confirmed")}
                   </p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <button
                       type="button"
                       onClick={() => confirmDeadline.mutate(deadline.id)}

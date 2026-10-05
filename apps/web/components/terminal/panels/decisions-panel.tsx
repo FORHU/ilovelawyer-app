@@ -100,10 +100,10 @@ function DecisionCard({
       )}
 
       <div className="w-full">
-        <DecisionDetailBody payload={p} />
+        <DecisionDetailBody payload={p} caseId={caseId} />
       </div>
 
-      <div className="flex w-full items-center justify-end gap-2">
+      <div className="flex w-full flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           onClick={() => setShowAnnotations((s) => !s)}
@@ -139,7 +139,7 @@ function DecisionCard({
               className={fieldClass}
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {

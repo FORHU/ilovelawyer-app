@@ -145,8 +145,16 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
       </button>
     ) : undefined;
 
+  // Past a handful of parties the list scrolls inside the card (scrollbar hidden) instead of
+  // stretching the whole first row of Overview cards; the bottom fade says there's more below.
+  // -mx-2/px-2 leave room for the rows' -mx-2 hover background, which overflow would clip.
+  const scrolls = parties.length > 4;
   const body = (
-    <div className="flex flex-col gap-3">
+    <div
+      className={`-mx-2 flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-contain px-2 scrollbar-none [-ms-overflow-style:none] ${
+        scrolls ? "pb-6 mask-[linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""
+      }`}
+    >
       {parties.length === 0 && editing !== NEW_PARTY && (
         <span className="text-sm text-muted-foreground">{t("noPartyListed")}</span>
       )}

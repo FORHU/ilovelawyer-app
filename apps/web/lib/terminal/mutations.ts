@@ -660,7 +660,19 @@ export function useAddAuthorityMutation(caseId: string) {
 export function useUpdateAuthorityMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; stance?: AuthorityStance; findingId?: string | null }) =>
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      stance?: AuthorityStance
+      // A field left out is kept; "" clears it (title excepted — the API rejects an empty one).
+      title?: string
+      subtitle?: string
+      citation?: string
+      rationale?: string
+      findingId?: string | null
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/authorities/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),

@@ -115,8 +115,8 @@ export function WitnessPanel({
 
   return (
     <PanelBody gap="4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-[1_1_10rem]">
           <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
           {isExtracting ? (
             <p className={`mt-1 inline-flex items-center gap-1.5 ${labelTextClass}`}>
@@ -374,7 +374,7 @@ export function WitnessPanel({
                 </div>
                 {reasonsOpen && factorView.length > 0 ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className={labelTextClass}>{t("witnessFactorsTitle")}</p>
                       {onJumpToPanel ? (
                         <button
@@ -537,7 +537,7 @@ export function WitnessPanel({
                               {setFactor.isError && setFactor.error instanceof Error ? (
                                 <p className="text-[11px] text-danger">{setFactor.error.message}</p>
                               ) : null}
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
                                   disabled={!factorAnswer || !factorNote.trim() || setFactor.isPending}
