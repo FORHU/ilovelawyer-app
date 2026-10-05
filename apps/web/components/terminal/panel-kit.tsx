@@ -1,3 +1,4 @@
+import { mergeRenderedRows } from "@/lib/terminal/row-merge"
 import {
   Children,
   cloneElement,
@@ -462,6 +463,16 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 // fade-out (above) ever gets to run. Keeping this component mounted and switching to `empty`
 // only once `rendered` itself has drained (i.e. after the exit tween completes) lets the very
 // last row animate out the same way row 2-of-5 does.
+/** A new row's fade-in. fromTo with an explicit end, and inline styles cleared once done, so a row
+ * can't keep a half-finished opacity if something else animates it meanwhile. */
+function enterRows(nodes: HTMLElement[]) {
+  gsap.fromTo(
+    nodes,
+    { opacity: 0, y: 6 },
+    { opacity: 1, y: 0, duration: 0.25, stagger: 0.04, ease: "power2.out", clearProps: "opacity,transform" },
+  )
+}
+
 export function PanelRowList({
   children,
   empty,
@@ -480,6 +491,8 @@ export function PanelRowList({
   const [rendered, setRendered] = useState(items)
   const prevKeysRef = useRef<string[]>(keys)
   const flipStateRef = useRef<ReturnType<typeof Flip.getState> | null>(null)
+  // Keys whose exit fade is still running — the only rows allowed to be left translucent.
+  const fadingRef = useRef<Set<string>>(new Set())
 
   useLayoutEffect(() => {
     const prevKeys = prevKeysRef.current
@@ -499,20 +512,40 @@ export function PanelRowList({
           const nodes = addedKeys
             .map((k) => listRef.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(k)}"]`))
             .filter((el): el is HTMLElement => !!el)
-          if (nodes.length) gsap.from(nodes, { opacity: 0, y: 6, duration: 0.25, stagger: 0.04, ease: "power2.out" })
+          if (nodes.length) enterRows(nodes)
         })
       }
       return
     }
 
+    // Added rows join straight away; removed rows stay where they were until their own fade-out
+    // ends. Rendering only the survivors here meant a refresh that swapped rows (regenerated
+    // findings: old AI rows out, new ones in) showed just the kept rows until a page reload.
+    const removedSet = new Set(removedKeys)
+    setRendered((prev) => mergeRenderedRows(prev, items, removedSet))
+    if (addedKeys.length > 0) {
+      requestAnimationFrame(() => {
+        const nodes = addedKeys
+          .map((k) => listRef.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(k)}"]`))
+          .filter((el): el is HTMLElement => !!el)
+        if (nodes.length) enterRows(nodes)
+      })
+    }
+
     removedKeys.forEach((k) => {
       const node = listRef.current?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(k)}"]`)
-      if (!node) return
+      // Nothing on screen to fade (never painted, or already gone) — drop it now, or it stays forever.
+      if (!node) {
+        setRendered((prev) => prev.filter((el) => String(el.key) !== k))
+        return
+      }
+      fadingRef.current.add(k)
       gsap.to(node, {
         opacity: 0,
         duration: 0.18,
         ease: "power1.in",
         onComplete: () => {
+          fadingRef.current.delete(k)
           flipStateRef.current = listRef.current ? Flip.getState(listRef.current.children) : null
           setRendered((prev) => prev.filter((el) => String(el.key) !== k))
         },
@@ -525,7 +558,18 @@ export function PanelRowList({
 
   useLayoutEffect(() => {
     if (!flipStateRef.current) return
-    Flip.from(flipStateRef.current, { duration: 0.25, ease: "power1.inOut" })
+    // Flip can cut short a new row's fade-in (a swap adds rows while others are still fading
+    // out), which froze that row at partial opacity. Once the rows have settled, clear any
+    // leftover inline opacity/transform on every row that isn't itself fading out.
+    Flip.from(flipStateRef.current, {
+      duration: 0.25,
+      ease: "power1.inOut",
+      onComplete: () => {
+        listRef.current?.querySelectorAll<HTMLElement>(":scope > [data-row-key]").forEach((el) => {
+          if (!fadingRef.current.has(el.dataset.rowKey ?? "")) gsap.set(el, { clearProps: "opacity,transform" })
+        })
+      },
+    })
     flipStateRef.current = null
   }, [rendered])
 
