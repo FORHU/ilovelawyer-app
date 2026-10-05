@@ -325,6 +325,7 @@
   "editCitation": "Edit citation",
   "deleteCitation": "Delete citation",
   "deleteCitationConfirm": "Delete this citation?",
+  "deleteFindingConfirm": "Delete this item?",
   "citationStatus": {
     "VALID": "Quote matches",
     "INVALID": "Quote mismatch",
@@ -412,6 +413,7 @@
   "noFindings": "Nothing recorded yet. Add one below — suggestions appear automatically once the case's analysis updates.",
   "aiGenerated": "AI-generated",
   "groundedIn": "Source: {{doc}}",
+  "sceneGapSource": "Scene gap: {{scene}}",
   "opensInNewTab": "opens in a new tab",
   "addLegalIssue": "Add a legal issue",
   "findingsUpdating": "Updating from the case documents…",

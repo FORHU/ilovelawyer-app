@@ -37,6 +37,11 @@
     "step3Body": "Indexed for chat within minutes, then open the Workspace or Terminal."
   },
   "overview": {
+    "clientSide": "We act for",
+    "clientSideUnset": "Not set",
+    "clientSideClaimant": "Claimant / prosecution",
+    "clientSideRespondent": "Respondent / defence",
+    "clientSideHint": "Weaknesses and strengths are written from this side.",
     "tabOverview": "Overview",
     "tabWorkspace": "Workspace",
     "tabTerminal": "Legal Terminal",

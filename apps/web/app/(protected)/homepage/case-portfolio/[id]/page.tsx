@@ -11,7 +11,15 @@ import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
 import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useOverviewParties } from "@/components/cases/overview-parties";
-import { useCaseQuery, useCaseDocumentsQuery, useUpdateCaseMutation, useUnarchiveCaseMutation, useMarkCaseOpened, type UserDocument } from "@/lib/cases/mutations";
+import {
+  useCaseQuery,
+  useCaseDocumentsQuery,
+  useUpdateCaseMutation,
+  useUnarchiveCaseMutation,
+  useMarkCaseOpened,
+  type ClientSide,
+  type UserDocument,
+} from "@/lib/cases/mutations";
 import { useCaseSnapshotQuery } from "@/lib/terminal/mutations";
 import type { SnapshotRisk } from "@/lib/terminal/types";
 import { openFindings } from "@/lib/terminal/case-summary-view";
@@ -149,6 +157,31 @@ export default function CaseDetailPage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+/** Which side the lawyer acts for. The findings (Weaknesses, Strengths, …) are written from it, and
+ * the API regenerates them when it changes. */
+function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null }) {
+  const { t } = useTranslation("case-portfolio");
+  const { mutate: updateCase, isPending } = useUpdateCaseMutation();
+  return (
+    <label className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
+      <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
+        {t("overview.clientSide")}
+      </span>
+      <select
+        value={value ?? ""}
+        disabled={isPending}
+        onChange={(e) => updateCase({ id, payload: { clientSide: (e.target.value || null) as ClientSide | null } })}
+        className="h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground disabled:opacity-50"
+      >
+        <option value="">{t("overview.clientSideUnset")}</option>
+        <option value="CLAIMANT">{t("overview.clientSideClaimant")}</option>
+        <option value="RESPONDENT">{t("overview.clientSideRespondent")}</option>
+      </select>
+      <span className="text-[12px] text-muted-foreground">{t("overview.clientSideHint")}</span>
+    </label>
   );
 }
 
@@ -337,6 +370,7 @@ function OverviewTab({
       <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card title={t("overview.parties")} headerRight={parties.addButton}>
           {parties.body}
+          {caseRecord && <ClientSideSelect id={id} value={caseRecord.clientSide ?? null} />}
         </Card>
 
         <Card
