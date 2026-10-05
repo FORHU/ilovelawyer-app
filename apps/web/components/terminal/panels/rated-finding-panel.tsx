@@ -117,6 +117,8 @@ export function RatedFindingPanel({
   const flagRisk = useCreateRiskMutation(caseId)
   // Ids flagged from this panel this session, so a second click can't double-add.
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
+  // The row whose delete is waiting for a second click — same confirm step as citations.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   // Findings from an older format regenerate in the background when the Terminal loads the case
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
   // finishes; Legal Issues reads the graph view, so refresh that too.
@@ -360,7 +362,7 @@ export function RatedFindingPanel({
                       </div>
                       <button
                         type="button"
-                        onClick={() => del.mutate(f.id)}
+                        onClick={() => setConfirmDelete(f.id)}
                         disabled={del.isPending}
                         className={dangerIconBtnClass}
                         aria-label={t("delete")}
@@ -368,6 +370,27 @@ export function RatedFindingPanel({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </div>
+                    {confirmDelete === f.id && (
+                      <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
+                        <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteFindingConfirm")}</p>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(null)}
+                          disabled={del.isPending}
+                          className={ghostBtnClass}
+                        >
+                          {t("cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => del.mutate(f.id, { onSuccess: () => setConfirmDelete(null) })}
+                          disabled={del.isPending}
+                          className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+                        >
+                          {del.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
+                        </button>
+                      </div>
+                    )}
                     <MutationError show={jevCheck.isError}>
                       {jevError?.status === 409
                         ? t(config.llmWording ? "llmOff" : "findingJevOff")

@@ -198,8 +198,18 @@ export function ProcedurePanel({
               ) : (
                 <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
               )}
-              <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
-                {t("groundedIn", { doc: item.sourceLabel })}
+              {/* A scene gap's sourceLabel is the scene's time or place, not a document. */}
+              <span
+                className="truncate"
+                title={
+                  item.sourceKind === "SCENE"
+                    ? t("sceneGapSource", { scene: item.sourceLabel })
+                    : t("groundedIn", { doc: item.sourceLabel })
+                }
+              >
+                {item.sourceKind === "SCENE"
+                  ? t("sceneGapSource", { scene: item.sourceLabel })
+                  : t("groundedIn", { doc: item.sourceLabel })}
               </span>
             </span>
           )}
