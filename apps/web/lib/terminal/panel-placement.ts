@@ -1,5 +1,6 @@
 import type { Dispatch, DragEvent, RefObject, SetStateAction } from "react"
-import { HIDDEN_PANELS, cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, leastFullColumn, snapValue, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
+import { HIDDEN_PANELS, cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, snapValue, tabGroupsOf, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
+import { slotForGroup } from "@/lib/terminal/slot-for-group"
 import { arrangementForScreen, autoTileLayout } from "@/lib/terminal/multi-screen"
 import type { ArrangementValue, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
 
@@ -151,6 +152,10 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
   const requestAddPanel = (id: PanelId) => {
     if (!layout) return
     if (blockIfOverPaneLimit(id)) return
+    if (arrangement === "tabs") {
+      showPanelAt(id, { tabGroup: slotForGroup(tabGroupsOf(visiblePanels), id) })
+      return
+    }
     if (arrangement !== "columns") {
       showPanelAt(id)
       return
@@ -162,7 +167,7 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
       setReplaceTarget(id)
       return
     }
-    showPanelAt(id, { columnIndex: leastFullColumn(columns) })
+    showPanelAt(id, { columnIndex: slotForGroup(columns, id, MAX_PANES_PER_COLUMN) })
   }
 
   const beginPanelDrag = (id: PanelId) => {

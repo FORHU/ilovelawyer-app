@@ -7,7 +7,7 @@ import type { ArrangementValue, PanelId, ScreenPresetRow, WorkspaceLayout } from
 // screens[1+] are secondary canvas windows, matching PanelLayout.screen's numbering.
 //
 // `userId` mirrors the DB row this came from: null for a system preset (seeded, global — see
-// ilovelawyer-api's prisma/seeders/screen-preset.seeder.ts) or the generated "Spread Evenly"
+// ilovelawyer-api's prisma/seeders/screen-preset-grouped.seeder.ts) or the generated "Spread Evenly"
 // preset below (never a DB row, but conceptually global too); a real id for the caller's own
 // saved preset. `labelKey`/`descriptionKey` are set only for system/generated presets, resolved
 // through terminal.json — presetLabel/presetDescription below fall back to the plain `name`/

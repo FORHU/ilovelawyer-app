@@ -22,6 +22,17 @@ export const PANEL_IDS = [
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
+
+/** Panes that belong together sit next to each other. Mirrors ilovelawyer-api's PANEL_GROUPS — keep both in sync. */
+export const PANEL_GROUPS: readonly (readonly PanelId[])[] = [
+  ["command", "evidence", "procedure", "witnesses", "damages"],
+  ["law", "legalIssues", "decisions"],
+  ["strengths", "weaknesses", "attackStrategy", "defenseStrategy", "redTeam", "theories"],
+  ["chat", "mindMap", "caseReconstruction", "audioOverview", "trace"],
+]
+
+export const panelGroupOf = (id: PanelId): number => PANEL_GROUPS.findIndex((ids) => ids.includes(id))
+
 export type PresetValue = "PANE_1" | "PANE_2" | "PANE_4" | "PANE_6"
 export const ARRANGEMENT_VALUES = ["free", "columns", "tabs", "focus"] as const
 export type ArrangementValue = (typeof ARRANGEMENT_VALUES)[number]
@@ -54,6 +65,8 @@ export interface WorkspaceLayout {
   /** Optional — absent on workspaces saved before arrangement modes existed, treated as "free". */
   arrangement?: ArrangementValue
   panels: PanelLayout[]
+  /** Set by the API once a saved layout has had its one-time pane regroup. Round-trip it; never set it here. */
+  layoutVersion?: number
   /** Columns mode: how many columns (2-4) and their widths as fractions summing to 1. */
   columnCount?: number
   columnWidths?: number[]
