@@ -158,7 +158,7 @@ export function CaseReconstructionPanel({
 
   return (
     <PanelBody gap="3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
         <button
           type="button"
@@ -180,7 +180,7 @@ export function CaseReconstructionPanel({
       </div>
       <MutationError show={generate.isError} />
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex flex-wrap gap-x-1 border-b border-border">
         {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
           <button
             key={mode}
@@ -216,7 +216,7 @@ export function CaseReconstructionPanel({
 
       {viewMode === "narrative" && (
         <>
-          <div className="flex gap-1 border-b border-border">
+          <div className="flex flex-wrap gap-x-1 border-b border-border">
             {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map(
               (register) => (
                 <button
@@ -241,7 +241,7 @@ export function CaseReconstructionPanel({
             <EmptyNote>{t("registerNotGenerated")}</EmptyNote>
           ) : activeRegister === "general" && !isEditingGeneral ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 {reconstruction?.claims?.length ? (
                   <AttributedTextLegend />
                 ) : (
@@ -316,7 +316,7 @@ export function CaseReconstructionPanel({
 
           {activeRegister === "general" && narrative && (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <SectionLabel>{t("audioNarration")}</SectionLabel>
                 <button
                   type="button"
@@ -426,7 +426,7 @@ function ScenesView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("scenesLabel")}</SectionLabel>
         <button
           type="button"
@@ -517,7 +517,7 @@ function ScenesView({
           </ul>
 
           <div className="border-t border-border pt-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <SectionLabel>{t("tableRead")}</SectionLabel>
               <button
                 type="button"
@@ -712,7 +712,7 @@ function EventsView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("eventsLabel")}</SectionLabel>
         <button
           type="button"
@@ -831,7 +831,7 @@ function StoryboardView({
           {scene.sourceRefs.length === 0 ? (
             <EmptyNote>{t("noExhibitsForScene")}</EmptyNote>
           ) : (
-            <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <ul className="mt-2 grid grid-cols-1 gap-2 @sm:grid-cols-2">
               {scene.sourceRefs.map((ref, i) => (
                 <li
                   key={i}

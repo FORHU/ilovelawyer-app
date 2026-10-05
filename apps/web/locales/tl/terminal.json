@@ -285,6 +285,7 @@
   "authorityGround": "Batayan",
   "authorityNoGround": "Walang batayan",
   "addAuthority": "Magdagdag ng awtoridad",
+  "editAuthority": "I-edit ang awtoridad",
   "removeAuthority": "Alisin ang awtoridad",
   "quoteCheck": "Pagsusuri ng sipi",
   "noCitations": "Wala pang naka-check na citation.",
@@ -739,5 +740,9 @@
   "presetFiveScreenSuite": "Five-Screen Suite",
   "presetFiveScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file on the second screen, law on the third screen, strategy on the fourth screen, strategy and AI tools on the fifth screen.",
   "presetSixScreenSuite": "Six-Screen Suite",
-  "presetSixScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file and law on the second screen, strategy on the third screen, strategy on the fourth screen, AI tools on the fifth screen, AI tools on the sixth screen."
+  "presetSixScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file and law on the second screen, strategy on the third screen, strategy on the fourth screen, AI tools on the fifth screen, AI tools on the sixth screen.",
+  "decisionOpenDocument": "Buksan ang {{doc}} sa Document Viewer (bagong tab)",
+  "documentViewerTitle": "Document Viewer",
+  "documentViewerNotFound": "Hindi na bahagi ng kaso ang dokumentong ito.",
+  "documentViewerLoadError": "Hindi ma-load ang dokumentong ito."
 }

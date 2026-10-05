@@ -243,6 +243,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <SourcesPanel
+            caseId={caseId}
             expanded={sourcesExpanded}
             onExpandedChange={setSourcesExpanded}
             activeConsultationId={activeConsultationId}
@@ -292,6 +293,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
               // Collapsing (the panel's own header toggle) returns to the Chat tab — there's no
               // "rail" state to fall back to in a single-panel-at-a-time mobile layout.
               <SourcesPanel
+                caseId={caseId}
                 expanded
                 fullWidth
                 onExpandedChange={() => setMobileTab("chat")}

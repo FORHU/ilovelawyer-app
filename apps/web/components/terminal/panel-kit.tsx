@@ -633,7 +633,10 @@ export function PanelBody({
       // legal-terminal.tsx) — this is the one scrollable root every panel body shares, so its
       // scrollHeight is the panel's true natural content height regardless of its current size.
       data-panel-scroll
-      className={`flex h-full min-h-0 flex-col ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto ${
+      // @container: panes shrink to ~200px wide on the Free canvas, far below any viewport
+      // breakpoint, so panel layouts step on the pane's width (@3xs/@xs/…) instead of sm:/md:.
+      // break-words keeps an unbroken name or citation from pushing the body sideways.
+      className={`@container flex h-full min-h-0 flex-col break-words ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto ${
         dense ? "p-2.5 text-[13px]" : "p-4 text-sm"
       } text-foreground`}
     >

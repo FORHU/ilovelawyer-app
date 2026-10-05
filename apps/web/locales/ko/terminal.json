@@ -281,6 +281,7 @@
   "authorityGround": "쟁점",
   "authorityNoGround": "쟁점 없음",
   "addAuthority": "권위 추가",
+  "editAuthority": "권위 편집",
   "removeAuthority": "권위 삭제",
   "quoteCheck": "인용문 확인",
   "noCitations": "검증된 인용이 없습니다.",
@@ -734,5 +735,9 @@
   "presetFiveScreenSuite": "Five-Screen Suite",
   "presetFiveScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file on the second screen, law on the third screen, strategy on the fourth screen, strategy and AI tools on the fifth screen.",
   "presetSixScreenSuite": "Six-Screen Suite",
-  "presetSixScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file and law on the second screen, strategy on the third screen, strategy on the fourth screen, AI tools on the fifth screen, AI tools on the sixth screen."
+  "presetSixScreenSuiteDesc": "Grouped by topic — case file on the primary screen, case file and law on the second screen, strategy on the third screen, strategy on the fourth screen, AI tools on the fifth screen, AI tools on the sixth screen.",
+  "decisionOpenDocument": "문서 뷰어에서 {{doc}} 열기 (새 탭)",
+  "documentViewerTitle": "문서 뷰어",
+  "documentViewerNotFound": "이 문서는 더 이상 사건에 포함되어 있지 않습니다.",
+  "documentViewerLoadError": "문서를 불러오지 못했습니다."
 }

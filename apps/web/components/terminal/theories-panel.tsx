@@ -70,9 +70,9 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
 
   return (
     <PanelBody gap="4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("theories")}</SectionLabel>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => propose.mutate()}
@@ -150,7 +150,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
       {theories.length >= 2 && (
         <div className="rounded-md border border-border p-3">
           <SectionLabel>{t("diffTheories")}</SectionLabel>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 @sm:flex-row">
             <select
               value={pickedA}
               onChange={(e) => setDiffA(e.target.value)}
@@ -324,7 +324,7 @@ function TheoryCard({
         </TheorySection>
       </div>
 
-      <div className="mt-2.5 flex items-center justify-end gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           onClick={() => setShowAnnotations((s) => !s)}
@@ -484,7 +484,7 @@ function TheorySection({
 
   return (
     <section className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-semibold tracking-[1.4px] text-muted-foreground uppercase">
           {label}
           {count > 0 && <span className="ml-1.5 tabular-nums text-muted-foreground/60">{count}</span>}

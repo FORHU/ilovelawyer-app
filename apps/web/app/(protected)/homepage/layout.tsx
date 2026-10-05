@@ -22,9 +22,10 @@ function toActiveTab(segment: string | undefined): ActiveTab | undefined {
 export default function HomepageLayout({ children }: { children: React.ReactNode }) {
   const segments = useSelectedLayoutSegments()
 
-  // The Terminal's pop-out window for a secondary screen is deliberately chrome-less — see
-  // terminal/[caseId]/canvas/[screenIndex]/page.tsx.
-  if (segments[0] === "terminal" && segments[2] === "canvas") return children
+  // The Terminal's pop-out window for a secondary screen and its Document Viewer tab are
+  // deliberately chrome-less — see terminal/[caseId]/canvas/[screenIndex]/page.tsx and
+  // terminal/[caseId]/document/page.tsx.
+  if (segments[0] === "terminal" && (segments[2] === "canvas" || segments[2] === "document")) return children
 
   return (
     <>

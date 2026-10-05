@@ -132,88 +132,17 @@ export function LawPanel({
         <AuthoritySummaryHeader summary={summary} />
         <PanelRowList empty={<EmptyNote>{t("noAuthorities")}</EmptyNote>}>
           {authorities.map((authority) => (
-            <PanelRow key={authority.id} className="flex-col items-start gap-1.5">
-              <div className="flex w-full items-start justify-between gap-2">
-                <div className="min-w-0">
-                  {authority.resolvedAuthority ? (
-                    <a
-                      href={authority.resolvedAuthority.jurisUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`${bodyTextClass} inline-flex items-center gap-1 hover:underline`}
-                    >
-                      {authority.title}
-                      <ExternalLink size={10} aria-hidden="true" />
-                    </a>
-                  ) : (
-                    <p className={bodyTextClass}>{authority.title}</p>
-                  )}
-                  {(authority.subtitle || authority.citation) && (
-                    <p className={labelTextClass}>
-                      {[authority.subtitle, authority.citation].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                </div>
-                <Badge tone={STANCE_BADGE_TONE[authority.stance]} shape="pill">
-                  {t(`authorityStance.${authority.stance}`)}
-                </Badge>
-              </div>
-              {authority.rationale && <p className={secondaryTextClass}>{authority.rationale}</p>}
-              {authority.jevStance && (authority.jevConfidence ?? 0) >= JEV_MIN_CONFIDENCE && (
-                authority.jevStance === authority.stance ? (
-                  <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
-                    <Sparkles size={10} aria-hidden="true" />
-                    {t("jevAgrees")}
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => updateAuthority.mutate({ id: authority.id, stance: authority.jevStance! })}
-                    disabled={updateAuthority.isPending}
-                    className="flex items-center gap-1.5 rounded-md border border-brand-gold/40 bg-brand-gold/10 px-2 py-1 text-left text-[11px] text-foreground transition-colors hover:bg-brand-gold/20 focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none disabled:opacity-50"
-                  >
-                    <Sparkles size={11} className="shrink-0 text-brand-gold" aria-hidden="true" />
-                    <span>
-                      {t("jevSuggests", {
-                        stance: t(`authorityStance.${authority.jevStance}`),
-                        pct: Math.round((authority.jevConfidence ?? 0) * 100),
-                      })}
-                    </span>
-                    <span className="font-semibold text-brand-gold uppercase">{t("jevApply")}</span>
-                  </button>
-                )
-              )}
-              {groundLabel(authority) && (
-                <p className={labelTextClass}>
-                  {t("authorityGround")}: {groundLabel(authority)}
-                </p>
-              )}
-              <div className="flex items-center gap-2">
-                <select
-                  value={authority.stance}
-                  onChange={(e) =>
-                    updateAuthority.mutate({ id: authority.id, stance: e.target.value as AuthorityStance })
-                  }
-                  aria-label={t("authorityStanceLabel")}
-                  className={fieldClass}
-                >
-                  {STANCES.map((stance) => (
-                    <option key={stance} value={stance}>
-                      {t(`authorityStance.${stance}`)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => removeAuthority.mutate(authority.id)}
-                  disabled={removeAuthority.isPending}
-                  aria-label={t("removeAuthority")}
-                  className={dangerIconBtnClass}
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            </PanelRow>
+            <AuthorityRow
+              key={authority.id}
+              authority={authority}
+              grounds={grounds}
+              groundLabel={groundLabel(authority)}
+              onStanceChange={(stance) => updateAuthority.mutate({ id: authority.id, stance })}
+              onRemove={() => removeAuthority.mutate(authority.id)}
+              stancePending={updateAuthority.isPending}
+              removePending={removeAuthority.isPending}
+              caseId={caseId}
+            />
           ))}
         </PanelRowList>
         <AuthorityComposer caseId={caseId} grounds={grounds} />
@@ -232,6 +161,228 @@ export function LawPanel({
       </PanelRowList>
       <QuoteCheckComposer caseId={caseId} />
     </PanelBody>
+  )
+}
+
+// Forwards the rest of the <li> props (PanelRowList tags each row with data-row-key to animate
+// it in/out), same as CitationRow. The stance select and Jev's suggestion stay one click in view
+// mode; the pencil opens the rest of the row (title, citation, subtitle, why it matters, ground)
+// for editing — the API re-resolves the citation on save, so the source link follows the edit.
+function AuthorityRow({
+  authority,
+  grounds,
+  groundLabel,
+  onStanceChange,
+  onRemove,
+  stancePending,
+  removePending,
+  caseId,
+  ...rest
+}: {
+  authority: SnapshotAuthority
+  grounds: CaseSnapshot["findings"]
+  groundLabel: string | undefined
+  onStanceChange: (stance: AuthorityStance) => void
+  onRemove: () => void
+  stancePending: boolean
+  removePending: boolean
+  caseId: string
+} & ComponentPropsWithoutRef<"li">) {
+  const { t } = useTranslation("terminal")
+  const update = useUpdateAuthorityMutation(caseId)
+  const [editing, setEditing] = useState(false)
+  const uid = useId()
+
+  const [title, setTitle] = useState(authority.title)
+  const [citation, setCitation] = useState(authority.citation ?? "")
+  const [subtitle, setSubtitle] = useState(authority.subtitle ?? "")
+  const [rationale, setRationale] = useState(authority.rationale ?? "")
+  const [ground, setGround] = useState(authority.findingId ?? "")
+
+  // Re-seeded each time editing starts, so a cancelled edit (or a newer server version) never
+  // leaves stale text in the form.
+  const startEdit = () => {
+    setTitle(authority.title)
+    setCitation(authority.citation ?? "")
+    setSubtitle(authority.subtitle ?? "")
+    setRationale(authority.rationale ?? "")
+    setGround(authority.findingId ?? "")
+    update.reset()
+    setEditing(true)
+  }
+
+  if (editing) {
+    return (
+      <PanelRow className="flex-col items-stretch gap-2" {...rest}>
+        <form
+          className="flex flex-col gap-3"
+          onKeyDown={(e) => e.key === "Escape" && !update.isPending && setEditing(false)}
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = title.trim()
+            if (!value) return
+            // Every field is sent (blank as "") so emptying a box actually clears it server-side.
+            update.mutate(
+              {
+                id: authority.id,
+                title: value,
+                citation: citation.trim(),
+                subtitle: subtitle.trim(),
+                rationale: rationale.trim(),
+                findingId: ground || null,
+              },
+              { onSuccess: () => setEditing(false) },
+            )
+          }}
+        >
+          <Field label={t("authorityTitle")} htmlFor={`${uid}-title`}>
+            <input
+              id={`${uid}-title`}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t("authorityTitleExample")}
+              autoFocus
+              required
+              className={fieldClass}
+            />
+          </Field>
+          <Field label={t("authorityCitation")} htmlFor={`${uid}-citation`} hint={t("authorityCitationHint")}>
+            <input
+              id={`${uid}-citation`}
+              value={citation}
+              onChange={(e) => setCitation(e.target.value)}
+              placeholder={t("authorityCitationExample")}
+              className={fieldClass}
+            />
+          </Field>
+          <Field label={t("authoritySubtitle")} htmlFor={`${uid}-subtitle`}>
+            <input
+              id={`${uid}-subtitle`}
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder={t("authoritySubtitleExample")}
+              className={fieldClass}
+            />
+          </Field>
+          <Field label={t("authorityRationale")} htmlFor={`${uid}-rationale`}>
+            <textarea
+              id={`${uid}-rationale`}
+              value={rationale}
+              onChange={(e) => setRationale(e.target.value)}
+              placeholder={t("authorityRationaleExample")}
+              rows={2}
+              className={`${fieldClass} h-auto resize-none py-1.5`}
+            />
+          </Field>
+          {grounds.length > 0 && (
+            <Field label={t("authorityGround")} htmlFor={`${uid}-ground`}>
+              <select id={`${uid}-ground`} value={ground} onChange={(e) => setGround(e.target.value)} className={fieldClass}>
+                <option value="">{t("authorityNoGround")}</option>
+                {grounds.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <MutationError show={update.isError} />
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="submit" disabled={update.isPending || !title.trim()} className={primaryBtnClass}>
+              {update.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("save")}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} disabled={update.isPending} className={ghostBtnClass}>
+              {t("cancel")}
+            </button>
+          </div>
+        </form>
+      </PanelRow>
+    )
+  }
+
+  return (
+    <PanelRow className="flex-col items-start gap-1.5" {...rest}>
+      <div className="flex w-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          {authority.resolvedAuthority ? (
+            <a
+              href={authority.resolvedAuthority.jurisUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={`${bodyTextClass} inline-flex items-center gap-1 hover:underline`}
+            >
+              {authority.title}
+              <ExternalLink size={10} aria-hidden="true" />
+            </a>
+          ) : (
+            <p className={bodyTextClass}>{authority.title}</p>
+          )}
+          {(authority.subtitle || authority.citation) && (
+            <p className={labelTextClass}>{[authority.subtitle, authority.citation].filter(Boolean).join(" · ")}</p>
+          )}
+        </div>
+        <Badge tone={STANCE_BADGE_TONE[authority.stance]} shape="pill">
+          {t(`authorityStance.${authority.stance}`)}
+        </Badge>
+      </div>
+      {authority.rationale && <p className={secondaryTextClass}>{authority.rationale}</p>}
+      {authority.jevStance && (authority.jevConfidence ?? 0) >= JEV_MIN_CONFIDENCE && (
+        authority.jevStance === authority.stance ? (
+          <p className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-muted-foreground uppercase">
+            <Sparkles size={10} aria-hidden="true" />
+            {t("jevAgrees")}
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onStanceChange(authority.jevStance!)}
+            disabled={stancePending}
+            className="flex items-center gap-1.5 rounded-md border border-brand-gold/40 bg-brand-gold/10 px-2 py-1 text-left text-[11px] text-foreground transition-colors hover:bg-brand-gold/20 focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none disabled:opacity-50"
+          >
+            <Sparkles size={11} className="shrink-0 text-brand-gold" aria-hidden="true" />
+            <span>
+              {t("jevSuggests", {
+                stance: t(`authorityStance.${authority.jevStance}`),
+                pct: Math.round((authority.jevConfidence ?? 0) * 100),
+              })}
+            </span>
+            <span className="font-semibold text-brand-gold uppercase">{t("jevApply")}</span>
+          </button>
+        )
+      )}
+      {groundLabel && (
+        <p className={labelTextClass}>
+          {t("authorityGround")}: {groundLabel}
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <select
+          value={authority.stance}
+          onChange={(e) => onStanceChange(e.target.value as AuthorityStance)}
+          aria-label={t("authorityStanceLabel")}
+          className={fieldClass}
+        >
+          {STANCES.map((stance) => (
+            <option key={stance} value={stance}>
+              {t(`authorityStance.${stance}`)}
+            </option>
+          ))}
+        </select>
+        <button type="button" onClick={startEdit} aria-label={t("editAuthority")} title={t("editAuthority")} className={editIconBtnClass}>
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={removePending}
+          aria-label={t("removeAuthority")}
+          title={t("removeAuthority")}
+          className={dangerIconBtnClass}
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
+    </PanelRow>
   )
 }
 

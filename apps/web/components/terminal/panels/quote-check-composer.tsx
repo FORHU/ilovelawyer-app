@@ -133,7 +133,7 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
       )}
 
       <MutationError show={check.isError} />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={check.isPending || !quotedText.trim()} className={primaryBtnClass}>
           {check.isPending ? t("verifying") : t("verify")}
         </button>
