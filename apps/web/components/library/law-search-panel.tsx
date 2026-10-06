@@ -121,11 +121,18 @@ export function LawSearchPanel() {
   const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
   const supported = tenantCode === "PH" || tenantCode === "UK"
-  const search = useLawSearchQuery({ category, q: submittedQuery, enabled: supported })
-  const showSearchSkeleton = useDelayedLoading(search.isLoading)
-  const showingSearch = submittedQuery.length > 0
   const facetKind = cfg.facetKind(category)
   const canBrowse = cfg.browsable(category)
+  // Only the court facet narrows a search (the API has no PH caseType/topic search filter), so
+  // it's the one facet kept on screen and applied while search results are showing.
+  const search = useLawSearchQuery({
+    category,
+    q: submittedQuery,
+    courts: facetKind === "uk-court" ? courts : [],
+    enabled: supported,
+  })
+  const showSearchSkeleton = useDelayedLoading(search.isLoading)
+  const showingSearch = submittedQuery.length > 0
 
   // Browse is cursor-paged (no total), so "page N" is an index into the fetched cursor pages.
   // Every filter change clears ?page=, snapping back to page 1. A restored ?page=3 is reached
@@ -368,8 +375,10 @@ export function LawSearchPanel() {
           </button>
         </form>
 
-        {/* ── Filters (browse mode only) ───────────────────────────────── */}
-        {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
+        {/* ── Filters (PH facets in browse mode only; UK court in both) ─── */}
+        {canBrowse &&
+          (facetKind === "uk-court" ||
+            (!showingSearch && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics"))) && (
           <div data-tour-id="library-filters" className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
               <FilterChipGroup

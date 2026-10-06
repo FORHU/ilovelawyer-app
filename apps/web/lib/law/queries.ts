@@ -274,14 +274,18 @@ export function useLawDocumentQuery(params: {
 export function useLawSearchQuery(params: {
   category: LawCategoryParam
   q: string
+  /** UK case law only — narrows the search to these courts; empty means all courts. */
+  courts?: UkCourt[]
   limit?: number
   enabled: boolean
 }) {
   const { category, q, limit = 5, enabled } = params
+  const sortedCourts = [...(params.courts ?? [])].sort()
   return useQuery({
-    queryKey: ["law", "search", { category, q, limit }],
+    queryKey: ["law", "search", { category, q, courts: sortedCourts, limit }],
     queryFn: () => {
       const p = new URLSearchParams({ category, q, limit: String(limit) })
+      if (sortedCourts.length) p.set("court", sortedCourts.join(","))
       return apiFetch<LawSearchResult>(`/api/law/search?${p.toString()}`)
     },
     enabled: enabled && !!q,
