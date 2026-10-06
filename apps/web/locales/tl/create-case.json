@@ -24,7 +24,12 @@
     "fullNameLabel": "Buong Pangalan / Corporate Entity",
     "fullNamePlaceholder": "Ilagay ang eksaktong legal na pangalan",
     "designationLabel": "Katayuan",
-    "addParty": "Magdagdag ng Partido"
+    "addParty": "Magdagdag ng Partido",
+    "clientSideLabel": "Kinakatawan namin",
+    "clientSideUnset": "Hindi pa nakatakda",
+    "clientSideClaimant": "Nagsasakdal / prosekusyon",
+    "clientSideRespondent": "Sinasakdal / depensa",
+    "clientSideHint": "Isinusulat ang mga kahinaan at kalakasan mula sa panig na ito. Mababago mo ito mamaya."
   },
   "sectionEvidence": {
     "heading": "III. Mga Ebidensyang Isusumite",

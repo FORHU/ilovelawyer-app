@@ -13,6 +13,7 @@ import {
 import {
   useCreateCaseMutation,
   useUploadCaseDocumentsMutation,
+  type ClientSide,
 } from "@/lib/cases/mutations";
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -24,6 +25,13 @@ const DESIGNATION_OPTIONS = [
   { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
   { value: "Respondent / Defendant", labelKey: "designations.respondentDefendant" },
   { value: "Intervenor / Third-Party", labelKey: "designations.intervenorThirdParty" },
+] as const;
+
+// "" = not chosen yet; the lawyer can still set it from the case's overview later.
+const CLIENT_SIDE_OPTIONS = [
+  { value: "", labelKey: "sectionParties.clientSideUnset" },
+  { value: "CLAIMANT", labelKey: "sectionParties.clientSideClaimant" },
+  { value: "RESPONDENT", labelKey: "sectionParties.clientSideRespondent" },
 ] as const;
 
 interface Party {
@@ -55,6 +63,7 @@ interface CaseDraft {
   jurisdiction: string;
   ukJurisdiction: string;
   parties: Party[];
+  clientSide?: ClientSide | "";
   step: number;
   maxStepReached: number;
   openTarget: OpenTarget;
@@ -117,6 +126,7 @@ function CreateCasePageContent() {
     jurisdiction: "",
     ukJurisdiction: "",
     parties: [{ id: "party-1", name: "", designation: "Petitioner / Plaintiff" }] as Party[],
+    clientSide: "" as ClientSide | "",
     uploadedFiles: [] as UploadedFile[],
   });
   const [caseTitleError, setCaseTitleError] = useState(false);
@@ -171,6 +181,8 @@ function CreateCasePageContent() {
       jurisdiction: draft.jurisdiction,
       ukJurisdiction: draft.ukJurisdiction,
       parties: draft.parties.length > 0 ? draft.parties : prev.parties,
+      // Drafts saved before this field existed don't carry it.
+      clientSide: draft.clientSide ?? "",
     }));
     // The first incomplete step, not necessarily the one it was left on.
     const resumeStep = !draft.caseTitle.trim() ? 1 : !partiesComplete(draft.parties) ? Math.min(draft.step, 2) : draft.step;
@@ -196,6 +208,7 @@ function CreateCasePageContent() {
       !formData.caseTitle.trim() &&
       !formData.jurisdiction.trim() &&
       !formData.ukJurisdiction.trim() &&
+      !formData.clientSide &&
       formData.parties.every((p) => !p.name.trim());
     if (isPristine) return;
     // Typing into the fresh form while a draft is on offer means starting over.
@@ -206,12 +219,13 @@ function CreateCasePageContent() {
       jurisdiction: formData.jurisdiction,
       ukJurisdiction: formData.ukJurisdiction,
       parties: formData.parties,
+      clientSide: formData.clientSide,
       step,
       maxStepReached,
       openTarget,
       createdCaseId,
     });
-  }, [formData.caseTitle, formData.jurisdiction, formData.ukJurisdiction, formData.parties, step, maxStepReached, openTarget, createdCaseId]);
+  }, [formData.caseTitle, formData.jurisdiction, formData.ukJurisdiction, formData.parties, formData.clientSide, step, maxStepReached, openTarget, createdCaseId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -439,6 +453,7 @@ function CreateCasePageContent() {
           caseName: formData.caseTitle.trim(),
           parties: parties.length > 0 ? parties : undefined,
           ukJurisdiction: formData.ukJurisdiction || undefined,
+          clientSide: formData.clientSide || undefined,
         });
         caseId = newCase.id;
         setCreatedCaseId(caseId);
@@ -766,6 +781,20 @@ function CreateCasePageContent() {
                     </TooltipTrigger>
                     <TooltipContent>Add another party to this case</TooltipContent>
                   </Tooltip>
+
+                  <div className="flex flex-col gap-2 pt-5 border-t border-border">
+                    <label htmlFor="clientSide" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      {t("sectionParties.clientSideLabel")}
+                    </label>
+                    <CustomSelect
+                      id="clientSide"
+                      value={formData.clientSide}
+                      onChange={(v) => handleInputChange("clientSide", v)}
+                      options={CLIENT_SIDE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                      triggerTooltip="Which side of the case you represent"
+                    />
+                    <p className="text-xs text-muted-foreground">{t("sectionParties.clientSideHint")}</p>
+                  </div>
                 </section>
               )}
 
@@ -792,6 +821,15 @@ function CreateCasePageContent() {
                       {namedParties.length > 0
                         ? namedParties.map((p) => p.name.trim()).join(", ")
                         : <span className="text-muted-foreground">{t("filingSummary.noParties")}</span>}
+                    </dd>
+                    <button type="button" onClick={() => goToStep(2)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
+                      {t("filingSummary.edit")}
+                    </button>
+                    <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("filingSummary.clientSide")}</dt>
+                    <dd className="truncate text-foreground">
+                      {formData.clientSide
+                        ? t(CLIENT_SIDE_OPTIONS.find((o) => o.value === formData.clientSide)!.labelKey)
+                        : <span className="text-muted-foreground">{t("sectionParties.clientSideUnset")}</span>}
                     </dd>
                     <button type="button" onClick={() => goToStep(2)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
                       {t("filingSummary.edit")}

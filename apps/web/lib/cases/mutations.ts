@@ -101,6 +101,8 @@ export interface CreateCasePayload {
    * on the backend. Distinct from the free-text court/venue `jurisdiction` field, which this
    * payload doesn't send yet (see CaseRecord above). */
   ukJurisdiction?: string
+  /** Which side the lawyer acts for; omitted when not chosen yet (it can be set later). */
+  clientSide?: ClientSide
   notes?: string
 }
 

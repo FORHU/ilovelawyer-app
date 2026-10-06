@@ -735,7 +735,7 @@ export default function ProfilePage() {
           <div className="flex flex-col divide-y divide-border">
             {scheduledDeletionDate ? (
               <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex gap-4 items-center">
+                <div className="flex flex-1 min-w-[16rem] gap-4 items-center">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </div>
@@ -752,7 +752,7 @@ export default function ProfilePage() {
                       type="button"
                       disabled={cancelDeletion.isPending}
                       onClick={() => cancelDeletion.mutate()}
-                      className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="ml-auto shrink-0 cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {cancelDeletion.isPending ? t("dangerZone.deleteAccount.cancelling") : t("dangerZone.deleteAccount.cancelButton")}
                     </button>
@@ -762,7 +762,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex gap-4 items-center">
+                <div className="flex flex-1 min-w-[16rem] gap-4 items-center">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </div>
@@ -776,7 +776,7 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => setIsDeleteModalOpen(true)}
-                      className="cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
+                      className="ml-auto shrink-0 cursor-pointer flex items-center gap-2 bg-red-600 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-red-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       {t("dangerZone.deleteAccount.button")}
