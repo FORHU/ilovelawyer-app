@@ -16,7 +16,8 @@ import {
   useLawBrowseInfiniteQuery,
   useLawSearchQuery,
 } from "@/lib/law/queries"
-import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
+import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "@/lib/law/library-config"
+import { useDateLocale } from "@/lib/i18n/date-locale"
 import { FilterChipGroup } from "@/components/library/filter-chip-group"
 import { CursorPagination, PAGINATION_WINDOW_HALF, PAGINATION_WINDOW_SIZE } from "@/components/ui/pagination"
 
@@ -74,6 +75,7 @@ export function LawSearchPanel() {
   const { t } = useTranslation("library")
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
+  const locale = useDateLocale()
 
   // Category, facets, page and search live in the URL (?category=&type=&topics=&courts=&page=&q=), so
   // opening a judgment and coming back — "Back to library" or the browser's Back — lands on the
@@ -220,11 +222,19 @@ export function LawSearchPanel() {
     const title = itemTitle(item) || t("lawSearch.untitled")
     const reference = itemReference(item)
     const snippet = item.facts ?? item.summary
+    // UK rows carry a court code ("EWHC (KB)") — shown as the canonical short label, with the
+    // full court name under the title so a summary-less card still says where it was decided.
+    const court = tenantCode === "UK" && item.division ? ukCourtFromCode(item.division) : null
+    const decided = item.decision_date ? new Date(item.decision_date) : null
+    const decidedLabel =
+      decided && !Number.isNaN(decided.getTime())
+        ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(decided)
+        : null
     return (
       <Link
         key={rowId}
         href={`/homepage/library/laws/${item.id}?${new URLSearchParams({ category, from: searchParams.toString() })}`}
-        className="flex h-full min-h-56 flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
+        className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -235,18 +245,26 @@ export function LawSearchPanel() {
             )}
             {item.division && (
               <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {item.division}
+                {court?.label ?? item.division}
               </span>
             )}
           </div>
-          {item.year != null && (
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{item.year}</span>
+          {decidedLabel ? (
+            <time dateTime={item.decision_date} className="shrink-0 text-xs text-muted-foreground tabular-nums">
+              {decidedLabel}
+            </time>
+          ) : (
+            item.year != null && (
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{item.year}</span>
+            )
           )}
         </div>
 
         <h3 className="line-clamp-4 text-[15px] leading-snug font-semibold text-foreground">
           {title}
         </h3>
+
+        {court?.name && <p className="text-xs text-muted-foreground">{court.name}</p>}
 
         {snippet && (
           <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground italic">

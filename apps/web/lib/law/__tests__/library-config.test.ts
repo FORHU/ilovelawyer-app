@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { getLibraryConfig, ukCourtLabel } from "../library-config"
+import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "../library-config"
 
 describe("getLibraryConfig", () => {
   it("PH: both categories browse, jurisprudence gets caseType+topics, republic-acts topics only", () => {
@@ -49,5 +49,16 @@ describe("getLibraryConfig", () => {
     expect(ukCourtLabel("ukut/lc")).to.equal("UKUT (LC)")
     expect(ukCourtLabel("ukftt/tc")).to.equal("UKFTT (TC)")
     expect(ukCourtLabel("ukftt/grc")).to.equal("UKFTT (GRC)")
+  })
+
+  it("ukCourtFromCode normalises a stored court code and names the court", () => {
+    expect(ukCourtFromCode("UKSC")).to.deep.equal({ label: "UKSC", name: "UK Supreme Court" })
+    expect(ukCourtFromCode("EWHC (Kb)")).to.deep.equal({
+      label: "EWHC (KB)",
+      name: "High Court (King's Bench Division)",
+    })
+    expect(ukCourtFromCode("UKUT (IAC)").name).to.equal("Upper Tribunal (Immigration and Asylum Chamber)")
+    expect(ukCourtFromCode("EWCA (Civ)").label).to.equal("EWCA (Civ)")
+    expect(ukCourtFromCode("XYZ")).to.deep.equal({ label: "XYZ", name: null })
   })
 })

@@ -87,7 +87,7 @@ export function getLibraryConfig(tenantCode: string | null | undefined): Library
 
 /** Division segments that are initialisms, written in capitals in neutral citations
  *  ("EWHC (KB)", "UKUT (IAC)"); every other segment is a word abbreviation ("Civ", "Admlty"). */
-const UK_DIVISION_INITIALISMS = new Set(["kb", "tcc", "ipec", "scco", "iac", "aac", "lc", "tc", "grc"])
+const UK_DIVISION_INITIALISMS = new Set(["kb", "qb", "tcc", "ipec", "scco", "iac", "aac", "lc", "tc", "grc"])
 
 /** Human label for a UK court slug — "ewca/civ" -> "EWCA (Civ)", "ewhc/kb" -> "EWHC (KB)", "uksc" -> "UKSC". */
 export function ukCourtLabel(slug: string): string {
@@ -95,4 +95,43 @@ export function ukCourtLabel(slug: string): string {
   const division = (r: string) =>
     UK_DIVISION_INITIALISMS.has(r) ? r.toUpperCase() : r.charAt(0).toUpperCase() + r.slice(1)
   return rest.length ? `${head.toUpperCase()} (${rest.map(division).join(" ")})` : head.toUpperCase()
+}
+
+/** Full name for each UK court slug, shown on result cards under the short code. Proper names,
+ *  so not translated. A slug missing here just shows the short code alone. */
+const UK_COURT_NAMES: Record<string, string> = {
+  uksc: "UK Supreme Court",
+  ukpc: "Judicial Committee of the Privy Council",
+  "ewca/civ": "Court of Appeal (Civil Division)",
+  "ewca/crim": "Court of Appeal (Criminal Division)",
+  "ewhc/admin": "High Court (Administrative Court)",
+  "ewhc/kb": "High Court (King's Bench Division)",
+  "ewhc/qb": "High Court (Queen's Bench Division)",
+  "ewhc/ch": "High Court (Chancery Division)",
+  "ewhc/comm": "High Court (Commercial Court)",
+  "ewhc/fam": "High Court (Family Division)",
+  "ewhc/tcc": "High Court (Technology and Construction Court)",
+  "ewhc/ipec": "High Court (Intellectual Property Enterprise Court)",
+  "ewhc/pat": "High Court (Patents Court)",
+  "ewhc/scco": "High Court (Senior Courts Costs Office)",
+  "ewhc/admlty": "High Court (Admiralty Court)",
+  ewcop: "Court of Protection",
+  ewfc: "Family Court",
+  eat: "Employment Appeal Tribunal",
+  "ukut/iac": "Upper Tribunal (Immigration and Asylum Chamber)",
+  "ukut/aac": "Upper Tribunal (Administrative Appeals Chamber)",
+  "ukut/tcc": "Upper Tribunal (Tax and Chancery Chamber)",
+  "ukut/lc": "Upper Tribunal (Lands Chamber)",
+  "ukftt/tc": "First-tier Tribunal (Tax Chamber)",
+  "ukftt/grc": "First-tier Tribunal (General Regulatory Chamber)",
+}
+
+/** A UK result's stored court code ("EWHC (Kb)", "UKSC") -> its canonical short label and full
+ *  name. Rows stored before the API's capitalisation fix still say "EWHC (Kb)", so the label is
+ *  rebuilt from the slug rather than shown as stored. */
+export function ukCourtFromCode(code: string): { label: string; name: string | null } {
+  const m = code.trim().match(/^(\S+)(?:\s*\((.+)\))?$/)
+  if (!m) return { label: code, name: null }
+  const slug = [m[1]!, ...(m[2] ? m[2].split(/\s+/) : [])].join("/").toLowerCase()
+  return { label: ukCourtLabel(slug), name: UK_COURT_NAMES[slug] ?? null }
 }
