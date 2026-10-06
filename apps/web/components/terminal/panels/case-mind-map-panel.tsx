@@ -57,8 +57,10 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
             consultationId={`case:${caseId}`}
             isStale={snapshot.caseMindMap?.isStale}
             staleDetail={caseMindMapStaleDetail(t, snapshot.caseMindMap)}
-            regenerating={isRegenerating}
-            regeneratingLabel={isBuilding ? undefined : busyLabel}
+            // The spinner beside "Full" runs for the whole Analysis Refresh, like the other panes'
+            // updating state — also on a map the refresh keeps (expanded/edited; it goes Stale).
+            regenerating={isRegenerating || caseMindMap.isRefreshing}
+            regeneratingLabel={isBuilding ? undefined : isRegenerating ? busyLabel : t("caseMindMap.refreshKeepsChanges")}
             expansion={expansion}
             documentNames={documentNames}
           />

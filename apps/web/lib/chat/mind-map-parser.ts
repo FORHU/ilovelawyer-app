@@ -102,11 +102,11 @@ export function getActiveMindMap(messages: { mindMap?: unknown }[]): MindMapItem
 }
 
 /** getActiveMindMap plus which message carries it and at what version — what "Expand with AI"
- * and undo need to address the map on the API (see useMindMapExpansion). Walks the same way, so
+ * and edits need to address the map on the API (see useMindMapExpansion). Walks the same way, so
  * it always points at the map getActiveMindMap would show for the same messages. */
 export interface ActiveMindMapRecord {
   messageId: string;
-  /** 1 = as generated; each expand adds one, each undo takes one away. */
+  /** 1 = as generated; each expand or edit adds one. */
   version: number;
   data: MindMapItem;
 }

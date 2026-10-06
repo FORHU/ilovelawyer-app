@@ -374,11 +374,8 @@
     "generateMore": "Generate more under this",
     "expanding": "Expanding…",
     "expanded": "Added new points to the map.",
-    "undo": "Undo",
-    "undone": "Expansion undone.",
-    "undoStale": "The map has changed since then, so that expansion can't be undone.",
-    "undoError": "Couldn't undo. Try again.",
     "error": "Couldn't expand this node. Try again.",
+    "networkError": "Lost the connection while expanding. The map has been refreshed — check it, then try again if nothing was added.",
     "alreadyExpanding": "This node is already being expanded.",
     "limitNodes": "Map limit reached ({{max}} nodes).",
     "limitDepth": "This node is at the deepest level the map allows.",
@@ -388,6 +385,7 @@
     "cancel": "Cancel"
   },
   "caseMindMap": {
+    "refreshKeepsChanges": "Updating with the latest analysis… Your expanded map is kept as it is.",
     "building": "Building the mind map from your documents…",
     "rebuilding": "The map is being rebuilt from the documents.",
     "fromDocuments_one": "From {{count}} document",

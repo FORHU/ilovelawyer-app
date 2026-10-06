@@ -16,7 +16,7 @@ export interface CaseMindMap {
   id: string;
   caseId: string;
   data: MindMapItem;
-  /** 1 = first build; every build, expand and undo moves it. */
+  /** 1 = first build; every build, expand and edit moves it. */
   version: number;
   generatedAt: string;
   /** READY documents it was built from. */
@@ -81,8 +81,10 @@ export function useCaseMindMap(caseId: string) {
     /** True when the case had a map but its documents were all removed or archived. */
     retired: Boolean(query.data?.retiredAt),
     isLoading: query.isLoading,
-    /** The map's own build is running. Blocks expand/edit/undo, whose result it would replace. */
+    /** The map's own build is running. Blocks expand/edit, whose result it would replace. */
     isBuilding,
+    /** An Analysis Refresh is running — whether or not it will replace this map. */
+    isRefreshing,
     /** An Analysis Refresh is running that will end by replacing this map (see above). */
     refreshWillReplace,
     /** What the Regenerate icon and "building" states show: the map's own build, or an Analysis
@@ -118,14 +120,7 @@ export function editCaseMindMapNode(caseId: string, body: MindMapEditRequest) {
   });
 }
 
-export function revertCaseMindMap(caseId: string, body: { version?: number }) {
-  return apiFetch<MindMapChangeResult>(`/api/my-cases/${caseId}/mind-map/revert`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
-/** Writes an expand/undo result into the cached case map so the canvas updates immediately. */
+/** Writes an expand/edit result into the cached case map so the canvas updates immediately. */
 export function applyCaseMindMapChange(queryClient: QueryClient, caseId: string, result: MindMapChangeResult) {
   queryClient.setQueryData<CaseMindMap | null>(caseKeys.mindMap(caseId), (map) =>
     // expandedCount catches up on the refetch the caller also triggers.

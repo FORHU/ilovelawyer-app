@@ -215,11 +215,8 @@
     "generateMore": "Magdagdag pa sa ilalim nito",
     "expanding": "Pinapalawak…",
     "expanded": "May mga bagong punto nang naidagdag sa mapa.",
-    "undo": "I-undo",
-    "undone": "Na-undo ang pagpapalawak.",
-    "undoStale": "Nagbago na ang mapa mula noon, kaya hindi na ma-undo ang pagpapalawak na iyon.",
-    "undoError": "Hindi ma-undo. Subukang muli.",
     "error": "Hindi mapalawak ang node na ito. Subukang muli.",
+    "networkError": "Naputol ang koneksyon habang pinalalawak. Na-refresh na ang mapa — tingnan ito, at subukang muli kung walang naidagdag.",
     "alreadyExpanding": "Pinapalawak na ang node na ito.",
     "limitNodes": "Naabot na ang limitasyon ng mapa ({{max}} na node).",
     "limitDepth": "Nasa pinakamalalim nang antas na pinapayagan ng mapa ang node na ito.",
@@ -229,6 +226,7 @@
     "cancel": "Kanselahin"
   },
   "caseMindMap": {
+    "refreshKeepsChanges": "Ina-update gamit ang pinakabagong pagsusuri… Mananatili ang pinalawak mong mapa.",
     "building": "Binubuo ang mind map mula sa iyong mga dokumento…",
     "rebuilding": "Binubuo muli ang mapa mula sa mga dokumento.",
     "fromDocuments_one": "Mula sa {{count}} dokumento",

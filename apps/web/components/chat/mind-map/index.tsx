@@ -29,6 +29,7 @@ import { NodeEditor } from './node-editor';
 import { NodeEvidence } from './node-evidence';
 import type { MindMapEditRequest } from './types';
 import type { MindMap3DHandle, MindMap3DProps } from './mind-map-3d';
+import { Toaster } from '@workspace/ui/components/sonner';
 
 const MindMap3D = dynamic(() => import('./mind-map-3d').then(m => m.MindMap3D), {
   ssr: false,
@@ -612,6 +613,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       ref={containerRef}
       className={`w-full h-full min-h-[320px] max-h-[1200px] rounded-2xl border-2 overflow-hidden relative isolate transition-colors duration-500 scrollbar-hide flex flex-col ${MIND_MAP_CHROME.canvas} ${isFullScreen ? 'h-screen max-h-none border-none rounded-none' : ''}`}
     >
+      {/* Native fullscreen shows only this element's subtree, so the app's Toaster (mounted at the
+          root) is hidden — this one shows the same toasts (sonner fans each out to every Toaster). */}
+      {isFullScreen && <Toaster />}
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none !important; }
         .scrollbar-hide { -ms-overflow-style: none !important; scrollbar-width: none !important; overflow: hidden !important; }
