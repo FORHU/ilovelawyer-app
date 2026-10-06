@@ -9,6 +9,8 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "."),
     },
   },
+  // multi-screen.ts imports a constant from a .tsx module, so tests touching it need JSX parsed.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "node",
     include: ["**/__tests__/**/*.test.ts"],

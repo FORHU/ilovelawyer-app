@@ -29,7 +29,7 @@ import {
   type PaneDragPreview,
 } from "@/components/terminal/terminal-canvas"
 import {
-  autoTileLayout,
+  hidePanelInLayout,
   computeFocusStackSummaries,
   computePanelBadges,
   openCanvasWindow,
@@ -291,7 +291,12 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   useEffect(() => {
     if (!layout || !selectedWorkspaceId) return
     const serialized = JSON.stringify(layout)
-    if (serialized === lastSavedLayoutRef.current) return
+    if (serialized === lastSavedLayoutRef.current) {
+      // Equal to what's saved (or just adopted from another window): nothing is pending, and an
+      // older pending copy must not be flushed on pagehide over the newer state.
+      pendingSaveRef.current = null
+      return
+    }
 
     // Broadcast the optimistic local state immediately — every other open window (a canvas window
     // that just got a panel sent to it, say) should reflect this right away, not wait out the
@@ -468,12 +473,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     paneAnimations.animatePaneOut(id, panelLibraryRect(id))
     paneAnimations.capturePaneState()
     setMaximizedId((cur) => (cur === id ? null : cur))
-    setLayout((prev) => {
-      if (!prev) return prev
-      const hidden = { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
-      // Free canvas: close the gap so the remaining panes re-fill the board (mirror of adding).
-      return (prev.arrangement ?? "free") === "free" ? autoTileLayout(hidden, undefined, 0) : hidden
-    })
+    setLayout((prev) => (prev ? hidePanelInLayout(prev, id) : prev))
   }
 
   const toggleMaximize = (id: PanelId) => {
@@ -896,9 +896,18 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           isMobileOpen={mobileLibraryOpen}
           onMobileOpenChange={setMobileLibraryOpen}
           allPanels={availablePanels}
-          visiblePanelIds={visiblePanels.map((p) => p.id)}
+          visiblePanelIds={layout.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).map((p) => p.id)}
           panelBadges={panelBadges}
-          onAddPanel={requestAddPanel}
+          onAddPanel={(id) => {
+            // A pane already on a secondary canvas: focus that window instead of re-adding it.
+            const screen = layout.panels.find((p) => p.id === id && p.visible)?.screen ?? 0
+            if (screen > 0) {
+              bringToFront(id)
+              canvasWindowsRef.current.get(screen)?.focus()
+              return
+            }
+            requestAddPanel(id)
+          }}
           onPanelDragStart={beginPanelDrag}
           onPanelDragEnd={() => setDragPreview(null)}
         />
