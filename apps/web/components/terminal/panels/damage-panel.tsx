@@ -9,9 +9,9 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   useAcceptDamageMutation,
   useAiJobStatus,
+  useAnalysisRefreshing,
   useCreateDamageMutation,
   useDeleteDamageMutation,
-  useProposeDamagesMutation,
   useUpdateDamageMutation,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, PanelId } from "@/lib/terminal/types"
@@ -20,6 +20,7 @@ import {
   CatalogPill,
   EmptyNote,
   MutationError,
+  PaneUpdatingNote,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -61,13 +62,16 @@ export function DamagePanel({
   const update = useUpdateDamageMutation(caseId)
   const del = useDeleteDamageMutation(caseId)
   const accept = useAcceptDamageMutation(caseId)
-  const propose = useProposeDamagesMutation(caseId)
   const todos = useLinkedTodos(caseId)
-  // Runs on its own after documents finish extracting, or from "Propose from documents" — see
-  // DamagesExtractSvc. useAiJobStatus refreshes the snapshot when it finishes. While it runs, the
-  // pane header shows a spinner (PaneActivityMark); here it only disables Propose and dims the total.
+  // Damages change in two background jobs, and there is no manual "Propose from documents": the
+  // extraction (DamagesExtractSvc, its own "damagesExtract" job) reads new documents for heads, and
+  // the case analysis ("caseRefresh") re-rates every head against the new findings near its end.
+  // The extraction usually finishes in seconds, long before the re-rating, so the pane counts as
+  // updating for the whole analysis run, like the other panes it rewrites. useAiJobStatus
+  // refreshes the snapshot when either job finishes.
   const extractJob = useAiJobStatus(caseId, "damagesExtract")
-  const updating = propose.isPending || extractJob.data?.status === "IN_PROGRESS"
+  const refreshing = useAnalysisRefreshing(caseId)
+  const updating = refreshing || extractJob.data?.status === "IN_PROGRESS"
   const [openId, setOpenId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorTarget>(null)
 
@@ -107,6 +111,7 @@ export function DamagePanel({
 
   return (
     <PanelBody gap="4">
+      {updating ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
       <DamagesOverview summary={summary} heads={snapshot.damages} displayTotal={displayTotal} dimmed={updating} />
 
       {heads.length === 0 ? (
@@ -286,9 +291,6 @@ export function DamagePanel({
         <button type="button" onClick={() => setEditing("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
           {t("damageEditorAdd")}
         </button>
-        <button type="button" onClick={() => propose.mutate()} disabled={updating} title={t("damagesProposeHint")} className={ghostBtnClass}>
-          {t("damagesPropose")}
-        </button>
       </div>
 
       {editing !== null ? (
@@ -305,7 +307,7 @@ export function DamagePanel({
         />
       ) : null}
 
-      <MutationError show={create.isError || update.isError || del.isError || accept.isError || propose.isError || todos.isError} />
+      <MutationError show={create.isError || update.isError || del.isError || accept.isError || todos.isError} />
     </PanelBody>
   )
 }

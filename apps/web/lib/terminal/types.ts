@@ -741,6 +741,9 @@ export interface CaseReconstruction {
   audioFile: { id: string; fileUrl: string | null } | null
   audioStatus: string | null
   audioStaleAt: string | null
+  /** When a lawyer last edited any register. While set, the analysis refresh doesn't regenerate
+   * the narrative; Regenerate clears it. Absent on an API that predates the field. */
+  narrativeEditedAt?: string | null
   // Grounded Reconstruction Rungs 1-2 (differentiation program, Phase 3) — see SceneDetail
   // below. `scenes` is null until CaseReconstructionSvc.generateScenes has run once.
   scenes: SceneDetail[] | null

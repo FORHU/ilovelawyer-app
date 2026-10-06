@@ -286,7 +286,12 @@ export function EvidencePanel({
       </div>
 
       <div className="border-t border-border pt-4">
-        <CaseTimelineView caseId={caseId} fill={false} title={<p className={labelTextClass}>{t("timeline")}</p>} />
+        <CaseTimelineView
+          caseId={caseId}
+          fill={false}
+          title={<p className={labelTextClass}>{t("timeline")}</p>}
+          hideGenerateButton
+        />
       </div>
 
       {/* Moved here from the retired Contradictions pane, so a false conflict can still be dismissed. */}

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
-import { Loader2, Sparkles, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import {
   useAiJobStatus,
+  useAnalysisRefreshing,
   useCreateWitnessMutation,
   useDeleteWitnessMutation,
-  useScoreWitnessesMutation,
   useUpdateWitnessMutation,
   useSetWitnessFactorMutation,
 } from "@/lib/terminal/mutations"
@@ -16,7 +16,7 @@ import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
-import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PaneUpdatingNote, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -55,10 +55,12 @@ export function WitnessPanel({
   const update = useUpdateWitnessMutation(caseId)
   const setFactor = useSetWitnessFactorMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
-  const score = useScoreWitnessesMutation(caseId)
+  // No buttons: the case analysis reads new documents for witnesses and then scores everyone
+  // (its witness steps — WitnessExtractSvc, WitnessScoringSvc on the API). A lawyer's status,
+  // score override and factor answers are never overwritten by a re-score.
   const job = useAiJobStatus(caseId, "witnessScoring")
-  // Runs on its own after documents finish extracting (no button) — see WitnessExtractSvc.
   const extractJob = useAiJobStatus(caseId, "witnessExtract")
+  const refreshing = useAnalysisRefreshing(caseId)
   const [name, setName] = useState("")
   const [role, setRole] = useState("")
   const [summary, setSummary] = useState("")
@@ -81,7 +83,7 @@ export function WitnessPanel({
 
   // useAiJobStatus only refreshes the snapshot when a job finishes; this panel reads the graph
   // view, so refresh that too on either job's IN_PROGRESS -> DONE transition.
-  const isScoring = score.isPending || job.data?.status === "IN_PROGRESS"
+  const isScoring = job.data?.status === "IN_PROGRESS"
   const isExtracting = extractJob.data?.status === "IN_PROGRESS"
   const prevJobStatus = useRef(job.data?.status)
   const prevExtractStatus = useRef(extractJob.data?.status)
@@ -116,39 +118,13 @@ export function WitnessPanel({
 
   return (
     <PanelBody gap="4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-[1_1_10rem]">
-          <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
-          {isExtracting ? (
-            <p className={`mt-1 inline-flex items-center gap-1.5 ${labelTextClass}`}>
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              {t("witnessExtracting")}
-            </p>
-          ) : null}
-        </div>
-        {total > 0 ? (
-          <button
-            type="button"
-            onClick={() => score.mutate()}
-            disabled={isScoring}
-            className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
-          >
-            {isScoring ? (
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-            ) : (
-              <Sparkles className="h-3 w-3" aria-hidden="true" />
-            )}
-            {isScoring
-              ? t("witnessScoring")
-              : witnesses.some(({ w }) => w.scoredAt)
-                ? t("witnessRescore")
-                : t("witnessScore")}
-          </button>
-        ) : null}
-      </div>
-      <MutationError show={score.isError || job.data?.status === "FAILED"}>
-        {job.data?.status === "FAILED" && !score.isError ? t("witnessScoreFailed") : undefined}
-      </MutationError>
+      <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+      {isExtracting || isScoring || refreshing ? (
+        <PaneUpdatingNote>
+          {isExtracting ? t("witnessExtracting") : isScoring ? t("witnessScoring") : t("paneUpdatingWithAnalysis")}
+        </PaneUpdatingNote>
+      ) : null}
+      <MutationError show={job.data?.status === "FAILED"}>{t("witnessScoreFailed")}</MutationError>
       {total > 0 ? (
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0">

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Not built. Pickup spec (current triggers, pane inventory, phases, code map) lives in `ilovelawyer-api/docs/legal-terminal-auto-refresh.md`.
+Accepted and built. A corpus change triggers the analysis; the Terminal header also has a "Refresh analysis" button (with a confirmation step) for a run without one — see 0017. Partly superseded by [0017](0017-auto-regenerate-red-team-theories-reconstruction.md), which adds Red Team, the AI draft theory and Case Reconstruction to the refresh.
 
 GitHub: [API epic #73](https://github.com/FORHU/ilovelawyer-api/issues/73) · [app UX #110](https://github.com/FORHU/ilovelawyer-app/issues/110)
 
@@ -17,19 +17,18 @@ Chat timeline tags already promote automatically. Risk meters and deadlines are 
 
 Lawyers expect the terminal to catch up when documents finish indexing, without a hidden extra click, and without clobbering rows they typed themselves.
 
-## Decision (proposed)
+## Decision
 
 Treat a **corpus change** (documents becoming READY, or READY documents removed) as the trigger. Coalesce with the existing ~45s quiet window so a large dump is one Chat Wonder batch, not one per file.
 
 Run the **same job** as Refresh analysis (`caseRefresh` / `CaseRefreshSvc`), so findings are included. Keep replacing **only** AI-tagged findings and strategy items.
 
-Do **not** auto-run Red Team, mind map, Audio Overview, or (after the first narrative exists) Case Reconstruction — those stay lawyer-triggered. Chat stays a conversation.
+Do **not** auto-run Red Team, mind map, Audio Overview, or (after the first narrative exists) Case Reconstruction — those stay lawyer-triggered. Chat stays a conversation. (Since changed: the mind map rebuilds in the refresh, and 0017 adds Red Team and Case Reconstruction.)
 
 Open terminals already poll `caseRefresh` job status; reuse that instead of a new push channel.
 
 ## Consequences
 
-- First ship is unifying post-extraction with `CaseRefreshSvc` (findings catch up after upload). Durable multi-instance debounce and fingerprint-skip are follow-ups.
+- Post-extraction runs `CaseRefreshSvc`, so findings catch up after an upload. The quiet window is a delayed queue message (it survives restarts and multiple API instances), and the run is skipped when the READY set's fingerprint hasn't changed.
 - Three sequential Chat Wonder calls per coalesced refresh — skip if the READY document set has not changed.
-- In-memory `setTimeout` debounce can miss work across API processes until the queue-based quiet window ships.
 - Snapshot lists of AI findings will swap when a background job finishes; a header “Updating analysis…” state is the v1 UX, a stale chip is optional later.

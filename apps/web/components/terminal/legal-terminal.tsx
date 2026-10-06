@@ -12,8 +12,8 @@ import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import {
   ArrowLeft,
-  Download,
   Loader2,
+  RefreshCw,
   AlertCircle,
   Monitor,
   PanelLeft,
@@ -44,12 +44,11 @@ import { useLayoutSyncChannel } from "@/lib/terminal/layout-sync-channel"
 import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
 import { LayoutBuilderModal } from "@/components/terminal/layout-builder-modal"
 import { createPanelPlacementActions } from "@/lib/terminal/panel-placement"
-import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
 import { DocumentViewerProvider } from "@/components/shared/document-viewer"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import {
   useAiJobStatus,
+  useRefreshAnalysisMutation,
   useApplyWorkspaceMutation,
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
@@ -151,13 +150,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const renameWorkspace = useRenameWorkspaceMutation()
   const applyWorkspace = useApplyWorkspaceMutation()
   const deleteWorkspace = useDeleteWorkspaceMutation()
-  // No manual "Refresh analysis" trigger — the Legal Terminal relies entirely on the automatic
-  // caseRefresh pipeline (corpus-change triggered) now. This poll is what drives the
-  // "Updating analysis…" indicator below while that background job is running.
+  // The case analysis (caseRefresh): started by a document change, or by the "Refresh analysis"
+  // button below. Its status drives that button's "Updating analysis…" state.
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
   // The damages extraction runs alongside caseRefresh after an upload; "Updating analysis" covers
   // both (see shouldShowUpdatingAnalysis). Same query as useDamagesActivity's, so no extra request.
   const damagesJob = useAiJobStatus(caseId, "damagesExtract")
+  const analysisRunning = shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status)
+  const refreshAnalysis = useRefreshAnalysisMutation(caseId)
+  const refreshErrorStatus = (refreshAnalysis.error as (Error & { status?: number }) | null)?.status
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [dragPreview, setDragPreview] = useState<PaneDragPreview | null>(null)
@@ -178,7 +179,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // Set while Columns mode is full and the user just tried to add this pane — opens the
   // "replace which pane?" picker. Null the rest of the time.
   const [replaceTarget, setReplaceTarget] = useState<PanelId | null>(null)
-  const [briefPreviewOpen, setBriefPreviewOpen] = useState(false)
+  // "Refresh analysis" asks first: a run is a dozen AI calls over every document of the case.
+  const [confirmRefreshOpen, setConfirmRefreshOpen] = useState(false)
   // Toolbar "Workflows" button — rearranges the current tab via ScreenPresetsModal.
   const [presetsModalOpen, setPresetsModalOpen] = useState(false)
   // "+ New Layout" — opens the drag-and-drop layout builder instead (LayoutBuilderModal).
@@ -749,21 +751,33 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           <h1 className="min-w-0 shrink truncate font-['Libre_Caslon_Text'] text-sm font-normal text-foreground md:text-base">
             {snapshot.data.case.caseName}
           </h1>
-          {shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status) && (
-            <span className="hidden shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground sm:inline-flex">
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              {t("updatingAnalysis")}
-            </span>
-          )}
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setBriefPreviewOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
-            >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" />
-              {t("downloadCaseBrief")}
-            </button>
+            {/* One indicator for the case analysis: idle, it starts a run (after a confirmation —
+                a run is a dozen AI calls); while any run is going, automatic or manual, it is the
+                gold "Updating analysis…" status (--progress) and can't be clicked. */}
+            {analysisRunning ? (
+              <span
+                role="status"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-progress/40 bg-progress/10 px-3 text-[10px] font-semibold uppercase tracking-[1px] text-progress"
+              >
+                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("updatingAnalysis")}</span>
+                <span className="sr-only sm:hidden">{t("updatingAnalysis")}</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  refreshAnalysis.reset()
+                  setConfirmRefreshOpen(true)
+                }}
+                aria-label={t("refresh")}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("refresh")}</span>
+              </button>
+            )}
           </div>
         </div>
         <ScreenPresetsModal
@@ -784,16 +798,64 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           canvasWindowsRef={canvasWindowsRef}
           onCreated={handleLayoutCreated}
         />
-        <Sheet open={briefPreviewOpen} onOpenChange={setBriefPreviewOpen}>
-          <SheetContent side="right" className="w-full sm:max-w-xl">
-            <SheetHeader>
-              <SheetTitle>{t("downloadCaseBrief")}</SheetTitle>
-            </SheetHeader>
-            <div className="min-h-0 flex-1">
-              <CaseBriefContent caseId={caseId} />
-            </div>
-          </SheetContent>
-        </Sheet>
+        {confirmRefreshOpen && (
+          <ModalOverlay
+            onClose={() => setConfirmRefreshOpen(false)}
+            labelledBy="refresh-analysis-title"
+            aria-describedby="refresh-analysis-body"
+            role="alertdialog"
+            backdropClassName="absolute inset-0 z-[95] flex items-center justify-center bg-black/50"
+            className="w-[min(26rem,calc(100vw-2rem))] rounded-lg border border-border bg-card p-4 shadow-2xl focus:outline-none"
+          >
+            {(close) => (
+              <>
+                <div className="mb-3 flex items-start gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-progress/10 text-progress">
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p id="refresh-analysis-title" className="text-xs font-semibold uppercase tracking-[1.2px] text-foreground">
+                      {t("refreshAnalysisTitle")}
+                    </p>
+                    <p id="refresh-analysis-body" className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      {t("refreshAnalysisBody")}
+                    </p>
+                  </div>
+                </div>
+                {refreshAnalysis.isError ? (
+                  <p className="text-[11px] text-danger" role="alert">
+                    {refreshErrorStatus === 409
+                      ? t("refreshAnalysisBusy")
+                      : refreshErrorStatus === 403
+                        ? t("refreshAnalysisNoAccess")
+                        : t("genericSaveError")}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    autoFocus
+                    onClick={close}
+                    className="h-8 rounded-md border border-border bg-transparent px-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={refreshAnalysis.isPending}
+                    onClick={() => refreshAnalysis.mutate(undefined, { onSuccess: close })}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-brand-gold px-3 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold-foreground transition-colors hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-60"
+                  >
+                    {refreshAnalysis.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                    ) : null}
+                    {t("refresh")}
+                  </button>
+                </div>
+              </>
+            )}
+          </ModalOverlay>
+        )}
 
         {/* Terminal bar: layout tabs, arrangement switch, pane count, and settings */}
         <div className="flex h-12 shrink-0 items-stretch gap-4 overflow-x-auto border-b border-border bg-card px-4">
