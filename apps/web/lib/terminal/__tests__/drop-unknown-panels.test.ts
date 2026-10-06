@@ -32,19 +32,6 @@ describe("dropUnknownPanels", () => {
     expect(dropUnknownPanels(input)).toBe(input)
   })
 
-  it("clears a tab that points at a dropped pane, at the top level and per screen", () => {
-    const input = layout([panel("command"), panel("evidence")], {
-      tabsActiveA: "contradictions" as PanelId,
-      tabsActiveB: "evidence",
-      screenLayouts: { 1: { tabsActiveA: "verification" as PanelId, tabsActiveB: "command" } },
-    })
-    const out = dropUnknownPanels(input)
-    expect(out.tabsActiveA).toBeUndefined()
-    expect(out.tabsActiveB).toBe("evidence")
-    expect(out.screenLayouts?.[1]?.tabsActiveA).toBeUndefined()
-    expect(out.screenLayouts?.[1]?.tabsActiveB).toBe("command")
-  })
-
   it("shows the Command pane when dropping leaves nothing visible", () => {
     const input = layout([panel("command", false, 5), panel("contradictions", true, 0), panel("citationMap", true, 1)])
     const out = dropUnknownPanels(input)

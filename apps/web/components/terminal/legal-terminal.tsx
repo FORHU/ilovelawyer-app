@@ -88,7 +88,7 @@ export { PANEL_TITLES }
 // inline `zIndex: 80/panel.order+1` on a Free-canvas pane) rather than named constants, since
 // Tailwind can't resolve an interpolated class at build time — this comment is the scale's
 // documentation instead:
-//   z-10  Columns/Tabs resize dividers (column border, in-column stack, tabs group split)
+//   z-10  Columns resize dividers (column border, in-column stack)
 //   z-20  Free canvas edge resize handles
 //   z-30  Free canvas corner resize handles
 //   80    a Free-canvas pane actively being dragged (inline zIndex, momentarily above every
@@ -121,9 +121,6 @@ function asLayout(value: unknown, fallback: WorkspaceLayout): WorkspaceLayout {
     panels: raw.panels as PanelLayout[],
     columnCount: raw.columnCount,
     columnWidths: raw.columnWidths,
-    tabsSplit: raw.tabsSplit,
-    tabsActiveA: raw.tabsActiveA,
-    tabsActiveB: raw.tabsActiveB,
     screenLayouts: raw.screenLayouts,
   })
 }
@@ -176,8 +173,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false)
   // Focus's "which one is showing" state is intentionally ephemeral (not saved with the
   // workspace) — it resets to the first pane in the stack on reload, same spirit as the
-  // freeform canvas not remembering scroll position. Tabs mode persists its active tab in
-  // layout.tabsActiveA/B instead (see TabsArrangement).
+  // freeform canvas not remembering scroll position.
   const [focusedId, setFocusedId] = useState<PanelId | null>(null)
   // Set while Columns mode is full and the user just tried to add this pane — opens the
   // "replace which pane?" picker. Null the rest of the time.
@@ -390,15 +386,15 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const arrangementStageRef = useRef<HTMLDivElement>(null)
   const paneAnimations = useTerminalPaneAnimations({ stageRef: arrangementStageRef, layoutKey: layout })
 
-  // Free/Columns/Tabs/Focus are 4 structurally different layout engines (absolute canvas vs.
-  // flex columns vs. a 2-group tab strip vs. a big-pane-plus-rail grid) — switching between them
+  // Free/Columns/Focus are 3 structurally different layout engines (absolute canvas vs.
+  // flex columns vs. a big-pane-plus-rail grid) — switching between them
   // used to be a hard cut, every pane unmounting and a totally different tree mounting in its
   // place. Every mode marks its own per-panel box with the same `data-flip-id={panel.id}` (see
-  // the Free-canvas pane, ColumnStack's box, Tabs' active-tab container, Focus's big-pane box),
+  // the Free-canvas pane, ColumnStack's box, Focus's big-pane box),
   // so Flip can carry a panel smoothly from wherever it sat in the old layout to wherever it
   // lands in the new one even though the actual DOM nodes are completely different elements.
-  // Panels with no rendered box in one of the two modes (e.g. every Tabs tab that isn't the
-  // active one) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
+  // Panels with no rendered box in one of the two modes (e.g. a pane that is hidden or
+  // maximized away) simply aren't in the `Flip.getState` snapshot and fade in/out normally instead.
   const setArrangement = (next: ArrangementValue) => {
     paneAnimations.capturePaneState()
     // Columns must always be saved with an explicit columnCount: asLayout reads a "columns" save
@@ -498,9 +494,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     patchPanel,
     setColumnCount,
     setColumnWidths,
-    setTabsSplit,
-    setTabsActiveA,
-    setTabsActiveB,
     requestAddPanel,
     beginPanelDrag,
     updateDragPreview,
@@ -562,10 +555,6 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     bringToFront(id)
     setMaximizedId(null)
     setFocusedId(id)
-    // Harmless if `id` isn't actually a member of Tabs' group A or B — TabsArrangement only
-    // treats an active-tab id as real when it finds it in that group's own panel list.
-    setTabsActiveA(id)
-    setTabsActiveB(id)
   }
 
   const flushPendingSave = async () => {
@@ -978,13 +967,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           arrangement={arrangement}
           columnCount={layout.columnCount ?? 3}
           columnWidths={layout.columnWidths ?? []}
-          tabsSplit={layout.tabsSplit ?? 0.5}
-          tabsActiveA={layout.tabsActiveA ?? null}
-          tabsActiveB={layout.tabsActiveB ?? null}
           onSetColumnWidths={setColumnWidths}
-          onSetTabsSplit={setTabsSplit}
-          onSetTabsActiveA={setTabsActiveA}
-          onSetTabsActiveB={setTabsActiveB}
           onPatchPanel={patchPanel}
           onHide={hidePanel}
           onPopOut={popOutPanel}
@@ -1178,7 +1161,7 @@ function tileLayout(layout: WorkspaceLayout): WorkspaceLayout {
 // stack proportions too. Give Columns its own height-like field if that turns out to matter.
 function hydrateFreeform(layout: WorkspaceLayout): WorkspaceLayout {
   // Screen 0 only — a secondary screen's panel legitimately has no x/y when that screen's own
-  // arrangement is Tabs/Columns (neither reads x/y), and that must never be read as "the primary
+  // arrangement is Columns (which doesn't read x/y), and that must never be read as "the primary
   // needs retiling" and bulldoze whatever Free-canvas arrangement it already has.
   const visible = layout.panels.filter((panel) => panel.visible && !HIDDEN_PANELS.has(panel.id) && (panel.screen ?? 0) === 0)
   if (visible.some((panel) => !Number.isFinite(panel.x) || !Number.isFinite(panel.y))) {

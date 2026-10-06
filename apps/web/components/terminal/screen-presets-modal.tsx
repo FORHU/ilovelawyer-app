@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
+import { PresetDetail } from "@/components/terminal/preset-detail"
 import { PresetList } from "@/components/terminal/preset-list"
 import { PopupSetupStep } from "@/components/terminal/popup-setup-step"
 import { MultiScreenGuide } from "@/components/terminal/multi-screen-guide"
@@ -16,10 +17,7 @@ import {
   foldScreensIntoPrimary,
   fromRow,
   generateSpreadPreset,
-  panelShortCode,
   panelsHiddenByPreset,
-  presetDescription,
-  presetLabel,
   type ScreenPresetDef,
 } from "@/lib/terminal/screen-presets"
 import { useCreateScreenPresetMutation, useDeleteScreenPresetMutation, useScreenPresetsQuery } from "@/lib/terminal/mutations"
@@ -350,37 +348,16 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
 
               {selected && !blocked && !confirming && (
                 <>
-                  <h3 className="font-['Libre_Caslon_Text'] text-base text-foreground font-normal">{presetLabel(selected, t)}</h3>
-                  {presetDescription(selected, t) && <p className="mt-1 text-xs text-muted-foreground">{presetDescription(selected, t)}</p>}
-
-                  <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-                    {selected.screens.map((screen, index) => (
-                      <div key={index} className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">
-                          {index === 0 ? t("thisWindow") : t("popoutWindowN", { n: index + 1 })}
-                        </p>
-                        {/* Which physical monitor this display lands on, so a lawyer can tell them
-                            apart. Blank when the OS reports no name; flagged when there's no monitor. */}
-                        <p className="mb-1.5 truncate text-[10px] text-muted-foreground/80">
-                          {index === 0
-                            ? activeScreens?.currentScreen?.label || "\u00a0"
-                            : secondaryScreens[index - 1]
-                              ? secondaryScreens[index - 1]!.label || "\u00a0"
-                              : t("displayNoMonitor")}
-                        </p>
-                        <div className="flex flex-col gap-1.5 rounded-md border border-border/70 bg-muted/30 p-2">
-                          {screen.panelIds.map((id) => (
-                            <div key={id} className="flex items-center gap-1.5 rounded border border-border/60 bg-background/60 px-2 py-1.5">
-                              <span className="shrink-0 rounded bg-foreground/10 px-1 py-0.5 text-[9px] font-bold tracking-wider text-foreground">
-                                {panelShortCode(PANEL_TITLES[id])}
-                              </span>
-                              <span className="min-w-0 break-words text-[11px] leading-tight text-foreground">{PANEL_TITLES[id]}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <PresetDetail
+                    preset={selected}
+                    monitorLabel={(index) =>
+                      index === 0
+                        ? activeScreens?.currentScreen?.label || ""
+                        : secondaryScreens[index - 1]
+                          ? secondaryScreens[index - 1]!.label || ""
+                          : t("displayNoMonitor")
+                    }
+                  />
 
                   <div className="mt-5 flex justify-end">
                     <button
@@ -388,7 +365,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
                       onClick={handlePrimaryClick}
                       className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase"
                     >
-                      {count > 1 ? t("presetApplyToDisplays", { count }) : t("presetApplyConfirm")}
+                      {selected.screens.length > 1 ? t("presetApplyToDisplays", { count: selected.screens.length }) : t("presetApplyConfirm")}
                     </button>
                   </div>
                 </>

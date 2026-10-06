@@ -328,13 +328,7 @@ export default function TerminalCanvasWindowPage() {
           arrangement={arrangement}
           columnCount={screenSettings?.columnCount ?? 3}
           columnWidths={screenSettings?.columnWidths ?? []}
-          tabsSplit={screenSettings?.tabsSplit ?? 0.5}
-          tabsActiveA={screenSettings?.tabsActiveA ?? null}
-          tabsActiveB={screenSettings?.tabsActiveB ?? null}
           onSetColumnWidths={(widths) => patchScreenSettings({ columnWidths: widths })}
-          onSetTabsSplit={(value) => patchScreenSettings({ tabsSplit: value })}
-          onSetTabsActiveA={(id) => patchScreenSettings({ tabsActiveA: id })}
-          onSetTabsActiveB={(id) => patchScreenSettings({ tabsActiveB: id })}
           onPatchPanel={patchPanel}
           onHide={hidePanel}
           onPopOut={popOutPanel}

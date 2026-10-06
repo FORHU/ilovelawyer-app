@@ -34,7 +34,7 @@ export const PANEL_GROUPS: readonly (readonly PanelId[])[] = [
 export const panelGroupOf = (id: PanelId): number => PANEL_GROUPS.findIndex((ids) => ids.includes(id))
 
 export type PresetValue = "PANE_1" | "PANE_2" | "PANE_4" | "PANE_6"
-export const ARRANGEMENT_VALUES = ["free", "columns", "tabs", "focus"] as const
+export const ARRANGEMENT_VALUES = ["free", "columns", "focus"] as const
 export type ArrangementValue = (typeof ARRANGEMENT_VALUES)[number]
 
 export interface PanelLayout {
@@ -47,10 +47,8 @@ export interface PanelLayout {
   y?: number
   /** Columns mode only: which column (0-based) this pane is stacked in. */
   columnIndex?: number
-  /** Tabs mode only: which of the 2 groups this pane's tab lives in. When absent, auto-joins the group with fewer tabs. */
-  tabGroup?: number
   /** Protects this pane's own slot: no move/resize in Free, no reassignment/replace in
-   * Columns/Tabs. Never disables a divider shared with a neighboring, unpinned pane — see
+   * Columns. Never disables a divider shared with a neighboring, unpinned pane — see
    * PaneHeaderActions' pin handling in legal-terminal.tsx. No-op in Focus mode. */
   pinned?: boolean
   /** Which screen this pane renders in. 0 or absent = primary (today's only behavior, and the
@@ -70,13 +68,8 @@ export interface WorkspaceLayout {
   /** Columns mode: how many columns (2-4) and their widths as fractions summing to 1. */
   columnCount?: number
   columnWidths?: number[]
-  /** Tabs mode: the 2 groups' width split (fraction for group A, 0-1) and each group's
-   * persisted active tab. */
-  tabsSplit?: number
-  tabsActiveA?: PanelId
-  tabsActiveB?: PanelId
   /** Per-secondary-screen arrangement state, keyed by screen index (1-5). The top-level
-   * arrangement/columnCount/columnWidths/tabsSplit/tabsActiveA/B fields above are unchanged and
+   * arrangement/columnCount/columnWidths fields above are unchanged and
    * now implicitly mean "screen 0 (primary)'s settings" — zero migration for every workspace
    * saved before multi-screen shipped. Each screen runs its own independent arrangement mode,
    * not one grid stretched across windows. An absent index means "free, nothing assigned yet". */
@@ -84,9 +77,6 @@ export interface WorkspaceLayout {
     arrangement?: ArrangementValue
     columnCount?: number
     columnWidths?: number[]
-    tabsSplit?: number
-    tabsActiveA?: PanelId
-    tabsActiveB?: PanelId
   }>
 }
 

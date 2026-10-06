@@ -132,8 +132,7 @@ function columnCountFor(panelCount: number): number {
 // panel is hidden and moved back to screen 0, so a display the preset doesn't use isn't still
 // counted as "in use" (and offered for reopening) because of a hidden panel. Each screen's arrangement is written (screen 0 -> top-level fields, 1+ ->
 // screenLayouts[n]); a Columns screen also gets a columnCount (see columnCountFor above), and a
-// Free screen gets its rects seeded by autoTileLayout. Tabs/Focus need neither — Tabs
-// auto-balances into its 2 groups the same way Columns does, Focus just needs an active pane.
+// Free screen gets its rects seeded by autoTileLayout. Focus needs neither — it just needs an active pane.
 export function applyScreenPreset(layout: WorkspaceLayout, preset: ScreenPresetDef): WorkspaceLayout {
   const placement = new Map<PanelId, { screen: number; order: number }>()
   preset.screens.forEach((screen, screenIndex) => {
