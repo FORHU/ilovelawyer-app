@@ -1194,7 +1194,7 @@ function useTheoryLifecycleMutation(caseId: string, action: "publish" | "retire"
   })
 }
 
-// Server only allows this for the caller's own forks (CaseTheorySvc.remove) — originals retire.
+// Server allows this for the caller's own theories and for AI-proposed ones (CaseTheorySvc.remove).
 export function useDeleteTheoryMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

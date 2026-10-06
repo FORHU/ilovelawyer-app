@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
+import i18n from "@/lib/i18n/i18n"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
@@ -10,6 +12,16 @@ import type { OrganizationWithRole } from "@/lib/organizations/queries"
 interface AuthTokensResponse {
   user: AuthUser
   accessToken: string
+  /** True when this sign-in cancelled a scheduled account deletion (AuthSvc.restoreIfScheduled). */
+  deletionCancelled?: boolean
+}
+
+/** Signing back in during the deletion grace period restores the account on the API side —
+ * tell the user. sonner's Toaster lives in Providers, so the toast survives the redirect that
+ * follows a sign-in. */
+function announceIfRestored(data: { deletionCancelled?: boolean }) {
+  if (!data.deletionCancelled) return
+  toast.success(i18n.t("deletionRestored.toast", { ns: "auth" }), { id: "account-restored", duration: 8000 })
 }
 
 // verify-otp returns the full /me-shaped user, including approvalStatus — ACTIVE here means
@@ -69,6 +81,7 @@ export function toActiveOrg(org: OrganizationWithRole) {
 
 interface ResetPasswordResponse {
   accessToken: string
+  deletionCancelled?: boolean
 }
 
 // Mirrors the numeric-suffix convention the backend already uses for Google
@@ -118,6 +131,7 @@ export function useLoginMutation() {
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
       router.push(sanitizeNextPath(searchParams.get("next")))
+      announceIfRestored(data)
     },
   })
 }
@@ -154,6 +168,7 @@ export function useUpdateRequiredPasswordMutation() {
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
       router.push(sanitizeNextPath(searchParams.get("next")))
+      announceIfRestored(data)
     },
   })
 }
@@ -237,6 +252,7 @@ function useCompleteGoogleAuth() {
     setAuth({ accessToken: data.accessToken, user: data.user })
     queryClient.invalidateQueries({ queryKey: chatKeys.session() })
     const organizationStatus = await hydrateActiveOrganization(setOrganization)
+    announceIfRestored(data)
     return { ...data, organizationStatus }
   }
 }
@@ -316,6 +332,7 @@ export function useResetPasswordMutation() {
       }),
     onSuccess: (data) => {
       setAccessToken(data.accessToken)
+      announceIfRestored(data)
     },
   })
 }
@@ -340,6 +357,7 @@ export function useConsumeLoginLinkMutation() {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
+      announceIfRestored(data)
     },
   })
 }

@@ -76,18 +76,18 @@
     "closeModal": "Close",
     "deleteAccount": {
       "title": "Delete account",
-      "description": "Schedules your account for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted.",
+      "description": "Schedules your account for deletion and signs you out. You can restore it by signing in again within 30 days. After that, your account and all associated data are permanently deleted.",
       "button": "Delete Account",
       "deleting": "Scheduling…",
       "confirmTitle": "Delete your account?",
-      "confirmDescription": "Your account will be scheduled for deletion. You'll have 30 days to cancel before your account and all associated data are permanently deleted. This cannot be undone after that.",
+      "confirmDescription": "Your account will be scheduled for deletion and you'll be signed out on every device. You can restore it by signing in again within 30 days. After that, your account and all associated data are permanently deleted and this cannot be undone.",
       "confirmButton": "Schedule Deletion",
       "scheduledTitle": "Account scheduled for deletion",
       "scheduledDescription": "Your account and all associated data will be permanently deleted on {{date}}.",
       "cancelButton": "Cancel Deletion",
       "cancelling": "Cancelling…",
       "successTitle": "Account scheduled for deletion",
-      "successDescription": "Your account and all associated data will be permanently deleted on {{date}}. You can cancel by signing back in before then. You'll now be logged out.",
+      "successDescription": "Your account and all associated data will be permanently deleted on {{date}}. You've been signed out. To restore your account, just sign in again before then.",
       "successLogoutButton": "Log Out"
     }
   },
