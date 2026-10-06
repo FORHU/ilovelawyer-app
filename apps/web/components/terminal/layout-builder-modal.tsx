@@ -4,6 +4,7 @@ import { useHasAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useTranslation } from "react-i18next"
 import { Pencil, RefreshCw } from "lucide-react"
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { HIDDEN_PANELS, ModalOverlay, TerminalCanvas, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
@@ -93,10 +94,6 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
   const [screenUiState, setScreenUiState] = useState<Record<number, ScreenUiState>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [name, setName] = useState("")
-  const [editingName, setEditingName] = useState(false)
-  const [nameDraft, setNameDraft] = useState("")
-  const [saveAsPreset, setSaveAsPreset] = useState(false)
-  const [presetName, setPresetName] = useState("")
 
   const stageRef = useRef<HTMLDivElement>(null)
 
@@ -138,14 +135,13 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
       .sort((a, b) => a.order - b.order)
   }, [builderLayout, activeScreenTab])
 
+  const paneCountOn = (screen: number) =>
+    builderLayout?.panels.filter((p) => p.visible && (p.screen ?? 0) === screen && !HIDDEN_PANELS.has(p.id)).length ?? 0
   const arrangement = builderLayout ? arrangementForScreen(builderLayout, activeScreenTab) : "free"
   // Screen 0's arrangement fields live at the top of WorkspaceLayout, 1+'s in screenLayouts[n] —
   // same split patchScreenArrangement writes to below.
   const columnCount = activeScreenTab === 0 ? (builderLayout?.columnCount ?? 3) : (builderLayout?.screenLayouts?.[activeScreenTab]?.columnCount ?? 3)
   const columnWidths = activeScreenTab === 0 ? (builderLayout?.columnWidths ?? []) : (builderLayout?.screenLayouts?.[activeScreenTab]?.columnWidths ?? [])
-  const tabsSplit = activeScreenTab === 0 ? (builderLayout?.tabsSplit ?? 0.5) : (builderLayout?.screenLayouts?.[activeScreenTab]?.tabsSplit ?? 0.5)
-  const tabsActiveA = activeScreenTab === 0 ? (builderLayout?.tabsActiveA ?? null) : (builderLayout?.screenLayouts?.[activeScreenTab]?.tabsActiveA ?? null)
-  const tabsActiveB = activeScreenTab === 0 ? (builderLayout?.tabsActiveB ?? null) : (builderLayout?.screenLayouts?.[activeScreenTab]?.tabsActiveB ?? null)
   const availablePanels = useMemo(() => catalog.data?.panels.filter((p) => p.available && !HIDDEN_PANELS.has(p.id)) ?? [], [catalog.data])
   const hasAudioOverview = useHasAudioOverview(caseId)
   const panelBadges = snapshot.data ? computePanelBadges(snapshot.data, t, { hasAudioOverview }) : {}
@@ -167,7 +163,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
   // arrangementForScreen already reads. The shared placement factory below only knows about
   // screen 0 (it's a straight lift of legal-terminal.tsx, which only ever has a screen 0), so the
   // builder needs its own screen-aware versions of these five instead of the factory's.
-  const patchScreenArrangement = (patch: Partial<Pick<WorkspaceLayout, "arrangement" | "columnCount" | "columnWidths" | "tabsSplit" | "tabsActiveA" | "tabsActiveB">>) => {
+  const patchScreenArrangement = (patch: Partial<Pick<WorkspaceLayout, "arrangement" | "columnCount" | "columnWidths">>) => {
     setBuilderLayout((prev) => {
       if (!prev) return prev
       if (activeScreenTab === 0) return { ...prev, ...patch }
@@ -180,9 +176,6 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
   }
   const setColumnCount = (count: number) => patchScreenArrangement({ columnCount: count })
   const setColumnWidths = (widths: number[]) => patchScreenArrangement({ columnWidths: widths })
-  const setTabsSplit = (value: number) => patchScreenArrangement({ tabsSplit: value })
-  const setTabsActiveA = (id: PanelId) => patchScreenArrangement({ tabsActiveA: id })
-  const setTabsActiveB = (id: PanelId) => patchScreenArrangement({ tabsActiveB: id })
 
   // Shared with legal-terminal.tsx — see lib/terminal/panel-placement.ts. Re-derived whenever the
   // active tab or the layout changes (each tab's placement math is scoped to that tab's own
@@ -236,9 +229,6 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
       setScreenUiState({})
       setSelectedTemplateId(null)
       setName("")
-      setEditingName(false)
-      setSaveAsPreset(false)
-      setPresetName("")
     }
   }
 
@@ -251,7 +241,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
       .finally(() => setDetecting(false))
   }
 
-  const handleCreate = () => {
+  const handleCreate = (alsoSaveAsWorkflow: boolean) => {
     if (!builderLayout) return
     const layoutJson = builderLayout
     createWorkspace.mutate(
@@ -269,8 +259,13 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
               })
             })
           }
-          if (saveAsPreset && presetName.trim()) {
-            createScreenPreset.mutate({ name: presetName.trim(), screens: captureCurrentScreens(layoutJson, screenCount) })
+          if (alsoSaveAsWorkflow) {
+            const workflowName = name.trim() || t("untitledLayout")
+            // mutateAsync, not mutate: this callback's own handlers are dropped once the modal closes below.
+            createScreenPreset
+              .mutateAsync({ name: workflowName, screens: captureCurrentScreens(layoutJson, tabCount) })
+              .then(() => toast.success(t("workflowSaved", { name: workflowName })))
+              .catch(() => toast.error(t("workflowSaveFailed")))
           }
           handleOpenChange(false)
         },
@@ -345,53 +340,38 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                       type="button"
                       disabled={uiState.draggingId !== null && i !== activeScreenTab}
                       onClick={() => setActiveScreenTab(i)}
-                      className={`rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                        activeScreenTab === i ? "bg-brand-gold text-brand-gold-foreground" : "text-muted-foreground hover:bg-muted"
+                      aria-current={activeScreenTab === i ? "true" : undefined}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[1px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        activeScreenTab === i ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       }`}
                     >
+                      {activeScreenTab === i && <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />}
                       {t("builderDisplayLabel", { n: i + 1 })}
+                      <span className="font-mono text-[10px] font-normal tracking-normal text-muted-foreground">{paneCountOn(i)}</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5">
-                  {editingName ? (
-                    <input
-                      type="text"
-                      autoFocus
-                      value={nameDraft}
-                      onChange={(e) => setNameDraft(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      onBlur={() => {
-                        setName(nameDraft.trim())
-                        setEditingName(false)
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setName(nameDraft.trim())
-                          setEditingName(false)
-                        } else if (e.key === "Escape") {
-                          setEditingName(false)
-                        }
-                      }}
-                      className="h-7 w-48 rounded-md border border-brand-gold/60 bg-background px-2 text-center text-xs text-foreground outline-none"
-                    />
-                  ) : (
-                    <>
-                      <span className="max-w-48 truncate text-xs font-medium text-foreground">{name.trim() || t("untitledLayout")}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNameDraft(name)
-                          setEditingName(true)
-                        }}
-                        aria-label={t("renameLayout")}
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <Pencil className="h-3 w-3" aria-hidden="true" />
-                      </button>
-                    </>
-                  )}
+                <div className="mx-2 flex min-w-0 flex-1 justify-center">
+                  <div className="group relative w-full max-w-56">
+                  <input
+                    id="layout-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur()
+                    }}
+                    onFocus={(e) => e.currentTarget.select()}
+                    placeholder={t("untitledLayout")}
+                    aria-label={t("layoutNameLabel")}
+                    className="h-8 w-full truncate rounded-md border border-transparent bg-transparent px-7 text-center text-xs font-medium text-foreground outline-none transition-colors placeholder:text-foreground/70 hover:border-border focus:border-brand-gold/60 focus:bg-background"
+                  />
+                  <Pencil
+                    className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-0"
+                    aria-hidden="true"
+                  />
+                  </div>
                 </div>
 
                 <ArrangementSwitcher arrangement={arrangement} onSetArrangement={setArrangement} columnCount={columnCount} onSetColumnCount={setColumnCount} t={t} />
@@ -410,13 +390,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                   arrangement={arrangement}
                   columnCount={columnCount}
                   columnWidths={columnWidths}
-                  tabsSplit={tabsSplit}
-                  tabsActiveA={tabsActiveA}
-                  tabsActiveB={tabsActiveB}
                   onSetColumnWidths={setColumnWidths}
-                  onSetTabsSplit={setTabsSplit}
-                  onSetTabsActiveA={setTabsActiveA}
-                  onSetTabsActiveB={setTabsActiveB}
                   onPatchPanel={patchPanel}
                   onHide={hidePanel}
                   onJumpToPanel={() => {}}
@@ -434,7 +408,6 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                   onDropNew={requestAddPanel}
                   onDropAtRect={dropPanelAtRect}
                   onDragPreviewUpdate={updateDragPreview}
-                  emptyStateAction={{ label: t("builderEmptyScreenHint"), onClick: () => {} }}
                 >
                   {uiState.replaceTarget && (
                     <ModalOverlay
@@ -484,9 +457,14 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                 </TerminalCanvas>
             </div>
 
-            <div className="flex w-56 shrink-0 flex-col border-l border-border/70">
-              <p className="px-3 pt-3 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{t("preset")}</p>
+            <div className="flex w-64 shrink-0 flex-col border-l border-border/70">
+              <div className="px-3 pb-1 pt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[1px] text-foreground">{t("builderStartFrom")}</p>
+                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{t("builderStartFromHint")}</p>
+              </div>
               <PresetList
+                variant="detailed"
+                autoSelectFirst={false}
                 presets={templates}
                 selectedId={selectedTemplateId}
                 onSelect={(id) => {
@@ -499,31 +477,29 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
                 }}
               />
 
-              <div className="flex flex-col gap-1.5 border-t border-border/70 p-2.5">
-                <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <input type="checkbox" checked={saveAsPreset} onChange={(e) => setSaveAsPreset(e.target.checked)} />
-                  {t("saveAsPresetToo")}
-                </label>
-                {saveAsPreset && (
-                  <input
-                    type="text"
-                    value={presetName}
-                    onChange={(e) => setPresetName(e.target.value)}
-                    placeholder={t("presetNamePlaceholder")}
-                    className="h-7 w-full rounded border border-border bg-background px-2 text-[11px] text-foreground outline-none placeholder:text-muted-foreground focus:border-brand-gold/60"
-                  />
-                )}
-              </div>
             </div>
           </div>
         )}
 
-        <div className="flex h-[72px] shrink-0 items-center justify-end border-t border-border bg-muted/40 px-6">
+        <div className="flex min-h-[72px] shrink-0 flex-wrap items-center justify-end gap-3 border-t border-border bg-muted/40 px-6 py-2 lg:h-[72px] lg:flex-nowrap lg:pl-[calc(18rem+1.5rem)]">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleCreate(true)}
+                disabled={createWorkspace.isPending}
+                className="h-9 shrink-0 rounded-full border border-border px-4 text-[11px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t("createAndSaveWorkflow")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-60">{t("saveAsWorkflowHint")}</TooltipContent>
+          </Tooltip>
           <button
             type="button"
-            onClick={handleCreate}
+            onClick={() => handleCreate(false)}
             disabled={createWorkspace.isPending}
-            className="bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
+            className="shrink-0 bg-brand-gold text-brand-gold-foreground text-xs font-semibold tracking-wider px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-brand-gold"
           >
             {t("createLayout")}
           </button>

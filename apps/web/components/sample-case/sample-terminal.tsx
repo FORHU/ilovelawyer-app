@@ -16,14 +16,13 @@ import { useTourT } from "@/lib/tour/use-tour-t"
 const GRID_CLASS: Record<ArrangementValue, string> = {
   free: "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3",
   columns: "grid-cols-1 sm:grid-cols-2",
-  tabs: "grid-cols-1",
   focus: "grid-cols-1",
 }
 
 const iconButton =
   "inline-flex size-6 cursor-pointer items-center justify-center rounded-full border border-border hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
-/** The sample case's Legal Terminal: a pane grid with sample content, the four arrangements, and
+/** The sample case's Legal Terminal: a pane grid with sample content, the three arrangements, and
  * Add pane listing every pane by group. Rearranging works; anything that would save doesn't. */
 export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadOnly: () => void }) {
   const { t } = useTourT()
@@ -33,7 +32,7 @@ export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadO
   const [arrangement, setArrangement] = useState<ArrangementValue>("free")
   const [catalogOpen, setCatalogOpen] = useState(false)
 
-  const singlePane = arrangement === "tabs" || arrangement === "focus"
+  const singlePane = arrangement === "focus"
   const shown = singlePane ? grid.filter((id) => id === focused) : grid
   const catalog = PANE_CATEGORY_ORDER.map((category) => ({
     category,
@@ -80,24 +79,6 @@ export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadO
           + {t("sampleCase.addPane")}
         </Button>
       </div>
-
-      {arrangement === "tabs" && (
-        <div className="flex gap-1.5 overflow-x-auto">
-          {grid.map((id) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={focused === id}
-              onClick={() => setFocused(id)}
-              className={`h-7 shrink-0 cursor-pointer rounded-lg border px-3 text-[11.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                focused === id ? "border-foreground font-semibold" : "border-border"
-              }`}
-            >
-              {PANEL_TITLES[id]}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className={`grid gap-3 ${GRID_CLASS[arrangement]}`}>
         {shown.map((id) => {

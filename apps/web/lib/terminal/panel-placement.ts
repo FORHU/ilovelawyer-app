@@ -1,5 +1,5 @@
 import type { Dispatch, DragEvent, RefObject, SetStateAction } from "react"
-import { HIDDEN_PANELS, cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, snapValue, tabGroupsOf, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
+import { HIDDEN_PANELS, cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, snapValue, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
 import { slotForGroup } from "@/lib/terminal/slot-for-group"
 import { arrangementForScreen, autoTileLayout } from "@/lib/terminal/multi-screen"
 import type { ArrangementValue, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
@@ -7,7 +7,7 @@ import type { ArrangementValue, PanelId, PanelLayout, WorkspaceLayout } from "@/
 // How many panes a single column can stack before it's "full" and adding another pane
 // requires replacing one instead.
 export const MAX_PANES_PER_COLUMN = 3
-// Hard ceiling on visible panes regardless of arrangement mode — Free/Tabs/Focus had no cap
+// Hard ceiling on visible panes regardless of arrangement mode — Free/Focus had no cap
 // at all before this, letting the board cascade into an unusable stack of overlapping panes
 // (see #297). Applies on top of (not instead of) Columns' own per-column cap above.
 export const MAX_PANES = 10
@@ -42,9 +42,6 @@ export interface PanelPlacementActions {
   patchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
   setColumnCount: (count: number) => void
   setColumnWidths: (widths: number[]) => void
-  setTabsSplit: (value: number) => void
-  setTabsActiveA: (id: PanelId) => void
-  setTabsActiveB: (id: PanelId) => void
   blockIfOverPaneLimit: (id: PanelId) => boolean
   requestAddPanel: (id: PanelId) => void
   beginPanelDrag: (id: PanelId) => void
@@ -114,7 +111,7 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
   }
 
   // Every entry point that can bring a NEW pane onto the board (sidebar add/drag, or a drop
-  // onto the Free canvas / a Tabs or Focus slot) must check this first — showPanelAt itself
+  // onto the Free canvas / a Focus slot) must check this first — showPanelAt itself
   // can't own the check since replacePaneInColumns also calls it to finish a swap, where the
   // outgoing pane's hidePanel() hasn't flushed to `visiblePanels` yet and would look like it's
   // still occupying a slot. Opens the same replace picker Columns mode already uses instead of
@@ -142,9 +139,6 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
 
   const setColumnCount = (count: number) => setLayout((prev) => (prev ? { ...prev, columnCount: count } : prev))
   const setColumnWidths = (widths: number[]) => setLayout((prev) => (prev ? { ...prev, columnWidths: widths } : prev))
-  const setTabsSplit = (value: number) => setLayout((prev) => (prev ? { ...prev, tabsSplit: value } : prev))
-  const setTabsActiveA = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveA: id } : prev))
-  const setTabsActiveB = (id: PanelId) => setLayout((prev) => (prev ? { ...prev, tabsActiveB: id } : prev))
 
   // Adding a pane goes through the ordinary cascade placement in every mode except Columns,
   // where it either auto-joins the least-full column or — if every column is already at
@@ -152,10 +146,6 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
   const requestAddPanel = (id: PanelId) => {
     if (!layout) return
     if (blockIfOverPaneLimit(id)) return
-    if (arrangement === "tabs") {
-      showPanelAt(id, { tabGroup: slotForGroup(tabGroupsOf(visiblePanels), id) })
-      return
-    }
     if (arrangement !== "columns") {
       showPanelAt(id)
       return
@@ -212,9 +202,6 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
     patchPanel,
     setColumnCount,
     setColumnWidths,
-    setTabsSplit,
-    setTabsActiveA,
-    setTabsActiveB,
     blockIfOverPaneLimit,
     requestAddPanel,
     beginPanelDrag,

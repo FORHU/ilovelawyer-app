@@ -17,7 +17,6 @@ import { useGSAP } from "@gsap/react"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   AppWindow,
-  ArrowLeftRight,
   Grip,
   LayoutPanelLeft,
   Maximize2,
@@ -43,7 +42,7 @@ const MIN_FR = 0.18
 const PANE_GAP_PX = 6
 // 1/24 gives a 24-column/row grid — fine enough not to feel restrictive at
 // MIN_FR-sized panes (~4.3 cells) but still a real snap, not a cosmetic one. Exported: legal-
-// terminal.tsx's updateDragPreview (Columns/Tabs/Focus drag-preview) snaps to the same grid.
+// terminal.tsx's updateDragPreview (Columns/Focus drag-preview) snaps to the same grid.
 export const GRID_SNAP_STEP = 1 / 24
 // Minimum width/height fraction a Columns-mode column or stacked pane can be resized down to —
 // same neighbor-trade + floor model as the Free canvas's MIN_FR, just a separate constant since
@@ -94,7 +93,7 @@ type MoveDrag = PaneRect & {
 }
 export type PaneDragPreview = PaneRect & { panelId: PanelId }
 
-// Exported: legal-terminal.tsx's updateDragPreview (Columns/Tabs/Focus drag-preview) shares
+// Exported: legal-terminal.tsx's updateDragPreview (Columns/Focus drag-preview) shares
 // this same clamp/snap math.
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -225,23 +224,6 @@ export function columnsOf(panels: PanelLayout[], columnCount: number): PanelLayo
   }
   for (const column of columns) column.sort((a, b) => a.order - b.order)
   return columns
-}
-
-// Tabs mode's placement rule, same as Columns: an explicit, in-range panel.tabGroup wins;
-// anything else auto-joins whichever of the 2 groups currently has fewer tabs, so switching
-// into Tabs spreads panes across both groups instead of piling them all into the first.
-export function tabGroupsOf(panels: PanelLayout[]): PanelLayout[][] {
-  const groups: PanelLayout[][] = [[], []]
-  const unassigned: PanelLayout[] = []
-  for (const panel of [...panels].sort((a, b) => a.order - b.order)) {
-    if (panel.tabGroup === 0 || panel.tabGroup === 1) groups[panel.tabGroup]!.push(panel)
-    else unassigned.push(panel)
-  }
-  for (const panel of unassigned) {
-    groups[leastFullColumn(groups)]!.push(panel)
-  }
-  for (const group of groups) group.sort((a, b) => a.order - b.order)
-  return groups
 }
 
 export function leastFullColumn(columns: PanelLayout[][]): number {
@@ -393,8 +375,7 @@ export function ModalOverlay({
   )
 }
 
-// Crossfades between panel bodies when the active one changes — Tabs' per-group content and
-// Focus mode's "big" pane both used to swap instantly via a plain conditional render.
+// Crossfades between panel bodies when the active one changes — Focus mode's "big" pane both used to swap instantly via a plain conditional render.
 function AnimatedPanelBody({
   panelId,
   caseId,
@@ -923,230 +904,6 @@ function ColumnStack({
   )
 }
 
-// Two independently drag-assignable, resizable, persisted tab groups.
-function TabsArrangement({
-  panels,
-  caseId,
-  snapshot,
-  labelFor,
-  activeA,
-  activeB,
-  onSetActiveA,
-  onSetActiveB,
-  split,
-  onSetSplit,
-  onPatchPanel,
-  onToggleMaximize,
-  onHide,
-  onPopOut,
-  onJumpToPanel,
-  t,
-  onDrop,
-  onDragPreview,
-  screenCount,
-  onMoveToScreen,
-}: ArrangementBodyProps & {
-  activeA: PanelId | null
-  activeB: PanelId | null
-  onSetActiveA: (id: PanelId) => void
-  onSetActiveB: (id: PanelId) => void
-  split: number
-  onSetSplit: (value: number) => void
-  onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
-}) {
-  const groupsRef = useRef<HTMLDivElement>(null)
-  const splitDragRef = useRef<{ startX: number; split: number } | null>(null)
-  const groups = tabGroupsOf(panels)
-  const actives = [activeA, activeB]
-  const setActives = [onSetActiveA, onSetActiveB]
-  const widths = [split, 1 - split]
-
-  const onSplitDown = (e: PointerEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.currentTarget.setPointerCapture(e.pointerId)
-    lockSelection()
-    splitDragRef.current = { startX: e.clientX, split }
-  }
-  const onSplitMove = (e: PointerEvent<HTMLDivElement>) => {
-    const drag = splitDragRef.current
-    const container = groupsRef.current
-    if (!drag || !container || container.clientWidth === 0) return
-    if ((e.buttons & 1) === 0) {
-      onSplitUp()
-      return
-    }
-    const dx = (e.clientX - drag.startX) / container.clientWidth
-    onSetSplit(clamp(drag.split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
-  }
-  const onSplitUp = () => {
-    splitDragRef.current = null
-    unlockSelection()
-  }
-
-  const onSplitKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    let dx = 0
-    if (e.key === "ArrowLeft") dx = -RESIZE_KEY_STEP
-    else if (e.key === "ArrowRight") dx = RESIZE_KEY_STEP
-    else return
-    e.preventDefault()
-    onSetSplit(clamp(split + dx, MIN_COLUMN_FR, 1 - MIN_COLUMN_FR))
-  }
-
-  const moveToGroup = (panelId: PanelId, targetGroupIndex: number) => {
-    // Pin every auto-placed tab to the group it's showing in first, so moving one tab doesn't
-    // re-balance the rest and make other tabs hop groups.
-    groups.forEach((group, groupIndex) => {
-      for (const p of group) if (p.id !== panelId && p.tabGroup !== groupIndex) onPatchPanel(p.id, { tabGroup: groupIndex })
-    })
-    const maxOrder = Math.max(0, ...groups[targetGroupIndex]!.map((p) => p.order))
-    onPatchPanel(panelId, { tabGroup: targetGroupIndex, order: maxOrder + 1 })
-  }
-
-  const onGroupDrop = (groupIndex: number, e: DragEvent) => {
-    e.preventDefault()
-    const tabId = e.dataTransfer.getData("text/x-tab-id") as PanelId
-    if (tabId) {
-      moveToGroup(tabId, groupIndex)
-      return
-    }
-    const newId = e.dataTransfer.getData("text/x-panel-id") as PanelId
-    if (newId) onDrop(newId)
-  }
-
-  return (
-    <div ref={groupsRef} className="flex h-full min-h-0">
-      {groups.map((group, groupIndex) => {
-        const activeId = actives[groupIndex] && group.some((p) => p.id === actives[groupIndex]) ? actives[groupIndex] : group[0]?.id
-        const activePanel = group.find((p) => p.id === activeId)
-        return (
-          <Pane
-            key={groupIndex}
-            flipId={activePanel?.id}
-            className="relative min-h-0 min-w-[200px]"
-            style={{ flex: `${widths[groupIndex]} 0 0%` }}
-            onDragOver={(e) => {
-              e.preventDefault()
-              onDragPreview?.(e)
-            }}
-            onDrop={(e) => onGroupDrop(groupIndex, e)}
-            header={
-              <div className="terminal-pane-header flex h-10 shrink-0 items-stretch gap-1 overflow-x-auto border-b border-border px-2">
-                {group.map((panel) => {
-                  const active = panel.id === activePanel?.id
-                  const isPinned = !!panel.pinned
-                  return (
-                    <div
-                      key={panel.id}
-                      draggable={!isPinned}
-                      onDragStart={isPinned ? undefined : (e) => e.dataTransfer.setData("text/x-tab-id", panel.id)}
-                      className={`flex items-center gap-0.5 whitespace-nowrap border-b-2 pl-2 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
-                        active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <button type="button" onClick={() => setActives[groupIndex]?.(panel.id)} className="inline-flex items-center gap-1.5">
-                        {labelFor(panel)}
-                        <PaneActivityMark panelId={panel.id} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onPatchPanel(panel.id, { pinned: !isPinned })}
-                        aria-pressed={isPinned}
-                        aria-label={isPinned ? t("unpinPane") : t("pinPane")}
-                        className={`rounded p-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover ${
-                          isPinned ? "text-brand-gold" : "text-muted-foreground/60 hover:text-foreground"
-                        }`}
-                      >
-                        <Pin className="h-3 w-3" aria-hidden="true" fill={isPinned ? "currentColor" : "none"} />
-                      </button>
-                      {!isPinned && (
-                        <button
-                          type="button"
-                          onClick={() => moveToGroup(panel.id, groupIndex === 0 ? 1 : 0)}
-                          aria-label={t("moveToOtherGroup")}
-                          className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                        >
-                          <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => onHide(panel.id)}
-                        aria-label={t("hidePane")}
-                        className="rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" aria-hidden="true" />
-                      </button>
-                    </div>
-                  )
-                })}
-                {activePanel && (
-                  <div className="ml-auto flex shrink-0 items-center gap-0.5 self-center">
-                    {onMoveToScreen && screenCount !== undefined && screenCount > 1 && (
-                      <select
-                        value={activePanel.screen ?? 0}
-                        onChange={(e) => onMoveToScreen(activePanel.id, Number(e.target.value))}
-                        aria-label={t("moveToScreen")}
-                        className="h-6 rounded border border-border bg-background px-1 text-[10px] text-muted-foreground"
-                      >
-                        {Array.from({ length: screenCount }, (_, i) => (
-                          <option key={i} value={i}>
-                            {t("builderDisplayLabel", { n: i + 1 })}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {onPopOut && (
-                      <button
-                        type="button"
-                        onClick={() => onPopOut(activePanel.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                        aria-label={t("popOutPane")}
-                      >
-                        <AppWindow className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onToggleMaximize(activePanel.id)}
-                      className="flex h-6 w-6 items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-                      aria-label={t("maximizePane")}
-                    >
-                      <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            }
-            resizeHandles={
-              groupIndex === 0 && (
-                <div
-                  role="separator"
-                  aria-orientation="vertical"
-                  aria-label={t("resizeTabGroups")}
-                  tabIndex={0}
-                  onPointerDown={onSplitDown}
-                  onPointerMove={onSplitMove}
-                  onPointerUp={onSplitUp}
-                  onPointerCancel={onSplitUp}
-                  onLostPointerCapture={onSplitUp}
-                  onKeyDown={onSplitKeyDown}
-                  className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/60"
-                />
-              )
-            }
-          >
-            <div className="min-h-0 flex-1 overflow-hidden bg-card">
-              {activePanel && (
-                <AnimatedPanelBody panelId={activePanel.id} caseId={caseId} snapshot={snapshot} onJumpToPanel={onJumpToPanel} />
-              )}
-            </div>
-          </Pane>
-        )
-      })}
-    </div>
-  )
-}
-
 // One large focused pane plus a clickable stack of the rest.
 function FocusArrangement({
   panels,
@@ -1269,13 +1026,7 @@ export interface TerminalCanvasProps {
   arrangement: ArrangementValue
   columnCount: number
   columnWidths: number[]
-  tabsSplit: number
-  tabsActiveA: PanelId | null
-  tabsActiveB: PanelId | null
   onSetColumnWidths: (widths: number[]) => void
-  onSetTabsSplit: (value: number) => void
-  onSetTabsActiveA: (id: PanelId) => void
-  onSetTabsActiveB: (id: PanelId) => void
 
   onPatchPanel: (id: PanelId, patch: Partial<PanelLayout>) => void
   onHide: (id: PanelId) => void
@@ -1302,12 +1053,12 @@ export interface TerminalCanvasProps {
   draggingId: PanelId | null
   onDraggingIdChange: (id: PanelId | null) => void
 
-  /** Columns/Tabs/Focus drop target — new pane from the sidebar/library dropped without an
+  /** Columns/Focus drop target — new pane from the sidebar/library dropped without an
    * explicit rect. Caller decides cap-check + placement (identical to today's requestAddPanel). */
   onDropNew: (id: PanelId) => void
   /** Free canvas only — a drop at an explicit rect (drag-drop from the sidebar or a re-cascade). */
   onDropAtRect: (id: PanelId, rect: PaneRect, sourceRect: DOMRect) => void
-  /** Columns/Tabs/Focus's shared drag-preview updater (reads stageRef bounds). */
+  /** Columns/Focus's shared drag-preview updater (reads stageRef bounds). */
   onDragPreviewUpdate?: (event: DragEvent) => void
 
   emptyStateAction?: { label: string; onClick: () => void }
@@ -1317,7 +1068,7 @@ export interface TerminalCanvasProps {
   children?: ReactNode
 }
 
-/** The arrangement/grid rendering pulled out of legal-terminal.tsx (Free/Columns/Tabs/Focus,
+/** The arrangement/grid rendering pulled out of legal-terminal.tsx (Free/Columns/Focus,
  * drag/resize, the maximize overlay) so it can be mounted for any screen — the primary window's
  * screen 0, or a secondary canvas window (see canvas/[screenIndex]/page.tsx). Purely controlled
  * by props: no knowledge of workspace switching, presets, or the sidebar. */
@@ -1334,13 +1085,7 @@ export function TerminalCanvas({
   arrangement,
   columnCount,
   columnWidths,
-  tabsSplit,
-  tabsActiveA,
-  tabsActiveB,
   onSetColumnWidths,
-  onSetTabsSplit,
-  onSetTabsActiveA,
-  onSetTabsActiveB,
   onPatchPanel,
   onHide,
   onPopOut,
@@ -1690,31 +1435,6 @@ export function TerminalCanvas({
           columnCount={columnCount}
           columnWidths={columnWidths}
           onSetColumnWidths={onSetColumnWidths}
-          onPatchPanel={onPatchPanel}
-          onToggleMaximize={onToggleMaximize}
-          onHide={onHide}
-          onPopOut={onPopOut}
-          onJumpToPanel={onJumpToPanel}
-          t={t}
-          onDrop={onDropNew}
-          onDragPreview={onDragPreviewUpdate}
-          screenCount={screenCount}
-          onMoveToScreen={onMoveToScreen}
-        />
-      )}
-
-      {arrangement === "tabs" && visiblePanels.length > 0 && (
-        <TabsArrangement
-          panels={visiblePanels}
-          caseId={caseId}
-          snapshot={snapshot}
-          labelFor={labelFor}
-          activeA={tabsActiveA}
-          activeB={tabsActiveB}
-          onSetActiveA={onSetTabsActiveA}
-          onSetActiveB={onSetTabsActiveB}
-          split={tabsSplit}
-          onSetSplit={onSetTabsSplit}
           onPatchPanel={onPatchPanel}
           onToggleMaximize={onToggleMaximize}
           onHide={onHide}

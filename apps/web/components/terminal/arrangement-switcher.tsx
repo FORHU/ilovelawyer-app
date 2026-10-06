@@ -1,19 +1,18 @@
 "use client"
 
-import { Columns3, LayoutPanelLeft, Move, PanelTop, type LucideIcon } from "lucide-react"
+import { Columns3, LayoutPanelLeft, Move, type LucideIcon } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import type { ArrangementValue } from "@/lib/terminal/types"
 
 export const ARRANGEMENTS: { id: ArrangementValue; labelKey: string; icon: LucideIcon }[] = [
   { id: "free", labelKey: "arrangementFree", icon: Move },
   { id: "columns", labelKey: "arrangementColumns", icon: Columns3 },
-  { id: "tabs", labelKey: "arrangementTabs", icon: PanelTop },
   { id: "focus", labelKey: "arrangementFocus", icon: LayoutPanelLeft },
 ]
 
 export const COLUMN_COUNT_OPTIONS = [2, 3, 4]
 
-// Free/Columns/Tabs/Focus mode switcher, plus (when Columns is active) the column-count picker —
+// Free/Columns/Focus mode switcher, plus (when Columns is active) the column-count picker —
 // shared by the primary Terminal chrome and every canvas window's header bar so both write the
 // same arrangement UI to whichever layout scope they own (legal-terminal.tsx's top-level
 // arrangement/columnCount, or a canvas window's own screenLayouts[screenIndex] entry).

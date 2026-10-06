@@ -195,7 +195,6 @@
     "arrangements": {
       "free": "Free",
       "columns": "Columns",
-      "tabs": "Tabs",
       "focus": "Focus"
     },
     "paneCount": "{{count}}/21 panes",
@@ -290,7 +289,7 @@
           },
           "arrange": {
             "title": "Make it yours",
-            "body": "Switch between Free, Columns, Tabs and Focus. Pin a pane to lock it in place, and save layouts for different kinds of work."
+            "body": "Switch between Free, Columns and Focus. Pin a pane to lock it in place, and save layouts for different kinds of work."
           }
         }
       }
