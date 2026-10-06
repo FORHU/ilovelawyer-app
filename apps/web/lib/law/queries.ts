@@ -104,6 +104,8 @@ export interface LawSearchResult {
     /** "cache" — served from our own stored rows; "juris.ph" — fetched live and written through. */
     source: "juris.ph" | "cache" | "uk-legal-mcp" | string
   }
+  /** Opaque token for the next page, or null/absent when this search has no more pages. */
+  cursor?: string | null
   notice: string
 }
 
@@ -265,13 +267,14 @@ export function useLawDocumentQuery(params: {
 }
 
 /**
- * Local-first Philippine law search: the API checks our stored rows first and only calls
- * juris.ph on a miss (writing any new hit through to the DB). PH-tenant only — the caller
- * is responsible for not enabling this for a non-PH org (the API answers 501 if it does).
- * A query rather than a mutation so coming back from a judgment to the same `?q=` is served
- * from cache instead of re-running the search.
+ * Library search (PH: juris.ph, UK: UK Legal MCP). Paged like browse — 20 per page, "next"
+ * follows the opaque `cursor` — for UK case law; PH and UK legislation return one page with no
+ * cursor (juris.ph caps a search at 10 results and has no offset; legislation_search has no
+ * pagination). Only enable it for a PH or UK org (the API answers 501 otherwise). A query
+ * rather than a mutation so coming back from a judgment to the same `?q=` is served from cache
+ * instead of re-running the search.
  */
-export function useLawSearchQuery(params: {
+export function useLawSearchInfiniteQuery(params: {
   category: LawCategoryParam
   q: string
   /** UK case law only — narrows the search to these courts; empty means all courts. */
@@ -279,15 +282,18 @@ export function useLawSearchQuery(params: {
   limit?: number
   enabled: boolean
 }) {
-  const { category, q, limit = 5, enabled } = params
+  const { category, q, limit = 20, enabled } = params
   const sortedCourts = [...(params.courts ?? [])].sort()
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["law", "search", { category, q, courts: sortedCourts, limit }],
-    queryFn: () => {
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
       const p = new URLSearchParams({ category, q, limit: String(limit) })
       if (sortedCourts.length) p.set("court", sortedCourts.join(","))
+      if (pageParam) p.set("cursor", pageParam)
       return apiFetch<LawSearchResult>(`/api/law/search?${p.toString()}`)
     },
+    getNextPageParam: (last) => last.cursor ?? undefined,
     enabled: enabled && !!q,
     staleTime: 5 * 60 * 1000,
   })

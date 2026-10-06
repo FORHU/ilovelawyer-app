@@ -31,6 +31,7 @@
       "ukLegislation": "Legislation"
     },
     "resultCount": "Results: {{count}}",
+    "resultRange": "Showing {{from}}–{{to}}",
     "empty": "No results.",
     "untitled": "(untitled)",
     "viewDocument": "View document",

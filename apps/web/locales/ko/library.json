@@ -31,6 +31,7 @@
       "ukLegislation": "Legislation"
     },
     "resultCount": "결과: {{count}}",
+    "resultRange": "{{from}}–{{to}}번째 결과",
     "empty": "결과가 없습니다.",
     "untitled": "(제목 없음)",
     "viewDocument": "문서 보기",

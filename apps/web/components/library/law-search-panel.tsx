@@ -14,7 +14,7 @@ import {
   type LawTopic,
   type UkCourt,
   useLawBrowseInfiniteQuery,
-  useLawSearchQuery,
+  useLawSearchInfiniteQuery,
 } from "@/lib/law/queries"
 import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "@/lib/law/library-config"
 import { useDateLocale } from "@/lib/i18n/date-locale"
@@ -112,7 +112,7 @@ export function LawSearchPanel() {
   const courts = listParam("courts").filter((x) => cfg.courts.includes(x)) as UkCourt[]
   const setCaseType = (next: LawCaseType | null) => updateParams({ type: next, page: null })
   const setTopics = (next: LawTopic[]) => updateParams({ topics: next, page: null })
-  const setCourts = (next: UkCourt[]) => updateParams({ courts: next, page: null })
+  const setCourts = (next: UkCourt[]) => updateParams({ courts: next, page: null, spage: null })
   // Tracks only a fetch the user is actually waiting on (clicked Next past the fetched
   // pages) — kept separate from react-query's own `isFetchingNextPage`, which also flips
   // on/off for the silent background prefetch below. Wiring the Next button's spinner to
@@ -125,19 +125,17 @@ export function LawSearchPanel() {
   const canBrowse = cfg.browsable(category)
   // Only the court facet narrows a search (the API has no PH caseType/topic search filter), so
   // it's the one facet kept on screen and applied while search results are showing.
-  const search = useLawSearchQuery({
+  const search = useLawSearchInfiniteQuery({
     category,
     q: submittedQuery,
     courts: facetKind === "uk-court" ? courts : [],
     enabled: supported,
   })
   const showSearchSkeleton = useDelayedLoading(search.isLoading)
+  // The submit button's spinner tracks a (re-)run of the search, not the background prefetch
+  // of the next page below.
+  const isSearching = search.isFetching && !search.isFetchingNextPage
   const showingSearch = submittedQuery.length > 0
-
-  // Browse is cursor-paged (no total), so "page N" is an index into the fetched cursor pages.
-  // Every filter change clears ?page=, snapping back to page 1. A restored ?page=3 is reached
-  // by the prefetch effect below, which keeps fetching until that page is in hand.
-  const requestedPage = Math.max(0, (Number.parseInt(searchParams.get("page") ?? "", 10) || 1) - 1)
 
   const browse = useLawBrowseInfiniteQuery({
     category,
@@ -148,24 +146,37 @@ export function LawSearchPanel() {
   })
   const showBrowseSkeleton = useDelayedLoading(browse.isPending)
 
+  // Browse and search are both cursor-paged (no total), so "page N" is an index into the
+  // fetched cursor pages of whichever list is showing. Each keeps its own page in the URL —
+  // ?page= for browse, ?spage= for search — so clearing a search lands back on the browse page
+  // it left. Every filter change clears it, snapping back to page 1. A restored ?page=3 is
+  // reached by the prefetch effect below, which keeps fetching until that page is in hand.
+  const list = showingSearch ? search : browse
+  const pageParamKey = showingSearch ? "spage" : "page"
+  const requestedPage = Math.max(0, (Number.parseInt(searchParams.get(pageParamKey) ?? "", 10) || 1) - 1)
+
   // The page-number row can only show pages already fetched, and each one depends on the
   // previous page's cursor, so they can't be fetched in parallel ahead of time. Without this,
   // pageCount trails one behind `current` on every forward click, so the pagination's sliding
   // window (see components/ui/pagination.tsx) can only ever show pages up to `current` — it
   // can never centre the current page the way it does once the true end is known. This keeps
   // fetching one page at a time until enough are in hand to fill the window centred on
-  // whatever page is currently requested.
-  const browsePageCount = browse.data?.pages.length ?? 0
+  // whatever page is currently requested. Search only prefetches the one page after the
+  // current one: each UK search page is a slow MCP call per selected court, and a search is
+  // usually abandoned well before its fifth page.
+  const listPageCount = list.data?.pages.length ?? 0
   React.useEffect(() => {
-    if (!browse.hasNextPage || browse.isFetchingNextPage) return
-    const desiredPageCount = Math.max(PAGINATION_WINDOW_SIZE, requestedPage + 1 + PAGINATION_WINDOW_HALF)
-    if (browsePageCount < desiredPageCount) {
-      void browse.fetchNextPage()
+    if (!list.hasNextPage || list.isFetchingNextPage) return
+    const desiredPageCount = showingSearch
+      ? requestedPage + 2
+      : Math.max(PAGINATION_WINDOW_SIZE, requestedPage + 1 + PAGINATION_WINDOW_HALF)
+    if (listPageCount < desiredPageCount) {
+      void list.fetchNextPage()
     }
-    // `browse` itself is deliberately omitted below — react-query hands back a fresh object
+    // `list` itself is deliberately omitted below — react-query hands back a fresh object
     // every render, and the primitives already listed capture everything this needs to react to.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [browse.hasNextPage, browse.isFetchingNextPage, browsePageCount, requestedPage])
+  }, [showingSearch, list.hasNextPage, list.isFetchingNextPage, listPageCount, requestedPage])
 
   if (!supported) {
     return (
@@ -182,14 +193,14 @@ export function LawSearchPanel() {
 
   const backToBrowse = () => {
     setQuery("")
-    updateParams({ q: null })
+    updateParams({ q: null, spage: null })
   }
 
   const pickCategory = (next: LawCategoryParam) => {
     if (next === category) return
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
     setQuery("")
-    updateParams({ category: next, q: null, type: null, topics: null, courts: null, page: null })
+    updateParams({ category: next, q: null, spage: null, type: null, topics: null, courts: null, page: null })
   }
 
   const toggleTopic = (topic: LawTopic) =>
@@ -204,25 +215,45 @@ export function LawSearchPanel() {
     if (!q) return
     // Re-submitting the same text re-runs it rather than just showing the cached results.
     if (q === submittedQuery) void search.refetch()
-    else updateParams({ q })
+    else updateParams({ q, spage: null })
   }
 
-  const browsePages = browse.data?.pages ?? []
-  const pageIndex = Math.min(requestedPage, Math.max(0, browsePages.length - 1))
-  const browseItems = browsePages[pageIndex]?.items ?? []
-  const isLastPage = pageIndex >= browsePages.length - 1 && !browse.hasNextPage
-  const goToPage = (index: number) => updateParams({ page: index > 0 ? String(index + 1) : null })
+  const listPages = list.data?.pages ?? []
+  const pageIndex = Math.min(requestedPage, Math.max(0, listPages.length - 1))
+  const pageItems = listPages[pageIndex]?.items ?? []
+  const isLastPage = pageIndex >= listPages.length - 1 && !list.hasNextPage
+  const showPagination = pageItems.length > 0 && (pageIndex > 0 || !isLastPage)
+  const goToPage = (index: number) => updateParams({ [pageParamKey]: index > 0 ? String(index + 1) : null })
   const goNext = async () => {
-    if (pageIndex + 1 < browsePages.length) return goToPage(pageIndex + 1)
+    if (pageIndex + 1 < listPages.length) return goToPage(pageIndex + 1)
     setIsNavigatingNext(true)
     try {
-      const res = await browse.fetchNextPage()
+      const res = await list.fetchNextPage()
       if ((res.data?.pages.length ?? 0) > pageIndex + 1) goToPage(pageIndex + 1)
     } finally {
       setIsNavigatingNext(false)
     }
   }
-  const notice = showingSearch ? search.data?.notice : browse.data?.pages[0]?.notice
+  // A search has no known total, so a multi-page one shows the range on screen ("21–40")
+  // rather than a count that would only ever be this page's.
+  const firstOnPage = listPages.slice(0, pageIndex).reduce((n, p) => n + p.items.length, 0) + 1
+  const notice = list.data?.pages[0]?.notice
+
+  const pagination = (
+    <CursorPagination
+      pageIndex={pageIndex}
+      pageCount={listPages.length}
+      hasMore={!isLastPage}
+      isFetchingNext={isNavigatingNext}
+      onGoToPage={goToPage}
+      onNext={() => void goNext()}
+      labels={{
+        previous: t("lawSearch.pagePrevious"),
+        next: t("lawSearch.pageNext"),
+      }}
+      className="justify-center pt-2"
+    />
+  )
 
   const renderCard = (item: LawSearchItem) => {
     const rowId = item.stored_id || item.id
@@ -363,10 +394,10 @@ export function LawSearchPanel() {
 
           <button
             type="submit"
-            disabled={search.isFetching || !query.trim()}
+            disabled={isSearching || !query.trim()}
             className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
-            {search.isFetching ? (
+            {isSearching ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <Search className="size-4" aria-hidden="true" />
@@ -429,13 +460,17 @@ export function LawSearchPanel() {
             {search.data && (
               <>
                 <p className="text-xs text-muted-foreground">
-                  {t("lawSearch.resultCount", { count: search.data.meta.count })}
+                  {showPagination
+                    ? t("lawSearch.resultRange", { from: firstOnPage, to: firstOnPage + pageItems.length - 1 })
+                    : t("lawSearch.resultCount", { count: pageItems.length })}
                 </p>
-                {search.data.items.length === 0 ? (
+                {pageItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("lawSearch.empty")}</p>
                 ) : (
-                  <div className={cardGridClass}>{search.data.items.map(renderCard)}</div>
+                  <div className={cardGridClass}>{pageItems.map(renderCard)}</div>
                 )}
+
+                {showPagination && pagination}
               </>
             )}
           </div>
@@ -459,27 +494,13 @@ export function LawSearchPanel() {
 
             {browse.data && (
               <>
-                {browseItems.length === 0 ? (
+                {pageItems.length === 0 ? (
                   <p className="py-6 text-sm text-muted-foreground">{t("lawSearch.browseEmpty")}</p>
                 ) : (
-                  <div className={cardGridClass}>{browseItems.map(renderCard)}</div>
+                  <div className={cardGridClass}>{pageItems.map(renderCard)}</div>
                 )}
 
-                {browseItems.length > 0 && (pageIndex > 0 || !isLastPage) && (
-                  <CursorPagination
-                    pageIndex={pageIndex}
-                    pageCount={browsePages.length}
-                    hasMore={!isLastPage}
-                    isFetchingNext={isNavigatingNext}
-                    onGoToPage={goToPage}
-                    onNext={() => void goNext()}
-                    labels={{
-                      previous: t("lawSearch.pagePrevious"),
-                      next: t("lawSearch.pageNext"),
-                    }}
-                    className="justify-center pt-2"
-                  />
-                )}
+                {showPagination && pagination}
               </>
             )}
           </div>
