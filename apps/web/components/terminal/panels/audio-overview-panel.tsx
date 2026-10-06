@@ -75,7 +75,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   // element — and whatever is playing — survives a tab switch.
   return (
     <div ref={panelRef} data-panel-scroll className="flex h-full min-h-0 flex-col text-[13px] text-foreground">
-      <div className={`flex shrink-0 items-center gap-2 px-3 ${compact ? "py-1.5" : "py-2"}`}>
+      <div className={`flex shrink-0 flex-wrap items-center gap-2 px-3 ${compact ? "py-1.5" : "py-2"}`}>
         <AudioOverviewViewTabs view={view} onChange={setView} />
         {showsScript && showCaption ? (
           <span title={caption} className="min-w-0 flex-1 truncate px-1 font-mono text-[10px] uppercase tracking-[0.04em] text-muted-foreground">

@@ -16,6 +16,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 
 interface SourcesPanelProps {
   expanded: boolean;
+  /** The case the active thread belongs to — lets each piece of evidence open its document in
+   * the Document Viewer tab. Unset outside a case (no viewer to open it in). */
+  caseId?: string;
   onExpandedChange: (expanded: boolean) => void;
   /** Evidence, authorities, and topics all come from whichever thread ThreadPicker has active,
    * not a document selection of its own. */

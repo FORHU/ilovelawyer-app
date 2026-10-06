@@ -76,6 +76,8 @@ export type AiGenerationKind =
   | "contradictions"
   | "caseStrategy"
   | "caseFinding"
+  | "weaknessRegenerate"
+  | "strengthRegenerate"
   | "mindMap"
   | "audioOverviewScript"
   | "citationExpand"
@@ -660,7 +662,19 @@ export function useAddAuthorityMutation(caseId: string) {
 export function useUpdateAuthorityMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: string; stance?: AuthorityStance; findingId?: string | null }) =>
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string
+      stance?: AuthorityStance
+      // A field left out is kept; "" clears it (title excepted — the API rejects an empty one).
+      title?: string
+      subtitle?: string
+      citation?: string
+      rationale?: string
+      findingId?: string | null
+    }) =>
       apiFetch(`/api/my-cases/${caseId}/authorities/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -890,6 +904,24 @@ export function useJevCheckFindingMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+/** One findings panel's Regenerate — rewrites only that panel's AI rows (lawyer-edited ones stay).
+ * Queued: the panel follows useAiJobStatus(caseId, "weaknessRegenerate" | "strengthRegenerate"),
+ * which refreshes the snapshot on DONE. 409 while the whole case's findings are updating. */
+export function useRegenerateFindingsMutation(caseId: string, category: "WEAKNESS" | "STRENGTH") {
+  const queryClient = useQueryClient()
+  const kind = category === "WEAKNESS" ? "weaknessRegenerate" : "strengthRegenerate"
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/findings/regenerate`, {
+        method: "POST",
+        body: JSON.stringify({ category }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, kind) })
     },
   })
 }

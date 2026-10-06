@@ -22,6 +22,17 @@ export const PANEL_IDS = [
 ] as const
 
 export type PanelId = (typeof PANEL_IDS)[number]
+
+/** Panes that belong together sit next to each other. Mirrors ilovelawyer-api's PANEL_GROUPS — keep both in sync. */
+export const PANEL_GROUPS: readonly (readonly PanelId[])[] = [
+  ["command", "evidence", "procedure", "witnesses", "damages"],
+  ["law", "legalIssues", "decisions"],
+  ["strengths", "weaknesses", "attackStrategy", "defenseStrategy", "redTeam", "theories"],
+  ["chat", "mindMap", "caseReconstruction", "audioOverview", "trace"],
+]
+
+export const panelGroupOf = (id: PanelId): number => PANEL_GROUPS.findIndex((ids) => ids.includes(id))
+
 export type PresetValue = "PANE_1" | "PANE_2" | "PANE_4" | "PANE_6"
 export const ARRANGEMENT_VALUES = ["free", "columns", "tabs", "focus"] as const
 export type ArrangementValue = (typeof ARRANGEMENT_VALUES)[number]
@@ -54,6 +65,8 @@ export interface WorkspaceLayout {
   /** Optional — absent on workspaces saved before arrangement modes existed, treated as "free". */
   arrangement?: ArrangementValue
   panels: PanelLayout[]
+  /** Set by the API once a saved layout has had its one-time pane regroup. Round-trip it; never set it here. */
+  layoutVersion?: number
   /** Columns mode: how many columns (2-4) and their widths as fractions summing to 1. */
   columnCount?: number
   columnWidths?: number[]
@@ -342,7 +355,8 @@ export interface SnapshotProcedureItem {
   dueDate?: string | null
 }
 
-export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED"
+/** SCENE: raised by scene generation from a scene's unresolved gap — never sent from a panel. */
+export type ProcedureSourceKind = "FINDING" | "DAMAGE" | "WITNESS_NEED" | "SCENE"
 export type ProcedureAutoCloseReason =
   | "ISSUE_RESOLVED"
   | "WEAKNESS_CLOSED"
@@ -1061,10 +1075,14 @@ export interface DeadlineRule {
 // on a shared case each turn is attributed to the member who asked.
 export interface TraceTurn {
   turnId: string
-  /** 1-based position among the case's traced turns, oldest first — the pager's "Turn N". */
+  /** What produced the run: "chat" for a question, otherwise the pane's generation ("witnessScoring",
+   * "caseReconstruction", ...). Named and filtered by in the pane. */
+  source: string
+  /** 1-based position among the case's runs of the same source, oldest first — "Question 3",
+   * "Witness scoring 2". Counted over every run of that source, so a filter never renumbers it. */
   number: number
-  /** What was asked, flattened to one line. */
-  title: string
+  /** What was asked, flattened to one line — a chat question only. Null for a pane's generation. */
+  title: string | null
   userId: string | null
   /** Null once the member has been removed; shown as "Former member". */
   userName: string | null

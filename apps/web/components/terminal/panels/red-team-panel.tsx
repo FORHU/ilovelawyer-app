@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { Loader2, Sparkles } from "lucide-react"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
 import { useAiJobStatus, useGenerateRedTeamMutation } from "@/lib/terminal/mutations"
@@ -50,7 +51,7 @@ export function RedTeamPanel({
 
   return (
     <PanelBody gap="3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
         <button
           type="button"
@@ -124,9 +125,10 @@ function RankedArguments({ ranked }: { ranked: RedTeamArguments }) {
                 type="button"
                 onClick={() => setOpen(isOpen ? null : i)}
                 aria-expanded={isOpen}
-                className="flex w-full items-center justify-between gap-3 text-left"
+                className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1 text-left"
               >
-                <span className="min-w-0 flex-1">
+                {/* 8rem floor: in a narrow pane the delta and pill drop under the title instead of squeezing it. */}
+                <span className="min-w-0 flex-[1_1_8rem]">
                   <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
                     {a.title}
                     {flagged ? <JevFlag title={t(`redTeamJevSupport.${jev.support}`)} /> : null}
@@ -166,7 +168,11 @@ function RankedArguments({ ranked }: { ranked: RedTeamArguments }) {
                   ) : null}
                   <p className="text-muted-foreground">
                     {t("redTeamRestsOn", { kind: t(`redTeamSource.${a.source.kind}`) })}{" "}
-                    <span className="text-foreground">“{a.source.label}”</span>
+                    <span className="text-foreground">
+                      “
+                      {a.source.kind === "DOCUMENT" ? <DocumentLink name={a.source.label}>{a.source.label}</DocumentLink> : a.source.label}
+                      ”
+                    </span>
                   </p>
                 </div>
               ) : null}

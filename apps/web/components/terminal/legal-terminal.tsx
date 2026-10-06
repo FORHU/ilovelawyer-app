@@ -45,6 +45,7 @@ import { ScreenPresetsModal } from "@/components/terminal/screen-presets-modal"
 import { LayoutBuilderModal } from "@/components/terminal/layout-builder-modal"
 import { createPanelPlacementActions } from "@/lib/terminal/panel-placement"
 import { CaseBriefContent } from "@/components/case-brief/case-brief-content"
+import { DocumentViewerProvider } from "@/components/shared/document-viewer"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@workspace/ui/components/sheet"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import {
@@ -230,7 +231,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // when it goes away. unloadingRef flips true right before that happens, so the reaper and the
   // sync channel below can skip reacting to the close-echo it causes — see the hook's own doc
   // comment for why that echo is otherwise destructive.
-  const unloadingRef = useCloseCanvasWindowsOnUnload(canvasWindowsRef)
+  const unloadingRef = useCloseCanvasWindowsOnUnload(caseId, canvasWindowsRef)
 
   // Only reliable cross-window signal a canvas window gives its opener without any cooperation
   // from the popped-out page itself (no postMessage/BroadcastChannel wiring needed either side).
@@ -724,6 +725,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   return (
     <PaneActivityContext.Provider value={paneActivity}>
+    <DocumentViewerProvider caseId={caseId}>
     <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background font-['Inter'] text-foreground">
         {/* Case row */}
         <div className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card px-4">
@@ -1098,6 +1100,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         </div>
       </div>
     </div>
+    </DocumentViewerProvider>
     </PaneActivityContext.Provider>
   )
 }

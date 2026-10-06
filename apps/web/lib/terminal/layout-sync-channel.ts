@@ -14,6 +14,7 @@ export type SyncMessage =
   | { type: "layout"; layoutJson: WorkspaceLayout; workspaceId: string }
   | { type: "screen-closing"; screenIndex: number }
   | { type: "request-layout" }
+  | { type: "terminal-closing" }
 
 // Shared by legal-terminal.tsx and the canvas route — both maintain the same shape of local
 // layout state (layout/setLayout, lastSavedLayoutRef, canvasWindowsRef), so one hook covers both.
@@ -37,6 +38,7 @@ export function useLayoutSyncChannel({
   canvasWindowsRef,
   setWorkspaceId,
   unloadingRef,
+  closeOnTerminalClosing,
 }: {
   caseId: string
   workspaceId: string
@@ -56,6 +58,10 @@ export function useLayoutSyncChannel({
    * "screen-closing" right back here; reacting to that echo while going down ourselves would
    * reassign those panels to screen 0 without retiling, scattering them for the next reopen. */
   unloadingRef?: React.RefObject<boolean>
+  /** Canvas windows only: close this window when the primary terminal announces it is going away.
+   * The primary's own canvasWindowsRef only holds windows IT opened, so with 3+ screens a canvas
+   * opened by another canvas (screen 2+) would otherwise be orphaned. Needs `unloadingRef`. */
+  closeOnTerminalClosing?: boolean
 }): { broadcastLayout: (layoutJson: WorkspaceLayout) => void } {
   const channelRef = useRef<BroadcastChannel | null>(null)
   // Read inside the message handler without re-subscribing on every change — this hook's own
@@ -102,6 +108,14 @@ export function useLayoutSyncChannel({
           setLayout((prev) => (prev ? applyScreenClosedFallback(prev, msg.screenIndex) : prev))
           return
         }
+        case "terminal-closing": {
+          if (!closeOnTerminalClosing) return
+          // Flip before closing: sibling canvases are closing too and will broadcast
+          // "screen-closing" at each other; reacting would scatter panels and re-save the layout.
+          if (unloadingRef) unloadingRef.current = true
+          window.close()
+          return
+        }
         case "request-layout": {
           const current = layoutRef.current
           if (current && workspaceIdRef.current) {
@@ -135,7 +149,7 @@ export function useLayoutSyncChannel({
 // One-shot sender for a window that is itself about to unload (pagehide) and wants to announce it
 // instantly rather than let the poll discover it up to 500ms later. Opens a channel, posts, closes
 // it immediately — no need to keep it open for a single message.
-export function announceWindowClosing(caseId: string, message: { type: "screen-closing"; screenIndex: number }): void {
+export function announceWindowClosing(caseId: string, message: Extract<SyncMessage, { type: "screen-closing" | "terminal-closing" }>): void {
   if (typeof BroadcastChannel === "undefined") return
   const channel = new BroadcastChannel(channelName(caseId))
   channel.postMessage(message satisfies SyncMessage)

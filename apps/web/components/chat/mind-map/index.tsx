@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import ReactDOM from 'react-dom';
 import { useTheme } from 'next-themes';
@@ -107,7 +107,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
   // Holds enriched data from 3D click (description, media) since 3D is outside React Flow
   const [selected3DNodeData, setSelected3DNodeData] = useState<any>(null);
 
-  const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNodes, setViewport } = useReactFlow();
   const flowStore = useStoreApi();
   const nodesInitialized = useNodesInitialized();
 
@@ -258,6 +258,122 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
       fitReadable();
     }
   }, [is3D, fitReadable]);
+
+  // Esc closes the details card. Left alone while typing in one of its fields (the editor's
+  // inputs handle their own Esc), and while the regenerate warning is up.
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || confirmRegenerate) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      handleCloseDetails();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedNodeId, confirmRegenerate, handleCloseDetails]);
+
+  // In native fullscreen the browser takes Esc to exit fullscreen and the page never sees it. While
+  // the card is open, Keyboard Lock (Chromium only) hands a tap of Esc to the page instead, so it
+  // closes the card first; holding Esc still exits fullscreen. Other browsers ignore this and keep
+  // their default.
+  useEffect(() => {
+    const keyboard = (navigator as Navigator & { keyboard?: { lock?: (keys: string[]) => Promise<void>; unlock?: () => void } }).keyboard;
+    if (!isFullScreen || !selectedNodeId || !keyboard?.lock) return;
+    keyboard.lock(['Escape']).catch(() => {});
+    return () => keyboard.unlock?.();
+  }, [isFullScreen, selectedNodeId]);
+
+  // The details card's CSS max-height is a share of the map's own box, but that box can run past
+  // what's actually on screen — Studio gives the map a 320px minimum height, so in a short window
+  // its bottom sits below the window, and a long card got cut off there with no scrollbar (it
+  // still "fit" the box). This caps the card at whatever is visible below its top: the window, or
+  // any clipping ancestor, whichever ends first. Only for the top-anchored card (md up); the
+  // bottom sheet below md grows upward from the map's bottom edge instead.
+  const [detailMaxHeight, setDetailMaxHeight] = useState<number | null>(null);
+  const fitDetailCard = useCallback(() => {
+    const container = containerRef.current;
+    const card = container?.querySelector<HTMLElement>('[data-mind-map-detail]');
+    if (!container || !card || getComputedStyle(card).top === 'auto') {
+      setDetailMaxHeight(null);
+      return;
+    }
+    // In native fullscreen the map is the whole screen; its page ancestors no longer clip it.
+    const stopAt = document.fullscreenElement;
+    let bottom = window.innerHeight;
+    for (let el: HTMLElement | null = container; el; el = el.parentElement) {
+      if (getComputedStyle(el).overflowY !== 'visible') bottom = Math.min(bottom, el.getBoundingClientRect().bottom);
+      if (el === stopAt) break;
+    }
+    // offsetTop, not the card's own rect: its entrance animation moves it with a transform.
+    const top = container.getBoundingClientRect().top + card.offsetTop;
+    const margin = 16;
+    const next = Math.max(160, Math.floor(bottom - top - margin));
+    setDetailMaxHeight((prev) => (prev === next ? prev : next));
+  }, []);
+  useLayoutEffect(() => {
+    if (!selectedNodeId) return;
+    fitDetailCard();
+    window.addEventListener('resize', fitDetailCard);
+    // Capture: a scrolling ancestor (the page, a workspace pane) moves the visible bottom too.
+    window.addEventListener('scroll', fitDetailCard, true);
+    const observer = new ResizeObserver(fitDetailCard);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => {
+      window.removeEventListener('resize', fitDetailCard);
+      window.removeEventListener('scroll', fitDetailCard, true);
+      observer.disconnect();
+    };
+  }, [selectedNodeId, isFullScreen, fitDetailCard]);
+
+  // Frames a clicked 2D node beside the details card, in the part of the canvas the card doesn't
+  // cover (same idea as MindMap3D's focusCameraOn) — not the centre of the whole canvas, which put
+  // it under the card in a narrow pane.
+  const flowWrapperRef = useRef<HTMLDivElement>(null);
+  const focusNode = useCallback((node: Node) => {
+    // Waits a frame so the card (rendered by this same click) can be measured.
+    requestAnimationFrame(() => {
+      const wrapper = flowWrapperRef.current;
+      const width = node.width ?? 0;
+      const height = node.height ?? 0;
+      if (!wrapper || !width || !height) {
+        fitView({ nodes: [node], duration: 1000, padding: 0.6 });
+        return;
+      }
+      const w = wrapper.getBoundingClientRect();
+      const card = containerRef.current?.querySelector('[data-mind-map-detail]')?.getBoundingClientRect();
+      const margin = 24;
+      let coveredX = 0;
+      let coveredY = 0;
+      if (card) {
+        if (card.width < w.width * 0.8) coveredX = Math.max(0, w.right - card.left + margin);
+        else coveredY = Math.max(0, w.bottom - card.top + margin);
+      }
+      // Card covers nearly everything (very narrow canvas) — nowhere beside it to frame the node.
+      if (w.width - coveredX < 160) coveredX = 0;
+      if (w.height - coveredY < 120) coveredY = 0;
+      const freeW = w.width - coveredX;
+      const freeH = w.height - coveredY;
+      // Same zoom fitView's padding 0.6 gives, worked out against the free area.
+      const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(freeW / (width * 1.6), freeH / (height * 1.6))));
+      const pos = node.positionAbsolute ?? node.position;
+      const cx = pos.x + width / 2;
+      const cy = pos.y + height / 2;
+      // Where the node's centre lands on screen: centred in the free area by default, but with the
+      // card on the right it's pulled over to sit just left of the card and level with it, so the
+      // two read as a pair rather than with half the canvas between them.
+      let screenX = freeW / 2;
+      let screenY = freeH / 2;
+      if (card && coveredX > 0) {
+        const halfW = (width * zoom) / 2;
+        const halfH = (height * zoom) / 2;
+        screenX = Math.max(freeW / 2, freeW - margin - halfW);
+        const cardMidY = (card.top + card.bottom) / 2 - w.top;
+        screenY = Math.min(Math.max(cardMidY, halfH + margin), w.height - halfH - margin);
+      }
+      setViewport({ x: screenX - cx * zoom, y: screenY - cy * zoom, zoom }, { duration: 1000 });
+    });
+  }, [fitView, setViewport]);
 
 
   // Reconciles collapse state against a freshly-generated tree: node ids that persisted keep
@@ -530,7 +646,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
           </div>
         )}
 
-        <div className={`absolute inset-x-0 bottom-0 top-14 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div ref={flowWrapperRef} className={`absolute inset-x-0 bottom-0 top-14 transition-opacity duration-700 ${is3D ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <ReactFlow
             nodes={nodesWithCallbacks}
             edges={edges}
@@ -544,7 +660,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
                 media: node.data.media,
                 color: node.data.color
               });
-              fitView({ nodes: [node], duration: 1000, padding: 0.6 });
+              focusNode(node);
             }}
             onPaneClick={handleCloseDetails}
             nodeTypes={nodeTypes}
@@ -828,6 +944,9 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
               exit={{ opacity: 0, scale: 0.98, y: 20 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               className={MIND_MAP_CHROME.detail}
+              // Overrides the class's max-height with the on-screen space (fitDetailCard) — never
+              // taller than the class allows, since the map's own box is one of the limits measured.
+              style={detailMaxHeight !== null ? { maxHeight: detailMaxHeight } : undefined}
               // Measured by MindMap3D to frame the clicked node beside this card, not under it.
               data-mind-map-detail=""
             >
@@ -842,7 +961,7 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
               />
 
               <div
-                className="p-5 md:p-7"
+                className="min-h-0 overflow-y-auto p-5 md:p-7"
                 style={{
                   borderTop: `2px solid ${selectedNodeData.color?.startsWith('#') ? selectedNodeData.color : (selectedNodeData.color?.replace('bg-', '') || '#e9c176')}`,
                   boxShadow: `0 18px 45px ${selectedNodeData.color?.startsWith('#') ? selectedNodeData.color : (selectedNodeData.color?.replace('bg-', '') || '#e9c176')}40`,

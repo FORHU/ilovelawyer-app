@@ -28,11 +28,25 @@ export function TopicRow({
   isActive,
   onJump,
   compact,
+  dotClassName,
+  leading,
+  tooltipSide = "left",
+  tooltipClassName,
 }: {
   topic: TopicNavigatorItem;
   isActive: boolean;
   onJump: (index: number) => void;
   compact: boolean;
+  /** Colors the dot in both states, replacing the default gold-when-active / gray. For callers
+   * (the Terminal's trace pane) whose rows carry a meaning of their own. */
+  dotClassName?: string;
+  /** Shown between the dot and the title. Ignored in `compact`. */
+  leading?: ReactNode;
+  /** Which side the tooltip opens on. Defaults to the left, where the chat's topic rail sits. */
+  tooltipSide?: "top" | "right" | "bottom" | "left";
+  /** Extra classes for the tooltip. The shared tooltip has no maximum width, so a long title
+   * stretches in one line until it leaves the window — callers with long titles cap and wrap it. */
+  tooltipClassName?: string;
 }) {
   return (
     <Tooltip>
@@ -46,18 +60,23 @@ export function TopicRow({
         >
           <span
             className={`shrink-0 rounded-full ${compact ? "w-2 h-2" : "w-1.5 h-1.5"} ${
-              isActive ? "bg-brand-gold" : "bg-border"
+              dotClassName ?? (isActive ? "bg-brand-gold" : "bg-border")
             }`}
             aria-hidden="true"
           />
           {compact ? (
             <span className="sr-only">{topic.title}</span>
           ) : (
-            <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
+            <>
+              {leading}
+              <span className="text-[13px] font-['Inter'] truncate">{topic.title}</span>
+            </>
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="left">{topic.title}</TooltipContent>
+      <TooltipContent side={tooltipSide} className={tooltipClassName}>
+        {topic.title}
+      </TooltipContent>
     </Tooltip>
   );
 }

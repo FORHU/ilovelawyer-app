@@ -61,8 +61,8 @@ function KpiTile({
   return (
     <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border p-3">
       <p className={labelTextClass}>{label}</p>
-      <div className="flex items-end justify-between gap-2">
-        <p className="flex items-baseline gap-1 text-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1">
+        <p className="flex min-w-0 items-baseline gap-1 text-foreground">
           <span className="text-2xl leading-none font-semibold tabular-nums">{value}</span>
           {unit ? <span className="text-xs text-muted-foreground">{unit}</span> : null}
         </p>
@@ -112,12 +112,17 @@ export function CommandPanel({
           </Badge>
         ) : null}
 
-        <section className="rounded-2xl border border-border p-4">
+        <section className="rounded-2xl border border-border p-3 @3xs:p-4">
           {outlook ? (
             <div className="grid items-center gap-x-6 gap-y-3 @md:grid-cols-[auto_1fr]">
-              <div className="flex flex-col items-center gap-1">
-                <OutlookGauge band={outlook.band} label={`${t(`band_${outlook.band}`)}, ${t(`confidence_${outlook.confidence}`)}`} />
-                <div className="flex w-40 justify-between font-mono text-[9px] tracking-[1px] text-muted-foreground uppercase">
+              <div className="flex min-w-0 flex-col items-center gap-1">
+                <OutlookGauge
+                  band={outlook.band}
+                  label={`${t(`band_${outlook.band}`)}, ${t(`confidence_${outlook.confidence}`)}`}
+                  // Full size beside the history once there's room; shrinks with a narrow pane instead of overflowing it.
+                  className="w-full max-w-40 @md:w-40"
+                />
+                <div className="flex w-full max-w-40 justify-between gap-2 font-mono @md:w-40 text-[9px] tracking-[1px] text-muted-foreground uppercase">
                   <span>{t("band_UNFAVORABLE")}</span>
                   <span>{t("band_FAVORABLE")}</span>
                 </div>
@@ -158,7 +163,7 @@ export function CommandPanel({
           )}
         </section>
 
-        <div className="grid grid-cols-2 gap-2 @xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 @3xs:grid-cols-2 @xl:grid-cols-4">
           {view.health ? (
             <KpiTile label={t("kpiHealth")} value={view.health.value} unit="/100" kpi={view.health} upIsGood />
           ) : null}
@@ -207,7 +212,7 @@ export function CommandPanel({
         ) : null}
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2">
             <p className={labelTextClass}>
               {t("keyIssues")} · {risks.length}
             </p>

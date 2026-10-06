@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { Loader2, Sparkles, Trash2 } from "lucide-react"
 import {
@@ -115,8 +116,8 @@ export function WitnessPanel({
 
   return (
     <PanelBody gap="4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-[1_1_10rem]">
           <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
           {isExtracting ? (
             <p className={`mt-1 inline-flex items-center gap-1.5 ${labelTextClass}`}>
@@ -252,9 +253,13 @@ export function WitnessPanel({
                     {w.contact ? <p className="mt-1 text-[13px] text-muted-foreground">{w.contact}</p> : null}
                     {aiFound ? (
                       <p className={`mt-1 ${labelTextClass}`}>
-                        {w.sourceDocument
-                          ? t("witnessFoundIn", { doc: w.sourceDocument.name })
-                          : t("witnessFoundByAi")}
+                        {w.sourceDocument ? (
+                          <DocumentLink docId={w.sourceDocument.id} name={w.sourceDocument.name}>
+                            {t("witnessFoundIn", { doc: w.sourceDocument.name })}
+                          </DocumentLink>
+                        ) : (
+                          t("witnessFoundByAi")
+                        )}
                         {w.sourceQuote ? (
                           <>
                             {" · "}
@@ -374,7 +379,7 @@ export function WitnessPanel({
                 </div>
                 {reasonsOpen && factorView.length > 0 ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className={labelTextClass}>{t("witnessFactorsTitle")}</p>
                       {onJumpToPanel ? (
                         <button
@@ -412,7 +417,11 @@ export function WitnessPanel({
                               <span className="not-italic">
                                 {" \u2014 "}
                                 {f.quoteVerified
-                                  ? t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })
+                                  ? (
+                                    <DocumentLink name={f.documentName}>
+                                      {t("witnessFactorQuoteFound", { doc: f.documentName ?? "" })}
+                                    </DocumentLink>
+                                  )
                                   : t("witnessFactorQuoteMissing")}
                               </span>
                             </blockquote>
@@ -537,7 +546,7 @@ export function WitnessPanel({
                               {setFactor.isError && setFactor.error instanceof Error ? (
                                 <p className="text-[11px] text-danger">{setFactor.error.message}</p>
                               ) : null}
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
                                   disabled={!factorAnswer || !factorNote.trim() || setFactor.isPending}
@@ -560,7 +569,9 @@ export function WitnessPanel({
                           {doneItem ? (
                             <>
                               <p className={`mt-1 ${labelTextClass}`}>
-                                {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                <DocumentLink docId={doneItem.documentId}>
+                                  {t("witnessProofLine", { doc: docName(doneItem.documentId) })}
+                                </DocumentLink>
                                 {" \u00b7 "}
                                 <span className={confirmed ? "text-emerald-500" : "text-amber-500"}>
                                   {confirmed ? t("witnessProofMatches") : t("witnessProofUnconfirmed")}

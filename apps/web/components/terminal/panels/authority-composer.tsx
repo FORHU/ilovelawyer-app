@@ -100,7 +100,7 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
         <div
           role="radiogroup"
           aria-labelledby={`${uid}-stance`}
-          className="grid grid-cols-3 gap-0.5 rounded-md border border-border bg-background p-0.5"
+          className="grid grid-cols-1 gap-0.5 rounded-md border border-border bg-background p-0.5 @3xs:grid-cols-3"
         >
           {STANCES.map((value) => (
             <button
@@ -201,7 +201,7 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
       )}
 
       <MutationError show={add.isError} />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={add.isPending || !title.trim()} className={primaryBtnClass}>
           {add.isPending ? t("saving") : t("addAuthority")}
         </button>

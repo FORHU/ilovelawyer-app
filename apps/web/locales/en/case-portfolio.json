@@ -37,6 +37,11 @@
     "step3Body": "Indexed for chat within minutes, then open the Workspace or Terminal."
   },
   "overview": {
+    "clientSide": "We act for",
+    "clientSideUnset": "Not set",
+    "clientSideClaimant": "Claimant / prosecution",
+    "clientSideRespondent": "Respondent / defence",
+    "clientSideHint": "Weaknesses and strengths are written from this side.",
     "tabOverview": "Overview",
     "tabWorkspace": "Workspace",
     "tabTerminal": "Legal Terminal",
@@ -68,7 +73,17 @@
     "consultations": "Consultations",
     "noConsultations": "No consultations yet.",
     "openWorkspace": "Open workspace",
-    "newConsultation": "New consultation"
+    "newConsultation": "New consultation",
+    "addParty": "Add party",
+    "editParty": "Edit {{name}}",
+    "removeParty": "Remove {{name}}",
+    "removePartyConfirm": "Remove {{name}} from this case?",
+    "partyNamePlaceholder": "Full name or company",
+    "partyDesignation": "Designation",
+    "saveParty": "Save",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "partySaveError": "Couldn't save the parties. Try again."
   },
   "tools": {
     "mindMap": "Mind Map",

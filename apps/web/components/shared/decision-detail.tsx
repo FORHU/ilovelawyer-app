@@ -2,6 +2,7 @@ import { CheckCircle2, ExternalLink, Info, Quote, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Badge } from "@workspace/ui/components/badge"
 import type { DecisionAlternative, DecisionEvidence, DecisionRecordPayload, DecisionRule } from "@/lib/terminal/types"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { displayDocumentLabel } from "@/lib/chat/document-label"
 
 export const CONFIDENCE_KEYS: Record<DecisionRecordPayload["confidence"], string> = {
@@ -42,6 +43,7 @@ export function EvidenceItem({
   active?: boolean
 }) {
   const { t } = useTranslation("terminal")
+  const label = displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))
   return (
     <li
       role={onClick ? "button" : undefined}
@@ -71,7 +73,9 @@ export function EvidenceItem({
          * "· paragraph N" pinpoint beside it. */}
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
           <span className="min-w-0 font-medium text-foreground wrap-anywhere">
-            {displayDocumentLabel(evidence.doc, t("decisionDocumentFallback", { defaultValue: "Document" }))}
+            <DocumentLink docId={evidence.docId} name={evidence.doc}>
+              {label}
+            </DocumentLink>
           </span>
           {evidence.pinpoint && (
             <span className="min-w-0 max-w-full rounded bg-muted px-1.5 text-[10.5px] leading-4 text-muted-foreground wrap-break-word dark:bg-overlay-hover">
@@ -161,7 +165,11 @@ function AlternativeItem({ alternative, rejectedWhyLabel }: { alternative: Decis
  * this) and the inline chat "Why?" drawer (which has no case row to dispute against, just the
  * per-message audited payload) — see docs/plans/differentiation-program.md Workstream A. Every
  * `verified` flag here was set by chat-wonder-v2-api's audit, never re-derived client-side. */
-export function DecisionDetailBody({ payload }: { payload: DecisionRecordPayload }) {
+export function DecisionDetailBody({
+  payload,
+}: {
+  payload: DecisionRecordPayload
+}) {
   const { t } = useTranslation("terminal")
 
   // `payload` is chat-wonder's own JSON, stored verbatim with no runtime validation (see the

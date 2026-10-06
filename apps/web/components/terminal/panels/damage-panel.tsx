@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { Check, ChevronRight, FileText, Pencil, Trash2 } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
@@ -120,13 +121,14 @@ export function DamagePanel({
             const status = STATUSES.find((s) => s.done === d.done)!
             return (
               <PanelRow key={d.id} className="flex-col items-stretch gap-0 p-0">
-                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 px-3 py-2.5">
+                {/* Wraps the amount and status under the title in a narrow pane rather than crushing the title to nothing. */}
+                <div className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2.5">
                   <button
                     type="button"
                     onClick={() => setOpenId(open ? null : d.id)}
                     aria-expanded={open}
                     aria-controls={`damage-detail-${d.id}`}
-                    className="flex min-w-0 items-center gap-1.5 text-left"
+                    className="flex min-w-0 flex-[1_1_9rem] flex-wrap items-center gap-x-1.5 gap-y-1 text-left"
                   >
                     <ChevronRight
                       className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
@@ -140,7 +142,7 @@ export function DamagePanel({
                     >
                       {t(DAMAGE_KIND_KEYS[d.kind])}
                     </Badge>
-                    <span className={cn("truncate text-[13px]", d.done ? "text-muted-foreground line-through" : "text-foreground")}>
+                    <span className={cn("min-w-0 truncate text-[13px]", d.done ? "text-muted-foreground line-through" : "text-foreground")}>
                       {d.title}
                     </span>
                     {!d.accepted ? (
@@ -149,7 +151,7 @@ export function DamagePanel({
                       </Badge>
                     ) : null}
                   </button>
-                  <span className="flex flex-col items-end gap-0.5 text-right">
+                  <span className="ml-auto flex flex-col items-end gap-0.5 text-right">
                     <span className="font-mono text-[12px] text-foreground tabular-nums">{d.amount != null ? money(d.amount) : d.kind === "REMEDY" ? (
                         <span className="font-sans text-[11px] text-muted-foreground">{t("damageNonMonetary")}</span>
                       ) : (
@@ -212,7 +214,7 @@ export function DamagePanel({
                           <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[12px] text-foreground">
                             <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                             <span className="truncate" title={sourceDoc}>
-                              {sourceDoc ?? t("damageSourceDocGone")}
+                              {sourceDoc ? <DocumentLink docId={d.sourceDocumentId}>{sourceDoc}</DocumentLink> : t("damageSourceDocGone")}
                             </span>
                           </span>
                           {onJumpToPanel && d.sourceDocumentId && sourceDoc ? (
@@ -232,7 +234,7 @@ export function DamagePanel({
                         ) : null}
                       </div>
                     ) : null}
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
                       {/* The entry's to-do carries its due date and ticks itself once it is awarded. */}
                       {d.accepted && !d.done ? (
                         <span className="mr-auto">

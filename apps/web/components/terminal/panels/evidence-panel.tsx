@@ -1,4 +1,5 @@
 import { createElement, useRef, useState } from "react"
+import { ViewDocumentButton } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
 import { ChevronDown, Folder, Loader2, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
@@ -105,10 +106,10 @@ function DocumentRow({
   const sizeLabel = size ? t(size.key, { n: size.n }) : null
   return (
     <li className="group flex w-full items-center gap-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover">
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-left">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-left @3xs:gap-3">
         <span
           aria-hidden="true"
-          className={`flex size-10 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
+          className={`hidden size-10 shrink-0 flex-col @3xs:flex items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
         >
           {createElement(fileTypeIcon(doc), { className: "size-4" })}
           <span className="font-mono text-[8px] font-semibold leading-none tracking-[0.5px]">{fileExtensionLabel(doc)}</span>
@@ -123,6 +124,7 @@ function DocumentRow({
         </span>
         <TerminalRagBadge status={doc.ragStatus} />
       </button>
+      <ViewDocumentButton docId={doc.id} />
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -130,7 +132,7 @@ function DocumentRow({
             disabled={isDeleting}
             onClick={onDelete}
             aria-label={t("removeDocument", { documentName: doc.name })}
-            className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-colors group-hover:opacity-100 hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
             {isDeleting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -184,12 +186,13 @@ export function EvidencePanel({
   return (
     <PanelBody gap="4">
       <div {...dragHandlers} className="relative rounded-lg">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <p className={labelTextClass}>
             {t("documents")} · {snapshot.documents.length}
           </p>
           <div className="flex items-center gap-2">
-            <p className={labelTextClass}>{t("clickRowForMetadata")}</p>
+            {/* A hint, not a control — dropped in a narrow pane so the count and upload button keep their row. */}
+            <p className={`hidden @xs:block ${labelTextClass}`}>{t("clickRowForMetadata")}</p>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button

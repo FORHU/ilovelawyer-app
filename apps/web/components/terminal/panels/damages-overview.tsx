@@ -95,7 +95,7 @@ export function DamagesOverview({
           </ul>
         </div>
 
-      <div className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 @3xs:grid-cols-2 @lg:grid-cols-4">
         <Tile icon={<Scale className="size-3.5" aria-hidden="true" />} label={t("damagesTileDamages")} value={summary.damageCount} tone="damage" />
         <Tile icon={<Gavel className="size-3.5" aria-hidden="true" />} label={t("damagesTileRemedies")} value={summary.remedyCount} tone="remedy" />
         <Tile

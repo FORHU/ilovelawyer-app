@@ -73,7 +73,7 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
 
   if (isBuilding || (hasIndexedDocuments && caseMindMap.refreshWillReplace)) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center-safe gap-3 overflow-y-auto p-4 text-center">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
         <p className="max-w-xs text-sm text-muted-foreground">{busyLabel}</p>
       </div>
@@ -82,7 +82,7 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
 
   if (hasIndexedDocuments) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center-safe gap-4 overflow-y-auto p-4 text-center">
         <p className="max-w-xs text-sm text-muted-foreground">
           {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.emptyWithDocuments")}
         </p>

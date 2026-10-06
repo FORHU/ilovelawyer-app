@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type ComponentType } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
-import { Check, FileText, Loader2, Paperclip, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import { Check, FileText, Loader2, Paperclip, RefreshCw, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 import {
   useAiJobStatus,
   useCreateFindingMutation,
   useCreateRiskMutation,
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
+  useRegenerateFindingsMutation,
   useUpdateFindingMutation,
 } from "@/lib/terminal/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
@@ -59,7 +61,8 @@ export interface RatedFindingConfig {
   doneTag?: FindingTag
   /** Sub-line when the row has no detail of its own (Strengths: the source document). */
   detailFallback?(finding: CaseFinding): string | null
-  /** Dim the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out). */
+  /** Mute the sub-line, from Jev's check (Strengths: a reference its source doesn't bear out) —
+   * pair it with a subHintKey that says why. */
   dimSubLine?(jev: unknown): boolean
   /** Show the ▲ impact number, and which direction of it is bad. */
   impact?: { badWhenUp: boolean; titleKey: string }
@@ -79,6 +82,8 @@ export interface RatedFindingConfig {
    * (keep in step with ilovelawyer-api utils/procedure-link.ts). `todoLabel` is the task the
    * to-do should say, when that isn't the row's own label. */
   checklist?: { fixedTag?: FindingTag; todoLabel?(finding: CaseFinding, t: TFunction<"terminal">): string }
+  /** Show a Regenerate button that rewrites only this panel's AI rows (Weaknesses, Strengths). */
+  regenerate?: "WEAKNESS" | "STRENGTH"
 }
 
 const UNRATED = { tone: "neutral" as Tone, label: "findingUnrated" }
@@ -99,6 +104,45 @@ function byPanelOrder(doneTag: FindingTag | undefined) {
 // The shared body of the panels whose rows carry a pill, a sub-line and Jev's check: an intro, the
 // done-share ring and tag mix, rows that expand to set the pill, edit the sub-line, read Jev's
 // check and run one on request, and the add form. Each panel supplies its rows and its config.
+/** Regenerates only this panel's AI rows — no other panel, and not the rest of the case analysis.
+ * Disabled while the whole case's findings are updating (`busy`), which rewrites this panel anyway. */
+function RegenerateFindingsButton({
+  caseId,
+  category,
+  busy,
+}: {
+  caseId: string
+  category: "WEAKNESS" | "STRENGTH"
+  busy: boolean
+}) {
+  const { t } = useTranslation("terminal")
+  const regenerate = useRegenerateFindingsMutation(caseId, category)
+  const job = useAiJobStatus(caseId, category === "WEAKNESS" ? "weaknessRegenerate" : "strengthRegenerate")
+  const running = regenerate.isPending || job.data?.status === "IN_PROGRESS"
+  const error = regenerate.error as (Error & { status?: number }) | null
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={() => regenerate.mutate()}
+        disabled={running || busy}
+        title={t("regenerateFindingsHint")}
+        className="flex items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:cursor-wait disabled:no-underline disabled:opacity-50"
+      >
+        {running ? (
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+        ) : (
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+        )}
+        {running ? t("generating") : t("regenerate")}
+      </button>
+      <MutationError show={regenerate.isError || job.data?.status === "FAILED"}>
+        {error?.status === 409 ? t("regenerateFindingsBusy") : undefined}
+      </MutationError>
+    </div>
+  )
+}
+
 export function RatedFindingPanel({
   caseId,
   items,
@@ -117,11 +161,17 @@ export function RatedFindingPanel({
   const flagRisk = useCreateRiskMutation(caseId)
   // Ids flagged from this panel this session, so a second click can't double-add.
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
+  // The row whose delete is waiting for a second click — same confirm step as citations.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   // Findings from an older format regenerate in the background when the Terminal loads the case
   // (CaseFindingAiSvc.scheduleIfOutdated on the API). useAiJobStatus refreshes the snapshot when it
   // finishes; Legal Issues reads the graph view, so refresh that too.
   const findingsJob = useAiJobStatus(caseId, "caseFinding")
-  const updating = findingsJob.data?.status === "IN_PROGRESS"
+  // "Updating analysis" in the Terminal header is the caseRefresh pipeline, which regenerates the
+  // findings after contradictions and Case Strategy — show the panel updating for the whole run,
+  // not only once its findings step starts (same as the Timeline and Visual Strategy panels).
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  const updating = findingsJob.data?.status === "IN_PROGRESS" || refreshJob.data?.status === "IN_PROGRESS"
   const queryClient = useQueryClient()
   const prevJobStatus = useRef(findingsJob.data?.status)
   useEffect(() => {
@@ -130,6 +180,13 @@ export function RatedFindingPanel({
     }
     prevJobStatus.current = findingsJob.data?.status
   }, [findingsJob.data?.status, caseId, queryClient])
+  const prevRefreshStatus = useRef(refreshJob.data?.status)
+  useEffect(() => {
+    if (prevRefreshStatus.current === "IN_PROGRESS" && refreshJob.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevRefreshStatus.current = refreshJob.data?.status
+  }, [refreshJob.data?.status, caseId, queryClient])
   const [label, setLabel] = useState("")
   const [newTag, setNewTag] = useState<FindingTag | "">("")
   const [open, setOpen] = useState<string | null>(null)
@@ -157,7 +214,14 @@ export function RatedFindingPanel({
 
   return (
     <PanelBody gap="3">
-      <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+      {config.regenerate ? (
+        <div className="flex items-start justify-between gap-3">
+          <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+          <RegenerateFindingsButton caseId={caseId} category={config.regenerate} busy={updating} />
+        </div>
+      ) : (
+        <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+      )}
       {updating ? (
         <p className={cn("inline-flex items-center gap-1.5", catalogBlurbClass)} role="status">
           <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -204,9 +268,10 @@ export function RatedFindingPanel({
                   type="button"
                   onClick={() => toggle(f)}
                   aria-expanded={isOpen}
-                  className={cn("flex w-full items-center justify-between gap-2.5 text-left", isDone && "opacity-60")}
+                  className={cn("flex w-full flex-wrap items-center justify-between gap-x-2.5 gap-y-1 text-left", isDone && "opacity-60")}
                 >
-                  <span className="min-w-0 flex-1">
+                  {/* 8rem floor: in a narrow pane the delta and pill drop under the title instead of squeezing it. */}
+                  <span className="min-w-0 flex-[1_1_8rem]">
                     <span className={cn("flex items-center gap-1.5", catalogTitleClass)}>
                       {f.label}
                       {flags.length > 0 ? (
@@ -219,7 +284,8 @@ export function RatedFindingPanel({
                     </span>
                     {subLine || hint ? (
                       <span className={catalogSubClass}>
-                        {subLine ? <span className={cn(dim && "line-through opacity-60")}>{subLine}</span> : null}
+                        {/* Muted, not struck through: the review couldn't confirm it, which isn't the same as wrong. */}
+                        {subLine ? <span className={cn(dim && "opacity-60")}>{subLine}</span> : null}
                         {subLine && hint ? " · " : null}
                         {hint ? <span className="text-warn">{t(hint)}</span> : null}
                       </span>
@@ -243,7 +309,9 @@ export function RatedFindingPanel({
                         <button
                           key={option.tag}
                           type="button"
-                          onClick={() => update.mutate({ id: f.id, tag: option.tag === f.tag ? null : option.tag })}
+                          // Picking the pill already set does nothing — a rating changes by picking another
+                          // pill. Clicking it used to clear the rating, which left AI rows "Unrated" by accident.
+                          onClick={() => option.tag !== f.tag && update.mutate({ id: f.id, tag: option.tag })}
                           disabled={update.isPending}
                           aria-pressed={option.tag === f.tag}
                           className={cn(
@@ -262,7 +330,7 @@ export function RatedFindingPanel({
                     </div>
 
                     <form
-                      className="flex gap-2"
+                      className="flex flex-wrap gap-2"
                       onSubmit={(e) => {
                         e.preventDefault()
                         update.mutate({ id: f.id, detail: detail.trim() || null })
@@ -296,7 +364,7 @@ export function RatedFindingPanel({
                           <span className="inline-flex min-w-0 items-center gap-1">
                             <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                             <span className="truncate" title={f.sourceLabel}>
-                              {t("groundedIn", { doc: f.sourceLabel })}
+                              <DocumentLink name={f.sourceLabel}>{t("groundedIn", { doc: f.sourceLabel })}</DocumentLink>
                             </span>
                           </span>
                         ) : null}
@@ -309,7 +377,7 @@ export function RatedFindingPanel({
                       config.llmWording ? <LlmNotReviewed /> : <JevNotChecked />
                     ) : null}
 
-                    <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {/* Lawyer-entered rows get Jev's read on request; AI ones were read when generated. */}
                         {!isAi ? (
@@ -360,7 +428,7 @@ export function RatedFindingPanel({
                       </div>
                       <button
                         type="button"
-                        onClick={() => del.mutate(f.id)}
+                        onClick={() => setConfirmDelete(f.id)}
                         disabled={del.isPending}
                         className={dangerIconBtnClass}
                         aria-label={t("delete")}
@@ -368,6 +436,27 @@ export function RatedFindingPanel({
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </div>
+                    {confirmDelete === f.id && (
+                      <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
+                        <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteFindingConfirm")}</p>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(null)}
+                          disabled={del.isPending}
+                          className={ghostBtnClass}
+                        >
+                          {t("cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => del.mutate(f.id, { onSuccess: () => setConfirmDelete(null) })}
+                          disabled={del.isPending}
+                          className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+                        >
+                          {del.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
+                        </button>
+                      </div>
+                    )}
                     <MutationError show={jevCheck.isError}>
                       {jevError?.status === 409
                         ? t(config.llmWording ? "llmOff" : "findingJevOff")
@@ -382,7 +471,7 @@ export function RatedFindingPanel({
       </div>
 
       <form
-        className="mt-auto flex gap-2"
+        className="mt-auto flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault()
           const value = label.trim()
@@ -429,13 +518,13 @@ export function RatedFindingPanel({
           onChange={(e) => setLabel(e.target.value)}
           placeholder={t(config.addKey)}
           aria-label={t(config.addKey)}
-          className={`min-w-0 flex-1 ${fieldClass}`}
+          className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
         />
         <select
           value={newTag}
           onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
           aria-label={t("findingStatus")}
-          className={`w-28 shrink-0 ${fieldClass}`}
+          className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
         >
           <option value="">{t("findingStatus")}</option>
           {config.tags.map((option) => (

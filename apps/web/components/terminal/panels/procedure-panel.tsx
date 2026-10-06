@@ -1,5 +1,6 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { DocumentLink } from "@/components/shared/document-viewer"
 import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
 import { daysUntil } from "@/lib/terminal/damages-format"
 import gsap from "gsap"
@@ -105,7 +106,7 @@ function RiskMeter({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
           {label}
         </span>
@@ -198,8 +199,22 @@ export function ProcedurePanel({
               ) : (
                 <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
               )}
-              <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
-                {t("groundedIn", { doc: item.sourceLabel })}
+              {/* A scene gap's sourceLabel is the scene's time or place, not a document. */}
+              <span
+                className="truncate"
+                title={
+                  item.sourceKind === "SCENE"
+                    ? t("sceneGapSource", { scene: item.sourceLabel })
+                    : t("groundedIn", { doc: item.sourceLabel })
+                }
+              >
+                {item.sourceKind === "SCENE" ? (
+                  t("sceneGapSource", { scene: item.sourceLabel })
+                ) : item.sourceKind ? (
+                  t("groundedIn", { doc: item.sourceLabel })
+                ) : (
+                  <DocumentLink name={item.sourceLabel}>{t("groundedIn", { doc: item.sourceLabel })}</DocumentLink>
+                )}
               </span>
             </span>
           )}
@@ -232,7 +247,7 @@ export function ProcedurePanel({
       {(strategyPanel?.isStale || updatingPlan) && (
         <div
           role="status"
-          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/50 px-3 py-2"
+          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-border bg-muted/50 px-3 py-2"
         >
           <p className="flex items-center gap-2 text-xs text-foreground">
             {updatingPlan ? (
@@ -282,7 +297,7 @@ export function ProcedurePanel({
                   <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={t("groundedIn", { doc: item.sourceLabel })}>
-                      {t("groundedIn", { doc: item.sourceLabel })}
+                      <DocumentLink name={item.sourceLabel}>{t("groundedIn", { doc: item.sourceLabel })}</DocumentLink>
                     </span>
                   </span>
                 )}
@@ -380,7 +395,7 @@ export function ProcedurePanel({
       </div>
 
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2">
           <SectionLabel>{t("deadlines")}</SectionLabel>
           {deadlinesProvisional && (
             <Badge tone="caution" shape="pill">
@@ -415,7 +430,7 @@ export function ProcedurePanel({
               )
               return (
                 <PanelRow key={deadline.id} className="flex-col items-start gap-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="text-[13px] font-medium">{deadline.label}</p>
                     {stale && (
                       <Badge tone="caution" shape="pill" title={stale.staleReason}>
@@ -430,7 +445,7 @@ export function ProcedurePanel({
                     · {confirms}/{snapshot.procedure.requiredConfirmations}{" "}
                     {t("confirmed")}
                   </p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <button
                       type="button"
                       onClick={() => confirmDeadline.mutate(deadline.id)}

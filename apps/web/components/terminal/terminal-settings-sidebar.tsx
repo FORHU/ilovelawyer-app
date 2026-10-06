@@ -9,6 +9,20 @@ import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
 import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY } from "@/components/terminal/terminal-pane-categories"
 import type { PanelCatalogEntry, PanelId } from "@/lib/terminal/types"
 
+// What the library search matches a pane against: its shown title, the catalog label, and its id
+// as words ("mindMap" -> "mind map") — panes are often known by a name that isn't their title (the
+// mind map is titled "Visual Strategy Map"), and searching "mind map" found nothing. Spaces are
+// also ignored, so "mindmap" works too.
+function searchText(panel: PanelCatalogEntry): string {
+  const idWords = panel.id.replace(/([a-z])([A-Z])/g, "$1 $2")
+  return [PANEL_TITLES[panel.id], panel.label, idWords].filter(Boolean).join(" ").toLowerCase()
+}
+
+function matchesQuery(panel: PanelCatalogEntry, query: string): boolean {
+  const text = searchText(panel)
+  return text.includes(query) || text.replace(/\s+/g, "").includes(query.replace(/\s+/g, ""))
+}
+
 interface TerminalSettingsSidebarProps {
   expanded: boolean
   onExpandedChange: (expanded: boolean) => void
@@ -64,8 +78,7 @@ export default function TerminalSettingsSidebar({
   const groupedPanels = useMemo(() => {
     const q = query.trim().toLowerCase()
     const matches = allPanels.filter((panel) => {
-      const label = PANEL_TITLES[panel.id] ?? panel.label
-      if (q) return label.toLowerCase().includes(q)
+      if (q) return matchesQuery(panel, q)
       return showEmpty || isPopulated(panel.id)
     })
     return PANE_CATEGORY_ORDER.map((category) => ({
@@ -101,7 +114,11 @@ export default function TerminalSettingsSidebar({
 
   const list = (isMobile: boolean) =>
     groupedPanels.length === 0 ? (
-      <p className="mx-2 rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">{t("panelLibraryEmpty")}</p>
+      // A search with no hits says so — it used to fall through to "All panels are already on
+      // the grid", which read as wrong on an empty board.
+      <p className="mx-2 rounded-md bg-muted px-3 py-4 text-center text-xs text-muted-foreground">
+        {query.trim() ? t("panelLibraryNoMatch", { query: query.trim() }) : t("panelLibraryEmpty")}
+      </p>
     ) : (
       <div className="flex flex-col gap-4 px-2">
         {groupedPanels.map(({ category, panels }) => {

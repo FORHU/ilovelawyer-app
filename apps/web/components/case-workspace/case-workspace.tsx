@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import ConsultationChat from "@/components/chat/consultation-chat";
+import { DocumentViewerProvider } from "@/components/shared/document-viewer";
 import { SourcesPanel } from "@/components/case-workspace/sources-panel";
 import { StudioPanel } from "@/components/case-workspace/studio-panel";
 import { ResizeHandle } from "@/components/case-workspace/resize-handle";
@@ -260,10 +261,12 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   );
 
   return (
+    <DocumentViewerProvider caseId={caseId}>
     <div ref={containerRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <SourcesPanel
+            caseId={caseId}
             expanded={sourcesExpanded}
             onExpandedChange={setSourcesExpanded}
             activeConsultationId={activeConsultationId}
@@ -314,6 +317,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
               // Collapsing (the panel's own header toggle) returns to the Chat tab — there's no
               // "rail" state to fall back to in a single-panel-at-a-time mobile layout.
               <SourcesPanel
+                caseId={caseId}
                 expanded
                 fullWidth
                 onExpandedChange={() => setMobileTab("chat")}
@@ -353,6 +357,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         </>
       )}
     </div>
+    </DocumentViewerProvider>
   );
 }
 
