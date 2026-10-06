@@ -147,7 +147,9 @@ export function useDeleteAccountMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => apiFetch<CurrentUser>("/api/users/me", { method: "DELETE" }),
+    // The API requires the password for password accounts; Google SSO accounts send none.
+    mutationFn: (password?: string) =>
+      apiFetch<CurrentUser>("/api/users/me", { method: "DELETE", body: JSON.stringify({ password }) }),
     onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }

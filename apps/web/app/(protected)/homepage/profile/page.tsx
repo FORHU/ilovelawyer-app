@@ -817,15 +817,19 @@ export default function ProfilePage() {
         <DeleteAccountModal
           isPending={deleteAccount.isPending}
           error={deleteAccount.error ? (deleteAccount.error as Error).message : null}
-          onConfirm={() =>
-            deleteAccount.mutate(undefined, {
+          requiresPassword={!!currentUser?.hasPassword}
+          onConfirm={(password) =>
+            deleteAccount.mutate(password, {
               onSuccess: (updated) =>
                 setDeletionSuccessDate(
                   updated.deletionRequestedAt ? addDays(updated.deletionRequestedAt, ACCOUNT_DELETION_GRACE_PERIOD_DAYS) : new Date(),
                 ),
             })
           }
-          onClose={() => setIsDeleteModalOpen(false)}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            deleteAccount.reset();
+          }}
           scheduledFor={deletionSuccessDate ? formatDate(deletionSuccessDate) : null}
           isLoggingOut={logout.isPending}
           onLogout={() => logout.mutate()}
