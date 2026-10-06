@@ -21,7 +21,7 @@ type Mode = 'idle' | 'rename' | 'add' | 'delete';
 
 /**
  * Rename / add a point / delete, for one node in the mind map's detail panel. Saves through the
- * API (ilovelawyer-api MindMapSvc.editNode) as an undoable revision — the canvas has no editing
+ * API (ilovelawyer-api MindMapSvc.editNode) as a new revision — the canvas has no editing
  * of its own. Same shape rules as the API: nothing on the root, the five top-level branches
  * can't be deleted, and adding respects MIND_MAP_LIMITS.
  */

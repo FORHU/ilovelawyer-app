@@ -117,7 +117,7 @@ export interface ChatMessage {
   documents?: MessageDocument[]
   /** The AI's mind map for this message, persisted server-side (ilovelawyer-api's
    * chat.service.ts). `null`/absent on messages with no map. `data` is always the current tree
-   * (after any "Expand with AI"/undo); `version` counts those edits, 1 = as generated — absent on
+   * (after any "Expand with AI"/edit); `version` counts those edits, 1 = as generated — absent on
    * responses from an API that predates it, treat as 1. */
   mindMap?: { data: MindMapItem; version?: number } | null
   /** The two-host script for this message, from Chat Wonder's `[AUDIO_OVERVIEW_DATA]` frame
@@ -656,7 +656,7 @@ export function expandMindMapNode(
   })
 }
 
-/** A manual rename / add / delete on a consultation's map, saved as an undoable revision.
+/** A manual rename / add / delete on a consultation's map, saved as a new revision.
  * `code` "MAX_DEPTH"/"MAX_NODES" (422) when an add would pass MIND_MAP_LIMITS. */
 export function editMindMapNode(
   consultationId: string,
@@ -668,19 +668,7 @@ export function editMindMapNode(
   })
 }
 
-/** "Undo expand": steps the map back one version. `version` is the one the user is looking at —
- * the API refuses (409) if the map has moved on since, rather than undoing someone else's change. */
-export function revertMindMap(
-  consultationId: string,
-  body: { messageId?: string; version?: number },
-): Promise<MindMapChangeResult> {
-  return apiFetch<MindMapChangeResult>(`/api/chat/consultations/${consultationId}/mind-map/revert`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  })
-}
-
-/** Writes an expand/undo result straight into the cached messages so the canvas updates without
+/** Writes an expand/edit result straight into the cached messages so the canvas updates without
  * waiting on a refetch (the caller still invalidates, to pick up anything else that changed). */
 export function applyMindMapChange(queryClient: QueryClient, consultationId: string, result: MindMapChangeResult) {
   queryClient.setQueryData<ChatMessage[]>(chatKeys.messages(consultationId), (messages) =>
