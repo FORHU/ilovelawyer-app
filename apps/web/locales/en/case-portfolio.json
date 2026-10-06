@@ -385,6 +385,7 @@
     "cancel": "Cancel"
   },
   "caseMindMap": {
+    "refreshKeepsChanges": "Updating with the latest analysis… Your expanded map is kept as it is.",
     "building": "Building the mind map from your documents…",
     "rebuilding": "The map is being rebuilt from the documents.",
     "fromDocuments_one": "From {{count}} document",

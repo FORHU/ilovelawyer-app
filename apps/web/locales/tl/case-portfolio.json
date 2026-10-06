@@ -226,6 +226,7 @@
     "cancel": "Kanselahin"
   },
   "caseMindMap": {
+    "refreshKeepsChanges": "Ina-update gamit ang pinakabagong pagsusuri… Mananatili ang pinalawak mong mapa.",
     "building": "Binubuo ang mind map mula sa iyong mga dokumento…",
     "rebuilding": "Binubuo muli ang mapa mula sa mga dokumento.",
     "fromDocuments_one": "Mula sa {{count}} dokumento",

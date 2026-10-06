@@ -83,6 +83,8 @@ export function useCaseMindMap(caseId: string) {
     isLoading: query.isLoading,
     /** The map's own build is running. Blocks expand/edit, whose result it would replace. */
     isBuilding,
+    /** An Analysis Refresh is running — whether or not it will replace this map. */
+    isRefreshing,
     /** An Analysis Refresh is running that will end by replacing this map (see above). */
     refreshWillReplace,
     /** What the Regenerate icon and "building" states show: the map's own build, or an Analysis
