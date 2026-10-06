@@ -85,10 +85,14 @@ export function getLibraryConfig(tenantCode: string | null | undefined): Library
   return tenantCode === "UK" ? UK_CONFIG : PH_CONFIG
 }
 
-/** Human label for a UK court slug — "ewca/civ" -> "EWCA (Civ)", "uksc" -> "UKSC". */
+/** Division segments that are initialisms, written in capitals in neutral citations
+ *  ("EWHC (KB)", "UKUT (IAC)"); every other segment is a word abbreviation ("Civ", "Admlty"). */
+const UK_DIVISION_INITIALISMS = new Set(["kb", "tcc", "ipec", "scco", "iac", "aac", "lc", "tc", "grc"])
+
+/** Human label for a UK court slug — "ewca/civ" -> "EWCA (Civ)", "ewhc/kb" -> "EWHC (KB)", "uksc" -> "UKSC". */
 export function ukCourtLabel(slug: string): string {
   const [head = slug, ...rest] = slug.split("/")
-  return rest.length
-    ? `${head.toUpperCase()} (${rest.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(" ")})`
-    : head.toUpperCase()
+  const division = (r: string) =>
+    UK_DIVISION_INITIALISMS.has(r) ? r.toUpperCase() : r.charAt(0).toUpperCase() + r.slice(1)
+  return rest.length ? `${head.toUpperCase()} (${rest.map(division).join(" ")})` : head.toUpperCase()
 }

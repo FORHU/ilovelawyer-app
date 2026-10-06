@@ -35,6 +35,19 @@ describe("getLibraryConfig", () => {
   it("ukCourtLabel humanizes slugs", () => {
     expect(ukCourtLabel("uksc")).to.equal("UKSC")
     expect(ukCourtLabel("ewca/civ")).to.equal("EWCA (Civ)")
-    expect(ukCourtLabel("ukut/iac")).to.equal("UKUT (Iac)")
+    expect(ukCourtLabel("ewhc/admlty")).to.equal("EWHC (Admlty)")
+  })
+
+  it("ukCourtLabel keeps division initialisms in capitals", () => {
+    expect(ukCourtLabel("ewhc/kb")).to.equal("EWHC (KB)")
+    expect(ukCourtLabel("ewhc/tcc")).to.equal("EWHC (TCC)")
+    expect(ukCourtLabel("ewhc/ipec")).to.equal("EWHC (IPEC)")
+    expect(ukCourtLabel("ewhc/scco")).to.equal("EWHC (SCCO)")
+    expect(ukCourtLabel("ukut/iac")).to.equal("UKUT (IAC)")
+    expect(ukCourtLabel("ukut/aac")).to.equal("UKUT (AAC)")
+    expect(ukCourtLabel("ukut/tcc")).to.equal("UKUT (TCC)")
+    expect(ukCourtLabel("ukut/lc")).to.equal("UKUT (LC)")
+    expect(ukCourtLabel("ukftt/tc")).to.equal("UKFTT (TC)")
+    expect(ukCourtLabel("ukftt/grc")).to.equal("UKFTT (GRC)")
   })
 })
