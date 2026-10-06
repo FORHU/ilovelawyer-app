@@ -79,7 +79,7 @@ jobs:
       - name: Write web env file
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
           cat > ${{ github.workspace }}/apps/web/.env.staging << EOF
           NODE_ENV=${NODE_ENV}
