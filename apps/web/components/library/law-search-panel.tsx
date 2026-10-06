@@ -14,9 +14,10 @@ import {
   type LawTopic,
   type UkCourt,
   useLawBrowseInfiniteQuery,
-  useLawSearchMutation,
+  useLawSearchQuery,
 } from "@/lib/law/queries"
-import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
+import { getLibraryConfig, ukCourtFromCode, ukCourtLabel } from "@/lib/law/library-config"
+import { useDateLocale } from "@/lib/i18n/date-locale"
 import { FilterChipGroup } from "@/components/library/filter-chip-group"
 import { CursorPagination, PAGINATION_WINDOW_HALF, PAGINATION_WINDOW_SIZE } from "@/components/ui/pagination"
 
@@ -74,8 +75,9 @@ export function LawSearchPanel() {
   const { t } = useTranslation("library")
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
+  const locale = useDateLocale()
 
-  // Category, facets and page live in the URL (?category=&type=&topics=&courts=&page=), so
+  // Category, facets, page and search live in the URL (?category=&type=&topics=&courts=&page=&q=), so
   // opening a judgment and coming back — "Back to library" or the browser's Back — lands on the
   // same filter and page, and a filtered view can be shared or bookmarked. Values are checked
   // against the tenant's own vocab, so a hand-edited or other-tenant URL just falls back.
@@ -101,7 +103,10 @@ export function LawSearchPanel() {
   const category: LawCategoryParam =
     cfg.categories.find((c) => c.value === rawCategory)?.value ?? cfg.categories[0]!.value
 
-  const [query, setQuery] = useState("")
+  // The submitted search lives in the URL too (?q=), so coming back from a judgment restores the
+  // same results; `query` is just the box's draft text, seeded from it.
+  const submittedQuery = (searchParams.get("q") ?? "").trim()
+  const [query, setQuery] = useState(submittedQuery)
   const caseType = (cfg.caseTypes.find((c) => c === searchParams.get("type")) ?? null) as LawCaseType | null
   const topics = listParam("topics").filter((x) => cfg.topics.includes(x)) as LawTopic[]
   const courts = listParam("courts").filter((x) => cfg.courts.includes(x)) as UkCourt[]
@@ -115,12 +120,19 @@ export function LawSearchPanel() {
   // after almost every navigation.
   const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
-  const search = useLawSearchMutation()
-  const showSearchSkeleton = useDelayedLoading(search.isPending)
-  const showingSearch = search.status !== "idle"
   const supported = tenantCode === "PH" || tenantCode === "UK"
   const facetKind = cfg.facetKind(category)
   const canBrowse = cfg.browsable(category)
+  // Only the court facet narrows a search (the API has no PH caseType/topic search filter), so
+  // it's the one facet kept on screen and applied while search results are showing.
+  const search = useLawSearchQuery({
+    category,
+    q: submittedQuery,
+    courts: facetKind === "uk-court" ? courts : [],
+    enabled: supported,
+  })
+  const showSearchSkeleton = useDelayedLoading(search.isLoading)
+  const showingSearch = submittedQuery.length > 0
 
   // Browse is cursor-paged (no total), so "page N" is an index into the fetched cursor pages.
   // Every filter change clears ?page=, snapping back to page 1. A restored ?page=3 is reached
@@ -169,15 +181,15 @@ export function LawSearchPanel() {
   }
 
   const backToBrowse = () => {
-    search.reset()
     setQuery("")
+    updateParams({ q: null })
   }
 
   const pickCategory = (next: LawCategoryParam) => {
     if (next === category) return
-    updateParams({ category: next, type: null, topics: null, courts: null, page: null })
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
-    backToBrowse()
+    setQuery("")
+    updateParams({ category: next, q: null, type: null, topics: null, courts: null, page: null })
   }
 
   const toggleTopic = (topic: LawTopic) =>
@@ -190,7 +202,9 @@ export function LawSearchPanel() {
     e.preventDefault()
     const q = query.trim()
     if (!q) return
-    search.mutate({ category, q })
+    // Re-submitting the same text re-runs it rather than just showing the cached results.
+    if (q === submittedQuery) void search.refetch()
+    else updateParams({ q })
   }
 
   const browsePages = browse.data?.pages ?? []
@@ -215,11 +229,19 @@ export function LawSearchPanel() {
     const title = itemTitle(item) || t("lawSearch.untitled")
     const reference = itemReference(item)
     const snippet = item.facts ?? item.summary
+    // UK rows carry a court code ("EWHC (KB)") — shown as the canonical short label, with the
+    // full court name under the title so a summary-less card still says where it was decided.
+    const court = tenantCode === "UK" && item.division ? ukCourtFromCode(item.division) : null
+    const decided = item.decision_date ? new Date(item.decision_date) : null
+    const decidedLabel =
+      decided && !Number.isNaN(decided.getTime())
+        ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(decided)
+        : null
     return (
       <Link
         key={rowId}
         href={`/homepage/library/laws/${item.id}?${new URLSearchParams({ category, from: searchParams.toString() })}`}
-        className="flex h-full min-h-56 flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
+        className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/30 focus-visible:ring-2 focus-visible:ring-foreground/30 focus-visible:outline-none"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -230,18 +252,26 @@ export function LawSearchPanel() {
             )}
             {item.division && (
               <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {item.division}
+                {court?.label ?? item.division}
               </span>
             )}
           </div>
-          {item.year != null && (
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{item.year}</span>
+          {decidedLabel ? (
+            <time dateTime={item.decision_date} className="shrink-0 text-xs text-muted-foreground tabular-nums">
+              {decidedLabel}
+            </time>
+          ) : (
+            item.year != null && (
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{item.year}</span>
+            )
           )}
         </div>
 
         <h3 className="line-clamp-4 text-[15px] leading-snug font-semibold text-foreground">
           {title}
         </h3>
+
+        {court?.name && <p className="text-xs text-muted-foreground">{court.name}</p>}
 
         {snippet && (
           <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground italic">
@@ -333,10 +363,10 @@ export function LawSearchPanel() {
 
           <button
             type="submit"
-            disabled={search.isPending || !query.trim()}
+            disabled={search.isFetching || !query.trim()}
             className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
-            {search.isPending ? (
+            {search.isFetching ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <Search className="size-4" aria-hidden="true" />
@@ -345,8 +375,10 @@ export function LawSearchPanel() {
           </button>
         </form>
 
-        {/* ── Filters (browse mode only) ───────────────────────────────── */}
-        {!showingSearch && canBrowse && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics" || facetKind === "uk-court") && (
+        {/* ── Filters (PH facets in browse mode only; UK court in both) ─── */}
+        {canBrowse &&
+          (facetKind === "uk-court" ||
+            (!showingSearch && (facetKind === "ph-jurisprudence" || facetKind === "ph-topics"))) && (
           <div data-tour-id="library-filters" className="flex flex-col gap-3 border-y border-border py-3">
             {facetKind === "ph-jurisprudence" && (
               <FilterChipGroup

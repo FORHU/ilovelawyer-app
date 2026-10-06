@@ -1,4 +1,4 @@
-import { queryOptions, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query"
+import { queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 
 // Wire values the API accepts for `category`. PH = juris.ph dataset names; UK = the
@@ -267,21 +267,28 @@ export function useLawDocumentQuery(params: {
 /**
  * Local-first Philippine law search: the API checks our stored rows first and only calls
  * juris.ph on a miss (writing any new hit through to the DB). PH-tenant only — the caller
- * is responsible for not invoking this for a non-PH org (the API answers 501 if it does).
+ * is responsible for not enabling this for a non-PH org (the API answers 501 if it does).
+ * A query rather than a mutation so coming back from a judgment to the same `?q=` is served
+ * from cache instead of re-running the search.
  */
-export function useLawSearchMutation() {
-  return useMutation({
-    mutationFn: ({
-      category,
-      q,
-      limit = 5,
-    }: {
-      category: LawCategoryParam
-      q: string
-      limit?: number
-    }) => {
-      const params = new URLSearchParams({ category, q, limit: String(limit) })
-      return apiFetch<LawSearchResult>(`/api/law/search?${params.toString()}`)
+export function useLawSearchQuery(params: {
+  category: LawCategoryParam
+  q: string
+  /** UK case law only — narrows the search to these courts; empty means all courts. */
+  courts?: UkCourt[]
+  limit?: number
+  enabled: boolean
+}) {
+  const { category, q, limit = 5, enabled } = params
+  const sortedCourts = [...(params.courts ?? [])].sort()
+  return useQuery({
+    queryKey: ["law", "search", { category, q, courts: sortedCourts, limit }],
+    queryFn: () => {
+      const p = new URLSearchParams({ category, q, limit: String(limit) })
+      if (sortedCourts.length) p.set("court", sortedCourts.join(","))
+      return apiFetch<LawSearchResult>(`/api/law/search?${p.toString()}`)
     },
+    enabled: enabled && !!q,
+    staleTime: 5 * 60 * 1000,
   })
 }
