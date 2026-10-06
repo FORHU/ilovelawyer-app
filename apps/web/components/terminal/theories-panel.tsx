@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useQueryClient } from "@tanstack/react-query"
 import { Check, ChevronDown, CornerDownLeft, GitFork, Loader2, MessageSquareWarning, Pencil, Plus, Send, Sparkles, Trash2, X } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
+import DeleteTheoryModal from "@/components/terminal/delete-theory-modal"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   terminalKeys,
@@ -210,6 +211,9 @@ function TheoryCard({
   const [showAnnotations, setShowAnnotations] = useState(false)
 
   const isAiProposed = theory.authorUserId === null
+  // Mirrors CaseTheorySvc.remove: the author can delete their own theory, and an AI-proposed one
+  // (no author) can be dismissed by anyone — another lawyer's theory can't be deleted.
+  const canDelete = isMine || isAiProposed
   const bullet = <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" aria-hidden="true" />
 
   return (
@@ -353,10 +357,13 @@ function TheoryCard({
             {t("retire")}
           </button>
         )}
-        {isMine && isFork && !confirmDelete && (
+        {canDelete && (
           <button
             type="button"
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => {
+              remove.reset()
+              setConfirmDelete(true)
+            }}
             className={`inline-flex items-center gap-1.5 ${ghostBtnClass} hover:border-danger/40 hover:text-danger`}
           >
             <Trash2 className="h-3 w-3" aria-hidden="true" />
@@ -376,22 +383,15 @@ function TheoryCard({
         )}
       </div>
       {confirmDelete && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
-          <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteForkedTheoryConfirm")}</p>
-          <button type="button" onClick={() => setConfirmDelete(false)} disabled={remove.isPending} className={ghostBtnClass}>
-            {t("cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={() => remove.mutate(theory.id)}
-            disabled={remove.isPending}
-            className="h-8 shrink-0 rounded-md bg-danger px-3 text-[10px] font-semibold uppercase tracking-[1px] text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
-          >
-            {remove.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("delete")}
-          </button>
-        </div>
+        <DeleteTheoryModal
+          theory={{ title: theory.title, isFork }}
+          isDeleting={remove.isPending}
+          isError={remove.isError}
+          onConfirm={() => remove.mutate(theory.id)}
+          onClose={() => setConfirmDelete(false)}
+        />
       )}
-      <MutationError show={publish.isError || retire.isError || fork.isError || remove.isError} />
+      <MutationError show={publish.isError || retire.isError || fork.isError} />
 
       {showAnnotations && (
         <div className="mt-2.5 border-t border-border pt-2.5">

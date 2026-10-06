@@ -811,6 +811,8 @@
   "forkedTheory": "Forked",
   "forkedFromTheory": "Forked from {{title}}",
   "deleteForkedTheoryConfirm": "Delete this forked theory? Its claims, assumptions, open questions and notes go with it. The original is kept.",
+  "deleteTheoryTitle": "Delete theory",
+  "deleteTheoryConfirm": "Delete this theory? Its claims, assumptions, open questions and notes go with it. Forks of it are kept.",
   "diffTheories": "Compare two theories",
   "theoryA": "Theory A",
   "theoryB": "Theory B",
