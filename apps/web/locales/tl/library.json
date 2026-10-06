@@ -31,6 +31,7 @@
       "ukLegislation": "Legislation"
     },
     "resultCount": "Mga resulta: {{count}}",
+    "resultRange": "Ipinapakita ang {{from}}–{{to}}",
     "empty": "Walang resulta.",
     "untitled": "(walang pamagat)",
     "viewDocument": "Tingnan ang dokumento",
