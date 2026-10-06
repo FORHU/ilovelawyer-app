@@ -14,7 +14,7 @@ import {
   type LawTopic,
   type UkCourt,
   useLawBrowseInfiniteQuery,
-  useLawSearchMutation,
+  useLawSearchQuery,
 } from "@/lib/law/queries"
 import { getLibraryConfig, ukCourtLabel } from "@/lib/law/library-config"
 import { FilterChipGroup } from "@/components/library/filter-chip-group"
@@ -75,7 +75,7 @@ export function LawSearchPanel() {
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode)
   const cfg = getLibraryConfig(tenantCode)
 
-  // Category, facets and page live in the URL (?category=&type=&topics=&courts=&page=), so
+  // Category, facets, page and search live in the URL (?category=&type=&topics=&courts=&page=&q=), so
   // opening a judgment and coming back — "Back to library" or the browser's Back — lands on the
   // same filter and page, and a filtered view can be shared or bookmarked. Values are checked
   // against the tenant's own vocab, so a hand-edited or other-tenant URL just falls back.
@@ -101,7 +101,10 @@ export function LawSearchPanel() {
   const category: LawCategoryParam =
     cfg.categories.find((c) => c.value === rawCategory)?.value ?? cfg.categories[0]!.value
 
-  const [query, setQuery] = useState("")
+  // The submitted search lives in the URL too (?q=), so coming back from a judgment restores the
+  // same results; `query` is just the box's draft text, seeded from it.
+  const submittedQuery = (searchParams.get("q") ?? "").trim()
+  const [query, setQuery] = useState(submittedQuery)
   const caseType = (cfg.caseTypes.find((c) => c === searchParams.get("type")) ?? null) as LawCaseType | null
   const topics = listParam("topics").filter((x) => cfg.topics.includes(x)) as LawTopic[]
   const courts = listParam("courts").filter((x) => cfg.courts.includes(x)) as UkCourt[]
@@ -115,10 +118,10 @@ export function LawSearchPanel() {
   // after almost every navigation.
   const [isNavigatingNext, setIsNavigatingNext] = useState(false)
 
-  const search = useLawSearchMutation()
-  const showSearchSkeleton = useDelayedLoading(search.isPending)
-  const showingSearch = search.status !== "idle"
   const supported = tenantCode === "PH" || tenantCode === "UK"
+  const search = useLawSearchQuery({ category, q: submittedQuery, enabled: supported })
+  const showSearchSkeleton = useDelayedLoading(search.isLoading)
+  const showingSearch = submittedQuery.length > 0
   const facetKind = cfg.facetKind(category)
   const canBrowse = cfg.browsable(category)
 
@@ -169,15 +172,15 @@ export function LawSearchPanel() {
   }
 
   const backToBrowse = () => {
-    search.reset()
     setQuery("")
+    updateParams({ q: null })
   }
 
   const pickCategory = (next: LawCategoryParam) => {
     if (next === category) return
-    updateParams({ category: next, type: null, topics: null, courts: null, page: null })
     // Switching datasets always drops back to browse — a search is scoped to one dataset.
-    backToBrowse()
+    setQuery("")
+    updateParams({ category: next, q: null, type: null, topics: null, courts: null, page: null })
   }
 
   const toggleTopic = (topic: LawTopic) =>
@@ -190,7 +193,9 @@ export function LawSearchPanel() {
     e.preventDefault()
     const q = query.trim()
     if (!q) return
-    search.mutate({ category, q })
+    // Re-submitting the same text re-runs it rather than just showing the cached results.
+    if (q === submittedQuery) void search.refetch()
+    else updateParams({ q })
   }
 
   const browsePages = browse.data?.pages ?? []
@@ -333,10 +338,10 @@ export function LawSearchPanel() {
 
           <button
             type="submit"
-            disabled={search.isPending || !query.trim()}
+            disabled={search.isFetching || !query.trim()}
             className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
-            {search.isPending ? (
+            {search.isFetching ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <Search className="size-4" aria-hidden="true" />
