@@ -123,6 +123,8 @@ export interface UpdateCasePayload {
   /** Replaces the case's whole party list — send every party, not just the changed one. */
   parties?: { name: string; designation: string; descriptor?: string | null }[]
   notes?: string
+  /** England and Wales / Scotland / Northern Ireland — UK-tenant-only. */
+  ukJurisdiction?: string
   /** Changing it makes the API regenerate the case's findings on the next Terminal load. */
   clientSide?: ClientSide | null
 }

@@ -18,13 +18,7 @@ import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FI
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { getTenantCodeConfig } from "@/config/tenant-codes";
-
-const UK_JURISDICTION_LABEL_KEYS: Record<string, string> = {
-  "England and Wales": "ukJurisdictions.englandAndWales",
-  "Scotland": "ukJurisdictions.scotland",
-  "Northern Ireland": "ukJurisdictions.northernIreland",
-};
+import { getTenantCodeConfig, UK_JURISDICTION_LABEL_KEYS } from "@/config/tenant-codes";
 
 const DESIGNATION_OPTIONS = [
   { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
