@@ -399,7 +399,7 @@ export function useScreenPresetsQuery(screenCount: number) {
 export function useCreateScreenPresetMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; description?: string; screens: { arrangement: string; panelIds: string[] }[] }) =>
+    mutationFn: (body: { name: string; description?: string; screens: { arrangement: string; panelIds: string[]; columns?: string[][] }[] }) =>
       apiFetch<ScreenPresetRow>("/api/terminal/screen-presets", {
         method: "POST",
         body: JSON.stringify(body),

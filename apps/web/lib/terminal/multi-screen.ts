@@ -159,6 +159,26 @@ export function arrangementForScreen(layout: WorkspaceLayout, screen: number): A
   return layout.screenLayouts?.[screen]?.arrangement ?? "free"
 }
 
+// Hides a pane and drops its screen assignment, so re-adding it later starts on the primary rather
+// than on whichever screen it was last on (a stale screen made pop-out advance from the wrong
+// screen and left empty canvases counted as "in use"). Re-tiles the screen it left if that's Free.
+export function hidePanelInLayout(layout: WorkspaceLayout, id: PanelId): WorkspaceLayout {
+  const screen = layout.panels.find((p) => p.id === id)?.screen ?? 0
+  const hidden = { ...layout, panels: layout.panels.map((p) => (p.id === id ? { ...p, visible: false, screen: undefined } : p)) }
+  return arrangementForScreen(layout, screen) === "free" ? autoTileLayout(hidden, undefined, screen) : hidden
+}
+
+// The layout change for popping a pane onto screen `next`: reassign it, then re-tile both the
+// screen it left and the one it lands on when they're Free (a gap would otherwise stay behind, and
+// the pane would keep a rect that only made sense on its previous screen).
+export function movePanelToScreen(layout: WorkspaceLayout, id: PanelId, next: number): WorkspaceLayout {
+  const oldScreen = layout.panels.find((p) => p.id === id)?.screen ?? 0
+  let moved: WorkspaceLayout = { ...layout, panels: layout.panels.map((p) => (p.id === id ? { ...p, screen: next || undefined } : p)) }
+  if (arrangementForScreen(layout, oldScreen) === "free") moved = autoTileLayout(moved, undefined, oldScreen)
+  if (arrangementForScreen(layout, next) === "free") moved = autoTileLayout(moved, id, next)
+  return moved
+}
+
 // Real, non-fabricated per-pane status text for the Pane Library rows ("3 docs", "2 found",
 // "Ready" — never an invented figure; a pane with nothing to report simply has no entry, which
 // the library renders as an em dash, same spirit as ADR 0013's stance against fabricated stat

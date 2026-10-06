@@ -90,8 +90,10 @@ export function useLayoutSyncChannel({
           // initial fetch found nothing to load — see the "no workspace yet" bootstrap effect)
           // isn't "on a different workspace", it's on NONE yet, and should adopt whatever shows up
           // rather than reject every broadcast forever.
-          if (workspaceIdRef.current && msg.workspaceId !== workspaceIdRef.current) return
-          if (!workspaceIdRef.current) {
+          // A canvas window (closeOnTerminalClosing) mirrors the primary: when the primary switches
+          // to another workspace/layout tab, the canvas follows instead of going stale.
+          if (workspaceIdRef.current && msg.workspaceId !== workspaceIdRef.current && !closeOnTerminalClosing) return
+          if (workspaceIdRef.current !== msg.workspaceId) {
             workspaceIdRef.current = msg.workspaceId
             setWorkspaceId?.(msg.workspaceId)
           }

@@ -1,7 +1,7 @@
-import { HIDDEN_PANELS } from "@/components/terminal/terminal-canvas"
+import { HIDDEN_PANELS, columnsOf } from "@/components/terminal/terminal-canvas"
 import { arrangementForScreen, autoTileLayout } from "@/lib/terminal/multi-screen"
 import { PANEL_IDS } from "@/lib/terminal/types"
-import type { ArrangementValue, PanelId, ScreenPresetRow, WorkspaceLayout } from "@/lib/terminal/types"
+import type { ArrangementValue, PanelId, ScreenPresetRow, ScreenPresetScreen, WorkspaceLayout } from "@/lib/terminal/types"
 
 // One named multi-screen workspace template. `screens[0]` is always the primary window;
 // screens[1+] are secondary canvas windows, matching PanelLayout.screen's numbering.
@@ -19,7 +19,7 @@ export interface ScreenPresetDef {
   descriptionKey?: string
   name: string
   description?: string
-  screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
+  screens: ScreenPresetScreen[]
 }
 
 // Panel ids this build knows. A stored preset can still list a retired pane (a lawyer's own saved
@@ -36,7 +36,11 @@ export function fromRow(row: ScreenPresetRow): ScreenPresetDef {
     name: row.name,
     description: row.description ?? undefined,
     // Unknown ids dropped; every screen kept, even one left empty, so screen indices still line up.
-    screens: row.screens.map((screen) => ({ ...screen, panelIds: screen.panelIds.filter((id) => KNOWN_PANEL_IDS.has(id)) })),
+    screens: row.screens.map((screen) => {
+      const known = (id: PanelId) => KNOWN_PANEL_IDS.has(id)
+      const columns = screen.columns?.map((col) => col.filter(known)).filter((col) => col.length > 0)
+      return { ...screen, panelIds: screen.panelIds.filter(known), columns: columns?.length ? columns : undefined }
+    }),
   }
 }
 
@@ -53,7 +57,7 @@ export function presetDescription(preset: ScreenPresetDef, t: (key: string) => s
 // client-side/algorithmic (depends on live screen count) — never a DB row.
 export function generateSpreadPreset(totalScreens: number): ScreenPresetDef {
   const allIds = PANEL_IDS.filter((id) => !HIDDEN_PANELS.has(id))
-  const screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[] = Array.from({ length: totalScreens }, () => ({
+  const screens: ScreenPresetScreen[] = Array.from({ length: totalScreens }, () => ({
     arrangement: "free",
     panelIds: [],
   }))
@@ -106,14 +110,23 @@ export function panelsHiddenByPreset(layout: WorkspaceLayout, preset: ScreenPres
 // 0..screenCount-1 that actually have a visible panel are included; an in-between empty screen
 // (e.g. screen 1 has nothing, screen 2 does — the reaper hasn't caught up yet) is skipped rather
 // than saved as a dead entry a future apply would just hide everything on.
-export function captureCurrentScreens(layout: WorkspaceLayout, screenCount: number): { arrangement: ArrangementValue; panelIds: PanelId[] }[] {
-  const screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[] = []
+export function captureCurrentScreens(layout: WorkspaceLayout, screenCount: number): ScreenPresetScreen[] {
+  const screens: ScreenPresetScreen[] = []
   for (let screen = 0; screen < screenCount; screen++) {
-    const panelIds = layout.panels
+    const panels = layout.panels
       .filter((p) => p.visible && (p.screen ?? 0) === screen && !HIDDEN_PANELS.has(p.id))
       .sort((a, b) => a.order - b.order)
-      .map((p) => p.id)
-    if (panelIds.length > 0) screens.push({ arrangement: arrangementForScreen(layout, screen), panelIds })
+    if (panels.length === 0) continue
+    const arrangement = arrangementForScreen(layout, screen)
+    if (arrangement === "columns") {
+      // Which column each pane really sits in (explicit columnIndex, else auto-balanced), so saving
+      // and re-applying reproduces the grouping. Empty columns are dropped.
+      const count = (screen === 0 ? layout.columnCount : layout.screenLayouts?.[screen]?.columnCount) ?? 3
+      const columns = columnsOf(panels, count).map((col) => col.map((p) => p.id)).filter((col) => col.length > 0)
+      screens.push({ arrangement, panelIds: columns.flat(), columns })
+    } else {
+      screens.push({ arrangement, panelIds: panels.map((p) => p.id) })
+    }
   }
   return screens
 }
@@ -134,9 +147,20 @@ function columnCountFor(panelCount: number): number {
 // screenLayouts[n]); a Columns screen also gets a columnCount (see columnCountFor above), and a
 // Free screen gets its rects seeded by autoTileLayout. Focus needs neither — it just needs an active pane.
 export function applyScreenPreset(layout: WorkspaceLayout, preset: ScreenPresetDef): WorkspaceLayout {
-  const placement = new Map<PanelId, { screen: number; order: number }>()
+  const placement = new Map<PanelId, { screen: number; order: number; columnIndex?: number }>()
   preset.screens.forEach((screen, screenIndex) => {
     screen.panelIds.forEach((id, order) => placement.set(id, { screen: screenIndex, order }))
+    // Explicit columns overwrite the default spread. The column count still follows columnCountFor,
+    // so any authored column past it folds into the last one; order runs on across columns so each
+    // column keeps its panes top to bottom. A pane in panelIds but not in columns (folded in from a
+    // closed display) keeps no columnIndex and auto-joins the emptiest column.
+    if (screen.arrangement === "columns" && screen.columns) {
+      const last = columnCountFor(screen.panelIds.length) - 1
+      let order = 0
+      screen.columns.forEach((column, columnIndex) =>
+        column.forEach((id) => placement.set(id, { screen: screenIndex, order: order++, columnIndex: Math.min(columnIndex, last) })),
+      )
+    }
   })
 
   const primary = preset.screens[0]!
@@ -160,7 +184,7 @@ export function applyScreenPreset(layout: WorkspaceLayout, preset: ScreenPresetD
     panels: layout.panels.map((panel) => {
       const spot = placement.get(panel.id)
       return spot
-        ? { ...panel, visible: true, screen: spot.screen || undefined, order: spot.order }
+        ? { ...panel, visible: true, screen: spot.screen || undefined, order: spot.order, columnIndex: spot.columnIndex }
         : { ...panel, visible: false, screen: undefined }
     }),
   }

@@ -17,7 +17,7 @@ import { TerminalCanvas, HIDDEN_PANELS, type PaneDragPreview, type PaneRect } fr
 import { PaneActivityContext, useDamagesActivity } from "@/components/terminal/pane-activity"
 import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-provider"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
-import { autoTileLayout, computeFocusStackSummaries, computePanelBadges } from "@/lib/terminal/multi-screen"
+import { hidePanelInLayout, computeFocusStackSummaries, computePanelBadges } from "@/lib/terminal/multi-screen"
 import { damagesBadge } from "@/lib/terminal/damages-format"
 import { dropUnknownPanels } from "@/lib/terminal/drop-unknown-panels"
 import { useCanvasWindowReaper, useIsExtendedScreen, usePopOutToNextScreen } from "@/lib/terminal/use-multi-screen-windows"
@@ -128,7 +128,12 @@ export default function TerminalCanvasWindowPage() {
   useEffect(() => {
     if (!layout || !workspaceId) return
     const serialized = JSON.stringify(layout)
-    if (serialized === lastSavedLayoutRef.current) return
+    if (serialized === lastSavedLayoutRef.current) {
+      // Equal to what's saved (or just adopted from another window): nothing is pending, and an
+      // older pending copy must not be flushed on pagehide over the newer state.
+      pendingSaveRef.current = null
+      return
+    }
 
     // Broadcast immediately, not gated behind the debounce below — that debounce exists only to
     // reduce backend PATCH traffic, but every other open window should reflect a change right
@@ -242,14 +247,7 @@ export default function TerminalCanvasWindowPage() {
 
   const hidePanel = (id: PanelId) => {
     setMaximizedId((cur) => (cur === id ? null : cur))
-    // Same shared re-tiling as legal-terminal.tsx's hidePanel, gated on THIS screen's own
-    // arrangement (not the primary window's) — a Free-arrangement canvas window closes the gap
-    // the same way the primary window does.
-    setLayout((prev) => {
-      if (!prev) return prev
-      const hidden = { ...prev, panels: prev.panels.map((panel) => (panel.id === id ? { ...panel, visible: false } : panel)) }
-      return arrangement === "free" ? autoTileLayout(hidden, undefined, screenIndex) : hidden
-    })
+    setLayout((prev) => (prev ? hidePanelInLayout(prev, id) : prev))
   }
 
   const toggleMaximize = (id: PanelId) => {

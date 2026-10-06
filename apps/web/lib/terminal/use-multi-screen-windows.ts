@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import type { PanelId, WorkspaceLayout } from "@/lib/terminal/types"
 import {
   applyScreenClosedFallback,
-  arrangementForScreen,
-  autoTileLayout,
+  movePanelToScreen,
   nextScreenIndex,
   openCanvasWindow,
   screenIsEmpty,
@@ -131,23 +130,14 @@ export function usePopOutToNextScreen({
     const oldScreen = panel?.screen ?? 0
     const next = nextScreenIndex(oldScreen, secondary.length)
 
-    if (next > 0 && next !== ownScreenIndex && !canvasWindowsRef.current.has(next)) {
+    // A tracked handle whose window was closed counts as missing (the reaper may not have run yet).
+    const tracked = canvasWindowsRef.current.get(next)
+    if (next > 0 && next !== ownScreenIndex && (!tracked || tracked.closed)) {
       const screen = secondary[next - 1]
       if (screen) openCanvasWindow(caseId, next, screen, canvasWindowsRef)
     }
 
-    setLayout((prev) => {
-      if (!prev) return prev
-      let moved: WorkspaceLayout = { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, screen: next || undefined } : p)) }
-      // Mirror hidePanel/requestAddPanel: a Free-arrangement screen always re-tiles when its
-      // panel set changes, on both ends of the move — otherwise the screen the pane left keeps a
-      // gap where it used to be, and the screen it lands on keeps whatever rect that pane had on
-      // its PREVIOUS screen, which is usually meaningless there (e.g. half-width on a 3-pane
-      // primary grid, now the only pane in an empty canvas window).
-      if (arrangementForScreen(prev, oldScreen) === "free") moved = autoTileLayout(moved, undefined, oldScreen)
-      if (arrangementForScreen(prev, next) === "free") moved = autoTileLayout(moved, id, next)
-      return moved
-    })
+    setLayout((prev) => (prev ? movePanelToScreen(prev, id, next) : prev))
 
     // Auto-close: the panel's OLD screen (if a secondary one) may now be empty. Checked against
     // the layout as it stood before this move (oldScreen only ever had this one panel removed

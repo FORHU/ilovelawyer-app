@@ -15,7 +15,7 @@ import { PANEL_TITLES } from "@/lib/terminal/panel-titles"
 import { createPanelPlacementActions, moveToScreen } from "@/lib/terminal/panel-placement"
 import {
   arrangementForScreen,
-  autoTileLayout,
+  hidePanelInLayout,
   computeFocusStackSummaries,
   computePanelBadges,
   openCanvasWindow,
@@ -151,11 +151,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
 
   const hidePanel = (id: PanelId) => {
     setMaximizedId((cur) => (cur === id ? null : cur))
-    setBuilderLayout((prev) => {
-      if (!prev) return prev
-      const hidden = { ...prev, panels: prev.panels.map((p) => (p.id === id ? { ...p, visible: false } : p)) }
-      return arrangementForScreen(prev, activeScreenTab) === "free" ? autoTileLayout(hidden, undefined, activeScreenTab) : hidden
-    })
+    setBuilderLayout((prev) => (prev ? hidePanelInLayout(prev, id) : prev))
   }
 
   // Patches whichever screen's own arrangement fields are active — screen 0 lives on

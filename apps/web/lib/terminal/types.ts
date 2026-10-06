@@ -99,6 +99,15 @@ export interface TerminalCatalog {
 // A DB-persisted multi-screen preset row — see lib/terminal/screen-presets.ts's ScreenPresetDef,
 // which wraps this into the shape the presets modal actually renders. `userId: null` is a system
 // preset (seeded, global); otherwise it's the caller's own saved preset.
+/** One screen of a multi-screen preset. `columns` (Columns screens only) says which pane goes in which column, left to right,
+ * top to bottom, and overrides the default even spread; `panelIds` is always its flattened form (plus any pane folded in
+ * later, which just auto-joins the emptiest column). */
+export interface ScreenPresetScreen {
+  arrangement: ArrangementValue
+  panelIds: PanelId[]
+  columns?: PanelId[][]
+}
+
 export interface ScreenPresetRow {
   id: string
   userId: string | null
@@ -107,7 +116,7 @@ export interface ScreenPresetRow {
   name: string
   description: string | null
   screenCount: number
-  screens: { arrangement: ArrangementValue; panelIds: PanelId[] }[]
+  screens: ScreenPresetScreen[]
   createdAt: string
   updatedAt: string
 }
