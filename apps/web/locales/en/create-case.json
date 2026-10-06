@@ -20,6 +20,7 @@
     "title": "Case",
     "parties": "Parties",
     "noParties": "None named",
+    "clientSide": "We act for",
     "edit": "Edit"
   },
   "openInLabel": "After filing, open in",
@@ -52,7 +53,12 @@
     "fullNameLabel": "Full Name / Corporate Entity",
     "fullNamePlaceholder": "Enter explicit legal identity name",
     "designationLabel": "Designation",
-    "addParty": "Add Party"
+    "addParty": "Add Party",
+    "clientSideLabel": "We act for",
+    "clientSideUnset": "Not set",
+    "clientSideClaimant": "Claimant / prosecution",
+    "clientSideRespondent": "Respondent / defence",
+    "clientSideHint": "Weaknesses and strengths are written from this side. You can change it later."
   },
   "sectionEvidence": {
     "heading": "III. Evidentiary Submissions",

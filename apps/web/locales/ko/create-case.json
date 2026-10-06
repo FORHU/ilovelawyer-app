@@ -24,7 +24,12 @@
     "fullNameLabel": "성명 / 법인명",
     "fullNamePlaceholder": "정확한 법적 명칭을 입력하세요",
     "designationLabel": "당사자 지위",
-    "addParty": "당사자 추가"
+    "addParty": "당사자 추가",
+    "clientSideLabel": "대리하는 측",
+    "clientSideUnset": "미설정",
+    "clientSideClaimant": "원고 / 검찰",
+    "clientSideRespondent": "피고 / 변호",
+    "clientSideHint": "약점과 강점은 이 측의 입장에서 작성됩니다. 나중에 변경할 수 있습니다."
   },
   "sectionEvidence": {
     "heading": "III. 증거 자료 제출",
