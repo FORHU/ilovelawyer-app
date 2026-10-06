@@ -72,6 +72,18 @@ jobs:
         run: |
           echo "password=$(aws ecr get-login-password --region ${{ env.AWS_REGION }})" >> $GITHUB_OUTPUT
 
+      # The dev Google client ID is baked into the bundle at build time. An empty one
+      # compiles and deploys but breaks Google sign-in with nothing in any log. Fail the
+      # build instead (create DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID in the `production` environment).
+      - name: Check dev Google client ID is populated
+        env:
+          DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          if [ -z "$DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID" ]; then
+            echo "::error::DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID is empty. Create it as a secret in the 'production' environment."
+            exit 1
+          fi
+
       # NEXT_PUBLIC_* values are inlined into the client JS bundle at `next build` time,
       # not read at container runtime — see docs/adr/0005-web-env-vars-baked-at-build-time.md.
       # This file must exist before `docker build` runs, since the builder stage's
