@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { apiFetch } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
+import { useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store"
 import { chatKeys } from "@/lib/query-keys"
 import type { OrganizationWithRole } from "@/lib/organizations/queries"
 
@@ -355,6 +356,9 @@ export function useLogoutMutation() {
         skipAuthRefresh: true,
       }),
     onSettled: () => {
+      // Before clearAuth — discardAll needs to know whose drafts to delete. Unsent consultation
+      // text can be privileged; a deliberate sign-out leaves none of it in this browser.
+      useConsultationDraftsStore.getState().discardAll()
       clearAuth()
       // Without this, every query keyed independently of the user (e.g. userKeys.me())
       // keeps serving the just-logged-out account's cached data/error to whichever

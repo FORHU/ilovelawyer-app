@@ -1,12 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Plus, History, Image as ImageIcon, PanelLeft, PanelLeftClose, X, Pencil, Trash2, Check, Loader2 } from "lucide-react";
+import { Plus, History, Image as ImageIcon, PanelLeft, PanelLeftClose, X, Pencil, Archive, Check, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import {
-  useConsultationsQuery,
-  useRenameConsultationMutation,
-  useDeleteConsultationMutation,
-} from "@/lib/chat/mutations";
+import { useConsultationsQuery, useRenameConsultationMutation } from "@/lib/chat/mutations";
+import { ArchivedConsultationsButton, useArchiveConsultation } from "@/components/chat/archived-consultations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import { MobileDrawer } from "@/components/mobile-drawer";
@@ -47,7 +44,7 @@ export default function ConsultationSidebar({
   const organization = useAuthStore((s) => s.organization);
   const sendingConsultationIds = useSendingConsultationsStore((s) => s.sendingConsultationIds);
   const renameConsultation = useRenameConsultationMutation();
-  const deleteConsultation = useDeleteConsultationMutation();
+  const { requestArchive, archiveDialog, archivingId } = useArchiveConsultation();
   const asideRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -70,14 +67,14 @@ export default function ConsultationSidebar({
     if (title) renameConsultation.mutate({ consultationId: id, title });
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm(t("sidebar.deleteConsultationConfirm"))) return;
-    deleteConsultation.mutate(id, {
-      onSuccess: () => {
+  // Archive is the soft delete (restorable from the Archived section below the list); permanent
+  // deletion is only offered there.
+  const handleArchive = (id: string, name: string) =>
+    requestArchive(id, name, {
+      onArchived: () => {
         if (id === activeConsultationId) onNewChat();
       },
     });
-  };
 
   // Close the mobile drawer if the viewport grows past lg (e.g. rotating a tablet) — matches
   // GlobalHeader's own mobile-drawer breakpoint, so both switch together instead of leaving
@@ -250,21 +247,28 @@ export default function ConsultationSidebar({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        {/* Unavailable while a reply is generating — aria-disabled rather than
+                            disabled, so hovering still shows why. The API refuses it too. */}
                         <button
                           type="button"
-                          onClick={() => handleDelete(c.id)}
-                          disabled={deleteConsultation.isPending && deleteConsultation.variables === c.id}
-                          aria-label={t("sidebar.deleteConsultationNamed", { name: label })}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-50"
+                          onClick={() => {
+                            if (!sendingConsultationIds.has(c.id)) handleArchive(c.id, label);
+                          }}
+                          disabled={archivingId === c.id}
+                          aria-disabled={sendingConsultationIds.has(c.id) || undefined}
+                          aria-label={t("sidebar.archiveConsultationNamed", { name: label })}
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground"
                         >
-                          {deleteConsultation.isPending && deleteConsultation.variables === c.id ? (
+                          {archivingId === c.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                           ) : (
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            <Archive className="h-3.5 w-3.5" aria-hidden="true" />
                           )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>{t("sidebar.deleteConsultation")}</TooltipContent>
+                      <TooltipContent>
+                        {sendingConsultationIds.has(c.id) ? t("sidebar.archiveWhileGenerating") : t("sidebar.archiveConsultation")}
+                      </TooltipContent>
                     </Tooltip>
                   </div>
                 </div>
@@ -274,6 +278,19 @@ export default function ConsultationSidebar({
           {/* Fades the last row into the sidebar background instead of a hard cut, and
               signals there's more to scroll to when the list overflows this panel. */}
           <div className="pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card/95 to-transparent" />
+        </div>
+      )}
+
+      {/* Pinned under the scrolling list (not in it) so it's always one click away. */}
+      {(expanded || isMobile) && (
+        <div className="shrink-0 px-2 pt-2">
+          <ArchivedConsultationsButton
+            caseId={caseId}
+            onRestored={(id) => {
+              onSelectConsultation(id);
+              onMobileOpenChange(false);
+            }}
+          />
         </div>
       )}
 
@@ -352,6 +369,7 @@ export default function ConsultationSidebar({
         </div>
         {panelBody(true)}
       </MobileDrawer>
+      {archiveDialog}
     </>
   );
 }

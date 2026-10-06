@@ -3,27 +3,36 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConsultationsQuery, useRenameConsultationMutation } from "@/lib/chat/mutations";
+import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 interface ThreadPickerProps {
   caseId: string;
   activeConsultationId: string | null;
+  /** `?c=new` — the Case's unsaved draft is open (see consultation-drafts.store.ts). Only the
+   * URL-driven Case Workspace sets it; Terminal's chat pane never has a draft. */
+  isDraftActive?: boolean;
 }
 
-/** Case-scoped header label — a Case's chat is a single thread, not a list to browse or fork
- * from, so this only ever shows the consultation currently open for this case: no "+ New chat"
- * affordance, no dropdown of the case's other consultations. Click-to-edit renames it in place,
- * reusing the same rename mutation the full consultation sidebar's inline editor uses
- * (consultation-sidebar.tsx). Disabled until a consultation actually exists — there's nothing
- * to rename yet for the "New chat" placeholder state. */
-export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps) {
+/** Case-scoped chat header: the open Consultation's title, click-to-edit (rename reuses the same
+ * mutation as the full consultation sidebar, consultation-sidebar.tsx; on the draft it renames the
+ * draft, sent as the title when its first message creates it). Choosing between a Case's
+ * Consultations happens in the Case Workspace's left panel (consultation-tree.tsx), where each
+ * one lists its own Topics. */
+export function ThreadPicker({ caseId, activeConsultationId, isDraftActive = false }: ThreadPickerProps) {
   const { t } = useTranslation("homepage");
   const { data: consultations } = useConsultationsQuery(caseId);
   const renameConsultation = useRenameConsultationMutation();
+  const { draft } = useConsultationDraft(isDraftActive ? caseId : undefined);
+  const ensureDraft = useConsultationDraftsStore((s) => s.ensureDraft);
+  const updateDraft = useConsultationDraftsStore((s) => s.updateDraft);
 
-  const activeLabel =
-    consultations?.find((c) => c.id === activeConsultationId)?.title?.trim() ||
-    (activeConsultationId ? t("sidebar.untitledConsultation") : t("sidebar.newChat"));
+  const draftLabel = draft?.title.trim() || t("sidebar.newConsultation");
+  const activeLabel = isDraftActive
+    ? draftLabel
+    : consultations?.find((c) => c.id === activeConsultationId)?.title?.trim() ||
+      (activeConsultationId ? t("sidebar.untitledConsultation") : t("sidebar.newChat"));
+  const canRename = Boolean(activeConsultationId) || isDraftActive;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(activeLabel);
@@ -33,36 +42,49 @@ export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps
     if (isEditing) inputRef.current?.focus();
   }, [isEditing]);
 
+  // A rename half-typed in one consultation must not be committed onto the next one.
+  const openKey = isDraftActive ? "draft" : activeConsultationId;
+  const [editingFor, setEditingFor] = useState(openKey);
+  if (editingFor !== openKey) {
+    setEditingFor(openKey);
+    setIsEditing(false);
+  }
+
   // Seeds the draft from the current saved title right as editing starts, rather than
   // syncing continuously — editValue is only ever read while isEditing is true, so there's
-  // nothing to keep fresh in between edits.
+  // nothing to keep fresh in between edits. The draft starts empty (its label is a placeholder).
   const startEditing = () => {
-    setEditValue(activeLabel);
+    setEditValue(isDraftActive ? (draft?.title ?? "") : activeLabel);
     setIsEditing(true);
+  };
+
+  const commitEdit = () => {
+    const title = editValue.trim();
+    setIsEditing(false);
+    if (isDraftActive) {
+      ensureDraft(caseId);
+      updateDraft(caseId, { title });
+      return;
+    }
+    if (activeConsultationId && title && title !== activeLabel) {
+      renameConsultation.mutate({ consultationId: activeConsultationId, title });
+    }
   };
 
   // Same box model (border width + padding) in every state below — static text, hover
   // target, and the edit input — so entering/leaving edit mode never shifts the header row.
   const boxClassName = "min-w-0 max-w-full truncate rounded-lg border px-2 py-1 -mx-2 text-[15px] font-semibold text-foreground";
 
-  if (!activeConsultationId) {
-    return <h1 className={`${boxClassName} border-transparent`}>{activeLabel}</h1>;
-  }
-
-  const commitEdit = () => {
-    const title = editValue.trim();
-    setIsEditing(false);
-    if (title && title !== activeLabel) {
-      renameConsultation.mutate({ consultationId: activeConsultationId, title });
-    }
-  };
-
-  if (isEditing) {
-    return (
+  let title;
+  if (!canRename) {
+    title = <h1 className={`${boxClassName} border-transparent`}>{activeLabel}</h1>;
+  } else if (isEditing) {
+    title = (
       <h1 className={`${boxClassName} flex items-center gap-1 overflow-visible border-primary/50 bg-muted`}>
         <input
           ref={inputRef}
           value={editValue}
+          placeholder={isDraftActive ? t("sidebar.newConsultation") : undefined}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -73,7 +95,7 @@ export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps
           }}
           onBlur={commitEdit}
           aria-label={t("sidebar.renameConsultationNamed", { name: activeLabel })}
-          className="min-w-0 flex-1 truncate bg-transparent font-semibold text-foreground outline-none"
+          className="min-w-0 flex-1 truncate bg-transparent font-semibold text-foreground outline-none placeholder:text-muted-foreground"
         />
         <Tooltip>
           <TooltipTrigger asChild>
@@ -95,28 +117,30 @@ export function ThreadPicker({ caseId, activeConsultationId }: ThreadPickerProps
         </Tooltip>
       </h1>
     );
+  } else {
+    title = (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <h1
+            role="button"
+            tabIndex={0}
+            onClick={startEditing}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                startEditing();
+              }
+            }}
+            aria-label={t("sidebar.renameConsultationNamed", { name: activeLabel })}
+            className={`${boxClassName} cursor-text border-transparent transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
+          >
+            {activeLabel}
+          </h1>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{t("sidebar.renameConsultation")}</TooltipContent>
+      </Tooltip>
+    );
   }
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <h1
-          role="button"
-          tabIndex={0}
-          onClick={startEditing}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              startEditing();
-            }
-          }}
-          aria-label={t("sidebar.renameConsultationNamed", { name: activeLabel })}
-          className={`${boxClassName} cursor-text border-transparent transition-colors hover:border-border hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`}
-        >
-          {activeLabel}
-        </h1>
-      </TooltipTrigger>
-      <TooltipContent side="bottom">{t("sidebar.renameConsultation")}</TooltipContent>
-    </Tooltip>
-  );
+  return title;
 }

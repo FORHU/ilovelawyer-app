@@ -206,7 +206,9 @@
       "failed": "Nabigo",
       "scriptOnly": "Script lang"
     },
-    "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map."
+    "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map.",
+    "consultationsSectionTitle": "Mga konsultasyon",
+    "topicsLoading": "Nilo-load ang mga paksa…"
   },
   "mindMapExpand": {
     "button": "Palawakin",

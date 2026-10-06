@@ -17,3 +17,10 @@ const CONFIGS: Record<TenantCode, TenantCodeConfig> = {
 export function getTenantCodeConfig(tenantCode: TenantCode | null | undefined): TenantCodeConfig {
   return CONFIGS[tenantCode ?? "PH"]
 }
+
+/** i18n keys (create-case namespace) for each `ui.caseIntake.ukJurisdictionOptions` value. */
+export const UK_JURISDICTION_LABEL_KEYS: Record<string, string> = {
+  "England and Wales": "ukJurisdictions.englandAndWales",
+  "Scotland": "ukJurisdictions.scotland",
+  "Northern Ireland": "ukJurisdictions.northernIreland",
+}

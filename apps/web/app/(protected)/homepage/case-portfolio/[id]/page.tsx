@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
-  LayoutGrid, PanelsTopLeft, Scale, Loader2,
+  ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
   FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
@@ -25,6 +25,7 @@ import type { SnapshotRisk } from "@/lib/terminal/types";
 import { openFindings } from "@/lib/terminal/case-summary-view";
 import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
 import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto-prompts";
+import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -85,12 +86,31 @@ export default function CaseDetailPage() {
              * read as cluttered. This also gives the title its own full-width line to truncate
              * or wrap against, and the edit icon proper room to sit next to it. */}
             <div className="flex flex-col gap-1.5 min-w-0">
-              {filedLine && (
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
-                  {filedLine}
-                </span>
-              )}
+              {/* Back link leads the eyebrow line (same "← Cases" link Create Case uses) so the
+               * title below keeps its flush-left edge instead of being pushed in by an icon. */}
+              <div className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/homepage/case-portfolio"
+                      className="-my-1 -ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-1 py-1 text-[10px] font-semibold tracking-[1.2px] uppercase hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t("nav.cases", { ns: "common" })}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("detail.backToPortfolio")}</TooltipContent>
+                </Tooltip>
+                {filedLine && (
+                  <>
+                    <span className="h-3 w-px shrink-0 bg-border" aria-hidden="true" />
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
+                      <span className="truncate">{filedLine}</span>
+                    </span>
+                  </>
+                )}
+              </div>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
@@ -510,13 +530,25 @@ function OverviewTab({
         <Card
           title={t("overview.consultations")}
           headerRight={
-            <button
-              type="button"
-              onClick={onOpenWorkspace}
-              className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              {t("overview.openWorkspace")}
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Opens the Case's draft Consultation in the Workspace (`?c=new`) — nothing is
+               * saved until its first message. */}
+              <button
+                type="button"
+                onClick={() => onOpenConsultation(DRAFT_CONSULTATION_PARAM)}
+                className="p-2 -m-2 flex items-center gap-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Plus className="h-3 w-3" aria-hidden="true" />
+                {t("overview.newConsultation")}
+              </button>
+              <button
+                type="button"
+                onClick={onOpenWorkspace}
+                className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {t("overview.openWorkspace")}
+              </button>
+            </div>
           }
         >
           {isConsultationsLoading ? (

@@ -11,6 +11,7 @@ import { ThreadPicker } from "@/components/chat/thread-picker";
 import { useResizableWidth } from "@/lib/case-workspace/use-resizable-width";
 import { useCaseQuery } from "@/lib/cases/mutations";
 import { useCaseRoom } from "@/lib/cases/case-room";
+import { consultationIdFromParam, isDraftConsultationParam } from "@/lib/chat/consultation-param";
 
 interface CaseWorkspaceProps {
   caseId: string;
@@ -55,7 +56,11 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const basePath = `/homepage/case-portfolio/${caseId}`;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeConsultationId = searchParams.get("c");
+  // `?c=new` is the Case's unsaved draft (lib/chat/consultation-param.ts) — no real id yet, so
+  // Sources/Studio see "no consultation" for it, same as a Case with none.
+  const consultationParam = searchParams.get("c");
+  const activeConsultationId = consultationIdFromParam(consultationParam);
+  const isDraftActive = isDraftConsultationParam(consultationParam);
   // One-shot `?p=` (0-based prompt number) from Case Overview's per-prompt links — ConsultationChat
   // lands on that prompt instead of the bottom, then it's dropped so a reload behaves normally.
   const promptParam = searchParams.get("p");
@@ -82,6 +87,22 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
   const handleConsultationCreated = (id: string) => {
     router.replace(`${basePath}?c=${id}`);
   };
+  // The one way the Consultations list (Sources panel) changes which Consultation is open: `?c=`
+  // is the source of truth that ConsultationChat, Sources and Studio all read. Replace, not push —
+  // the back gesture leaves the Case rather than stepping back through every consultation visited
+  // (see ConsultationChat's navigateToConsultation). `null` = no selection (ConsultationChat then
+  // opens the most recent); `promptNumber` lands on that prompt (`?p=`, a topic clicked in a
+  // consultation that wasn't open).
+  const selectConsultation = useCallback(
+    (param: string | null, promptNumber?: number) => {
+      const query = new URLSearchParams();
+      if (param) query.set("c", param);
+      if (promptNumber !== undefined) query.set("p", String(promptNumber));
+      const qs = query.toString();
+      router.replace(qs ? `${basePath}?${qs}` : basePath);
+    },
+    [router, basePath],
+  );
 
   const [sourcesExpanded, setSourcesExpanded] = useState(true);
   const [studioExpanded, setStudioExpanded] = useState(true);
@@ -207,7 +228,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
         {/* Same px-6 gutter as ConsultationChat's `centerContent` column below (uncapped —
          * see its doc comment), so the thread title's left edge lines up with the transcript,
          * input dock, and message bubbles beneath it at any sidebar width. */}
-        <ThreadPicker caseId={caseId} activeConsultationId={activeConsultationId} />
+        <ThreadPicker caseId={caseId} activeConsultationId={activeConsultationId} isDraftActive={isDraftActive} />
       </div>
       <div className="min-h-0 flex-1">
         <ConsultationChat
@@ -251,6 +272,7 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
             activeConsultationId={activeConsultationId}
             width={sourcesRenderWidth}
             isResizing={sources.isDragging}
+            consultationList={{ caseId, isDraftActive, onSelect: selectConsultation }}
           />
           {sourcesExpanded && (
             <ResizeHandle ariaLabel={t("workspace.resizeSources")} onPointerDown={sources.handlePointerDown} isDragging={sources.isDragging} />
@@ -305,6 +327,16 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
                 onBeforeJump={(index) => {
                   setPinnedTopicIndex(index);
                   setMobileTab("chat");
+                }}
+                consultationList={{
+                  caseId,
+                  isDraftActive,
+                  // Opening a consultation keeps the list on screen (to see its Topics); a topic
+                  // picked from one that wasn't open goes straight to the chat, like the open one's.
+                  onSelect: (param, promptNumber) => {
+                    selectConsultation(param, promptNumber);
+                    if (promptNumber !== undefined) setMobileTab("chat");
+                  },
                 }}
               />
             )}

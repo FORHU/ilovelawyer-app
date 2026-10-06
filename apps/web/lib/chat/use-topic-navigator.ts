@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from "react";
-import { useMessagesQuery } from "@/lib/chat/mutations";
+import { useMessagesQuery, type ChatMessage } from "@/lib/chat/mutations";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 import type { DecisionRecordPayload } from "@/lib/terminal/types";
@@ -170,6 +170,60 @@ export function reapplyFallbackHighlight(messageIndex: number) {
   fallbackHighlighted = el;
 }
 
+/** A consultation's history as ConsultationChat renders it: no system messages, and none of the
+ * hidden system-driven mind-map/audio-overview turns — so an index into this list is the
+ * `chat-msg-${index}` bubble id. Pure, so the Case Workspace's Consultations list can derive a
+ * consultation's Topics without the scroll-spy below (which only makes sense for the open one). */
+export function visibleChatMessages<M extends Pick<ChatMessage, "role" | "content">>(history: M[] | undefined): M[] {
+  const list = (history ?? []).filter((m) => m.role !== "system");
+  const hidden = new Set<number>();
+  list.forEach((m, i) => {
+    if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
+      hidden.add(i);
+      // Same run-of-consecutive-assistant-messages hiding as ConsultationChat's own copy of
+      // this filter — a split reply's sibling topics all belong to this hidden turn.
+      let j = i + 1;
+      while (list[j]?.role === "assistant") {
+        hidden.add(j);
+        j++;
+      }
+    }
+  });
+  return hidden.size > 0 ? list.filter((_, i) => !hidden.has(i)) : list;
+}
+
+/** Groups every split reply's topics under the user prompt that asked for it, so a thread with
+ * several turns behind it reads as "prompt -> its topics" (TopicNavigatorList's per-prompt
+ * dropdown) instead of one flat list where later turns' topics run together with earlier ones.
+ * Prompts whose reply wasn't split have no topics and are left out. */
+export function buildTopicGroups(
+  visibleMessages: ReadonlyArray<Pick<ChatMessage, "role" | "content" | "groupId" | "groupTitle">>,
+): TopicNavigatorGroup[] {
+  const result: TopicNavigatorGroup[] = [];
+  let current: TopicNavigatorGroup | null = null;
+  visibleMessages.forEach((m, index) => {
+    if (m.role === "user") {
+      current = { promptIndex: index, promptTitle: m.content.trim(), topics: [] };
+      result.push(current);
+      return;
+    }
+    if (!m.groupId || !current) return;
+    current.topics.push({ index, title: m.groupTitle || `Topic ${current.topics.length + 1}` });
+  });
+  return result.filter((g) => g.topics.length > 0);
+}
+
+/** The 0-based prompt number (`?p=`, see ConsultationChat's scrollToPromptNumber) of the turn a
+ * visibleChatMessages index belongs to — the prompt itself or one of its reply bubbles. -1 before
+ * the first prompt. */
+export function promptNumberAt(visibleMessages: ReadonlyArray<Pick<ChatMessage, "role">>, index: number): number {
+  let promptNumber = -1;
+  for (let i = 0; i <= index && i < visibleMessages.length; i++) {
+    if (visibleMessages[i]!.role === "user") promptNumber++;
+  }
+  return promptNumber;
+}
+
 /** Derives "topics across every split AI reply" for a consultation straight from persisted
  * history — usable from anywhere on the page, not just inside ConsultationChat's own render
  * tree, since a split reply is always already-persisted data (see MessageGroup). Each turn's
@@ -188,6 +242,14 @@ export function useTopicNavigator(
 ) {
   const { data: history } = useMessagesQuery(consultationId ?? undefined);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  // The scroll-spy's last index belongs to the previous consultation's bubbles — cleared on a
+  // switch (during render, so not even one frame) before the next one can highlight a topic row
+  // by that stale index.
+  const [spiedConsultationId, setSpiedConsultationId] = useState(consultationId);
+  if (spiedConsultationId !== consultationId) {
+    setSpiedConsultationId(consultationId);
+    setActiveIndex(null);
+  }
   // Set by ConsultationChat's doSend the moment a turn starts for this consultation (see
   // sending-consultations.store.ts) — true well before a split reply could possibly be
   // persisted, so callers can show a "generating" state instead of a bare empty one.
@@ -195,41 +257,8 @@ export function useTopicNavigator(
     consultationId ? s.sendingConsultationIds.has(consultationId) : false,
   );
 
-  const visibleMessages = useMemo(() => {
-    const list = (history ?? []).filter((m) => m.role !== "system");
-    const hidden = new Set<number>();
-    list.forEach((m, i) => {
-      if (m.role === "user" && (m.content === AUTO_MINDMAP_PROMPT || m.content === AUTO_AUDIO_OVERVIEW_PROMPT)) {
-        hidden.add(i);
-        // Same run-of-consecutive-assistant-messages hiding as ConsultationChat's own copy of
-        // this filter — a split reply's sibling topics all belong to this hidden turn.
-        let j = i + 1;
-        while (list[j]?.role === "assistant") {
-          hidden.add(j);
-          j++;
-        }
-      }
-    });
-    return hidden.size > 0 ? list.filter((_, i) => !hidden.has(i)) : list;
-  }, [history]);
-
-  // Groups every split reply's topics under the user prompt that asked for it, so a thread with
-  // several turns behind it reads as "prompt -> its topics" (TopicNavigatorList's per-prompt
-  // dropdown) instead of one flat list where later turns' topics run together with earlier ones.
-  const groups = useMemo<TopicNavigatorGroup[]>(() => {
-    const result: TopicNavigatorGroup[] = [];
-    let current: TopicNavigatorGroup | null = null;
-    visibleMessages.forEach((m, index) => {
-      if (m.role === "user") {
-        current = { promptIndex: index, promptTitle: m.content.trim(), topics: [] };
-        result.push(current);
-        return;
-      }
-      if (!m.groupId || !current) return;
-      current.topics.push({ index, title: m.groupTitle || `Topic ${current.topics.length + 1}` });
-    });
-    return result.filter((g) => g.topics.length > 0);
-  }, [visibleMessages]);
+  const visibleMessages = useMemo(() => visibleChatMessages(history), [history]);
+  const groups = useMemo(() => buildTopicGroups(visibleMessages), [visibleMessages]);
 
   // Same "prompt -> its stuff" grouping as `groups` above, but for Decision Records instead of
   // split-reply topics — every turn that produced any, in chronological (oldest-first) order, not

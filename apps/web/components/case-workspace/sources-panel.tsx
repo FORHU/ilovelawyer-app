@@ -2,8 +2,11 @@
 import { useEffect, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ListTree, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
+import { ListTree, MessagesSquare, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Plus, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
+import { ConsultationTree } from "@/components/case-workspace/consultation-tree";
+import { ArchivedConsultationsButton } from "@/components/chat/archived-consultations";
+import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, clearFallbackHighlight } from "@/lib/chat/use-topic-navigator";
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { EvidenceItem, RuleItem, Label } from "@/components/shared/decision-detail";
@@ -58,6 +61,14 @@ interface SourcesPanelProps {
    * one of those icons only expands the panel too, so in the Terminal chat pane (where Topics is
    * the only section left) it was a second button doing exactly what the toggle above it does. */
   showRailSections?: boolean;
+  /** Case Workspace only: the panel becomes the Case's Consultations list (consultation-tree.tsx),
+   * every Consultation expanding to its own Topics — the open one's being this panel's usual
+   * Topics body. Omitted by the Terminal chat pane, which shows just its one consultation's. */
+  consultationList?: {
+    caseId: string;
+    isDraftActive: boolean;
+    onSelect: (param: string | null, promptNumber?: number) => void;
+  };
 }
 
 /** Case Workspace's left panel — the material behind the active thread's latest legal answer:
@@ -69,8 +80,9 @@ interface SourcesPanelProps {
  * Collapses to a slim rail. Documents (this case's Case Documents) moved to the Studio panel
  * instead (see studio-panel.tsx's Documents tile) — its upload/storage logic didn't move, only
  * where it's surfaced. */
-export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true }: SourcesPanelProps) {
+export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId, width, isResizing, fullWidth = false, className = "flex", onBeforeJump, side = "left", instanceId, transcriptRef, showDecisions = true, showRailSections = true, consultationList }: SourcesPanelProps) {
   const { t } = useTranslation("case-portfolio");
+  const { t: tHomepage } = useTranslation("homepage");
   const { t: tTerminal } = useTranslation("terminal");
   const { groups, decisionGroups: allDecisionGroups, topics, activeIndex, scrollToTopic, scrollToElementId, isGenerating, latestAssistantIndex } =
     useTopicNavigator(activeConsultationId, instanceId, transcriptRef);
@@ -99,10 +111,18 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   // A stale highlight from a previous thread would otherwise survive a thread switch — ids are
   // only unique within one turn's decisions (e.g. "evidence-quote-0-for-1"), so a leftover one
   // could coincidentally "highlight" an unrelated quote once a new consultation's messages load.
+  // Same for which decision groups are open (reset just below, during render): keyed by prompt
+  // index, which every consultation reuses (each has a prompt 0), so one consultation's toggles
+  // would otherwise land on another's prompts.
   useEffect(() => {
     setActiveHighlight(null);
     clearFallbackHighlight();
   }, [activeConsultationId, setActiveHighlight]);
+  const [overridesConsultationId, setOverridesConsultationId] = useState(activeConsultationId);
+  if (overridesConsultationId !== activeConsultationId) {
+    setOverridesConsultationId(activeConsultationId);
+    setDecisionOverrides(new Map());
+  }
 
   const handleJump = (index: number) => {
     if (!onBeforeJump) return scrollToTopic(index);
@@ -248,6 +268,55 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
     );
   };
 
+  // The open consultation's Topics (+ each prompt's decisions, + related cases) — the whole panel
+  // body on its own, or the open node's contents inside the Consultations list.
+  const topicsBody = (
+    hasAnything ? (
+      <div className="flex flex-col gap-4">
+        <div className="border-t border-border pt-3 first:border-0 first:pt-0">
+          {promptGroups.length > 0 ? (
+            <TopicNavigatorList
+              // Remounted per consultation: its open/closed toggles are keyed by prompt
+              // index, which every consultation reuses — see the decisionOverrides reset.
+              key={activeConsultationId ?? "none"}
+              groups={promptGroups}
+              activeIndex={activeIndex}
+              onJump={handleJump}
+              renderGroupFooter={renderDecisionGroup}
+            />
+          ) : isGenerating ? (
+            <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
+          ) : (
+            <p className="py-3 text-center text-xs text-muted-foreground">{t("workspace.topicsEmpty")}</p>
+          )}
+        </div>
+
+        {relatedCases.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
+            <Label>{t("workspace.relatedTab")}</Label>
+            <ul className="space-y-1.5">
+              {relatedCases.map((rc, i) => (
+                <RelatedCaseRow
+                  key={i}
+                  relatedCase={rc}
+                  onClick={latestAssistantIndex !== null ? () => handleJump(latestAssistantIndex) : undefined}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    ) : isGenerating ? (
+      <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
+    ) : !activeConsultationId ? (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        {consultationList ? t("workspace.topicsEmpty") : t("workspace.sourcesNoConsultation")}
+      </p>
+    ) : (
+      <p className="py-6 text-center text-sm text-muted-foreground">{t("workspace.sourcesEmpty")}</p>
+    )
+  );
+
   return (
     <aside
       // `className` (default "flex") carries all display responsibility, not a hardcoded
@@ -268,10 +337,31 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
         }`}
       >
         {expanded && (
-          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-            <ListTree className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden="true" />
-            <span className="truncate">{t("workspace.topicsSectionTitle")}</span>
+          <span className="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-foreground">
+            {consultationList ? (
+              <MessagesSquare className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden="true" />
+            ) : (
+              <ListTree className="h-3.5 w-3.5 text-brand-gold shrink-0" aria-hidden="true" />
+            )}
+            <span className="truncate">
+              {consultationList ? t("workspace.consultationsSectionTitle") : t("workspace.topicsSectionTitle")}
+            </span>
           </span>
+        )}
+        {expanded && consultationList && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => consultationList.onSelect(DRAFT_CONSULTATION_PARAM)}
+                aria-label={tHomepage("sidebar.newConsultation")}
+                className="ml-auto mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side={tooltipSide}>{tHomepage("sidebar.newConsultation")}</TooltipContent>
+          </Tooltip>
         )}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -341,47 +431,23 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
 
       {expanded && (
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-none [-ms-overflow-style:none] p-3">
-          {hasAnything ? (
-            <div className="flex flex-col gap-4">
-              <div className="border-t border-border pt-3 first:border-0 first:pt-0">
-                {promptGroups.length > 0 ? (
-                  <TopicNavigatorList
-                    groups={promptGroups}
-                    activeIndex={activeIndex}
-                    onJump={handleJump}
-                    renderGroupFooter={renderDecisionGroup}
-                  />
-                ) : isGenerating ? (
-                  <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
-                ) : (
-                  <p className="py-3 text-center text-xs text-muted-foreground">{t("workspace.topicsEmpty")}</p>
-                )}
-              </div>
-
-              {relatedCases.length > 0 && (
-                <div className="flex flex-col gap-3 border-t border-border pt-3 first:border-0 first:pt-0">
-                  <Label>{t("workspace.relatedTab")}</Label>
-                  <ul className="space-y-1.5">
-                    {relatedCases.map((rc, i) => (
-                      <RelatedCaseRow
-                        key={i}
-                        relatedCase={rc}
-                        onClick={latestAssistantIndex !== null ? () => handleJump(latestAssistantIndex) : undefined}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ) : isGenerating ? (
-            <TopicNavigatorLoading label={t("workspace.topicsGenerating")} />
-          ) : !activeConsultationId ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("workspace.sourcesNoConsultation")}
-            </p>
+          {consultationList ? (
+            <ConsultationTree
+              caseId={consultationList.caseId}
+              activeConsultationId={activeConsultationId}
+              isDraftActive={consultationList.isDraftActive}
+              onSelect={consultationList.onSelect}
+              activeBody={topicsBody}
+            />
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("workspace.sourcesEmpty")}</p>
+            topicsBody
           )}
+        </div>
+      )}
+      {/* Outside the scrolling list, so the archive stays reachable however long the list gets. */}
+      {expanded && consultationList && (
+        <div className="shrink-0 border-t border-border p-2">
+          <ArchivedConsultationsButton caseId={consultationList.caseId} onRestored={(id) => consultationList.onSelect(id)} />
         </div>
       )}
     </aside>

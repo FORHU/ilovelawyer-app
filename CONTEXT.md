@@ -39,8 +39,12 @@ The display name a user provides at signup. Stored as `name` on the backend User
 _Avoid_: "name" (ambiguous — always say Full Name in UI copy and "name" only when referring to the API field)
 
 **Conversation**
-A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`/homepage?c=<conversationId>`) so it survives a refresh. Listed in the sidebar, most-recently-created first. The `/homepage` page's UI copy (nav tab, headline) calls this "Consultation" — same concept, just the user-facing label; the code and this glossary use Conversation.
+A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`?c=<consultationId>`) so it survives a refresh. Listed most-recently-active first. The UI copy calls this "Consultation", and so does the code since the API's `Conversation` → `Consultation` rename (`Consultation` model, `/api/chat/consultations`); this entry keeps its older name.
+A Case has many Consultations, each an independent conversation context: its own messages, its own Topics (split-reply `MessageGroup`s) and its own AI session. They share only the Case's documents and case-level analysis, never each other's messages. Everyone who can open the Case sees all of its Consultations; only the creator or a case editor can delete one. The Case Workspace switches between them from its chat header (`components/chat/thread-picker.tsx`).
 _Avoid_: "chat", "session" (ambiguous with the backend's Session concept)
+
+**Draft Consultation**
+A Case's not-yet-saved Consultation, opened by "New consultation" at `?c=new`. It exists only in that browser (`lib/store/consultation-drafts.store.ts`, one per Case): its title and unsent text survive leaving and refreshing, and its first message (or first attached file) creates the real Consultation with that title. Nothing is written to the database before then, so no one ever sees an empty Consultation.
 
 **Conversation Title**
 The label shown for a Conversation in the sidebar. Intended to be an AI-generated topical summary (e.g., "Wrongful Termination — Retaliatory Dismissal"), set once by the backend after the first exchange — not something the user types in. Until that backend generation work ships, the frontend falls back to a naive truncation of the user's first message.

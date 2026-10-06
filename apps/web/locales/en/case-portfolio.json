@@ -73,6 +73,7 @@
     "consultations": "Consultations",
     "noConsultations": "No consultations yet.",
     "openWorkspace": "Open workspace",
+    "newConsultation": "New consultation",
     "addParty": "Add party",
     "editParty": "Edit {{name}}",
     "removeParty": "Remove {{name}}",
@@ -364,7 +365,9 @@
       "failed": "Failed",
       "scriptOnly": "Script only"
     },
-    "mindMapNoConsultation": "Start a chat to generate a mind map."
+    "mindMapNoConsultation": "Start a chat to generate a mind map.",
+    "consultationsSectionTitle": "Consultations",
+    "topicsLoading": "Loading topics…"
   },
   "mindMapExpand": {
     "button": "Expand",

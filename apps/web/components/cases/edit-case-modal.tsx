@@ -6,6 +6,8 @@ import CustomSelect from "@/components/ui/custom-select";
 import type { CaseRecord, UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { getTenantCodeConfig, UK_JURISDICTION_LABEL_KEYS } from "@/config/tenant-codes";
 
 const DESIGNATION_OPTIONS = [
   { value: "Petitioner / Plaintiff", labelKey: "designations.petitionerPlaintiff" },
@@ -36,6 +38,9 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
   const [caseName, setCaseName] = useState(caseRecord.caseName);
   const [parties, setParties] = useState<Party[]>(() => initialParties(caseRecord.parties));
   const [notes, setNotes] = useState(caseRecord.notes ?? "");
+  const [ukJurisdiction, setUkJurisdiction] = useState(caseRecord.ukJurisdiction ?? "");
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
+  const ukJurisdictionOptions = getTenantCodeConfig(tenantCode).ui.caseIntake.ukJurisdictionOptions;
   const [nameError, setNameError] = useState(false);
   const nextPartyIdRef = useRef(parties.length + 1);
 
@@ -71,6 +76,9 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
         .filter((p) => p.name.trim())
         .map((p) => ({ name: p.name.trim(), designation: p.designation })),
       notes,
+      // Only sent when changed — the API has no way to clear it, and an unchanged value
+      // shouldn't count as an edit.
+      ...(ukJurisdiction && ukJurisdiction !== caseRecord.ukJurisdiction ? { ukJurisdiction } : {}),
     });
   };
 
@@ -136,6 +144,25 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
               </p>
             )}
           </div>
+
+          {ukJurisdictionOptions.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label htmlFor="edit-case-uk-jurisdiction" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+                {t("sectionIdentity.ukJurisdictionLabel", { ns: "create-case" })}
+              </label>
+              <CustomSelect
+                id="edit-case-uk-jurisdiction"
+                value={ukJurisdiction}
+                onChange={setUkJurisdiction}
+                options={ukJurisdictionOptions.map((v) => ({
+                  value: v,
+                  label: t(UK_JURISDICTION_LABEL_KEYS[v] ?? v, { ns: "create-case" }),
+                }))}
+                placeholder={t("sectionIdentity.selectUkJurisdiction", { ns: "create-case" })}
+                triggerTooltip="Which UK jurisdiction's law, courts, and procedure apply to this case"
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
@@ -242,7 +269,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                 {isSubmitting ? t("editModal.saving") : t("Save Changes")}
               </button>
             </TooltipTrigger>
-            <TooltipContent>Save the updated case name, party, and notes</TooltipContent>
+            <TooltipContent>Save the updated case details</TooltipContent>
           </Tooltip>
         </div>
       </form>
