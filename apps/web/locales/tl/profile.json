@@ -76,18 +76,18 @@
     "closeModal": "Isara",
     "deleteAccount": {
       "title": "Burahin ang account",
-      "description": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data.",
+      "description": "Ise-schedule ang iyong account para burahin at ila-log out ka. Maibabalik mo ito sa pamamagitan ng muling pag-sign in sa loob ng 30 araw. Pagkatapos noon, permanenteng mabubura ang iyong account at lahat ng kaugnay na data.",
       "button": "Burahin ang Account",
       "deleting": "Sine-schedule…",
       "confirmTitle": "Burahin ang iyong account?",
-      "confirmDescription": "Ise-schedule ang iyong account para burahin. May 30 araw ka para kanselahin bago permanenteng mabura ang iyong account at lahat ng kaugnay na data. Hindi na ito maibabalik pa pagkatapos.",
+      "confirmDescription": "Ise-schedule ang iyong account para burahin at mala-log out ka sa lahat ng device. Maibabalik mo ito sa pamamagitan ng muling pag-sign in sa loob ng 30 araw. Pagkatapos noon, permanenteng mabubura ang iyong account at lahat ng kaugnay na data at hindi na ito maibabalik.",
       "confirmButton": "I-schedule ang Pagbura",
       "scheduledTitle": "Naka-schedule na para burahin ang account",
       "scheduledDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}.",
       "cancelButton": "Kanselahin ang Pagbura",
       "cancelling": "Kinakansela…",
       "successTitle": "Naka-schedule na para burahin ang account",
-      "successDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}. Maaari mo itong kanselahin sa pamamagitan ng muling pag-sign in bago mangyari iyon. Malo-log out ka na ngayon.",
+      "successDescription": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data sa {{date}}. Na-log out ka na. Para maibalik ang iyong account, mag-sign in lang ulit bago iyon.",
       "successLogoutButton": "Mag-log Out"
     }
   },

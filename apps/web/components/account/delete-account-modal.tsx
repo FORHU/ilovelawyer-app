@@ -10,7 +10,9 @@ interface DeleteAccountModalProps {
   onConfirm: () => void;
   onClose: () => void;
   /** Set once the deletion request has succeeded — swaps the dialog into a logout-only
-   * confirmation screen showing when the account will actually be deleted. */
+   * confirmation screen showing when the account will actually be deleted. The API has already
+   * revoked every session by then (signing back in is what cancels the deletion), so logging
+   * out here only clears this browser's state. */
   scheduledFor?: string | null;
   isLoggingOut?: boolean;
   onLogout?: () => void;
@@ -67,7 +69,7 @@ export default function DeleteAccountModal({
                   {t("dangerZone.deleteAccount.successLogoutButton")}
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Sign out of this device</TooltipContent>
+              <TooltipContent>Finish signing out. Sign back in within 30 days to keep your account</TooltipContent>
             </Tooltip>
           </div>
         </DialogContent>
