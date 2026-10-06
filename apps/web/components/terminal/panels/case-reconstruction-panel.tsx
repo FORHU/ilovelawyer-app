@@ -12,9 +12,9 @@ import {
   pollReconstructionAudio,
   terminalKeys,
   useAiJobStatus,
+  useAnalysisRefreshing,
   useGenerateReconstructionAudioMutation,
   useGenerateReconstructionEventsMutation,
-  useGenerateReconstructionMutation,
   useGenerateReconstructionScenesMutation,
   useGenerateTableReadMutation,
   useUpdateReconstructionMutation,
@@ -28,7 +28,17 @@ import type {
   ReconstructionEvents,
   SceneDetail,
 } from "@/lib/terminal/types"
-import { EmptyNote, MutationError, PanelBody, SectionLabel, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import {
+  EmptyNote,
+  MutationError,
+  PaneUpdatingNote,
+  PanelBody,
+  SectionLabel,
+  ghostBtnClass,
+  labelTextClass,
+  primaryBtnClass,
+  secondaryTextClass,
+} from "@/components/terminal/panel-kit"
 
 type ReconstructionRegister = "general" | "court" | "opposing"
 
@@ -98,12 +108,15 @@ export function CaseReconstructionPanel({
     "narrative" | "scenes" | "storyboard" | "events"
   >("narrative")
 
-  const generate = useGenerateReconstructionMutation(caseId)
   const update = useUpdateReconstructionMutation(caseId)
   const generateAudio = useGenerateReconstructionAudioMutation(caseId)
   const generateJob = useAiJobStatus(caseId, "caseReconstruction")
-  const isGenerating =
-    generate.isPending || generateJob.data?.status === "IN_PROGRESS"
+  const isGenerating = generateJob.data?.status === "IN_PROGRESS"
+  // The narrative has no Generate/Regenerate: the analysis refresh writes it, and rewrites it
+  // until the lawyer edits any register — then it is left alone for good
+  // (CaseReconstructionSvc.autoRegenerate on the API).
+  const edited = !!reconstruction?.narrativeEditedAt
+  const refreshing = useAnalysisRefreshing(caseId)
 
   // Generate is queued server-side (AiGenerationQueue / SQS) — the mutation's response is just
   // the AiGenerationJob row, not the finished narrative, so drafts can no longer be set from its
@@ -122,16 +135,18 @@ export function CaseReconstructionPanel({
     }
     prevGenerateJobStatus.current = generateJob.data?.status
   }, [generateJob.data?.status])
+  // The analysis refresh can regenerate the narrative while the lawyer is mid-edit, so a register
+  // with unsaved changes keeps its draft; the others take the new text.
   useEffect(() => {
     if (!pendingDraftSyncRef.current) return
     pendingDraftSyncRef.current = false
-    setDrafts({
-      general: registerText(reconstruction, "general"),
-      court: registerText(reconstruction, "court"),
-      opposing: registerText(reconstruction, "opposing"),
-    })
-    setDirty({ general: false, court: false, opposing: false })
-    setIsEditingGeneral(false)
+    setDrafts((prev) => ({
+      general: dirty.general ? prev.general : registerText(reconstruction, "general"),
+      court: dirty.court ? prev.court : registerText(reconstruction, "court"),
+      opposing: dirty.opposing ? prev.opposing : registerText(reconstruction, "opposing"),
+    }))
+    if (!dirty.general) setIsEditingGeneral(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on new content, reads the dirty flags it lands on
   }, [reconstruction])
 
   // Polls a Polly async job while one is in flight — same "caller drives the loop" contract
@@ -159,27 +174,9 @@ export function CaseReconstructionPanel({
 
   return (
     <PanelBody gap="3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
-        <button
-          type="button"
-          onClick={() => generate.mutate()}
-          disabled={isGenerating}
-          className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
-        >
-          {isGenerating ? (
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-          ) : (
-            <Sparkles className="h-3 w-3" aria-hidden="true" />
-          )}
-          {isGenerating
-            ? t("generating")
-            : narrative
-              ? t("regenerate")
-              : t("generate")}
-        </button>
-      </div>
-      <MutationError show={generate.isError} />
+      <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
+      {refreshing && !edited ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
+      {edited ? <p className={secondaryTextClass}>{t("reconstructionEditedNote")}</p> : null}
 
       <div className="flex flex-wrap gap-x-1 border-b border-border">
         {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
@@ -236,7 +233,7 @@ export function CaseReconstructionPanel({
             )}
           </div>
 
-          {!narrative && !generate.isPending ? (
+          {!narrative && !isGenerating ? (
             <EmptyNote>{t("noReconstruction")}</EmptyNote>
           ) : activeRegister !== "general" && !activeText && !activeDirty ? (
             <EmptyNote>{t("registerNotGenerated")}</EmptyNote>

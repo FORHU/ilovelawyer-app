@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { ShieldCheck } from "lucide-react"
+import { Loader2, ShieldCheck } from "lucide-react"
 import gsap from "gsap"
 import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -53,6 +53,20 @@ export function MutationError({ show, children }: { show: boolean; children?: Re
   const { t } = useTranslation("terminal")
   if (!show) return null
   return <p className="text-[11px] text-danger">{children ?? t("genericSaveError")}</p>
+}
+
+/** "Updating…" under a pane's intro row while the case analysis is rewriting it. The panes the
+ * analysis rewrites have no Regenerate of their own; this is how they show it is happening — in
+ * the --progress gold, the same as the Terminal header's "Updating analysis…", so it stands out
+ * from the grey intro text. Every pane uses this one component, so they all look the same. */
+export function PaneUpdatingNote({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation("terminal")
+  return (
+    <p className="inline-flex items-center gap-1.5 text-[11px] leading-normal font-medium text-pretty text-progress" role="status">
+      <Loader2 className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      {children ?? t("findingsUpdating")}
+    </p>
+  )
 }
 
 // The 3 recurring text roles inside a panel body — every panel should pick one of these instead

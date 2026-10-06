@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { DocumentLink } from "@/components/shared/document-viewer"
-import { AlertTriangle, FileText, Link2, Loader2, RefreshCw } from "lucide-react"
+import { FileText, Link2 } from "lucide-react"
 import { daysUntil } from "@/lib/terminal/damages-format"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
@@ -10,12 +10,11 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
-  useAiJobStatus,
+  useAnalysisRefreshing,
   useCreateProcedureItemMutation,
   useProcedureRulesQuery,
   useRecomputeDeadlineMutation,
   useRecomputeStaleDeadlinesMutation,
-  useRefreshStrategyMutation,
   useUpdateProcedureItemMutation,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
@@ -24,6 +23,7 @@ import { getStatus } from "@/config/tenant-codes/capabilities"
 import {
   EmptyNote,
   MutationError,
+  PaneUpdatingNote,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -144,11 +144,9 @@ export function ProcedurePanel({
   const createItem = useCreateProcedureItemMutation(caseId)
   const updateItem = useUpdateProcedureItemMutation(caseId)
   const recomputeStale = useRecomputeStaleDeadlinesMutation(caseId)
-  const refreshStrategy = useRefreshStrategyMutation(caseId)
-  // The plan refresh is a queued job: it runs (and can be started by someone else) after the POST
-  // returns, so "updating" comes from the job status, not from the mutation.
-  const strategyJob = useAiJobStatus(caseId, "caseStrategyRefresh")
-  const updatingPlan = strategyJob.data?.status === "IN_PROGRESS" || refreshStrategy.isPending
+  // No "Update plan": the case analysis rewrites the plan, to-dos and key dates whenever the
+  // documents change, and is the only thing that does.
+  const updatingPlan = useAnalysisRefreshing(caseId)
   const [showCompleted, setShowCompleted] = useState(false)
   const [ruleCode, setRuleCode] = useState("")
   const [triggerDate, setTriggerDate] = useState("")
@@ -170,7 +168,6 @@ export function ProcedurePanel({
   // open ones stay up top and ticked ones fold away rather than crowding out what's left to do.
   const openTodos = todoItems.filter((item) => !item.done)
   const doneTodos = todoItems.filter((item) => item.done)
-  const strategyPanel = snapshot.strategyPanel
   const staleDeadlineIds = snapshot.staleness
     .filter((s) => s.nodeType === "PROCEDURAL_DEADLINE")
     .map((s) => s.refId)
@@ -244,36 +241,7 @@ export function ProcedurePanel({
 
   return (
     <PanelBody gap="4">
-      {(strategyPanel?.isStale || updatingPlan) && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-border bg-muted/50 px-3 py-2"
-        >
-          <p className="flex items-center gap-2 text-xs text-foreground">
-            {updatingPlan ? (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden="true" />
-            ) : (
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-riskmed" aria-hidden="true" />
-            )}
-            {updatingPlan
-              ? t("updatingPlan")
-              : (strategyPanel?.changedSince ?? 0) > 1
-                ? t("strategyStale", { count: strategyPanel?.changedSince })
-                : t("strategyStaleOne")}
-          </p>
-          {!updatingPlan && (
-            <button
-              type="button"
-              onClick={() => refreshStrategy.mutate()}
-              className="flex shrink-0 items-center gap-1 text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline"
-            >
-              <RefreshCw className="h-3 w-3" aria-hidden="true" />
-              {t("updatePlan")}
-            </button>
-          )}
-        </div>
-      )}
-      <MutationError show={refreshStrategy.isError || strategyJob.data?.status === "FAILED"} />
+      {updatingPlan ? <PaneUpdatingNote>{t("updatingPlan")}</PaneUpdatingNote> : null}
       <div>
         <SectionLabel>{t("recommendedApproach")}</SectionLabel>
         {approachItems.length > 0 ? (

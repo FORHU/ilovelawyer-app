@@ -20,6 +20,7 @@ import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
 import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
 import { dateLocale } from "@/lib/i18n/date-locale"
+import { PaneUpdatingNote } from "@/components/terminal/panel-kit"
 
 
 interface CalendarEvent {
@@ -90,8 +91,9 @@ export function CaseTimelineView({
   caseId,
   fill = true,
   // Studio panel (studio-panel.tsx) puts its own Generate control in the tile's header, next to
-  // the "Timeline" breadcrumb, instead of this content-area button — Legal Terminal's Evidence
-  // panel and the chat's embedded timeline tab have no equivalent header slot, so they keep it.
+  // the "Timeline" breadcrumb, instead of this content-area button. Legal Terminal's Evidence
+  // panel hides it too: there the case analysis is the only thing that regenerates the dates.
+  // The chat's embedded timeline tab keeps it.
   hideGenerateButton = false,
   // Optional heading rendered on the left of the generate row, so the button sits at the right
   // end of the section header instead of on a row of its own (Evidence panel passes "Timeline").
@@ -264,6 +266,13 @@ export function CaseTimelineView({
               </TooltipContent>
             </Tooltip>
             </div>
+          </div>
+        ) : title ? (
+          // No Generate (the Terminal's Evidence pane): the case analysis rewrites these dates on
+          // its own, so the row only carries the title and says when that is happening.
+          <div className="mb-2 flex flex-col gap-1">
+            {title}
+            {isGenerating ? <PaneUpdatingNote>{tt("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
           </div>
         ) : null}
         {isLoading ? (

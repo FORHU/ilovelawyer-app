@@ -792,7 +792,14 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
             {regenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           </button>
         )}
-        {isStale && (
+        {/* No onRegenerate (the Terminal's case map, which only the case analysis rebuilds): no
+         * button at all, just the spinner while that rebuild runs. */}
+        {!onRegenerate && regenerating && (
+          <span role="status" title={regeneratingLabel} aria-label={regeneratingLabel} className={MIND_MAP_CHROME.regenerateIconBtn}>
+            <Loader2 size={16} className="animate-spin" />
+          </span>
+        )}
+        {onRegenerate && isStale && (
           <button
             type="button"
             onClick={requestRegenerate}

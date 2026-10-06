@@ -206,6 +206,29 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   return query
 }
 
+/** The Terminal's "Refresh analysis" button: runs the whole case analysis (the same queued
+ * caseRefresh job a document change starts) even when no document changed. The 202 carries the
+ * new IN_PROGRESS job, written straight into the job-status cache so the button and every pane
+ * switch to "updating" at once rather than on the next status read. A 409 means a run is already
+ * going; a 403, that the user can't edit the case. */
+export function useRefreshAnalysisMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/refresh`, { method: "POST" }),
+    onSuccess: (status) => {
+      if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, "caseRefresh"), status)
+      else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseRefresh") })
+    },
+  })
+}
+
+/** Whether the case's analysis refresh ("Updating analysis…" in the Terminal header) is running.
+ * It rewrites Strengths, Weaknesses, Red Team, the AI draft theory, Case Reconstruction (unless
+ * edited) and the timeline, so those panes show an updating note and hold their Regenerate. */
+export function useAnalysisRefreshing(caseId: string): boolean {
+  return useAiJobStatus(caseId, "caseRefresh").data?.status === "IN_PROGRESS"
+}
+
 export function useTerminalCatalogQuery() {
   return useQuery({
     queryKey: terminalKeys.catalog(),
@@ -464,8 +487,8 @@ export function useUpdateTimelineMutation(caseId: string) {
 // Manual "Generate timeline" trigger — re-runs the same document-date extraction the automatic
 // post-upload pipeline runs (queues/case-post-extraction.ts on the backend), for when a lawyer
 // wants it re-derived without waiting for the next corpus change. Queued server-side
-// (AiGenerationQueue/SQS), same pattern as useGenerateReconstructionMutation above: this POST
-// returns once the job is claimed, not once the timeline is actually updated — the caller pairs
+// (AiGenerationQueue/SQS): this POST returns once the job is claimed (AiJobStatus,
+// IN_PROGRESS), not once the timeline is actually updated — the caller pairs
 // this with useAiJobStatus(caseId, "timelineGenerate") and invalidates the timeline/graph-view
 // queries itself once that flips to DONE, since useAiJobStatus only auto-invalidates the snapshot.
 export function useGenerateTimelineMutation(caseId: string) {
@@ -788,21 +811,6 @@ export function useUpdateProcedureItemMutation(caseId: string) {
   })
 }
 
-// Refreshes only the Case Strategy panel's pass (plan, to-dos, key dates) — queued server-side
-// (AiGenerationQueue/SQS), so this POST returns once the job is claimed. The caller pairs it with
-// useAiJobStatus(caseId, "caseStrategyRefresh"), which invalidates the snapshot on DONE. Ticked
-// to-dos survive the refresh.
-export function useRefreshStrategyMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/strategy/refresh`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseStrategyRefresh") })
-    },
-  })
-}
-
 // One click to recompute every deadline flagged stale. Still an explicit lawyer action — a due
 // date is a legal fact, so it never changes on its own. A date that moves loses its earlier
 // confirmations server-side, so the snapshot refresh shows them as needing confirmation again.
@@ -908,24 +916,6 @@ export function useJevCheckFindingMutation(caseId: string) {
   })
 }
 
-/** One findings panel's Regenerate — rewrites only that panel's AI rows (lawyer-edited ones stay).
- * Queued: the panel follows useAiJobStatus(caseId, "weaknessRegenerate" | "strengthRegenerate"),
- * which refreshes the snapshot on DONE. 409 while the whole case's findings are updating. */
-export function useRegenerateFindingsMutation(caseId: string, category: "WEAKNESS" | "STRENGTH") {
-  const queryClient = useQueryClient()
-  const kind = category === "WEAKNESS" ? "weaknessRegenerate" : "strengthRegenerate"
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/findings/regenerate`, {
-        method: "POST",
-        body: JSON.stringify({ category }),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, kind) })
-    },
-  })
-}
-
 export function useDeleteFindingMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1006,20 +996,6 @@ export function useSetWitnessFactorMutation(caseId: string) {
   })
 }
 
-// Queued server-side (AiGenerationQueue/SQS): this POST returns once the job is claimed, not once
-// scores are saved. The caller pairs it with useAiJobStatus(caseId, "witnessScoring") and
-// refreshes the witnesses graph view itself when that flips to DONE.
-export function useScoreWitnessesMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/witnesses/score`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "witnessScoring") })
-    },
-  })
-}
-
 export function useDeleteWitnessMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1065,21 +1041,6 @@ export function useUpdateDamageMutation(caseId: string) {
   })
 }
 
-// Queues a damages pass over every document of the case (DamagesExtractSvc.propose); progress and
-// completion come through useAiJobStatus(caseId, "damagesExtract"). The 202 carries the new
-// IN_PROGRESS job (the API claims it before queueing), written straight into the cache so the
-// IN_PROGRESS → DONE transition that refreshes the list is seen even if the started push is missed.
-export function useProposeDamagesMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/damages/propose`, { method: "POST" }),
-    onSuccess: (status) => {
-      if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, "damagesExtract"), status)
-      else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "damagesExtract") })
-    },
-  })
-}
-
 // Accepts an AI-proposed entry, so it counts in the total.
 export function useAcceptDamageMutation(caseId: string) {
   const queryClient = useQueryClient()
@@ -1101,28 +1062,6 @@ export function useDeleteDamageMutation(caseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
-    },
-  })
-}
-
-// A dedicated action — narrative generation is a heavier, slower single-shot AI call the
-// lawyer triggers deliberately, distinct from the automatic caseRefresh pipeline (findings/
-// strategy/contradictions). Queued server-side (AiGenerationQueue / SQS): this POST returns
-// once the job is claimed (AiJobStatus, IN_PROGRESS), not once the narrative is actually
-// written, which is why invalidating the aiJob query (not the snapshot) here is what matters —
-// useAiJobStatus is what invalidates the snapshot once the job actually flips to DONE.
-// CaseReconstructionPanel resyncs its edit drafts off the job's IN_PROGRESS -> DONE transition
-// rather than off this mutation's return value, since that value is no longer the finished row.
-export function useGenerateReconstructionMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(
-        `/api/my-cases/${caseId}/reconstruction/generate`,
-        { method: "POST" }
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseReconstruction") })
     },
   })
 }
@@ -1152,7 +1091,8 @@ export function useUpdateReconstructionMutation(caseId: string) {
 
 // Grounded Reconstruction Rung 1 (differentiation program, Phase 3) — a scene-by-scene break
 // of the case's most consequential episode, built from the timeline + evidence, each element
-// individually sourced. Queued the same way as useGenerateReconstructionMutation above.
+// individually sourced. Queued server-side (AiGenerationQueue/SQS): this POST returns once the
+// job is claimed, and useAiJobStatus invalidates the snapshot once the job flips to DONE.
 export function useGenerateReconstructionScenesMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -1166,7 +1106,7 @@ export function useGenerateReconstructionScenesMutation(caseId: string) {
 
 // The dated event chain (Events tab) — built from the case's documents alone, no narrative
 // required (unlike scenes/table-read above, which are folded into `reconstruction`). Queued the
-// same way as useGenerateReconstructionMutation. A 422 here isn't a bug to retry: it means
+// same way as useGenerateReconstructionScenesMutation. A 422 here isn't a bug to retry: it means
 // documents are missing or still processing — see ReconstructionEventBlocker and the events
 // endpoint's own EventPrerequisiteInput on the backend.
 export function useGenerateReconstructionEventsMutation(caseId: string) {
@@ -1215,25 +1155,6 @@ export function pollReconstructionAudio(caseId: string) {
   return apiFetch<ReconstructionAudioPollResult>(
     `/api/my-cases/${caseId}/reconstruction/audio/poll`
   )
-}
-
-// Attacks the case's own structured findings (Legal Issues, Weaknesses, Contradictions,
-// Witnesses, Damages) rather than raw documents — see RedTeamSvc.generate on the backend.
-// No manual-edit counterpart to useUpdateReconstructionMutation: this is opposing counsel's
-// own commentary, not something the lawyer rewrites in their own voice. Queued server-side
-// (AiGenerationQueue / SQS) — see useGenerateReconstructionMutation's comment above for why
-// invalidating the aiJob query (not the snapshot) here is what matters.
-export function useGenerateRedTeamMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/red-team/generate`, {
-        method: "POST",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "redTeam") })
-    },
-  })
 }
 
 // ── Case Theories (differentiation program, Phase 2) ──────────────────────────────────────
@@ -1349,18 +1270,6 @@ export function useDeleteTheoryItemMutation(caseId: string, kind: TheoryItemKind
   })
 }
 
-// Queued server-side (AiGenerationQueue/SQS), same as useGenerateRedTeamMutation — seeds a
-// DRAFT theory (authorUserId: null) from the case's own findings/strategy.
-export function useProposeTheoryMutation(caseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => apiFetch<AiJobStatus>(`/api/my-cases/${caseId}/theories/propose`, { method: "POST" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseTheoryPropose") })
-    },
-  })
-}
-
 /** Cached reconciler output for one pair of theories — `null` while no diff has been generated
  * yet for that pair (or the pair supplied is empty). Not part of the case snapshot: a diff is
  * generated per pair on demand, not eagerly for every combination. */
@@ -1375,7 +1284,7 @@ export function useTheoryDiffQuery(caseId: string, theoryAId: string, theoryBId:
   })
 }
 
-// Queued server-side, same pattern as useProposeTheoryMutation — the caller is responsible for
+// Queued server-side (AiGenerationQueue/SQS) — the caller is responsible for
 // invalidating terminalKeys.theoryDiff once useAiJobStatus(caseId, "theoryDiff") flips to DONE
 // (see TheoriesPanel), since which pair just finished isn't encoded in the job status itself.
 export function useGenerateTheoryDiffMutation(caseId: string) {
@@ -1428,8 +1337,7 @@ function useAnnotationStatusMutation(caseId: string, action: "resolve" | "reopen
 export const useResolveAnnotationMutation = (caseId: string) => useAnnotationStatusMutation(caseId, "resolve")
 export const useReopenAnnotationMutation = (caseId: string) => useAnnotationStatusMutation(caseId, "reopen")
 
-// Decision Records are never generated on demand (see useGenerateRedTeamMutation above for the
-// contrast) — they're produced automatically per legal chat turn. A lawyer can only dispute one
+// Decision Records are never generated on demand — they're produced automatically per legal chat turn. A lawyer can only dispute one
 // (register disagreement, keep the record) or reactivate it; editing/reassigning authorship isn't
 // offered, matching how CaseFinding's AI-authored rows are handled elsewhere in this file.
 export function useDisputeDecisionMutation(caseId: string) {

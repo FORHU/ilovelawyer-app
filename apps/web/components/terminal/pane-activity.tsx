@@ -23,7 +23,7 @@ export function PaneActivityMark({ panelId }: { panelId: PanelId }) {
   const activity = useContext(PaneActivityContext)[panelId]
   if (activity === "busy") {
     return (
-      <span className="inline-flex shrink-0 items-center text-muted-foreground" title={t("paneUpdating")}>
+      <span className="inline-flex shrink-0 items-center text-progress" title={t("paneUpdating")}>
         <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         <span className="sr-only">{t("paneUpdating")}</span>
       </span>

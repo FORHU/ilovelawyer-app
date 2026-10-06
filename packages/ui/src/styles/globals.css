@@ -64,6 +64,7 @@
     --color-warn: var(--warn);
     --color-danger: var(--danger);
     --color-riskmed: var(--riskmed);
+    --color-progress: var(--progress);
     --color-kind-damage: var(--kind-damage);
     --color-kind-remedy: var(--kind-remedy);
     --color-fork: var(--fork);
@@ -160,6 +161,10 @@
     --warn: oklch(0.7 0.15 85);
     --danger: var(--destructive);
     --riskmed: oklch(0.65 0.19 45);
+    /* "Work in progress" — a Terminal pane being rewritten by the case analysis, and the header's
+       "Updating analysis…". The Terminal's gold, so it reads as part of the Terminal's own
+       palette; it follows --brand-gold in both themes. */
+    --progress: var(--brand-gold);
     /* Category colors for Damages & Remedies (which kind an entry is), kept apart from the status
        colors above so neither means the other. Checked as a pair for color-blind separation and
        contrast against this background and the dark one. */
@@ -247,6 +252,7 @@
     --warn: oklch(0.78 0.14 85);
     --danger: var(--destructive);
     --riskmed: oklch(0.72 0.17 45);
+    --progress: var(--brand-gold);
     --kind-damage: #3987e5;
     --kind-remedy: #d55181;
     --fork: oklch(0.74 0.13 295);
