@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useQueryClient } from "@tanstack/react-query"
 import { ChevronDown, Download, History, Loader2, Pause, Play, XCircle } from "lucide-react"
-import { terminalKeys, useAudioOverviewHistoryQuery, type AudioOverviewHistoryEntry } from "@/lib/terminal/mutations"
-import { useGenerateAudioOverviewAudioMutation } from "@/lib/chat/mutations"
+import { useAudioOverviewHistoryQuery, useRecordAudioOverviewMutation, type AudioOverviewHistoryEntry } from "@/lib/terminal/mutations"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
 import { AudioOverviewWaveform } from "@/components/audio-overview/audio-overview-waveform"
@@ -166,8 +164,8 @@ function HistoryEntry({
   onPlayingChange: (id: string | null) => void
 }) {
   const { t } = useTranslation("case-portfolio")
-  const queryClient = useQueryClient()
-  const renderAudio = useGenerateAudioOverviewAudioMutation(entry.consultationId)
+  // The case route, not the chat one: an overview the case analysis wrote has no consultation.
+  const renderAudio = useRecordAudioOverviewMutation(caseId)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   // Reactive twin of audioRef, so the waveform binds on the render after the <audio> mounts.
@@ -191,10 +189,7 @@ function HistoryEntry({
     const audio = audioRef.current
     if (audio) audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + delta))
   }
-  const render = () =>
-    renderAudio.mutate(entry.messageId, {
-      onSettled: () => void queryClient.invalidateQueries({ queryKey: terminalKeys.audioOverviewHistory(caseId) }),
-    })
+  const render = () => renderAudio.mutate(entry.id)
 
   const note =
     state === "rendering"

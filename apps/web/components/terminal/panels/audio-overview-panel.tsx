@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, RefreshCw, Volume2, XCircle } from "lucide-react"
+import { Loader2, Volume2, XCircle } from "lucide-react"
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
-import { useConsultationsQuery } from "@/lib/chat/mutations"
-import { useAudioOverview } from "@/lib/chat/use-audio-overview"
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
+import {
+  useAnalysisRefreshing,
+  useLatestAudioOverviewQuery,
+  useRecordAudioOverviewMutation,
+  type AudioOverviewHistoryEntry,
+} from "@/lib/terminal/mutations"
+import { PaneUpdatingNote } from "@/components/terminal/panel-kit"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history"
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs"
@@ -13,23 +18,22 @@ import {
   FullScriptToggle,
   useFullScriptPreference,
 } from "@/components/audio-overview/audio-overview-transcript"
-import { AudioOverviewGenerationSteps } from "@/components/audio-overview/audio-overview-generation-steps"
 import { activeTurnIndex, hasUsableTimings, hostBands } from "@/components/audio-overview/audio-overview-sync"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
 // Not to be confused with CaseReconstructionPanel's audio (a single narrator reading Polly's
-// OutputUri directly) — this is the two-host podcast-style script from useAudioOverview (shared
-// with Case Workspace's Studio panel), driven off whichever consultation is most recently
-// active for this case, the same "isolated" resolution ConsultationChat does internally for
-// ChatPanel/MindMapPanel above. Uses the same docked AudioOverviewPlayerBar as Studio (see
-// use-audio-overview-player.tsx) and the same synced AudioOverviewTranscript.
+// OutputUri directly) — this is the two-host podcast-style overview. It shows the case's newest
+// one from either source (useLatestAudioOverviewQuery): the one the case analysis writes on every
+// run, or one a lawyer asked for in chat or Studio. Like every pane the analysis keeps up to date,
+// it has no Generate/Regenerate; the only action is recording an overview whose recording failed
+// (or a chat-made script that was never recorded). Uses the same docked AudioOverviewPlayerBar as
+// Studio (see use-audio-overview-player.tsx) and the same synced AudioOverviewTranscript.
 /** Below this panel height the player switches to its compact layout and the chrome tightens —
  * a terminal tile is often a fraction of the screen, where the roomy Studio layout left the
  * script a single line. Measured, not a viewport breakpoint: tiles resize independently. */
 const COMPACT_BELOW_PX = 560
-/** Below these panel widths the toolbar sheds the caption, then Regenerate's label. */
+/** Below this panel width the toolbar sheds the caption. */
 const CAPTION_BELOW_PX = 560
-const ICON_ONLY_BELOW_PX = 400
 
 function usePanelSize() {
   const ref = useRef<HTMLDivElement>(null)
@@ -52,24 +56,20 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   const { ref: panelRef, size } = usePanelSize()
   const compact = size !== null && size.height < COMPACT_BELOW_PX
   const showCaption = size === null || size.width >= CAPTION_BELOW_PX
-  const iconOnly = size !== null && size.width < ICON_ONLY_BELOW_PX
   const [fullScript, setFullScript] = useFullScriptPreference()
-  const { data: caseConsultations } = useConsultationsQuery(caseId)
-  const consultationId = caseConsultations?.[0]?.id ?? null
-  const overview = useAudioOverview(consultationId, caseId)
-  const { activeAudioOverviewMessage, isGeneratingScript, isConsultationBusy, generateScript } = overview
-  const canRegenerate = view === "current" && !!activeAudioOverviewMessage
-  // The script's own caption row (date · turns, Full script) is folded into this toolbar, so a
-  // short tile spends one row on chrome instead of two.
-  const showsScript = canRegenerate && !isGeneratingScript
-  const turns = activeAudioOverviewMessage?.audioOverview?.turns ?? []
-  const synced = !!overview.renderedAudioUrl && hasUsableTimings(activeAudioOverviewMessage?.audioOverview?.turnTimings, turns.length)
-  const caption = activeAudioOverviewMessage
+  const latest = useLatestAudioOverviewQuery(caseId)
+  const overview = latest.data ?? null
+  // A new overview is being written: by this analysis run (wave 3), or by a chat/Studio request.
+  const updating = useAnalysisRefreshing(caseId) || latest.isWritingScript
+  const turns = overview?.turns ?? []
+  const synced = !!overview?.audio && hasUsableTimings(overview.turnTimings, turns.length)
+  const caption = overview
     ? t("workspace.audioOverviewCaption", {
-        date: new Date(activeAudioOverviewMessage.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }),
+        date: new Date(overview.createdAt).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }),
         count: turns.length,
       })
     : ""
+  const showsScript = view === "current" && !!overview
 
   // The current view stays mounted (just hidden) while History is open, so the player's <audio>
   // element — and whatever is playing — survives a tab switch.
@@ -85,34 +85,21 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
           <span className="flex-1" />
         )}
         {showsScript && synced && <FullScriptToggle fullScript={fullScript} onChange={setFullScript} />}
-        {canRegenerate && (
-          <button
-            type="button"
-            onClick={() => void generateScript()}
-            disabled={isGeneratingScript || isConsultationBusy}
-            title={
-              isConsultationBusy
-                ? t("workspace.replyInProgressHint")
-                : isGeneratingScript
-                  ? t("workspace.audioOverviewGenerating")
-                  : t("workspace.audioOverviewRegenerateHint")
-            }
-            aria-label={iconOnly ? t("workspace.audioOverviewRegenerate") : undefined}
-            className={`inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border text-xs font-medium whitespace-nowrap text-foreground transition-colors hover:border-muted-foreground disabled:opacity-45 ${
-              iconOnly ? "w-7" : "px-3"
-            }`}
-          >
-            {isGeneratingScript ? (
-              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-            ) : (
-              <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            )}
-            {!iconOnly && (isGeneratingScript ? t("workspace.audioOverviewGeneratingShort") : t("workspace.audioOverviewRegenerate"))}
-          </button>
-        )}
       </div>
+      {updating && view === "current" ? (
+        <div className="shrink-0 px-3 pb-1.5">
+          <PaneUpdatingNote>{t("workspace.audioOverviewUpdating")}</PaneUpdatingNote>
+        </div>
+      ) : null}
       <div className={view === "current" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-        <AudioOverviewCurrent consultationId={consultationId} overview={overview} compact={compact} caption={caption} fullScript={fullScript} />
+        <AudioOverviewCurrent
+          caseId={caseId}
+          overview={overview}
+          loading={latest.isLoading}
+          compact={compact}
+          caption={caption}
+          fullScript={fullScript}
+        />
       </div>
       {view === "history" && (
         <div className="min-h-0 flex-1 border-t border-border/60">
@@ -135,32 +122,23 @@ function CenteredState({ children, status }: { children: ReactNode; status?: boo
 }
 
 function AudioOverviewCurrent({
-  consultationId,
+  caseId,
   overview,
+  loading,
   compact,
   caption,
   fullScript,
 }: {
-  consultationId: string | null
-  overview: ReturnType<typeof useAudioOverview>
+  caseId: string
+  overview: AudioOverviewHistoryEntry | null
+  loading: boolean
   compact: boolean
   caption: string
   fullScript: boolean
 }) {
   const { t } = useTranslation("case-portfolio")
-  const {
-    activeAudioOverviewMessage,
-    isGeneratingScript,
-    scriptStep,
-    isConsultationBusy,
-    generateScriptError,
-    generateScript,
-    audioRendering,
-    audioRenderError,
-    renderedAudioUrl,
-    regenerateAudio,
-    isGeneratingAudio,
-  } = overview
+  const record = useRecordAudioOverviewMutation(caseId)
+  const renderedAudioUrl = overview?.audio?.fileUrl ?? null
   const {
     audioElement,
     mediaElement,
@@ -176,104 +154,79 @@ function AudioOverviewCurrent({
     skip,
     cycleRate,
     formatDuration,
-  } = useAudioOverviewPlayer(renderedAudioUrl, activeAudioOverviewMessage?.id)
+  } = useAudioOverviewPlayer(renderedAudioUrl, overview?.id)
 
-  if (!consultationId) {
-    return (
-      <CenteredState>
-        <EmptyIcon />
-        <p className="max-w-70 font-serif text-base leading-snug text-pretty">{t("workspace.audioOverviewNoConsultation")}</p>
-      </CenteredState>
-    )
-  }
-
-  if (isGeneratingScript) {
+  if (loading) {
     return (
       <CenteredState status>
-        <Loader2 className="h-5.5 w-5.5 animate-spin text-brand-gold" aria-hidden="true" />
-        <p className="font-serif text-base">{t("workspace.audioOverviewGenerating")}</p>
-        <p className="max-w-67.5 text-xs leading-normal text-muted-foreground text-pretty">{t("workspace.audioOverviewGeneratingHint")}</p>
-        <AudioOverviewGenerationSteps step={scriptStep ?? 0} />
+        <Loader2 className="h-5 w-5 animate-spin text-progress motion-reduce:animate-none" aria-hidden="true" />
         {audioElement}
       </CenteredState>
     )
   }
 
-  if (!activeAudioOverviewMessage) {
+  if (!overview) {
     return (
       <CenteredState>
         <EmptyIcon />
-        <p className="max-w-70 font-serif text-base leading-snug text-pretty">{t("workspace.audioOverviewEmpty")}</p>
-        <p className="max-w-67.5 text-xs leading-normal text-muted-foreground text-pretty">{t("workspace.audioOverviewEmptyHint")}</p>
-        <button
-          type="button"
-          onClick={() => void generateScript()}
-          disabled={isConsultationBusy}
-          title={isConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
-          className="mt-1 inline-flex h-8 items-center gap-2 rounded-md bg-brand-gold px-3.5 text-[10px] font-semibold uppercase tracking-widest text-brand-gold-foreground transition-[filter] hover:brightness-110 disabled:opacity-45"
-        >
-          <Volume2 className="h-3.25 w-3.25" aria-hidden="true" />
-          {t("workspace.audioOverviewGenerateCta")}
-        </button>
-        {isConsultationBusy && <p className="text-xs text-muted-foreground">{t("workspace.replyInProgressHint")}</p>}
-        {generateScriptError && <p className="text-xs text-danger">{t("workspace.audioOverviewGenerateError")}</p>}
+        <p className="max-w-70 font-serif text-base leading-snug text-pretty">{t("workspace.audioOverviewAutoEmpty")}</p>
+        <p className="max-w-67.5 text-xs leading-normal text-muted-foreground text-pretty">{t("workspace.audioOverviewAutoEmptyHint")}</p>
+        {audioElement}
       </CenteredState>
     )
   }
 
-  const audio = activeAudioOverviewMessage.audioOverview
-  const turns = audio?.turns ?? []
-  const turnTimings = audio?.turnTimings
-  const status = audio?.audioStatus ?? null
-  const rendering = audioRendering || isGeneratingAudio || (!renderedAudioUrl && status === "IN_PROGRESS")
-  const renderFailed = !rendering && !renderedAudioUrl && (audioRenderError || status === "FAILED")
-  const scriptOnly = !rendering && !renderFailed && !renderedAudioUrl && status === null
+  const turns = overview.turns
+  const turnTimings = overview.turnTimings
+  const status = overview.status
+  const recording = record.isPending || (!renderedAudioUrl && status === "IN_PROGRESS")
+  const recordFailed = !recording && !renderedAudioUrl && (record.isError || status === "FAILED")
+  // A script nobody recorded yet: one a lawyer asked for in chat and never rendered.
+  const scriptOnly = !recording && !recordFailed && !renderedAudioUrl && status === null
   const timed = !!renderedAudioUrl && hasUsableTimings(turnTimings, turns.length)
   const position = timed
     ? `${String(activeTurnIndex(playbackTime, turnTimings!) + 1).padStart(2, "0")} / ${String(turns.length).padStart(2, "0")}`
     : undefined
 
-  const notice = rendering ? (
-    <div role="status" className="mx-3 mt-2.5 flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">
-      <Loader2 className="h-3 w-3 animate-spin text-warn" aria-hidden="true" />
-      {t("workspace.audioOverviewRendering")}
-      <span className="ml-auto font-mono text-[10px] text-muted-foreground/60">{t("workspace.audioOverviewScriptReady")}</span>
-    </div>
-  ) : renderFailed || scriptOnly ? (
+  const notice = recording ? (
     <div
-      role={renderFailed ? "alert" : undefined}
+      role="status"
+      className="mx-3 mt-2.5 flex shrink-0 items-center gap-2 rounded-md border border-progress/40 bg-progress/10 px-3 py-2 text-xs font-medium text-progress"
+    >
+      <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+      {t("workspace.audioOverviewRecording")}
+      <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">{t("workspace.audioOverviewScriptReady")}</span>
+    </div>
+  ) : recordFailed || scriptOnly ? (
+    <div
+      role={recordFailed ? "alert" : undefined}
       className={`mx-3 mt-2.5 flex shrink-0 items-center gap-2 rounded-md border py-2 pr-2 pl-3 text-xs ${
-        renderFailed ? "border-danger bg-danger/7 text-danger" : "border-border text-muted-foreground"
+        recordFailed ? "border-danger bg-danger/7 text-danger" : "border-border text-muted-foreground"
       }`}
     >
-      {renderFailed && <XCircle className="h-3.25 w-3.25 shrink-0" strokeWidth={2.2} aria-hidden="true" />}
-      {renderFailed ? t("workspace.audioOverviewRenderError") : t("workspace.audioOverviewHistoryScriptOnlyNote")}
+      {recordFailed && <XCircle className="h-3.25 w-3.25 shrink-0" strokeWidth={2.2} aria-hidden="true" />}
+      {recordFailed ? t("workspace.audioOverviewRenderError") : t("workspace.audioOverviewHistoryScriptOnlyNote")}
       <button
         type="button"
-        onClick={regenerateAudio}
+        onClick={() => record.mutate(overview.id)}
         className={`ml-auto h-6 shrink-0 rounded-full border bg-transparent px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-          renderFailed ? "border-danger text-danger" : "border-border text-foreground"
+          recordFailed ? "border-danger text-danger" : "border-border text-foreground"
         }`}
       >
-        {renderFailed ? t("workspace.audioOverviewTryAgain") : t("workspace.audioOverviewRenderAudio")}
+        {recordFailed ? t("workspace.audioOverviewRetryRecording") : t("workspace.audioOverviewRenderAudio")}
       </button>
     </div>
   ) : null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {(generateScriptError || isConsultationBusy) && (
-        <p className={`shrink-0 px-3 pb-2 text-xs ${generateScriptError ? "text-danger" : "text-muted-foreground"}`}>
-          {generateScriptError ? t("workspace.audioOverviewGenerateError") : t("workspace.replyInProgressHint")}
-        </p>
-      )}
       <AudioOverviewTranscript
         compact={compact}
         turns={turns}
-        checks={audio?.checks}
+        checks={overview.checks}
         turnTimings={turnTimings}
-        sentenceTimings={audio?.sentenceTimings}
-        wordTimings={audio?.wordTimings}
+        sentenceTimings={overview.sentenceTimings}
+        wordTimings={overview.wordTimings}
         currentTime={playbackTime}
         duration={playbackDuration}
         onSeek={renderedAudioUrl ? seek : undefined}

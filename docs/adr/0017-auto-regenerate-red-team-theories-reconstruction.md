@@ -1,4 +1,4 @@
-# 0017: The analysis refresh also regenerates witnesses, Red Team, the AI draft theory and Case Reconstruction
+# 0017: The analysis refresh also regenerates witnesses, Red Team, the AI draft theory, Case Reconstruction and the Audio Overview
 
 ## Status
 
@@ -14,11 +14,13 @@ The refresh (`CaseRefreshSvc`) runs every case-level AI step in three waves. Wit
 
 1. What reads only the documents: contradictions, case strategy (with the timeline's dates), findings, reading new documents for witnesses, reading new documents for damages, Case Reconstruction.
 2. What reads wave 1: the outlook, damages re-rating, witness scoring, the AI draft theory, the mind map.
-3. Red Team, which attacks all of the above.
+3. What reads all of the above: Red Team, and the Audio Overview script.
 
 Chat Wonder takes several calls for one case at once, so a run lasts about as long as the slowest step of each wave rather than the sum of every step. Each step holds its own lock: a 409 means that piece's own job is already reading the same documents, and the step is skipped. A failed step never stops the others or fails the refresh. Case-graph node and edge upserts retry once on a duplicate key, since two steps can create the same node at the same moment.
 
 What each step may replace:
+
+- **Audio Overview** is written by the case analysis as a case-owned overview (`MessageAudioOverview.caseId`, no chat message behind it; a CHECK keeps exactly one owner). The step asks Chat Wonder directly with the case's ranked document excerpts and its current findings, timeline and to-dos, under the same `audioOverviewScript` lock a chat request holds, and skips a case with no findings. Its recording is queued on `AudioOverviewQueue` and not awaited, so the run ends while Polly records. Rendering and the history list are keyed by the overview's row id, so chat-made and case-owned overviews go through the same path. Every run adds one overview to History.
 
 - **Witnesses** are read from every document not read before, inline, so scoring sees all of them (past 25 batches the rest goes to the queued `witnessExtract` job). Damages are read the same way, so the re-rating sees every new entry. Scoring then rewrites only the AI columns; a lawyer's status, score override and factor answers are re-applied on top. The witness step comes before Red Team, whose prompt reads the witness list. The upload trigger only schedules the separate witness and damages extraction jobs when the refresh doesn't run.
 
@@ -36,7 +38,7 @@ The Terminal header has a single "Refresh analysis" button, where "Download case
 
 A pane the analysis refresh rewrites has no Generate/Regenerate/Update control of its own in the Terminal: Strengths, Weaknesses, Red Team, Theories ("Propose a theory"), the Case Reconstruction narrative, Case Strategy ("Update plan", with the stale-plan banner that asked for it), Damages & Remedies ("Propose from documents"), the Visual Strategy Map (Regenerate and "Build from documents") and the timeline in Evidence & Timeline. The refresh is the one way these change, and each pane shows `PaneUpdatingNote` (`panel-kit.tsx`) while it runs.
 
-Witnesses lose "Score with AI" the same way. Actions the refresh doesn't run keep their buttons: reconstruction scenes, events, table read and narration, theory diffs, and Jev checks on single rows. Studio and the chat's timeline keep their own Generate/Regenerate controls. The API routes behind the removed buttons stay, unused by the Terminal.
+Witnesses lose "Score with AI" the same way. The Terminal's Audio Overview pane shows the case's newest overview from either source and loses Generate/Regenerate; it keeps one recording action, offered only when a recording failed or a chat-made script was never recorded (Studio keeps its own Generate). Actions the refresh doesn't run keep their buttons: reconstruction scenes, events, table read and narration, theory diffs, and Jev checks on single rows. Studio and the chat's timeline keep their own Generate/Regenerate controls. The API routes behind the removed buttons stay, unused by the Terminal.
 
 ## Consequences
 

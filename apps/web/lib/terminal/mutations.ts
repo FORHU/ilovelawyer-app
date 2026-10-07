@@ -64,6 +64,8 @@ export const terminalKeys = {
     [...terminalKeys.all, "annotations", caseId, targetType, targetId] as const,
   caseBriefHistory: (caseId: string) =>
     [...terminalKeys.all, "case-brief-history", caseId] as const,
+  latestAudioOverview: (caseId: string) =>
+    [...terminalKeys.all, "latest-audio-overview", caseId] as const,
   audioOverviewHistory: (caseId: string) =>
     [...terminalKeys.all, "audio-overview-history", caseId] as const,
 }
@@ -1429,8 +1431,11 @@ export function useCaseBriefHistoryQuery(caseId: string, enabled = true) {
 
 export interface AudioOverviewHistoryEntry {
   id: string
-  messageId: string
-  consultationId: string
+  /** The chat message it belongs to — null for one the case analysis wrote (`source: "analysis"`). */
+  messageId: string | null
+  consultationId: string | null
+  /** Who made it: the case analysis, or a lawyer's chat/Studio request. */
+  source: "analysis" | "chat"
   createdAt: string
   status: "IN_PROGRESS" | "COMPLETED" | "FAILED" | null
   turns: AudioOverviewTurn[]
@@ -1455,10 +1460,50 @@ interface AudioOverviewHistoryPage {
 
 const AUDIO_OVERVIEW_HISTORY_PAGE_SIZE = 20
 
+/** The case's newest Audio Overview from either source — what the Terminal's Audio Overview pane
+ * shows. Re-read while its audio is being recorded, and whenever the case analysis or a chat
+ * request finishes writing a new one (both hold the "audioOverviewScript" job). */
+export function useLatestAudioOverviewQuery(caseId: string) {
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: terminalKeys.latestAudioOverview(caseId),
+    queryFn: () => apiFetch<AudioOverviewHistoryEntry | null>(`/api/my-cases/${caseId}/audio-overview/latest`),
+    enabled: !!caseId,
+    refetchInterval: (q) => (q.state.data?.status === "IN_PROGRESS" && !q.state.data.audio ? 5000 : false),
+  })
+  const scriptJob = useAiJobStatus(caseId, "audioOverviewScript")
+  const refreshJob = useAiJobStatus(caseId, "caseRefresh")
+  const prev = useRef({ script: scriptJob.data?.status, refresh: refreshJob.data?.status })
+  useEffect(() => {
+    const finished = (before: string | undefined, now: string | undefined) => before === "IN_PROGRESS" && now === "DONE"
+    if (finished(prev.current.script, scriptJob.data?.status) || finished(prev.current.refresh, refreshJob.data?.status)) {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.latestAudioOverview(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.audioOverviewHistory(caseId) })
+    }
+    prev.current = { script: scriptJob.data?.status, refresh: refreshJob.data?.status }
+  }, [scriptJob.data?.status, refreshJob.data?.status, caseId, queryClient])
+  return { ...query, isWritingScript: scriptJob.data?.status === "IN_PROGRESS" }
+}
+
+/** Records (or re-records after a failure) one of the case's Audio Overviews — either source —
+ * through the case route. The only recording action left in the Terminal, and the one the History
+ * list uses for its "Render audio" / "Try again". */
+export function useRecordAudioOverviewMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (overviewId: string) =>
+      apiFetch<{ status: "IN_PROGRESS" }>(`/api/my-cases/${caseId}/audio-overview/${overviewId}/recording`, { method: "POST" }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.latestAudioOverview(caseId) })
+      queryClient.invalidateQueries({ queryKey: terminalKeys.audioOverviewHistory(caseId) })
+    },
+  })
+}
+
 /** Every Audio Overview generated for the case, newest first — same infinite-query shape as
  * useCaseBriefHistoryQuery (limit always sent, since the backend only computes nextCursor when
- * given one). Always refetched on mount: a new overview is created from chat, not from here, so
- * there's no mutation in this file to invalidate it. */
+ * given one). Always refetched on mount, and invalidated when a new overview is written
+ * (useLatestAudioOverviewQuery) or a recording is started (useRecordAudioOverviewMutation). */
 export function useAudioOverviewHistoryQuery(caseId: string, enabled = true) {
   return useInfiniteQuery({
     queryKey: terminalKeys.audioOverviewHistory(caseId),
