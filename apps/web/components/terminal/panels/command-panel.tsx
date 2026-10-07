@@ -9,6 +9,7 @@ import type { CaseSnapshot, SnapshotRisk } from "@/lib/terminal/types"
 import {
   CASE_SUMMARY_SAMPLE,
   buildSummaryView,
+  isSeriousFinding,
   relativeLabel,
   sampleSummaryView,
   type Kpi,
@@ -214,7 +215,7 @@ export function CommandPanel({
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2">
             <p className={labelTextClass}>
-              {t("keyIssues")} · {risks.length}
+              {t("keyIssues")} · {risks.length + view.findings.length}
             </p>
             <button
               type="button"
@@ -238,6 +239,18 @@ export function CommandPanel({
                   {risk.confidence ? (
                     <ConfidenceMeter level={risk.confidence} label={t(`confidence_${risk.confidence}`)} />
                   ) : null}
+                </PanelRow>
+              )
+            })}
+            {view.findings.map((finding) => {
+              const serious = isSeriousFinding(finding)
+              return (
+                <PanelRow key={finding.id} className="px-0 py-1.5">
+                  <Badge tone={serious ? "danger" : "warning"} shape="pill">
+                    {serious ? "HIGH" : "MEDIUM"}
+                  </Badge>
+                  <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">{finding.label}</span>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">{t(`findingCategory.${finding.category}`)}</span>
                 </PanelRow>
               )
             })}
