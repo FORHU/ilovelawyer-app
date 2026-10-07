@@ -27,7 +27,7 @@ describe("traceStyle", () => {
   })
 
   it("gives the hued kinds a dark-theme shade as well as a light one", () => {
-    for (const type of ["request", "action", "memory"]) expect(traceStyle(type).text).toMatch(/dark:/)
+    for (const type of ["request", "action", "memory", "explanation"]) expect(traceStyle(type).text).toMatch(/dark:/)
   })
 
   it("falls back to gray for a kind the API adds later", () => {

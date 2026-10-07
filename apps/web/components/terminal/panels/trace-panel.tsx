@@ -240,7 +240,9 @@ function TraceSteps({
 
   return (
     <>
-      <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full">
+      {/* shrink-0: the pane body is a column, and overflow-hidden lets a flex item shrink to nothing
+       * once the step list below it is taller than the pane — the bar vanished on any long run. */}
+      <div className="flex h-1.5 shrink-0 gap-0.5 overflow-hidden rounded-full">
         {kinds.map((kind) => (
           <button
             key={kind.type}
