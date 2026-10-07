@@ -302,7 +302,14 @@ export interface SnapshotAuthoritySummary {
   onPoint: number
   adverse: number
   total: number
-  /** Share of cited authority that is on point (0–1); null when nothing is cited. */
+  groundsTotal: number
+  /** Grounds with at least one statute or on-point authority. */
+  groundsSupported: number
+  /** Grounds with at least one adverse authority — may also be supported. */
+  groundsContested: number
+  /** Authorities not tied to any current ground; they support nothing in the coverage figure. */
+  unlinked: number
+  /** groundsSupported ÷ groundsTotal (0–1); null when the case has no grounds. */
   coverage: number | null
 }
 

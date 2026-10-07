@@ -1,14 +1,32 @@
-import { createElement, useRef, useState } from "react"
+import { createElement, useRef, useState, type ReactNode } from "react"
 import { ViewDocumentButton } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
-import { ChevronDown, Folder, Loader2, Plus, Trash2 } from "lucide-react"
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  ChevronDown,
+  Folder,
+  Loader2,
+  Plus,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import { EvidenceContradictions } from "@/components/terminal/panels/evidence-contradictions"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
-import { useDeleteCaseDocumentMutation } from "@/lib/cases/mutations"
+import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
+import RestoreDocumentModal from "@/components/cases/restore-document-modal"
+import {
+  useArchiveCaseDocumentMutation,
+  useArchivedCaseDocumentsQuery,
+  useDeleteCaseDocumentMutation,
+  useUnarchiveCaseDocumentMutation,
+  type UserDocument,
+} from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
@@ -20,7 +38,7 @@ import type {
   PrivilegeStatus,
   SnapshotDocument,
 } from "@/lib/terminal/types"
-import { EmptyNote, labelTextClass, PanelBody, RegenerateButton } from "@/components/terminal/panel-kit"
+import { EmptyNote, labelTextClass, MutationError, PanelBody, RegenerateButton } from "@/components/terminal/panel-kit"
 import { usePaneRegenerate } from "@/lib/terminal/mutations"
 
 export const PRIVILEGE_STATUS_KEYS: Record<PrivilegeStatus, string> = {
@@ -91,23 +109,67 @@ function StatusSummary({ documents }: { documents: SnapshotDocument[] }) {
   )
 }
 
+/** One small icon action at the end of a document row (archive / restore / delete). */
+function RowAction({
+  label,
+  icon: Icon,
+  onClick,
+  isPending,
+  tone,
+}: {
+  label: string
+  icon: LucideIcon
+  onClick: () => void
+  isPending: boolean
+  tone: "warn" | "danger" | "ok"
+}) {
+  const hover = {
+    warn: "hover:bg-warn/10 hover:text-warn",
+    danger: "hover:bg-danger/10 hover:text-danger",
+    ok: "hover:bg-ok/10 hover:text-ok",
+  }[tone]
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={onClick}
+          aria-label={label}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${hover}`}
+        >
+          {isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+          ) : (
+            <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function DocumentRow({
   doc,
   onOpen,
-  onDelete,
-  isDeleting,
+  actions,
 }: {
-  doc: SnapshotDocument
-  onOpen: () => void
-  onDelete: () => void
-  isDeleting: boolean
+  doc: { id: string; name: string; mimeType: string | null; ragStatus: string | null; pageCount: number | null }
+  /** Opens the metadata drawer. Archived documents aren't in the snapshot, so they have none. */
+  onOpen?: () => void
+  actions: ReactNode
 }) {
   const { t } = useTranslation("terminal")
   const size = documentSizeLabel(doc)
   const sizeLabel = size ? t(size.key, { n: size.n }) : null
+  const Main = onOpen ? "button" : "div"
   return (
     <li className="group flex w-full items-center gap-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover">
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-left @3xs:gap-3">
+      <Main
+        {...(onOpen ? { type: "button" as const, onClick: onOpen } : {})}
+        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-left @3xs:gap-3"
+      >
         <span
           aria-hidden="true"
           className={`hidden size-10 shrink-0 flex-col @3xs:flex items-center justify-center gap-0.5 rounded-lg border border-border bg-muted ${fileTypeColorClass(doc)}`}
@@ -124,26 +186,9 @@ function DocumentRow({
           </span>
         </span>
         <TerminalRagBadge status={doc.ragStatus} />
-      </button>
+      </Main>
       <ViewDocumentButton docId={doc.id} />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={onDelete}
-            aria-label={t("removeDocument", { documentName: doc.name })}
-            className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{t("removeDocument", { documentName: doc.name })}</TooltipContent>
-      </Tooltip>
+      <span className="mr-2 flex shrink-0 items-center gap-0.5">{actions}</span>
     </li>
   )
 }
@@ -159,12 +204,21 @@ export function EvidencePanel({
   // The timeline section's own Regenerate: the same pass as Case Strategy's (it updates both).
   const timelineRegen = usePaneRegenerate(caseId, "timeline")
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null)
-  const [deletingDoc, setDeletingDoc] = useState<SnapshotDocument | null>(null)
+  // Same rule as Workspace's DocumentFileCard: an active document can only be archived; delete
+  // lives in the Archived view, so nothing leaves the case in one click.
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivingDoc, setArchivingDoc] = useState<SnapshotDocument | null>(null)
+  const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
+  const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { upload, isUploading } = useCaseDocumentUpload(caseId)
   const { isDragOver, dragHandlers } = useFileDrop(upload, undefined)
 
+  const archived = useArchivedCaseDocumentsQuery(caseId, showArchived)
+  const archivedDocuments = archived.data ?? []
+  const { mutate: archiveDocument, isPending: isArchiving, variables: archivingVars } = useArchiveCaseDocumentMutation()
+  const { mutate: restoreDocument, isPending: isRestoring, variables: restoringVars } = useUnarchiveCaseDocumentMutation()
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
 
   const openDocument =
@@ -188,32 +242,64 @@ export function EvidencePanel({
 
   return (
     <PanelBody gap="4">
-      <div {...dragHandlers} className="relative rounded-lg">
+      {/* No drop target while the Archived list is up — a dropped file would land in the active list unseen. */}
+      <div {...(showArchived ? {} : dragHandlers)} className="relative rounded-lg">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <p className={labelTextClass}>
-            {t("documents")} · {snapshot.documents.length}
-          </p>
+          {showArchived ? (
+            <button
+              type="button"
+              onClick={() => setShowArchived(false)}
+              className={`flex min-w-0 items-center gap-1.5 rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${labelTextClass}`}
+            >
+              <ArrowLeft className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{t("backToActiveDocuments")}</span>
+            </button>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              <p className={labelTextClass}>
+                {t("documents")} · {snapshot.documents.length}
+              </p>
+              {/* Sits with the count, not the upload control — next to "Add evidence file" it read as an upload button. */}
+              <button
+                type="button"
+                onClick={() => setShowArchived(true)}
+                className={`flex shrink-0 items-center gap-1 rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${labelTextClass}`}
+              >
+                <Archive className="size-3 shrink-0" aria-hidden="true" />
+                {t("archivedDocuments")}
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2">
-            {/* A hint, not a control — dropped in a narrow pane so the count and upload button keep their row. */}
-            <p className={`hidden @xs:block ${labelTextClass}`}>{t("clickRowForMetadata")}</p>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  disabled={isUploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label={t("addDocument")}
-                  className="flex size-5 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Plus className="h-3 w-3" aria-hidden="true" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{t("dropToUpload")}</TooltipContent>
-            </Tooltip>
+            {showArchived ? (
+              <p className={labelTextClass}>
+                {t("archivedDocuments")}
+                {archived.data ? ` · ${archivedDocuments.length}` : null}
+              </p>
+            ) : (
+              <>
+                {/* A hint, not a control — dropped in a narrow pane so the count and upload button keep their row. */}
+                <p className={`hidden @xs:block ${labelTextClass}`}>{t("clickRowForMetadata")}</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label={t("addDocument")}
+                      className="flex size-5 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Plus className="h-3 w-3" aria-hidden="true" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("dropToUpload")}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
         </div>
         <input
@@ -228,7 +314,47 @@ export function EvidencePanel({
             if (files.length > 0) upload(files)
           }}
         />
-        {snapshot.documents.length === 0 ? (
+        {showArchived ? (
+          archived.isLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+            </div>
+          ) : archived.isError && !archived.data ? (
+            <MutationError show />
+          ) : archivedDocuments.length === 0 ? (
+            <EmptyNote>
+              {t("noArchivedDocuments")} {t("archivedDocumentsHint")}
+            </EmptyNote>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {archivedDocuments.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  // UserDocument carries no page count, so these rows show no size label.
+                  doc={{ ...doc, mimeType: doc.mimeType ?? null, pageCount: null }}
+                  actions={
+                    <>
+                      <RowAction
+                        label={t("restoreDocument", { documentName: doc.name })}
+                        icon={ArchiveRestore}
+                        tone="ok"
+                        onClick={() => setRestoringDoc(doc)}
+                        isPending={isRestoring && restoringVars?.documentId === doc.id}
+                      />
+                      <RowAction
+                        label={t("removeDocument", { documentName: doc.name })}
+                        icon={Trash2}
+                        tone="danger"
+                        onClick={() => setDeletingDoc(doc)}
+                        isPending={isDeleting && deletingVars?.documentId === doc.id}
+                      />
+                    </>
+                  }
+                />
+              ))}
+            </ul>
+          )
+        ) : snapshot.documents.length === 0 ? (
           <EmptyNote>{t("noDocuments")}</EmptyNote>
         ) : (
           <>
@@ -269,8 +395,15 @@ export function EvidencePanel({
                             key={doc.id}
                             doc={doc}
                             onOpen={() => setOpenDocumentId(doc.id)}
-                            onDelete={() => setDeletingDoc(doc)}
-                            isDeleting={isDeleting && deletingVars?.documentId === doc.id}
+                            actions={
+                              <RowAction
+                                label={t("archiveDocument", { documentName: doc.name })}
+                                icon={Archive}
+                                tone="warn"
+                                onClick={() => setArchivingDoc(doc)}
+                                isPending={isArchiving && archivingVars?.documentId === doc.id}
+                              />
+                            }
                           />
                         ))}
                       </ul>
@@ -281,7 +414,7 @@ export function EvidencePanel({
             </div>
           </>
         )}
-        {isDragOver && (
+        {!showArchived && isDragOver && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-card/90">
             <span className="text-sm font-semibold text-primary">{t("dropToUpload")}</span>
           </div>
@@ -314,6 +447,30 @@ export function EvidencePanel({
         witnesses={snapshot.witnesses}
       />
 
+      {archivingDoc && (
+        <ArchiveDocumentModal
+          key={archivingDoc.id}
+          doc={archivingDoc}
+          isArchiving={isArchiving && archivingVars?.documentId === archivingDoc.id}
+          onConfirm={() => {
+            archiveDocument({ documentId: archivingDoc.id, caseId })
+            setArchivingDoc(null)
+          }}
+          onClose={() => setArchivingDoc(null)}
+        />
+      )}
+      {restoringDoc && (
+        <RestoreDocumentModal
+          key={restoringDoc.id}
+          doc={restoringDoc}
+          isRestoring={isRestoring && restoringVars?.documentId === restoringDoc.id}
+          onConfirm={() => {
+            restoreDocument({ documentId: restoringDoc.id, caseId })
+            setRestoringDoc(null)
+          }}
+          onClose={() => setRestoringDoc(null)}
+        />
+      )}
       {deletingDoc && (
         <DeleteDocumentModal
           key={deletingDoc.id}

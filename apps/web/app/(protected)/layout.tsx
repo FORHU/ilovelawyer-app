@@ -11,6 +11,7 @@ import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 import { TourLayer } from "@/components/tour/tour-layer"
+import { WorkspaceSetup } from "@/app/(auth)/_components/workspace-setup"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 
@@ -72,7 +73,13 @@ function CurrentUserSync({
   // A user with no active org but a pending invite has nothing else to do in the app —
   // the accept/decline UI lives on the Organization page, so route them there directly
   // instead of leaving them stranded wherever they landed post-login.
-  const { data: pendingInvite } = useMyInviteQuery({ enabled: !!accessToken && !!user && !organization })
+  const inviteQuery = useMyInviteQuery({ enabled: !!accessToken && !!user && !organization })
+  const { data: pendingInvite } = inviteQuery
+  // A user with no org and no invite (skipped onboarding by closing the tab, or arrived via
+  // a reload or the approval email's login link) would otherwise land in an app where every
+  // resource route 400s. Latched rather than derived: WorkspaceSetup's create-org path sets
+  // the org *before* its invite-your-team step, and that step must stay on screen until onDone.
+  const [workspaceSetupOpen, setWorkspaceSetupOpen] = useState(false)
   // A missing/expired token is a real 401/403 from the API. Anything else (a
   // dropped connection, a CORS misconfiguration, a 500) is transient and
   // shouldn't sign the user out — apiFetch already throws with `.status` unset
@@ -125,6 +132,12 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, pendingInvite, pathname])
 
+  // Only on a successful (empty) org list — a failed lookup isn't proof of "no org".
+  const noWorkspace =
+    !organization && !needsApproval && orgsQuery.isSuccess && !orgs?.length && inviteQuery.isFetched && !pendingInvite
+
+  if (noWorkspace && !workspaceSetupOpen) setWorkspaceSetupOpen(true)
+
   // Domain/tenant mismatch: the organization's persisted Tenant is authoritative and
   // never changes because of which subdomain the browser happens to be on — if they disagree
   // (including an unresolved host: the bare apex, app.ilovelawyer.com, or anything else that
@@ -156,12 +169,22 @@ function CurrentUserSync({
   // commit after `orgsQuery` resolves, and child effects — e.g. the chat sidebar's own
   // mount-time fetch — can run before it does). Once `orgsQuery` has fetched and truly
   // found no org (e.g. a pending-invite-only user), stop blocking so the redirect effect
-  // above can send them to the organization page instead of loading forever.
-  const orgResolved = !!organization || (orgsQuery.isFetched && !orgs?.length)
+  // above can send them to the organization page instead of loading forever. With no org, also
+  // wait for the invite lookup, which decides between that redirect and WorkspaceSetup.
+  const orgResolved = !!organization || (orgsQuery.isFetched && !orgs?.length && inviteQuery.isFetched)
   const orgUnknown = !!accessToken && !!currentUser && !needsApproval && !orgResolved
 
   if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown)
     return <LoadingScreen />
+
+  if (workspaceSetupOpen)
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center overflow-y-auto bg-background px-4 py-10 sm:px-8">
+        <div className="w-full max-w-md">
+          <WorkspaceSetup defaultOrgName={user?.name ?? ""} onDone={() => setWorkspaceSetupOpen(false)} />
+        </div>
+      </div>
+    )
 
   return (
     <>

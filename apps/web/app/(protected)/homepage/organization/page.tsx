@@ -105,12 +105,15 @@ export default function OrganizationPage() {
   // WorkspaceSetup.handleContinueSolo) with nobody else in it yet. They can still be invited to
   // another organization, which means leaving this one (see handleAcceptInvite).
   const isSoloWithNoTeam = organization?.packageSku === "SOLO" && otherMembers.length === 0;
-  const myInviteQuery = useMyInviteQuery({ enabled: !organization || isSoloWithNoTeam });
+  // A user who skipped onboarding is in a private personal workspace, not an organization —
+  // they get the same create/join screen as someone with none (see Organization.isPersonal).
+  const isPersonal = !!organization?.isPersonal;
+  const myInviteQuery = useMyInviteQuery({ enabled: !organization || isPersonal || isSoloWithNoTeam });
   // Anyone who belongs to an organization — solo or not — sees it, its members and the invite
   // controls (inviting someone is how a solo org becomes a team). Showing an Owner "Create your
   // organization" read as if their organization didn't exist. The setup screen is only for users
   // with no organization, or a solo user with an invitation waiting to be answered.
-  const showSetup = !organization || (isSoloWithNoTeam && !!myInviteQuery.data);
+  const showSetup = !organization || isPersonal || (isSoloWithNoTeam && !!myInviteQuery.data);
   const acceptInviteMutation = useAcceptInviteMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const createOrgMutation = useCreateOrganizationMutation();
@@ -287,8 +290,9 @@ export default function OrganizationPage() {
     // A solo practitioner already owns a lightweight auto-created org (see isSoloWithNoTeam) —
     // membership is one-org-per-user, so creating their real organization means silently
     // leaving that placeholder first. A user with genuinely no organization skips straight
-    // to creating.
-    if (organization) {
+    // to creating, and so does a personal workspace, which the API upgrades in place so its
+    // cases and consultations carry into the new organization.
+    if (organization && !isPersonal) {
       leaveMutation.mutate(undefined, {
         onSuccess: () => {
           setOrganization(null);

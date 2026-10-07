@@ -17,7 +17,7 @@ export const STANCES: AuthorityStance[] = ["STATUTE", "ON_POINT", "ADVERSE"]
 
 // Same hues as the badges in the authority list, so the choice made here is what shows up there.
 const STANCE_ACTIVE: Record<AuthorityStance, string> = {
-  STATUTE: "bg-foreground/10 text-foreground",
+  STATUTE: "bg-brand-gold/15 text-brand-gold",
   ON_POINT: "bg-ok/15 text-ok",
   ADVERSE: "bg-danger/15 text-danger",
 }
@@ -120,6 +120,28 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
         </div>
       </div>
 
+      {/* Required when the case has grounds: an authority tied to none supports nothing in the coverage ring. */}
+      {grounds.length > 0 && (
+        <Field label={t("authorityGround")} htmlFor={`${uid}-ground`}>
+          <select
+            id={`${uid}-ground`}
+            value={ground}
+            onChange={(e) => setGround(e.target.value)}
+            required
+            className={fieldClass}
+          >
+            <option value="" disabled>
+              {t("authorityPickGround")}
+            </option>
+            {grounds.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <Field label={t("authorityTitle")} htmlFor={`${uid}-title`}>
         <input
           ref={titleRef}
@@ -180,23 +202,6 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
               className={fieldClass}
             />
           </Field>
-          {grounds.length > 0 && (
-            <Field label={t("authorityGround")} htmlFor={`${uid}-ground`}>
-              <select
-                id={`${uid}-ground`}
-                value={ground}
-                onChange={(e) => setGround(e.target.value)}
-                className={fieldClass}
-              >
-                <option value="">{t("authorityNoGround")}</option>
-                {grounds.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
         </>
       )}
 
