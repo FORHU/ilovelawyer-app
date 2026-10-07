@@ -49,6 +49,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspac
 import {
   useAiJobStatus,
   useRefreshAnalysisMutation,
+  useRunningPaneRegenerate,
+  paneForJobKind,
   useApplyWorkspaceMutation,
   useCaseSnapshotQuery,
   useCreateWorkspaceMutation,
@@ -158,7 +160,13 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const damagesJob = useAiJobStatus(caseId, "damagesExtract")
   const analysisRunning = shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status)
   const refreshAnalysis = useRefreshAnalysisMutation(caseId)
-  const refreshErrorStatus = (refreshAnalysis.error as (Error & { status?: number }) | null)?.status
+  const refreshError = refreshAnalysis.error as (Error & { status?: number; code?: string; body?: { details?: { kind?: unknown } } }) | null
+  const refreshErrorStatus = refreshError?.status
+  // A pane run and the analysis never overlap (ADR 0018): while a pane regenerates, the button
+  // waits and says which pane. A pane that started after the modal opened comes back as a 409
+  // PANE_REGENERATING naming its job.
+  const runningPane = useRunningPaneRegenerate(caseId)
+  const refreshBlockedBy = refreshError?.code === "PANE_REGENERATING" ? paneForJobKind(refreshError.body?.details?.kind) : null
 
   const [layout, setLayout] = useState<WorkspaceLayout | null>(null)
   const [dragPreview, setDragPreview] = useState<PaneDragPreview | null>(null)
@@ -771,8 +779,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   refreshAnalysis.reset()
                   setConfirmRefreshOpen(true)
                 }}
-                aria-label={t("refresh")}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover"
+                disabled={!!runningPane}
+                title={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : undefined}
+                aria-label={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : t("refresh")}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-overlay-hover"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">{t("refresh")}</span>
@@ -824,7 +834,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 </div>
                 {refreshAnalysis.isError ? (
                   <p className="text-[11px] text-danger" role="alert">
-                    {refreshErrorStatus === 409
+                    {refreshBlockedBy
+                      ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[refreshBlockedBy] })
+                      : refreshErrorStatus === 409
                       ? t("refreshAnalysisBusy")
                       : refreshErrorStatus === 403
                         ? t("refreshAnalysisNoAccess")

@@ -6,6 +6,7 @@ import {
   useAiJobStatus,
   useUpdateContradictionMutation,
   type ContradictionStatus,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import {
@@ -19,6 +20,8 @@ import {
   ghostBtnClass,
   labelTextClass,
   type Tone,
+  RegenerateButton,
+  PaneRegenerateNote,
 } from "@/components/terminal/panel-kit"
 import { dateLocale } from "@/lib/i18n/date-locale"
 import { formatMoney } from "@/lib/terminal/damages-format"
@@ -106,6 +109,8 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
   const update = useUpdateContradictionMutation(caseId)
   const job = useAiJobStatus(caseId, "contradictions")
+  // This section's own Rescan; the case analysis rescans too, in its first wave.
+  const regen = usePaneRegenerate(caseId, "contradictions")
   const graphView = useGraphViewQuery(caseId, "contradictions")
   const queryClient = useQueryClient()
   const [open, setOpen] = useState<string | null>(null)
@@ -148,12 +153,16 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className={labelTextClass}>{t("contradictionsTitle")}</p>
-        {rows.length > 0 ? (
-          <span className="text-[10px] text-muted-foreground tabular-nums">
-            {t("contradictionHandled", { done: handledCount, total: rows.length })}
-          </span>
-        ) : null}
+        <div className="flex items-baseline gap-3">
+          {rows.length > 0 ? (
+            <span className="text-[10px] text-muted-foreground tabular-nums">
+              {t("contradictionHandled", { done: handledCount, total: rows.length })}
+            </span>
+          ) : null}
+          <RegenerateButton regen={regen} label={t("regenerateContradictions")} hint={t("regenerateContradictionsHint")} />
+        </div>
       </div>
+      <PaneRegenerateNote regen={regen} />
       <p className="text-[13px] text-muted-foreground">{t("contradictionsIntro")}</p>
       <MutationError show={update.isError} />
 

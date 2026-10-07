@@ -20,7 +20,8 @@ import type {
   PrivilegeStatus,
   SnapshotDocument,
 } from "@/lib/terminal/types"
-import { EmptyNote, labelTextClass, PanelBody } from "@/components/terminal/panel-kit"
+import { EmptyNote, labelTextClass, PanelBody, RegenerateButton } from "@/components/terminal/panel-kit"
+import { usePaneRegenerate } from "@/lib/terminal/mutations"
 
 export const PRIVILEGE_STATUS_KEYS: Record<PrivilegeStatus, string> = {
   NONE: "privilegeNone",
@@ -155,6 +156,8 @@ export function EvidencePanel({
   caseId: string
 }) {
   const { t } = useTranslation("terminal")
+  // The timeline section's own Regenerate: the same pass as Case Strategy's (it updates both).
+  const timelineRegen = usePaneRegenerate(caseId, "timeline")
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null)
   const [deletingDoc, setDeletingDoc] = useState<SnapshotDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -290,6 +293,7 @@ export function EvidencePanel({
           caseId={caseId}
           fill={false}
           title={<p className={labelTextClass}>{t("timeline")}</p>}
+          titleAction={<RegenerateButton regen={timelineRegen} hint={t("regenerateTimelineHint")} />}
           hideGenerateButton
         />
       </div>

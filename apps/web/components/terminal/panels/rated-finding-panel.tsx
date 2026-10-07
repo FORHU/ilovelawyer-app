@@ -10,6 +10,8 @@ import {
   useDeleteFindingMutation,
   useJevCheckFindingMutation,
   useUpdateFindingMutation,
+  usePaneRegenerate,
+  type PaneRegenerateAction,
 } from "@/lib/terminal/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
@@ -27,6 +29,7 @@ import {
   LlmNotReviewed,
   MutationError,
   PaneUpdatingNote,
+  RegenerateButton,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -49,6 +52,8 @@ import { cn } from "@workspace/ui/lib/utils"
 /** What makes one rated-finding panel (Legal Issues, Weaknesses, …) different from another. */
 export interface RatedFindingConfig {
   category: FindingCategory
+  /** The pane's own Regenerate: rewrites only this category's AI rows (usePaneRegenerate). */
+  regenerate: PaneRegenerateAction
   introKey: string
   addKey: string
   detailPlaceholderKey: string
@@ -131,6 +136,7 @@ export function RatedFindingPanel({
   // not only once its findings step starts (same as the Timeline and Visual Strategy panels).
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
   const updating = findingsJob.data?.status === "IN_PROGRESS" || refreshJob.data?.status === "IN_PROGRESS"
+  const regen = usePaneRegenerate(caseId, config.regenerate)
   const queryClient = useQueryClient()
   const prevJobStatus = useRef(findingsJob.data?.status)
   useEffect(() => {
@@ -173,9 +179,13 @@ export function RatedFindingPanel({
 
   return (
     <PanelBody gap="3">
-      {/* No Regenerate here: the case analysis rewrites these rows whenever the documents change. */}
-      <p className={catalogBlurbClass}>{t(config.introKey)}</p>
-      {updating ? <PaneUpdatingNote /> : null}
+      {/* The pane's own Regenerate rewrites only this category's AI rows; the case analysis
+          rewrites every category whenever the documents change. */}
+      <div className="flex items-start justify-between gap-3">
+        <p className={catalogBlurbClass}>{t(config.introKey)}</p>
+        <RegenerateButton regen={regen} />
+      </div>
+      {updating ? <PaneUpdatingNote /> : regen.running ? <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote> : null}
 
       {rows.length > 1 ? (
         <TagMixSummary

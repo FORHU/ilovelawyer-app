@@ -13,7 +13,6 @@ import {
   useAddTheoryClaimMutation,
   useAddTheoryOpenQuestionMutation,
   useAiJobStatus,
-  useAnalysisRefreshing,
   useCreateTheoryMutation,
   useDeleteTheoryItemMutation,
   useDeleteTheoryMutation,
@@ -24,10 +23,11 @@ import {
   useTheoryDiffQuery,
   useUpdateTheoryItemMutation,
   type TheoryItemKind,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, PaneUpdatingNote, SectionLabel, EmptyNote } from "@/components/terminal/panel-kit"
+import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote, RegenerateButton, PaneRegenerateNote } from "@/components/terminal/panel-kit"
 
 // Rows a section shows before collapsing behind "Show all N" (only when that hides 2+ rows).
 const COLLAPSED_ITEM_LIMIT = 4
@@ -59,11 +59,12 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
     el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`
   }, [thesis, showCreate])
 
-  // The case keeps one AI draft theory, written and rewritten in place only by the analysis
-  // refresh (CaseTheorySvc.proposeInner on the API) — no Propose/Regenerate here. Theories a
-  // lawyer wrote or forked never change.
+  // The case keeps one AI draft theory, rewritten in place by the analysis refresh and by this
+  // pane's own Regenerate (CaseTheorySvc.proposeInner on the API). Theories a lawyer wrote or
+  // forked never change.
   const proposeJob = useAiJobStatus(caseId, "caseTheoryPropose")
-  const refreshing = useAnalysisRefreshing(caseId)
+  const regen = usePaneRegenerate(caseId, "theory")
+  const hasAiDraft = theories.some((th) => th.authorUserId === null)
   // A rewritten AI draft drops the server's cached diffs against it — drop ours too.
   const queryClient = useQueryClient()
   const prevProposeStatus = useRef(proposeJob.data?.status)
@@ -84,11 +85,14 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
     <PanelBody gap="4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("theories")}</SectionLabel>
-        <button type="button" onClick={() => setShowCreate((s) => !s)} className={primaryBtnClass}>
-          {t("newTheory")}
-        </button>
+        <div className="flex items-center gap-3">
+          <RegenerateButton regen={regen} label={hasAiDraft ? undefined : t("generate")} />
+          <button type="button" onClick={() => setShowCreate((s) => !s)} className={primaryBtnClass}>
+            {t("newTheory")}
+          </button>
+        </div>
       </div>
-      {refreshing ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
+      <PaneRegenerateNote regen={regen} />
 
       {showCreate && (
         <form

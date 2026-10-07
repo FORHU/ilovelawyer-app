@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueries, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
@@ -7,6 +7,7 @@ import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
 import type {
   Annotation,
+  PanelId,
   AuthorityKind,
   AuthorityStance,
   AnnotationKind,
@@ -80,6 +81,12 @@ export type AiGenerationKind =
   | "caseFinding"
   | "weaknessRegenerate"
   | "strengthRegenerate"
+  | "legalIssueRegenerate"
+  | "attackRegenerate"
+  | "defenseRegenerate"
+  | "witnessRefresh"
+  | "damagesRefresh"
+  | "caseOutlook"
   | "mindMap"
   | "audioOverviewScript"
   | "citationExpand"
@@ -206,6 +213,116 @@ export function useAiJobStatus(caseId: string, kind: AiGenerationKind) {
   }, [caseId, kind, queryClient])
 
   return query
+}
+
+/** Each pane's own Regenerate: the route it calls and the job kind it runs under. Every route
+ * answers at once with the job it started (202), and the pane follows that kind — so it can tell
+ * its own run from the case analysis ("caseRefresh") that also rewrites it. */
+const PANE_REGENERATE = {
+  outlook: { path: "/outlook/generate", kind: "caseOutlook" },
+  strategy: { path: "/strategy/refresh", kind: "caseStrategyRefresh" },
+  timeline: { path: "/timeline/generate", kind: "timelineGenerate" },
+  contradictions: { path: "/evidence/contradictions/scan", kind: "contradictions" },
+  legalIssues: { path: "/findings/regenerate", kind: "legalIssueRegenerate", body: { category: "LEGAL_ISSUE" } },
+  strengths: { path: "/findings/regenerate", kind: "strengthRegenerate", body: { category: "STRENGTH" } },
+  weaknesses: { path: "/findings/regenerate", kind: "weaknessRegenerate", body: { category: "WEAKNESS" } },
+  attack: { path: "/findings/regenerate", kind: "attackRegenerate", body: { category: "ATTACK_STRATEGY" } },
+  defense: { path: "/findings/regenerate", kind: "defenseRegenerate", body: { category: "DEFENSE_STRATEGY" } },
+  witnesses: { path: "/witnesses/refresh", kind: "witnessRefresh" },
+  damages: { path: "/damages/refresh", kind: "damagesRefresh" },
+  reconstruction: { path: "/reconstruction/generate", kind: "caseReconstruction" },
+  theory: { path: "/theories/propose", kind: "caseTheoryPropose" },
+  redTeam: { path: "/red-team/generate", kind: "redTeam" },
+  audioOverview: { path: "/audio-overview/generate", kind: "audioOverviewScript" },
+} as const satisfies Record<string, { path: string; kind: AiGenerationKind; body?: Record<string, string> }>
+
+export type PaneRegenerateAction = keyof typeof PANE_REGENERATE
+
+/** A pane's own Regenerate, as the shared RegenerateButton reads it. `running`: this pane's own
+ * job; `busy`: the case analysis is running and about to rewrite the pane anyway (the button is
+ * disabled, and the API would refuse with a 409). Regenerating one pane never updates the panes
+ * built on it — they catch up at the next "Refresh analysis". When the pane's job finishes, the
+ * snapshot reloads (useAiJobStatus) and so do the graph views the findings and witness panes read. */
+export function usePaneRegenerate(caseId: string, action: PaneRegenerateAction) {
+  const queryClient = useQueryClient()
+  const config: { path: string; kind: AiGenerationKind; body?: Record<string, string> } = PANE_REGENERATE[action]
+  const job = useAiJobStatus(caseId, config.kind)
+  const busy = useAnalysisRefreshing(caseId)
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}${config.path}`, {
+        method: "POST",
+        ...(config.body ? { body: JSON.stringify(config.body) } : {}),
+      }),
+    onSuccess: (status) => {
+      if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, config.kind), status)
+      else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, config.kind) })
+    },
+  })
+  const prevStatus = useRef(job.data?.status)
+  useEffect(() => {
+    if (prevStatus.current === "IN_PROGRESS" && job.data?.status === "DONE") {
+      queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    }
+    prevStatus.current = job.data?.status
+  }, [job.data?.status, caseId, queryClient])
+  const error = mutation.error as (Error & { status?: number }) | null
+  return {
+    start: () => mutation.mutate(),
+    running: mutation.isPending || job.data?.status === "IN_PROGRESS",
+    busy,
+    failed: mutation.isError || job.data?.status === "FAILED",
+    errorStatus: error?.status ?? null,
+  }
+}
+
+export type PaneRegenerate = ReturnType<typeof usePaneRegenerate>
+
+/** Which pane each pane-run job kind belongs to — mirrors ilovelawyer-api's PANE_REGENERATE_KINDS.
+ * A pane run and the case analysis never overlap (ADR 0018): while one of these is running,
+ * "Refresh analysis" waits, and its tooltip names the pane. */
+const PANE_JOB_PANEL: Partial<Record<AiGenerationKind, PanelId>> = {
+  caseOutlook: "command",
+  caseStrategyRefresh: "procedure",
+  timelineGenerate: "evidence",
+  contradictions: "evidence",
+  legalIssueRegenerate: "legalIssues",
+  strengthRegenerate: "strengths",
+  weaknessRegenerate: "weaknesses",
+  attackRegenerate: "attackStrategy",
+  defenseRegenerate: "defenseStrategy",
+  witnessRefresh: "witnesses",
+  damagesRefresh: "damages",
+  caseReconstruction: "caseReconstruction",
+  caseTheoryPropose: "theories",
+  caseMindMap: "mindMap",
+  redTeam: "redTeam",
+  audioOverviewScript: "audioOverview",
+}
+const PANE_JOB_KINDS = Object.keys(PANE_JOB_PANEL) as AiGenerationKind[]
+
+/** The pane whose own Regenerate is running on this case, or null. Reads the same job-status cache
+ * entries useAiJobStatus uses (same keys and endpoint), so a mounted pane's live socket updates
+ * show here too; a running one is re-read every 5 seconds like useAiJobStatus does. During the case
+ * analysis its own steps hold some of these kinds too — the header checks the analysis first, so
+ * that never reads as a pane run. */
+export function useRunningPaneRegenerate(caseId: string): PanelId | null {
+  const results = useQueries({
+    queries: PANE_JOB_KINDS.map((kind) => ({
+      queryKey: terminalKeys.aiJob(caseId, kind),
+      queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
+      enabled: !!caseId,
+      staleTime: 0,
+      refetchInterval: (q: { state: { data?: AiJobStatus | null } }) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_RUNNING_POLL_MS : false),
+    })),
+  })
+  const index = results.findIndex((result) => result.data?.status === "IN_PROGRESS")
+  return index === -1 ? null : (PANE_JOB_PANEL[PANE_JOB_KINDS[index]!] ?? null)
+}
+
+/** A job kind from a 409 PANE_REGENERATING (the API's details.kind), as the pane it belongs to. */
+export function paneForJobKind(kind: unknown): PanelId | null {
+  return typeof kind === "string" ? (PANE_JOB_PANEL[kind as AiGenerationKind] ?? null) : null
 }
 
 /** The Terminal's "Refresh analysis" button: runs the whole case analysis (the same queued

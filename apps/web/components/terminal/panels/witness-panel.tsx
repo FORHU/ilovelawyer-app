@@ -5,18 +5,18 @@ import { useTranslation } from "react-i18next"
 import { Trash2 } from "lucide-react"
 import {
   useAiJobStatus,
-  useAnalysisRefreshing,
   useCreateWitnessMutation,
   useDeleteWitnessMutation,
   useUpdateWitnessMutation,
   useSetWitnessFactorMutation,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } from "@/lib/terminal/types"
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
-import { EmptyNote, MutationError, PaneUpdatingNote, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PaneUpdatingNote, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -55,12 +55,13 @@ export function WitnessPanel({
   const update = useUpdateWitnessMutation(caseId)
   const setFactor = useSetWitnessFactorMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
-  // No buttons: the case analysis reads new documents for witnesses and then scores everyone
-  // (its witness steps — WitnessExtractSvc, WitnessScoringSvc on the API). A lawyer's status,
-  // score override and factor answers are never overwritten by a re-score.
+  // The case analysis (and the pane's own Regenerate) reads new documents for witnesses and then
+  // scores everyone (WitnessExtractSvc, WitnessScoringSvc on the API). A lawyer's status, score
+  // override and factor answers are never overwritten by a re-score.
   const job = useAiJobStatus(caseId, "witnessScoring")
   const extractJob = useAiJobStatus(caseId, "witnessExtract")
-  const refreshing = useAnalysisRefreshing(caseId)
+  // The pane's own Regenerate: read new documents for witnesses, then score everyone.
+  const regen = usePaneRegenerate(caseId, "witnesses")
   const [name, setName] = useState("")
   const [role, setRole] = useState("")
   const [summary, setSummary] = useState("")
@@ -118,10 +119,19 @@ export function WitnessPanel({
 
   return (
     <PanelBody gap="4">
-      <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
-      {isExtracting || isScoring || refreshing ? (
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
+        <RegenerateButton regen={regen} />
+      </div>
+      {isExtracting || isScoring || regen.busy || regen.running ? (
         <PaneUpdatingNote>
-          {isExtracting ? t("witnessExtracting") : isScoring ? t("witnessScoring") : t("paneUpdatingWithAnalysis")}
+          {isExtracting
+            ? t("witnessExtracting")
+            : isScoring
+              ? t("witnessScoring")
+              : regen.busy
+                ? t("paneUpdatingWithAnalysis")
+                : t("paneRegenerating")}
         </PaneUpdatingNote>
       ) : null}
       <MutationError show={job.data?.status === "FAILED"}>{t("witnessScoreFailed")}</MutationError>

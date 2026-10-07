@@ -10,12 +10,12 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import {
   useConfirmDeadlineMutation,
   useCreateDeadlineMutation,
-  useAnalysisRefreshing,
   useCreateProcedureItemMutation,
   useProcedureRulesQuery,
   useRecomputeDeadlineMutation,
   useRecomputeStaleDeadlinesMutation,
   useUpdateProcedureItemMutation,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
@@ -23,7 +23,6 @@ import { getStatus } from "@/config/tenant-codes/capabilities"
 import {
   EmptyNote,
   MutationError,
-  PaneUpdatingNote,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -31,6 +30,8 @@ import {
   fieldClass,
   formatDate,
   primaryBtnClass,
+  RegenerateButton,
+  PaneRegenerateNote,
 } from "@/components/terminal/panel-kit"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
@@ -144,9 +145,9 @@ export function ProcedurePanel({
   const createItem = useCreateProcedureItemMutation(caseId)
   const updateItem = useUpdateProcedureItemMutation(caseId)
   const recomputeStale = useRecomputeStaleDeadlinesMutation(caseId)
-  // No "Update plan": the case analysis rewrites the plan, to-dos and key dates whenever the
-  // documents change, and is the only thing that does.
-  const updatingPlan = useAnalysisRefreshing(caseId)
+  // The case analysis rewrites the plan, to-dos and key dates whenever the documents change; the
+  // pane's own Regenerate redoes the same pass on demand (and so updates the timeline too).
+  const regen = usePaneRegenerate(caseId, "strategy")
   const [showCompleted, setShowCompleted] = useState(false)
   const [ruleCode, setRuleCode] = useState("")
   const [triggerDate, setTriggerDate] = useState("")
@@ -241,9 +242,12 @@ export function ProcedurePanel({
 
   return (
     <PanelBody gap="4">
-      {updatingPlan ? <PaneUpdatingNote>{t("updatingPlan")}</PaneUpdatingNote> : null}
+      <PaneRegenerateNote regen={regen} analysisLabel={t("updatingPlan")} />
       <div>
-        <SectionLabel>{t("recommendedApproach")}</SectionLabel>
+        <div className="flex items-start justify-between gap-3">
+          <SectionLabel>{t("recommendedApproach")}</SectionLabel>
+          <RegenerateButton regen={regen} hint={t("regenerateStrategyHint")} />
+        </div>
         {approachItems.length > 0 ? (
           <ul className="list-disc space-y-1.5 pl-4 text-[13px] leading-5 text-foreground">
             {approachItems.map((item) => (

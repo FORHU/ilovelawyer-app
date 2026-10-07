@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { MindMap } from "@/components/chat/mind-map"
-import { useCaseMindMap } from "@/lib/case-workspace/case-mind-map"
+import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map"
+import { primaryBtnClass } from "@/components/terminal/panel-kit"
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status"
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion"
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
@@ -13,11 +14,11 @@ import type { CaseSnapshot } from "@/lib/terminal/types"
 
 /**
  * The Legal Terminal's "Visual Strategy Map" panel. Shows the case's document-built map — the one
- * the case analysis builds after documents change, same as Studio — with expand/edit, but no
- * Regenerate or "Build from documents": the case analysis is the only thing that (re)builds it
- * here (Studio keeps both). With no such map yet, a case that has indexed documents says the map
- * builds on its own. Only a case with no indexed documents still falls back to the chat-generated
- * map (ConsultationChat's map-only mode).
+ * the case analysis builds after documents change, same as Studio — with expand/edit and the
+ * pane's own Regenerate (MindMap asks first when the map was expanded). Regenerate is held back
+ * while the case analysis runs. With no such map yet, a case that has indexed documents gets
+ * "Build from documents". Only a case with no indexed documents still falls back to the
+ * chat-generated map (ConsultationChat's map-only mode).
  *
  * Each branch roots on `h-full`, not `flex-1`: legal-terminal.tsx's panel body wrapper is a plain
  * block, so `flex-1` there left the canvas at its 320px minimum however large the panel was made.
@@ -25,10 +26,11 @@ import type { CaseSnapshot } from "@/lib/terminal/types"
 export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapshot: CaseSnapshot }) {
   const { t } = useTranslation("case-portfolio")
   const caseMindMap = useCaseMindMap(caseId)
+  const generate = useGenerateCaseMindMapMutation(caseId)
   const documentsQuery = useCaseDocumentsQuery(caseId)
   // A build (blocks expand/edit) vs. what the spinner and building view show: that build, or an
   // Analysis Refresh that will end by replacing the map (useCaseMindMap).
-  const isBuilding = caseMindMap.isBuilding
+  const isBuilding = caseMindMap.isBuilding || generate.isPending
   const isRegenerating = isBuilding || caseMindMap.refreshWillReplace
   const busyLabel = isBuilding ? t("caseMindMap.terminalBuilding") : t("workspace.mindMapGenerating")
 
@@ -47,8 +49,8 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
   if (caseMindMap.tree) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-2 p-2">
-        {caseMindMap.buildFailed && !isRegenerating && (
-          <p className="shrink-0 text-center text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildErrorAuto")}</p>
+        {(caseMindMap.buildFailed || generate.isError) && !isRegenerating && (
+          <p className="shrink-0 text-center text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildError")}</p>
         )}
         <div className="min-h-0 flex-1">
           <MindMap
@@ -61,6 +63,8 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
             // updating state — also on a map the refresh keeps (expanded/edited; it goes Stale).
             regenerating={isRegenerating || caseMindMap.isRefreshing}
             regeneratingLabel={isBuilding ? undefined : isRegenerating ? busyLabel : t("caseMindMap.refreshKeepsChanges")}
+            // The pane's own Regenerate, held back while the case analysis runs.
+            onRegenerate={caseMindMap.isRefreshing ? undefined : () => generate.mutate()}
             expansion={expansion}
             documentNames={documentNames}
           />
@@ -82,10 +86,18 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center-safe gap-4 overflow-y-auto p-4 text-center">
         <p className="max-w-xs text-sm text-muted-foreground">
-          {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.emptyAutoBuild")}
+          {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.emptyWithDocuments")}
         </p>
-        {caseMindMap.buildFailed && (
-          <p className="text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildErrorAuto")}</p>
+        <button
+          type="button"
+          onClick={() => generate.mutate()}
+          disabled={generate.isPending || caseMindMap.isRefreshing}
+          className={primaryBtnClass}
+        >
+          {t("caseMindMap.buildCta")}
+        </button>
+        {(caseMindMap.buildFailed || generate.isError) && (
+          <p className="text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildError")}</p>
         )}
       </div>
     )

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { DocumentLink } from "@/components/shared/document-viewer"
 import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
-import { useAiJobStatus, useAnalysisRefreshing } from "@/lib/terminal/mutations"
+import { useAiJobStatus, usePaneRegenerate } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, RedTeamArgumentStrength, RedTeamArguments } from "@/lib/terminal/types"
 import {
   DeltaMark,
@@ -10,7 +10,6 @@ import {
   JevCheck,
   JevFlag,
   JevNotChecked,
-  PaneUpdatingNote,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -19,6 +18,8 @@ import {
   TonePill,
   labelTextClass,
   type Tone,
+  RegenerateButton,
+  PaneRegenerateNote,
 } from "@/components/terminal/panel-kit"
 
 const STRENGTHS: RedTeamArgumentStrength[] = ["STRONG", "MODERATE", "WEAK"]
@@ -32,8 +33,7 @@ const STRENGTH_STYLE: Record<RedTeamArgumentStrength, { tone: Tone; label: strin
 // Opposing counsel's own adversarial read of the case — generated from the case's structured
 // findings (Legal Issues, Weaknesses, Contradictions, Witnesses, Damages), not raw documents.
 // No manual edit, unlike Case Reconstruction: this is meant to be read as their commentary —
-// which is also why the analysis refresh rebuilds it freely whenever the documents change, and
-// why the pane has no Generate/Regenerate of its own.
+// which is also why the analysis refresh and the pane's own Regenerate rebuild it freely.
 export function RedTeamPanel({
   snapshot,
   caseId,
@@ -44,17 +44,20 @@ export function RedTeamPanel({
   const { t } = useTranslation("terminal")
   const job = useAiJobStatus(caseId, "redTeam")
   const isGenerating = job.data?.status === "IN_PROGRESS"
-  // No Regenerate: the analysis refresh rebuilds this assessment as one of its last steps
-  // (RedTeamSvc on the API), so the pane shows it updating for the whole run.
-  const refreshing = useAnalysisRefreshing(caseId)
+  // The analysis refresh rebuilds this assessment as one of its last steps (RedTeamSvc on the
+  // API); the pane's own Regenerate rebuilds just this assessment.
+  const regen = usePaneRegenerate(caseId, "redTeam")
   const content = snapshot.redTeamAssessment?.content ?? ""
   const claims = snapshot.redTeamAssessment?.claims ?? []
   const ranked = snapshot.redTeamAssessment?.arguments ?? null
 
   return (
     <PanelBody gap="3">
-      <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
-      {refreshing ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
+      <div className="flex items-start justify-between gap-3">
+        <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
+        <RegenerateButton regen={regen} label={content ? undefined : t("generate")} />
+      </div>
+      <PaneRegenerateNote regen={regen} />
 
       {!content && !isGenerating ? (
         <EmptyNote>{t("noRedTeam")}</EmptyNote>

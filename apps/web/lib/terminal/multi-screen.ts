@@ -185,8 +185,8 @@ export function movePanelToScreen(layout: WorkspaceLayout, id: PanelId, next: nu
 // chips). Computed for every catalog panel, not just hidden ones, so a pane already on the grid
 // still shows its status in the library list. Shared by legal-terminal.tsx (memoized there) and
 // every canvas window (no memoization needed there, one snapshot per render).
-// `extras` carries status that isn't part of the case snapshot: Audio Overview's script lives on
-// a consultation message (see useHasAudioOverview), not on the case.
+// `extras` carries status that isn't part of the case snapshot: whether the case has an Audio
+// Overview (see useHasAudioOverview), read from its own endpoint.
 export function computePanelBadges(
   data: CaseSnapshot,
   t: (key: string, opts?: Record<string, unknown>) => string,
