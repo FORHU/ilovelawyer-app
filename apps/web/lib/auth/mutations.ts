@@ -76,7 +76,7 @@ export function toActiveOrg(org: OrganizationWithRole) {
   if (!org.tenant?.code) {
     throw new Error(`Organization ${org.id} ("${org.name}") is missing its tenant — cannot activate it.`)
   }
-  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku, tenantCode: org.tenant.code }
+  return { id: org.id, name: org.name, slug: org.slug, role: org.role, packageSku: org.packageSku, tenantCode: org.tenant.code, isPersonal: !!org.isPersonal }
 }
 
 interface ResetPasswordResponse {
@@ -108,46 +108,58 @@ export function sanitizeNextPath(raw: string | null): string {
   return raw
 }
 
-export function useLoginMutation() {
+interface PasswordAuthResult extends AuthTokensResponse {
+  organizationStatus: OrganizationStatus
+}
+
+/** Shared by the password sign-in mutations: establishes the session inside mutationFn (like
+ * useCompleteGoogleAuth) so the caller's own onSuccess receives `organizationStatus`. A user
+ * with no organization stays on /login for the WorkspaceSetup step (which they can skip
+ * straight into a solo workspace); everyone else continues to `next`. */
+function useCompletePasswordAuth() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
+  return async (data: AuthTokensResponse): Promise<PasswordAuthResult> => {
+    setAuth({ accessToken: data.accessToken, user: data.user })
+    // Chat Wonder session_id is cached with staleTime: Infinity (see useChatSessionQuery)
+    // and survives client-side login/logout since it's just an SPA route change, not a
+    // page reload — without this, a stale pre-login session_id keeps getting reused
+    // until the tab is refreshed, even though the user just "freshly" logged in.
+    queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+    const organizationStatus = await hydrateActiveOrganization(setOrganization)
+    if (organizationStatus !== "none") router.push(sanitizeNextPath(searchParams.get("next")))
+    announceIfRestored(data)
+    return { ...data, organizationStatus }
+  }
+}
+
+export function useLoginMutation() {
+  const completePasswordAuth = useCompletePasswordAuth()
+
   return useMutation({
-    mutationFn: ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
-      apiFetch<AuthTokensResponse>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: normalizeEmail(email), password, remember }),
-        skipAuthRefresh: true,
-      }),
-    onSuccess: async (data) => {
-      setAuth({ accessToken: data.accessToken, user: data.user })
-      // Chat Wonder session_id is cached with staleTime: Infinity (see useChatSessionQuery)
-      // and survives client-side login/logout since it's just an SPA route change, not a
-      // page reload — without this, a stale pre-login session_id keeps getting reused
-      // until the tab is refreshed, even though the user just "freshly" logged in.
-      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
-      await hydrateActiveOrganization(setOrganization)
-      router.push(sanitizeNextPath(searchParams.get("next")))
-      announceIfRestored(data)
-    },
+    mutationFn: async ({ email, password, remember }: { email: string; password: string; remember: boolean }) =>
+      completePasswordAuth(
+        await apiFetch<AuthTokensResponse>("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email: normalizeEmail(email), password, remember }),
+          skipAuthRefresh: true,
+        })
+      ),
   })
 }
 
 /** Completes the one-time forced password update a 428 from useLoginMutation sends the
- * caller to (see AuthSvc.login / updateRequiredPassword on the backend) — mirrors
- * useLoginMutation's onSuccess since a successful call here *is* a completed login. */
+ * caller to (see AuthSvc.login / updateRequiredPassword on the backend) — same completion as
+ * useLoginMutation since a successful call here *is* a completed login. */
 export function useUpdateRequiredPasswordMutation() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const setAuth = useAuthStore((s) => s.setAuth)
-  const setOrganization = useAuthStore((s) => s.setOrganization)
-  const queryClient = useQueryClient()
+  const completePasswordAuth = useCompletePasswordAuth()
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       email,
       currentPassword,
       newPassword,
@@ -158,18 +170,13 @@ export function useUpdateRequiredPasswordMutation() {
       newPassword: string
       remember: boolean
     }) =>
-      apiFetch<AuthTokensResponse>("/api/auth/update-required-password", {
-        method: "POST",
-        body: JSON.stringify({ email: normalizeEmail(email), currentPassword, newPassword, remember }),
-        skipAuthRefresh: true,
-      }),
-    onSuccess: async (data) => {
-      setAuth({ accessToken: data.accessToken, user: data.user })
-      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
-      await hydrateActiveOrganization(setOrganization)
-      router.push(sanitizeNextPath(searchParams.get("next")))
-      announceIfRestored(data)
-    },
+      completePasswordAuth(
+        await apiFetch<AuthTokensResponse>("/api/auth/update-required-password", {
+          method: "POST",
+          body: JSON.stringify({ email: normalizeEmail(email), currentPassword, newPassword, remember }),
+          skipAuthRefresh: true,
+        })
+      ),
   })
 }
 

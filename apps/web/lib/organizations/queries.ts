@@ -17,6 +17,9 @@ export interface OrganizationRecord {
   /** Persisted, authoritative Tenant — server-resolved at creation from the signup
    * domain, never client-editable. See ilovelawyer-api's Organization.tenantId. */
   tenant: { code: TenantCode }
+  /** A skipped-onboarding user's private workspace (see ilovelawyer-api's
+   * Organization.isPersonal) — the app treats its owner as having no organization. */
+  isPersonal: boolean
   createdAt: string
   updatedAt: string
 }

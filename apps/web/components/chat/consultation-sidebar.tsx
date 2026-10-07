@@ -294,7 +294,7 @@ export default function ConsultationSidebar({
         </div>
       )}
 
-      {(expanded || isMobile) && organization && (
+      {(expanded || isMobile) && organization && !organization.isPersonal && (
         <div className="mt-auto shrink-0 border-t border-border px-3 pt-4 flex flex-col gap-1">
           <p className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
             {t("sidebar.organization", { defaultValue: "Organization" })}

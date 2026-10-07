@@ -395,7 +395,7 @@ export function LawSearchPanel() {
           <button
             type="submit"
             disabled={isSearching || !query.trim()}
-            className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-primary px-5 py-2.5 text-xs font-semibold tracking-wider text-primary-foreground uppercase transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
+            className="hidden shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-brand-gold px-5 py-2.5 text-xs font-semibold tracking-wider text-brand-gold-foreground uppercase transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
           >
             {isSearching ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
