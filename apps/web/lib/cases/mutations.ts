@@ -80,8 +80,16 @@ export interface CaseRecord {
  * the calendar/transcription case-linking pickers and the Terminal landing page's case
  * switcher, none of which pass this param — automatically keeps excluding archived cases
  * without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
-export function useCasesQuery(page = 1, limit = 20, search = "", status: CaseStatus = "ACTIVE", createdBy?: string) {
+export function useCasesQuery(
+  page = 1,
+  limit = 20,
+  search = "",
+  status: CaseStatus = "ACTIVE",
+  createdBy?: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled,
     queryKey: caseKeys.list({ page, limit, search, status, createdBy }),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), status })

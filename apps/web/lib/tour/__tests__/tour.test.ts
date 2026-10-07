@@ -7,9 +7,13 @@ import {
   GUIDE_ANSWERS,
   GUIDE_SUGGESTIONS,
   GUIDE_SUGGESTIONS_BY_ROUTE,
+  guidePath,
   matchGuideAnswer,
+  missingPrerequisite,
+  PREREQUISITES,
   routeMatches,
   TOUR_TARGETS,
+  type Prerequisite,
 } from "@/lib/tour/steps"
 
 describe("copy", () => {
@@ -32,6 +36,48 @@ describe("copy", () => {
   })
 })
 
+describe("prerequisite copy", () => {
+  it("explains every prerequisite and labels the suggestions that need it", () => {
+    for (const id of Object.keys(PREREQUISITES) as Prerequisite[]) {
+      expect(en.prerequisites).toHaveProperty(id)
+      expect(en.prerequisites[id]).toHaveProperty("body")
+      expect(en.prerequisites[id]).toHaveProperty("missing")
+      expect(en.guide.needs).toHaveProperty(id)
+      expect(en.targets).toHaveProperty(PREREQUISITES[id].target)
+    }
+  })
+
+  it("gives every answer behind a prerequisite a blocked answer, a next step and its path", () => {
+    for (const a of GUIDE_ANSWERS) {
+      if (!missingPrerequisite(a.target, { case: false })) continue
+      expect(en.answers, a.id).toHaveProperty(`${a.id}_blocked`)
+      expect(en.answers, a.id).toHaveProperty(`${a.id}_next`)
+      expect(a.path?.length, a.id).toBeGreaterThan(1)
+      for (const step of a.path ?? []) expect(en.prerequisites.steps, `${a.id} → ${step}`).toHaveProperty(step)
+    }
+  })
+})
+
+describe("prerequisites", () => {
+  it("never meet a prerequisite with a control that needs it", () => {
+    for (const p of Object.values(PREREQUISITES)) expect(p.unlocks).not.toContain(p.target)
+  })
+
+  it("only block when the prerequisite is known to be missing", () => {
+    expect(missingPrerequisite("case-row-workspace", { case: false })).toBe("case")
+    expect(missingPrerequisite("case-row-workspace", { case: true })).toBeNull()
+    // Still loading: don't send anyone off to create a case on a guess.
+    expect(missingPrerequisite("case-row-workspace", {})).toBeNull()
+    expect(missingPrerequisite("cases-new", { case: false })).toBeNull()
+  })
+
+  it("mark the path off: the prerequisite first, then the step after it", () => {
+    const workspace = GUIDE_ANSWERS.find((a) => a.id === "workspace")!
+    expect(guidePath(workspace, false)?.map((s) => s.state)).toEqual(["now", "later", "later"])
+    expect(guidePath(workspace, true)?.map((s) => s.state)).toEqual(["done", "now", "later"])
+  })
+})
+
 describe("matchGuideAnswer", () => {
   const answerFor = (q: string) => {
     const m = matchGuideAnswer(q)
@@ -50,6 +96,23 @@ describe("matchGuideAnswer", () => {
 
   it("prefers a how-to answer when a question sounds legal but is about the app", () => {
     expect(answerFor("Where do I upload a file for estafa?")).toBe("upload")
+  })
+
+  it("sends a user with no case to create one before Workspace or Terminal", () => {
+    const noCase = { case: false }
+    for (const q of ["How do I make a case brief or audio overview?", "How do I open a case in the Legal Terminal?"]) {
+      const m = matchGuideAnswer(q, noCase)
+      expect(m.kind, q).toBe("blocked")
+      expect(m.kind === "blocked" && m.missing, q).toBe("case")
+    }
+    expect(matchGuideAnswer("How do I make a case brief or audio overview?", { case: true }).kind).toBe("answer")
+  })
+
+  it("doesn't block features a user with no case can already use", () => {
+    const noCase = { case: false }
+    for (const q of ["How do I find a case?", "Where are my archived cases?", "How do I add a hearing?", "Where do I upload documents?"]) {
+      expect(matchGuideAnswer(q, noCase).kind, q).toBe("answer")
+    }
   })
 
   it("admits when it has no answer", () => {

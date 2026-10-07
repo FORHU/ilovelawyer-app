@@ -63,10 +63,21 @@
     "tours": "Tours",
     "tourThisPage": "Tour this page",
     "tourWorkspace": "Tour the Workspace on a sample case",
-    "tourTerminal": "Tour the Terminal on a sample case"
+    "tourTerminal": "Tour the Terminal on a sample case",
+    "toGetThere": "To get there",
+    "stepStart": "Start here",
+    "stepNext": "Next",
+    "stepDone": "done",
+    "trySample": "Try it on a sample case",
+    "nextStep": "Next step",
+    "needs": {
+      "case": "Needs a case"
+    }
   },
   "answers": {
     "terminal": "Every case row has two ways in. Choose **Legal Terminal** for the full pane grid, or **Workspace** for chat and sources.",
+    "terminal_blocked": "The **Legal Terminal** opens from a case, and you don't have one yet. **Create a case** first, and I'll take you the rest of the way.",
+    "terminal_next": "Your case is ready. Choose **Legal Terminal** on its row to open the full pane grid.",
     "upload": "Use the **attach** button in the composer to add a contract or filing. Inside a case, the Documents section has its own **Upload** button.",
     "newCase": "New matters start from **New case** on the Cases page. The wizard asks for the caption, the parties and any documents.",
     "calendar": "Hearings and deadlines live in the **Calendar**. Link an event to a case and it shows up as the Terminal's next date.",
@@ -81,6 +92,8 @@
     "findCase": "Search by case name or party in the **search box** at the top of the Cases page.",
     "statusFilter": "Use the **Active / Archived** toggle to switch between your current and archived cases. Archived cases keep all their documents.",
     "workspace": "Every case has a **Workspace**. It opens sources, chat and Studio side by side, where you can make an audio overview, mind map or case brief.",
+    "workspace_blocked": "Audio overviews, mind maps and case briefs are made inside a case, and you don't have one yet. **Create a case** first, and I'll take you the rest of the way.",
+    "workspace_next": "Your case is ready. Open its **Workspace** and add documents under Sources. Studio makes audio overviews, mind maps and case briefs from them.",
     "notifications": "The **bell** in the header shows indexing, hearing and comment alerts. Unread ones have a gold count.",
     "language": "Switch between English, Tagalog and Korean from the **language** menu in the header.",
     "profile": "Your name, username and password are under **Profile** in the account menu.",
@@ -95,6 +108,18 @@
     "reminder": "When you **add** an event, set a reminder and an optional email to notify.",
     "editEvent": "Select the day, then edit or delete the event from the **day panel**.",
     "month": "The **month grid** shows every hearing, deadline and note at a glance. Pick a day to see its events."
+  },
+  "prerequisites": {
+    "case": {
+      "body": "Workspace and the Legal Terminal open from a case. Create one, and both appear on its row.",
+      "missing": "That needs a case first. Create one from the Cases page."
+    },
+    "steps": {
+      "createCase": "Create a case",
+      "addDocuments": "Add documents to it",
+      "openStudio": "Open its Workspace, then Studio",
+      "openTerminal": "Open it in the Legal Terminal"
+    }
   },
   "helpTopics": {
     "casePortfolio": "Cases",
@@ -324,7 +349,73 @@
       "library-filters_UK": "Narrow case law by court.",
       "cal-grid": "Your month at a glance. Days with hearings, deadlines or notes are marked; pick one to see it.",
       "cal-day": "The selected day's appointments and notes. Edit or delete them here.",
-      "cal-add": "Add an appointment or a note to the selected day, link a case and set a reminder."
+      "cal-add": "Add an appointment or a note to the selected day, link a case and set a reminder.",
+      "cases-create-first": "Workspace and the Legal Terminal open from a case. Create one, and both appear on its row."
+    }
+  },
+  "newAccountPreview": {
+    "alt": "A filled-in ilovelawyer account: a list of cases, Studio playing an audio overview, and a consultation answer with citations.",
+    "captions": {
+      "cases": {
+        "title": "Your cases",
+        "body": "Every matter in one list. Open one as a Workspace or in the Legal Terminal."
+      },
+      "studio": {
+        "title": "Studio",
+        "body": "Make an audio overview, mind map, timeline or case brief from a case's documents."
+      },
+      "consultation": {
+        "title": "Consultation",
+        "body": "Ask in plain language. Answers cite the codals and decisions they rely on.",
+        "body_UK": "Ask in plain language. Answers cite the legislation and judgments they rely on."
+      }
+    },
+    "sample": {
+      "casesTitle": "Cases",
+      "activeCount": "3 active",
+      "sources": "8 sources",
+      "cases": [
+        {
+          "name": "People v. Dela Cruz",
+          "meta": "Criminal · Estafa · RTC Br. 12"
+        },
+        {
+          "name": "Reyes v. Northpoint Realty",
+          "meta": "Civil · Rescission · RTC Br. 3"
+        },
+        {
+          "name": "Santos v. Halcyon Foods",
+          "meta": "Labor · Illegal dismissal · NLRC"
+        }
+      ],
+      "cases_UK": [
+        {
+          "name": "R v Hale",
+          "meta": "Criminal · Fraud · Crown Court"
+        },
+        {
+          "name": "Reyes v Northpoint Realty Ltd",
+          "meta": "Civil · Misrepresentation · County Court"
+        },
+        {
+          "name": "Santos v Halcyon Foods Ltd",
+          "meta": "Employment · Unfair dismissal · ET"
+        }
+      ],
+      "question": "Is this estafa or an unpaid debt?",
+      "question_UK": "Is this fraud or an unpaid debt?",
+      "answer": "Estafa needs deceit before or at the time the money was handed over. A promise broken later is a civil debt.",
+      "answer_UK": "Fraud by false representation needs a dishonest statement made to gain. A promise broken later is usually a civil debt.",
+      "citations": [
+        "RPC Art. 315(2)(a)",
+        "RA 10951 §85",
+        "Counter-Affidavit p.4"
+      ],
+      "citations_UK": [
+        "Fraud Act 2006, s.2",
+        "Ivey v Genting [2017] UKSC 67",
+        "Defence p.4"
+      ]
     }
   }
 }

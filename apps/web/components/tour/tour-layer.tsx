@@ -6,7 +6,9 @@ import { toast } from "sonner"
 import { X } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { useTourStore } from "@/lib/store/tour.store"
-import { routeMatches, TOUR_TARGETS } from "@/lib/tour/steps"
+import { GUIDE_ANSWERS, missingPrerequisite, routeMatches, TOUR_TARGETS } from "@/lib/tour/steps"
+import { guideReply } from "@/lib/tour/guide-reply"
+import { useHasActiveCase } from "@/lib/onboarding/use-is-new-account"
 import { pageGuideFor } from "@/lib/tour/page-tours"
 import { placeTip, TIP_WIDTH, type Rect } from "@/lib/tour/placement"
 import { useIsFirstVisit } from "@/lib/tour/use-first-visit"
@@ -37,6 +39,14 @@ export function TourLayer() {
   const pageTour = useTourStore((s) => s.pageTour)
   const setPageTour = useTourStore((s) => s.setPageTour)
   const lastQuestion = useTourStore((s) => [...s.messages].reverse().find((m) => m.role === "user")?.text ?? "")
+  const pendingGoal = useTourStore((s) => s.pendingGoal)
+  const setPendingGoal = useTourStore((s) => s.setPendingGoal)
+  const follow = useTourStore((s) => s.follow)
+  const guideNudge = useTourStore((s) => s.guideNudge)
+  const setGuideNudge = useTourStore((s) => s.setGuideNudge)
+  // Only asked while the guide has something riding on it: an answer waiting on the user's first
+  // case, or a control it's pointing at that may not exist without one.
+  const hasCase = useHasActiveCase(!!pendingGoal || !!guideSpot)
 
   const pageGuide = pageGuideFor(pathname)
   const pageTourDef = pageGuide?.kind === "page" ? pageGuide : null
@@ -71,6 +81,25 @@ export function TourLayer() {
     setGuideMinimized(false)
     setGuideOpen(true)
   }, [setGuideMinimized, setGuideOpen, setGuideSpot])
+
+  // The user asked about a feature that needs a case, and now has one: give the next step, and
+  // flag it on the guide's pill if the guide is closed.
+  useEffect(() => {
+    if (!pendingGoal || hasCase !== true) return
+    setPendingGoal(null)
+    const answer = GUIDE_ANSWERS.find((a) => a.id === pendingGoal.answerId)
+    if (!answer) return
+    follow(guideReply(t, answer, "next"))
+    if (!guideOpen) {
+      setGuideMinimized(true)
+      setGuideNudge(true)
+    }
+  }, [follow, guideOpen, hasCase, pendingGoal, setGuideMinimized, setGuideNudge, setPendingGoal, t])
+
+  // Opening the guide reads the waiting step.
+  useEffect(() => {
+    if (guideOpen) setGuideNudge(false)
+  }, [guideOpen, setGuideNudge])
 
   // Esc backs out one level: the guide's highlight, then the guide. (Page and sample tours handle
   // their own Esc.)
@@ -115,7 +144,10 @@ export function TourLayer() {
         if (Date.now() - missSince.current > MISSING_TARGET_MS) {
           missSince.current = null
           restoreGuide()
-          toast.error(t("toasts.targetMissing"))
+          // Missing because the user hasn't got what it needs yet (no case, so no case rows):
+          // say that, rather than that it isn't on screen.
+          const missing = missingPrerequisite(guideSpot.target, { case: hasCase })
+          toast.error(missing ? t(`prerequisites.${missing}.missing`) : t("toasts.targetMissing"))
           return
         }
         raf = requestAnimationFrame(measure)
@@ -134,7 +166,7 @@ export function TourLayer() {
     }
     raf = requestAnimationFrame(measure)
     return () => cancelAnimationFrame(raf)
-  }, [guideSpot, pathname, restoreGuide, t])
+  }, [guideSpot, hasCase, pathname, restoreGuide, t])
 
   const hasRect = rect !== null
   useEffect(() => {
@@ -209,6 +241,11 @@ export function TourLayer() {
           role="status"
           className="fixed bottom-5 right-5 z-[8995] flex max-w-[min(360px,calc(100vw-40px))] items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-3.5 pr-1.5 text-foreground shadow-2xl"
         >
+          {guideNudge && (
+            <span className="shrink-0 rounded-full bg-brand-gold px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.8px] text-brand-gold-foreground">
+              {t("guide.nextStep")}
+            </span>
+          )}
           <span className="min-w-0 flex-1 truncate text-[12.5px]">{lastQuestion}</span>
           <button
             type="button"
