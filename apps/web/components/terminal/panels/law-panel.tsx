@@ -8,6 +8,7 @@ import {
   useRemoveAuthorityMutation,
   useUpdateAuthorityMutation,
   useUpdateCitationMutation,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type {
   AuthorityStance,
@@ -34,6 +35,9 @@ import {
   labelTextClass,
   primaryBtnClass,
   secondaryTextClass,
+  RegenerateButton,
+  PaneRegenerateNote,
+  catalogBlurbClass,
 } from "@/components/terminal/panel-kit"
 import { AuthorityComposer, STANCES } from "@/components/terminal/panels/authority-composer"
 import { QuoteCheckComposer } from "@/components/terminal/panels/quote-check-composer"
@@ -137,12 +141,20 @@ export function LawPanel({
 
   const { authorities, summary } = snapshot.law
   const grounds = snapshot.findings.filter((finding) => finding.category === "LEGAL_ISSUE")
+  const regen = usePaneRegenerate(caseId, "legalIssues")
   const groundLabel = (authority: SnapshotAuthority) =>
     grounds.find((ground) => ground.id === authority.findingId)?.label
 
   return (
     <PanelBody gap="4">
       <div className="flex flex-col gap-3">
+        {/* The grounds an authority is pinned to are the case's legal-issue findings, so this
+            pane's Regenerate is Legal Issues' (which updates too). */}
+        <div className="flex items-start justify-between gap-3">
+          <p className={catalogBlurbClass}>{t("lawGroundsNote", { count: grounds.length })}</p>
+          <RegenerateButton regen={regen} label={t("regenerateGrounds")} hint={t("regenerateGroundsHint")} />
+        </div>
+        <PaneRegenerateNote regen={regen} />
         <AuthoritySummaryHeader summary={summary} />
         <PanelRowList empty={<EmptyNote>{t("noAuthorities")}</EmptyNote>}>
           {authorities.map((authority) => (

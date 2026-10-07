@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import {
-  useConsultationsQuery,
   useMessagesQuery,
   useChatSessionQuery,
   sendChatMessageAndWait,
@@ -11,7 +10,7 @@ import {
   type ChatMessage,
 } from "@/lib/chat/mutations";
 import { chatKeys } from "@/lib/query-keys";
-import { useAiJobStatus, type AiJobStatus } from "@/lib/terminal/mutations";
+import { useAiJobStatus, useLatestAudioOverviewQuery, type AiJobStatus } from "@/lib/terminal/mutations";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
 
 /** How many steps AudioOverviewGenerationSteps shows — see scriptStepFor. */
@@ -30,14 +29,14 @@ export function scriptStepFor(job: AiJobStatus | null | undefined, localStartedA
   return finishedThisRun ? SCRIPT_STEP_COUNT : 0;
 }
 
-/** Whether this case's Audio Overview pane has anything to show — the same lookup
- * AudioOverviewPanel does (latest consultation for the case → its newest message carrying an
- * audioOverview script), over the same cached queries, so the Terminal's pane-library badge agrees
- * with the pane instead of reporting Empty for an overview generated from Case Workspace. */
+/** Whether this case's Audio Overview pane has anything to show — the same lookup AudioOverviewPanel
+ * does (the case's newest overview, whether the case analysis or a chat/Studio request wrote it),
+ * over the same cached query, so the Terminal's pane-library badge agrees with the pane. It used to
+ * read only the newest consultation's messages, which never sees an overview the analysis wrote
+ * (those belong to the case, with no chat message) and reported Empty beside a full pane. */
 export function useHasAudioOverview(caseId: string | null) {
-  const { data: consultations } = useConsultationsQuery(caseId ?? undefined);
-  const { data: history } = useMessagesQuery(caseId ? consultations?.[0]?.id : undefined);
-  return useMemo(() => !!history?.some((m) => m.audioOverview?.turns?.length), [history]);
+  const latest = useLatestAudioOverviewQuery(caseId ?? "");
+  return !!latest.data;
 }
 
 /** Script generation → Polly render polling → playable URL, shared by every surface that offers

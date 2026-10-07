@@ -98,11 +98,15 @@ export function CaseTimelineView({
   // Optional heading rendered on the left of the generate row, so the button sits at the right
   // end of the section header instead of on a row of its own (Evidence panel passes "Timeline").
   title,
+  // Shown at the right of the title row when the round Generate is hidden: the Terminal's Evidence
+  // pane puts its gold Regenerate there.
+  titleAction,
 }: {
   caseId: string
   fill?: boolean
   hideGenerateButton?: boolean
   title?: React.ReactNode
+  titleAction?: React.ReactNode
 }) {
   const { t } = useTranslation("homepage")
   const { t: tt } = useTranslation("terminal")
@@ -268,11 +272,18 @@ export function CaseTimelineView({
             </div>
           </div>
         ) : title ? (
-          // No Generate (the Terminal's Evidence pane): the case analysis rewrites these dates on
-          // its own, so the row only carries the title and says when that is happening.
+          // The Terminal's Evidence pane: the title, its own Regenerate (titleAction), and a line
+          // saying when the dates are being rewritten — by the case analysis or by that button.
           <div className="mb-2 flex flex-col gap-1">
-            {title}
-            {isGenerating ? <PaneUpdatingNote>{tt("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
+            <div className="flex items-start justify-between gap-3">
+              {title}
+              {titleAction}
+            </div>
+            {isGenerating ? (
+              <PaneUpdatingNote>
+                {caseRefreshStatus.data?.status === "IN_PROGRESS" ? tt("paneUpdatingWithAnalysis") : tt("paneRegenerating")}
+              </PaneUpdatingNote>
+            ) : null}
           </div>
         ) : null}
         {isLoading ? (

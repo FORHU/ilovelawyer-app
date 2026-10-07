@@ -38,7 +38,8 @@ import type {
   PrivilegeStatus,
   SnapshotDocument,
 } from "@/lib/terminal/types"
-import { EmptyNote, labelTextClass, MutationError, PanelBody } from "@/components/terminal/panel-kit"
+import { EmptyNote, labelTextClass, MutationError, PanelBody, RegenerateButton } from "@/components/terminal/panel-kit"
+import { usePaneRegenerate } from "@/lib/terminal/mutations"
 
 export const PRIVILEGE_STATUS_KEYS: Record<PrivilegeStatus, string> = {
   NONE: "privilegeNone",
@@ -200,6 +201,8 @@ export function EvidencePanel({
   caseId: string
 }) {
   const { t } = useTranslation("terminal")
+  // The timeline section's own Regenerate: the same pass as Case Strategy's (it updates both).
+  const timelineRegen = usePaneRegenerate(caseId, "timeline")
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null)
   // Same rule as Workspace's DocumentFileCard: an active document can only be archived; delete
   // lives in the Archived view, so nothing leaves the case in one click.
@@ -423,6 +426,7 @@ export function EvidencePanel({
           caseId={caseId}
           fill={false}
           title={<p className={labelTextClass}>{t("timeline")}</p>}
+          titleAction={<RegenerateButton regen={timelineRegen} hint={t("regenerateTimelineHint")} />}
           hideGenerateButton
         />
       </div>

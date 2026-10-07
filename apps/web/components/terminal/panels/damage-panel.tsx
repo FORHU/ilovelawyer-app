@@ -9,10 +9,10 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   useAcceptDamageMutation,
   useAiJobStatus,
-  useAnalysisRefreshing,
   useCreateDamageMutation,
   useDeleteDamageMutation,
   useUpdateDamageMutation,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, PanelId } from "@/lib/terminal/types"
 import { daysUntil, formatMoney, sortDamageHeads } from "@/lib/terminal/damages-format"
@@ -30,6 +30,7 @@ import {
   primaryBtnClass,
   TONE_STYLE,
   type Tone,
+  RegenerateButton,
 } from "@/components/terminal/panel-kit"
 import { DAMAGE_KIND_KEYS, DamageHeadEditorDialog } from "@/components/terminal/panels/damage-head-editor"
 import { DamagesOverview } from "@/components/terminal/panels/damages-overview"
@@ -70,8 +71,8 @@ export function DamagePanel({
   // updating for the whole analysis run, like the other panes it rewrites. useAiJobStatus
   // refreshes the snapshot when either job finishes.
   const extractJob = useAiJobStatus(caseId, "damagesExtract")
-  const refreshing = useAnalysisRefreshing(caseId)
-  const updating = refreshing || extractJob.data?.status === "IN_PROGRESS"
+  const regen = usePaneRegenerate(caseId, "damages")
+  const updating = regen.busy || regen.running || extractJob.data?.status === "IN_PROGRESS"
   const [openId, setOpenId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorTarget>(null)
 
@@ -111,7 +112,14 @@ export function DamagePanel({
 
   return (
     <PanelBody gap="4">
-      {updating ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
+      <div className="flex justify-end">
+        <RegenerateButton regen={regen} />
+      </div>
+      {regen.running ? (
+        <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
+      ) : updating ? (
+        <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
+      ) : null}
       <DamagesOverview summary={summary} heads={snapshot.damages} displayTotal={displayTotal} dimmed={updating} />
 
       {heads.length === 0 ? (

@@ -4,12 +4,12 @@ import { Loader2, Volume2, XCircle } from "lucide-react"
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
 import {
-  useAnalysisRefreshing,
   useLatestAudioOverviewQuery,
+  usePaneRegenerate,
   useRecordAudioOverviewMutation,
   type AudioOverviewHistoryEntry,
 } from "@/lib/terminal/mutations"
-import { PaneUpdatingNote } from "@/components/terminal/panel-kit"
+import { PaneUpdatingNote, RegenerateButton } from "@/components/terminal/panel-kit"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history"
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs"
@@ -24,9 +24,10 @@ import { dateLocale } from "@/lib/i18n/date-locale"
 // Not to be confused with CaseReconstructionPanel's audio (a single narrator reading Polly's
 // OutputUri directly) — this is the two-host podcast-style overview. It shows the case's newest
 // one from either source (useLatestAudioOverviewQuery): the one the case analysis writes on every
-// run, or one a lawyer asked for in chat or Studio. Like every pane the analysis keeps up to date,
-// it has no Generate/Regenerate; the only action is recording an overview whose recording failed
-// (or a chat-made script that was never recorded). Uses the same docked AudioOverviewPlayerBar as
+// run, or one a lawyer asked for in chat or Studio. Its own Regenerate writes a new case-owned
+// overview and records it (usePaneRegenerate "audioOverview"), held back while the case analysis
+// runs; the recording action covers an overview whose recording failed (or a chat-made script that
+// was never recorded). Uses the same docked AudioOverviewPlayerBar as
 // Studio (see use-audio-overview-player.tsx) and the same synced AudioOverviewTranscript.
 /** Below this panel height the player switches to its compact layout and the chrome tightens —
  * a terminal tile is often a fraction of the screen, where the roomy Studio layout left the
@@ -59,8 +60,10 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   const [fullScript, setFullScript] = useFullScriptPreference()
   const latest = useLatestAudioOverviewQuery(caseId)
   const overview = latest.data ?? null
-  // A new overview is being written: by this analysis run (wave 3), or by a chat/Studio request.
-  const updating = useAnalysisRefreshing(caseId) || latest.isWritingScript
+  const regen = usePaneRegenerate(caseId, "audioOverview")
+  // A new overview is being written: by this analysis run (wave 3), this pane's Regenerate, or a
+  // chat/Studio request (all hold the same "audioOverviewScript" job).
+  const updating = regen.busy || latest.isWritingScript
   const turns = overview?.turns ?? []
   const synced = !!overview?.audio && hasUsableTimings(overview.turnTimings, turns.length)
   const caption = overview
@@ -85,6 +88,7 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
           <span className="flex-1" />
         )}
         {showsScript && synced && <FullScriptToggle fullScript={fullScript} onChange={setFullScript} />}
+        {view === "current" && <RegenerateButton regen={regen} label={overview ? undefined : t("workspace.audioOverviewGenerateCta")} />}
       </div>
       {updating && view === "current" ? (
         <div className="shrink-0 px-3 pb-1.5">

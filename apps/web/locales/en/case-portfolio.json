@@ -398,8 +398,6 @@
     "emptyWithDocuments": "Build a case strategy map from this case's documents.",
     "buildCta": "Build from documents",
     "buildError": "Couldn't build the mind map. Try again.",
-    "buildErrorAuto": "Couldn't build the mind map. It tries again the next time the case's documents change.",
-    "emptyAutoBuild": "The case strategy map builds on its own from this case's documents when the case analysis runs.",
     "uploadHint": "Upload documents to build the map from them automatically.",
     "retired": "The documents this map was built from were removed. Upload documents to build a new one.",
     "staleAdded_one": "{{count}} document added",

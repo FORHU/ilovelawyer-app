@@ -12,12 +12,12 @@ import {
   pollReconstructionAudio,
   terminalKeys,
   useAiJobStatus,
-  useAnalysisRefreshing,
   useGenerateReconstructionAudioMutation,
   useGenerateReconstructionEventsMutation,
   useGenerateReconstructionScenesMutation,
   useGenerateTableReadMutation,
   useUpdateReconstructionMutation,
+  usePaneRegenerate,
 } from "@/lib/terminal/mutations"
 import type { UpdateReconstructionPayload } from "@/lib/terminal/mutations"
 import type {
@@ -38,6 +38,7 @@ import {
   labelTextClass,
   primaryBtnClass,
   secondaryTextClass,
+  RegenerateButton,
 } from "@/components/terminal/panel-kit"
 
 type ReconstructionRegister = "general" | "court" | "opposing"
@@ -112,11 +113,12 @@ export function CaseReconstructionPanel({
   const generateAudio = useGenerateReconstructionAudioMutation(caseId)
   const generateJob = useAiJobStatus(caseId, "caseReconstruction")
   const isGenerating = generateJob.data?.status === "IN_PROGRESS"
-  // The narrative has no Generate/Regenerate: the analysis refresh writes it, and rewrites it
-  // until the lawyer edits any register — then it is left alone for good
-  // (CaseReconstructionSvc.autoRegenerate on the API).
+  // The analysis refresh writes the narrative and rewrites it until the lawyer edits any register
+  // (CaseReconstructionSvc.autoRegenerate on the API). The pane's own Regenerate rewrites it on
+  // demand; on an edited narrative it asks first, since it replaces the lawyer's words.
   const edited = !!reconstruction?.narrativeEditedAt
-  const refreshing = useAnalysisRefreshing(caseId)
+  const regen = usePaneRegenerate(caseId, "reconstruction")
+  const [confirmReplace, setConfirmReplace] = useState(false)
 
   // Generate is queued server-side (AiGenerationQueue / SQS) — the mutation's response is just
   // the AiGenerationJob row, not the finished narrative, so drafts can no longer be set from its
@@ -174,9 +176,42 @@ export function CaseReconstructionPanel({
 
   return (
     <PanelBody gap="3">
-      <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
-      {refreshing && !edited ? <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote> : null}
-      {edited ? <p className={secondaryTextClass}>{t("reconstructionEditedNote")}</p> : null}
+      <div className="flex items-start justify-between gap-3">
+        <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
+        <RegenerateButton
+          regen={regen}
+          label={narrative ? undefined : t("generate")}
+          onClick={() => (edited ? setConfirmReplace(true) : regen.start())}
+        />
+      </div>
+      {regen.busy && !edited ? (
+        <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
+      ) : regen.running ? (
+        <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
+      ) : null}
+      {edited ? (
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+          <p className={secondaryTextClass}>{t("reconstructionEditedNote")}</p>
+          {confirmReplace ? (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("reconstructionConfirmRegenerate")}>
+              <span className="text-[12px] text-foreground">{t("reconstructionConfirmRegenerate")}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmReplace(false)
+                  regen.start()
+                }}
+                className={primaryBtnClass}
+              >
+                {t("reconstructionReplaceEdits")}
+              </button>
+              <button type="button" onClick={() => setConfirmReplace(false)} className={ghostBtnClass}>
+                {t("cancel")}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-x-1 border-b border-border">
         {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (

@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, ShieldCheck } from "lucide-react"
+import { Loader2, RefreshCw, ShieldCheck } from "lucide-react"
 import gsap from "gsap"
 import { Flip } from "gsap/Flip"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
@@ -53,6 +53,65 @@ export function MutationError({ show, children }: { show: boolean; children?: Re
   const { t } = useTranslation("terminal")
   if (!show) return null
   return <p className="text-[11px] text-danger">{children ?? t("genericSaveError")}</p>
+}
+
+/** A pane's own gold ↻ Regenerate, at the right of its intro row, driven by usePaneRegenerate.
+ * Disabled while the case analysis runs (it is about to rewrite the pane anyway) or while this
+ * pane's own run is going. `onClick` overrides the plain start, for the panes that ask first
+ * (an edited reconstruction narrative). `label` names the action when "Regenerate" alone would be
+ * vague (a pane with two sections). */
+export function RegenerateButton({
+  regen,
+  onClick,
+  label,
+  hint,
+}: {
+  regen: { start: () => void; running: boolean; busy: boolean; failed: boolean; errorStatus: number | null }
+  onClick?: () => void
+  label?: string
+  hint?: string
+}) {
+  const { t } = useTranslation("terminal")
+  const disabled = regen.running || regen.busy
+  // During the case analysis its own steps hold some panes' kinds, so `running` can be true there
+  // too: that's the analysis working, not this pane's button — keep the plain, disabled label.
+  const ownRun = regen.running && !regen.busy
+  return (
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={onClick ?? regen.start}
+        disabled={disabled}
+        title={regen.busy ? t("regenerateWhileAnalysis") : (hint ?? t("regenerateHint"))}
+        className="inline-flex h-7 items-center gap-1.5 rounded-md border border-brand-gold/45 bg-brand-gold/10 px-2.5 text-[10px] font-semibold tracking-[1px] whitespace-nowrap text-brand-gold uppercase transition-colors hover:border-brand-gold/70 hover:bg-brand-gold/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-brand-gold/45 disabled:hover:bg-brand-gold/10"
+      >
+        {ownRun ? (
+          <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        ) : (
+          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+        )}
+        {ownRun ? t("regenerating") : (label ?? t("regenerate"))}
+      </button>
+      <MutationError show={regen.failed && !regen.running}>
+        {regen.errorStatus === 409
+          ? t("regenerateBusy")
+          : regen.errorStatus === 403
+            ? t("regenerateNoAccess")
+            : regen.errorStatus === 422
+              ? t("regenerateNothingYet")
+              : t("regenerateFailed")}
+      </MutationError>
+    </div>
+  )
+}
+
+/** The pane's own updating line: "Regenerating this pane…" for its own run, "Updating with the
+ * latest analysis…" (or the pane's own wording) for the case analysis. Nothing when idle. */
+export function PaneRegenerateNote({ regen, analysisLabel }: { regen: { running: boolean; busy: boolean }; analysisLabel?: string }) {
+  const { t } = useTranslation("terminal")
+  if (regen.busy) return <PaneUpdatingNote>{analysisLabel ?? t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
+  if (regen.running) return <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
+  return null
 }
 
 /** "Updating…" under a pane's intro row while the case analysis is rewriting it. The panes the
