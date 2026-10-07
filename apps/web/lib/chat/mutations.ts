@@ -508,7 +508,7 @@ export function subscribeChatGeneration(messageId: string, handlers: ChatGenerat
 
 /** sendChatMessage, then wait for the worker to actually finish the turn — shared by every
  * caller that fires a chat turn and needs it durably persisted before continuing (Studio's
- * Mind Map generation, useAudioOverview's script generation, ConsultationChat's own doSend).
+ * Mind Map generation, ConsultationChat's own doSend).
  * "Done" is chat:done/chat:error over the socket (the fast path) OR — the robust, refresh-safe
  * fallback for a socket that's disconnected, reconnecting, or missed the event across a
  * reconnect gap — noticing that useMessagesQuery's own query cache (kept warm by its polling

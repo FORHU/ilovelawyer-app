@@ -58,17 +58,15 @@ export function MutationError({ show, children }: { show: boolean; children?: Re
 /** A pane's own gold ↻ Regenerate, at the right of its intro row, driven by usePaneRegenerate.
  * Disabled while the case analysis runs (it is about to rewrite the pane anyway) or while this
  * pane's own run is going. `onClick` overrides the plain start, for the panes that ask first
- * (an edited reconstruction narrative). `label` names the action when "Regenerate" alone would be
- * vague (a pane with two sections). */
+ * (an edited reconstruction narrative). It always reads "Regenerate", in every pane and in Studio;
+ * `hint` (its tooltip) says what that pane's run does. */
 export function RegenerateButton({
   regen,
   onClick,
-  label,
   hint,
 }: {
   regen: { start: () => void; running: boolean; busy: boolean; failed: boolean; errorStatus: number | null }
   onClick?: () => void
-  label?: string
   hint?: string
 }) {
   const { t } = useTranslation("terminal")
@@ -90,7 +88,7 @@ export function RegenerateButton({
         ) : (
           <RefreshCw className="h-3 w-3" aria-hidden="true" />
         )}
-        {ownRun ? t("regenerating") : (label ?? t("regenerate"))}
+        {ownRun ? t("regenerating") : t("regenerate")}
       </button>
       <MutationError show={regen.failed && !regen.running}>
         {regen.errorStatus === 409
@@ -105,26 +103,32 @@ export function RegenerateButton({
   )
 }
 
-/** The pane's own updating line: "Regenerating this pane…" for its own run, "Updating with the
- * latest analysis…" (or the pane's own wording) for the case analysis. Nothing when idle. */
-export function PaneRegenerateNote({ regen, analysisLabel }: { regen: { running: boolean; busy: boolean }; analysisLabel?: string }) {
+/** What a pane shows while it is being written. Every pane uses the same two lines: "Updating with
+ * the latest analysis…" for the case analysis (and background updates), "Regenerating this pane…"
+ * for its own Regenerate. Null when idle. The pane then shows PaneLoadingState in place of its content. */
+export function usePaneLoadingLabel(regen: { running: boolean; busy: boolean }): string | null {
   const { t } = useTranslation("terminal")
-  if (regen.busy) return <PaneUpdatingNote>{analysisLabel ?? t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
-  if (regen.running) return <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
+  if (regen.busy) return t("paneUpdatingWithAnalysis")
+  if (regen.running) return t("paneRegenerating")
   return null
 }
 
-/** "Updating…" under a pane's intro row while the case analysis is rewriting it. The panes the
- * analysis rewrites have no Regenerate of their own; this is how they show it is happening — in
- * the --progress gold, the same as the Terminal header's "Updating analysis…", so it stands out
- * from the grey intro text. Every pane uses this one component, so they all look the same. */
-export function PaneUpdatingNote({ children }: { children?: ReactNode }) {
+/** A pane (or Studio view) while a run writes it: one centered gold spinner and line, in place of
+ * its content — the pane's header (with its disabled Regenerate) stays. Every pane and every Studio
+ * view uses this one component, so loading always looks the same. `fill` centers it in a
+ * full-height view; otherwise it sits under the pane's header. */
+export function PaneLoadingState({ children, fill }: { children?: ReactNode; fill?: boolean }) {
   const { t } = useTranslation("terminal")
   return (
-    <p className="inline-flex items-center gap-1.5 text-[11px] leading-normal font-medium text-pretty text-progress" role="status">
-      <Loader2 className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-      {children ?? t("findingsUpdating")}
-    </p>
+    <div
+      role="status"
+      className={cn("flex flex-col items-center justify-center gap-3 px-4 text-center", fill ? "h-full min-h-40 flex-1 py-6" : "py-16")}
+    >
+      <Loader2 className="h-5 w-5 shrink-0 animate-spin text-progress motion-reduce:animate-none" aria-hidden="true" />
+      <p className="max-w-xs text-[13px] leading-normal font-medium text-pretty text-progress">
+        {children ?? t("paneUpdatingWithAnalysis")}
+      </p>
+    </div>
   )
 }
 

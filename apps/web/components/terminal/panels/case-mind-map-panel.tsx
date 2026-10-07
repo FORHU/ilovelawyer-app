@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { MindMap } from "@/components/chat/mind-map"
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map"
-import { primaryBtnClass } from "@/components/terminal/panel-kit"
+import { PaneLoadingState, primaryBtnClass } from "@/components/terminal/panel-kit"
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status"
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion"
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
@@ -24,6 +24,7 @@ import type { CaseSnapshot } from "@/lib/terminal/types"
  * block, so `flex-1` there left the canvas at its 320px minimum however large the panel was made.
  */
 export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapshot: CaseSnapshot }) {
+  const { t: tTerminal } = useTranslation("terminal")
   const { t } = useTranslation("case-portfolio")
   const caseMindMap = useCaseMindMap(caseId)
   const generate = useGenerateCaseMindMapMutation(caseId)
@@ -32,7 +33,6 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
   // Analysis Refresh that will end by replacing the map (useCaseMindMap).
   const isBuilding = caseMindMap.isBuilding || generate.isPending
   const isRegenerating = isBuilding || caseMindMap.refreshWillReplace
-  const busyLabel = isBuilding ? t("caseMindMap.terminalBuilding") : t("workspace.mindMapGenerating")
 
   const target = useMemo<MindMapExpansionTarget | undefined>(
     () => (caseMindMap.tree && caseMindMap.map ? { kind: "case", caseId, expandedCount: caseMindMap.map.expandedCount ?? 0 } : undefined),
@@ -45,6 +45,16 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
   )
   // Same test as useCaseMindMap's: documents the case map can be built from.
   const hasIndexedDocuments = (documentsQuery.data ?? []).some((doc) => doc.ragStatus === "READY" && doc.status !== "ARCHIVED")
+
+  // While a build or the case analysis writes the map, the centered loading state replaces it,
+  // as in every other pane.
+  if (isBuilding || (caseMindMap.isRefreshing && (Boolean(caseMindMap.tree) || hasIndexedDocuments))) {
+    return (
+      <PaneLoadingState fill>
+        {isBuilding ? tTerminal("paneRegenerating") : tTerminal("paneUpdatingWithAnalysis")}
+      </PaneLoadingState>
+    )
+  }
 
   if (caseMindMap.tree) {
     return (
@@ -59,25 +69,11 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
             consultationId={`case:${caseId}`}
             isStale={snapshot.caseMindMap?.isStale}
             staleDetail={caseMindMapStaleDetail(t, snapshot.caseMindMap)}
-            // The spinner beside "Full" runs for the whole Analysis Refresh, like the other panes'
-            // updating state — also on a map the refresh keeps (expanded/edited; it goes Stale).
-            regenerating={isRegenerating || caseMindMap.isRefreshing}
-            regeneratingLabel={isBuilding ? undefined : isRegenerating ? busyLabel : t("caseMindMap.refreshKeepsChanges")}
-            // The pane's own Regenerate, held back while the case analysis runs.
-            onRegenerate={caseMindMap.isRefreshing ? undefined : () => generate.mutate()}
+            onRegenerate={() => generate.mutate()}
             expansion={expansion}
             documentNames={documentNames}
           />
         </div>
-      </div>
-    )
-  }
-
-  if (isBuilding || (hasIndexedDocuments && caseMindMap.refreshWillReplace)) {
-    return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center-safe gap-3 overflow-y-auto p-4 text-center">
-        <Loader2 className="h-4 w-4 animate-spin text-progress motion-reduce:animate-none" aria-hidden="true" />
-        <p className="max-w-xs text-sm font-medium text-progress" role="status">{busyLabel}</p>
       </div>
     )
   }
@@ -111,7 +107,7 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
       {caseMindMap.refreshWillReplace ? (
         <p className="flex shrink-0 items-center justify-center gap-2 border-b border-border px-4 py-2 text-center text-xs font-medium text-progress" role="status">
           <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          {busyLabel}
+          {tTerminal("paneUpdatingWithAnalysis")}
         </p>
       ) : (
         caseMindMap.retired && (

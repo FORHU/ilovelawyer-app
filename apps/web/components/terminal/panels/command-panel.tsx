@@ -26,7 +26,8 @@ import {
   primaryBtnClass,
   secondaryTextClass,
   RegenerateButton,
-  PaneRegenerateNote,
+  PaneLoadingState,
+  usePaneLoadingLabel,
 } from "@/components/terminal/panel-kit"
 import { BAND_BADGE, BAND_TONE, ConfidenceMeter, OutlookGauge, Sparkline } from "@/components/terminal/panels/summary-visuals"
 import { dateLocale } from "@/lib/i18n/date-locale"
@@ -94,6 +95,7 @@ export function CommandPanel({
   const createRisk = useCreateRiskMutation(caseId)
   // The outlook's own Regenerate (the case analysis also rewrites it, after the findings).
   const regen = usePaneRegenerate(caseId, "outlook")
+  const loadingLabel = usePaneLoadingLabel(regen)
   const [title, setTitle] = useState("")
   const [adding, setAdding] = useState(false)
   // Sample mode only: risks added in the preview stay local so the fake case never writes to a real one.
@@ -118,10 +120,13 @@ export function CommandPanel({
 
         <div className="flex flex-col gap-1.5">
           <div className="flex justify-end">
-            <RegenerateButton regen={regen} label={t("regenerateOutlook")} />
+            <RegenerateButton regen={regen} />
           </div>
-          <PaneRegenerateNote regen={regen} />
         </div>
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
 
         <section className="rounded-2xl border border-border p-3 @3xs:p-4">
           {outlook ? (
@@ -286,6 +291,8 @@ export function CommandPanel({
           ) : null}
           <MutationError show={createRisk.isError} />
         </div>
+        </>
+      )}
       </div>
     </PanelBody>
   )

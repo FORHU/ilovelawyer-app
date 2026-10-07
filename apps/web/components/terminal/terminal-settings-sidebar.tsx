@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { CircleCheck, PanelLeft, PanelLeftClose, Plus, Search, X } from "lucide-react"
+import { CircleCheck, Loader2, PanelLeft, PanelLeftClose, Plus, Search, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { MobileDrawer } from "@/components/mobile-drawer"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
@@ -36,6 +36,9 @@ interface TerminalSettingsSidebarProps {
   // Real, non-fabricated per-pane status text ("3 docs", "2 found", "Ready" — see
   // computePanelBadges in legal-terminal.tsx). Absent entries render no badge.
   panelBadges: Partial<Record<PanelId, string>>
+  // Panes in their loading state (useLoadingPanes): their badge reads "Updating…" in the
+  // --progress gold with a spinner, the same signal as the pane itself.
+  loadingPanels?: ReadonlySet<PanelId>
   onAddPanel: (id: PanelId) => void
   onPanelDragStart?: (id: PanelId) => void
   onPanelDragEnd?: () => void
@@ -49,6 +52,7 @@ export default function TerminalSettingsSidebar({
   allPanels,
   visiblePanelIds,
   panelBadges,
+  loadingPanels,
   onAddPanel,
   onPanelDragStart,
   onPanelDragEnd,
@@ -67,12 +71,12 @@ export default function TerminalSettingsSidebar({
   // The trace pane's content (the AI's per-turn reasoning) is not in the case snapshot, so it has
   // no badge to show — like chat, it is useful on any case and always offered.
   const isPopulated = (id: PanelId) =>
-    panelBadges[id] !== undefined || visibleSet.has(id) || id === "chat" || id === "trace"
+    panelBadges[id] !== undefined || !!loadingPanels?.has(id) || visibleSet.has(id) || id === "chat" || id === "trace"
 
   const emptyCount = useMemo(
     () => allPanels.filter((panel) => PANEL_CATEGORY[panel.id] && !isPopulated(panel.id)).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allPanels, panelBadges, visibleSet],
+    [allPanels, panelBadges, loadingPanels, visibleSet],
   )
 
   const groupedPanels = useMemo(() => {
@@ -86,7 +90,7 @@ export default function TerminalSettingsSidebar({
       panels: matches.filter((panel) => PANEL_CATEGORY[panel.id] === category),
     })).filter((group) => group.panels.length > 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allPanels, query, showEmpty, panelBadges, visibleSet])
+  }, [allPanels, query, showEmpty, panelBadges, loadingPanels, visibleSet])
 
   // No outside-click collapse: the library only closes via its own collapse button, so working
   // in the grid (dragging panes in, clicking panes) doesn't keep dismissing it.
@@ -134,6 +138,7 @@ export default function TerminalSettingsSidebar({
                 {panels.map((panel) => {
                   const onScreen = visibleSet.has(panel.id)
                   const badge = panelBadges[panel.id]
+                  const loading = loadingPanels?.has(panel.id) ?? false
                   const row = (
                     <button
                       type="button"
@@ -162,14 +167,21 @@ export default function TerminalSettingsSidebar({
                        * the same "nothing here yet" meaning in words instead of a symbol that
                        * can be read as a button, and is styled apart from a real badge so it
                        * doesn't read as live status either. */}
-                      <span
-                        className={`shrink-0 whitespace-nowrap text-[10.5px] ${
-                          badge ? "text-muted-foreground" : "text-muted-foreground/60 italic"
-                        }`}
-                      >
-                        {/* The assistant has no case content to report, so "Empty" would be misleading. */}
-                        {badge ?? (panel.id === "chat" ? null : t("paneEmptyBadge"))}
-                      </span>
+                      {loading ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[10.5px] font-medium text-progress" role="status">
+                          <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                          {t("badgeUpdating")}
+                        </span>
+                      ) : (
+                        <span
+                          className={`shrink-0 whitespace-nowrap text-[10.5px] ${
+                            badge ? "text-muted-foreground" : "text-muted-foreground/60 italic"
+                          }`}
+                        >
+                          {/* The assistant has no case content to report, so "Empty" would be misleading. */}
+                          {badge ?? (panel.id === "chat" ? null : t("paneEmptyBadge"))}
+                        </span>
+                      )}
                       {onScreen ? (
                         <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label={t("alreadyOnLayout")} />
                       ) : (

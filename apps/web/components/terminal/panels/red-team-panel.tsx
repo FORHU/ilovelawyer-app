@@ -19,7 +19,8 @@ import {
   labelTextClass,
   type Tone,
   RegenerateButton,
-  PaneRegenerateNote,
+  PaneLoadingState,
+  usePaneLoadingLabel,
 } from "@/components/terminal/panel-kit"
 
 const STRENGTHS: RedTeamArgumentStrength[] = ["STRONG", "MODERATE", "WEAK"]
@@ -47,6 +48,7 @@ export function RedTeamPanel({
   // The analysis refresh rebuilds this assessment as one of its last steps (RedTeamSvc on the
   // API); the pane's own Regenerate rebuilds just this assessment.
   const regen = usePaneRegenerate(caseId, "redTeam")
+  const loadingLabel = usePaneLoadingLabel({ busy: regen.busy, running: regen.running || isGenerating })
   const content = snapshot.redTeamAssessment?.content ?? ""
   const claims = snapshot.redTeamAssessment?.claims ?? []
   const ranked = snapshot.redTeamAssessment?.arguments ?? null
@@ -55,19 +57,21 @@ export function RedTeamPanel({
     <PanelBody gap="3">
       <div className="flex items-start justify-between gap-3">
         <SectionLabel>{t("redTeamAssessment")}</SectionLabel>
-        <RegenerateButton regen={regen} label={content ? undefined : t("generate")} />
+        <RegenerateButton regen={regen} />
       </div>
-      <PaneRegenerateNote regen={regen} />
 
-      {!content && !isGenerating ? (
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : !content ? (
         <EmptyNote>{t("noRedTeam")}</EmptyNote>
-      ) : content ? (
+      ) : (
         <>
           {ranked && ranked.arguments.length > 0 ? <RankedArguments ranked={ranked} /> : null}
           {claims.length > 0 && <AttributedTextLegend />}
           <AttributedMarkdown content={content} claims={claims} />
         </>
-      ) : null}
+      )}
     </PanelBody>
   )
 }

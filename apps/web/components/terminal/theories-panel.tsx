@@ -27,7 +27,7 @@ import {
 } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
-import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote, RegenerateButton, PaneRegenerateNote } from "@/components/terminal/panel-kit"
+import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote, RegenerateButton, PaneLoadingState, usePaneLoadingLabel } from "@/components/terminal/panel-kit"
 
 // Rows a section shows before collapsing behind "Show all N" (only when that hides 2+ rows).
 const COLLAPSED_ITEM_LIMIT = 4
@@ -64,7 +64,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
   // forked never change.
   const proposeJob = useAiJobStatus(caseId, "caseTheoryPropose")
   const regen = usePaneRegenerate(caseId, "theory")
-  const hasAiDraft = theories.some((th) => th.authorUserId === null)
+  const loadingLabel = usePaneLoadingLabel(regen)
   // A rewritten AI draft drops the server's cached diffs against it — drop ours too.
   const queryClient = useQueryClient()
   const prevProposeStatus = useRef(proposeJob.data?.status)
@@ -86,14 +86,17 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
       <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel>{t("theories")}</SectionLabel>
         <div className="flex items-center gap-3">
-          <RegenerateButton regen={regen} label={hasAiDraft ? undefined : t("generate")} />
+          <RegenerateButton regen={regen} />
           <button type="button" onClick={() => setShowCreate((s) => !s)} className={primaryBtnClass}>
             {t("newTheory")}
           </button>
         </div>
       </div>
-      <PaneRegenerateNote regen={regen} />
-
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
       {showCreate && (
         <form
           className="flex flex-col gap-2 rounded-md border border-border p-3"
@@ -180,6 +183,8 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
           </div>
           {pickedA && pickedB && <TheoryDiffSection caseId={caseId} theoryAId={pickedA} theoryBId={pickedB} />}
         </div>
+      )}
+        </>
       )}
     </PanelBody>
   )

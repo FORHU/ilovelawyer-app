@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/fetch";
 import { caseKeys } from "@/lib/query-keys";
 import { terminalKeys, useAiJobStatus, type AiJobStatus } from "@/lib/terminal/mutations";
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations";
+import { caseRefreshRewriting } from "@/lib/terminal/case-refresh-stage";
 import { refreshWillReplaceCaseMap } from "./case-mind-map-status";
 import { usableMindMap, type MindMapItem } from "@/lib/chat/mind-map-parser";
 import type { MindMapChangeResult } from "@/lib/chat/mutations";
@@ -28,16 +29,16 @@ export interface CaseMindMap {
   retiredAt?: string | null;
 }
 
-/** Refetches the case map when `status` leaves IN_PROGRESS. */
-function useRefetchMapWhenDone(caseId: string, status: string | undefined) {
+/** Refetches the case map when `running` goes from true to false. */
+function useRefetchMapWhenDone(caseId: string, running: boolean) {
   const queryClient = useQueryClient();
-  const prevStatus = useRef(status);
+  const wasRunning = useRef(running);
   useEffect(() => {
-    if (prevStatus.current === "IN_PROGRESS" && status && status !== "IN_PROGRESS") {
+    if (wasRunning.current && !running) {
       void queryClient.invalidateQueries({ queryKey: caseKeys.mindMap(caseId) });
     }
-    prevStatus.current = status;
-  }, [status, caseId, queryClient]);
+    wasRunning.current = running;
+  }, [running, caseId, queryClient]);
 }
 
 /**
@@ -45,8 +46,9 @@ function useRefetchMapWhenDone(caseId: string, status: string | undefined) {
  * automatic build and Studio's Regenerate). Refetches the map when a build finishes, wherever it
  * was started, and when an Analysis Refresh (job "caseRefresh") finishes.
  *
- * An Analysis Refresh rebuilds the map only as its last step, but a map it is going to replace
- * shows as regenerating for the whole run (`isRegenerating`), like the Timeline does. It won't
+ * An Analysis Refresh rebuilds the map in its second wave; a map it is going to replace shows as
+ * regenerating from the start of the run until that wave is over (`isRegenerating`), then
+ * refetches — not through the third wave (Red Team, Audio Overview), which never touches it. It won't
  * replace a map the lawyer has expanded or edited (CaseMindMapSvc leaves those alone), so those
  * don't spin; and with no live map it only builds one when the case has indexed documents. Can
  * spin for nothing in two rare cases the app can't see (the run's map step finds its documents
@@ -61,14 +63,14 @@ export function useCaseMindMap(caseId: string) {
   const job = useAiJobStatus(caseId, "caseMindMap");
   const refreshJob = useAiJobStatus(caseId, "caseRefresh");
   const documents = useCaseDocumentsQuery(caseId);
-  useRefetchMapWhenDone(caseId, job.data?.status);
-  useRefetchMapWhenDone(caseId, refreshJob.data?.status);
-
   const map = query.data ?? null;
   const isBuilding = job.data?.status === "IN_PROGRESS";
   const isRefreshing = refreshJob.data?.status === "IN_PROGRESS";
+  const refreshRewritingMap = caseRefreshRewriting(refreshJob.data, "mindMap");
+  useRefetchMapWhenDone(caseId, isBuilding);
+  useRefetchMapWhenDone(caseId, refreshRewritingMap);
   const refreshWillReplace = refreshWillReplaceCaseMap({
-    isRefreshing,
+    isRefreshing: refreshRewritingMap,
     map,
     hasIndexedDocuments: (documents.data ?? []).some((doc) => doc.ragStatus === "READY" && doc.status !== "ARCHIVED"),
   });
@@ -85,7 +87,7 @@ export function useCaseMindMap(caseId: string) {
     isBuilding,
     /** An Analysis Refresh is running — whether or not it will replace this map. */
     isRefreshing,
-    /** An Analysis Refresh is running that will end by replacing this map (see above). */
+    /** An Analysis Refresh is running that is going to replace this map and hasn't yet (see above). */
     refreshWillReplace,
     /** What the Regenerate icon and "building" states show: the map's own build, or an Analysis
      * Refresh that's going to replace it. */

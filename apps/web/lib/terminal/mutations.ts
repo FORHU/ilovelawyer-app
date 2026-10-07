@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
@@ -119,8 +119,9 @@ export interface AiJobStatus {
 
 /** Chat Wonder's progress through a locked chat turn: null while it reads the case,
  * "answering" once the reply starts streaming, "extras" once the reply is done and the second
- * model call (the one that writes the audio overview script / mind map) is running. */
-export type AiJobStage = "answering" | "extras"
+ * model call (the one that writes the audio overview script / mind map) is running. The case
+ * analysis ("caseRefresh") reports which wave it's on instead — see case-refresh-stage.ts. */
+export type AiJobStage = "answering" | "extras" | "wave2" | "wave3"
 
 /** ai-job:started/progress/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
  * (lib/socket.ts), pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), the single
@@ -318,6 +319,50 @@ export function useRunningPaneRegenerate(caseId: string): PanelId | null {
   })
   const index = results.findIndex((result) => result.data?.status === "IN_PROGRESS")
   return index === -1 ? null : (PANE_JOB_PANEL[PANE_JOB_KINDS[index]!] ?? null)
+}
+
+/** Panes the case analysis rewrites — loading for its whole run (ADR 0018). Law & Precedent
+ * follows Legal Issues, whose findings are its grounds. */
+const ANALYSIS_PANES: readonly PanelId[] = [...new Set([...Object.values(PANE_JOB_PANEL), "law"] as PanelId[])]
+/** Background jobs outside the pane runs that also put panes in their loading state. */
+const BACKGROUND_JOB_PANELS: Partial<Record<AiGenerationKind, readonly PanelId[]>> = {
+  caseFinding: ["legalIssues", "law", "strengths", "weaknesses", "attackStrategy", "defenseStrategy"],
+  witnessExtract: ["witnesses"],
+  witnessScoring: ["witnesses"],
+  damagesExtract: ["damages"],
+}
+const LOADING_JOB_KINDS = [
+  "caseRefresh",
+  ...PANE_JOB_KINDS,
+  ...(Object.keys(BACKGROUND_JOB_PANELS) as AiGenerationKind[]),
+] as AiGenerationKind[]
+
+/** The panes showing their loading state right now — during the case analysis, a pane's own
+ * Regenerate, or a background update — so the Panel Library can mark them "Updating…" as the
+ * panes do. Same job-status cache entries as useAiJobStatus. */
+export function useLoadingPanes(caseId: string): ReadonlySet<PanelId> {
+  const results = useQueries({
+    queries: LOADING_JOB_KINDS.map((kind) => ({
+      queryKey: terminalKeys.aiJob(caseId, kind),
+      queryFn: () => apiFetch<AiJobStatus | null>(`/api/my-cases/${caseId}/ai-jobs/${kind}`),
+      enabled: !!caseId,
+      staleTime: 0,
+      refetchInterval: (q: { state: { data?: AiJobStatus | null } }) => (q.state.data?.status === "IN_PROGRESS" ? AI_JOB_RUNNING_POLL_MS : false),
+    })),
+  })
+  const key = LOADING_JOB_KINDS.filter((_, i) => results[i]?.data?.status === "IN_PROGRESS").join(",")
+  return useMemo(() => {
+    const running = new Set(key ? key.split(",") : [])
+    const panes = new Set<PanelId>()
+    if (running.has("caseRefresh")) ANALYSIS_PANES.forEach((pane) => panes.add(pane))
+    for (const kind of running) {
+      const pane = PANE_JOB_PANEL[kind as AiGenerationKind]
+      if (pane) panes.add(pane)
+      if (kind === "legalIssueRegenerate") panes.add("law")
+      BACKGROUND_JOB_PANELS[kind as AiGenerationKind]?.forEach((p) => panes.add(p))
+    }
+    return panes
+  }, [key])
 }
 
 /** A job kind from a 409 PANE_REGENERATING (the API's details.kind), as the pane it belongs to. */

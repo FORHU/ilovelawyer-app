@@ -31,7 +31,8 @@ import {
   formatDate,
   primaryBtnClass,
   RegenerateButton,
-  PaneRegenerateNote,
+  PaneLoadingState,
+  usePaneLoadingLabel,
 } from "@/components/terminal/panel-kit"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
@@ -148,6 +149,7 @@ export function ProcedurePanel({
   // The case analysis rewrites the plan, to-dos and key dates whenever the documents change; the
   // pane's own Regenerate redoes the same pass on demand (and so updates the timeline too).
   const regen = usePaneRegenerate(caseId, "strategy")
+  const loadingLabel = usePaneLoadingLabel(regen)
   const [showCompleted, setShowCompleted] = useState(false)
   const [ruleCode, setRuleCode] = useState("")
   const [triggerDate, setTriggerDate] = useState("")
@@ -242,7 +244,17 @@ export function ProcedurePanel({
 
   return (
     <PanelBody gap="4">
-      <PaneRegenerateNote regen={regen} analysisLabel={t("updatingPlan")} />
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <div>
+        <div className="flex items-start justify-between gap-3">
+          <SectionLabel>{t("recommendedApproach")}</SectionLabel>
+          <RegenerateButton regen={regen} hint={t("regenerateStrategyHint")} />
+        </div>
+          <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+        </div>
+      ) : (
+        <>
       <div>
         <div className="flex items-start justify-between gap-3">
           <SectionLabel>{t("recommendedApproach")}</SectionLabel>
@@ -499,6 +511,8 @@ export function ProcedurePanel({
         </form>
         <MutationError show={confirmDeadline.isError || recomputeDeadline.isError || recomputeStale.isError || createDeadline.isError} />
       </div>
+        </>
+      )}
     </PanelBody>
   )
 }

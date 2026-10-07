@@ -9,7 +9,7 @@ import {
   useRecordAudioOverviewMutation,
   type AudioOverviewHistoryEntry,
 } from "@/lib/terminal/mutations"
-import { PaneUpdatingNote, RegenerateButton } from "@/components/terminal/panel-kit"
+import { PaneLoadingState, RegenerateButton, usePaneLoadingLabel } from "@/components/terminal/panel-kit"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewHistory } from "@/components/audio-overview/audio-overview-history"
 import { AudioOverviewViewTabs, type AudioOverviewView } from "@/components/audio-overview/audio-overview-view-tabs"
@@ -64,6 +64,8 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
   // A new overview is being written: by this analysis run (wave 3), this pane's Regenerate, or a
   // chat/Studio request (all hold the same "audioOverviewScript" job).
   const updating = regen.busy || latest.isWritingScript
+  // A chat/Studio request counts as an update, like the analysis; only this pane's button regenerates.
+  const loadingLabel = usePaneLoadingLabel({ busy: updating && !(regen.running && !regen.busy), running: regen.running })
   const turns = overview?.turns ?? []
   const synced = !!overview?.audio && hasUsableTimings(overview.turnTimings, turns.length)
   const caption = overview
@@ -88,18 +90,14 @@ export function AudioOverviewPanel({ caseId }: { caseId: string }) {
           <span className="flex-1" />
         )}
         {showsScript && synced && <FullScriptToggle fullScript={fullScript} onChange={setFullScript} />}
-        {view === "current" && <RegenerateButton regen={regen} label={overview ? undefined : t("workspace.audioOverviewGenerateCta")} />}
+        {view === "current" && <RegenerateButton regen={regen} />}
       </div>
-      {updating && view === "current" ? (
-        <div className="shrink-0 px-3 pb-1.5">
-          <PaneUpdatingNote>{t("workspace.audioOverviewUpdating")}</PaneUpdatingNote>
-        </div>
-      ) : null}
       <div className={view === "current" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
         <AudioOverviewCurrent
           caseId={caseId}
           overview={overview}
           loading={latest.isLoading}
+          loadingLabel={loadingLabel}
           compact={compact}
           caption={caption}
           fullScript={fullScript}
@@ -129,6 +127,7 @@ function AudioOverviewCurrent({
   caseId,
   overview,
   loading,
+  loadingLabel,
   compact,
   caption,
   fullScript,
@@ -136,6 +135,7 @@ function AudioOverviewCurrent({
   caseId: string
   overview: AudioOverviewHistoryEntry | null
   loading: boolean
+  loadingLabel: string | null
   compact: boolean
   caption: string
   fullScript: boolean
@@ -166,6 +166,17 @@ function AudioOverviewCurrent({
         <Loader2 className="h-5 w-5 animate-spin text-progress motion-reduce:animate-none" aria-hidden="true" />
         {audioElement}
       </CenteredState>
+    )
+  }
+
+  // While a new overview is written, the centered loading state replaces the current one, as in
+  // every other pane (the <audio> element stays mounted).
+  if (loadingLabel) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col border-t border-border/60">
+        <PaneLoadingState fill>{loadingLabel}</PaneLoadingState>
+        {audioElement}
+      </div>
     )
   }
 

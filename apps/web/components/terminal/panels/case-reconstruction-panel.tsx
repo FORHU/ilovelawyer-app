@@ -31,7 +31,7 @@ import type {
 import {
   EmptyNote,
   MutationError,
-  PaneUpdatingNote,
+  PaneLoadingState,
   PanelBody,
   SectionLabel,
   ghostBtnClass,
@@ -118,6 +118,7 @@ export function CaseReconstructionPanel({
   // demand; on an edited narrative it asks first, since it replaces the lawyer's words.
   const edited = !!reconstruction?.narrativeEditedAt
   const regen = usePaneRegenerate(caseId, "reconstruction")
+  const loadingLabel = regen.busy && !edited ? t("paneUpdatingWithAnalysis") : regen.running || isGenerating ? t("paneRegenerating") : null
   const [confirmReplace, setConfirmReplace] = useState(false)
 
   // Generate is queued server-side (AiGenerationQueue / SQS) — the mutation's response is just
@@ -180,15 +181,14 @@ export function CaseReconstructionPanel({
         <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
         <RegenerateButton
           regen={regen}
-          label={narrative ? undefined : t("generate")}
           onClick={() => (edited ? setConfirmReplace(true) : regen.start())}
         />
       </div>
-      {regen.busy && !edited ? (
-        <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
-      ) : regen.running ? (
-        <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
-      ) : null}
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
       {edited ? (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
           <p className={secondaryTextClass}>{t("reconstructionEditedNote")}</p>
@@ -397,6 +397,8 @@ export function CaseReconstructionPanel({
               )}
             </div>
           )}
+        </>
+      )}
         </>
       )}
     </PanelBody>

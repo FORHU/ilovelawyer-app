@@ -16,7 +16,7 @@ import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
-import { EmptyNote, MutationError, PaneUpdatingNote, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -117,24 +117,25 @@ export function WitnessPanel({
   const toggleReasons = toggleIn(setOpenReasons)
   const toggleQuote = toggleIn(setOpenQuotes)
 
+  // While a run writes this pane, the centered loading state replaces its content.
+  const loadingLabel =
+    regen.running && !regen.busy
+      ? t("paneRegenerating")
+      : isExtracting || isScoring || regen.busy
+        ? t("paneUpdatingWithAnalysis")
+        : null
+
   return (
     <PanelBody gap="4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[13px] text-muted-foreground">{t("witnessesIntro")}</p>
         <RegenerateButton regen={regen} />
       </div>
-      {isExtracting || isScoring || regen.busy || regen.running ? (
-        <PaneUpdatingNote>
-          {isExtracting
-            ? t("witnessExtracting")
-            : isScoring
-              ? t("witnessScoring")
-              : regen.busy
-                ? t("paneUpdatingWithAnalysis")
-                : t("paneRegenerating")}
-        </PaneUpdatingNote>
-      ) : null}
       <MutationError show={job.data?.status === "FAILED"}>{t("witnessScoreFailed")}</MutationError>
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
       {total > 0 ? (
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0">
@@ -697,6 +698,8 @@ export function WitnessPanel({
         </div>
       </form>
       <MutationError show={create.isError || update.isError || del.isError || todos.isError} />
+        </>
+      )}
     </PanelBody>
   )
 }

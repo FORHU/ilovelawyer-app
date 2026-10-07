@@ -135,7 +135,6 @@
     "dataTableTile": "Data Table",
     "needsDocumentsHint": "Mag-upload ng dokumento para ma-enable ito",
     "replyInProgressHint": "Hintayin munang matapos ang kasalukuyang sagot",
-    "dataTableRefreshing": "Nire-refresh ang data table…",
     "dataTableFactCount": "{{count}} (na) detalye",
     "dataTableEmpty": "Wala pang naitalang testigo, danyos, deadline, o findings para sa case na ito.",
     "dataTableColType": "Uri",
@@ -145,19 +144,6 @@
     "dataTableTypeDamage": "Danyos",
     "dataTableTypeDeadline": "Deadline",
     "dataTableAiGenerated": "AI-generated",
-    "audioOverviewGenerating": "Gumagawa ng audio overview…",
-    "audioOverviewGenerateCta": "Gumawa ng audio overview",
-    "audioOverviewGenerateError": "Hindi nagawa ang audio overview. Subukan ulit.",
-    "audioOverviewEmpty": "Wala pang audio overview na nabuo para sa chat na ito.",
-    "audioOverviewEmptyHint": "Gawing usapan ng dalawang host ang chat na ito na mapapakinggan mo kahit saan.",
-    "audioOverviewGeneratingHint": "Maaaring tumagal ito nang isa o dalawang minuto — puwede kang magpatuloy sa trabaho habang ginagawa ito.",
-    "audioOverviewStepsLabel": "Progreso ng paggawa",
-    "audioOverviewStepReading": "Binabasa ang kaso",
-    "audioOverviewStepAnswering": "Binubuod ang chat",
-    "audioOverviewStepScripting": "Isinusulat ang script ng dalawang host",
-    "audioOverviewNoConsultation": "Magsimula ng chat para makagawa ng audio overview.",
-    "audioOverviewGenerateAudioCta": "Gumawa ng audio",
-    "audioOverviewRendering": "Ginagawa ang audio…",
     "audioOverviewPlay": "I-play",
     "audioOverviewPause": "I-pause",
     "audioOverviewRegenerateAudioCta": "Muling gawin ang audio",
@@ -179,9 +165,6 @@
     "audioOverviewBackToCurrent": "Bumalik sa kasalukuyan",
     "audioOverviewCaption_one": "{{date}} · {{count}} turn",
     "audioOverviewCaption_other": "{{date}} · {{count}} turn",
-    "audioOverviewRegenerate": "Gumawa muli",
-    "audioOverviewRegenerateHint": "Gumawa muli mula sa pinakabagong chat",
-    "audioOverviewGeneratingShort": "Ginagawa…",
     "audioOverviewScriptReady": "Handa na ang script",
     "audioOverviewTryAgain": "Subukan muli",
     "audioOverviewRenderAudio": "Gawin ang audio",
@@ -208,7 +191,8 @@
     },
     "mindMapNoConsultation": "Magsimula ng chat para makabuo ng mind map.",
     "consultationsSectionTitle": "Mga konsultasyon",
-    "topicsLoading": "Nilo-load ang mga paksa…"
+    "topicsLoading": "Nilo-load ang mga paksa…",
+    "tileUpdating": "Ina-update…"
   },
   "mindMapExpand": {
     "button": "Palawakin",
@@ -226,7 +210,6 @@
     "cancel": "Kanselahin"
   },
   "caseMindMap": {
-    "refreshKeepsChanges": "Ina-update gamit ang pinakabagong pagsusuri… Mananatili ang pinalawak mong mapa.",
     "building": "Binubuo ang mind map mula sa iyong mga dokumento…",
     "rebuilding": "Binubuo muli ang mapa mula sa mga dokumento.",
     "fromDocuments_one": "Mula sa {{count}} dokumento",
@@ -241,8 +224,7 @@
     "staleRemoved_one": "{{count}} dokumentong inalis",
     "staleRemoved_other": "{{count}} na dokumentong inalis",
     "staleAddedRemoved_one": "{{added}} dokumentong naidagdag, {{removed}} ang inalis",
-    "staleAddedRemoved_other": "{{added}} na dokumentong naidagdag, {{removed}} ang inalis",
-    "terminalBuilding": "Binubuo ang mapa ng kaso mula sa iyong mga dokumento…"
+    "staleAddedRemoved_other": "{{added}} na dokumentong naidagdag, {{removed}} ang inalis"
   },
   "mindMapEdit": {
     "rename": "Palitan ang pangalan",
