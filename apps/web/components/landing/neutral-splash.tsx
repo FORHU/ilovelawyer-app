@@ -6,13 +6,15 @@ import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-ho
  * app.ilovelawyer.com alike (see app/page.tsx). Deliberately carries no PH- or UK-specific
  * copy/branding of its own; it only exists to route the visitor to the design that does.
  */
-export function NeutralLandingSplash({ currentHost }: { currentHost: string }) {
+export function NeutralLandingSplash({ currentHost, fill = true }: { currentHost: string; fill?: boolean }) {
   const protocol = protocolForHost(currentHost);
   const ukHref = `${protocol}://${hostForTenantCode("UK", currentHost)}`;
   const phHref = `${protocol}://${hostForTenantCode("PH", currentHost)}`;
 
   return (
-    <section className="flex-1 flex flex-col items-center justify-center gap-12 px-8 py-24 text-center bg-background">
+    <section
+      className={`${fill ? "flex-1 justify-center py-24" : "pt-24 pb-16"} flex flex-col items-center gap-12 px-8 text-center bg-background`}
+    >
       <div className="flex flex-col items-center gap-4">
         <Logo forBackground="auto" size={40} />
         <p
