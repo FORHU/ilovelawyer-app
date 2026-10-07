@@ -5,6 +5,7 @@ import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
+import type { CaseChangeSummary } from "@/lib/terminal/change-summary"
 import type {
   Annotation,
   PanelId,
@@ -69,6 +70,7 @@ export const terminalKeys = {
     [...terminalKeys.all, "latest-audio-overview", caseId] as const,
   audioOverviewHistory: (caseId: string) =>
     [...terminalKeys.all, "audio-overview-history", caseId] as const,
+  changeSummaries: (caseId: string) => [...terminalKeys.all, "change-summaries", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -430,6 +432,18 @@ export function useCaseSnapshotQuery(caseId: string) {
     enabled: !!caseId,
     staleTime: 0,
     refetchInterval: SNAPSHOT_IDLE_POLL_MS,
+  })
+}
+
+/** The case's change summaries, newest first (up to the API's 50) — the "What changed" modal's
+ * History. Fetched only while the modal is open. Keyed on the newest summary's id, so a run that
+ * lands while it's open refetches the list instead of showing a stale one. */
+export function useChangeSummaryHistoryQuery(caseId: string, latestId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), latestId] as const,
+    queryFn: () => apiFetch<CaseChangeSummary[]>(`/api/my-cases/${caseId}/change-summaries`),
+    enabled: enabled && !!caseId && !!latestId,
+    staleTime: 0,
   })
 }
 
