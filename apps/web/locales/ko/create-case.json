@@ -49,5 +49,9 @@
     "petitionerPlaintiff": "청구인 / 원고",
     "respondentDefendant": "피청구인 / 피고",
     "intervenorThirdParty": "참가인 / 제3자"
+  },
+  "fieldLimit": {
+    "reached": "최대 {{max}}자까지 입력할 수 있습니다.",
+    "over": "{{max}}자 제한보다 {{over}}자 깁니다. 저장하려면 줄여 주세요."
   }
 }

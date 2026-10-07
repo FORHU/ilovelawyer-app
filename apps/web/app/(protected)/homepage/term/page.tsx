@@ -25,9 +25,12 @@ export default function TermsPage() {
   const SECTIONS = t("sections", { returnObjects: true, ...tCtx }) as Section[];
 
   return (
-    <PageShell className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950">
-      <main className="mx-auto max-w-5xl px-6 pb-20 pt-28">
-        <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border">
+    <PageShell className="bg-gradient-to-b from-slate-100 via-slate-300 to-[#3d4763] dark:from-background dark:via-muted dark:to-brand-navy-950 print:min-h-0 print:bg-none print:bg-white">
+      <main className="mx-auto max-w-5xl px-6 pb-20 pt-28 print:max-w-none print:p-0">
+        {/* "Download PDF" is the browser's print dialog, so print gets its own look: no chrome, no
+            shadows, and light high-contrast tokens pinned here so printing from dark mode (or with
+            the screen's faint muted grey) doesn't come out washed out or inverted. */}
+        <article className="overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-border print:overflow-visible print:rounded-none print:shadow-none print:ring-0 print:[print-color-adjust:exact] print:[--border:#d4d4d4] print:[--card:#ffffff] print:[--foreground:#1a1a1a] print:[--muted-foreground:#4a4a4a] print:[--primary:#111111]">
           <div className="px-10 pb-4 pt-12 sm:px-14">
             <p className="border-b border-border pb-2 text-xs font-medium uppercase tracking-[2px] text-primary/70">
               {t("legalGovernanceModule")}
@@ -44,7 +47,7 @@ export default function TermsPage() {
             {SECTIONS.map((section) => (
               <section
                 key={section.number}
-                className="grid grid-cols-1 gap-3 border-t border-border px-10 py-10 sm:grid-cols-[140px_1fr] sm:gap-8 sm:px-14"
+                className="grid grid-cols-1 gap-3 border-t border-border px-10 py-10 sm:grid-cols-[140px_1fr] sm:gap-8 sm:px-14 print:break-inside-avoid"
               >
                 <p className="text-xs font-medium uppercase tracking-[1.5px] text-muted-foreground">{section.number}</p>
 
@@ -91,11 +94,11 @@ export default function TermsPage() {
 
           <div className="flex flex-col gap-4 border-t border-border px-10 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-14">
             <div>
-              <Logo forBackground="auto" size={24} />
+              <Logo forBackground="current" size={24} className="text-foreground" />
               <p className="text-[10px] uppercase tracking-[1.5px] text-muted-foreground">{t("verifiedJurisExcellence")}</p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 print:hidden">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -113,7 +116,7 @@ export default function TermsPage() {
         </article>
       </main>
 
-      <footer className="border-t border-white/10 bg-[#0b132b]/95">
+      <footer className="border-t border-white/10 bg-[#0b132b]/95 print:hidden">
         <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Logo forBackground="dark" size={24} />

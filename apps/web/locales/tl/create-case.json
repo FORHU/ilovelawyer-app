@@ -49,5 +49,9 @@
     "petitionerPlaintiff": "Petitioner / Nagsasakdal",
     "respondentDefendant": "Respondent / Ipinagsasakdal",
     "intervenorThirdParty": "Intervenor / Third-Party"
+  },
+  "fieldLimit": {
+    "reached": "Hanggang {{max}} na karakter lamang.",
+    "over": "Lumampas nang {{over}} na karakter sa limitang {{max}} — paikliin ito para mai-save."
   }
 }

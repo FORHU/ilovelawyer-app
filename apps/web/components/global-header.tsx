@@ -188,7 +188,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
       // pages (anything without PageShell's own h-screen/overflow-hidden override, e.g.
       // Calendar) scroll the whole document rather than an inner panel — `absolute` scrolls
       // away with that document instead of staying pinned to the viewport.
-      className={`fixed top-0 left-0 w-full bg-background z-(--z-modal) ${
+      className={`fixed top-0 left-0 w-full bg-background z-(--z-modal) print:hidden ${
         mobileHeaderMerged ? "lg:border-b lg:border-border" : "border-b border-border"
       }`}
     >

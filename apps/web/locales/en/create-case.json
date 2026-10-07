@@ -20,6 +20,8 @@
     "title": "Case",
     "parties": "Parties",
     "noParties": "None named",
+    "moreParties": "+{{count}} more",
+    "fewerParties": "Show fewer",
     "clientSide": "We act for",
     "edit": "Edit"
   },
@@ -83,5 +85,9 @@
     "englandAndWales": "England and Wales",
     "scotland": "Scotland",
     "northernIreland": "Northern Ireland"
+  },
+  "fieldLimit": {
+    "reached": "Maximum {{max}} characters.",
+    "over": "{{over}} characters over the {{max}}-character limit — shorten it to save."
   }
 }

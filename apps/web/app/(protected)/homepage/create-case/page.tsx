@@ -18,6 +18,9 @@ import {
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
+import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
+import { CharCount } from "@/components/ui/char-count";
+import { DesignationPicker, splitDesignationLabel } from "@/components/cases/designation-picker";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { getTenantCodeConfig, UK_JURISDICTION_LABEL_KEYS } from "@/config/tenant-codes";
 
@@ -51,6 +54,9 @@ interface UploadedFile {
 }
 
 type OpenTarget = "workspace" | "terminal";
+
+// Parties listed in the filing summary before the rest fold behind "+N more".
+const SUMMARY_PARTY_LIMIT = 4;
 
 // Persists everything except uploadedFiles — raw File objects can't survive a refresh (the
 // browser drops their content for security reasons), so a not-yet-uploaded selection is
@@ -130,6 +136,7 @@ function CreateCasePageContent() {
     uploadedFiles: [] as UploadedFile[],
   });
   const [caseTitleError, setCaseTitleError] = useState(false);
+  const [showAllParties, setShowAllParties] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Set once the case is created on first submit. Kept across retries so a resubmit after a
@@ -177,10 +184,15 @@ function CreateCasePageContent() {
     setPendingDraft(null);
     setFormData((prev) => ({
       ...prev,
-      caseTitle: draft.caseTitle,
+      // Clipped to the field limits: a draft saved before they existed could be longer, and
+      // the inputs' maxLength doesn't trim a value that's already there.
+      caseTitle: draft.caseTitle.slice(0, CASE_NAME_MAX_LENGTH),
       jurisdiction: draft.jurisdiction,
       ukJurisdiction: draft.ukJurisdiction,
-      parties: draft.parties.length > 0 ? draft.parties : prev.parties,
+      parties:
+        draft.parties.length > 0
+          ? draft.parties.map((p) => ({ ...p, name: p.name.slice(0, PARTY_NAME_MAX_LENGTH) }))
+          : prev.parties,
       // Drafts saved before this field existed don't carry it.
       clientSide: draft.clientSide ?? "",
     }));
@@ -247,7 +259,18 @@ function CreateCasePageContent() {
       // already a Petitioner/Plaintiff by default — the common case.
       parties: [...prev.parties, { id, name: "", designation: "Respondent / Defendant" }],
     }));
+    focusPartyIdRef.current = id;
   };
+
+  // Focus the party just added once it renders — which also scrolls it into view, since with
+  // several parties it lands below the fold of the step card.
+  const focusPartyIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = focusPartyIdRef.current;
+    if (!id) return;
+    focusPartyIdRef.current = null;
+    document.getElementById(`party-name-${id}`)?.focus();
+  }, [formData.parties]);
 
   const removeParty = (id: string) => {
     setFormData((prev) => {
@@ -483,6 +506,10 @@ function CreateCasePageContent() {
   const stepComplete = (n: number) =>
     n === 1 ? !!formData.caseTitle.trim() : n === 2 ? partiesComplete(formData.parties) : false;
   const namedParties = formData.parties.filter((p) => p.name.trim());
+  // A long party list collapses in the filing summary so it can't push the upload area off-screen;
+  // the "+N more" toggle still lets every party be checked before filing.
+  const partiesCollapsed = namedParties.length > SUMMARY_PARTY_LIMIT && !showAllParties;
+  const summaryParties = partiesCollapsed ? namedParties.slice(0, SUMMARY_PARTY_LIMIT - 1) : namedParties;
 
   const steps = [
     { n: 1, numeral: t("steps.identity.numeral"), title: t("steps.identity.title"), hint: t("steps.identity.hint") },
@@ -641,10 +668,12 @@ function CreateCasePageContent() {
                       }`}
                       placeholder={t("sectionIdentity.caseTitlePlaceholder", { example: tenantConfig.ui.caseIntake.caseTitleExample })}
                       value={formData.caseTitle}
+                      maxLength={CASE_NAME_MAX_LENGTH}
                       onChange={(e) => handleInputChange("caseTitle", e.target.value)}
                       aria-invalid={caseTitleError}
-                      aria-describedby={caseTitleError ? "caseTitle-error" : undefined}
+                      aria-describedby={caseTitleError ? "caseTitle-error caseTitle-count" : "caseTitle-count"}
                     />
+                    <CharCount id="caseTitle-count" length={formData.caseTitle.length} max={CASE_NAME_MAX_LENGTH} />
                     {caseTitleError && (
                       <p id="caseTitle-error" className="flex items-center gap-1.5 text-xs text-red-600">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -702,12 +731,11 @@ function CreateCasePageContent() {
                     <p className="text-[13px] text-muted-foreground">{t("sectionParties.subheading")}</p>
                   </div>
 
-                  <div className="relative">
-                    {/* Bounded + scrollable instead of growing the page forever: 1-3 parties
-                        fit with no scrollbar at all, more than that scrolls within this box.
-                        Below md the bound is dropped entirely — a scroll box nested inside an
-                        already-scrolling page is a mobile friction point (see ADR 0007). */}
-                    <div className="flex flex-col gap-3.5 md:max-h-105 md:overflow-y-auto pr-1 -mr-1">
+                  <div>
+                    {/* No scroll box of its own: the step card already scrolls (md:overflow-y-auto
+                        above), and a second, nested one beside it meant two scrollbars and a wheel
+                        that moved whichever happened to be under the pointer (see ADR 0007). */}
+                    <div className="flex flex-col gap-3.5">
                       {formData.parties.map((party, index) => (
                         <div key={party.id} className="border border-border rounded-xl p-4.5 flex flex-col gap-4 bg-background">
                           <div className="flex items-center justify-between">
@@ -731,7 +759,7 @@ function CreateCasePageContent() {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
                             <div className="flex flex-col gap-2">
                               <label htmlFor={`party-name-${party.id}`} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                                 {t("sectionParties.fullNameLabel")}
@@ -742,30 +770,25 @@ function CreateCasePageContent() {
                                 className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-brand-gold focus:ring-2 focus:ring-brand-gold/10"
                                 placeholder={t("sectionParties.fullNamePlaceholder")}
                                 value={party.name}
+                                maxLength={PARTY_NAME_MAX_LENGTH}
                                 onChange={(e) => updateParty(party.id, "name", e.target.value)}
+                                aria-describedby={`party-name-count-${party.id}`}
                               />
+                              <CharCount id={`party-name-count-${party.id}`} length={party.name.length} max={PARTY_NAME_MAX_LENGTH} />
                             </div>
 
-                            <div className="flex flex-col gap-2">
-                              <label htmlFor={`party-designation-${party.id}`} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                                {t("sectionParties.designationLabel")}
-                              </label>
-                              <CustomSelect
-                                id={`party-designation-${party.id}`}
-                                value={party.designation}
-                                onChange={(v) => updateParty(party.id, "designation", v)}
-                                options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
-                                triggerTooltip="Choose the party's designation"
-                              />
-                            </div>
+                            <DesignationPicker
+                              name={`party-designation-${party.id}`}
+                              legend={t("sectionParties.designationLabel")}
+                              value={party.designation}
+                              onChange={(v) => updateParty(party.id, "designation", v)}
+                              options={DESIGNATION_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {formData.parties.length > 3 && (
-                      <div className="hidden md:block pointer-events-none absolute bottom-0 inset-x-0 h-8 bg-linear-to-t from-card to-transparent" />
-                    )}
                   </div>
 
                   <Tooltip>
@@ -812,15 +835,45 @@ function CreateCasePageContent() {
                       otherwise, and Initiate Filing creates the case. */}
                   <dl className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-2 rounded-xl border border-border bg-background px-4 py-3 text-[13px]">
                     <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("filingSummary.title")}</dt>
-                    <dd className="truncate font-['Libre_Caslon_Text'] text-foreground">{formData.caseTitle.trim()}</dd>
+                    <dd className="font-['Libre_Caslon_Text'] text-foreground [overflow-wrap:anywhere]">{formData.caseTitle.trim()}</dd>
                     <button type="button" onClick={() => goToStep(1)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
                       {t("filingSummary.edit")}
                     </button>
                     <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("filingSummary.parties")}</dt>
-                    <dd className="truncate text-foreground">
-                      {namedParties.length > 0
-                        ? namedParties.map((p) => p.name.trim()).join(", ")
-                        : <span className="text-muted-foreground">{t("filingSummary.noParties")}</span>}
+                    {/* One party per line with its designation, so every name and side can be checked
+                        before filing — a single joined line truncated everything after the first. */}
+                    <dd className="text-foreground">
+                      {namedParties.length > 0 ? (
+                        <ul className="flex flex-col gap-1.5">
+                          {summaryParties.map((p) => {
+                            const option = DESIGNATION_OPTIONS.find((o) => o.value === p.designation);
+                            return (
+                              <li key={p.id} className="flex items-baseline justify-between gap-3">
+                                <span className="min-w-0 [overflow-wrap:anywhere]">{p.name.trim()}</span>
+                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                  {splitDesignationLabel(option ? t(option.labelKey) : p.designation)[0]}
+                                </span>
+                              </li>
+                            );
+                          })}
+                          {namedParties.length > SUMMARY_PARTY_LIMIT && (
+                            <li>
+                              <button
+                                type="button"
+                                onClick={() => setShowAllParties((v) => !v)}
+                                aria-expanded={!partiesCollapsed}
+                                className="cursor-pointer text-[12px] font-medium text-muted-foreground hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
+                              >
+                                {partiesCollapsed
+                                  ? t("filingSummary.moreParties", { count: namedParties.length - summaryParties.length })
+                                  : t("filingSummary.fewerParties")}
+                              </button>
+                            </li>
+                          )}
+                        </ul>
+                      ) : (
+                        <span className="text-muted-foreground">{t("filingSummary.noParties")}</span>
+                      )}
                     </dd>
                     <button type="button" onClick={() => goToStep(2)} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer">
                       {t("filingSummary.edit")}
