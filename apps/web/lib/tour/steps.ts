@@ -3,6 +3,8 @@
 // spotlight with it. Copy lives in locales/<lang>/tour.json; this file only holds keys. The page
 // tours themselves are in page-tours.ts.
 
+import type { SampleTourTrack } from "@/lib/sample-case/tours"
+
 export const CONSULTATION_PATH = "/homepage"
 export const CASES_PATH = "/homepage/case-portfolio"
 export const LIBRARY_PATH = "/homepage/library"
@@ -57,16 +59,46 @@ export function routeMatches(want: string | null | undefined, pathname: string) 
   return !want || pathname === want
 }
 
+// ── Prerequisites ───────────────────────────────────────────────────────────
+
+/** Something the user must have before some controls exist at all — a case, for the case-row
+ * buttons. Copy lives under `prerequisites.<id>` in tour.json. */
+export type Prerequisite = "case"
+
+/** `target` is the control that meets the prerequisite; `unlocks` are the controls that only
+ * appear once it's met, so the guide must never point at them before then. */
+export const PREREQUISITES: Record<Prerequisite, { target: TourTargetId; route: string; unlocks: TourTargetId[] }> = {
+  case: { target: "cases-create-first", route: CASES_PATH, unlocks: ["case-row-workspace", "case-row-terminal"] },
+}
+
+/** Which prerequisites the user has met. One that's unknown (still loading) counts as met, so
+ * the guide never sends someone off to create a case on a guess. */
+export type MetPrerequisites = Partial<Record<Prerequisite, boolean>>
+
+/** The prerequisite standing between the user and `target`, if any. */
+export function missingPrerequisite(target: TourTargetId, met: MetPrerequisites): Prerequisite | null {
+  for (const [id, prerequisite] of Object.entries(PREREQUISITES) as [Prerequisite, (typeof PREREQUISITES)[Prerequisite]][]) {
+    if (met[id] === false && prerequisite.unlocks.includes(target)) return id
+  }
+  return null
+}
+
 // ── Ask the guide ───────────────────────────────────────────────────────────
 
 /** A canned how-to answer: matched when the question contains any of `keys` (lowercase), it
- * answers with `answers.<id>` and can point at `target` on `route`. */
+ * answers with `answers.<id>` and can point at `target` on `route`. An answer whose target needs
+ * a prerequisite also has `answers.<id>_blocked` (said before it's met) and `answers.<id>_next`
+ * (said once it is), plus `path`: the steps to the feature, as keys under `prerequisites.steps`,
+ * the first being the prerequisite's own. `sample` is the sample-case tour that shows the
+ * feature without one. */
 export interface GuideAnswer {
   id: string
   keys: string[]
   target: TourTargetId
   route: string | null
   topic: string
+  path?: string[]
+  sample?: SampleTourTrack
 }
 
 // Order matters: the first answer with a matching key wins, so narrower phrasings come first.
@@ -78,8 +110,8 @@ export const GUIDE_ANSWERS: GuideAnswer[] = [
   { id: "libraryCategories", keys: ["republic act", "legislation", "case law", "switch to", "jurisprudence tab", "category"], target: "library-cats", route: LIBRARY_PATH, topic: "library" },
   { id: "libraryFilters", keys: ["filter decisions", "filter the library", "by court", "by topic", "narrow results", "filter results"], target: "library-filters", route: LIBRARY_PATH, topic: "library" },
   { id: "librarySearch", keys: ["search law", "search the library", "find a decision", "g.r. no", "search library"], target: "library-search", route: LIBRARY_PATH, topic: "library" },
-  { id: "terminal", keys: ["terminal", "pane", "grid"], target: "case-row-terminal", route: CASES_PATH, topic: "casePortfolio" },
-  { id: "workspace", keys: ["workspace", "sources", "studio", "audio overview", "case brief", "mind map"], target: "case-row-workspace", route: CASES_PATH, topic: "workspace" },
+  { id: "terminal", keys: ["terminal", "pane", "grid"], target: "case-row-terminal", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "openTerminal"], sample: "terminal" },
+  { id: "workspace", keys: ["workspace", "sources", "studio", "audio overview", "case brief", "mind map"], target: "case-row-workspace", route: CASES_PATH, topic: "workspace", path: ["createCase", "addDocuments", "openStudio"], sample: "studio" },
   { id: "findCase", keys: ["search case", "find a case", "find case", "look up a case"], target: "cases-search", route: CASES_PATH, topic: "casePortfolio" },
   { id: "statusFilter", keys: ["archive", "archived", "closed case"], target: "cases-filters", route: CASES_PATH, topic: "casePortfolio" },
   { id: "newCase", keys: ["new case", "create a case", "filing", "add a case", "start a case"], target: "cases-new", route: CASES_PATH, topic: "casePortfolio" },
@@ -117,10 +149,29 @@ export const GUIDE_SUGGESTIONS = [
   "workspace", "notifications", "searchLibrary", "theme", "language",
 ]
 
-export function matchGuideAnswer(question: string): { kind: "answer"; answer: GuideAnswer } | { kind: "legal" } | { kind: "none" } {
+export type GuideMatch =
+  | { kind: "answer"; answer: GuideAnswer }
+  /** The answer points at a control the user can't reach yet — see PREREQUISITES. */
+  | { kind: "blocked"; answer: GuideAnswer; missing: Prerequisite }
+  | { kind: "legal" }
+  | { kind: "none" }
+
+export function matchGuideAnswer(question: string, met: MetPrerequisites = {}): GuideMatch {
   const q = question.toLowerCase()
   const answer = GUIDE_ANSWERS.find((a) => a.keys.some((k) => q.includes(k)))
-  if (answer) return { kind: "answer", answer }
+  if (answer) {
+    const missing = missingPrerequisite(answer.target, met)
+    return missing ? { kind: "blocked", answer, missing } : { kind: "answer", answer }
+  }
   if (LEGAL_SIGNALS.some((k) => q.includes(k))) return { kind: "legal" }
   return { kind: "none" }
+}
+
+export type GuidePathStep = { key: string; state: "done" | "now" | "later" }
+
+/** An answer's steps to its feature, marked off: before the prerequisite is met the first step is
+ * the one to do; once it is, the second. */
+export function guidePath(answer: GuideAnswer, prerequisiteMet: boolean): GuidePathStep[] | undefined {
+  const now = prerequisiteMet ? 1 : 0
+  return answer.path?.map((key, i) => ({ key, state: i < now ? "done" : i === now ? "now" : "later" }))
 }

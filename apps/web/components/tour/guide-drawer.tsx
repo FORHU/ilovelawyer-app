@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ArrowUpRight, Compass, FileText, RotateCcw, X } from "lucide-react"
+import { ArrowUpRight, Check, Compass, FileText, RotateCcw, X } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { useTourStore, type GuideMessage } from "@/lib/store/tour.store"
 import {
@@ -11,10 +11,14 @@ import {
   GUIDE_SUGGESTIONS_BY_ROUTE,
   matchGuideAnswer,
   routeMatches,
+  type GuidePathStep,
+  type MetPrerequisites,
 } from "@/lib/tour/steps"
 import { pageGuideFor } from "@/lib/tour/page-tours"
-import { sampleCaseHref } from "@/lib/sample-case/tours"
+import { sampleCaseHref, type SampleTourTrack } from "@/lib/sample-case/tours"
+import { guideReply } from "@/lib/tour/guide-reply"
 import { useTourT } from "@/lib/tour/use-tour-t"
+import { useHasActiveCase } from "@/lib/onboarding/use-is-new-account"
 
 /** Renders `**bold**` spans in a canned answer; everything else is plain text. */
 function AnswerText({ text }: { text: string }) {
@@ -27,6 +31,49 @@ function AnswerText({ text }: { text: string }) {
           part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part.replace(/\*+$/, ""),
         )}
     </>
+  )
+}
+
+/** The steps to a feature that needs a prerequisite: done, the one to do now, and the rest. */
+function GuidePath({ steps }: { steps: GuidePathStep[] }) {
+  const { t } = useTourT()
+  return (
+    <div className="flex flex-col overflow-hidden rounded-[14px] border border-border">
+      <span className="px-3.5 pt-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{t("guide.toGetThere")}</span>
+      <ol>
+        {steps.map((step, i) => (
+          <li
+            key={step.key}
+            aria-current={step.state === "now" ? "step" : undefined}
+            className={`flex items-center gap-2.5 border-t border-border px-3.5 py-2.5 text-[12.5px] ${
+              step.state === "now" ? "bg-brand-gold/[0.07]" : step.state === "later" ? "text-muted-foreground" : ""
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full border font-['Libre_Caslon_Text'] text-[10px] ${
+                step.state === "now"
+                  ? "border-brand-gold bg-brand-gold text-brand-gold-foreground"
+                  : step.state === "done"
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border"
+              }`}
+            >
+              {step.state === "done" ? <Check className="size-3" /> : i + 1}
+            </span>
+            <span className={`flex-1 ${step.state === "done" ? "text-muted-foreground line-through decoration-border" : ""}`}>
+              {t(`prerequisites.steps.${step.key}`)}
+              {step.state === "done" && <span className="sr-only"> ({t("guide.stepDone")})</span>}
+            </span>
+            {step.state === "now" && (
+              <span className="text-[9.5px] font-semibold uppercase tracking-[0.8px] text-brand-gold">
+                {t(i === 0 ? "guide.stepStart" : "guide.stepNext")}
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 
@@ -50,6 +97,9 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
   const setGuideMinimized = useTourStore((s) => s.setGuideMinimized)
   const setPageTour = useTourStore((s) => s.setPageTour)
   const setSampleTourRequested = useTourStore((s) => s.setSampleTourRequested)
+  const setPendingGoal = useTourStore((s) => s.setPendingGoal)
+  const hasCase = useHasActiveCase()
+  const met: MetPrerequisites = { case: hasCase }
   const [draft, setDraft] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -76,16 +126,15 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
     const q = question.trim()
     if (!q) return
     setDraft("")
-    const match = matchGuideAnswer(q)
+    const match = matchGuideAnswer(q, met)
     if (match.kind === "answer") {
-      const { answer } = match
-      const text = t(`answers.${answer.id}`)
-      const label = t(`targets.${answer.target}`)
-      ask(q, {
-        text,
-        topic: t(`helpTopics.${answer.topic}`),
-        highlight: { target: answer.target, route: answer.route, label, title: label, body: text.replace(/\*\*/g, "") },
-      })
+      ask(q, guideReply(t, match.answer, "answer"))
+      return
+    }
+    if (match.kind === "blocked") {
+      // Point at what unblocks it, and carry on from there once it's done (see TourLayer).
+      ask(q, guideReply(t, match.answer, "blocked", match.missing))
+      setPendingGoal({ answerId: match.answer.id })
       return
     }
     ask(q, { text: match.kind === "legal" ? t("guide.legalAnswer") : t("guide.fallbackAnswer"), handoff: match.kind === "legal" })
@@ -111,9 +160,23 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
     }
   }
 
+  /** Opens the sample case on the tour that shows the feature, coming back here after. */
+  const openSample = (track: SampleTourTrack) => {
+    close()
+    router.push(sampleCaseHref(track, pathname + window.location.search))
+  }
+
   const asked = new Set(messages.filter((m) => m.role === "user").map((m) => m.text))
   const suggestionKeys = [...new Set([...(GUIDE_SUGGESTIONS_BY_ROUTE[pathname] ?? []), ...GUIDE_SUGGESTIONS])]
-  const suggestions = suggestionKeys.map((k) => t(`suggestions.${k}`))
+  // Questions the user can act on now come first; the rest say what they need. (Array sort is
+  // stable, so each group keeps its page-first order.)
+  const suggestions = suggestionKeys
+    .map((k) => {
+      const text = t(`suggestions.${k}`)
+      const match = matchGuideAnswer(text, met)
+      return { text, needs: match.kind === "blocked" ? match.missing : null }
+    })
+    .sort((a, b) => Number(!!a.needs) - Number(!!b.needs))
   const last = messages.at(-1)
   const busy = !!last && last.role === "guide" && !last.done
   const showMore = !!last && last.role === "guide" && last.done
@@ -169,14 +232,7 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
               <p className="text-[13px] leading-relaxed text-muted-foreground">{t("guide.intro")}</p>
               <div className="flex flex-col gap-1.5">
                 {suggestions.slice(0, 6).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => askQuestion(q)}
-                    className="cursor-pointer rounded-[14px] border border-border px-3.5 py-2.5 text-left text-[12.5px] transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {q}
-                  </button>
+                  <SuggestionButton key={q.text} text={q.text} needs={q.needs} onAsk={askQuestion} />
                 ))}
               </div>
             </>
@@ -195,10 +251,16 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
                     <span aria-hidden="true" className="ml-0.5 inline-block h-3.5 w-[7px] animate-pulse bg-foreground align-[-2px]" />
                   )}
                 </span>
+                {m.done && m.path && <GuidePath steps={m.path} />}
                 {m.done && m.highlight && (
                   <button type="button" onClick={() => show(m.highlight!)} className={`${pill} h-7 border-foreground`}>
                     <span aria-hidden="true" className="size-1.5 rounded-full bg-foreground" />
                     {t("guide.showing", { label: m.highlight.label })}
+                  </button>
+                )}
+                {m.done && m.sample && (
+                  <button type="button" onClick={() => openSample(m.sample!)} className={`${pill} border-border hover:border-foreground`}>
+                    {t("guide.trySample")}
                   </button>
                 )}
                 {m.done && m.topic && (
@@ -227,17 +289,10 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
             <div className="mt-1 flex flex-col gap-1.5 border-t border-border pt-3 animate-in fade-in-0 duration-200">
               <span className="text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground">{t("guide.askSomethingElse")}</span>
               {suggestions
-                .filter((q) => !asked.has(q))
+                .filter((q) => !asked.has(q.text))
                 .slice(0, 4)
                 .map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => askQuestion(q)}
-                    className="cursor-pointer rounded-[14px] border border-border px-3.5 py-2.5 text-left text-[12.5px] transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {q}
-                  </button>
+                  <SuggestionButton key={q.text} text={q.text} needs={q.needs} onAsk={askQuestion} />
                 ))}
             </div>
           )}
@@ -277,5 +332,27 @@ export function GuideDrawer({ phone }: { phone: boolean }) {
         </form>
       </aside>
     </>
+  )
+}
+
+/** A suggested question. One the user can't act on yet still asks (the guide explains what it
+ * needs) but says so up front. */
+function SuggestionButton({ text, needs, onAsk }: { text: string; needs: string | null; onAsk: (q: string) => void }) {
+  const { t } = useTourT()
+  return (
+    <button
+      type="button"
+      onClick={() => onAsk(text)}
+      className={`flex cursor-pointer items-center justify-between gap-2 rounded-[14px] border border-border px-3.5 py-2.5 text-left text-[12.5px] transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        needs ? "text-muted-foreground" : ""
+      }`}
+    >
+      <span>{text}</span>
+      {needs && (
+        <span className="shrink-0 rounded-full border border-dashed border-border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.8px]">
+          {t(`guide.needs.${needs}`)}
+        </span>
+      )}
+    </button>
   )
 }

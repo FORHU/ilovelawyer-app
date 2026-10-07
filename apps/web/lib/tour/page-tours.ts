@@ -37,6 +37,8 @@ export const PAGE_TOURS: Record<string, PageTour> = {
       { target: "cases-new", placement: "bottom" },
       { target: "cases-search", placement: "bottom" },
       { target: "cases-filters", placement: "bottom" },
+      // Only there while the user has no cases — it says where Workspace and Terminal will be.
+      { target: "cases-create-first", placement: "right" },
       { target: "case-row-workspace", placement: "left" },
       { target: "case-row-terminal", placement: "left" },
     ],

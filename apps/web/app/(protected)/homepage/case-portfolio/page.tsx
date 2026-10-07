@@ -42,6 +42,8 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { usePortfolioQuery, type CaseCopyRecord } from "@/lib/organizations/queries";
 import { useSwitchWorkspace } from "@/lib/organizations/mutations";
 import { caseKeys } from "@/lib/query-keys";
+import { NewAccountPreview } from "@/components/onboarding/new-account-preview";
+import { useIsNewAccount } from "@/lib/onboarding/use-is-new-account";
 
 // Shared look for the page's segmented toggles (workspace, status, creator filter). bg-card/
 // bg-muted collapse to the same flat --background in dark mode (see globals.css), so the track
@@ -287,6 +289,14 @@ export default function CaseManagerDashboard() {
   // own empty state further below instead.
   const isPortfolioEmpty =
     !isLoading && !isError && statusFilter === "ACTIVE" && debouncedSearch === "" && !(createdByMe && !inPortfolio) && data?.total === 0;
+  // No cases and no consultations either: show what the account will look like instead of the
+  // three-step card, and move the steps under the call to action.
+  const isNewAccount = useIsNewAccount(isPortfolioEmpty);
+  const emptySteps = [
+    { n: "I", title: t("emptyState.step1Title"), body: t("emptyState.step1Body") },
+    { n: "II", title: t("emptyState.step2Title"), body: t("emptyState.step2Body") },
+    { n: "III", title: t("emptyState.step3Title"), body: t("emptyState.step3Body") },
+  ];
   const isArchivedEmpty = !isLoading && !isError && statusFilter === "ARCHIVED" && debouncedSearch === "" && data?.total === 0;
   const isSearchEmpty =
     !isLoading && !isError && (debouncedSearch !== "" || (createdByMe && !inPortfolio && statusFilter === "ACTIVE")) && cases.length === 0;
@@ -764,6 +774,19 @@ export default function CaseManagerDashboard() {
                 <p className="text-muted-foreground text-[15px] leading-relaxed max-w-[440px]">
                   {t("emptyState.body")}
                 </p>
+                {isNewAccount && (
+                  <ol className="flex flex-col gap-2">
+                    {emptySteps.map((s) => (
+                      <li key={s.n} className="grid grid-cols-[24px_1fr] gap-2 text-[13px] leading-relaxed">
+                        <span className="font-['Libre_Caslon_Text'] text-brand-gold">{s.n}</span>
+                        <span>
+                          <span className="font-medium text-foreground">{s.title}</span>
+                          <span className="text-muted-foreground"> · {s.body}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -780,21 +803,21 @@ export default function CaseManagerDashboard() {
                 </Tooltip>
               </div>
 
-              <div className="flex flex-col border border-border rounded-2xl bg-card overflow-hidden">
-                {[
-                  { n: "I", title: t("emptyState.step1Title"), body: t("emptyState.step1Body") },
-                  { n: "II", title: t("emptyState.step2Title"), body: t("emptyState.step2Body") },
-                  { n: "III", title: t("emptyState.step3Title"), body: t("emptyState.step3Body") },
-                ].map((s) => (
-                  <div key={s.n} className="flex gap-4 px-5 py-4.5 border-b border-border last:border-b-0">
-                    <span className="font-['Libre_Caslon_Text'] text-sm text-brand-gold w-6 shrink-0">{s.n}</span>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium text-foreground">{s.title}</span>
-                      <span className="text-[12.5px] text-muted-foreground leading-relaxed">{s.body}</span>
+              {isNewAccount ? (
+                <NewAccountPreview className="min-w-0" />
+              ) : (
+                <div className="flex flex-col border border-border rounded-2xl bg-card overflow-hidden">
+                  {emptySteps.map((s) => (
+                    <div key={s.n} className="flex gap-4 px-5 py-4.5 border-b border-border last:border-b-0">
+                      <span className="font-['Libre_Caslon_Text'] text-sm text-brand-gold w-6 shrink-0">{s.n}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-foreground">{s.title}</span>
+                        <span className="text-[12.5px] text-muted-foreground leading-relaxed">{s.body}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
