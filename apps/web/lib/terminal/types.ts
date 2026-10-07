@@ -1099,7 +1099,9 @@ export interface TraceTurn {
   eventCount: number
 }
 
-export type TraceEventType = "request" | "cognition" | "action" | "retrieval" | "control" | "memory"
+/** "explanation" is the closing "why this answer" of a run, written by ilovelawyer-api from the same
+ * explanation the chat shows as "How I got this"; the rest are the steps chat-wonder reported. */
+export type TraceEventType = "request" | "cognition" | "action" | "retrieval" | "control" | "memory" | "explanation"
 
 export interface TraceEvent {
   seq: number

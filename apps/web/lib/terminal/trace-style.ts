@@ -67,6 +67,14 @@ const NOTE: TraceStyle = {
   tint: "bg-pink-500/[0.05]",
   chipOn: "border-pink-500 bg-pink-500/15",
 }
+const EXPLANATION: TraceStyle = {
+  badge: "border-teal-500/50 bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  bar: "bg-teal-500",
+  text: "text-teal-600 dark:text-teal-400",
+  edge: "border-l-teal-500",
+  tint: "bg-teal-500/[0.05]",
+  chipOn: "border-teal-500 bg-teal-500/15",
+}
 const UNKNOWN: TraceStyle = {
   badge: "border-border bg-muted text-muted-foreground",
   bar: "bg-muted-foreground/40",
@@ -83,6 +91,7 @@ const TRACE_STYLES: Record<string, TraceStyle> = {
   retrieval: RESEARCH,
   control: CHECK,
   memory: NOTE,
+  explanation: EXPLANATION,
 }
 
 /** How a kind of trace step is drawn. A kind the API adds later is gray until it is given a style here. */
@@ -90,8 +99,9 @@ export function traceStyle(type: string): TraceStyle {
   return TRACE_STYLES[type] ?? UNKNOWN
 }
 
-/** Order the kinds appear in a turn's summary bar — roughly the order the AI works in. */
-export const TRACE_TYPE_ORDER = ["request", "retrieval", "action", "cognition", "control", "memory"] as const
+/** Order the kinds appear in a turn's summary bar — roughly the order the AI works in, ending with
+ * the closing explanation of why it gave the answer. */
+export const TRACE_TYPE_ORDER = ["request", "retrieval", "action", "cognition", "control", "memory", "explanation"] as const
 
 /** How many steps of each kind a turn has, in TRACE_TYPE_ORDER, with unknown kinds last. Kinds with
  * no steps are left out. */
@@ -127,6 +137,9 @@ export const TRACE_SOURCE_ORDER = [
   "damagesExtract",
   "citationGround",
   "claimExtract",
+  "caseFindings",
+  "caseOutlook",
+  "contradictionScan",
 ] as const
 
 /** How many runs each source has, in TRACE_SOURCE_ORDER with unknown sources last. Sources with no
