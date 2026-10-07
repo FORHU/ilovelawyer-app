@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
+import { CharCount } from "@/components/ui/char-count";
+import { PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
 import { useUpdateCaseMutation, type CaseRecord, type Party } from "@/lib/cases/mutations";
 
 // Same values the API validates against (PARTY_DESIGNATIONS) and the create/edit-case forms offer.
@@ -94,12 +96,15 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
       <input
         autoFocus
         value={name}
+        maxLength={PARTY_NAME_MAX_LENGTH}
+        aria-describedby="overview-party-name-count"
         onChange={(e) => setName(e.target.value)}
         placeholder={t("overview.partyNamePlaceholder")}
         aria-label={t("sectionParties.fullNameLabel", { ns: "create-case" })}
         disabled={update.isPending}
         className="w-full rounded-lg border border-border bg-card px-3 py-2 text-base sm:text-sm outline-none transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
       />
+      <CharCount id="overview-party-name-count" length={name.length} max={PARTY_NAME_MAX_LENGTH} />
       <CustomSelect
         value={designation}
         onChange={setDesignation}

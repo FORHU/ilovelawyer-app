@@ -3,6 +3,8 @@ import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Plus, X } from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
+import { CharCount } from "@/components/ui/char-count";
+import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
 import type { CaseRecord, UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
@@ -131,6 +133,8 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                   : "border-border hover:border-foreground/30 focus:border-foreground focus:ring-foreground/5"
               }`}
               value={caseName}
+              maxLength={CASE_NAME_MAX_LENGTH}
+              aria-describedby="edit-case-name-count"
               onChange={(e) => {
                 setCaseName(e.target.value);
                 if (e.target.value.trim()) setNameError(false);
@@ -143,6 +147,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                 {t("editModal.caseNameError")}
               </p>
             )}
+            <CharCount id="edit-case-name-count" length={caseName.length} max={CASE_NAME_MAX_LENGTH} />
           </div>
 
           {ukJurisdictionOptions.length > 0 && (
@@ -202,8 +207,11 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                         className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-base sm:text-sm transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
                         placeholder={t("sectionParties.fullNamePlaceholder", { ns: "create-case" })}
                         value={party.name}
+                        maxLength={PARTY_NAME_MAX_LENGTH}
+                        aria-describedby={`edit-party-name-count-${party.id}`}
                         onChange={(e) => updateParty(party.id, "name", e.target.value)}
                       />
+                      <CharCount id={`edit-party-name-count-${party.id}`} length={party.name.length} max={PARTY_NAME_MAX_LENGTH} />
                     </div>
 
                     <div className="flex flex-col gap-2">
