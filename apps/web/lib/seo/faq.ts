@@ -94,20 +94,8 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
   ],
 }
 
-// The apex (ilovelawyer.com) is the brand home that points to both jurisdictions.
-const APEX: FaqItem[] = [
-  {
-    question: "Which ilovelawyer site should I use — Philippines or UK?",
-    answer:
-      "Use ilovelawyer Philippines (ph.ilovelawyer.com) for Philippine jurisprudence and statutes, or ilovelawyer UK (uk.ilovelawyer.com) for England and Wales, Scotland and Northern Ireland.",
-    detail:
-      "They are separate jurisdiction-specific sites: the Philippines site adds a Philippine statutory code library and full deadline tracking, while the UK site adds live TNA Find Case Law and legislation.gov.uk search and provisional CPR deadline tracking.",
-  },
-  ...SHARED,
-]
-
-export function getFaqItems(tenantCode: TenantCode | "APEX"): FaqItem[] {
-  return tenantCode === "APEX" ? APEX : BY_TENANT[tenantCode]
+export function getFaqItems(tenantCode: TenantCode): FaqItem[] {
+  return BY_TENANT[tenantCode]
 }
 
 const LEDE: Record<TenantCode, string> = {

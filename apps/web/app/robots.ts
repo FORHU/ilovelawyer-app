@@ -1,7 +1,4 @@
 import type { MetadataRoute } from "next"
-import { headers } from "next/headers"
-import { BRAND_ORIGIN } from "@/lib/seo/brand"
-import { isBrandApexHost } from "@/lib/tenant-code/resolve-host"
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint"
 import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin"
 
@@ -42,17 +39,15 @@ const AI_CRAWLER_USER_AGENTS = [
 ]
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const [tenantCode, origin, headersList] = await Promise.all([getTenantCodeHint(), getRequestOrigin(), headers()])
-  const isApex = tenantCode === null && isBrandApexHost(headersList.get("host"))
+  const [tenantCode, origin] = await Promise.all([getTenantCodeHint(), getRequestOrigin()])
 
-  if (tenantCode === null && !isApex) {
-    // Other unrecognized hosts (app.ilovelawyer.com): just the neutral splash, nothing to
-    // rank. Disallow everything and don't advertise a sitemap.
+  if (tenantCode === null) {
+    // Apex / unrecognized host (bare ilovelawyer.com, app.ilovelawyer.com): the neutral
+    // splash is just two outbound links, no content of its own to rank. Disallow everything
+    // and don't advertise a sitemap for this host.
     return { rules: { userAgent: "*", disallow: "/" } }
   }
 
-  // Tenants and the brand apex (an indexable hub: brand entity + links to both jurisdictions,
-  // so searches for "ilovelawyer" can land on a domain Google is allowed to crawl).
   return {
     rules: [
       {
@@ -66,8 +61,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         disallow: DISALLOWED_PATHS,
       },
     ],
-    // The apex always advertises the canonical origin, matching sitemap.ts (so `www.` doesn't
-    // point at a different sitemap URL).
-    sitemap: `${isApex ? BRAND_ORIGIN : origin}/sitemap.xml`,
+    sitemap: `${origin}/sitemap.xml`,
   }
 }

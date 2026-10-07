@@ -34,4 +34,4 @@ Each site has a FAQ section with answers about what ilovelawyer is, how citation
 
 ## Brand
 
-Also written "I Love Lawyer". The brand home is https://ilovelawyer.com/, which links to both jurisdiction sites.
+Also written "I Love Lawyer". Developed by Forhu AI.

@@ -19,11 +19,10 @@ import { UkLandingFooter } from "@/components/landing/uk/footer";
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint";
 import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
-import { hostForTenantCode, isBrandApexHost, protocolForHost } from "@/lib/tenant-code/resolve-host";
+import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-host";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { FaqSection } from "@/components/landing/faq-section";
-import { ApexBrandContent } from "@/components/landing/apex-brand-content";
-import { BRAND_DESCRIPTION, BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
+import { BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
 import { getFaqItems, getFaqLede } from "@/lib/seo/faq";
 
 // The testimonial section is switched off until there are real client quotes to show (the UK
@@ -78,22 +77,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenantCode = await getTenantCodeHint();
 
   if (tenantCode === null) {
-    const host = (await headers()).get("host") ?? "";
-    if (isBrandApexHost(host)) {
-      // Brand hub: indexable, so "ilovelawyer" searches have a crawlable home that names the
-      // brand and links to both jurisdiction sites (robots.ts/sitemap.ts allow this host).
-      const title = "ilovelawyer — AI Legal Intelligence for Lawyers";
-      return {
-        title: { absolute: title },
-        description: BRAND_DESCRIPTION,
-        alternates: { canonical: `${BRAND_ORIGIN}/` },
-        openGraph: { title, description: BRAND_DESCRIPTION, url: `${BRAND_ORIGIN}/`, siteName: "ilovelawyer", type: "website" },
-        twitter: { card: "summary_large_image", title, description: BRAND_DESCRIPTION },
-        robots: { index: true, follow: true },
-      };
-    }
-    // app.ilovelawyer.com and other unrecognized hosts: just the jurisdiction picker, keep it
-    // out of search (matches robots.txt's blanket disallow for these hosts).
+    // Bare apex / app.ilovelawyer.com: the neutral splash is a two-link jurisdiction picker
+    // with no unique content of its own — keep it out of search entirely (matches this
+    // host's blanket robots.txt disallow).
     return { robots: { index: false, follow: false } };
   }
 
@@ -158,8 +144,7 @@ export default async function LandingPage() {
             the tenant pages below) so it no longer reserves layout space — this page has no
             hero to sit under it, so it needs its own top offset instead. */}
         <div className="pt-16 flex-1 flex flex-col">
-          <NeutralLandingSplash currentHost={host} fill={!isBrandApexHost(host)} />
-          {isBrandApexHost(host) && <ApexBrandContent currentHost={host} />}
+          <NeutralLandingSplash currentHost={host} />
         </div>
       </div>
     );

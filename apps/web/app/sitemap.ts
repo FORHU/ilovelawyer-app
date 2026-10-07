@@ -1,18 +1,13 @@
 import type { MetadataRoute } from "next"
-import { headers } from "next/headers"
 import { getTenantCodeHint } from "@/lib/tenant-code/get-tenant-code-hint"
-import { BRAND_ORIGIN } from "@/lib/seo/brand"
-import { isBrandApexHost } from "@/lib/tenant-code/resolve-host"
 import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [tenantCode, origin, headersList] = await Promise.all([getTenantCodeHint(), getRequestOrigin(), headers()])
+  const [tenantCode, origin] = await Promise.all([getTenantCodeHint(), getRequestOrigin()])
 
-  if (tenantCode === null) {
-    // The brand apex is an indexable hub; any other unresolved host (app.) has nothing to list.
-    if (!isBrandApexHost(headersList.get("host"))) return []
-    return [{ url: `${BRAND_ORIGIN}/`, lastModified: new Date(), changeFrequency: "weekly", priority: 1 }]
-  }
+  // Apex/unresolved host: nothing indexable to list (see robots.ts, which disallows
+  // everything on this host anyway).
+  if (tenantCode === null) return []
 
   return [
     {

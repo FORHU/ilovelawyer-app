@@ -50,15 +50,6 @@ export function resolveTenantCodeFromHost(hostname: string | undefined | null): 
   return HOST_TENANT_CODE_MAP[host] ?? null
 }
 
-/** The public brand apex (`ilovelawyer.com`, `www.`) — the one unresolved host that is meant to
- * be indexed (brand hub linking to both jurisdictions). Other unresolved hosts such as
- * `app.ilovelawyer.com` stay unindexed. */
-export function isBrandApexHost(hostname: string | undefined | null): boolean {
-  if (!hostname) return false
-  const host = (hostname.split(":")[0] ?? "").trim().toLowerCase()
-  return host === "ilovelawyer.com" || host === "www.ilovelawyer.com"
-}
-
 /** Local dev hosts (`ph.localhost:3002`, `ph.ilovelawyer.local:3002`, bare `ph.ilovelawyer:3002`)
  * are the only ones ever served over plain HTTP — matches the dev-host conventions documented
  * above. Shared by anything that needs to build an absolute URL from a bare `Host` header. */
