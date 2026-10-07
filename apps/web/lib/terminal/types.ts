@@ -753,20 +753,12 @@ export interface CaseReconstruction {
    * reconstruction predates this field, its [CLAIMS] block didn't parse, or narrative was
    * hand-edited since generation (a stale claim is cleared rather than risking a wrong match). */
   claims: AttributedClaim[] | null
-  audioFileId: string | null
-  audioFile: { id: string; fileUrl: string | null } | null
-  audioStatus: string | null
-  audioStaleAt: string | null
   /** When a lawyer last edited any register. While set, the analysis refresh doesn't regenerate
    * the narrative; Regenerate clears it. Absent on an API that predates the field. */
   narrativeEditedAt?: string | null
   // Grounded Reconstruction Rungs 1-2 (differentiation program, Phase 3) — see SceneDetail
   // below. `scenes` is null until CaseReconstructionSvc.generateScenes has run once.
   scenes: SceneDetail[] | null
-  tableReadFileId: string | null
-  tableReadFile: { id: string; fileUrl: string | null } | null
-  tableReadStatus: string | null
-  tableReadStaleAt: string | null
   createdAt: string
   updatedAt: string
 }

@@ -604,7 +604,7 @@ export async function sendChatMessageAndWait(
 
 /** Kicks off Audio Overview rendering for a message's already-generated script — the
  * separate, explicit "Generate Audio" action, never auto-triggered. Mirrors
- * useGenerateReconstructionAudioMutation's shape (start job, then poll). */
+ * the usual start-job-then-poll shape. */
 export function useGenerateAudioOverviewAudioMutation(consultationId: string) {
   return useMutation({
     mutationFn: (messageId: string) =>
