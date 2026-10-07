@@ -8,6 +8,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 export interface CustomSelectOption {
   value: string;
   label: string;
+  /** Shown but not selectable; `hint` (if given) replaces the hover tooltip to say why. */
+  disabled?: boolean;
+  hint?: string;
 }
 
 interface CustomSelectProps {
@@ -174,19 +177,30 @@ export default function CustomSelect({ id, value, onChange, options, placeholder
                     <TooltipTrigger asChild>
                       <button
                         type="button"
+                        // aria-disabled (not disabled) so the tooltip explaining why still shows on hover.
+                        aria-disabled={opt.disabled || undefined}
                         onClick={() => {
+                          if (opt.disabled) return;
                           onChange(opt.value);
                           setOpen(false);
                         }}
-                        className={`w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 text-left cursor-pointer transition-colors focus-visible:outline-none focus-visible:bg-muted ${
-                          isSelected ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted/50 dark:hover:bg-overlay-hover"
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-3 sm:py-2 text-left transition-colors focus-visible:outline-none focus-visible:bg-muted ${
+                          opt.disabled
+                            ? "cursor-not-allowed text-muted-foreground/60"
+                            : isSelected
+                              ? "cursor-pointer bg-muted text-foreground font-medium"
+                              : "cursor-pointer text-foreground hover:bg-muted/50 dark:hover:bg-overlay-hover"
                         }`}
                       >
                         {opt.label}
-                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                        {opt.disabled && opt.hint ? (
+                          <span className="shrink-0 text-xs">{opt.hint}</span>
+                        ) : (
+                          isSelected && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        )}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">Select {opt.label}</TooltipContent>
+                    <TooltipContent side="right">{opt.disabled && opt.hint ? opt.hint : `Select ${opt.label}`}</TooltipContent>
                   </Tooltip>
                 </li>
               );

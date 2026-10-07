@@ -105,6 +105,46 @@ function toAppointment(event: BackendEvent): Appointment {
   }
 }
 
+/** Length the API gives an appointment saved without an end time (GOOGLE_CALENDAR_DEFAULT_EVENT_MINUTES). */
+const DEFAULT_APPOINTMENT_MINUTES = 60
+
+/** The active (not cancelled) appointments on `date` whose time range overlaps
+ * [startTime, endTime) — both "HH:mm". `excludeId` leaves out the appointment being edited.
+ * Read straight from the API rather than the month's cached list, since an edit can move an
+ * appointment to a day in another month. */
+export async function findOverlappingAppointments({
+  date,
+  startTime,
+  endTime,
+  excludeId,
+}: {
+  date: string
+  startTime: string
+  endTime: string
+  excludeId?: string
+}): Promise<Appointment[]> {
+  const params = new URLSearchParams({
+    startRange: new Date(`${date}T00:00`).toISOString(),
+    endRange: new Date(`${date}T23:59:59.999`).toISOString(),
+    excludeStatus: "cancelled",
+  })
+  if (excludeId) params.set("excludeId", excludeId)
+  const { events } = await apiFetch<{ events: BackendEvent[] }>(`/api/events?${params}`)
+
+  const start = new Date(`${date}T${startTime}`).getTime()
+  const end = new Date(`${date}T${endTime}`).getTime()
+  return events
+    .filter((event) => {
+      const otherStart = new Date(event.dateTime).getTime()
+      const otherEnd = event.endDateTime
+        ? new Date(event.endDateTime).getTime()
+        : otherStart + DEFAULT_APPOINTMENT_MINUTES * 60_000
+      // Touching ranges (one ends at 3:00, the next starts at 3:00) don't count as a clash.
+      return otherStart < end && start < otherEnd
+    })
+    .map(toAppointment)
+}
+
 /** Lists Appointments whose date falls within [from, to] (both yyyy-MM-dd), for the visible calendar month. */
 export function useAppointmentsQuery(from: string, to: string) {
   return useQuery({

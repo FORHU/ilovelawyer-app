@@ -32,6 +32,9 @@
       "hours24": "Hours go up to 23."
     }
   },
+  "dateLabel": "Date",
+  "reminderPassed": "Already passed",
+  "pastReadOnly": "Past appointments can't be changed.",
   "titlePlaceholder": "Title",
   "notifyEmailPlaceholder": "Notify email (optional)",
   "descriptionPlaceholder": "Description (optional)",
@@ -69,6 +72,8 @@
     "timeRequired": "Start and end time are required.",
     "invalidTime": "Start and end time must be a valid time (e.g. 09:00).",
     "endAfterStart": "End time must be after start time.",
+    "reminderInPast": "That reminder time has already passed. Choose a shorter reminder or none.",
+    "pastReadOnly": "Past appointments can't be changed.",
     "startTimeInPast": "Start time can't be in the past.",
     "appointmentSaveFailed": "Failed to save appointment.",
     "cannotEditCancelled": "This appointment has been cancelled and can no longer be edited.",
@@ -80,5 +85,12 @@
   "previousMonth": "Previous month",
   "nextMonth": "Next month",
   "retry": "Retry",
-  "today": "Today"
+  "today": "Today",
+  "overlap": {
+    "title": "Time clash",
+    "descriptionSingle": "This overlaps with “{{title}}”.",
+    "descriptionMultiple": "This overlaps with {{count}} other appointments.",
+    "changeTime": "Change time",
+    "saveAnyway": "Save anyway"
+  }
 }
