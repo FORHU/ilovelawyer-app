@@ -29,12 +29,22 @@ export function highlightText(input: string, claims: Claim[]): React.ReactNode[]
   matches.forEach((m, i) => {
     if (m.start > cursor) nodes.push(input.slice(cursor, m.start));
     const style = CATEGORY_STYLE[m.claim.category] ?? FALLBACK_CATEGORY_STYLE;
-    const title = m.claim.sourceLabel ? `${style.label} — ${m.claim.sourceLabel}` : style.label;
+    const title = m.claim.sourceLabel ? `${style.label} - ${m.claim.sourceLabel}` : style.label;
     nodes.push(
       <mark
         key={`claim-${i}-${m.start}`}
         title={title}
-        style={{ backgroundColor: style.bg, color: style.color, borderRadius: 3, padding: "0 2px" }}
+        // Soft underline plus a faint tint, not a filled block: per-sentence fills fight long-form reading.
+        style={{
+          backgroundColor: style.bg,
+          color: "inherit",
+          borderRadius: 2,
+          textDecoration: "underline",
+          textDecorationColor: style.color,
+          textDecorationThickness: 2,
+          textUnderlineOffset: 4,
+          padding: "0 1px",
+        }}
       >
         {input.slice(m.start, m.end)}
       </mark>,
@@ -57,18 +67,18 @@ function highlightChildren(children: React.ReactNode, claims: Claim[]): React.Re
  * (not a shared export) so this doesn't risk changing that component's behavior elsewhere. */
 function buildComponents(claims: Claim[]): Components {
   return {
-    h1: ({ children }) => <h2 className="font-['Libre_Caslon_Text'] text-2xl text-foreground mt-6 mb-2 first:mt-0">{children}</h2>,
-    h2: ({ children }) => <h3 className="font-['Libre_Caslon_Text'] text-xl text-foreground mt-5 mb-2 first:mt-0">{children}</h3>,
-    h3: ({ children }) => <h4 className="font-['Libre_Caslon_Text'] text-lg text-foreground mt-4 mb-1 first:mt-0">{children}</h4>,
-    h4: ({ children }) => <h5 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mt-4 mb-1 first:mt-0">{children}</h5>,
-    p: ({ children }) => <p className="mb-3 last:mb-0">{highlightChildren(children, claims)}</p>,
+    h1: ({ children }) => <h2 className="text-[17px] font-semibold tracking-tight text-foreground mt-6 mb-2 first:mt-0">{children}</h2>,
+    h2: ({ children }) => <h3 className="text-base font-semibold tracking-tight text-foreground mt-5 mb-2 first:mt-0">{children}</h3>,
+    h3: ({ children }) => <h4 className="text-[15px] font-semibold text-foreground mt-4 mb-1 first:mt-0">{children}</h4>,
+    h4: ({ children }) => <h5 className="font-sans text-xs font-semibold text-foreground/70 mt-4 mb-1 first:mt-0">{children}</h5>,
+    p: ({ children }) => <p className="mb-4 last:mb-0">{highlightChildren(children, claims)}</p>,
     strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
     em: ({ children }) => <em className="italic">{children}</em>,
-    ul: ({ children }) => <ul className="list-disc pl-5 mb-3 last:mb-0 space-y-1">{children}</ul>,
-    ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 last:mb-0 space-y-1">{children}</ol>,
+    ul: ({ children }) => <ul className="list-disc pl-5 mb-4 last:mb-0 space-y-1.5 marker:text-foreground/50">{children}</ul>,
+    ol: ({ children }) => <ol className="list-decimal pl-5 mb-4 last:mb-0 space-y-1.5 marker:text-foreground/50">{children}</ol>,
     li: ({ children }) => <li className="pl-1">{highlightChildren(children, claims)}</li>,
     blockquote: ({ children }) => (
-      <blockquote className="border-l-2 border-border pl-4 my-3 italic text-muted-foreground">{children}</blockquote>
+      <blockquote className="border-l-2 border-brand-gold/40 pl-4 my-4 italic text-foreground/80">{children}</blockquote>
     ),
     a: ({ children, href }) => (
       <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-blue-900 dark:text-blue-400 hover:no-underline">
@@ -80,14 +90,21 @@ function buildComponents(claims: Claim[]): Components {
   };
 }
 
-export function AttributedTextLegend() {
+export function AttributedTextLegend({
+  counts,
+  className = "flex-wrap items-center gap-x-3 gap-y-1",
+}: {
+  counts?: Partial<Record<ClaimCategory, number>>;
+  className?: string;
+} = {}) {
   const entries = Object.entries(CATEGORY_STYLE) as [ClaimCategory, (typeof CATEGORY_STYLE)[ClaimCategory]][];
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+    <div className={`flex text-[11px] text-foreground/70 ${className}`}>
       {entries.map(([category, style]) => (
         <span key={category} className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: style.bg, boxShadow: `inset 0 0 0 1px ${style.color}` }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: style.bg, boxShadow: `inset 0 -2px 0 ${style.color}` }} />
           {style.label}
+          {counts && <span className="font-semibold text-foreground tabular-nums">{counts[category] ?? 0}</span>}
         </span>
       ))}
     </div>
@@ -100,7 +117,8 @@ export function AttributedTextLegend() {
 export default function AttributedMarkdown({ content, claims }: { content: string; claims: Claim[] }) {
   const components = React.useMemo(() => buildComponents(claims), [claims]);
   return (
-    <div className="text-sm text-foreground leading-relaxed">
+    // Reading face (--font-reading, loaded in app/layout.tsx, same as chat answers) at a book-like measure.
+    <div className="max-w-[66ch] font-[family-name:var(--font-reading)] text-[15px] leading-7 text-pretty text-foreground selection:bg-brand-gold/20">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>
