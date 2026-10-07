@@ -20,7 +20,7 @@ import {
   CatalogPill,
   EmptyNote,
   MutationError,
-  PaneUpdatingNote,
+  PaneLoadingState,
   PanelBody,
   PanelRow,
   PanelRowList,
@@ -73,6 +73,7 @@ export function DamagePanel({
   const extractJob = useAiJobStatus(caseId, "damagesExtract")
   const regen = usePaneRegenerate(caseId, "damages")
   const updating = regen.busy || regen.running || extractJob.data?.status === "IN_PROGRESS"
+  const loadingLabel = !updating ? null : regen.running ? t("paneRegenerating") : t("paneUpdatingWithAnalysis")
   const [openId, setOpenId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorTarget>(null)
 
@@ -115,11 +116,11 @@ export function DamagePanel({
       <div className="flex justify-end">
         <RegenerateButton regen={regen} />
       </div>
-      {regen.running ? (
-        <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote>
-      ) : updating ? (
-        <PaneUpdatingNote>{t("paneUpdatingWithAnalysis")}</PaneUpdatingNote>
-      ) : null}
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
       <DamagesOverview summary={summary} heads={snapshot.damages} displayTotal={displayTotal} dimmed={updating} />
 
       {heads.length === 0 ? (
@@ -316,6 +317,8 @@ export function DamagePanel({
       ) : null}
 
       <MutationError show={create.isError || update.isError || del.isError || accept.isError || todos.isError} />
+        </>
+      )}
     </PanelBody>
   )
 }

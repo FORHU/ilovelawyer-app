@@ -10,7 +10,7 @@ The case analysis ("Refresh analysis", or a document change) keeps 16 Terminal p
 
 ## Decision
 
-Each of the 16 panes gets the gold ↻ Regenerate at the right of its intro row (`RegenerateButton` in `panel-kit.tsx`, driven by `usePaneRegenerate` in `lib/terminal/mutations.ts`). Evidence & Timeline has one per section: Rescan for contradictions, Regenerate for the timeline.
+Each of the 16 panes gets the gold ↻ Regenerate at the right of its intro row (`RegenerateButton` in `panel-kit.tsx`, driven by `usePaneRegenerate` in `lib/terminal/mutations.ts`). Evidence & Timeline has one per section (contradictions, timeline). The button always reads "Regenerate", in every pane and in Studio; its tooltip says what that pane's run does.
 
 | Pane | Route | Job kind |
 |---|---|---|
@@ -39,10 +39,19 @@ Rules:
 Studio's Visual Strategy Map, Timeline and Audio Overview are the same pieces of the case, so they behave the same way as their Terminal panes:
 
 - **Timeline:** the header has the same gold Regenerate (`usePaneRegenerate("timeline")`), disabled while the case analysis runs, with the same updating line.
-- **Visual Strategy Map:** Regenerate and "Build from documents" are held back while the case analysis runs; a chat-made map (a case with no documents) can still be regenerated through chat.
+- **Visual Strategy Map:** Regenerate and "Build from documents" are held back while the case analysis runs; a chat-made map (a case with no documents) can still be regenerated through chat. Its tile only opens the view, like Timeline's and Data Table's; it never starts a build. An empty view offers "Build from documents" (or "Generate" for a chat-made map).
 - **Audio Overview:** shows the case's newest overview from any source (`useLatestAudioOverviewQuery`), not a consultation's newest message. Regenerate writes a case-owned overview and records it (`usePaneRegenerate("audioOverview")`); there is no hidden chat turn any more. Recording, "Retry recording" and "Render audio" work as in the Terminal pane.
 
-- **Data Table:** a view over rows the analysis already rewrites (findings, witnesses, damages; deadlines are rule-based), so it has no Regenerate: that would be most of a full run, which is what "Refresh analysis" is. It shows the gold "Updating…" until wave 2 is over (`caseRefreshRewriting(job, "dataTable")`), reloads its rows as wave 1 and wave 2 end, and its tile opens the table without reloading.
+- **Data Table:** a view over rows the analysis already rewrites (findings, witnesses, damages; deadlines are rule-based), so it has no Regenerate: that would be most of a full run, which is what "Refresh analysis" is. It reloads its rows as wave 1 and wave 2 end, and its tile opens the table without reloading.
+- **Loading states match the Terminal.** While the case analysis runs, the Timeline, Data Table, Visual Strategy Map and Audio Overview tiles and views show they are loading for the whole run, as their Terminal panes do, not only until the wave that rewrites them ends. The waves decide only when data reloads early (the timeline after wave 1, `caseRefreshRewriting(job, "timeline")`).
+
+### One loading state, in place of the content
+
+The Terminal's Panel Library marks the same panes: while a pane is loading, its row's badge reads "Updating…" in gold with a spinner instead of its count (`useLoadingPanes` in `lib/terminal/mutations.ts`: the analysis's panes for its whole run, a pane's own Regenerate, and the background findings, witness and damages jobs).
+
+In Studio, the Mind Map, Timeline, Data Table and Audio Overview tiles show loading the same way: the tile keeps its name, its icon spins, and its note reads "Updating…".
+
+While a run writes a pane (the case analysis, the pane's own Regenerate, or a build), the pane keeps its header and its disabled Regenerate, and everything below is replaced by one centered gold spinner and line (`PaneLoadingState` in `panel-kit.tsx`; the line comes from `usePaneLoadingLabel`). Every pane and Studio view uses the same two lines: "Updating with the latest analysis…" for the case analysis and other background updates, and "Regenerating this pane…" for its own Regenerate or build. The previous result is not shown under an "Updating…" line, and there is no second spinner on the content (the map's ↻ included). Every Terminal pane and every Studio view (Timeline, Data Table, Visual Strategy Map, Audio Overview) does this, so a pane that is loading looks the same everywhere. The trade-off: the previous result can't be read or edited until the run finishes (about a minute or two for a pane, a few minutes for the case analysis). Exceptions: Law & Precedent's citation check, which the analysis doesn't write, stays usable; an edited reconstruction narrative that the analysis keeps is not hidden; and an Audio Overview being recorded (not rewritten) keeps its own notice over the script.
 
 The chat-based `useAudioOverview` hook and its step indicator had no users left and were removed.
 

@@ -20,7 +20,7 @@ import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
 import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/terminal/evidence-status"
 import type { SnapshotDocument } from "@/lib/terminal/types"
 import { dateLocale } from "@/lib/i18n/date-locale"
-import { PaneUpdatingNote } from "@/components/terminal/panel-kit"
+import { PaneLoadingState } from "@/components/terminal/panel-kit"
 import { caseRefreshRewriting } from "@/lib/terminal/case-refresh-stage"
 
 
@@ -145,8 +145,12 @@ export function CaseTimelineView({
   // "Generating…" state here despite genuinely being in progress.
   const caseRefreshStatus = useAiJobStatus(caseId, "caseRefresh")
   // Only while the analysis's first wave (which writes the dates) runs — not the rest of the run.
+  // Reloads as wave 1 ends (the wave that writes the dates); the updating line, though, runs for the
+  // whole case analysis, like every other pane's — so the timeline never reads "done" while the
+  // Terminal and Studio still show the analysis working.
   const analysisRewriting = caseRefreshRewriting(caseRefreshStatus.data, "timeline")
-  const isGenerating = generateStatus.data?.status === "IN_PROGRESS" || analysisRewriting
+  const analysisRunning = caseRefreshStatus.data?.status === "IN_PROGRESS"
+  const isGenerating = generateStatus.data?.status === "IN_PROGRESS" || analysisRunning
 
   // useAiJobStatus only auto-invalidates the case snapshot on an IN_PROGRESS -> DONE transition —
   // this panel reads the timeline via graph-view, not the snapshot, so it refetches those itself.
@@ -283,22 +287,6 @@ export function CaseTimelineView({
               {title}
               {titleAction}
             </div>
-            {isGenerating ? (
-              <PaneUpdatingNote>
-                {analysisRewriting ? tt("paneUpdatingWithAnalysis") : tt("paneRegenerating")}
-              </PaneUpdatingNote>
-            ) : null}
-          </div>
-        ) : isGenerating && items.length > 0 ? (
-          // Studio's view (no title row; its Regenerate is in Studio's header): the current events
-          // stay on screen while new ones are written, and this line says so — rather than a bare
-          // spinning icon that reads as "still loading" over a finished timeline.
-          <div className="mb-4">
-            <PaneUpdatingNote>
-              {analysisRewriting
-                ? t("timeline.updatingWithAnalysis", { defaultValue: "Updating with the latest analysis — showing the current timeline until it's ready" })
-                : t("timeline.regeneratingShowingCurrent", { defaultValue: "Regenerating — showing the current timeline until the new one is ready" })}
-            </PaneUpdatingNote>
           </div>
         ) : null}
         {isLoading ? (
@@ -309,10 +297,12 @@ export function CaseTimelineView({
           <p className="py-16 text-center text-sm text-red-500">
             {t("timeline.loadError", { defaultValue: "Couldn't load this timeline." })}
           </p>
-        ) : items.length === 0 && isGenerating ? (
-          <p className="py-10 text-center text-sm text-muted-foreground" role="status">
-            {t("timeline.generatingFirst", { defaultValue: "Generating the timeline from your documents…" })}
-          </p>
+        ) : isGenerating ? (
+          // While the case analysis or Regenerate writes the dates, the centered loading state
+          // replaces the events, as in every other pane.
+          <PaneLoadingState fill={fill}>
+            {analysisRunning ? tt("paneUpdatingWithAnalysis") : tt("paneRegenerating")}
+          </PaneLoadingState>
         ) : items.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             {t("timeline.emptyState", {

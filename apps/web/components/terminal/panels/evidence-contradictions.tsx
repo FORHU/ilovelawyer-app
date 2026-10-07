@@ -21,7 +21,8 @@ import {
   labelTextClass,
   type Tone,
   RegenerateButton,
-  PaneRegenerateNote,
+  PaneLoadingState,
+  usePaneLoadingLabel,
 } from "@/components/terminal/panel-kit"
 import { dateLocale } from "@/lib/i18n/date-locale"
 import { formatMoney } from "@/lib/terminal/damages-format"
@@ -111,6 +112,7 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
   const job = useAiJobStatus(caseId, "contradictions")
   // This section's own Rescan; the case analysis rescans too, in its first wave.
   const regen = usePaneRegenerate(caseId, "contradictions")
+  const loadingLabel = usePaneLoadingLabel(regen)
   const graphView = useGraphViewQuery(caseId, "contradictions")
   const queryClient = useQueryClient()
   const [open, setOpen] = useState<string | null>(null)
@@ -159,12 +161,15 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
               {t("contradictionHandled", { done: handledCount, total: rows.length })}
             </span>
           ) : null}
-          <RegenerateButton regen={regen} label={t("regenerateContradictions")} hint={t("regenerateContradictionsHint")} />
+          <RegenerateButton regen={regen} hint={t("regenerateContradictionsHint")} />
         </div>
       </div>
-      <PaneRegenerateNote regen={regen} />
       <p className="text-[13px] text-muted-foreground">{t("contradictionsIntro")}</p>
       <MutationError show={update.isError} />
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
 
       {/* Same shrink-0 wrapper as WitnessPanel: PanelRowList's <ul> is overflow-hidden. */}
       <div className="shrink-0">
@@ -294,6 +299,8 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
           })}
         </PanelRowList>
       </div>
+        </>
+      )}
     </div>
   )
 }

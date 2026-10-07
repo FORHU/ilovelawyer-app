@@ -288,13 +288,12 @@
     "updatedHoursAgo": "Updated {{count}}h ago",
     "updatedDaysAgo": "Updated {{count}}d ago",
     "timelineRefreshing": "Refreshing timeline…",
-    "timelineGenerating": "Generating timeline…",
     "timelineEventCount": "{{count}} event(s)",
     "dataTableTile": "Data Table",
+    "decisionsNeedsChatHint": "Ask a legal question in this chat to see its decisions here",
+    "mindMapNeedsSourceHint": "Upload a document or ask a question in the chat to build a map",
     "needsDocumentsHint": "Upload a document to enable this",
     "replyInProgressHint": "Wait for the current reply to finish",
-    "dataTableUpdatingWithAnalysis": "Updating with the latest analysis — showing the current rows until they're ready",
-    "dataTableRefreshing": "Refreshing data table…",
     "dataTableFactCount": "{{count}} fact(s)",
     "dataTableEmpty": "No witnesses, damages, deadlines, or findings recorded for this case yet.",
     "dataTableColType": "Type",
@@ -304,12 +303,8 @@
     "dataTableTypeDamage": "Damage",
     "dataTableTypeDeadline": "Deadline",
     "dataTableAiGenerated": "AI-generated",
-    "audioOverviewGenerating": "Generating audio overview…",
-    "audioOverviewGenerateCta": "Generate audio overview",
-    "audioOverviewGeneratingHint": "This can take a minute or two — you can keep working while it runs.",
     "audioOverviewRecording": "Recording audio…",
     "audioOverviewRetryRecording": "Retry recording",
-    "audioOverviewUpdating": "Writing a new overview with the latest analysis…",
     "audioOverviewAutoEmpty": "No Audio Overview yet.",
     "audioOverviewAutoEmptyHint": "It's made automatically from this case's documents and analysis each time the case analysis runs.",
     "audioOverviewPlay": "Play",
@@ -360,9 +355,7 @@
     "mindMapNoConsultation": "Start a chat to generate a mind map.",
     "consultationsSectionTitle": "Consultations",
     "topicsLoading": "Loading topics…",
-    "tileUpdating": "Updating…",
-    "mindMapUpdatingWithAnalysis": "Updating with the latest analysis — showing the current map until it's ready",
-    "mindMapRegeneratingShowingCurrent": "Regenerating — showing the current map until the new one is ready"
+    "tileUpdating": "Updating…"
   },
   "mindMapExpand": {
     "button": "Expand",
@@ -380,7 +373,6 @@
     "cancel": "Cancel"
   },
   "caseMindMap": {
-    "refreshKeepsChanges": "Updating with the latest analysis… Your expanded map is kept as it is.",
     "building": "Building the mind map from your documents…",
     "rebuilding": "The map is being rebuilt from the documents.",
     "fromDocuments_one": "From {{count}} document",
@@ -395,8 +387,7 @@
     "staleRemoved_one": "{{count}} document removed",
     "staleRemoved_other": "{{count}} documents removed",
     "staleAddedRemoved_one": "{{added}} document added, {{removed}} removed",
-    "staleAddedRemoved_other": "{{added}} documents added, {{removed}} removed",
-    "terminalBuilding": "Building the case map from your documents…"
+    "staleAddedRemoved_other": "{{added}} documents added, {{removed}} removed"
   },
   "mindMapEdit": {
     "rename": "Rename",

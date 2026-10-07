@@ -135,7 +135,6 @@
     "dataTableTile": "데이터 표",
     "needsDocumentsHint": "문서를 업로드하면 사용할 수 있습니다",
     "replyInProgressHint": "현재 답변이 끝날 때까지 기다려 주세요",
-    "dataTableRefreshing": "데이터 표 새로고침 중…",
     "dataTableFactCount": "항목 {{count}}건",
     "dataTableEmpty": "이 사건에 기록된 증인, 손해배상, 기한, 또는 사실관계가 아직 없습니다.",
     "dataTableColType": "유형",
@@ -145,9 +144,6 @@
     "dataTableTypeDamage": "손해배상",
     "dataTableTypeDeadline": "기한",
     "dataTableAiGenerated": "AI 생성",
-    "audioOverviewGenerating": "오디오 개요 생성 중…",
-    "audioOverviewGenerateCta": "오디오 개요 생성",
-    "audioOverviewGeneratingHint": "1~2분 정도 걸릴 수 있습니다. 그동안 계속 작업하셔도 됩니다.",
     "audioOverviewPlay": "재생",
     "audioOverviewPause": "일시정지",
     "audioOverviewRegenerateAudioCta": "오디오 다시 생성",
@@ -194,9 +190,7 @@
     "mindMapNoConsultation": "채팅을 시작하면 마인드맵을 생성할 수 있습니다.",
     "consultationsSectionTitle": "상담",
     "topicsLoading": "주제를 불러오는 중…",
-    "tileUpdating": "업데이트 중…",
-    "mindMapUpdatingWithAnalysis": "최신 분석으로 업데이트 중 — 완료될 때까지 현재 맵을 표시합니다",
-    "mindMapRegeneratingShowingCurrent": "다시 생성 중 — 새 맵이 준비될 때까지 현재 맵을 표시합니다"
+    "tileUpdating": "업데이트 중…"
   },
   "mindMapExpand": {
     "button": "확장",
@@ -213,7 +207,6 @@
     "cancel": "취소"
   },
   "caseMindMap": {
-    "refreshKeepsChanges": "최신 분석으로 업데이트 중… 확장한 맵은 그대로 유지됩니다.",
     "building": "문서에서 마인드맵을 만드는 중…",
     "rebuilding": "문서에서 맵을 다시 만드는 중입니다.",
     "fromDocuments_other": "문서 {{count}}개 기반",
@@ -224,8 +217,7 @@
     "retired": "이 맵을 만든 문서가 제거되었습니다. 새 맵을 만들려면 문서를 업로드하세요.",
     "staleAdded_other": "문서 {{count}}개 추가됨",
     "staleRemoved_other": "문서 {{count}}개 제거됨",
-    "staleAddedRemoved_other": "문서 {{added}}개 추가, {{removed}}개 제거됨",
-    "terminalBuilding": "문서로 사건 맵을 만드는 중…"
+    "staleAddedRemoved_other": "문서 {{added}}개 추가, {{removed}}개 제거됨"
   },
   "mindMapEdit": {
     "rename": "이름 바꾸기",

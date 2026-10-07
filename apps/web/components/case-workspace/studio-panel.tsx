@@ -31,7 +31,7 @@ import {
   useRecordAudioOverviewMutation,
 } from "@/lib/terminal/mutations";
 import { caseRefreshRewriting } from "@/lib/terminal/case-refresh-stage";
-import { PaneUpdatingNote, RegenerateButton } from "@/components/terminal/panel-kit";
+import { PaneLoadingState, RegenerateButton } from "@/components/terminal/panel-kit";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
@@ -218,9 +218,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // it — a pane run and the analysis never overlap (ADR 0018).
   const timelineRegen = usePaneRegenerate(caseId, "timeline");
   const caseRefreshJob = useAiJobStatus(caseId, "caseRefresh");
+  // Studio's tiles show "updating" exactly when their Terminal panes do: for the whole case
+  // analysis run (the Terminal's panes and header use the run, not its waves). The waves only decide
+  // when data reloads early — the timeline as wave 1 ends, the Data Table as waves 1 and 2 end.
+  const isAnalysisRunning = caseRefreshJob.data?.status === "IN_PROGRESS";
   const isAnalysisRewritingTimeline = caseRefreshRewriting(caseRefreshJob.data, "timeline");
   const isRegeneratingTimeline = timelineRegen.running && !timelineRegen.busy;
-  const isGeneratingTimeline = isRegeneratingTimeline || isAnalysisRewritingTimeline;
+  const isGeneratingTimeline = isRegeneratingTimeline || isAnalysisRunning;
   // The analysis's first wave rewrites the dates; reload the timeline when that wave is over (the
   // tile's own Regenerate reloads it through usePaneRegenerate).
   const wasAnalysisRewritingTimeline = useRef(isAnalysisRewritingTimeline);
@@ -242,7 +246,6 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // invalidations keep it current otherwise). The snapshot refetches constantly, so the tile never
   // spins on `isFetching` — only on its first load.
   const isDataTableLoading = snapshotQuery.isLoading;
-  const isAnalysisRewritingDataTable = caseRefreshRewriting(caseRefreshJob.data, "dataTable");
   const caseRefreshStage = caseRefreshJob.data?.status === "IN_PROGRESS" ? (caseRefreshJob.data.stage ?? "wave1") : null;
   const prevCaseRefreshStage = useRef(caseRefreshStage);
   useEffect(() => {
@@ -439,19 +442,19 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     if (buildsCaseMap) generateCaseMindMap.mutate();
     else void handleGenerateMindMap();
   }, [buildsCaseMap, generateCaseMindMap, handleGenerateMindMap]);
-  const isRegenerating = buildsCaseMap ? isCaseMapRegenerating : isGenerating;
-  const regeneratingLabel = buildsCaseMap && !isBuildingCaseMap && caseMindMap.refreshWillReplace ? caseMapBusyLabel : undefined;
-  // The tile opens the view whenever there's a map, or one is being made, to watch — the same as
-  // Timeline's tile while it generates; only otherwise does a click start a generation.
-  const mindMapTileOpens = Boolean(shownMindMap) || isCaseMapRegenerating || isGenerating;
-  const isMindMapTileBusy = isCaseMapRegenerating || (!showingCaseMap && isGenerating);
-  // The line over the open map while it's being replaced — the current map stays on screen and
-  // usable until then (stale-while-revalidate), so this says that rather than a bare spinner.
-  const mindMapUpdatingNote = !isMindMapTileBusy
+  // The whole case analysis run counts, as in the Terminal's map pane — also when the run keeps the
+  // map (expanded or edited), which then says so instead of "updating".
+  const isMindMapTileBusy = isCaseMapRegenerating || caseMindMap.isRefreshing || (!showingCaseMap && isGenerating);
+  // Something to build a map from: indexed documents (the case map), a chat (the chat-made map), or
+  // a map already there or being built.
+  const mindMapAvailable = hasPrompt || showingCaseMap || isCaseMapRegenerating || readyDocumentCount > 0;
+  // While the map is being written, the open view shows the centered loading state in its place,
+  // as every Terminal pane does; this is its line.
+  const mindMapLoadingLabel = !isMindMapTileBusy
     ? undefined
-    : buildsCaseMap && !isBuildingCaseMap && caseMindMap.refreshWillReplace
-      ? t("workspace.mindMapUpdatingWithAnalysis")
-      : t("workspace.mindMapRegeneratingShowingCurrent");
+    : caseMindMap.isRefreshing && !isBuildingCaseMap
+      ? tTerminal("paneUpdatingWithAnalysis")
+      : tTerminal("paneRegenerating");
 
   // Mind Map generation is request-only — no auto-fire on mount (see the matching removal in
   // consultation-chat.tsx for why: every case was showing the same generic strategy outline
@@ -474,8 +477,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
     !isRecordingAudioOverview && !renderedAudioUrl && (recordAudioOverview.isError || audioOverview?.status === "FAILED");
   // A script nobody recorded yet: one asked for in chat and never rendered.
   const audioScriptOnly = !isRecordingAudioOverview && !audioRecordFailed && !renderedAudioUrl && audioOverview?.status === null;
+  // Something to listen to, or a document for the analysis to make one from.
+  const audioOverviewAvailable = Boolean(audioOverview) || readyDocumentCount > 0 || isGeneratingAudioOverview;
   const audioOverviewStatusLabel = isGeneratingAudioOverview
-    ? t("workspace.audioOverviewGenerating")
+    ? t("workspace.tileUpdating")
     : isRecordingAudioOverview
       ? t("workspace.audioOverviewRecording")
       : formatUpdatedAt(t, audioOverview?.createdAt ?? null);
@@ -583,7 +588,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
         )}
         {expanded && openTile === "audioOverview" && audioOverviewView === "current" && (
           <div className="flex items-center gap-1">
-          <RegenerateButton regen={audioRegen} label={audioOverview ? undefined : t("workspace.audioOverviewGenerateCta")} />
+          <RegenerateButton regen={audioRegen} />
           {renderedAudioUrl && playerBarDismissed && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -646,7 +651,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             />
             {/* Same "already-there data, open directly" shape as Documents above — Decision
              * Records are produced automatically per legal chat turn, nothing to generate here. */}
-            {hasPrompt && (<StudioTile
+            {/* Always shown, like Timeline and Data Table: greyed out with the reason until this
+             * chat has a legal question to have decisions from. */}
+            <StudioTile
               icon={Scale}
               label={t("workspace.decisionsTile")}
               note={
@@ -655,8 +662,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   : undefined
               }
               expanded={expanded}
+              disabled={!hasPrompt}
+              disabledHint={!hasPrompt ? t("workspace.decisionsNeedsChatHint") : undefined}
               onClick={() => openStudioTile("decisions")}
-            />)}
+            />
             {/* Same "open directly" shape as Documents/Timeline/Data Table below — opens the
              * detail view if a map already exists or one is being generated (the view shows the
              * current map with a spinning Regenerate, or the building state), otherwise triggers
@@ -666,31 +675,23 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
              * the case map doesn't need a prompt. With no map yet, a click builds one from the
              * documents when there are any, else falls back to the chat-generated map. Only that
              * last click is ever blocked: sending the chat prompt while another reply is running. */}
-            {/* With a map already there, a run keeps the tile's name and says "Updating…" in the
-             * note — "Generating mind map…" is only for the first one, when there's nothing yet. */}
-            {(hasPrompt || showingCaseMap || isCaseMapRegenerating || readyDocumentCount > 0) && (<StudioTile
+            {/* Mind Map, Timeline, Data Table and Audio Overview show loading the same way: the
+             * tile keeps its name, its icon spins, and the note says "Updating…". */}
+            {/* Always shown: greyed out until there is something to build a map from — indexed
+             * documents (the case map) or a chat (the chat-made map). */}
+            <StudioTile
               icon={isMindMapTileBusy ? Loader2 : Workflow}
               iconSpinning={isMindMapTileBusy}
-              label={
-                isMindMapTileBusy && !shownMindMap
-                  ? isCaseMapRegenerating ? caseMapBusyLabel : t("workspace.mindMapGenerating")
-                  : t("workspace.mindMapTile")
-              }
-              note={isMindMapTileBusy ? (shownMindMap ? t("workspace.tileUpdating") : undefined) : mindMapStatusLabel || undefined}
+              label={t("workspace.mindMapTile")}
+              note={isMindMapTileBusy ? t("workspace.tileUpdating") : mindMapStatusLabel || undefined}
               expanded={expanded}
-              disabled={!mindMapTileOpens && !buildsCaseMap && isMindMapConsultationBusy}
-              disabledHint={!mindMapTileOpens && !buildsCaseMap && isMindMapConsultationBusy ? t("workspace.replyInProgressHint") : undefined}
-              onClick={() => {
-                // While the case analysis runs, a map build would be refused (it is about to build
-                // one itself) — just open the view, which shows the run.
-                if (mindMapTileOpens || caseMindMap.isRefreshing) openStudioTile("mindmap");
-                else if (readyDocumentCount > 0) {
-                  generateCaseMindMap.mutate();
-                  openStudioTile("mindmap");
-                } else void handleGenerateMindMap();
-              }}
-            />)}
-            {/* Unlike Mind Map above, this opens the detail view directly — same "already-there
+              disabled={!mindMapAvailable}
+              disabledHint={!mindMapAvailable ? t("workspace.mindMapNeedsSourceHint") : undefined}
+              // Only opens the view, like Timeline and Data Table: the case analysis builds the map,
+              // and an empty view offers its own "Build from documents" (or chat "Generate").
+              onClick={() => openStudioTile("mindmap")}
+            />
+            {/* Like Mind Map above, this opens the detail view directly — same "already-there
              * data" shape as Documents/Decisions — rather than triggering a generation. The tile
              * still passively reflects isGeneratingTimeline (icon spin + label) when a run is
              * already in progress, but starting one is only ever the open view's own header
@@ -698,13 +699,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <StudioTile
               icon={isGeneratingTimeline ? Loader2 : Clock}
               iconSpinning={isGeneratingTimeline}
-              label={isGeneratingTimeline && timelineEventCount === 0 ? t("workspace.timelineGenerating") : t("workspace.timelineTile")}
+              label={t("workspace.timelineTile")}
               note={
-                timelineEventCount === 0
-                  ? undefined
-                  : isGeneratingTimeline
-                    ? `${t("workspace.timelineEventCount", { count: timelineEventCount })} · ${t("workspace.tileUpdating")}`
-                    : t("workspace.timelineEventCount", { count: timelineEventCount })
+                isGeneratingTimeline
+                  ? t("workspace.tileUpdating")
+                  : timelineEventCount > 0
+                    ? t("workspace.timelineEventCount", { count: timelineEventCount })
+                    : undefined
               }
               expanded={expanded}
               disabled={noDocuments}
@@ -716,19 +717,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
              * current, so a click just opens the table. While the analysis is rewriting its rows,
              * the tile says so in gold, like the map and timeline tiles. */}
             <StudioTile
-              icon={isDataTableLoading || isAnalysisRewritingDataTable ? Loader2 : TableIcon}
-              iconSpinning={isDataTableLoading || isAnalysisRewritingDataTable}
-              label={isDataTableLoading ? t("workspace.dataTableRefreshing") : t("workspace.dataTableTile")}
+              icon={isDataTableLoading || isAnalysisRunning ? Loader2 : TableIcon}
+              iconSpinning={isDataTableLoading || isAnalysisRunning}
+              label={t("workspace.dataTableTile")}
               note={
-                isDataTableLoading
-                  ? undefined
-                  : isAnalysisRewritingDataTable
-                    ? dataTableRows.length > 0
-                      ? `${t("workspace.dataTableFactCount", { count: dataTableRows.length })} · ${t("workspace.tileUpdating")}`
-                      : t("workspace.tileUpdating")
-                    : dataTableRows.length > 0
-                      ? t("workspace.dataTableFactCount", { count: dataTableRows.length })
-                      : undefined
+                isDataTableLoading || isAnalysisRunning
+                  ? t("workspace.tileUpdating")
+                  : dataTableRows.length > 0
+                    ? t("workspace.dataTableFactCount", { count: dataTableRows.length })
+                    : undefined
               }
               expanded={expanded}
               disabled={noDocuments}
@@ -739,16 +736,18 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
              * rather than generating in place first — that view still asks for an explicit
              * "Generate" click before kicking off script generation (see openTile ===
              * "audioOverview" below), so a bare tile click never silently starts a generation. */}
-            {/* Shown once there's something to listen to, or the case has documents for the
+            {/* Always shown: greyed out until there's something to listen to or a document for the
              * analysis to make one from. Opens the view even while one is being written. */}
-            {(hasPrompt || audioOverview || readyDocumentCount > 0) && (<StudioTile
+            <StudioTile
               icon={isGeneratingAudioOverview || isRecordingAudioOverview ? Loader2 : AudioLines}
               iconSpinning={isGeneratingAudioOverview || isRecordingAudioOverview}
-              label={isGeneratingAudioOverview && !audioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewTile")}
-              note={isGeneratingAudioOverview && audioOverview ? t("workspace.tileUpdating") : audioOverviewStatusLabel || undefined}
+              label={t("workspace.audioOverviewTile")}
+              note={audioOverviewStatusLabel || undefined}
               expanded={expanded}
+              disabled={!audioOverviewAvailable}
+              disabledHint={!audioOverviewAvailable ? t("workspace.needsDocumentsHint") : undefined}
               onClick={() => openStudioTile("audioOverview")}
-            />)}
+            />
             {/* Same pattern as Documents above: opens the inline detail view directly rather
              * than generating in place first — CaseBriefContent handles generating the preview
              * once opened. */}
@@ -835,17 +834,14 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           ) : openTile === "caseBrief" ? (
             <CaseBriefContent caseId={caseId} />
           ) : openTile === "mindmap" ? (
-            shownMindMap && (showingCaseMap || consultationId) ? (
+            mindMapLoadingLabel ? (
+              <PaneLoadingState fill>{mindMapLoadingLabel}</PaneLoadingState>
+            ) : shownMindMap && (showingCaseMap || consultationId) ? (
               <div className="flex h-full flex-col gap-2">
                 {(buildsCaseMap ? caseMindMap.buildFailed || generateCaseMindMap.isError : generateError) && (
                   <p className="shrink-0 text-center text-xs text-red-600 dark:text-red-400">
                     {buildsCaseMap ? t("caseMindMap.buildError") : t("workspace.mindMapGenerateError")}
                   </p>
-                )}
-                {mindMapUpdatingNote && (
-                  <div className="shrink-0">
-                    <PaneUpdatingNote>{mindMapUpdatingNote}</PaneUpdatingNote>
-                  </div>
                 )}
                 <div className="min-h-0 flex-1">
                   <MindMap
@@ -856,24 +852,19 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     consultationId={showingCaseMap ? `case:${caseId}` : consultationId ?? undefined}
                     isStale={showingCaseMap ? snapshotQuery.data?.caseMindMap?.isStale : snapshotQuery.data?.mindMap.isStale}
                     staleDetail={showingCaseMap ? caseMindMapStaleDetail(t, snapshotQuery.data?.caseMindMap) : undefined}
-                    regenerating={isRegenerating}
-                    regeneratingLabel={regeneratingLabel}
-                    // Held back while the case analysis runs (it rebuilds the case map itself);
+                    // While the case analysis runs, the line above is the one indicator and
+                    // Regenerate is disabled (it rebuilds the case map itself), as in the Terminal;
                     // a chat-made map (no documents) can still be regenerated through chat.
-                    onRegenerate={buildsCaseMap && caseMindMap.isRefreshing ? undefined : regenerateShownMap}
+                    onRegenerate={regenerateShownMap}
                     expansion={mindMapExpansion}
                     documentNames={showingCaseMap ? documentNames : undefined}
                   />
                 </div>
               </div>
-            ) : readyDocumentCount > 0 || isCaseMapRegenerating ? (
+            ) : readyDocumentCount > 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  {isCaseMapRegenerating ? caseMapBusyLabel : t("caseMindMap.emptyWithDocuments")}
-                </p>
-                {isCaseMapRegenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
-                ) : (
+                <p className="max-w-xs text-sm text-muted-foreground">{t("caseMindMap.emptyWithDocuments")}</p>
+                {(
                   <button
                     type="button"
                     onClick={() => generateCaseMindMap.mutate()}
@@ -928,27 +919,17 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             )
           ) : openTile === "timeline" ? (
             <div className="flex h-full min-h-0 flex-col">
-              {/* Only while the timeline is still empty: once it has events, CaseTimelineView shows
-                  its own "showing the current timeline until it's ready" line — one line, never two. */}
-              {isGeneratingTimeline && timelineEventCount === 0 ? (
-                <div className="shrink-0 px-5 pt-4 sm:px-8">
-                  <PaneUpdatingNote>
-                    {isRegeneratingTimeline ? tTerminal("paneRegenerating") : tTerminal("paneUpdatingWithAnalysis")}
-                  </PaneUpdatingNote>
-                </div>
-              ) : null}
+              {/* CaseTimelineView shows the centered loading state itself while the dates are written. */}
               <div className="min-h-0 flex-1">
                 <CaseTimelineView caseId={caseId} fill hideGenerateButton />
               </div>
             </div>
           ) : openTile === "dataTable" ? (
             <div className="flex h-full min-h-0 flex-col gap-3">
-            {isAnalysisRewritingDataTable ? (
-              <div className="shrink-0">
-                <PaneUpdatingNote>{t("workspace.dataTableUpdatingWithAnalysis")}</PaneUpdatingNote>
-              </div>
-            ) : null}
-            {dataTableRows.length > 0 ? (
+            {/* While the case analysis rewrites these rows, the centered loading state replaces them. */}
+            {isAnalysisRunning ? (
+              <PaneLoadingState fill>{tTerminal("paneUpdatingWithAnalysis")}</PaneLoadingState>
+            ) : dataTableRows.length > 0 ? (
               <div className="overflow-x-auto">
                 {/* Type holds a short label ("Weakness") and Detail a bounded, wrapping sub-line
                  * (see its <td>) — Label holds a full paragraph. Giving all three equal footing (the previous `w-full` +
@@ -992,13 +973,12 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <div className="flex h-full flex-col gap-3">
               <AudioOverviewViewTabs view={audioOverviewView} onChange={setAudioOverviewView} />
               <div className="min-h-0 flex-1">
-                {audioOverviewView === "history" ? <AudioOverviewHistory caseId={caseId} /> : audioOverview ? (
+                {audioOverviewView === "history" ? <AudioOverviewHistory caseId={caseId} /> : isGeneratingAudioOverview ? (
+              <PaneLoadingState fill>
+                {audioRegen.running && !audioRegen.busy ? tTerminal("paneRegenerating") : tTerminal("paneUpdatingWithAnalysis")}
+              </PaneLoadingState>
+            ) : audioOverview ? (
               <div className="flex h-full flex-col gap-3">
-                {isGeneratingAudioOverview ? (
-                  <div className="shrink-0">
-                    <PaneUpdatingNote>{t("workspace.audioOverviewUpdating")}</PaneUpdatingNote>
-                  </div>
-                ) : null}
                 {isRecordingAudioOverview ? (
                   <div
                     role="status"
@@ -1045,38 +1025,15 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
-                {/* Gold-ringed badge anchors both states: static headphones-style icon while idle,
-                 * live equalizer bars while one is being written. */}
                 <div
-                  className={`relative flex h-16 w-16 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/10 ${
-                    isGeneratingAudioOverview ? "shadow-[0_0_24px_-4px] shadow-brand-gold/50" : ""
-                  }`}
+                  className="relative flex h-16 w-16 items-center justify-center rounded-full border border-brand-gold/40 bg-brand-gold/10"
                   aria-hidden="true"
                 >
-                  {isGeneratingAudioOverview ? (
-                    <>
-                      <span className="absolute inset-0 rounded-full border border-brand-gold/50 motion-safe:animate-ping" />
-                      <span className="flex h-6 items-center gap-0.75">
-                        {[0, 0.15, 0.3, 0.45, 0.6].map((delay) => (
-                          <span
-                            key={delay}
-                            className="h-full w-0.75 origin-center rounded-full bg-brand-gold motion-safe:animate-audio-wave"
-                            style={{ animationDelay: `${delay}s` }}
-                          />
-                        ))}
-                      </span>
-                    </>
-                  ) : (
-                    <AudioLines className="h-7 w-7 text-brand-gold" />
-                  )}
+                  <AudioLines className="h-7 w-7 text-brand-gold" />
                 </div>
-                <div className="flex max-w-xs flex-col gap-1.5" role={isGeneratingAudioOverview ? "status" : undefined}>
-                  <p className="text-[15px] font-semibold text-foreground">
-                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGenerating") : t("workspace.audioOverviewAutoEmpty")}
-                  </p>
-                  <p className="text-[13px] leading-relaxed text-muted-foreground">
-                    {isGeneratingAudioOverview ? t("workspace.audioOverviewGeneratingHint") : t("workspace.audioOverviewAutoEmptyHint")}
-                  </p>
+                <div className="flex max-w-xs flex-col gap-1.5">
+                  <p className="text-[15px] font-semibold text-foreground">{t("workspace.audioOverviewAutoEmpty")}</p>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground">{t("workspace.audioOverviewAutoEmptyHint")}</p>
                 </div>
               </div>
             )}

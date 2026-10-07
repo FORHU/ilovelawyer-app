@@ -59,6 +59,7 @@ import {
   useTerminalWorkspacesQuery,
   useUpdateWorkspaceMutation,
   useRenameWorkspaceMutation,
+  useLoadingPanes,
 } from "@/lib/terminal/mutations"
 import type {
   ArrangementValue,
@@ -453,6 +454,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // window; damages alone gets an extra layer here for the live busy/fresh activity indicator
   // (useDamagesActivity, primary-window-only context) on top of the shared headline count.
   const hasAudioOverview = useHasAudioOverview(caseId)
+  // The analysis keeps an edited reconstruction narrative, so that pane doesn't load for it.
+  const loadingPanesRaw = useLoadingPanes(caseId)
+  const reconstructionEdited = !!snapshot.data?.reconstruction?.narrativeEditedAt
+  const reconstructionOwnRun = useAiJobStatus(caseId, "caseReconstruction").data?.status === "IN_PROGRESS"
+  const loadingPanes = useMemo(() => {
+    if (!reconstructionEdited || reconstructionOwnRun || !loadingPanesRaw.has("caseReconstruction")) return loadingPanesRaw
+    const panes = new Set(loadingPanesRaw)
+    panes.delete("caseReconstruction")
+    return panes
+  }, [loadingPanesRaw, reconstructionEdited, reconstructionOwnRun])
   const panelBadges = useMemo((): Partial<Record<PanelId, string>> => {
     const data = snapshot.data
     if (!data) return {}
@@ -972,6 +983,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           allPanels={availablePanels}
           visiblePanelIds={layout.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).map((p) => p.id)}
           panelBadges={panelBadges}
+          loadingPanels={loadingPanes}
           onAddPanel={(id) => {
             // A pane already on a secondary canvas: focus that window instead of re-adding it.
             const screen = layout.panels.find((p) => p.id === id && p.visible)?.screen ?? 0

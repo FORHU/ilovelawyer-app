@@ -28,7 +28,7 @@ import {
   LlmFlag,
   LlmNotReviewed,
   MutationError,
-  PaneUpdatingNote,
+  PaneLoadingState,
   RegenerateButton,
   PanelBody,
   PanelRow,
@@ -137,6 +137,7 @@ export function RatedFindingPanel({
   const refreshJob = useAiJobStatus(caseId, "caseRefresh")
   const updating = findingsJob.data?.status === "IN_PROGRESS" || refreshJob.data?.status === "IN_PROGRESS"
   const regen = usePaneRegenerate(caseId, config.regenerate)
+  const loadingLabel = updating ? t("paneUpdatingWithAnalysis") : regen.running ? t("paneRegenerating") : null
   const queryClient = useQueryClient()
   const prevJobStatus = useRef(findingsJob.data?.status)
   useEffect(() => {
@@ -185,8 +186,11 @@ export function RatedFindingPanel({
         <p className={catalogBlurbClass}>{t(config.introKey)}</p>
         <RegenerateButton regen={regen} />
       </div>
-      {updating ? <PaneUpdatingNote /> : regen.running ? <PaneUpdatingNote>{t("paneRegenerating")}</PaneUpdatingNote> : null}
-
+      {/* While a run writes this pane, the centered loading state replaces its content. */}
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
       {rows.length > 1 ? (
         <TagMixSummary
           catalog
@@ -496,6 +500,8 @@ export function RatedFindingPanel({
         </button>
       </form>
       <MutationError show={create.isError || update.isError || del.isError || todos.isError || flagRisk.isError} />
+        </>
+      )}
     </PanelBody>
   )
 }

@@ -104,10 +104,7 @@
     "addDescription": "무슨 일이 있었는지",
     "addCta": "일정 추가",
     "date": "날짜",
-    "time": "시간",
-    "updatingWithAnalysis": "최신 분석으로 업데이트 중 — 완료될 때까지 현재 타임라인을 표시합니다",
-    "regeneratingShowingCurrent": "다시 생성 중 — 새 타임라인이 준비될 때까지 현재 타임라인을 표시합니다",
-    "generatingFirst": "문서에서 타임라인을 생성하는 중…"
+    "time": "시간"
   },
   "email": {
     "action": "이메일",

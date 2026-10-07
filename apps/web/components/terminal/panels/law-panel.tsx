@@ -36,7 +36,8 @@ import {
   primaryBtnClass,
   secondaryTextClass,
   RegenerateButton,
-  PaneRegenerateNote,
+  PaneLoadingState,
+  usePaneLoadingLabel,
   catalogBlurbClass,
 } from "@/components/terminal/panel-kit"
 import { AuthorityComposer, STANCES } from "@/components/terminal/panels/authority-composer"
@@ -142,6 +143,7 @@ export function LawPanel({
   const { authorities, summary } = snapshot.law
   const grounds = snapshot.findings.filter((finding) => finding.category === "LEGAL_ISSUE")
   const regen = usePaneRegenerate(caseId, "legalIssues")
+  const loadingLabel = usePaneLoadingLabel(regen)
   const groundLabel = (authority: SnapshotAuthority) =>
     grounds.find((ground) => ground.id === authority.findingId)?.label
 
@@ -152,9 +154,12 @@ export function LawPanel({
             pane's Regenerate is Legal Issues' (which updates too). */}
         <div className="flex items-start justify-between gap-3">
           <p className={catalogBlurbClass}>{t("lawGroundsNote", { count: grounds.length })}</p>
-          <RegenerateButton regen={regen} label={t("regenerateGrounds")} hint={t("regenerateGroundsHint")} />
+          <RegenerateButton regen={regen} hint={t("regenerateGroundsHint")} />
         </div>
-        <PaneRegenerateNote regen={regen} />
+      {loadingLabel ? (
+        <PaneLoadingState>{loadingLabel}</PaneLoadingState>
+      ) : (
+        <>
         <AuthoritySummaryHeader summary={summary} />
         <PanelRowList empty={<EmptyNote>{t("noAuthorities")}</EmptyNote>}>
           {authorities.map((authority) => (
@@ -173,6 +178,8 @@ export function LawPanel({
         </PanelRowList>
         <AuthorityComposer caseId={caseId} grounds={grounds} />
         <MutationError show={updateAuthority.isError || removeAuthority.isError} />
+        </>
+      )}
       </div>
       <div className="flex items-baseline justify-between gap-2 border-t border-border pt-4">
         <p className={labelTextClass}>{t("quoteCheck")}</p>

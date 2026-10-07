@@ -23,11 +23,4 @@ describe("caseRefreshRewriting", () => {
     expect(caseRefreshRewriting(job("IN_PROGRESS", "wave2"), "mindMap")).toBe(true)
     expect(caseRefreshRewriting(job("IN_PROGRESS", "wave3"), "mindMap")).toBe(false)
   })
-
-  it("rewrites the Data Table through wave 2 — its witness scores and re-rated damages land there", () => {
-    expect(caseRefreshRewriting(job("IN_PROGRESS"), "dataTable")).toBe(true)
-    expect(caseRefreshRewriting(job("IN_PROGRESS", "wave2"), "dataTable")).toBe(true)
-    expect(caseRefreshRewriting(job("IN_PROGRESS", "wave3"), "dataTable")).toBe(false)
-    expect(caseRefreshRewriting(job("DONE"), "dataTable")).toBe(false)
-  })
 })
