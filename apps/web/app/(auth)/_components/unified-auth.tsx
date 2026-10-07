@@ -152,6 +152,15 @@ function UnifiedAuthContent() {
     router.push(sanitizeNextPath(searchParams.get("next")));
   }
 
+  /** Password sign-in counterpart of finishGoogleAuth — the mutation already navigated
+   * unless the user has no organization, in which case they get the (skippable)
+   * WorkspaceSetup step. */
+  function finishPasswordAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
+    if (data.organizationStatus !== "none") return;
+    setName(data.user.name ?? "");
+    setWorkspaceStep(true);
+  }
+
   function submitGoogle(idToken: string, acceptedTerms: boolean) {
     setError(null);
     googleMutation.mutate(
@@ -259,6 +268,7 @@ function UnifiedAuthContent() {
     loginMutation.mutate(
       { email: signinEmail, password: signinPassword, remember },
       {
+        onSuccess: finishPasswordAuth,
         onError: (err) => {
           // 403 from login() means the account exists but hasn't completed
           // email verification yet — drop them into the same OTP screen
@@ -303,7 +313,7 @@ function UnifiedAuthContent() {
     setError(null);
     updateRequiredPasswordMutation.mutate(
       { email: signinEmail, currentPassword: signinPassword, newPassword: requiredNewPassword, remember },
-      { onError: (err) => setError((err as Error).message) }
+      { onSuccess: finishPasswordAuth, onError: (err) => setError((err as Error).message) }
     );
   }
 

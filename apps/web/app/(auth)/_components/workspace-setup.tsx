@@ -78,6 +78,23 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
     );
   }
 
+  /** Unlike Continue solo, no organization: a private workspace the app never shows as one.
+   * Creating or joining an organization later, from the Organization page, still works —
+   * creating one upgrades this workspace in place. */
+  function handleSkip() {
+    setError(null);
+    createOrgMutation.mutate(
+      { name: defaultOrgName || "Personal workspace", personal: true },
+      {
+        onSuccess: (org) => {
+          setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
+          onDone();
+        },
+        onError: (err) => setError((err as Error).message),
+      }
+    );
+  }
+
   function handleCreateOrg(e: React.SyntheticEvent) {
     e.preventDefault();
     setError(null);
@@ -179,6 +196,27 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
               <TooltipContent>{t(tooltipKey)}</TooltipContent>
             </Tooltip>
           ))}
+
+          {error && (
+            <p className="text-red-500 text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
+              {error}
+            </p>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={handleSkip}
+                className="self-center mt-2 text-muted-foreground text-xs tracking-[1.2px] uppercase font-semibold cursor-pointer bg-transparent border-0 hover:text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {createOrgMutation.isPending ? t("workspace.settingUp") : t("workspace.skip")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("workspace.skipTooltip")}</TooltipContent>
+          </Tooltip>
         </div>
       )}
 

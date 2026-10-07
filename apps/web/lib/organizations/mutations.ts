@@ -6,6 +6,8 @@ import type { OrganizationRecord, OrganizationMemberRecord, OrganizationRole } f
 export interface CreateOrganizationPayload {
   name: string
   packageSku?: string
+  /** Onboarding's "Skip for now" — a private workspace, not an organization. */
+  personal?: boolean
 }
 
 export function useCreateOrganizationMutation() {

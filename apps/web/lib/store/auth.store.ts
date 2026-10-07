@@ -18,6 +18,8 @@ export interface ActiveOrganization {
   role: OrganizationRole
   packageSku: PackageSku
   tenantCode: TenantCode
+  /** The private workspace of a user who skipped onboarding — never shown as an organization. */
+  isPersonal: boolean
 }
 
 interface AuthState {
