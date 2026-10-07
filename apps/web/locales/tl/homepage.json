@@ -104,7 +104,10 @@
     "addDescription": "Ano ang nangyari",
     "addCta": "Magdagdag ng event",
     "date": "Petsa",
-    "time": "Oras"
+    "time": "Oras",
+    "updatingWithAnalysis": "Ina-update gamit ang pinakabagong analysis — ipinapakita ang kasalukuyang timeline hanggang handa na ito",
+    "regeneratingShowingCurrent": "Muling ginagawa — ipinapakita ang kasalukuyang timeline hanggang handa na ang bago",
+    "generatingFirst": "Ginagawa ang timeline mula sa iyong mga dokumento…"
   },
   "email": {
     "action": "Email",

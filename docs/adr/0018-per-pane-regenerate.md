@@ -34,6 +34,18 @@ Rules:
 - **Same protections.** A pane's run replaces what its analysis step would and no more. Only the two that can overwrite a lawyer's work ask first: an edited reconstruction narrative (an in-pane confirm) and an expanded map (MindMap's existing confirm).
 - **Case Strategy and the timeline share one pass.** Both keep a button; each tooltip says it updates the other.
 
+### The Case Workspace's Studio follows the same rules
+
+Studio's Visual Strategy Map, Timeline and Audio Overview are the same pieces of the case, so they behave the same way as their Terminal panes:
+
+- **Timeline:** the header has the same gold Regenerate (`usePaneRegenerate("timeline")`), disabled while the case analysis runs, with the same updating line.
+- **Visual Strategy Map:** Regenerate and "Build from documents" are held back while the case analysis runs; a chat-made map (a case with no documents) can still be regenerated through chat.
+- **Audio Overview:** shows the case's newest overview from any source (`useLatestAudioOverviewQuery`), not a consultation's newest message. Regenerate writes a case-owned overview and records it (`usePaneRegenerate("audioOverview")`); there is no hidden chat turn any more. Recording, "Retry recording" and "Render audio" work as in the Terminal pane.
+
+- **Data Table:** a view over rows the analysis already rewrites (findings, witnesses, damages; deadlines are rule-based), so it has no Regenerate: that would be most of a full run, which is what "Refresh analysis" is. It shows the gold "Updating…" until wave 2 is over (`caseRefreshRewriting(job, "dataTable")`), reloads its rows as wave 1 and wave 2 end, and its tile opens the table without reloading.
+
+The chat-based `useAudioOverview` hook and its step indicator had no users left and were removed.
+
 ## Consequences
 
 - Five new job kinds (`legalIssueRegenerate`, `attackRegenerate`, `defenseRegenerate`, `witnessRefresh`, `damagesRefresh`) and seven new queue kinds, in both repos.

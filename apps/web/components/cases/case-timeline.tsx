@@ -21,6 +21,7 @@ import { timelineDotClass, timelineDotTone, type IngestTone } from "@/lib/termin
 import type { SnapshotDocument } from "@/lib/terminal/types"
 import { dateLocale } from "@/lib/i18n/date-locale"
 import { PaneUpdatingNote } from "@/components/terminal/panel-kit"
+import { caseRefreshRewriting } from "@/lib/terminal/case-refresh-stage"
 
 
 interface CalendarEvent {
@@ -143,7 +144,9 @@ export function CaseTimelineView({
   // feed this same "is it generating right now" flag, or an upload-triggered run never shows the
   // "Generating…" state here despite genuinely being in progress.
   const caseRefreshStatus = useAiJobStatus(caseId, "caseRefresh")
-  const isGenerating = generateStatus.data?.status === "IN_PROGRESS" || caseRefreshStatus.data?.status === "IN_PROGRESS"
+  // Only while the analysis's first wave (which writes the dates) runs — not the rest of the run.
+  const analysisRewriting = caseRefreshRewriting(caseRefreshStatus.data, "timeline")
+  const isGenerating = generateStatus.data?.status === "IN_PROGRESS" || analysisRewriting
 
   // useAiJobStatus only auto-invalidates the case snapshot on an IN_PROGRESS -> DONE transition —
   // this panel reads the timeline via graph-view, not the snapshot, so it refetches those itself.
@@ -156,14 +159,15 @@ export function CaseTimelineView({
     prevGenerateStatus.current = generateStatus.data?.status
   }, [generateStatus.data?.status, caseId, queryClient])
 
-  const prevCaseRefreshStatus = useRef(caseRefreshStatus.data?.status)
+  // The analysis is done with the dates once its first wave ends, minutes before the whole run.
+  const wasAnalysisRewriting = useRef(analysisRewriting)
   useEffect(() => {
-    if (prevCaseRefreshStatus.current === "IN_PROGRESS" && caseRefreshStatus.data?.status === "DONE") {
+    if (wasAnalysisRewriting.current && !analysisRewriting) {
       queryClient.invalidateQueries({ queryKey: terminalKeys.timeline(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
     }
-    prevCaseRefreshStatus.current = caseRefreshStatus.data?.status
-  }, [caseRefreshStatus.data?.status, caseId, queryClient])
+    wasAnalysisRewriting.current = analysisRewriting
+  }, [analysisRewriting, caseId, queryClient])
 
   const [addOpen, setAddOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -281,9 +285,20 @@ export function CaseTimelineView({
             </div>
             {isGenerating ? (
               <PaneUpdatingNote>
-                {caseRefreshStatus.data?.status === "IN_PROGRESS" ? tt("paneUpdatingWithAnalysis") : tt("paneRegenerating")}
+                {analysisRewriting ? tt("paneUpdatingWithAnalysis") : tt("paneRegenerating")}
               </PaneUpdatingNote>
             ) : null}
+          </div>
+        ) : isGenerating && items.length > 0 ? (
+          // Studio's view (no title row; its Regenerate is in Studio's header): the current events
+          // stay on screen while new ones are written, and this line says so — rather than a bare
+          // spinning icon that reads as "still loading" over a finished timeline.
+          <div className="mb-4">
+            <PaneUpdatingNote>
+              {analysisRewriting
+                ? t("timeline.updatingWithAnalysis", { defaultValue: "Updating with the latest analysis — showing the current timeline until it's ready" })
+                : t("timeline.regeneratingShowingCurrent", { defaultValue: "Regenerating — showing the current timeline until the new one is ready" })}
+            </PaneUpdatingNote>
           </div>
         ) : null}
         {isLoading ? (
@@ -293,6 +308,10 @@ export function CaseTimelineView({
         ) : isError ? (
           <p className="py-16 text-center text-sm text-red-500">
             {t("timeline.loadError", { defaultValue: "Couldn't load this timeline." })}
+          </p>
+        ) : items.length === 0 && isGenerating ? (
+          <p className="py-10 text-center text-sm text-muted-foreground" role="status">
+            {t("timeline.generatingFirst", { defaultValue: "Generating the timeline from your documents…" })}
           </p>
         ) : items.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">

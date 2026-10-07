@@ -108,7 +108,10 @@
     "time": "Time",
     "generate": "Generate timeline",
     "generating": "Generating…",
-    "generateError": "Last generation failed."
+    "generateError": "Last generation failed.",
+    "updatingWithAnalysis": "Updating with the latest analysis — showing the current timeline until it's ready",
+    "regeneratingShowingCurrent": "Regenerating — showing the current timeline until the new one is ready",
+    "generatingFirst": "Generating the timeline from your documents…"
   },
   "email": {
     "action": "Email",

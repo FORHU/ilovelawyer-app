@@ -119,8 +119,9 @@ export interface AiJobStatus {
 
 /** Chat Wonder's progress through a locked chat turn: null while it reads the case,
  * "answering" once the reply starts streaming, "extras" once the reply is done and the second
- * model call (the one that writes the audio overview script / mind map) is running. */
-export type AiJobStage = "answering" | "extras"
+ * model call (the one that writes the audio overview script / mind map) is running. The case
+ * analysis ("caseRefresh") reports which wave it's on instead — see case-refresh-stage.ts. */
+export type AiJobStage = "answering" | "extras" | "wave2" | "wave3"
 
 /** ai-job:started/progress/done/failed payload — mirrors ilovelawyer-api's AiJobSocketPayload
  * (lib/socket.ts), pushed to case:<caseId> by AiGenerationLockSvc.begin()/finish(), the single
