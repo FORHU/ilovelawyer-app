@@ -6,7 +6,7 @@ const MAX_VISIBLE_STEPS = 5;
 
 function StepLabel({ step }: { step: TraceStep }) {
   return (
-    <span className="truncate">
+    <span className="line-clamp-2 min-w-0 break-words" title={step.label}>
       {step.label}
       {typeof step.count === "number" && (
         <span className="text-muted-foreground/70">
@@ -30,8 +30,8 @@ export function ResearchTraceList({ steps, variant = "live" }: { steps: TraceSte
     return (
       <ul className="flex flex-col gap-1.5 text-[13px] font-['Inter']">
         {steps.map((step) => (
-          <li key={step.id} className="flex items-center gap-2 text-muted-foreground">
-            <CheckCircle2 className="size-3 shrink-0 text-green-600 dark:text-green-500" aria-hidden="true" />
+          <li key={step.id} className="flex items-start gap-2 text-muted-foreground">
+            <CheckCircle2 className="mt-1 size-3 shrink-0 text-green-600 dark:text-green-500" aria-hidden="true" />
             <StepLabel step={step} />
           </li>
         ))}
@@ -51,12 +51,12 @@ export function ResearchTraceList({ steps, variant = "live" }: { steps: TraceSte
             animate={{ opacity: step.status === "done" ? 0.6 : 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="flex items-center gap-2 text-muted-foreground"
+            className="flex items-start gap-2 text-muted-foreground"
           >
             {step.status === "active" ? (
-              <Loader2 className="size-3 shrink-0 animate-spin text-[#d4af37]" aria-hidden="true" />
+              <Loader2 className="mt-1 size-3 shrink-0 animate-spin text-[#d4af37]" aria-hidden="true" />
             ) : (
-              <CheckCircle2 className="size-3 shrink-0 text-green-600 dark:text-green-500" aria-hidden="true" />
+              <CheckCircle2 className="mt-1 size-3 shrink-0 text-green-600 dark:text-green-500" aria-hidden="true" />
             )}
             <StepLabel step={step} />
           </motion.div>
