@@ -32,6 +32,8 @@ import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 import { dateLocale } from "@/lib/i18n/date-locale";
+import { CaseOrigin, OpenOriginalButton } from "@/components/cases/case-origin";
+import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable";
 
 type DetailTab = "overview" | "workspace";
 
@@ -59,7 +61,7 @@ export default function CaseDetailPage() {
     router.push(`/homepage/case-portfolio/${id}${qs ? `?${qs}` : ""}`);
   };
 
-  const { data: caseRecord } = useCaseQuery(id);
+  const { data: caseRecord, error: caseError } = useCaseQuery(id);
   const { data: snapshot } = useCaseSnapshotQuery(id);
   useMarkCaseOpened(id);
 
@@ -70,6 +72,14 @@ export default function CaseDetailPage() {
   ]
     .filter(Boolean)
     .join(" · ");
+
+  if (isCaseUnavailableError(caseError)) {
+    return (
+      <PageShell>
+        <CaseUnavailable />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell mobileHeaderMerged className="h-screen overflow-hidden">
@@ -108,6 +118,13 @@ export default function CaseDetailPage() {
                       <span className="h-1.5 w-1.5 rounded-full bg-brand-gold shrink-0" aria-hidden="true" />
                       <span className="truncate">{filedLine}</span>
                     </span>
+                  </>
+                )}
+                {caseRecord && (
+                  <>
+                    <span className="hidden h-3 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
+                    <CaseOrigin caseRecord={caseRecord} className="hidden text-xs sm:inline-flex" />
+                    <OpenOriginalButton caseRecord={caseRecord} />
                   </>
                 )}
               </div>

@@ -41,7 +41,7 @@
     "nameRequired": "조직 이름은 비워둘 수 없습니다.",
     "leaveButton": "조직 나가기",
     "leaveCancel": "취소",
-    "leaveConfirm": "정말 이 조직을 나가시겠습니까? 다른 조직에 가입하려면 초대가 필요합니다.",
+    "leaveConfirm": "정말 이 조직을 나가시겠습니까? 여기서 만든 사건은 포트폴리오에 복사되며, 원본은 조직에 남습니다.",
     "leaving": "나가는 중…",
     "transferPrompt": "회원님은 소유자입니다. 나가기 전에 새 소유자를 선택하세요.",
     "transferSelectPlaceholder": "멤버 선택…",
@@ -66,7 +66,7 @@
     "removeTooltip": "이 멤버 제거",
     "removeAriaLabel": "{{name}}님을 조직에서 제거",
     "removeConfirmTitle": "멤버를 제거하시겠습니까?",
-    "removeConfirmBody": "{{name}}님은 즉시 이 조직에 대한 접근 권한을 잃게 됩니다. 이 작업은 되돌릴 수 없습니다.",
+    "removeConfirmBody": "{{name}}님은 즉시 이 조직에 접근할 수 없게 됩니다. 그분이 만든 사건은 여기에 남고, 사본이 그분의 포트폴리오에 보관됩니다. 되돌릴 수 없습니다.",
     "removeConfirmCancel": "취소",
     "removeConfirmCancelTooltip": "멤버를 유지하고 이 대화상자를 닫습니다",
     "removeConfirmContinue": "멤버 제거",
@@ -88,6 +88,13 @@
     "accepting": "수락하는 중…",
     "decline": "거절",
     "declining": "거절하는 중…",
-    "declineConfirm": "정말 이 초대를 거절하시겠습니까?"
+    "declineConfirm": "정말 이 초대를 거절하시겠습니까?",
+    "switchPrompt": "\"{{orgName}}\"에서 {{role}}(으)로 초대했습니다. 수락하면 \"{{currentOrgName}}\"에서 나가게 되며, 해당 조직의 사건과 데이터에 더 이상 접근할 수 없습니다.",
+    "switchOwnerBlocked": "회원님은 \"{{currentOrgName}}\"의 유일한 소유자입니다. 수락하기 전에 다른 구성원을 소유자로 지정하세요.",
+    "switchAccept": "나가고 가입하기",
+    "switchConfirm": "\"{{currentOrgName}}\"에서 나가고 \"{{orgName}}\"에 가입하시겠습니까? \"{{currentOrgName}}\"에서 만든 사건은 포트폴리오에 복사되며, 원본은 그곳에 남습니다.",
+    "switchTitle": "조직 변경",
+    "switchCancelTooltip": "\"{{currentOrgName}}\"에 남고 이 창 닫기",
+    "switchConfirmTooltip": "\"{{currentOrgName}}\"에서 나가고 \"{{orgName}}\"에 가입"
   }
 }

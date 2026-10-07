@@ -14,6 +14,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { PortfolioPill } from "@/components/portfolio-pill";
 import { NotificationBellTrigger } from "@/components/notifications/notification-bell-trigger";
 import { useNotificationBellState } from "@/components/notifications/use-notification-bell-state";
 import { ThemeToggle } from "@/components/theme-provider";
@@ -273,6 +274,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             </TooltipTrigger>
             <TooltipContent>{tTour("guide.open")}</TooltipContent>
           </Tooltip>
+
+          <PortfolioPill />
 
           <span data-tour-id="header-theme" className="inline-flex">
             <ThemeToggle />

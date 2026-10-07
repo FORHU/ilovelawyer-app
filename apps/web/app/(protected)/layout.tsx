@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
-import { useOrganizationsQuery, useMyInviteQuery } from "@/lib/organizations/queries"
+import { useOrganizationsQuery, useMyInviteQuery, usePortfolioQuery } from "@/lib/organizations/queries"
 import { toActiveOrg } from "@/lib/auth/mutations"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
@@ -61,6 +61,10 @@ function CurrentUserSync({
   const user = useAuthStore((s) => s.user)
   const organization = useAuthStore((s) => s.organization)
   const setOrganization = useAuthStore((s) => s.setOrganization)
+  const portfolio = useAuthStore((s) => s.portfolio)
+  const setPortfolio = useAuthStore((s) => s.setPortfolio)
+  const workspace = useAuthStore((s) => s.workspace)
+  const setWorkspace = useAuthStore((s) => s.setWorkspace)
   const hostTenantCode = useTenantCodeHint()
   const { data: currentUser, isError, error } = useCurrentUserQuery()
   // Rehydrates the active org after a fresh tab/reload — the store has no persist
@@ -126,6 +130,26 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, orgs])
 
+  // The portfolio (the user's personal workspace) sits alongside their organization. Someone
+  // who's *in* their personal workspace has no separate portfolio to switch to.
+  const inOrganization = !!organization && !organization.isPersonal
+  const portfolioQuery = usePortfolioQuery({ enabled: inOrganization })
+  const { data: portfolioData } = portfolioQuery
+
+  useEffect(() => {
+    if (!portfolioData || portfolio?.id === portfolioData.id) return
+    setPortfolio(toActiveOrg(portfolioData))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portfolioData, portfolio])
+
+  // A portfolio view restored after a reload that can't be (no portfolio, or now in the personal
+  // workspace itself) falls back to the organization rather than blocking on it.
+  const portfolioUnavailable = !!organization && (organization.isPersonal || portfolioQuery.isError)
+  useEffect(() => {
+    if (workspace === "portfolio" && portfolioUnavailable) setWorkspace("organization")
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace, portfolioUnavailable])
+
   useEffect(() => {
     if (organization || !pendingInvite || pathname === ORGANIZATION_PATH) return
     router.replace(ORGANIZATION_PATH)
@@ -173,8 +197,11 @@ function CurrentUserSync({
   // wait for the invite lookup, which decides between that redirect and WorkspaceSetup.
   const orgResolved = !!organization || (orgsQuery.isFetched && !orgs?.length && inviteQuery.isFetched)
   const orgUnknown = !!accessToken && !!currentUser && !needsApproval && !orgResolved
+  // Viewing the portfolio (restored after a reload): resource requests must go to it, so wait
+  // until it's known rather than let children fetch the organization's data first.
+  const portfolioUnknown = workspace === "portfolio" && inOrganization && !portfolio && !portfolioQuery.isError
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown)
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown || portfolioUnknown)
     return <LoadingScreen />
 
   if (workspaceSetupOpen)

@@ -1,7 +1,36 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useCallback } from "react"
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { organizationKeys } from "@/lib/query-keys"
+import { authKeys, caseKeys, organizationKeys, tourKeys, userKeys } from "@/lib/query-keys"
+import { useAuthStore, type Workspace } from "@/lib/store/auth.store"
 import type { OrganizationRecord, OrganizationMemberRecord, OrganizationRole } from "./queries"
+
+/** Query roots that belong to the signed-in account rather than its organization. */
+const USER_SCOPED_ROOTS = new Set<unknown>([userKeys.all[0], authKeys.all[0], tourKeys.all[0]])
+
+/** For when the user changes organization (leaving one, or accepting an invite that moves them).
+ * Removed, not invalidated: everything cached apart from the account itself was fetched as a
+ * member of the old org (cases, consultations, members...) and would otherwise keep showing for
+ * up to the 5-minute staleTime. That includes the org list, which the protected layout would
+ * read straight back and re-activate the old org from. */
+function removeOrganizationScopedQueries(queryClient: QueryClient) {
+  queryClient.removeQueries({ predicate: (query) => !USER_SCOPED_ROOTS.has(query.queryKey[0]) })
+}
+
+/** Switches between the organization and the portfolio. Query keys aren't per workspace, so
+ * everything fetched for the other one is dropped first and refetched for this one. */
+export function useSwitchWorkspace() {
+  const queryClient = useQueryClient()
+  const setWorkspace = useAuthStore((s) => s.setWorkspace)
+  return useCallback(
+    (workspace: Workspace) => {
+      if (useAuthStore.getState().workspace === workspace) return
+      setWorkspace(workspace)
+      removeOrganizationScopedQueries(queryClient)
+    },
+    [queryClient, setWorkspace],
+  )
+}
 
 export interface CreateOrganizationPayload {
   name: string
@@ -84,6 +113,8 @@ export function useRemoveMemberMutation(organizationId: string) {
       apiFetch<void>(`/api/organizations/${organizationId}/members/${userId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
+      // Their cases now show as created by a former member.
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
     },
   })
 }
@@ -95,10 +126,8 @@ export function useAcceptInviteMutation() {
       apiFetch<OrganizationMemberRecord>(`/api/organizations/invites/${organizationId}/accept`, {
         method: "POST",
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.myInvite() })
-      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
-    },
+    // Accepting can move the user out of the org they were in.
+    onSuccess: () => removeOrganizationScopedQueries(queryClient),
   })
 }
 
@@ -120,9 +149,6 @@ export function useLeaveOrganizationMutation(organizationId: string) {
   return useMutation({
     mutationFn: () =>
       apiFetch<void>(`/api/organizations/${organizationId}/members/me`, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: organizationKeys.members(organizationId) })
-    },
+    onSuccess: () => removeOrganizationScopedQueries(queryClient),
   })
 }

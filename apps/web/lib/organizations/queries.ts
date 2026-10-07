@@ -49,6 +49,22 @@ export interface PendingInviteRecord {
   organization: OrganizationRecord
 }
 
+/** A portfolio copy still being made (or that couldn't be) — finished ones are ordinary cases in
+ * the portfolio, with `copiedFromCaseId` set. */
+export interface CaseCopyRecord {
+  id: string
+  sourceCaseId: string
+  caseName: string
+  sourceOrganizationName: string
+  status: "PENDING" | "RUNNING" | "FAILED"
+  createdAt: string
+}
+
+/** The user's portfolio: their personal workspace, reachable from any organization. */
+export interface PortfolioRecord extends OrganizationWithRole {
+  copies: CaseCopyRecord[]
+}
+
 /** Orgs the current user belongs to, each with their role in it. */
 export function useOrganizationsQuery(options?: { enabled?: boolean }) {
   return useQuery({
@@ -71,6 +87,16 @@ export function useOrganizationMembersQuery(id: string) {
     queryKey: organizationKeys.members(id),
     queryFn: () => apiFetch<OrganizationMemberRecord[]>(`/api/organizations/${id}/members`),
     enabled: !!id,
+  })
+}
+
+/** Polls while copies are still being made, so they turn into cases without a reload. */
+export function usePortfolioQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: organizationKeys.portfolio(),
+    queryFn: () => apiFetch<PortfolioRecord>("/api/organizations/portfolio"),
+    enabled: options?.enabled,
+    refetchInterval: (query) => (query.state.data?.copies.some((c) => c.status !== "FAILED") ? 5000 : false),
   })
 }
 

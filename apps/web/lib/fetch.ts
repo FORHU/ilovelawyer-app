@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/lib/store/auth.store"
+import { activeWorkspaceId, useAuthStore } from "@/lib/store/auth.store"
 import { AUTH_PATHS, versioned } from "@/lib/api-version"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")
@@ -88,15 +88,17 @@ async function attemptRefresh(): Promise<void> {
 }
 
 function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
-  const { accessToken, organization } = useAuthStore.getState()
+  const state = useAuthStore.getState()
+  const { accessToken } = state
+  const workspaceId = activeWorkspaceId(state)
   return {
     // Omitted for FormData bodies — the browser must set its own multipart boundary.
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     // Required by resolve-organization.middleware.ts on resource routes (cases, chat,
     // events, bookmarks, transcriptions, documents) — see
-    // docs/organization-feature-frontend-handoff.md §2.
-    ...(organization ? { "X-Organization-Id": organization.id } : {}),
+    // docs/organization-feature-frontend-handoff.md §2. The portfolio, while it's being viewed.
+    ...(workspaceId ? { "X-Organization-Id": workspaceId } : {}),
     ...(extra as Record<string, string>),
   }
 }

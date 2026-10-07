@@ -27,6 +27,7 @@ export const organizationKeys = {
   detail: (id: string) => [...organizationKeys.details(), id] as const,
   members: (id: string) => [...organizationKeys.detail(id), "members"] as const,
   myInvite: () => [...organizationKeys.all, "my-invite"] as const,
+  portfolio: () => [...organizationKeys.all, "portfolio"] as const,
 }
 
 export const authKeys = {
