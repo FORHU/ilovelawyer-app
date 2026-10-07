@@ -261,6 +261,11 @@
     "ON_POINT": "On point",
     "ADVERSE": "Adverse"
   },
+  "authorityPickGround": "Select a ground…",
+  "authorityUnlinked": "{{count}} not tied to a ground",
+  "authorityGroundsNone": "No grounds pleaded yet",
+  "authorityGroundsSupported": "{{supported}} of {{total}} grounds supported",
+  "authorityGroundsContested": "{{count}} contested",
   "authorityStanceLabel": "How it bears on the case",
   "authorityTitle": "Title",
   "authoritySubtitle": "Subtitle",

@@ -46,7 +46,9 @@ const QUOTE_CLAMP_THRESHOLD = 160
 const JEV_MIN_CONFIDENCE = 0.7
 
 const STANCE_BADGE_TONE = { STATUTE: "neutral", ON_POINT: "success", ADVERSE: "danger" } as const
-const STANCE_BAR_CLASS = { STATUTE: "bg-muted-foreground/40", ON_POINT: "bg-ok", ADVERSE: "bg-danger" } as const
+// Statute is gold (not gray) so the badge reads as "has content"; Badge has no gold tone, so override it.
+const STATUTE_BADGE_CLASS = "bg-brand-gold/15 text-brand-gold"
+const STANCE_BAR_CLASS = { STATUTE: "bg-brand-gold", ON_POINT: "bg-ok", ADVERSE: "bg-danger" } as const
 // Does the quote match its source: VALID yes; INVALID no; ADVERSE the source says the opposite.
 const CITATION_STATUS_TONE: Record<SnapshotCitation["status"], Tone> = {
   VALID: "ok",
@@ -57,7 +59,8 @@ const CITATION_STATUS_TONE: Record<SnapshotCitation["status"], Tone> = {
 const STANCE_SUMMARY_KEY ={ STATUTE: "statute", ON_POINT: "onPoint", ADVERSE: "adverse" } as const
 
 const RING_RADIUS = 15.9155 // circumference ≈ 100, so the dash length is the percentage
-function CoverageRing({ coverage }: { coverage: number | null }) {
+function CoverageRing({ summary }: { summary: SnapshotAuthoritySummary }) {
+  const { coverage, groundsSupported, groundsTotal } = summary
   const pct = coverage === null ? 0 : Math.round(coverage * 100)
   return (
     <div className="relative h-11 w-11 shrink-0">
@@ -78,7 +81,7 @@ function CoverageRing({ coverage }: { coverage: number | null }) {
         )}
       </svg>
       <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold tabular-nums ${pct > 0 ? "" : "text-muted-foreground"}`}>
-        {coverage === null ? "—" : `${pct}%`}
+        {coverage === null ? "—" : `${groundsSupported}/${groundsTotal}`}
       </span>
     </div>
   )
@@ -88,7 +91,7 @@ function AuthoritySummaryHeader({ summary }: { summary: SnapshotAuthoritySummary
   const { t } = useTranslation("terminal")
   return (
     <div className="flex items-center gap-3">
-      <CoverageRing coverage={summary.coverage} />
+      <CoverageRing summary={summary} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted" role="presentation">
           {STANCES.map((stance) => {
@@ -104,6 +107,17 @@ function AuthoritySummaryHeader({ summary }: { summary: SnapshotAuthoritySummary
               {t(`authorityStance.${stance}`)} {summary[STANCE_SUMMARY_KEY[stance]]}
             </span>
           ))}
+        </div>
+        <div className={`${labelTextClass}`}>
+          {summary.coverage === null
+            ? t("authorityGroundsNone")
+            : t("authorityGroundsSupported", { supported: summary.groundsSupported, total: summary.groundsTotal })}
+          {summary.unlinked > 0 && summary.coverage !== null && (
+            <span className="text-warn"> · {t("authorityUnlinked", { count: summary.unlinked })}</span>
+          )}
+          {summary.groundsContested > 0 && (
+            <span className="text-danger"> · {t("authorityGroundsContested", { count: summary.groundsContested })}</span>
+          )}
         </div>
       </div>
     </div>
@@ -321,7 +335,11 @@ function AuthorityRow({
             <p className={labelTextClass}>{[authority.subtitle, authority.citation].filter(Boolean).join(" · ")}</p>
           )}
         </div>
-        <Badge tone={STANCE_BADGE_TONE[authority.stance]} shape="pill">
+        <Badge
+          tone={STANCE_BADGE_TONE[authority.stance]}
+          shape="pill"
+          className={authority.stance === "STATUTE" ? STATUTE_BADGE_CLASS : undefined}
+        >
           {t(`authorityStance.${authority.stance}`)}
         </Badge>
       </div>
