@@ -11,11 +11,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
 import { format, isBefore, isSameDay, isSameMonth, parse, startOfDay, startOfMonth, endOfMonth } from "date-fns";
-import { AlertCircle, Ban, Briefcase, Clock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Ban, Briefcase, CalendarDays, Clock, Lock, Pencil, Plus, RotateCcw, RotateCw, StickyNote, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TimePicker } from "@/components/calendar/time-picker";
 import { toMinutes, toValue } from "@/components/calendar/time-picker-utils";
@@ -28,6 +29,7 @@ import {
   useUpdateNoteMutation,
   useDeleteNoteMutation,
   normalizeTimeString,
+  findOverlappingAppointments,
 } from "@/lib/calendar/mutations";
 import type { Appointment } from "@/lib/calendar/mutations";
 import { useCasesQuery } from "@/lib/cases/mutations";
@@ -39,6 +41,8 @@ const MAX_VISIBLE_PER_DAY = 1;
 
 // Keeps a single pasted wall of text from ballooning the day's appointment/note list —
 // the list container also scrolls (see the CardFooter <ul>) once content exceeds it.
+// Matches EVENT_TITLE_MAX_LENGTH in the API's event validation.
+const TITLE_MAX_LENGTH = 50;
 const DESCRIPTION_MAX_LENGTH = 500;
 const NOTE_MAX_LENGTH = 500;
 
@@ -290,8 +294,18 @@ function PlannerPanel({
   const [noteBody, setNoteBody] = React.useState("");
   const [formError, setFormError] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  // Only used while editing: the day the appointment is being moved to (starts as its own day).
+  const [editDate, setEditDate] = React.useState<Date | undefined>(undefined);
+  const [editDateOpen, setEditDateOpen] = React.useState(false);
+  // The appointment's day before this edit, so it stays pickable even if it's now in the past.
+  const [editOriginalDate, setEditOriginalDate] = React.useState<string | null>(null);
+  const [editOriginalStartTime, setEditOriginalStartTime] = React.useState<string | null>(null);
+  const [editOriginalReminder, setEditOriginalReminder] = React.useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  // Appointments the one being saved clashes with; non-null shows the overlap warning.
+  const [overlaps, setOverlaps] = React.useState<Appointment[] | null>(null);
+  const [isCheckingOverlap, setIsCheckingOverlap] = React.useState(false);
   const { t } = useTranslation("calendar");
   const weekStartsOn = useWeekStartsOn();
 
@@ -301,11 +315,29 @@ function PlannerPanel({
   const updateNote = useUpdateNoteMutation();
   const deleteNote = useDeleteNoteMutation();
   const isSubmitting =
+    isCheckingOverlap ||
     createAppointment.isPending || createNote.isPending || updateAppointment.isPending || updateNote.isPending;
   const casesQuery = useCasesQuery(1, 100);
   const cases = casesQuery.data?.data ?? [];
   const isPastSelected = selectedDate ? isPastDay(selectedDate) : false;
-  const pickerDateLabel = selectedDate ? formatFullDate(selectedDate) : undefined;
+  const formDate = editingId ? editDate : selectedDate;
+  const pickerDateLabel = formDate ? formatFullDate(formDate) : undefined;
+
+  /** True when `lead` minutes before the form's start time is already past — such a reminder
+   * would go out right away instead of at the chosen lead time, so it can't be picked. The
+   * reminder an appointment was saved with stays allowed while its date and time are
+   * untouched: it may simply have been sent already, which shouldn't block other edits. */
+  function isReminderInPast(lead: string): boolean {
+    if (!lead || !formDate) return false;
+    // No start time yet: judge against the day's last minute — a reminder that's already past
+    // even then is past whatever time gets picked (e.g. "1 day before" on today's date).
+    const start = normalizeTimeString(startTime) ?? "23:59";
+    const dateKey = toDateKey(formDate);
+    const untouched =
+      !!editingId && lead === editOriginalReminder && dateKey === editOriginalDate && start === editOriginalStartTime;
+    if (untouched) return false;
+    return new Date(`${dateKey}T${start}`).getTime() - Number(lead) * 60_000 <= Date.now();
+  }
 
   /** Picking a start time pre-fills a one-hour end time when the end is empty or would
    * now fall at/before the start, so the common case is a single pick. */
@@ -327,6 +359,11 @@ function PlannerPanel({
     setCaseId(initialCaseId ?? "");
     setReminderLeadMinutes("");
     setEditingId(null);
+    setEditDate(undefined);
+    setEditOriginalDate(null);
+    setEditOriginalStartTime(null);
+    setEditOriginalReminder(null);
+    setEditDateOpen(false);
   }
 
   function resetNoteFields() {
@@ -352,11 +389,16 @@ function PlannerPanel({
   }
 
   function startEdit(appt: Appointment) {
+    if (isAppointmentPast(appt)) return setFormError(t("errors.pastReadOnly"));
     setFormError(null);
     setEntryType("appointment");
     resetNoteFields();
     setEditingId(appt.id);
-    setTitle(appt.title);
+    setEditDate(parse(appt.date, "yyyy-MM-dd", new Date()));
+    setEditOriginalDate(appt.date);
+    setEditOriginalStartTime(appt.startTime);
+    setEditOriginalReminder(appt.reminderLeadMinutes ? String(appt.reminderLeadMinutes) : "");
+    setTitle(appt.title.slice(0, TITLE_MAX_LENGTH));
     setStartTime(appt.startTime);
     setEndTime(appt.endTime ?? "");
     setDescription((appt.description ?? "").slice(0, DESCRIPTION_MAX_LENGTH));
@@ -377,6 +419,7 @@ function PlannerPanel({
 
   async function setAppointmentStatus(appt: Appointment, status: string) {
     setFormError(null);
+    if (isAppointmentPast(appt)) return setFormError(t("errors.pastReadOnly"));
     try {
       await updateAppointment.mutateAsync({ id: appt.id, status });
       if (editingId === appt.id) resetAppointmentFields();
@@ -396,11 +439,17 @@ function PlannerPanel({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    void submitForm();
+  }
+
+  /** `skipOverlapCheck` is set when the user chose "Save anyway" in the overlap warning. */
+  async function submitForm(skipOverlapCheck = false) {
     setFormError(null);
     if (!selectedDate) return;
-    const date = toDateKey(selectedDate);
+    // Editing an appointment may move it to another day; everything else saves to the selected day.
+    const date = editingId && entryType === "appointment" && editDate ? toDateKey(editDate) : toDateKey(selectedDate);
 
     if (entryType === "note") {
       if (!editingNoteId && isPastSelected) return;
@@ -434,9 +483,21 @@ function PlannerPanel({
     // its own start time checked against the clock, otherwise "today at 12:00" typed at 12:05
     // sails through unchallenged (isAppointmentPast is the same check the list view uses to
     // mark an existing appointment "Done").
-    if (!editingId && isAppointmentPast({ date, startTime: normalizedStart })) {
+    // Past appointments are read-only. The Edit button is hidden for them, but the form can stay
+    // open while the start time passes, so check the saved time again here.
+    if (editingId && editOriginalDate && editOriginalStartTime &&
+        isAppointmentPast({ date: editOriginalDate, startTime: editOriginalStartTime })) {
+      resetAppointmentFields();
+      return setFormError(t("errors.pastReadOnly"));
+    }
+    // Moving an existing appointment (to another day or time) gets the same check as a new one —
+    // nothing can be rescheduled into the past.
+    const movedToAnotherDay = !!editingId && date !== editOriginalDate;
+    const timeChanged = !editingId || movedToAnotherDay || normalizedStart !== editOriginalStartTime;
+    if (timeChanged && isAppointmentPast({ date, startTime: normalizedStart })) {
       return setFormError(t("errors.startTimeInPast"));
     }
+    if (isReminderInPast(reminderLeadMinutes)) return setFormError(t("errors.reminderInPast"));
     // Defense-in-depth: the Edit button is already hidden for cancelled appointments (it's
     // swapped for Restore below), but this form's `editingId` can outlive that — e.g. the
     // appointment gets cancelled in another tab while this form is still open. Re-check here
@@ -444,6 +505,22 @@ function PlannerPanel({
     if (editingId && selectedAppointments.find((appt) => appt.id === editingId)?.status === "cancelled") {
       resetAppointmentFields();
       return setFormError(t("errors.cannotEditCancelled"));
+    }
+    if (!skipOverlapCheck && !(!editingId && isPastSelected)) {
+      setIsCheckingOverlap(true);
+      try {
+        const clashes = await findOverlappingAppointments({
+          date,
+          startTime: normalizedStart,
+          endTime: normalizedEnd,
+          excludeId: editingId ?? undefined,
+        });
+        if (clashes.length > 0) return setOverlaps(clashes);
+      } catch {
+        // The check is only a courtesy warning — if it can't run, don't block the save.
+      } finally {
+        setIsCheckingOverlap(false);
+      }
     }
     try {
       if (editingId) {
@@ -458,6 +535,8 @@ function PlannerPanel({
           caseId,
           reminderLeadMinutes: reminderLeadMinutes ? Number(reminderLeadMinutes) : null,
         });
+        // Follow the appointment to its new day so it doesn't seem to vanish from the list.
+        if (movedToAnotherDay && editDate) onSelectDay(editDate);
       } else {
         if (isPastSelected) return;
         await createAppointment.mutateAsync({
@@ -586,7 +665,18 @@ function PlannerPanel({
                     {appt.description && <p className="mt-0.5 line-clamp-4 break-words">{appt.description}</p>}
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    {isCancelled ? (
+                    {isAppointmentPast(appt) ? (
+                      // Past appointments (done or cancelled) are a record now: no edit,
+                      // cancel or restore, same as past days not taking new items.
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="rounded p-1 opacity-60" aria-label={t("pastReadOnly")} role="img">
+                            <Lock className="size-3.5" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("pastReadOnly")}</TooltipContent>
+                      </Tooltip>
+                    ) : isCancelled ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
@@ -737,13 +827,50 @@ function PlannerPanel({
             </div>
           ) : (
             <>
-              <input
-                type="text"
-                placeholder={t("titlePlaceholder")}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
+              <div className="flex flex-col gap-1">
+                <input
+                  type="text"
+                  placeholder={t("titlePlaceholder")}
+                  aria-label={t("titlePlaceholder")}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
+                  maxLength={TITLE_MAX_LENGTH}
+                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                />
+                <p className="self-end text-xs text-muted-foreground">
+                  {title.length}/{TITLE_MAX_LENGTH}
+                </p>
+              </div>
+              {editingId && (
+                <Popover open={editDateOpen} onOpenChange={setEditDateOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("dateLabel")}
+                      className="flex w-full items-center justify-between gap-2 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-primary data-[state=open]:border-primary"
+                    >
+                      {editDate ? formatFullDate(editDate) : t("dateLabel")}
+                      <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-2">
+                    <Calendar
+                      mode="single"
+                      selected={editDate}
+                      defaultMonth={editDate}
+                      onSelect={(next) => {
+                        if (!next) return;
+                        setEditDate(next);
+                        setEditDateOpen(false);
+                      }}
+                      weekStartsOn={weekStartsOn}
+                      // Past days can't be picked, except the day the appointment is already on.
+                      disabled={(day) => isPastDay(day) && toDateKey(day) !== editOriginalDate}
+                      className="p-0 [--cell-size:--spacing(8)]"
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
               <div className="flex gap-2">
                 <TimePicker
                   value={startTime}
@@ -804,8 +931,14 @@ function PlannerPanel({
                   { value: "4320", label: t("reminder3Days") },
                   { value: "7200", label: t("reminder5Days") },
                   { value: "10080", label: t("reminder1Week") },
-                ]}
+                ].map((option) =>
+                  isReminderInPast(option.value) ? { ...option, disabled: true, hint: t("reminderPassed") } : option
+                )}
               />
+              {/* Picked while valid, then the date/time moved closer: flag it before Save does. */}
+              {isReminderInPast(reminderLeadMinutes) && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">{t("errors.reminderInPast")}</p>
+              )}
               <div className="flex flex-col gap-1">
                 <textarea
                   ref={autoGrowTextarea}
@@ -856,6 +989,58 @@ function PlannerPanel({
             </Tooltip>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+
+    {/* Opens over the appointment form when the new time clashes with others on that day. The
+        form stays open underneath, so "Change time" just drops back to it. */}
+    <Dialog open={overlaps !== null} onOpenChange={(open) => !open && setOverlaps(null)}>
+      <DialogContent className="max-w-sm gap-4 p-5">
+        <DialogHeader className="items-center text-center">
+          <span className="mb-1 flex size-11 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+            <AlertTriangle className="size-5" aria-hidden="true" />
+          </span>
+          <DialogTitle>{t("overlap.title")}</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            {overlaps?.length === 1
+              ? t("overlap.descriptionSingle", { title: overlaps[0]!.title })
+              : t("overlap.descriptionMultiple", { count: overlaps?.length ?? 0 })}
+          </p>
+        </DialogHeader>
+
+        <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+          {overlaps?.map((appt) => (
+            <li
+              key={appt.id}
+              className="flex items-start gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+            >
+              <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{appt.title}</p>
+                <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                  {formatTime12h(appt.startTime)}
+                  {appt.endTime ? ` – ${formatTime12h(appt.endTime)}` : ""}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <DialogFooter className="gap-2 sm:justify-center">
+          <Button type="button" variant="outline" onClick={() => setOverlaps(null)}>
+            {t("overlap.changeTime")}
+          </Button>
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => {
+              setOverlaps(null);
+              void submitForm(true);
+            }}
+          >
+            {t("overlap.saveAnyway")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
     </>
@@ -951,6 +1136,13 @@ export default function CalendarPage() {
 
   const datesWithItems = React.useMemo(() => new Set(itemsByDate.keys()), [itemsByDate]);
 
+  // Cancelled appointments still render (struck through) on the grid, but they aren't
+  // part of the month's schedule, so the header count leaves them out.
+  const activeAppointmentCount = React.useMemo(
+    () => appointments.filter((a) => a.status !== "cancelled").length,
+    [appointments]
+  );
+
   const selectedDateKey = selectedDate ? toDateKey(selectedDate) : null;
   const selectedAppointments = React.useMemo(
     () =>
@@ -976,7 +1168,7 @@ export default function CalendarPage() {
           <p className="min-w-0 text-[13px] text-muted-foreground sm:text-[15px]">{t("subtitle")}</p>
           <span className="flex shrink-0 items-center gap-2 self-center rounded-full border border-border bg-card px-3 py-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground sm:ml-auto">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />
-            {t("monthAppointmentCount", { count: appointments.length })}
+            {t("monthAppointmentCount", { count: activeAppointmentCount })}
           </span>
         </div>
 
