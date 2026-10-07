@@ -29,10 +29,10 @@ export const PANEL_CATEGORY: Partial<Record<PanelId, PaneCategory>> = {
   audioOverview: "strategy",
   theories: "strategy",
   decisions: "strategy",
-  trace: "strategy",
   redTeam: "risk",
   weaknesses: "risk",
   strengths: "risk",
   damages: "risk",
   chat: "team",
+  trace: "team",
 }
