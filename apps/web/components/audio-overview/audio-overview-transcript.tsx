@@ -193,7 +193,8 @@ export function AudioOverviewTranscript({
   // Per-turn marks only line up when they cover every turn (same rule as turnTimings).
   const marksFor = (timings: AudioOverviewMarkTiming[][] | null | undefined, i: number) =>
     timings?.length === turns.length ? timings[i] : undefined
-  const words = (i: number) =>
+  // litTurn: Full script's selected turn stays fully lit — only the spoken word's underline tracks progress.
+  const words = (i: number, litTurn = false) =>
     turnSegments(
       turns[i]!.text,
       turnTimings![i]!,
@@ -202,7 +203,7 @@ export function AudioOverviewTranscript({
       marksFor(wordTimings, i),
       marksFor(sentenceTimings, i),
     ).map(({ text, state }, k) => (
-      <span key={k} className={`transition-colors duration-200 ${WORD_CLASS[state]}`}>
+      <span key={k} className={`transition-colors duration-200 ${WORD_CLASS[litTurn && state === "upcoming" ? "spoken" : state]}`}>
         {text}
       </span>
     ))
@@ -320,9 +321,9 @@ export function AudioOverviewTranscript({
                           }
                         : undefined
                     }
-                    className={`flex gap-2.5 px-3 py-2 transition-opacity duration-300 ${
-                      synced ? "cursor-pointer hover:opacity-100" : ""
-                    } ${synced && !isActive ? "opacity-45" : ""}`}
+                    className={`group flex gap-2.5 px-3 py-2 ${
+                      synced ? "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-gold" : ""
+                    }`}
                   >
                     {synced && (
                       <span className={`w-9 shrink-0 pt-0.5 font-mono text-[10px] ${isActive ? "text-brand-gold" : "text-muted-foreground/60"}`}>
@@ -334,7 +335,12 @@ export function AudioOverviewTranscript({
                         <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-gold">{hostLabel(t, turn.speaker)}</span>
                         {verdict(i)}
                       </div>
-                      <p className="text-[13px] leading-5 text-foreground">{isActive ? words(i) : turn.text}</p>
+                      {/* Only the text fades, so the speaker label and verdict icon stay readable. */}
+                      <p
+                        className={`text-[13px] leading-5 text-foreground transition-opacity duration-300 ${
+                          synced && !isActive ? "opacity-45 group-hover:opacity-100" : ""
+                        }`}
+                      >{isActive ? words(i, true) : turn.text}</p>
                     </div>
                   </div>
                 )
@@ -348,7 +354,7 @@ export function AudioOverviewTranscript({
             onClick={() => setFollow(true)}
             className="absolute right-3 bottom-2.5 h-6.5 rounded-full border border-brand-gold bg-background px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-brand-gold"
           >
-            {t("workspace.audioOverviewBackToCurrent")}
+            {t("workspace.audioOverviewBackToCurrent")} · {position}
           </button>
         )}
       </div>
