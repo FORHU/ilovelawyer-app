@@ -34,9 +34,30 @@ export type ClientSide = "CLAIMANT" | "RESPONDENT"
 
 /** The real shape `/api/my-cases` accepts/returns today. Type of Action and Jurisdiction are
  * not yet supported by the backend — see CONTEXT.md pending section. */
+/** Who created a case, for "Created by". */
+export interface CaseCreator {
+  id: string
+  name: string
+  avatarUrl: string | null
+  /** Still a member of the case's organization (false once they've left or been removed). */
+  isMember: boolean
+}
+
 export interface CaseRecord {
   id: string
-  userId: string
+  /** The creator — attribution only. Null once their account is deleted. */
+  userId: string | null
+  /** The creator, resolved; null once their account is deleted (createdByName still names them). */
+  createdBy?: CaseCreator | null
+  createdByName?: string | null
+  /** Set on a portfolio copy: the case it was copied from when its creator left that organization. */
+  copiedFromCaseId?: string | null
+  copiedFromOrgName?: string | null
+  copiedAt?: string | null
+  /** Repeat copies of the same original ("Copy 2 of 2"); null when there's only one. */
+  copyVersion?: { number: number; total: number } | null
+  /** The original, while the user is back in its organization; null when they can't open it. */
+  original?: { id: string; organizationName: string | null; changedSinceCopy: boolean } | null
   caseName: string
   parties: Party[]
   notes: string | null
@@ -59,12 +80,13 @@ export interface CaseRecord {
  * the calendar/transcription case-linking pickers and the Terminal landing page's case
  * switcher, none of which pass this param — automatically keeps excluding archived cases
  * without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
-export function useCasesQuery(page = 1, limit = 20, search = "", status: CaseStatus = "ACTIVE") {
+export function useCasesQuery(page = 1, limit = 20, search = "", status: CaseStatus = "ACTIVE", createdBy?: string) {
   return useQuery({
-    queryKey: caseKeys.list({ page, limit, search, status }),
+    queryKey: caseKeys.list({ page, limit, search, status, createdBy }),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), status })
       if (search) params.set("search", search)
+      if (createdBy) params.set("createdBy", createdBy)
       return apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?${params.toString()}`)
     },
   })
@@ -75,6 +97,12 @@ export function useCaseQuery(id: string) {
     queryKey: caseKeys.detail(id),
     queryFn: () => apiFetch<CaseRecord>(`/api/my-cases/${id}`),
     enabled: !!id,
+    // A 403/404 means the case isn't in this workspace (see CaseUnavailable) — retrying won't
+    // change that, it only delays saying so.
+    retry: (failureCount, error) => {
+      const status = (error as { status?: number }).status
+      return status !== 403 && status !== 404 && failureCount < 1
+    },
   })
 }
 

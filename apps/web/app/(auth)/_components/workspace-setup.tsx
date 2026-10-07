@@ -80,7 +80,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
 
   /** Unlike Continue solo, no organization: a private workspace the app never shows as one.
    * Creating or joining an organization later, from the Organization page, still works —
-   * creating one upgrades this workspace in place. */
+   * this workspace then stays on as their portfolio. */
   function handleSkip() {
     setError(null);
     createOrgMutation.mutate(

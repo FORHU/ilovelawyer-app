@@ -41,7 +41,7 @@
     "nameRequired": "Organization name can't be empty.",
     "leaveButton": "Leave Organization",
     "leaveCancel": "Cancel",
-    "leaveConfirm": "Are you sure you want to leave this organization? You'll need an invite to join another one.",
+    "leaveConfirm": "Are you sure you want to leave this organization? Cases you created here will be copied to your portfolio; the originals stay with the organization.",
     "leaving": "Leaving…",
     "transferPrompt": "You're the owner. Choose a new owner before you leave.",
     "transferSelectPlaceholder": "Select a member…",
@@ -66,7 +66,7 @@
     "removeTooltip": "Remove this member",
     "removeAriaLabel": "Remove {{name}} from this organization",
     "removeConfirmTitle": "Remove Member?",
-    "removeConfirmBody": "{{name}} will lose access to this organization immediately. This can't be undone.",
+    "removeConfirmBody": "{{name}} will lose access to this organization immediately. Cases they created stay here, and they keep a copy in their portfolio. This can't be undone.",
     "removeConfirmCancel": "Cancel",
     "removeConfirmCancelTooltip": "Keep this member and close this dialog",
     "removeConfirmContinue": "Remove Member",
@@ -88,6 +88,13 @@
     "accepting": "Accepting…",
     "decline": "Decline",
     "declining": "Declining…",
-    "declineConfirm": "Are you sure you want to decline this invite?"
+    "declineConfirm": "Are you sure you want to decline this invite?",
+    "switchPrompt": "\"{{orgName}}\" invited you to join as {{role}}. Accepting removes you from \"{{currentOrgName}}\", and you'll lose access to its cases and data.",
+    "switchOwnerBlocked": "You're the only owner of \"{{currentOrgName}}\". Make another member an owner before you accept.",
+    "switchAccept": "Leave & Join",
+    "switchConfirm": "Leave \"{{currentOrgName}}\" and join \"{{orgName}}\"? Cases you created in \"{{currentOrgName}}\" will be copied to your portfolio; the originals stay there.",
+    "switchTitle": "Switch Organization",
+    "switchCancelTooltip": "Stay in \"{{currentOrgName}}\" and close this dialog",
+    "switchConfirmTooltip": "Leave \"{{currentOrgName}}\" and join \"{{orgName}}\""
   }
 }

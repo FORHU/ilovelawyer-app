@@ -5,12 +5,22 @@ import { useParams } from "next/navigation"
 import { PageShell } from "@/components/page-shell"
 import LegalTerminal from "@/components/terminal/legal-terminal"
 import { TerminalDisplayProvider } from "@/components/terminal/terminal-display-provider"
-import { useMarkCaseOpened } from "@/lib/cases/mutations"
+import { useCaseQuery, useMarkCaseOpened } from "@/lib/cases/mutations"
+import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable"
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart"
 
 export default function TerminalWorkspacePage() {
   const params = useParams<{ caseId: string }>()
   useMarkCaseOpened(params.caseId)
+  const { error: caseError } = useCaseQuery(params.caseId)
+
+  if (isCaseUnavailableError(caseError)) {
+    return (
+      <PageShell>
+        <CaseUnavailable />
+      </PageShell>
+    )
+  }
 
   return (
     <PageShell className="h-screen overflow-hidden">

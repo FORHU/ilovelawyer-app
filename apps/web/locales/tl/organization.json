@@ -41,7 +41,7 @@
     "nameRequired": "Hindi maaaring walang laman ang pangalan ng organisasyon.",
     "leaveButton": "Umalis sa Organisasyon",
     "leaveCancel": "Kanselahin",
-    "leaveConfirm": "Sigurado ka bang gusto mong umalis sa organisasyong ito? Kakailanganin mo ng imbitasyon para sumali sa iba.",
+    "leaveConfirm": "Sigurado ka bang gusto mong umalis sa organisasyong ito? Kokopyahin sa portfolio mo ang mga kasong ginawa mo rito; mananatili sa organisasyon ang mga orihinal.",
     "leaving": "Umaalis…",
     "transferPrompt": "Ikaw ang may-ari. Pumili ng bagong may-ari bago ka umalis.",
     "transferSelectPlaceholder": "Pumili ng miyembro…",
@@ -66,7 +66,7 @@
     "removeTooltip": "Alisin ang miyembrong ito",
     "removeAriaLabel": "Alisin si {{name}} sa organisasyong ito",
     "removeConfirmTitle": "Alisin ang Miyembro?",
-    "removeConfirmBody": "Mawawalan agad ng access si {{name}} sa organisasyong ito. Hindi na ito maibabalik pa.",
+    "removeConfirmBody": "Mawawalan agad ng access si {{name}} sa organisasyong ito. Mananatili rito ang mga kasong ginawa niya, at may kopya siya sa kanyang portfolio. Hindi na ito maibabalik.",
     "removeConfirmCancel": "Kanselahin",
     "removeConfirmCancelTooltip": "Panatilihin ang miyembrong ito at isara ang dialog na ito",
     "removeConfirmContinue": "Alisin ang Miyembro",
@@ -88,6 +88,13 @@
     "accepting": "Tinatanggap…",
     "decline": "Tanggihan",
     "declining": "Tinatanggihan…",
-    "declineConfirm": "Sigurado ka bang gusto mong tanggihan ang imbitasyong ito?"
+    "declineConfirm": "Sigurado ka bang gusto mong tanggihan ang imbitasyong ito?",
+    "switchPrompt": "Inimbitahan ka ng \"{{orgName}}\" na sumali bilang {{role}}. Kapag tinanggap mo, aalis ka sa \"{{currentOrgName}}\" at mawawalan ka ng access sa mga kaso at data nito.",
+    "switchOwnerBlocked": "Ikaw lang ang may-ari ng \"{{currentOrgName}}\". Gawing may-ari ang ibang miyembro bago ka tumanggap.",
+    "switchAccept": "Umalis at Sumali",
+    "switchConfirm": "Aalis sa \"{{currentOrgName}}\" at sasali sa \"{{orgName}}\"? Kokopyahin sa portfolio mo ang mga kasong ginawa mo sa \"{{currentOrgName}}\"; mananatili roon ang mga orihinal.",
+    "switchTitle": "Lumipat ng Organisasyon",
+    "switchCancelTooltip": "Manatili sa \"{{currentOrgName}}\" at isara ang dialog na ito",
+    "switchConfirmTooltip": "Umalis sa \"{{currentOrgName}}\" at sumali sa \"{{orgName}}\""
   }
 }

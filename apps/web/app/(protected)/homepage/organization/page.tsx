@@ -101,19 +101,16 @@ export default function OrganizationPage() {
   const otherMembers = (membersQuery.data ?? []).filter(
     (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
   );
-  // A solo practitioner's auto-created Organization (packageSku "SOLO", see onboarding
-  // WorkspaceSetup.handleContinueSolo) with nobody else in it yet. They can still be invited to
-  // another organization, which means leaving this one (see handleAcceptInvite).
-  const isSoloWithNoTeam = organization?.packageSku === "SOLO" && otherMembers.length === 0;
   // A user who skipped onboarding is in a private personal workspace, not an organization —
   // they get the same create/join screen as someone with none (see Organization.isPersonal).
   const isPersonal = !!organization?.isPersonal;
-  const myInviteQuery = useMyInviteQuery({ enabled: !organization || isPersonal || isSoloWithNoTeam });
+  // Members of an organization can be invited to another one too — they see it as a banner over
+  // their own organization and choose to leave for it or decline (see handleAcceptInvite).
+  const myInviteQuery = useMyInviteQuery();
   // Anyone who belongs to an organization — solo or not — sees it, its members and the invite
-  // controls (inviting someone is how a solo org becomes a team). Showing an Owner "Create your
-  // organization" read as if their organization didn't exist. The setup screen is only for users
-  // with no organization, or a solo user with an invitation waiting to be answered.
-  const showSetup = !organization || isPersonal || (isSoloWithNoTeam && !!myInviteQuery.data);
+  // controls (inviting someone is how a solo org becomes a team). The setup screen is only for
+  // users with no organization.
+  const showSetup = !organization || isPersonal;
   const acceptInviteMutation = useAcceptInviteMutation();
   const declineInviteMutation = useDeclineInviteMutation();
   const createOrgMutation = useCreateOrganizationMutation();
@@ -144,6 +141,7 @@ export default function OrganizationPage() {
   const [pendingRemoval, setPendingRemoval] = useState<{ userId: string; memberName: string } | null>(null);
   const [removeError, setRemoveError] = useState<{ userId: string; message: string } | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showSwitchConfirm, setShowSwitchConfirm] = useState(false);
 
   const canManageOrg = !!organization && ROLE_RANK[organization.role] >= ROLE_RANK.ADMIN;
   const canInvite = canManageOrg;
@@ -152,6 +150,9 @@ export default function OrganizationPage() {
   const acceptedOwnerCount = (membersQuery.data ?? []).filter(
     (m) => m.role === "OWNER" && m.status === "ACCEPTED",
   ).length;
+  // Mirrors the API's leave rule, which accepting an invite elsewhere goes through: the only
+  // owner can't leave teammates behind without handing ownership over first.
+  const mustTransferBeforeLeaving = isOwner && otherMembers.length > 0 && acceptedOwnerCount <= 1;
   // Nobody can select OWNER here — see GRANTABLE_ROLES. An OWNER row only appears in this
   // list at all for the (legacy/edge-case) member who is already an OWNER, so their current
   // value still renders correctly; it lets another owner demote them, never promote into it.
@@ -216,17 +217,18 @@ export default function OrganizationPage() {
   }
 
   useEffect(() => {
-    if (!pendingRoleChange && !pendingRemoval && !showLeaveConfirm) return;
+    if (!pendingRoleChange && !pendingRemoval && !showLeaveConfirm && !showSwitchConfirm) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPendingRoleChange(null);
         setPendingRemoval(null);
         setShowLeaveConfirm(false);
+        setShowSwitchConfirm(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingRoleChange, pendingRemoval, showLeaveConfirm]);
+  }, [pendingRoleChange, pendingRemoval, showLeaveConfirm, showSwitchConfirm]);
 
   function handleStartEditName() {
     if (!organization) return;
@@ -273,36 +275,19 @@ export default function OrganizationPage() {
     }
     setCreateOrgError(null);
 
-    const doCreate = () => {
-      createOrgMutation.mutate(
-        { name: trimmed, packageSku: newOrgPlan ?? undefined },
-        {
-          onSuccess: (org) => {
-            setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
-            setNewOrgName("");
-            setNewOrgPlan(null);
-          },
-          onError: (err) => setCreateOrgError((err as Error).message),
-        },
-      );
-    };
-
-    // A solo practitioner already owns a lightweight auto-created org (see isSoloWithNoTeam) —
-    // membership is one-org-per-user, so creating their real organization means silently
-    // leaving that placeholder first. A user with genuinely no organization skips straight
-    // to creating, and so does a personal workspace, which the API upgrades in place so its
-    // cases and consultations carry into the new organization.
-    if (organization && !isPersonal) {
-      leaveMutation.mutate(undefined, {
-        onSuccess: () => {
-          setOrganization(null);
-          doCreate();
+    // Only reachable with no organization or a personal workspace (see showSetup). A personal
+    // workspace stays behind as the user's portfolio, its cases still theirs alone.
+    createOrgMutation.mutate(
+      { name: trimmed, packageSku: newOrgPlan ?? undefined },
+      {
+        onSuccess: (org) => {
+          setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
+          setNewOrgName("");
+          setNewOrgPlan(null);
         },
         onError: (err) => setCreateOrgError((err as Error).message),
-      });
-    } else {
-      doCreate();
-    }
+      },
+    );
   }
 
   function handleInvite(e: React.FormEvent) {
@@ -323,6 +308,22 @@ export default function OrganizationPage() {
   }
 
   function handleAcceptInvite() {
+    // Accepting moves a member out of their current organization — the API does it in the same
+    // step, so make sure that's what they mean.
+    if (organization && !isPersonal) {
+      setInviteActionError(null);
+      setShowSwitchConfirm(true);
+      return;
+    }
+    acceptInvite();
+  }
+
+  function confirmSwitch() {
+    setShowSwitchConfirm(false);
+    acceptInvite();
+  }
+
+  function acceptInvite() {
     if (!myInviteQuery.data) return;
     const invite = myInviteQuery.data;
     setInviteActionError(null);
@@ -471,7 +472,7 @@ export default function OrganizationPage() {
                     maxLength={120}
                     required
                     aria-required="true"
-                    disabled={createOrgMutation.isPending || leaveMutation.isPending}
+                    disabled={createOrgMutation.isPending}
                     className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:opacity-50"
                   />
                 </div>
@@ -501,7 +502,7 @@ export default function OrganizationPage() {
                             value={sku}
                             checked={newOrgPlan === sku}
                             onChange={() => setNewOrgPlan(sku)}
-                            disabled={createOrgMutation.isPending || leaveMutation.isPending}
+                            disabled={createOrgMutation.isPending}
                             className="peer sr-only"
                           />
                           <span className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/40 px-4 py-3.5 h-full transition-colors hover:border-brand-gold/50 peer-checked:border-brand-gold peer-checked:bg-brand-gold/[0.08] peer-checked:ring-1 peer-checked:ring-brand-gold/30 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold/40 peer-disabled:opacity-50">
@@ -521,10 +522,10 @@ export default function OrganizationPage() {
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    disabled={createOrgMutation.isPending || leaveMutation.isPending}
+                    disabled={createOrgMutation.isPending}
                     className="cursor-pointer w-full sm:w-auto rounded-full bg-brand-gold px-6 py-2.5 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {createOrgMutation.isPending || leaveMutation.isPending ? t("create.creating") : t("create.submit")}
+                    {createOrgMutation.isPending ? t("create.creating") : t("create.submit")}
                   </button>
                 </div>
               </form>
@@ -539,6 +540,53 @@ export default function OrganizationPage() {
           )
         ) : (
           <>
+            {myInviteQuery.data && (
+              <section className="relative overflow-hidden rounded-2xl border border-brand-gold/40 bg-card shadow-xl shadow-black/20 ring-1 ring-black/5 dark:ring-white/[0.06]">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-gold/50 to-transparent" aria-hidden="true" />
+                <div className="px-6 md:px-8 py-5 flex gap-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-amber-600 dark:text-brand-gold">
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
+                    <div>
+                      <h2 className="font-['Libre_Caslon_Text',serif] text-[18px] text-foreground">{t("invite.pendingHeading")}</h2>
+                      <p className="text-[13px] text-muted-foreground mt-1 leading-relaxed">
+                        {t("invite.switchPrompt", {
+                          orgName: myInviteQuery.data.organization.name,
+                          role: myInviteQuery.data.role,
+                          currentOrgName: organization.name,
+                        })}
+                      </p>
+                    </div>
+                    {mustTransferBeforeLeaving && (
+                      <p className="text-[12px] text-amber-700 dark:text-brand-gold leading-relaxed">
+                        {t("invite.switchOwnerBlocked", { currentOrgName: organization.name })}
+                      </p>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        type="button"
+                        onClick={handleAcceptInvite}
+                        disabled={mustTransferBeforeLeaving || acceptInviteMutation.isPending || declineInviteMutation.isPending}
+                        className="cursor-pointer rounded-full bg-brand-gold px-5 py-2 text-[12px] font-semibold uppercase tracking-wider text-brand-gold-foreground shadow-sm shadow-brand-gold/30 transition-colors hover:bg-brand-gold/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {acceptInviteMutation.isPending ? t("invite.accepting") : t("invite.switchAccept")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeclineInvite}
+                        disabled={acceptInviteMutation.isPending || declineInviteMutation.isPending}
+                        className="cursor-pointer rounded-full border border-border px-5 py-2 text-[12px] font-semibold uppercase tracking-wider text-foreground transition-colors hover:bg-foreground/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {declineInviteMutation.isPending ? t("invite.declining") : t("invite.decline")}
+                      </button>
+                    </div>
+                    {inviteActionError && <p className="text-[12px] text-red-600 dark:text-red-400">{inviteActionError}</p>}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Overview */}
             <section className="rounded-2xl border border-border bg-card shadow-xl shadow-black/20 ring-1 ring-black/5 dark:ring-white/[0.06] overflow-hidden">
               <div className="px-6 md:px-8 py-5 border-b border-border">
@@ -1087,6 +1135,80 @@ export default function OrganizationPage() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>Leave this organization</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSwitchConfirm && organization && myInviteQuery.data && (
+        <div
+          className="fixed inset-0 z-(--z-modal) flex items-center justify-center bg-black/50 px-4 py-8"
+          onClick={() => setShowSwitchConfirm(false)}
+          role="presentation"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-card rounded-2xl border border-border shadow-lg overflow-hidden"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="switch-org-title"
+            aria-describedby="switch-org-desc"
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-muted/60">
+              <h2 id="switch-org-title" className="font-['Libre_Caslon_Text',serif] text-lg text-foreground font-normal">
+                {t("invite.switchTitle")}
+              </h2>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowSwitchConfirm(false)}
+                    className="rounded-full p-1.5 -m-1 text-muted-foreground hover:text-foreground hover:bg-muted dark:hover:bg-overlay-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label={t("overview.leaveCancel")}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("overview.leaveCancel")}</TooltipContent>
+              </Tooltip>
+            </div>
+
+            <div className="px-6 py-6 flex gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
+              </div>
+              <p id="switch-org-desc" className="text-sm text-foreground leading-relaxed">
+                {t("invite.switchConfirm", { orgName: myInviteQuery.data.organization.name, currentOrgName: organization.name })}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/40">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowSwitchConfirm(false)}
+                    className="text-xs font-semibold tracking-wider uppercase text-muted-foreground hover:text-foreground px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {t("overview.leaveCancel")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("invite.switchCancelTooltip", { currentOrgName: organization.name })}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={confirmSwitch}
+                    disabled={acceptInviteMutation.isPending}
+                    className="cursor-pointer rounded-xl bg-red-600 px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm shadow-red-600/30 transition-colors hover:bg-red-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {acceptInviteMutation.isPending ? t("invite.accepting") : t("invite.switchAccept")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("invite.switchConfirmTooltip", { orgName: myInviteQuery.data.organization.name, currentOrgName: organization.name })}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>

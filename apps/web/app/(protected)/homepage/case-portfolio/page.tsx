@@ -10,7 +10,8 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X } from "lucide-react";
+import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X, Building2, Lock, AlertTriangle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +37,47 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Pagination } from "@/components/ui/pagination";
 import { dateLocale } from "@/lib/i18n/date-locale";
+import { CaseOrigin, useInPortfolio } from "@/components/cases/case-origin";
+import { useAuthStore } from "@/lib/store/auth.store";
+import { usePortfolioQuery, type CaseCopyRecord } from "@/lib/organizations/queries";
+import { useSwitchWorkspace } from "@/lib/organizations/mutations";
+import { caseKeys } from "@/lib/query-keys";
+
+// Shared look for the page's segmented toggles (workspace, status, creator filter). bg-card/
+// bg-muted collapse to the same flat --background in dark mode (see globals.css), so the track
+// and active pill need explicit dark-mode fills plus a border, or the selection goes invisible.
+const TOGGLE_TRACK = "flex items-center gap-1 rounded-lg border border-border bg-muted dark:bg-white/[0.06] p-1";
+const toggleButton = (active: boolean) =>
+  `inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3.5 h-8 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+    active ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15" : "border-transparent text-muted-foreground hover:text-foreground"
+  }`;
+
+/** Copies still being made, by the organization they come from, plus any that failed. */
+function CopyProgress({ copies }: { copies: CaseCopyRecord[] }) {
+  const { t } = useTranslation("case-portfolio");
+  const inProgress = new Map<string, number>();
+  for (const c of copies) {
+    if (c.status !== "FAILED") inProgress.set(c.sourceOrganizationName, (inProgress.get(c.sourceOrganizationName) ?? 0) + 1);
+  }
+  const failed = copies.filter((c) => c.status === "FAILED");
+  if (inProgress.size === 0 && failed.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2" aria-live="polite">
+      {[...inProgress].map(([orgName, count]) => (
+        <p key={orgName} className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[13px] text-foreground">
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+          {t("portfolioView.copying", { count, orgName })}
+        </p>
+      ))}
+      {failed.map((c) => (
+        <p key={c.id} className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[13px] text-red-700 dark:text-red-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {t("portfolioView.copyFailed", { caseName: c.caseName, orgName: c.sourceOrganizationName })}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 const PAGE_SIZE = 15;
 
@@ -79,6 +121,18 @@ export default function CaseManagerDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<CaseStatus>("ACTIVE");
+  // Organization view only: every case, or just the ones the user created.
+  const [createdByMe, setCreatedByMe] = useState(false);
+  const organization = useAuthStore((s) => s.organization);
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const workspace = useAuthStore((s) => s.workspace);
+  const switchWorkspace = useSwitchWorkspace();
+  // A member of a real organization also has a portfolio to switch to; someone in their
+  // personal workspace is already looking at it.
+  const hasPortfolioTab = !!organization && !organization.isPersonal;
+  const inPortfolio = useInPortfolio();
+  const portfolioQuery = usePortfolioQuery({ enabled: !!organization });
+  const copies = portfolioQuery.data?.copies ?? [];
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
   const [archivingCase, setArchivingCase] = useState<CaseRecord | null>(null);
@@ -102,6 +156,18 @@ export default function CaseManagerDashboard() {
     exitSelectMode();
   };
 
+  const switchCreatedByMe = (next: boolean) => {
+    setCreatedByMe(next);
+    setPage(1);
+    exitSelectMode();
+  };
+
+  const openWorkspace = (next: "organization" | "portfolio") => {
+    switchWorkspace(next);
+    setPage(1);
+    exitSelectMode();
+  };
+
   // Debounce so we don't fire a request on every keystroke while searching across
   // the user's full case set (not just the cases already loaded on this page). Resetting
   // the page here too (rather than in a separate effect keyed off debouncedSearch) keeps
@@ -114,7 +180,13 @@ export default function CaseManagerDashboard() {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const { data, isLoading: isFetching, isError, refetch } = useCasesQuery(page, PAGE_SIZE, debouncedSearch, statusFilter);
+  const { data, isLoading: isFetching, isError, refetch } = useCasesQuery(
+    page,
+    PAGE_SIZE,
+    debouncedSearch,
+    statusFilter,
+    !inPortfolio && createdByMe ? (currentUserId ?? undefined) : undefined,
+  );
   const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
@@ -134,6 +206,16 @@ export default function CaseManagerDashboard() {
   React.useEffect(() => {
     exitSelectMode();
   }, [page, debouncedSearch]);
+
+  // A copy finishing turns it into a real case in the portfolio — refetch the list when the
+  // number still in progress drops.
+  const queryClient = useQueryClient();
+  const copiesInProgress = copies.filter((c) => c.status !== "FAILED").length;
+  const previousInProgress = React.useRef(copiesInProgress);
+  React.useEffect(() => {
+    if (copiesInProgress < previousInProgress.current) queryClient.invalidateQueries({ queryKey: caseKeys.lists() });
+    previousInProgress.current = copiesInProgress;
+  }, [copiesInProgress, queryClient]);
 
   const { mutateAsync: updateCase, isPending: isUpdating } = useUpdateCaseMutation();
   const { mutateAsync: deleteCase, isPending: isDeleting } = useDeleteCaseMutation();
@@ -203,9 +285,11 @@ export default function CaseManagerDashboard() {
   // onboarding empty state; a search that simply came up empty gets the plainer one below.
   // The onboarding state only makes sense for the Active tab — the Archived tab gets its
   // own empty state further below instead.
-  const isPortfolioEmpty = !isLoading && !isError && statusFilter === "ACTIVE" && debouncedSearch === "" && data?.total === 0;
+  const isPortfolioEmpty =
+    !isLoading && !isError && statusFilter === "ACTIVE" && debouncedSearch === "" && !(createdByMe && !inPortfolio) && data?.total === 0;
   const isArchivedEmpty = !isLoading && !isError && statusFilter === "ARCHIVED" && debouncedSearch === "" && data?.total === 0;
-  const isSearchEmpty = !isLoading && !isError && debouncedSearch !== "" && cases.length === 0;
+  const isSearchEmpty =
+    !isLoading && !isError && (debouncedSearch !== "" || (createdByMe && !inPortfolio && statusFilter === "ACTIVE")) && cases.length === 0;
 
   return (
     <PageShell>
@@ -220,7 +304,7 @@ export default function CaseManagerDashboard() {
               {t("title")}
             </h1>
             <p className="text-muted-foreground text-[13px] sm:text-[15px] leading-relaxed max-w-[520px]">
-              {t("listSubtitle")}
+              {inPortfolio ? t("portfolioView.portfolioSubtitle") : t("listSubtitle")}
             </p>
           </div>
 
@@ -239,6 +323,41 @@ export default function CaseManagerDashboard() {
             <TooltipContent>Start a new case intake form</TooltipContent>
           </Tooltip>
         </div>
+
+        {hasPortfolioTab && (
+          <div className={`${TOGGLE_TRACK} self-start`} role="group" aria-label={t("portfolioView.switchLabel")}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openWorkspace("organization")}
+                  aria-pressed={workspace === "organization"}
+                  className={`${toggleButton(workspace === "organization")} max-w-[220px] normal-case tracking-normal text-[12px]`}
+                >
+                  <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{organization.name}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("portfolioView.orgTabTooltip", { orgName: organization.name })}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => openWorkspace("portfolio")}
+                  aria-pressed={workspace === "portfolio"}
+                  className={`${toggleButton(workspace === "portfolio")} normal-case tracking-normal text-[12px]`}
+                >
+                  <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {t("portfolioView.portfolioTab")}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("portfolioView.portfolioTabTooltip")}</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+
+        {inPortfolio && <CopyProgress copies={copies} />}
 
         <div className="flex flex-wrap items-center gap-4">
             <div data-tour-id="cases-search" className="relative w-full sm:max-w-80 flex items-center">
@@ -271,22 +390,14 @@ export default function CaseManagerDashboard() {
             )}
           </div>
 
-          {/* bg-card/bg-muted collapse to the same flat --background in dark mode (see
-           * globals.css), so the track and active pill need explicit dark-mode fills
-           * (dark:bg-white/*) plus a border — otherwise the whole toggle (and which side is
-           * selected) goes invisible in dark mode, leaving bare text with no affordance. */}
-          <div data-tour-id="cases-filters" className="flex items-center gap-1 rounded-lg border border-border bg-muted dark:bg-white/[0.06] p-1">
+          <div data-tour-id="cases-filters" className={TOGGLE_TRACK}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => switchStatusFilter("ACTIVE")}
                   aria-pressed={statusFilter === "ACTIVE"}
-                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3.5 h-8 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-                    statusFilter === "ACTIVE"
-                      ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={toggleButton(statusFilter === "ACTIVE")}
                 >
                   {t("statusToggle.active")}
                 </button>
@@ -299,11 +410,7 @@ export default function CaseManagerDashboard() {
                   type="button"
                   onClick={() => switchStatusFilter("ARCHIVED")}
                   aria-pressed={statusFilter === "ARCHIVED"}
-                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3.5 h-8 text-[11px] font-semibold uppercase tracking-wider transition-colors ${
-                    statusFilter === "ARCHIVED"
-                      ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={toggleButton(statusFilter === "ARCHIVED")}
                 >
                   {t("statusToggle.archived")}
                 </button>
@@ -311,6 +418,27 @@ export default function CaseManagerDashboard() {
               <TooltipContent>Show archived cases</TooltipContent>
             </Tooltip>
           </div>
+
+          {!inPortfolio && (
+            <div className={TOGGLE_TRACK} role="group" aria-label={t("portfolioView.creatorFilterLabel")}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" onClick={() => switchCreatedByMe(false)} aria-pressed={!createdByMe} className={toggleButton(!createdByMe)}>
+                    {t("portfolioView.filterAll")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("portfolioView.filterAllTooltip")}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" onClick={() => switchCreatedByMe(true)} aria-pressed={createdByMe} className={toggleButton(createdByMe)}>
+                    {t("portfolioView.filterMine")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("portfolioView.filterMineTooltip")}</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
 
           {/* Grouped with the status toggle as a sibling, not off on its own — both are
            * compact enough to wrap onto the same line together once the (full-width-on-
@@ -465,6 +593,7 @@ export default function CaseManagerDashboard() {
                         <span className="text-muted-foreground text-[12px] truncate">
                           {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
                         </span>
+                        <CaseOrigin caseRecord={c} />
                       </div>
                     </div>
                   ) : (
@@ -475,6 +604,7 @@ export default function CaseManagerDashboard() {
                       <span className="text-muted-foreground text-[12px] truncate">
                         {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
                       </span>
+                      <CaseOrigin caseRecord={c} />
                     </Link>
                   )}
 
