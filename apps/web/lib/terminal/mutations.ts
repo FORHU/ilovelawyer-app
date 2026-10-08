@@ -5,6 +5,7 @@ import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
+import type { CaseChangeSummary, ChangeSummaryDay } from "@/lib/terminal/change-summary"
 import type {
   Annotation,
   PanelId,
@@ -23,6 +24,7 @@ import type {
   FindingCategory,
   FindingTag,
   HearsayCategory,
+  MissingEvidenceStatus,
   PresetValue,
   PrivilegeStatus,
   ProcedureSourceKind,
@@ -69,6 +71,7 @@ export const terminalKeys = {
     [...terminalKeys.all, "latest-audio-overview", caseId] as const,
   audioOverviewHistory: (caseId: string) =>
     [...terminalKeys.all, "audio-overview-history", caseId] as const,
+  changeSummaries: (caseId: string) => [...terminalKeys.all, "change-summaries", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -104,6 +107,7 @@ export type AiGenerationKind =
   | "adverseSweep"
   | "mindMapExpand"
   | "caseMindMap"
+  | "missingEvidence"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -223,6 +227,7 @@ const PANE_REGENERATE = {
   strategy: { path: "/strategy/refresh", kind: "caseStrategyRefresh" },
   timeline: { path: "/timeline/generate", kind: "timelineGenerate" },
   contradictions: { path: "/evidence/contradictions/scan", kind: "contradictions" },
+  missingEvidence: { path: "/evidence/missing/regenerate", kind: "missingEvidence" },
   legalIssues: { path: "/findings/regenerate", kind: "legalIssueRegenerate", body: { category: "LEGAL_ISSUE" } },
   strengths: { path: "/findings/regenerate", kind: "strengthRegenerate", body: { category: "STRENGTH" } },
   weaknesses: { path: "/findings/regenerate", kind: "weaknessRegenerate", body: { category: "WEAKNESS" } },
@@ -286,6 +291,7 @@ const PANE_JOB_PANEL: Partial<Record<AiGenerationKind, PanelId>> = {
   caseStrategyRefresh: "procedure",
   timelineGenerate: "evidence",
   contradictions: "evidence",
+  missingEvidence: "evidence",
   legalIssueRegenerate: "legalIssues",
   strengthRegenerate: "strengths",
   weaknessRegenerate: "weaknesses",
@@ -429,6 +435,32 @@ export function useCaseSnapshotQuery(caseId: string) {
     enabled: !!caseId,
     staleTime: 0,
     refetchInterval: SNAPSHOT_IDLE_POLL_MS,
+  })
+}
+
+/** One day's change summaries, newest first (up to the API's 50) — the "What changed" modal's
+ * History for the day picked in its date picker. `day` is YYYY-MM-DD in `timeZone`, the viewer's.
+ * Keyed on the newest summary's id, so a run that lands while the modal is open refetches. */
+export function useChangeSummaryHistoryQuery(caseId: string, latestId: string | null, day: string, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "day", day, timeZone, latestId] as const,
+    queryFn: () =>
+      apiFetch<CaseChangeSummary[]>(
+        `/api/my-cases/${caseId}/change-summaries?day=${encodeURIComponent(day)}&tz=${encodeURIComponent(timeZone)}`,
+      ),
+    enabled: !!caseId && !!latestId && !!day,
+    staleTime: 0,
+  })
+}
+
+/** The days the case has change summaries on, in the viewer's time zone, newest first — the
+ * "What changed" modal's date picker. Keyed on the newest summary's id, like the History. */
+export function useChangeSummaryDaysQuery(caseId: string, latestId: string | null, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "days", timeZone, latestId] as const,
+    queryFn: () => apiFetch<ChangeSummaryDay[]>(`/api/my-cases/${caseId}/change-summaries/days?tz=${encodeURIComponent(timeZone)}`),
+    enabled: !!caseId && !!latestId,
+    staleTime: 0,
   })
 }
 
@@ -726,6 +758,22 @@ export function useUpdateContradictionMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+/** A missing-evidence gap's triage. Unlike a contradiction's, this isn't carried over when the
+ * gap is regenerated — see ilovelawyer-api's MissingEvidenceRepo.replaceAiItems. */
+export function useUpdateMissingEvidenceMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: MissingEvidenceStatus; resolutionNote?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/evidence/missing/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }

@@ -66,6 +66,8 @@ export interface CaseRecord {
   /** Which side the lawyer acts for; the AI findings are written from it. Null when not set. */
   clientSide?: ClientSide | null
   status: CaseStatus
+  /** Only the org owner and people with a grant can reach it (ilovelawyer-api #346). */
+  confidential?: boolean
   createdAt: string
   /** Last real activity on the case (edits, documents, chat, decisions, events) — not views. */
   updatedAt: string
@@ -576,8 +578,8 @@ export function useConsultationDocumentsQuery(consultationId: string | undefined
 }
 
 /** Toggles a Case Document's Mark-as-Exhibit flag — the only editable field on a document today.
- * PATCH /api/documents/:id is organization-scoped (no per-case access check), matching how
- * delete already works for this same endpoint family. */
+ * PATCH /api/documents/:id needs edit access to the document's case, same as delete/archive in
+ * this endpoint family (ilovelawyer-api #345) — see canEditCases for who that is. */
 export function useUpdateCaseDocumentMutation() {
   const queryClient = useQueryClient()
   return useMutation({

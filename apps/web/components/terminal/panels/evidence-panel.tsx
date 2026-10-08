@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import { EvidenceContradictions } from "@/components/terminal/panels/evidence-contradictions"
+import { EvidenceMissing } from "@/components/terminal/panels/evidence-missing"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
 import RestoreDocumentModal from "@/components/cases/restore-document-modal"
@@ -28,6 +29,7 @@ import {
   type UserDocument,
 } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
+import { useCanEditCase } from "@/lib/cases/permissions"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
@@ -220,6 +222,9 @@ export function EvidencePanel({
   const { mutate: archiveDocument, isPending: isArchiving, variables: archivingVars } = useArchiveCaseDocumentMutation()
   const { mutate: restoreDocument, isPending: isRestoring, variables: restoringVars } = useUnarchiveCaseDocumentMutation()
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
+  // Archive/restore/delete need edit access to the case (see useCanEditCase); without it the rows
+  // keep only their read actions.
+  const canEdit = useCanEditCase(caseId)
 
   const openDocument =
     snapshot.documents.find((doc) => doc.id === openDocumentId) ?? null
@@ -333,22 +338,24 @@ export function EvidencePanel({
                   // UserDocument carries no page count, so these rows show no size label.
                   doc={{ ...doc, mimeType: doc.mimeType ?? null, pageCount: null }}
                   actions={
-                    <>
-                      <RowAction
-                        label={t("restoreDocument", { documentName: doc.name })}
-                        icon={ArchiveRestore}
-                        tone="ok"
-                        onClick={() => setRestoringDoc(doc)}
-                        isPending={isRestoring && restoringVars?.documentId === doc.id}
-                      />
-                      <RowAction
-                        label={t("removeDocument", { documentName: doc.name })}
-                        icon={Trash2}
-                        tone="danger"
-                        onClick={() => setDeletingDoc(doc)}
-                        isPending={isDeleting && deletingVars?.documentId === doc.id}
-                      />
-                    </>
+                    canEdit ? (
+                      <>
+                        <RowAction
+                          label={t("restoreDocument", { documentName: doc.name })}
+                          icon={ArchiveRestore}
+                          tone="ok"
+                          onClick={() => setRestoringDoc(doc)}
+                          isPending={isRestoring && restoringVars?.documentId === doc.id}
+                        />
+                        <RowAction
+                          label={t("removeDocument", { documentName: doc.name })}
+                          icon={Trash2}
+                          tone="danger"
+                          onClick={() => setDeletingDoc(doc)}
+                          isPending={isDeleting && deletingVars?.documentId === doc.id}
+                        />
+                      </>
+                    ) : null
                   }
                 />
               ))}
@@ -396,13 +403,15 @@ export function EvidencePanel({
                             doc={doc}
                             onOpen={() => setOpenDocumentId(doc.id)}
                             actions={
-                              <RowAction
-                                label={t("archiveDocument", { documentName: doc.name })}
-                                icon={Archive}
-                                tone="warn"
-                                onClick={() => setArchivingDoc(doc)}
-                                isPending={isArchiving && archivingVars?.documentId === doc.id}
-                              />
+                              canEdit ? (
+                                <RowAction
+                                  label={t("archiveDocument", { documentName: doc.name })}
+                                  icon={Archive}
+                                  tone="warn"
+                                  onClick={() => setArchivingDoc(doc)}
+                                  isPending={isArchiving && archivingVars?.documentId === doc.id}
+                                />
+                              ) : null
                             }
                           />
                         ))}
@@ -434,6 +443,11 @@ export function EvidencePanel({
       {/* Moved here from the retired Contradictions pane, so a false conflict can still be dismissed. */}
       <div className="border-t border-border pt-4">
         <EvidenceContradictions caseId={caseId} />
+      </div>
+
+      {/* Beside Contradictions: two documents disagreeing vs. the record saying nothing at all. */}
+      <div className="border-t border-border pt-4">
+        <EvidenceMissing caseId={caseId} items={snapshot.missingEvidence ?? []} />
       </div>
 
       <EvidenceDetailDrawer

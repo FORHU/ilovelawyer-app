@@ -116,7 +116,21 @@ export function useMindMapExpansion(
             ? await editMindMapNode(target.consultationId, { messageId: target.record.messageId, ...change })
             : await editCaseMindMapNode(target.caseId, change);
         settle(result);
-        toast.success(t(`mindMapEdit.${change.op === "add" ? "added" : change.op === "rename" ? "renamed" : "deleted"}`));
+        // NodeEditor renames with the label alone and edits details with the description alone
+        // (the label sent back unchanged), so a description on a rename means the details changed.
+        toast.success(
+          t(
+            `mindMapEdit.${
+              change.op === "add"
+                ? "added"
+                : change.op === "rename"
+                  ? change.description !== undefined
+                    ? "detailsSaved"
+                    : "renamed"
+                  : "deleted"
+            }`,
+          ),
+        );
         return result.editedNodeId ?? change.nodeId;
       } catch (err) {
         const { status, code } = err as { status?: number; code?: string };

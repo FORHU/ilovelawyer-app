@@ -6,6 +6,7 @@ import CustomSelect from "@/components/ui/custom-select";
 import { CharCount } from "@/components/ui/char-count";
 import { PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
 import { useUpdateCaseMutation, type CaseRecord, type Party } from "@/lib/cases/mutations";
+import { useCanEditCase } from "@/lib/cases/permissions";
 
 // Same values the API validates against (PARTY_DESIGNATIONS) and the create/edit-case forms offer.
 const DESIGNATION_OPTIONS = [
@@ -19,10 +20,12 @@ const NEW_PARTY = "new";
 /** The case Overview's Parties card: its header "Add party" action and a body listing the
  * parties with in-place add / edit / remove.
  * The API replaces a case's whole party list on every PATCH, so each save sends the full list —
- * carrying each party's descriptor along, which would otherwise be wiped. */
+ * carrying each party's descriptor along, which would otherwise be wiped. Read-only for a user
+ * who can't edit the case (see useCanEditCase): no add, edit or remove controls. */
 export function useOverviewParties(caseRecord: CaseRecord | undefined) {
   const { t } = useTranslation(["case-portfolio", "create-case"]);
   const update = useUpdateCaseMutation();
+  const canEdit = useCanEditCase(caseRecord?.id);
   // Which row is open in the editor: a party id, NEW_PARTY for the add form, or none.
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -139,7 +142,7 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
   ) : null;
 
   const addButton =
-    caseRecord && editing !== NEW_PARTY ? (
+    canEdit && caseRecord && editing !== NEW_PARTY ? (
       <button
         type="button"
         onClick={() => openEditor()}
@@ -177,30 +180,32 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
                 </span>
               </div>
               {/* Hover-revealed on pointer devices; always shown on touch, where there's no hover. */}
-              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/party:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
-                <button
-                  type="button"
-                  onClick={() => openEditor(p)}
-                  aria-label={t("overview.editParty", { name: p.name })}
-                  title={t("overview.editParty", { name: p.name })}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground transition-colors cursor-pointer"
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    update.reset();
-                    setEditing(null);
-                    setConfirmRemove(p.id);
-                  }}
-                  aria-label={t("overview.removeParty", { name: p.name })}
-                  title={t("overview.removeParty", { name: p.name })}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-danger/10 hover:text-danger transition-colors cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
+              {canEdit && (
+                <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/party:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => openEditor(p)}
+                    aria-label={t("overview.editParty", { name: p.name })}
+                    title={t("overview.editParty", { name: p.name })}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      update.reset();
+                      setEditing(null);
+                      setConfirmRemove(p.id);
+                    }}
+                    aria-label={t("overview.removeParty", { name: p.name })}
+                    title={t("overview.removeParty", { name: p.name })}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-danger/10 hover:text-danger transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
             </div>
             {confirmRemove === p.id && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg bg-danger/10 px-3 py-2">

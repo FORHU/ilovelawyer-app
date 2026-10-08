@@ -21,6 +21,9 @@ import { getRequestOrigin } from "@/lib/tenant-code/get-request-origin";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-host";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
+import { FaqSection } from "@/components/landing/faq-section";
+import { BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
+import { getFaqItems, getFaqLede } from "@/lib/seo/faq";
 
 // The testimonial section is switched off until there are real client quotes to show (the UK
 // one is still a placeholder). Flip to true to bring it back on both tenants.
@@ -66,6 +69,7 @@ function buildStructuredData(tenantCode: TenantCode, origin: string) {
     description,
     areaServed: AREA_SERVED[tenantCode],
     inLanguage: config.locale,
+    publisher: { "@id": `${BRAND_ORIGIN}/#organization` },
   };
 }
 
@@ -135,7 +139,7 @@ export default async function LandingPage() {
     const host = headersList.get("host") ?? "";
     return (
       <div className="flex flex-col min-h-screen w-full bg-background">
-        <LandingNavbar overHero={false} />
+        <LandingNavbar overHero={false} sectionLinks={false} />
         {/* The redesigned navbar is `fixed` (it floats transparently over the hero video on
             the tenant pages below) so it no longer reserves layout space — this page has no
             hero to sit under it, so it needs its own top offset instead. */}
@@ -150,9 +154,15 @@ export default async function LandingPage() {
   const structuredData = buildStructuredData(tenantCode, origin);
   // dangerouslySetInnerHTML is safe here — structuredData is built entirely from this file's
   // own hardcoded TENANT_SEO/config values, never from user input.
+  // Includes the brand Organization/WebSite entity (same @id as on the apex) so every host
+  // reinforces one "ilovelawyer" entity.
   const jsonLdScript = (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify([structuredData, ...brandJsonLd(origin)]) }}
+    />
   );
+  const faqSection = <FaqSection items={getFaqItems(tenantCode)} lede={getFaqLede(tenantCode)} />;
 
   if (tenantCode === "UK") {
     return (
@@ -174,6 +184,7 @@ export default async function LandingPage() {
             <UkTerminalShowcaseSection />
             <UkConsultationSection />
             <UkFirmsSection />
+            {faqSection}
           </main>
           <UkLandingFooter />
         </ScrollSmootherProvider>
@@ -197,6 +208,7 @@ export default async function LandingPage() {
           <TerminalShowcaseSection />
           <ConsultationSection />
           <FirmsSection />
+          {faqSection}
         </main>
         <LandingFooter />
       </ScrollSmootherProvider>
