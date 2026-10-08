@@ -898,6 +898,14 @@
   "officialTextHint": "Optional. Leave it empty and we'll fetch the cited authority's text when we can.",
   "sourceTextShow": "Show the source text it was checked against",
   "sourceTextFetched": "Show the source text (fetched from the cited authority)",
+  "sourceWarning": {
+    "NOT_IN_FORCE": "Not in force",
+    "OUTSIDE_EXTENT": "Outside jurisdiction"
+  },
+  "sourceWarningHint": {
+    "NOT_IN_FORCE": "legislation.gov.uk shows this section as not in force or repealed",
+    "OUTSIDE_EXTENT": "This section doesn't extend to the case's legal system"
+  },
   "verifying": "Verifying…",
   "addDetails": "Add details",
   "hideDetails": "Hide details",

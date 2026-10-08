@@ -289,6 +289,9 @@ export interface SnapshotCitation {
   officialTextSource?: "LAWYER" | "PH_LAW" | "UK_LEGISLATION" | "UK_JUDGMENT" | null
   /** Where in that authority: "s. 13", "para_37". */
   officialTextRef?: string | null
+  /** What's wrong with relying on the cited UK Act section here (ilovelawyer-api #365) — advisory,
+   * separate from `status`, which is only about whether the quote matches. */
+  sourceWarnings?: ("NOT_IN_FORCE" | "OUTSIDE_EXTENT")[]
   status: "VALID" | "INVALID" | "UNVERIFIED" | "ADVERSE"
   notes: string | null
   /** Separate from `status` (does the quote match the source): does the cited authority itself

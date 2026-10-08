@@ -534,6 +534,12 @@ function CitationRow({
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1">
           <TonePill tone={tone}>{t(`citationStatus.${citation.status}`)}</TonePill>
+          {/* About the cited law itself, not the quote — the notes below say which section and why. */}
+          {citation.sourceWarnings?.map((code) => (
+            <TonePill key={code} tone="warn" title={t(`sourceWarningHint.${code}`)}>
+              {t(`sourceWarning.${code}`)}
+            </TonePill>
+          ))}
           {citation.propositionType && (
             <span className={metaClass}>
               <Quote size={10} aria-hidden="true" />
