@@ -19,6 +19,8 @@ export interface CaseAccessPerson {
 }
 
 export interface CaseAccessList {
+  /** A confidential case (#346): only the org OWNER and people with a grant can reach it. */
+  confidential: boolean
   /** What the caller may do on this case, from the API's own rule (includes per-case grants). */
   canEdit: boolean
   canManage: boolean
@@ -26,24 +28,36 @@ export interface CaseAccessList {
 }
 
 /** What the sharing panel shows per person.
- * - `org-admin`: OWNER/ADMIN of the organization — full access through their role, not a grant,
- *   so there's nothing to change or revoke here.
- * - Otherwise the level comes from their grant. No grant (or a VIEW grant) is "view": every
- *   accepted member can read the firm's cases today. `granted` tells an explicit grant apart from
- *   access the organization gives, so revoking one doesn't look like it did nothing. */
-export type AccessLevel = "view" | "edit" | "manage"
+ * - `org-admin`: access through their org role, not a grant, so there's nothing here to change or
+ *   revoke — the OWNER always, and an ADMIN unless the case is confidential.
+ * - `grant`: their level comes from a grant on this case.
+ * - `organization`: an ordinary case's view access, which every accepted member has.
+ * - `walled`: a confidential case they have no grant on, so no access at all.
+ * `granted` tells an explicit grant apart from the rest, so revoking one doesn't look like it did
+ * nothing. */
+export type AccessLevel = "none" | "view" | "edit" | "manage"
+export type AccessSource = "org-admin" | "grant" | "organization" | "walled"
 
-export function accessOf(person: Pick<CaseAccessPerson, "orgRole" | "grant">): {
-  source: "org-admin" | "grant" | "organization"
-  level: AccessLevel
-  granted: boolean
-} {
-  if (person.orgRole === "OWNER" || person.orgRole === "ADMIN") return { source: "org-admin", level: "manage", granted: false }
-  const level: AccessLevel = person.grant === "ADMIN" ? "manage" : person.grant === "EDIT" ? "edit" : "view"
-  return { source: person.grant ? "grant" : "organization", level, granted: !!person.grant }
+const GRANT_LEVEL: Record<CasePermission, AccessLevel> = { VIEW: "view", EDIT: "edit", ADMIN: "manage" }
+
+export function accessOf(
+  person: Pick<CaseAccessPerson, "orgRole" | "grant">,
+  confidential = false,
+): { source: AccessSource; level: AccessLevel; granted: boolean } {
+  const byRole = person.orgRole === "OWNER" || (person.orgRole === "ADMIN" && !confidential)
+  if (byRole) return { source: "org-admin", level: "manage", granted: false }
+  if (person.grant) return { source: "grant", level: GRANT_LEVEL[person.grant], granted: true }
+  return confidential ? { source: "walled", level: "none", granted: false } : { source: "organization", level: "view", granted: false }
 }
 
-export const LEVEL_TO_PERMISSION: Record<Exclude<AccessLevel, "view">, CasePermission> = { edit: "EDIT", manage: "ADMIN" }
+/** The grant behind each level a manager can pick. "none" (and, on an ordinary case, "view" —
+ * everyone in the organization already has it) means no grant at all. */
+export function permissionFor(level: AccessLevel, confidential: boolean): CasePermission | null {
+  if (level === "manage") return "ADMIN"
+  if (level === "edit") return "EDIT"
+  if (level === "view" && confidential) return "VIEW"
+  return null
+}
 
 export function useCaseAccessQuery(caseId: string | undefined) {
   return useQuery({
@@ -79,5 +93,23 @@ export function useRevokeCaseAccessMutation() {
       await apiFetchRaw(`/api/my-cases/${caseId}/access/${userId}`, { method: "DELETE" })
     },
     onSuccess: (_data, { caseId }) => invalidate(caseId),
+  })
+}
+
+export function useSetConfidentialMutation() {
+  const queryClient = useQueryClient()
+  const invalidate = useInvalidateAccess()
+  return useMutation({
+    mutationFn: ({ caseId, confidential }: { caseId: string; confidential: boolean }) =>
+      apiFetch<{ confidential: boolean }>(`/api/my-cases/${caseId}/confidential`, {
+        method: "PATCH",
+        body: JSON.stringify({ confidential }),
+      }),
+    onSuccess: (_data, { caseId }) => {
+      invalidate(caseId)
+      // The badge on the case page and the lock in the case list.
+      queryClient.invalidateQueries({ queryKey: caseKeys.detail(caseId) })
+      queryClient.invalidateQueries({ queryKey: caseKeys.lists() })
+    },
   })
 }

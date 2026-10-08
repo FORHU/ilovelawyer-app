@@ -55,6 +55,11 @@ const toggleButton = (active: boolean) =>
     active ? "bg-card border-border text-foreground shadow-sm dark:bg-white/15" : "border-transparent text-muted-foreground hover:text-foreground"
   }`;
 
+/** Marks a confidential case (ilovelawyer-api #346) in the list. */
+function ConfidentialLock({ label }: { label: string }) {
+  return <Lock className="h-3 w-3 shrink-0 text-brand-gold" aria-label={label} role="img" />;
+}
+
 /** Copies still being made, by the organization they come from, plus any that failed. */
 function CopyProgress({ copies }: { copies: CaseCopyRecord[] }) {
   const { t } = useTranslation("case-portfolio");
@@ -602,8 +607,9 @@ export default function CaseManagerDashboard() {
                         className="h-4 w-4 shrink-0 rounded border-border accent-brand-gold"
                       />
                       <div className="min-w-0 flex flex-col gap-1">
-                        <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
-                          {c.caseName}
+                        <span className="flex min-w-0 items-center gap-1.5 font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground">
+                          <span className="truncate">{c.caseName}</span>
+                          {c.confidential && <ConfidentialLock label={t("confidentialTooltip")} />}
                         </span>
                         <span className="text-muted-foreground text-[12px] truncate">
                           {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
@@ -613,8 +619,9 @@ export default function CaseManagerDashboard() {
                     </div>
                   ) : (
                     <Link href={`/homepage/case-portfolio/${c.id}`} className="min-w-0 flex flex-col gap-1">
-                      <span className="font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground truncate">
-                        {c.caseName}
+                      <span className="flex min-w-0 items-center gap-1.5 font-['Libre_Caslon_Text'] text-[15px] sm:text-[16px] leading-tight text-foreground">
+                        <span className="truncate">{c.caseName}</span>
+                        {c.confidential && <ConfidentialLock label={t("confidentialTooltip")} />}
                       </span>
                       <span className="text-muted-foreground text-[12px] truncate">
                         {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}

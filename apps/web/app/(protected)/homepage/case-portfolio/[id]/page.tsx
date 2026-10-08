@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -135,6 +135,17 @@ export default function CaseDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
+                  {caseRecord?.confidential && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[9.5px] font-semibold tracking-[1px] uppercase text-brand-gold border border-brand-gold/40 rounded-md px-1.5 py-0.5">
+                          <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+                          {t("confidentialBadge")}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("confidentialTooltip")}</TooltipContent>
+                    </Tooltip>
+                  )}
                   {caseRecord?.status === "ARCHIVED" && (
                     <>
                       <span className="shrink-0 text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
