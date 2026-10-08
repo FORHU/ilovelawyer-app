@@ -20,6 +20,7 @@ export function DocumentFileCard({
   selectable = false,
   selected = false,
   onToggleSelect,
+  readOnly = false,
 }: {
   doc: UserDocument
   onPreview: () => void
@@ -38,6 +39,9 @@ export function DocumentFileCard({
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: () => void
+  /** For a user who can't edit the case (see canEditCases): no archive/delete buttons, and the
+   * exhibit flag shows but can't be changed. */
+  readOnly?: boolean
 }) {
   const { t } = useTranslation("case-portfolio")
   const isArchived = doc.status === "ARCHIVED"
@@ -79,7 +83,7 @@ export function DocumentFileCard({
             <FileText className="h-4 w-4" aria-hidden="true" />
           </span>
         )}
-        {!selectable && (
+        {!selectable && !readOnly && (
           <div className="flex shrink-0 items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -156,7 +160,7 @@ export function DocumentFileCard({
                   <input
                     type="checkbox"
                     checked={doc.isExhibit}
-                    disabled={isTogglingExhibit}
+                    disabled={isTogglingExhibit || readOnly}
                     onChange={(e) => onToggleExhibit(e.target.checked)}
                     aria-label={t("detail.markAsExhibit", { documentName: doc.name })}
                     className="h-3.5 w-3.5 rounded border-border accent-brand-gold"

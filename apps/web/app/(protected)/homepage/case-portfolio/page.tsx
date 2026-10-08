@@ -39,6 +39,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import { CaseOrigin, useInPortfolio } from "@/components/cases/case-origin";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCanEditCases } from "@/lib/cases/permissions";
 import { usePortfolioQuery, type CaseCopyRecord } from "@/lib/organizations/queries";
 import { useSwitchWorkspace } from "@/lib/organizations/mutations";
 import { caseKeys } from "@/lib/query-keys";
@@ -133,6 +134,9 @@ export default function CaseManagerDashboard() {
   // personal workspace is already looking at it.
   const hasPortfolioTab = !!organization && !organization.isPersonal;
   const inPortfolio = useInPortfolio();
+  // Rename/archive/restore/delete need OWNER/ADMIN in an organization (see canEditCases) — a
+  // MANAGER or MEMBER gets neither the row menu nor bulk select, instead of actions that 404.
+  const canEdit = useCanEditCases();
   const portfolioQuery = usePortfolioQuery({ enabled: !!organization });
   const copies = portfolioQuery.data?.copies ?? [];
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
@@ -455,7 +459,7 @@ export default function CaseManagerDashboard() {
            * mobile) search box above has taken its own line. The full bulk-action bar below
            * (checkbox/count/archive/cancel) is different enough — and wide enough — that it
            * still expands into its own row instead of joining this cluster. */}
-          {!isLoading && !isError && cases.length > 0 && !selectMode && (
+          {canEdit && !isLoading && !isError && cases.length > 0 && !selectMode && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -478,7 +482,7 @@ export default function CaseManagerDashboard() {
          * it clears the selection), so a second control for the same thing was redundant; the
          * archive/restore button now sits in the space that freed up, back on the one row.
          * Cancel (X) is pinned to the card's own top-right corner rather than sitting inline. */}
-        {!isLoading && !isError && cases.length > 0 && selectMode && (
+        {canEdit && !isLoading && !isError && cases.length > 0 && selectMode && (
           <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 pr-9 dark:bg-overlay-hover/40">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -674,50 +678,52 @@ export default function CaseManagerDashboard() {
                         </Tooltip>
                       </div>
 
-                      <div className="flex justify-end">
-                        <DropdownMenu>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 data-[state=open]:bg-background data-[state=open]:text-foreground"
-                                  aria-label={t("rowActions", { caseName: c.caseName })}
-                                >
-                                  <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
-                                </button>
-                              </DropdownMenuTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("rowActions", { caseName: c.caseName })}</TooltipContent>
-                          </Tooltip>
-                          <DropdownMenuContent>
-                            {c.status === "ARCHIVED" ? (
-                              <>
-                                <DropdownMenuItem onSelect={() => unarchiveCase(c.id)}>
-                                  <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
-                                  {t("unarchiveCaseCta")}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem variant="destructive" onSelect={() => setDeletingCase(c)}>
-                                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                                  {t("editModal.deleteCase")}
-                                </DropdownMenuItem>
-                              </>
-                            ) : (
-                              <>
-                                <DropdownMenuItem onSelect={() => setEditingCase(c)}>
-                                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
-                                  {t("editModal.editCase")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setArchivingCase(c)}>
-                                  <Archive className="w-3.5 h-3.5" aria-hidden="true" />
-                                  {t("archiveCaseCta")}
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      {canEdit && (
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="flex h-11 w-11 md:h-8 md:w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 data-[state=open]:bg-background data-[state=open]:text-foreground"
+                                    aria-label={t("rowActions", { caseName: c.caseName })}
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>{t("rowActions", { caseName: c.caseName })}</TooltipContent>
+                            </Tooltip>
+                            <DropdownMenuContent>
+                              {c.status === "ARCHIVED" ? (
+                                <>
+                                  <DropdownMenuItem onSelect={() => unarchiveCase(c.id)}>
+                                    <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
+                                    {t("unarchiveCaseCta")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem variant="destructive" onSelect={() => setDeletingCase(c)}>
+                                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                    {t("editModal.deleteCase")}
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                <>
+                                  <DropdownMenuItem onSelect={() => setEditingCase(c)}>
+                                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                                    {t("editModal.editCase")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => setArchivingCase(c)}>
+                                    <Archive className="w-3.5 h-3.5" aria-hidden="true" />
+                                    {t("archiveCaseCta")}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

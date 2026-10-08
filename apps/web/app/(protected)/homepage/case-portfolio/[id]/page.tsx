@@ -28,6 +28,7 @@ import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCanEditCases } from "@/lib/cases/permissions";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
@@ -44,6 +45,7 @@ export default function CaseDetailPage() {
   const searchParams = useSearchParams();
   const id = params.id;
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
+  const canEdit = useCanEditCases();
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
@@ -136,7 +138,7 @@ export default function CaseDetailPage() {
                       <span className="shrink-0 text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
                         {t("archivedBadge")}
                       </span>
-                      <UnarchiveButton id={id} caseName={caseRecord.caseName} />
+                      {canEdit && <UnarchiveButton id={id} caseName={caseRecord.caseName} />}
                     </>
                   )}
                 </div>
@@ -202,6 +204,7 @@ export default function CaseDetailPage() {
 function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
+  const canEdit = useCanEditCases();
   return (
     <label className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
       <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
@@ -209,7 +212,7 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
       </span>
       <select
         value={value ?? ""}
-        disabled={isPending}
+        disabled={isPending || !canEdit}
         onChange={(e) => updateCase({ id, payload: { clientSide: (e.target.value || null) as ClientSide | null } })}
         className="h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground disabled:opacity-50"
       >
@@ -225,6 +228,7 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
 function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | undefined }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
+  const canEdit = useCanEditCases();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -240,6 +244,14 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
     if (!trimmed || trimmed === caseName) return;
     updateCase({ id, payload: { caseName: trimmed } });
   };
+
+  const heading = (
+    <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
+      {caseName ?? "…"}
+    </h1>
+  );
+
+  if (!canEdit) return <div className="min-w-0">{heading}</div>;
 
   if (isEditing) {
     return (
@@ -273,9 +285,7 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
           onClick={startEditing}
           className="group/title flex min-w-0 items-center gap-1 text-left cursor-text"
         >
-          <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
-            {caseName ?? "…"}
-          </h1>
+          {heading}
           <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 transition-opacity hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground md:opacity-0 md:group-hover/title:opacity-100">
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
