@@ -16,5 +16,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      // Not an HTML page — listed so crawlers that discover URLs via the sitemap (rather
+      // than only checking well-known paths like robots.txt) also find this one. See
+      // public/llms.txt.
+      url: `${origin}/llms.txt`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.1,
+    },
   ]
 }
