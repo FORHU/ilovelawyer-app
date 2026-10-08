@@ -218,6 +218,28 @@ export interface SnapshotContradiction {
   confidence: number
 }
 
+export type MissingEvidenceSeverity = "CRITICAL" | "MODERATE" | "MINOR"
+export type MissingEvidenceStatus = "OPEN" | "RESOLVED" | "DISMISSED"
+
+/** One thing the case's documents don't establish (ilovelawyer-api's CaseMissingEvidence). Unlike
+ * a contradiction, this comes straight off the snapshot — the row carries its own triage status. */
+export interface SnapshotMissingEvidence {
+  id: string
+  label: string
+  /** What it would establish and why the case needs it. */
+  detail: string | null
+  /** The document, record or witness that would close the gap. */
+  suggestedSource: string | null
+  /** The claim this gap belongs to; null for a case-wide one. `claimLabel` is that claim's title,
+   * resolved server-side (the app has no claims endpoint), and null once the claim is deleted. */
+  claimId: string | null
+  claimLabel: string | null
+  severity: MissingEvidenceSeverity
+  status: MissingEvidenceStatus
+  resolutionNote: string | null
+  createdAt: string
+}
+
 export type PrivilegeStatus = "NONE" | "ATTORNEY_CLIENT" | "WORK_PRODUCT"
 export type HearsayCategory =
   | "DIRECT_EVIDENCE"
@@ -459,6 +481,8 @@ export interface CaseSnapshot {
   // narrative has been generated. Named apart from `dates`/`nextDate` above, which are the calendar.
   reconstructionEvents: ReconstructionEvents | null
   redTeamAssessment: RedTeamAssessment | null
+  /** What the documents don't establish, one row per gap. Absent on an API that predates it. */
+  missingEvidence?: SnapshotMissingEvidence[]
   decisions: DecisionRecord[]
   theories: CaseTheory[]
   annotations: Annotation[]
