@@ -31,7 +31,9 @@ const SOLID_INK = "text-[#1a1a1a]";
 const SOLID_BORDER = "border-[#1a1a1a]/20";
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]";
 
-export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
+// `sectionLinks={false}` for pages without the tenant landing sections (the neutral jurisdiction
+// splash) — every NAV_LINKS entry scrolls to one of them, so there they'd silently do nothing.
+export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHero?: boolean; sectionLinks?: boolean }) {
   const { t } = useTranslation("landing");
   const [mobileOpen, setMobileOpen] = useState(false);
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
@@ -74,8 +76,9 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
           : "bg-white/75 backdrop-blur-lg border-b-white/25"
       }`}
     >
+      {/* Rendered even with no links — its flex-1 keeps the logo centered against the right side. */}
       <nav className={`hidden lg:flex flex-1 items-center gap-1 text-[15px] tracking-[-0.018em] ${LINK_INK}`}>
-        {NAV_LINKS.map((link) => (
+        {sectionLinks && NAV_LINKS.map((link) => (
           <Tooltip key={link.key}>
             <TooltipTrigger asChild>
               <a
@@ -167,8 +170,9 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
 
       {mobileOpen && (
         <div className="lg:hidden w-full border-t border-white/10 bg-brand-navy-950 px-6 py-6 flex flex-col gap-5">
-          <nav className="flex flex-col gap-4">
-            {NAV_LINKS.map((link) => (
+          {sectionLinks && (
+            <nav className="flex flex-col gap-4">
+              {NAV_LINKS.map((link) => (
               <a
                 key={link.key}
                 href={link.href}
@@ -181,8 +185,9 @@ export function LandingNavbar({ overHero = true }: { overHero?: boolean }) {
               >
                 {t(`navbar.links.${link.key}`)}
               </a>
-            ))}
-          </nav>
+              ))}
+            </nav>
+          )}
           <div className="flex items-center gap-4 text-white">
             <ThemeToggle />
           </div>

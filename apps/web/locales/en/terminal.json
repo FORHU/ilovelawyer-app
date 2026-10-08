@@ -644,7 +644,7 @@
   "damagesDueIn_one": "In {{count}} day",
   "damagesDueIn_other": "In {{count}} days",
   "damagesNoDeadline": "None set",
-  "damagesEmpty": "No damages or remedies yet. Add one, or propose them from the case documents.",
+  "damagesEmpty": "No damages or remedies yet. Add one, or run Refresh analysis to read the case documents for them.",
   "damageKindLabel": "Type",
   "damageKindDamage": "Damages",
   "damageKindRemedy": "Remedy",

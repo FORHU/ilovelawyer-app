@@ -139,7 +139,7 @@ export default async function LandingPage() {
     const host = headersList.get("host") ?? "";
     return (
       <div className="flex flex-col min-h-screen w-full bg-background">
-        <LandingNavbar overHero={false} />
+        <LandingNavbar overHero={false} sectionLinks={false} />
         {/* The redesigned navbar is `fixed` (it floats transparently over the hero video on
             the tenant pages below) so it no longer reserves layout space — this page has no
             hero to sit under it, so it needs its own top offset instead. */}
