@@ -40,7 +40,7 @@ _Avoid_: "name" (ambiguous — always say Full Name in UI copy and "name" only w
 
 **Conversation**
 A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`?c=<consultationId>`) so it survives a refresh. Listed most-recently-active first. The UI copy calls this "Consultation", and so does the code since the API's `Conversation` → `Consultation` rename (`Consultation` model, `/api/chat/consultations`); this entry keeps its older name.
-A Case has many Consultations, each an independent conversation context: its own messages, its own Topics (split-reply `MessageGroup`s) and its own AI session. They share only the Case's documents and case-level analysis, never each other's messages. Everyone who can open the Case sees all of its Consultations; only the creator or a case editor can delete one. The Case Workspace switches between them from its chat header (`components/chat/thread-picker.tsx`).
+A Case has many Consultations, each an independent conversation context: its own messages, its own Topics (split-reply `MessageGroup`s) and its own AI session. They share only the Case's documents and case-level analysis, never each other's messages. Everyone who can open the Case sees all of its Consultations; only the creator or a case editor can delete one. A standalone Consultation (no Case, the main chat on `/homepage`) is private to its creator: no one else in the organization, whatever their org role, can list, open or be invited to it — only a Case's Consultations are shared. The Case Workspace switches between them from its chat header (`components/chat/thread-picker.tsx`).
 _Avoid_: "chat", "session" (ambiguous with the backend's Session concept)
 
 **Draft Consultation**
