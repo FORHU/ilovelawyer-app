@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiFetch } from "@/lib/fetch"
+import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { organizationKeys, userKeys } from "@/lib/query-keys"
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationMemberRecord } from "@/lib/organizations/queries"
@@ -137,6 +137,27 @@ export function useChangePasswordMutation() {
         method: "POST",
         body: JSON.stringify(data),
       }),
+  })
+}
+
+/** Downloads a zip of everything the API holds about the signed-in user: a readable PDF summary,
+ * the complete record as JSON, and their uploaded files. Password accounts must send their
+ * password; Google SSO accounts send none. The file is built by the API and saved by the browser. */
+export function useExportMyDataMutation() {
+  return useMutation({
+    mutationFn: async (password?: string) => {
+      const res = await apiFetchRaw("/api/users/me/export", { method: "POST", body: JSON.stringify({ password }) })
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `ilovelawyer-my-data-${new Date().toISOString().slice(0, 10)}.zip`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      // Revoked on the next turn so the browser has already started reading the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
+    },
   })
 }
 
