@@ -150,7 +150,7 @@
     "noConsultations": "Wala pang konsultasyon",
     "deleteConsultationFailed": "Hindi ma-delete ang konsultasyong ito.",
     "consultationNotFound": "Hindi available ang konsultasyong iyon sa kasong ito. Maaaring na-archive o nabura na ito.",
-    "consultationDeleted": "Nabura na ang konsultasyong iyon.",
+    "consultationUnavailable": "Hindi available ang konsultasyong iyon. Maaaring nabura na ito, o pag-aari ito ng ibang tao.",
     "showTopics": "Ipakita ang mga paksa sa {{name}}",
     "hideTopics": "Itago ang mga paksa sa {{name}}",
     "archiveConsultation": "I-archive",

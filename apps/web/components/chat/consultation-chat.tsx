@@ -1090,15 +1090,16 @@ export default function ConsultationChat({
     navigateToConsultation(caseConsultations?.[0]?.id ?? null);
   }, [caseId, isolateConsultation, consultationId, caseConsultations, isFetchingCaseConsultations, pendingUrlConsultationId, navigateToConsultation, t]);
 
-  // The open consultation was deleted — by a colleague, in another tab, or before a link to it
-  // was followed. Its history answers 404; without this the transcript just emptied with no
+  // The open consultation is gone or not this user's to open — deleted (by a colleague, in another
+  // tab, or before a link to it was followed), or someone else's standalone consultation, which is
+  // private to its creator. Its history answers 404; without this the transcript just emptied with no
   // explanation (most visibly on /homepage, which has no Case list to check it against like the
   // effect above). Says so, refreshes the lists it still sits in, and moves to what's left —
   // another of this Case's consultations, or the empty state. Same toast id as above, so the two
   // noticing the same deletion show one notice.
   useEffect(() => {
     if (!consultationId || !isNotFoundError(historyError)) return;
-    toast.error(t("sidebar.consultationDeleted"), { id: CONSULTATION_GONE_TOAST_ID });
+    toast.error(t("sidebar.consultationUnavailable"), { id: CONSULTATION_GONE_TOAST_ID });
     void queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() });
     navigateToConsultation(caseConsultations?.find((c) => c.id !== consultationId)?.id ?? null);
   }, [consultationId, historyError, caseConsultations, queryClient, navigateToConsultation, t]);
