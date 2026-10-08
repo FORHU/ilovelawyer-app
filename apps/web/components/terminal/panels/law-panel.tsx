@@ -604,6 +604,16 @@ function CitationRow({
       )}
 
       {citation.notes && <p className="text-[12px] leading-5 text-muted-foreground">{citation.notes}</p>}
+      {/* What the check compared the quote with — fetched from the cited authority when the lawyer
+       * didn't paste it (ilovelawyer-api #364) — so the result can be verified, not just trusted. */}
+      {citation.officialText && (
+        <details className="group w-full text-[12px]">
+          <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
+            {citation.officialTextSource && citation.officialTextSource !== "LAWYER" ? t("sourceTextFetched") : t("sourceTextShow")}
+          </summary>
+          <p className="mt-1.5 whitespace-pre-wrap border-l-2 border-border pl-2.5 leading-5 text-foreground">{citation.officialText}</p>
+        </details>
+      )}
       {mode === "confirmDelete" && (
         <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
           <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteCitationConfirm")}</p>
