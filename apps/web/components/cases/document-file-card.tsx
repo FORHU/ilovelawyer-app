@@ -39,7 +39,7 @@ export function DocumentFileCard({
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: () => void
-  /** For a user who can't edit the case (see canEditCases): no archive/delete buttons, and the
+  /** For a user who can't edit the case (see useCanEditCase): no archive/delete buttons, and the
    * exhibit flag shows but can't be changed. */
   readOnly?: boolean
 }) {

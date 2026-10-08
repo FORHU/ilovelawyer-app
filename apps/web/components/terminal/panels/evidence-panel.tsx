@@ -29,7 +29,7 @@ import {
   type UserDocument,
 } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
-import { useCanEditCases } from "@/lib/cases/permissions"
+import { useCanEditCase } from "@/lib/cases/permissions"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
@@ -222,9 +222,9 @@ export function EvidencePanel({
   const { mutate: archiveDocument, isPending: isArchiving, variables: archivingVars } = useArchiveCaseDocumentMutation()
   const { mutate: restoreDocument, isPending: isRestoring, variables: restoringVars } = useUnarchiveCaseDocumentMutation()
   const { mutate: deleteDocument, isPending: isDeleting, variables: deletingVars } = useDeleteCaseDocumentMutation()
-  // Archive/restore/delete need edit access to the case (see canEditCases); without it the rows
+  // Archive/restore/delete need edit access to the case (see useCanEditCase); without it the rows
   // keep only their read actions.
-  const canEdit = useCanEditCases()
+  const canEdit = useCanEditCase(caseId)
 
   const openDocument =
     snapshot.documents.find((doc) => doc.id === openDocumentId) ?? null
