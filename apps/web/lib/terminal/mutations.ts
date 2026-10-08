@@ -23,6 +23,7 @@ import type {
   FindingCategory,
   FindingTag,
   HearsayCategory,
+  MissingEvidenceStatus,
   PresetValue,
   PrivilegeStatus,
   ProcedureSourceKind,
@@ -104,6 +105,7 @@ export type AiGenerationKind =
   | "adverseSweep"
   | "mindMapExpand"
   | "caseMindMap"
+  | "missingEvidence"
 
 export interface AiJobStatus {
   status: "IN_PROGRESS" | "DONE" | "FAILED"
@@ -223,6 +225,7 @@ const PANE_REGENERATE = {
   strategy: { path: "/strategy/refresh", kind: "caseStrategyRefresh" },
   timeline: { path: "/timeline/generate", kind: "timelineGenerate" },
   contradictions: { path: "/evidence/contradictions/scan", kind: "contradictions" },
+  missingEvidence: { path: "/evidence/missing/regenerate", kind: "missingEvidence" },
   legalIssues: { path: "/findings/regenerate", kind: "legalIssueRegenerate", body: { category: "LEGAL_ISSUE" } },
   strengths: { path: "/findings/regenerate", kind: "strengthRegenerate", body: { category: "STRENGTH" } },
   weaknesses: { path: "/findings/regenerate", kind: "weaknessRegenerate", body: { category: "WEAKNESS" } },
@@ -286,6 +289,7 @@ const PANE_JOB_PANEL: Partial<Record<AiGenerationKind, PanelId>> = {
   caseStrategyRefresh: "procedure",
   timelineGenerate: "evidence",
   contradictions: "evidence",
+  missingEvidence: "evidence",
   legalIssueRegenerate: "legalIssues",
   strengthRegenerate: "strengths",
   weaknessRegenerate: "weaknesses",
@@ -726,6 +730,22 @@ export function useUpdateContradictionMutation(caseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
       queryClient.invalidateQueries({ queryKey: graphViewKeys.all(caseId) })
+    },
+  })
+}
+
+/** A missing-evidence gap's triage. Unlike a contradiction's, this isn't carried over when the
+ * gap is regenerated — see ilovelawyer-api's MissingEvidenceRepo.replaceAiItems. */
+export function useUpdateMissingEvidenceMutation(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; status: MissingEvidenceStatus; resolutionNote?: string | null }) =>
+      apiFetch(`/api/my-cases/${caseId}/evidence/missing/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })
     },
   })
 }

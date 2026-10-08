@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { CaseTimelineView } from "@/components/cases/case-timeline"
 import { EvidenceDetailDrawer } from "@/components/terminal/evidence-detail-drawer"
 import { EvidenceContradictions } from "@/components/terminal/panels/evidence-contradictions"
+import { EvidenceMissing } from "@/components/terminal/panels/evidence-missing"
 import DeleteDocumentModal from "@/components/terminal/delete-document-modal"
 import ArchiveDocumentModal from "@/components/cases/archive-document-modal"
 import RestoreDocumentModal from "@/components/cases/restore-document-modal"
@@ -434,6 +435,11 @@ export function EvidencePanel({
       {/* Moved here from the retired Contradictions pane, so a false conflict can still be dismissed. */}
       <div className="border-t border-border pt-4">
         <EvidenceContradictions caseId={caseId} />
+      </div>
+
+      {/* Beside Contradictions: two documents disagreeing vs. the record saying nothing at all. */}
+      <div className="border-t border-border pt-4">
+        <EvidenceMissing caseId={caseId} items={snapshot.missingEvidence ?? []} />
       </div>
 
       <EvidenceDetailDrawer
