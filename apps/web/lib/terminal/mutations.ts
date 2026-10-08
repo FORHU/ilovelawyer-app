@@ -18,6 +18,7 @@ import type {
   CaseReconstruction,
   CaseSnapshot,
   CaseTheory,
+  SnapshotRisk,
   DamageClaim,
   DamageClaimBody,
   DeadlineRule,
@@ -747,10 +748,10 @@ export function useCreateRiskMutation(caseId: string) {
 export function useUpdateRiskMutation(caseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ riskId, title }: { riskId: string; title: string }) =>
+    mutationFn: ({ riskId, ...body }: { riskId: string; title?: string; severity?: SnapshotRisk["severity"] }) =>
       apiFetch(`/api/my-cases/${caseId}/risks/${riskId}`, {
         method: "PATCH",
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: terminalKeys.snapshot(caseId) })

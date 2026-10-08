@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next"
 import { ArrowDown, ArrowUp, Plus } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
-import { useCreateRiskMutation, usePaneRegenerate } from "@/lib/terminal/mutations"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@workspace/ui/components/select"
+import { useCreateRiskMutation, useUpdateRiskMutation, usePaneRegenerate } from "@/lib/terminal/mutations"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import type { CaseSnapshot, SnapshotRisk } from "@/lib/terminal/types"
 import {
@@ -39,6 +40,102 @@ const RISK_TIER: Record<SnapshotRisk["severity"], { label: string; tone: "danger
   UNVERIFIED: { label: "MEDIUM", tone: "warning" },
   DEADLINE: { label: "MEDIUM", tone: "warning" },
   MISSING_EVIDENCE: { label: "LOW", tone: "success" },
+}
+
+type Tier = "HIGH" | "MEDIUM" | "LOW"
+// Same pill as the outlook badge (border included); one fixed-width column so risk and finding
+// titles line up whether or not the row has a select chevron.
+const TIER_BADGE = "border border-current/40"
+const TIER_COL = "flex h-5 w-24 shrink-0 items-center"
+const TIER_SEVERITY: Record<Tier, SnapshotRisk["severity"]> = { HIGH: "MAJOR", MEDIUM: "UNVERIFIED", LOW: "MISSING_EVIDENCE" }
+
+/** A risk row whose title (click to edit; Enter/blur saves, Escape cancels) and High/Medium/Low
+ * tier (a select) are editable. Picking the tier it's already in keeps its exact severity. */
+function RiskRow({
+  caseId,
+  risk,
+  onSampleEdit,
+}: {
+  caseId: string
+  risk: SnapshotRisk
+  onSampleEdit?: (patch: Partial<SnapshotRisk>) => void
+}) {
+  const { t } = useTranslation("terminal")
+  const update = useUpdateRiskMutation(caseId)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState("")
+  const pending = update.isPending ? update.variables : undefined
+  const title = pending?.title ?? risk.title
+  const tier = RISK_TIER[pending?.severity ?? risk.severity]
+
+  const save = (patch: { title?: string; severity?: SnapshotRisk["severity"] }) =>
+    onSampleEdit ? onSampleEdit(patch) : update.mutate({ riskId: risk.id, ...patch })
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    setEditing(false)
+    if (trimmed && trimmed !== risk.title) save({ title: trimmed })
+  }
+
+  return (
+    <PanelRow className="flex-wrap items-start px-0 py-1.5">
+      <Select
+        value={tier.label}
+        onValueChange={(next) => {
+          if (next !== RISK_TIER[risk.severity].label) save({ severity: TIER_SEVERITY[next as Tier] })
+        }}
+      >
+        <SelectTrigger aria-label={t("issueSeverity")} className={cn(TIER_COL, "w-24 justify-start gap-1 rounded-full border-0 bg-transparent p-0 hover:opacity-80 focus-visible:ring-2 focus-visible:ring-brand-gold/40")}>
+          <Badge tone={tier.tone} shape="pill" className={TIER_BADGE}>
+            {t(`tier_${tier.label}`)}
+          </Badge>
+        </SelectTrigger>
+        <SelectContent className="w-auto min-w-28">
+          {(["HIGH", "MEDIUM", "LOW"] as const).map((value) => (
+            <SelectItem key={value} value={value}>
+              {t(`tier_${value}`)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur()
+            else if (e.key === "Escape") setEditing(false)
+          }}
+          aria-label={t("edit")}
+          className={`min-w-0 flex-1 ${fieldClass}`}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(risk.title)
+            setEditing(true)
+          }}
+          title={t("edit")}
+          className={cn(
+            "min-w-0 flex-1 cursor-text rounded text-left text-[13px] leading-5 text-foreground hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none",
+            update.isPending && "opacity-60",
+          )}
+        >
+          {title}
+        </button>
+      )}
+      {risk.confidence ? <ConfidenceMeter level={risk.confidence} label={t(`confidence_${risk.confidence}`)} /> : null}
+      {update.isError ? (
+        <div className="basis-full pl-[6.5rem]">
+          <MutationError show />
+        </div>
+      ) : null}
+    </PanelRow>
+  )
 }
 
 function KpiTile({
@@ -102,7 +199,9 @@ export function CommandPanel({
   // Sample mode only: risks added in the preview stay local so the fake case never writes to a real one.
   const [localRisks, setLocalRisks] = useState<SnapshotRisk[]>([])
   const view = useMemo(() => (CASE_SUMMARY_SAMPLE ? sampleSummaryView() : buildSummaryView(snapshot)), [snapshot])
-  const risks = [...view.risks, ...localRisks]
+  // Sample mode only: edits to the fake risks stay local too.
+  const [sampleEdits, setSampleEdits] = useState<Record<string, Partial<SnapshotRisk>>>({})
+  const risks = [...view.risks, ...localRisks].map((r) => ({ ...r, ...sampleEdits[r.id] }))
   const { outlook, deadline } = view
 
   const overdue = deadline ? deadline.days < 0 : false
@@ -113,16 +212,9 @@ export function CommandPanel({
   return (
     <PanelBody gap="4">
       <div className={cn("@container flex flex-col", dense ? "gap-2.5" : "gap-4")}>
-        {CASE_SUMMARY_SAMPLE ? (
-          <Badge tone="caution" className="self-start">
-            {t("sampleData")}
-          </Badge>
-        ) : null}
-
-        <div className="flex flex-col gap-1.5">
-          <div className="flex justify-end">
-            <RegenerateButton regen={regen} />
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          {CASE_SUMMARY_SAMPLE ? <Badge tone="caution">{t("sampleData")}</Badge> : <span />}
+          <RegenerateButton regen={regen} />
         </div>
       {loadingLabel ? (
         <PaneLoadingState>{loadingLabel}</PaneLoadingState>
@@ -244,27 +336,25 @@ export function CommandPanel({
             </button>
           </div>
           <PanelRowList bare empty={<EmptyNote>{t("noKeyIssues")}</EmptyNote>}>
-            {risks.map((risk) => {
-              const tier = RISK_TIER[risk.severity]
-              return (
-                <PanelRow key={risk.id} className="px-0 py-1.5">
-                  <Badge tone={tier.tone} shape="pill">
-                    {tier.label}
-                  </Badge>
-                  <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">{risk.title}</span>
-                  {risk.confidence ? (
-                    <ConfidenceMeter level={risk.confidence} label={t(`confidence_${risk.confidence}`)} />
-                  ) : null}
-                </PanelRow>
-              )
-            })}
+            {risks.map((risk) => (
+              <RiskRow
+                key={risk.id}
+                caseId={caseId}
+                risk={risk}
+                onSampleEdit={
+                  CASE_SUMMARY_SAMPLE ? (patch) => setSampleEdits((prev) => ({ ...prev, [risk.id]: { ...prev[risk.id], ...patch } })) : undefined
+                }
+              />
+            ))}
             {view.findings.map((finding) => {
               const serious = isSeriousFinding(finding)
               return (
-                <PanelRow key={finding.id} className="px-0 py-1.5">
-                  <Badge tone={serious ? "danger" : "warning"} shape="pill">
-                    {serious ? "HIGH" : "MEDIUM"}
-                  </Badge>
+                <PanelRow key={finding.id} className="items-start px-0 py-1.5">
+                  <span className={TIER_COL}>
+                    <Badge tone={serious ? "danger" : "warning"} shape="pill" className={TIER_BADGE}>
+                      {t(serious ? "tier_HIGH" : "tier_MEDIUM")}
+                    </Badge>
+                  </span>
                   <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">{finding.label}</span>
                   <span className="shrink-0 text-[11px] text-muted-foreground">{t(`findingCategory.${finding.category}`)}</span>
                 </PanelRow>
