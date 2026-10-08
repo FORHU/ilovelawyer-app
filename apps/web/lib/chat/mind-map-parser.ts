@@ -227,6 +227,17 @@ export function stripStructuredBlocks(text: string): string {
 }
 
 /**
+ * Splits a still-generating reply's raw accumulated text (the live chat:chunk stream, or the
+ * API's pendingReplyContent checkpoint after a remount/refresh) into what the bubble shows: the
+ * answer text with structured blocks stripped, plus the mind map and research steps they carry.
+ * Both paths must go through this — the raw text starts with [TRACE] frames long before any
+ * answer text, so showing it as-is reads as "answer arrived" and drops the thinking indicator.
+ */
+export function parseStreamingReply(raw: string): { content: string; mindMap?: MindMapItem; researchSteps: TraceStep[] } {
+  return { content: stripStructuredBlocks(raw), mindMap: extractMindMap(raw), researchSteps: extractTraceSteps(raw) };
+}
+
+/**
  * Robustly parses a JSON string that may contain unescaped control characters
  * or minor syntax slips from AI-generated content. Returns null on failure.
  */
