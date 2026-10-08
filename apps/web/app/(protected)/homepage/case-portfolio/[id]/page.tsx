@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -28,13 +28,14 @@ import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { useCanEditCases } from "@/lib/cases/permissions";
+import { useCanEditCase } from "@/lib/cases/permissions";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import { CaseOrigin, OpenOriginalButton } from "@/components/cases/case-origin";
 import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable";
+import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
 
 type DetailTab = "overview" | "workspace";
 
@@ -45,7 +46,8 @@ export default function CaseDetailPage() {
   const searchParams = useSearchParams();
   const id = params.id;
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
-  const canEdit = useCanEditCases();
+  const canEdit = useCanEditCase(id);
+  const [sharing, setSharing] = useState(false);
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
@@ -141,6 +143,21 @@ export default function CaseDetailPage() {
                       {canEdit && <UnarchiveButton id={id} caseName={caseRecord.caseName} />}
                     </>
                   )}
+                  {caseRecord && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setSharing(true)}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        >
+                          <Users className="h-3 w-3" aria-hidden="true" />
+                          {t("share.button")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("share.buttonTooltip")}</TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
                 {/* Stands in for GlobalHeader's own hamburger (hidden here via
                  * mobileHeaderMerged) — opens the exact same drawer. */}
@@ -195,6 +212,9 @@ export default function CaseDetailPage() {
           </div>
         )}
       </div>
+      {sharing && caseRecord && (
+        <ShareCaseDialog caseId={id} caseName={caseRecord.caseName} onClose={() => setSharing(false)} />
+      )}
     </PageShell>
   );
 }
@@ -204,7 +224,7 @@ export default function CaseDetailPage() {
 function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
-  const canEdit = useCanEditCases();
+  const canEdit = useCanEditCase(id);
   return (
     <label className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
       <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
@@ -228,7 +248,7 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
 function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | undefined }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
-  const canEdit = useCanEditCases();
+  const canEdit = useCanEditCase(id);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
 

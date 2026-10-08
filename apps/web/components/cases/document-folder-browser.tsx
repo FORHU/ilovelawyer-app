@@ -29,7 +29,7 @@ import {
 } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
-import { useCanEditCases } from "@/lib/cases/permissions"
+import { useCanEditCase } from "@/lib/cases/permissions"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
@@ -57,9 +57,9 @@ type View = { kind: "root" } | { kind: "folder"; name: string }
  * doesn't know whether a folder is open would silently upload without a category while the user
  * thinks they're adding to the folder they're looking at. */
 export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; variant: "full" | "compact" }) {
-  // Archive/restore/delete/exhibit need edit access to the case (see canEditCases) — without it
+  // Archive/restore/delete/exhibit need edit access to the case (see useCanEditCase) — without it
   // the cards are read-only and there's no select mode, since every bulk action is one of those.
-  const canEdit = useCanEditCases()
+  const canEdit = useCanEditCase(caseId)
   const { t } = useTranslation("case-portfolio")
   // AttachmentPreview's own strings (loading/fallback text) already live under this namespace —
   // reused here rather than duplicated into case-portfolio.json for just the one header action.

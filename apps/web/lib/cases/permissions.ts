@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationRole } from "@/lib/organizations/queries"
+import { useCaseAccessQuery } from "@/lib/cases/sharing"
 
 type CaseEditState = {
   workspace: "organization" | "portfolio"
@@ -12,8 +13,8 @@ type CaseEditState = {
  * own), or OWNER/ADMIN in an organization. MANAGER and MEMBER can't, so the actions are hidden
  * rather than left to 404.
  *
- * The API also accepts an explicit per-case EDIT/ADMIN grant, which this doesn't see: a member
- * holding one loses the buttons for that case. Grants can't be made from the app yet (#347). */
+ * The API also accepts an explicit per-case EDIT/ADMIN grant, which this can't see — where one
+ * case is in view, use useCanEditCase instead. */
 export function canEditCases(state: CaseEditState): boolean {
   if (state.workspace === "portfolio") return true
   if (!state.organization) return false
@@ -23,4 +24,12 @@ export function canEditCases(state: CaseEditState): boolean {
 
 export function useCanEditCases(): boolean {
   return useAuthStore(canEditCases)
+}
+
+/** Whether the user can edit this one case. The API's answer (GET /access → canEdit) also counts
+ * a per-case EDIT/ADMIN grant; until it arrives, falls back to the role rule above. */
+export function useCanEditCase(caseId: string | undefined): boolean {
+  const byRole = useCanEditCases()
+  const { data } = useCaseAccessQuery(caseId)
+  return data ? data.canEdit : byRole
 }
