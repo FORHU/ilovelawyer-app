@@ -5,7 +5,7 @@ import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
-import type { CaseChangeSummary } from "@/lib/terminal/change-summary"
+import type { CaseChangeSummary, ChangeSummaryDay } from "@/lib/terminal/change-summary"
 import type {
   Annotation,
   PanelId,
@@ -434,14 +434,28 @@ export function useCaseSnapshotQuery(caseId: string) {
   })
 }
 
-/** The case's change summaries, newest first (up to the API's 50) — the "What changed" modal's
- * History. Fetched only while the modal is open. Keyed on the newest summary's id, so a run that
- * lands while it's open refetches the list instead of showing a stale one. */
-export function useChangeSummaryHistoryQuery(caseId: string, latestId: string | null, enabled: boolean) {
+/** One day's change summaries, newest first (up to the API's 50) — the "What changed" modal's
+ * History for the day picked in its date picker. `day` is YYYY-MM-DD in `timeZone`, the viewer's.
+ * Keyed on the newest summary's id, so a run that lands while the modal is open refetches. */
+export function useChangeSummaryHistoryQuery(caseId: string, latestId: string | null, day: string, timeZone: string) {
   return useQuery({
-    queryKey: [...terminalKeys.changeSummaries(caseId), latestId] as const,
-    queryFn: () => apiFetch<CaseChangeSummary[]>(`/api/my-cases/${caseId}/change-summaries`),
-    enabled: enabled && !!caseId && !!latestId,
+    queryKey: [...terminalKeys.changeSummaries(caseId), "day", day, timeZone, latestId] as const,
+    queryFn: () =>
+      apiFetch<CaseChangeSummary[]>(
+        `/api/my-cases/${caseId}/change-summaries?day=${encodeURIComponent(day)}&tz=${encodeURIComponent(timeZone)}`,
+      ),
+    enabled: !!caseId && !!latestId && !!day,
+    staleTime: 0,
+  })
+}
+
+/** The days the case has change summaries on, in the viewer's time zone, newest first — the
+ * "What changed" modal's date picker. Keyed on the newest summary's id, like the History. */
+export function useChangeSummaryDaysQuery(caseId: string, latestId: string | null, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "days", timeZone, latestId] as const,
+    queryFn: () => apiFetch<ChangeSummaryDay[]>(`/api/my-cases/${caseId}/change-summaries/days?tz=${encodeURIComponent(timeZone)}`),
+    enabled: !!caseId && !!latestId,
     staleTime: 0,
   })
 }

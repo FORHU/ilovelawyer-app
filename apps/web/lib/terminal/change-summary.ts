@@ -376,10 +376,47 @@ export function describeChangeRun(summary: CaseChangeSummary): ChangePart {
   return { key: summary.reason === "manual" ? "changeRunManual" : "changeRunAuto" }
 }
 
-/** The History list: the snapshot's latest summary first (it can be newer than a list fetched a
- * moment ago), then the fetched ones, each once. */
-export function changeSummaryHistory(latest: CaseChangeSummary, fetched: CaseChangeSummary[] | undefined): CaseChangeSummary[] {
-  return [latest, ...(fetched ?? []).filter((s) => s.id !== latest.id)]
+/** One calendar day the case has change summaries on — GET /change-summaries/days. */
+export interface ChangeSummaryDay {
+  /** YYYY-MM-DD in the viewer's time zone. */
+  day: string
+  runs: number
+  totalChanges: number
+}
+
+/** The calendar day (YYYY-MM-DD) a moment falls on in `timeZone` — how the API groups days too. */
+export function dayKeyOf(moment: string | Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(moment))
+}
+
+/** The date picker's days, newest first. The latest summary's day leads even before the fetched
+ * list has it (a run that just landed, or the list still loading). */
+export function changeSummaryDays(latest: CaseChangeSummary, fetched: ChangeSummaryDay[] | undefined, timeZone: string): ChangeSummaryDay[] {
+  const latestDay = dayKeyOf(latest.createdAt, timeZone)
+  const days = fetched ?? []
+  if (days.some((d) => d.day === latestDay)) return days
+  return [{ day: latestDay, runs: 1, totalChanges: latest.firstAnalysis ? 0 : latest.totalChanges }, ...days]
+}
+
+/** How the date picker names a day: "Today", "Yesterday", or the date (a `date` value, YYYY-MM-DD,
+ * for the modal to format). */
+export function describeDay(day: string, today: string, yesterday: string): ChangePart {
+  if (day === today) return { key: "changeDayToday" }
+  if (day === yesterday) return { key: "changeDayYesterday" }
+  return { key: "changeDayDate", values: { date: day } }
+}
+
+/** The History list for one day: that day's fetched runs, with the snapshot's latest summary first
+ * when it falls on that day (it can be newer than a list fetched a moment ago), each once. */
+export function changeSummaryHistory(
+  latest: CaseChangeSummary,
+  fetched: CaseChangeSummary[] | undefined,
+  day: string,
+  timeZone: string,
+): CaseChangeSummary[] {
+  const runs = fetched ?? []
+  if (dayKeyOf(latest.createdAt, timeZone) !== day) return runs
+  return [latest, ...runs.filter((s) => s.id !== latest.id)]
 }
 
 /** Whether there is a summary to look at: any but a case's first analysis — every pane's first

@@ -1241,5 +1241,16 @@
   "changeRunManual": "Refresh analysis",
   "changeRunAuto": "Automatic update",
   "changeFirstAnalysis": "The case's first analysis: there was nothing earlier to compare it with.",
-  "changePastRun": "An earlier run. Open shows each pane as it is now, not as it was then."
+  "changePastRun": "An earlier run. Open shows each pane as it is now, not as it was then.",
+  "changeDayToday": "Today",
+  "changeDayYesterday": "Yesterday",
+  "changeDayDate": "{{date}}",
+  "changeDayRuns_one": "1 run",
+  "changeDayRuns_other": "{{count}} runs",
+  "changeDayPicker": "Day to show",
+  "changeDayOlder": "Earlier day",
+  "changeDayNewer": "Later day",
+  "changeDayLoading": "Loading this day's runs…",
+  "changeDayChanges_one": "1 change",
+  "changeDayChanges_other": "{{count}} changes"
 }

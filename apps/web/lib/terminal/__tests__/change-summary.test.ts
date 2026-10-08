@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest"
 import {
   describeChangeHeadline,
   canViewChangeSummary,
+  changeSummaryDays,
   changeSummaryHistory,
+  dayKeyOf,
+  describeDay,
   describeChangeLines,
   describeChangeRun,
   regeneratedPane,
@@ -235,9 +238,34 @@ describe("History", () => {
   it("puts the snapshot's latest first, once, ahead of the fetched list", () => {
     const latest = summary({ id: "s3" })
     const fetched = [summary({ id: "s2" }), summary({ id: "s1" })]
-    expect(changeSummaryHistory(latest, fetched).map((s) => s.id)).toEqual(["s3", "s2", "s1"])
-    expect(changeSummaryHistory(latest, [latest, ...fetched]).map((s) => s.id)).toEqual(["s3", "s2", "s1"])
-    expect(changeSummaryHistory(latest, undefined).map((s) => s.id)).toEqual(["s3"])
+    // summary() is made at 2026-10-08T09:00Z — 17:00 in Manila, the same calendar day.
+    const day = "2026-10-08"
+    expect(changeSummaryHistory(latest, fetched, day, "Asia/Manila").map((s) => s.id)).toEqual(["s3", "s2", "s1"])
+    expect(changeSummaryHistory(latest, [latest, ...fetched], day, "Asia/Manila").map((s) => s.id)).toEqual(["s3", "s2", "s1"])
+    expect(changeSummaryHistory(latest, undefined, day, "Asia/Manila").map((s) => s.id)).toEqual(["s3"])
+    // Another day's list never gets the latest run added to it.
+    expect(changeSummaryHistory(latest, fetched, "2026-10-07", "Asia/Manila").map((s) => s.id)).toEqual(["s2", "s1"])
+  })
+
+  it("splits days on the viewer's calendar, not UTC's", () => {
+    // 20:30 UTC on Oct 7 is already Oct 8 in Manila (UTC+8).
+    expect(dayKeyOf("2026-10-07T20:30:00Z", "Asia/Manila")).toBe("2026-10-08")
+    expect(dayKeyOf("2026-10-07T20:30:00Z", "UTC")).toBe("2026-10-07")
+  })
+
+  it("leads the date picker with the latest run's day even before the day list has it", () => {
+    const latest = summary({ id: "s9", createdAt: "2026-10-08T09:00:00.000Z", totalChanges: 4 })
+    expect(changeSummaryDays(latest, undefined, "UTC")).toEqual([{ day: "2026-10-08", runs: 1, totalChanges: 4 }])
+    const fetched = [{ day: "2026-10-07", runs: 3, totalChanges: 20 }]
+    expect(changeSummaryDays(latest, fetched, "UTC").map((d) => d.day)).toEqual(["2026-10-08", "2026-10-07"])
+    const withToday = [{ day: "2026-10-08", runs: 5, totalChanges: 40 }, ...fetched]
+    expect(changeSummaryDays(latest, withToday, "UTC")).toBe(withToday)
+  })
+
+  it("names days Today and Yesterday, and dates the rest", () => {
+    expect(describeDay("2026-10-08", "2026-10-08", "2026-10-07")).toEqual({ key: "changeDayToday" })
+    expect(describeDay("2026-10-07", "2026-10-08", "2026-10-07")).toEqual({ key: "changeDayYesterday" })
+    expect(describeDay("2026-10-01", "2026-10-08", "2026-10-07")).toEqual({ key: "changeDayDate", values: { date: "2026-10-01" } })
   })
 })
 
