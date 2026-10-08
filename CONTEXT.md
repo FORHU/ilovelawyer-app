@@ -138,6 +138,10 @@ A Display Preference that tightens spacing and typography across both the Legal 
 A Display Preference (UI label: "Show Grid Lines") that makes Pane dragging/resizing snap to grid increments instead of moving freely.
 _Avoid_: "Show Grid Lines" as the glossary term for this — the UI label undersells that this is a real interaction change, not a cosmetic overlay.
 
+**Change Summary**
+What one case analysis run changed in the panes it rewrote, compared with what they said before it — every pane the analysis rewrites: outlook, contradictions, key dates, plan and to-dos, witnesses, damages, findings, Red Team, the AI draft theory, reconstruction gaps, the case map, a new Audio Overview. A pane's own Regenerate writes one for that pane alone. Shown in the Terminal's "What changed" modal ("Based on 2 new documents, 7 things changed"), one line per pane with an Open link: it opens by itself for one the viewer hasn't seen, and from the case row's What changed button at any time; the snapshot's `latestChangeSummary`. See `docs/adr/0019-case-change-summary.md`.
+_Avoid_: "audit log" for it — the audit row records that a refresh ran and who ran it; the Change Summary records what the analysis now says differently.
+
 **Panel Labels**
 A Display Preference that, when off, hides a Pane's entire header bar (grip handle, title, close control) — revealed only on hover. Touch devices (no hover state, detected via `(hover: hover)`) always show the header regardless of this toggle, so Panes stay movable/closable there.
 

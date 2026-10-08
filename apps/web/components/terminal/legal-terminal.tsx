@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { FatalRiskBanner } from "@/components/terminal/terminal-panels"
+import { ChangeSummaryButton, ChangeSummaryModal, useChangeSummaryModal } from "@/components/terminal/change-summary-modal"
 import { PaneActivityContext, useDamagesActivity } from "@/components/terminal/pane-activity"
 import {
   HIDDEN_PANELS,
@@ -161,6 +162,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const damagesJob = useAiJobStatus(caseId, "damagesExtract")
   const analysisRunning = shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status)
   const refreshAnalysis = useRefreshAnalysisMutation(caseId)
+  // What the last analysis (or a pane's Regenerate) changed — opens by itself for a new one, and
+  // from the case row's "What changed" button.
+  const changeSummary = useChangeSummaryModal(caseId, snapshot.data?.latestChangeSummary, analysisRunning)
   const refreshError = refreshAnalysis.error as (Error & { status?: number; code?: string; body?: { details?: { kind?: unknown } } }) | null
   const refreshErrorStatus = refreshError?.status
   // A pane run and the analysis never overlap (ADR 0018): while a pane regenerates, the button
@@ -771,6 +775,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             {snapshot.data.case.caseName}
           </h1>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {changeSummary.canView && <ChangeSummaryButton unseen={changeSummary.unseen} onClick={changeSummary.show} />}
             {/* One indicator for the case analysis: idle, it starts a run (after a confirmation —
                 a run is a dozen AI calls); while any run is going, automatic or manual, it is the
                 gold "Updating analysis…" status (--progress) and can't be clicked. */}
@@ -795,7 +800,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 aria-label={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : t("refresh")}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-overlay-hover"
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                <RefreshCw className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
                 <span className="hidden sm:inline">{t("refresh")}</span>
               </button>
             )}
@@ -819,6 +824,14 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           canvasWindowsRef={canvasWindowsRef}
           onCreated={handleLayoutCreated}
         />
+        {changeSummary.open && snapshot.data.latestChangeSummary && (
+          <ChangeSummaryModal
+            caseId={caseId}
+            summary={snapshot.data.latestChangeSummary}
+            onClose={changeSummary.close}
+            onOpenPane={jumpToPanel}
+          />
+        )}
         {confirmRefreshOpen && (
           <ModalOverlay
             onClose={() => setConfirmRefreshOpen(false)}
