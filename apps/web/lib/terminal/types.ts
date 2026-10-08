@@ -284,6 +284,11 @@ export interface SnapshotCitation {
   citedReference: string | null
   /** The source text the quote was checked against — prefilled when editing a citation. */
   officialText?: string | null
+  /** Where officialText came from: pasted by the lawyer, or fetched from the cited authority and
+   * narrowed to the passage the quote is about (ilovelawyer-api #364). Null on older citations. */
+  officialTextSource?: "LAWYER" | "PH_LAW" | "UK_LEGISLATION" | "UK_JUDGMENT" | null
+  /** Where in that authority: "s. 13", "para_37". */
+  officialTextRef?: string | null
   status: "VALID" | "INVALID" | "UNVERIFIED" | "ADVERSE"
   notes: string | null
   /** Separate from `status` (does the quote match the source): does the cited authority itself
