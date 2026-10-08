@@ -472,5 +472,33 @@
     "copyVersion": "Copy {{number}} of {{total}}",
     "originalChanged": "Original changed since",
     "openOriginal": "Open the original in {{orgName}}"
-  }
+  },
+  "share": {
+    "button": "Share",
+    "buttonTooltip": "See who can reach this case, and give edit or manage access",
+    "title": "Share {{caseName}}",
+    "description": "Everyone in your organization can view this case. Owners and admins can also edit it and manage access; give anyone else edit or manage access here.",
+    "readOnlyNote": "Only an owner, an admin, or someone who can manage this case can change access.",
+    "peopleLabel": "People with access",
+    "levelView": "Can view",
+    "levelEdit": "Can edit",
+    "levelManage": "Can manage",
+    "levelLabel": "Access for {{name}}",
+    "sourceOrgOwner": "Organization owner",
+    "sourceOrgAdmin": "Organization admin",
+    "sourceOrganization": "From organization",
+    "sourceGrant": "Granted on this case",
+    "formerMember": "No longer in the organization",
+    "removeLabel": "Remove {{name}}'s access",
+    "you": "(you)",
+    "loadError": "Couldn't load who has access.",
+    "saveError": "Couldn't change access. Try again.",
+    "descriptionConfidential": "This case is confidential: only the organization owner and the people below with access can see it. Everyone else, admins included, can't find it at all.",
+    "confidentialLabel": "Confidential",
+    "confidentialHint": "Hide this case from everyone except the organization owner and people you give access to here. You keep manage access.",
+    "levelNone": "No access",
+    "sourceWalled": "Not on this case"
+  },
+  "confidentialBadge": "Confidential",
+  "confidentialTooltip": "Only the organization owner and people given access can see this case"
 }

@@ -139,6 +139,8 @@
   "alreadyOnLayout": "On this layout",
   "removePaneHint": "제거하려면 패널 자체의 ×를 사용하세요",
   "paneEmptyBadge": "비어 있음",
+  "paneFilterShowing": "표시 중: {{category}}",
+  "paneFilterClear": "모든 카테고리 표시",
   "paneShowEmpty": "비어 있는 패널 표시 ({{count}})",
   "paneHideEmpty": "비어 있는 패널 숨기기",
   "categoryFacts": "Facts",
