@@ -40,6 +40,16 @@ export interface OrganizationMemberRecord {
   user: { id: string; name: string | null; email: string; username: string; avatarUrl?: string | null }
 }
 
+/** A members-list row for an invite sent to an address with no account yet — no user exists,
+ * so there's only the email. Always PENDING. */
+export interface OrganizationSignupInviteRecord extends Omit<OrganizationMemberRecord, "userId" | "status" | "user"> {
+  userId: null
+  status: "PENDING"
+  user: { id: null; name: null; email: string; username: null; avatarUrl: null }
+}
+
+export type OrganizationMembersListRecord = OrganizationMemberRecord | OrganizationSignupInviteRecord
+
 /** The caller's own pending invite, or null if they don't have one. */
 export interface PendingInviteRecord {
   id: string
@@ -85,7 +95,7 @@ export function useOrganizationQuery(id: string) {
 export function useOrganizationMembersQuery(id: string) {
   return useQuery({
     queryKey: organizationKeys.members(id),
-    queryFn: () => apiFetch<OrganizationMemberRecord[]>(`/api/organizations/${id}/members`),
+    queryFn: () => apiFetch<OrganizationMembersListRecord[]>(`/api/organizations/${id}/members`),
     enabled: !!id,
   })
 }

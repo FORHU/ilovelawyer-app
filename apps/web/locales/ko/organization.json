@@ -74,7 +74,7 @@
   },
   "invite": {
     "heading": "멤버 초대",
-    "subheading": "초대 대상은 이미 ilovelawyer 계정이 있어야 합니다.",
+    "subheading": "계정이 없다면 가입 안내 이메일을 받은 뒤 초대를 수락할 수 있습니다.",
     "emailLabel": "이메일 주소",
     "emailPlaceholder": "colleague@lawfirm.ph",
     "roleLabel": "역할",

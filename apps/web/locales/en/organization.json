@@ -74,7 +74,7 @@
   },
   "invite": {
     "heading": "Invite a Member",
-    "subheading": "They must already have an ilovelawyer account.",
+    "subheading": "No account yet? They'll get an email to sign up, then accept the invite.",
     "emailLabel": "Email Address",
     "emailPlaceholder": "colleague@lawfirm.ph",
     "roleLabel": "Role",

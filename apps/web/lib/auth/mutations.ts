@@ -7,7 +7,7 @@ import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
 import { useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store"
 import { chatKeys } from "@/lib/query-keys"
-import type { OrganizationWithRole } from "@/lib/organizations/queries"
+import type { OrganizationWithRole, PendingInviteRecord } from "@/lib/organizations/queries"
 
 interface AuthTokensResponse {
   user: AuthUser
@@ -38,10 +38,11 @@ interface SignupResponse {
 }
 
 /** Whether the just-authenticated user already belongs to an organization: "none" means
- * they still need the solo/create-org/join-org WorkspaceSetup step; "unknown" means the
- * lookup itself failed, so callers should fall through to the app and let
+ * they still need the solo/create-org/join-org WorkspaceSetup step; "invited" means they have
+ * none but an invite is waiting, so they skip that step for the Organization page to accept it;
+ * "unknown" means the lookup itself failed, so callers should fall through to the app and let
  * (protected)/layout.tsx re-check rather than guess. */
-export type OrganizationStatus = "found" | "none" | "unknown"
+export type OrganizationStatus = "found" | "none" | "invited" | "unknown"
 
 /** Fetches the user's orgs right after a session is established and activates the first
  * one — signup only ever creates one, and multi-org selection isn't supported yet. Never
@@ -52,7 +53,10 @@ async function hydrateActiveOrganization(
 ): Promise<OrganizationStatus> {
   try {
     const orgs = await apiFetch<OrganizationWithRole[]>("/api/organizations")
-    if (!orgs[0]) return "none"
+    if (!orgs[0]) {
+      const invite = await apiFetch<PendingInviteRecord | null>("/api/organizations/invites/me")
+      return invite ? "invited" : "none"
+    }
     setOrganization(toActiveOrg(orgs[0]))
     return "found"
   } catch {
@@ -104,7 +108,7 @@ function generateUsername(fullName: string): string {
  * path is honored — anything else (an absolute URL, a protocol-relative "//evil.example"
  * open redirect, or nothing at all) falls back to the default post-auth destination. */
 export function sanitizeNextPath(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/homepage"
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/homepage"
   return raw
 }
 
@@ -222,23 +226,25 @@ export function useCancelSignupMutation() {
 /** Unlike the other post-auth mutations, this deliberately does NOT redirect to
  * /homepage on success. A freshly-verified signup still needs to go through the
  * solo/create-org/join-org workspace step (see WorkspaceSetup) before landing in
- * the app, so navigation is left to the caller. */
+ * the app — unless it was invited ("invited") — so navigation is left to the caller.
+ * Like useCompleteGoogleAuth, the session is set up inside mutationFn so the caller's
+ * onSuccess receives `organizationStatus`. */
 export function useVerifyOtpMutation() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ email, code }: { email: string; code: string }) =>
-      apiFetch<VerifyOtpResponse>("/api/auth/verify-otp", {
+    mutationFn: async ({ email, code }: { email: string; code: string }) => {
+      const data = await apiFetch<VerifyOtpResponse>("/api/auth/verify-otp", {
         method: "POST",
         body: JSON.stringify({ email: normalizeEmail(email), code }),
         skipAuthRefresh: true,
-      }),
-    onSuccess: async (data) => {
+      })
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
-      await hydrateActiveOrganization(setOrganization)
+      const organizationStatus = await hydrateActiveOrganization(setOrganization)
+      return { ...data, organizationStatus }
     },
   })
 }
