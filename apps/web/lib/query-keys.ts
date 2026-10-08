@@ -18,6 +18,7 @@ export const caseKeys = {
   timeline: (id: string) => [...caseKeys.timelines(), id] as const,
   archivedTimeline: (id: string) => [...caseKeys.timelines(), id, "archived"] as const,
   mindMap: (id: string) => [...caseKeys.all, "mind-map", id] as const,
+  access: (id: string) => [...caseKeys.all, "access", id] as const,
 }
 
 export const organizationKeys = {
@@ -26,6 +27,8 @@ export const organizationKeys = {
   details: () => [...organizationKeys.all, "detail"] as const,
   detail: (id: string) => [...organizationKeys.details(), id] as const,
   members: (id: string) => [...organizationKeys.detail(id), "members"] as const,
+  auditLog: (id: string, filters: object) =>
+    [...organizationKeys.detail(id), "audit-log", filters] as const,
   myInvite: () => [...organizationKeys.all, "my-invite"] as const,
   portfolio: () => [...organizationKeys.all, "portfolio"] as const,
 }

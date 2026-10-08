@@ -713,7 +713,9 @@ export function PanelBody({
       // @container: panes shrink to ~200px wide on the Free canvas, far below any viewport
       // breakpoint, so panel layouts step on the pane's width (@3xs/@xs/…) instead of sm:/md:.
       // break-words keeps an unbroken name or citation from pushing the body sideways.
-      className={`@container flex h-full min-h-0 flex-col break-words ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto ${
+      // scrollbar-gutter keeps the width fixed when expanding a row makes the scrollbar appear —
+      // otherwise the tag-mix bar and ring reflow narrower, which read as the progress bar shrinking.
+      className={`@container flex h-full min-h-0 flex-col break-words ${dense ? DENSE_GAP[gap] : NORMAL_GAP[gap]} overflow-y-auto [scrollbar-gutter:stable] ${
         dense ? "p-2.5 text-[13px]" : "p-4 text-sm"
       } text-foreground`}
     >

@@ -154,7 +154,7 @@
     "noConsultations": "No consultations yet",
     "deleteConsultationFailed": "Couldn't delete this consultation.",
     "consultationNotFound": "That consultation isn't available in this case. It may have been archived or deleted.",
-    "consultationDeleted": "That consultation was deleted.",
+    "consultationUnavailable": "That consultation isn't available. It may have been deleted, or it belongs to someone else.",
     "showTopics": "Show topics in {{name}}",
     "hideTopics": "Hide topics in {{name}}",
     "archiveConsultation": "Archive",

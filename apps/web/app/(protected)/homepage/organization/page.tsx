@@ -34,6 +34,7 @@ import {
   type PackageSku,
 } from "@/lib/organizations/queries";
 import { UserAvatar } from "@/components/user-avatar";
+import { AuditLogSection } from "@/components/organization/audit-log-section";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -916,6 +917,9 @@ export default function OrganizationPage() {
                 <p className="px-6 md:px-8 pb-6 text-[12px] text-emerald-600 dark:text-emerald-400">{t("invite.success")}</p>
               )}
             </section>
+
+            {/* Audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {canManageOrg && <AuditLogSection organizationId={organization.id} />}
           </>
         )}
       </main>

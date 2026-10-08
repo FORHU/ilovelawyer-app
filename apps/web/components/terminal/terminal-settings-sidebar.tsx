@@ -6,7 +6,7 @@ import { CircleCheck, Loader2, PanelLeft, PanelLeftClose, Plus, Search, X } from
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { MobileDrawer } from "@/components/mobile-drawer"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
-import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY } from "@/components/terminal/terminal-pane-categories"
+import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY, type PaneCategory } from "@/components/terminal/terminal-pane-categories"
 import type { PanelCatalogEntry, PanelId } from "@/lib/terminal/types"
 
 // What the library search matches a pane against: its shown title, the catalog label, and its id
@@ -60,6 +60,12 @@ export default function TerminalSettingsSidebar({
   const { t } = useTranslation("terminal")
   const [query, setQuery] = useState("")
   const [showEmpty, setShowEmpty] = useState(false)
+  // Set by a collapsed-rail category icon; collapsing the sidebar clears it so the toggle button
+  // always opens the full library.
+  const [activeCategory, setActiveCategory] = useState<PaneCategory | null>(null)
+  useEffect(() => {
+    if (!expanded) setActiveCategory(null)
+  }, [expanded])
 
   const visibleSet = useMemo(() => new Set(visiblePanelIds), [visiblePanelIds])
 
@@ -81,8 +87,11 @@ export default function TerminalSettingsSidebar({
 
   const groupedPanels = useMemo(() => {
     const q = query.trim().toLowerCase()
+    // Search overrides the category filter; a filtered category lists its empty panes too.
+    const category = q ? null : activeCategory
     const matches = allPanels.filter((panel) => {
       if (q) return matchesQuery(panel, q)
+      if (category) return PANEL_CATEGORY[panel.id] === category
       return showEmpty || isPopulated(panel.id)
     })
     return PANE_CATEGORY_ORDER.map((category) => ({
@@ -90,7 +99,22 @@ export default function TerminalSettingsSidebar({
       panels: matches.filter((panel) => PANEL_CATEGORY[panel.id] === category),
     })).filter((group) => group.panels.length > 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allPanels, query, showEmpty, panelBadges, loadingPanels, visibleSet])
+  }, [allPanels, query, showEmpty, activeCategory, panelBadges, loadingPanels, visibleSet])
+
+  const filterChip =
+    activeCategory && !query.trim() ? (
+      <div className="mx-2 mb-3 flex shrink-0 items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-[12px] text-foreground">
+        <span className="truncate">{t("paneFilterShowing", { category: t(PANE_CATEGORY_META[activeCategory].labelKey) })}</span>
+        <button
+          type="button"
+          onClick={() => setActiveCategory(null)}
+          aria-label={t("paneFilterClear")}
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+        >
+          <X className="h-3 w-3" aria-hidden="true" />
+        </button>
+      </div>
+    ) : null
 
   // No outside-click collapse: the library only closes via its own collapse button, so working
   // in the grid (dragging panes in, clicking panes) doesn't keep dismissing it.
@@ -278,7 +302,10 @@ export default function TerminalSettingsSidebar({
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      onClick={() => onExpandedChange(true)}
+                      onClick={() => {
+                        setActiveCategory(category)
+                        onExpandedChange(true)
+                      }}
                       aria-label={t(meta.labelKey)}
                       className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
                     >
@@ -307,6 +334,7 @@ export default function TerminalSettingsSidebar({
           }`}
         >
           {searchBox}
+          {filterChip}
           <div className="min-h-0 flex-1 overflow-y-auto pb-2">{list(false)}</div>
           {footerHint}
         </div>

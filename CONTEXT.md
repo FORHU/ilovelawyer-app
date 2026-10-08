@@ -40,7 +40,7 @@ _Avoid_: "name" (ambiguous — always say Full Name in UI copy and "name" only w
 
 **Conversation**
 A saved thread of chat messages between a user and the AI, identified by an id reflected in the URL (`?c=<consultationId>`) so it survives a refresh. Listed most-recently-active first. The UI copy calls this "Consultation", and so does the code since the API's `Conversation` → `Consultation` rename (`Consultation` model, `/api/chat/consultations`); this entry keeps its older name.
-A Case has many Consultations, each an independent conversation context: its own messages, its own Topics (split-reply `MessageGroup`s) and its own AI session. They share only the Case's documents and case-level analysis, never each other's messages. Everyone who can open the Case sees all of its Consultations; only the creator or a case editor can delete one. The Case Workspace switches between them from its chat header (`components/chat/thread-picker.tsx`).
+A Case has many Consultations, each an independent conversation context: its own messages, its own Topics (split-reply `MessageGroup`s) and its own AI session. They share only the Case's documents and case-level analysis, never each other's messages. Everyone who can open the Case sees all of its Consultations; only the creator or a case editor can delete one. A standalone Consultation (no Case, the main chat on `/homepage`) is private to its creator: no one else in the organization, whatever their org role, can list, open or be invited to it — only a Case's Consultations are shared. The Case Workspace switches between them from its chat header (`components/chat/thread-picker.tsx`).
 _Avoid_: "chat", "session" (ambiguous with the backend's Session concept)
 
 **Draft Consultation**
@@ -137,6 +137,17 @@ A Display Preference that tightens spacing and typography across both the Legal 
 **Grid Snapping**
 A Display Preference (UI label: "Show Grid Lines") that makes Pane dragging/resizing snap to grid increments instead of moving freely.
 _Avoid_: "Show Grid Lines" as the glossary term for this — the UI label undersells that this is a real interaction change, not a cosmetic overlay.
+
+**Change Summary**
+What one case analysis run changed in the panes it rewrote, compared with what they said before it — every pane the analysis rewrites: outlook, contradictions, key dates, plan and to-dos, witnesses, damages, findings, Red Team, the AI draft theory, reconstruction gaps, the case map, a new Audio Overview. A pane's own Regenerate writes one for that pane alone. Shown in the Terminal's "What changed" modal ("Based on 2 new documents, 7 things changed"), one line per pane with an Open link: it opens by itself for one the viewer hasn't seen, and from the case row's What changed button at any time; the snapshot's `latestChangeSummary`. See `docs/adr/0019-case-change-summary.md`.
+_Avoid_: "audit log" for it — the audit row records that a refresh ran and who ran it; the Change Summary records what the analysis now says differently.
+
+**Manual edit**
+One change a lawyer made by hand in a Terminal pane — a finding re-rated, a contradiction resolved, a to-do ticked, a witness removed — recorded when it's saved, with the item's name and the fields it changed. Shown in the "What changed" modal beside the AI runs. See `docs/adr/0020-manual-edits-in-change-summary.md`.
+_Avoid_: counting the AI's own writes (refresh steps, Regenerates) as manual edits; they are runs.
+
+**Editing session**
+One person's manual edits with no gap over 30 minutes and no AI run in between — one History entry ("Edits by Ana Cruz", "Your edits") in the "What changed" modal.
 
 **Panel Labels**
 A Display Preference that, when off, hides a Pane's entire header bar (grip handle, title, close control) — revealed only on hover. Touch devices (no hover state, detected via `(hover: hover)`) always show the header regardless of this toggle, so Panes stay movable/closable there.

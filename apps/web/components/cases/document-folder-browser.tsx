@@ -29,6 +29,7 @@ import {
 } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
+import { useCanEditCase } from "@/lib/cases/permissions"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
@@ -56,6 +57,9 @@ type View = { kind: "root" } | { kind: "folder"; name: string }
  * doesn't know whether a folder is open would silently upload without a category while the user
  * thinks they're adding to the folder they're looking at. */
 export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; variant: "full" | "compact" }) {
+  // Archive/restore/delete/exhibit need edit access to the case (see useCanEditCase) — without it
+  // the cards are read-only and there's no select mode, since every bulk action is one of those.
+  const canEdit = useCanEditCase(caseId)
   const { t } = useTranslation("case-portfolio")
   // AttachmentPreview's own strings (loading/fallback text) already live under this namespace —
   // reused here rather than duplicated into case-portfolio.json for just the one header action.
@@ -262,19 +266,23 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const handleBulkDelete = async () => {
     const ids = resolveSelectedDocumentIds()
     setIsBulkDeleting(true)
-    await Promise.allSettled(ids.map((documentId) => deleteDocumentAsync({ documentId, caseId })))
+    const results = await Promise.allSettled(ids.map((documentId) => deleteDocumentAsync({ documentId, caseId })))
     setIsBulkDeleting(false)
     setConfirmingBulkDelete(false)
     exitSelectMode()
+    const failed = results.filter((r) => r.status === "rejected").length
+    if (failed > 0) toast.error(t("detail.deleteDocumentsError", { count: failed }))
   }
 
   const handleBulkArchive = async () => {
     const ids = resolveSelectedDocumentIds()
     setIsBulkArchiving(true)
-    await Promise.allSettled(ids.map((documentId) => archiveDocumentAsync({ documentId, caseId })))
+    const results = await Promise.allSettled(ids.map((documentId) => archiveDocumentAsync({ documentId, caseId })))
     setIsBulkArchiving(false)
     setConfirmingBulkArchive(false)
     exitSelectMode()
+    const failed = results.filter((r) => r.status === "rejected").length
+    if (failed > 0) toast.error(t("detail.archiveDocumentsError", { count: failed }))
   }
 
   // Archived documents have no folders (resolveSelectedDocumentIds' folder union is a no-op here
@@ -375,7 +383,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
           {/* Lives here (alongside Archived/+Add) rather than as its own row above the grid —
            * the same button both enters and exits select mode (re-tap to cancel), so there's no
            * separate "X"/cancel control to keep in sync with it. */}
-          {selectableCount > 0 && (
+          {canEdit && selectableCount > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -591,6 +599,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               selectable={selectMode}
               selected={selectedDocIds.has(doc.id)}
               onToggleSelect={() => toggleDocSelected(doc.id)}
+              readOnly={!canEdit}
             />
           ))}
         </div>
@@ -627,6 +636,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               selectable={selectMode}
               selected={selectedDocIds.has(doc.id)}
               onToggleSelect={() => toggleDocSelected(doc.id)}
+              readOnly={!canEdit}
             />
           ))}
         </div>
@@ -667,6 +677,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
             selectable={selectMode}
             selected={selectedDocIds.has(doc.id)}
             onToggleSelect={() => toggleDocSelected(doc.id)}
+            readOnly={!canEdit}
           />
         ))}
         {!selectMode && newFolderCard}

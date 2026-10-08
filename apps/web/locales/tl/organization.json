@@ -96,5 +96,53 @@
     "switchTitle": "Lumipat ng Organisasyon",
     "switchCancelTooltip": "Manatili sa \"{{currentOrgName}}\" at isara ang dialog na ito",
     "switchConfirmTooltip": "Umalis sa \"{{currentOrgName}}\" at sumali sa \"{{orgName}}\""
+  },
+  "auditLog": {
+    "heading": "Audit log",
+    "subheading": "Mga pag-sign in, pagbabago sa miyembro at pahintulot, mga export, download at pagbura sa organisasyong ito.",
+    "download": "I-download ang PDF",
+    "downloading": "Inihahanda ang PDF…",
+    "downloadError": "Hindi ma-download ang audit log.",
+    "categoryLabel": "Aktibidad",
+    "failuresOnly": "Mga nabigong pagtatangka lamang",
+    "loading": "Naglo-load…",
+    "empty": "Walang naitala para sa mga filter na ito.",
+    "error": "Hindi ma-load ang audit log.",
+    "retry": "Subukang Muli",
+    "failed": "Nabigo",
+    "categories": {
+      "all": "Lahat ng aktibidad",
+      "auth": "Pag-sign in",
+      "org": "Mga miyembro at access",
+      "account": "Mga account",
+      "export": "Mga export",
+      "file": "Mga download ng file",
+      "case": "Mga kaso",
+      "document": "Mga dokumento",
+      "consultation": "Mga konsultasyon",
+      "admin": "Staff ng ilovelawyer"
+    },
+    "showing": "Ipinapakita ang {{from}}–{{to}} sa {{total}}",
+    "previous": "Nakaraan",
+    "next": "Susunod",
+    "last": "Huling pahina",
+    "columns": {
+      "time": "Oras",
+      "action": "Aksyon",
+      "actor": "Ni",
+      "target": "Apektado",
+      "details": "Detalye"
+    },
+    "dateLabel": "Petsa",
+    "allDates": "Lahat ng petsa",
+    "clearFilters": "I-clear ang mga filter",
+    "presets": {
+      "today": "Ngayon",
+      "last7": "Huling 7 araw",
+      "last30": "Huling 30 araw"
+    },
+    "sortBy": "Pagsunud-sunurin ayon sa column na ito",
+    "sortedAscending": "Pataas ang ayos — i-click para baligtarin",
+    "sortedDescending": "Pababa ang ayos — i-click para baligtarin"
   }
 }

@@ -1,3 +1,5 @@
+import type { CaseChangeSummary } from "./change-summary"
+
 export const PANEL_IDS = [
   "command",
   "evidence",
@@ -494,6 +496,9 @@ export interface CaseSnapshot {
   /** `outlookHistory` is newest first and includes the current one. */
   outlook?: CaseOutlook | null
   outlookHistory?: { band: OutlookBand; confidence: ConfidenceLevel; createdAt: string }[]
+  /** What the last analysis refresh changed, pane by pane (lib/terminal/change-summary.ts). Null
+   * until the case's first refresh after it shipped; absent on an API that predates it. */
+  latestChangeSummary?: CaseChangeSummary | null
   trends?: { health?: TrendPoint[]; openIssues?: TrendPoint[]; evidence?: TrendPoint[] }
   riskAnalysis?: {
     overall: {

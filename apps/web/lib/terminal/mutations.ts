@@ -5,6 +5,8 @@ import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
+import type { CaseChangeSummary, ChangeSummaryDay } from "@/lib/terminal/change-summary"
+import type { EditSession, EditsBeforeRun } from "@/lib/terminal/manual-edits"
 import type {
   Annotation,
   PanelId,
@@ -70,6 +72,7 @@ export const terminalKeys = {
     [...terminalKeys.all, "latest-audio-overview", caseId] as const,
   audioOverviewHistory: (caseId: string) =>
     [...terminalKeys.all, "audio-overview-history", caseId] as const,
+  changeSummaries: (caseId: string) => [...terminalKeys.all, "change-summaries", caseId] as const,
 }
 
 /** Mirrors ilovelawyer-api's AI_GENERATION_KINDS (src/constants/ai-generation-kinds.ts). */
@@ -433,6 +436,56 @@ export function useCaseSnapshotQuery(caseId: string) {
     enabled: !!caseId,
     staleTime: 0,
     refetchInterval: SNAPSHOT_IDLE_POLL_MS,
+  })
+}
+
+/** One day's change summaries, newest first (up to the API's 50) — the "What changed" modal's
+ * History for the day picked in its date picker. `day` is YYYY-MM-DD in `timeZone`, the viewer's.
+ * Keyed on the newest summary's id, so a run that lands while the modal is open refetches. */
+export function useChangeSummaryHistoryQuery(caseId: string, latestId: string | null, day: string, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "day", day, timeZone, latestId] as const,
+    queryFn: () =>
+      apiFetch<CaseChangeSummary[]>(
+        `/api/my-cases/${caseId}/change-summaries?day=${encodeURIComponent(day)}&tz=${encodeURIComponent(timeZone)}`,
+      ),
+    enabled: !!caseId && !!latestId && !!day,
+    staleTime: 0,
+  })
+}
+
+/** The days the case has change summaries on, in the viewer's time zone, newest first — the
+ * "What changed" modal's date picker. Keyed on the newest summary's id, like the History. */
+export function useChangeSummaryDaysQuery(caseId: string, latestId: string | null, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "days", timeZone, latestId] as const,
+    queryFn: () => apiFetch<ChangeSummaryDay[]>(`/api/my-cases/${caseId}/change-summaries/days?tz=${encodeURIComponent(timeZone)}`),
+    enabled: !!caseId && !!latestId,
+    staleTime: 0,
+  })
+}
+
+/** One day's editing sessions — lawyers' manual edits, grouped — for the "What changed" modal's
+ * History beside the runs. Fetched while the modal is open; keyed on the newest summary's id too,
+ * so a run that lands (and splits a session) refetches. */
+export function useManualEditSessionsQuery(caseId: string, latestId: string | null, day: string, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "edits", day, timeZone, latestId] as const,
+    queryFn: () =>
+      apiFetch<EditSession[]>(`/api/my-cases/${caseId}/manual-edits?day=${encodeURIComponent(day)}&tz=${encodeURIComponent(timeZone)}`),
+    enabled: !!caseId && !!day,
+    staleTime: 0,
+  })
+}
+
+/** The edits lawyers made between the previous run and `summaryId` — a run's "N edits since the
+ * previous run" line. */
+export function useEditsBeforeRunQuery(caseId: string, summaryId: string | null) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "edits-before", summaryId] as const,
+    queryFn: () => apiFetch<EditsBeforeRun>(`/api/my-cases/${caseId}/change-summaries/${summaryId}/edits-before`),
+    enabled: !!caseId && !!summaryId,
+    staleTime: 60_000,
   })
 }
 

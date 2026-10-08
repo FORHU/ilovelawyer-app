@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -28,12 +28,14 @@ import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useCanEditCase } from "@/lib/cases/permissions";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import { CaseOrigin, OpenOriginalButton } from "@/components/cases/case-origin";
 import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable";
+import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
 
 type DetailTab = "overview" | "workspace";
 
@@ -44,6 +46,8 @@ export default function CaseDetailPage() {
   const searchParams = useSearchParams();
   const id = params.id;
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
+  const canEdit = useCanEditCase(id);
+  const [sharing, setSharing] = useState(false);
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
@@ -131,13 +135,39 @@ export default function CaseDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <EditableCaseTitle id={id} caseName={caseRecord?.caseName} />
+                  {caseRecord?.confidential && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[9.5px] font-semibold tracking-[1px] uppercase text-brand-gold border border-brand-gold/40 rounded-md px-1.5 py-0.5">
+                          <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+                          {t("confidentialBadge")}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("confidentialTooltip")}</TooltipContent>
+                    </Tooltip>
+                  )}
                   {caseRecord?.status === "ARCHIVED" && (
                     <>
                       <span className="shrink-0 text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
                         {t("archivedBadge")}
                       </span>
-                      <UnarchiveButton id={id} caseName={caseRecord.caseName} />
+                      {canEdit && <UnarchiveButton id={id} caseName={caseRecord.caseName} />}
                     </>
+                  )}
+                  {caseRecord && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setSharing(true)}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                        >
+                          <Users className="h-3 w-3" aria-hidden="true" />
+                          {t("share.button")}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("share.buttonTooltip")}</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
                 {/* Stands in for GlobalHeader's own hamburger (hidden here via
@@ -193,6 +223,9 @@ export default function CaseDetailPage() {
           </div>
         )}
       </div>
+      {sharing && caseRecord && (
+        <ShareCaseDialog caseId={id} caseName={caseRecord.caseName} onClose={() => setSharing(false)} />
+      )}
     </PageShell>
   );
 }
@@ -202,6 +235,7 @@ export default function CaseDetailPage() {
 function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
+  const canEdit = useCanEditCase(id);
   return (
     <label className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
       <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
@@ -209,7 +243,7 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
       </span>
       <select
         value={value ?? ""}
-        disabled={isPending}
+        disabled={isPending || !canEdit}
         onChange={(e) => updateCase({ id, payload: { clientSide: (e.target.value || null) as ClientSide | null } })}
         className="h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground disabled:opacity-50"
       >
@@ -225,6 +259,7 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
 function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | undefined }) {
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
+  const canEdit = useCanEditCase(id);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -240,6 +275,14 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
     if (!trimmed || trimmed === caseName) return;
     updateCase({ id, payload: { caseName: trimmed } });
   };
+
+  const heading = (
+    <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
+      {caseName ?? "…"}
+    </h1>
+  );
+
+  if (!canEdit) return <div className="min-w-0">{heading}</div>;
 
   if (isEditing) {
     return (
@@ -273,9 +316,7 @@ function EditableCaseTitle({ id, caseName }: { id: string; caseName: string | un
           onClick={startEditing}
           className="group/title flex min-w-0 items-center gap-1 text-left cursor-text"
         >
-          <h1 className="font-['Libre_Caslon_Text'] text-base sm:text-2xl font-normal tracking-[-0.01em] text-foreground truncate">
-            {caseName ?? "…"}
-          </h1>
+          {heading}
           <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-60 transition-opacity hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground md:opacity-0 md:group-hover/title:opacity-100">
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
