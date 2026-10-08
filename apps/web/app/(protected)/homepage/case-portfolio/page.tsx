@@ -569,7 +569,8 @@ export default function CaseManagerDashboard() {
               <span className="truncate">{t("tableUpdatedHeader")}</span>
               <span className="truncate">{t("tableOpenedHeader")}</span>
               <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
-              <span className="text-right">{t("tableActionHeader")}</span>
+              {/* Kept as an empty cell without actions, so the grid columns still line up. */}
+              <span className="text-right">{canEdit ? t("tableActionHeader") : null}</span>
             </div>
             <div className="md:min-w-[750px] lg:min-w-[900px]">
               {cases.map((c) => (
