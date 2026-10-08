@@ -74,7 +74,7 @@
     "subheading": "A copy of the personal data we hold about you.",
     "download": {
       "title": "Download my data",
-      "description": "A zip with a readable PDF summary, the complete record in a data file, and the files you uploaded.",
+      "description": "A zip with a readable PDF summary, the complete record in a data file, and the files you uploaded. Cases and documents that belong to an organization you don't own are not included.",
       "button": "Download",
       "preparing": "Preparing…",
       "started": "Download started",
