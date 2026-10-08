@@ -800,7 +800,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                 aria-label={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : t("refresh")}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-overlay-hover"
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                <RefreshCw className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
                 <span className="hidden sm:inline">{t("refresh")}</span>
               </button>
             )}
