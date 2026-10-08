@@ -316,6 +316,7 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
               onExpandedChange={() => {}}
               isMobileOpen={false}
               onMobileOpenChange={() => {}}
+              caseId={caseId}
               allPanels={availablePanels}
               visiblePanelIds={builderLayout.panels.filter((p) => p.visible).map((p) => p.id)}
               panelBadges={panelBadges}

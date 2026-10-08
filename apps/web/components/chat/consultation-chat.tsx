@@ -52,7 +52,7 @@ import {
   type MessageGroundingCheck,
   type CitationRankItem,
 } from "@/lib/chat/mutations";
-import { extractMindMap, extractTraceSteps, stripStructuredBlocks, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
+import { parseStreamingReply, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
@@ -710,7 +710,10 @@ export default function ConsultationChat({
             // no longer polls for newer checkpoints) — the subscribeChatGeneration effect
             // below is what notices the turn actually finishing and swaps this for the real
             // persisted reply, same as the "no partial-token recovery required" design intends.
-            [...baseMessages, { role: "assistant" as const, content: lastHistoryEntry?.pendingReplyContent ?? "" }]
+            // The checkpoint is the RAW stream, [TRACE] frames and all — parsed exactly like the
+            // live chunks in doSend, or the research frames alone would read as answer text and
+            // swap "is thinking" for the finalizing label / a blank bubble after a remount.
+            [...baseMessages, { role: "assistant" as const, ...parseStreamingReply(lastHistoryEntry?.pendingReplyContent ?? "") }]
           : serverSaysFailed
             ? [...baseMessages, { role: "assistant" as const, content: t("sendError") }]
             : baseMessages,
@@ -1463,9 +1466,7 @@ export default function ConsultationChat({
             // must not extend it (the API saved the partial reply at the same point).
             if (sendTokenRef.current !== myToken || abort.signal.aborted) return;
             rawAccumulated += chunk;
-            const displayContent = stripStructuredBlocks(rawAccumulated);
-            const mindMap = extractMindMap(rawAccumulated);
-            const researchSteps = extractTraceSteps(rawAccumulated);
+            const { content: displayContent, mindMap, researchSteps } = parseStreamingReply(rawAccumulated);
             setPendingTurn((prev) => {
               if (!prev) return prev;
               const lastIndex = prev.messages.length - 1;

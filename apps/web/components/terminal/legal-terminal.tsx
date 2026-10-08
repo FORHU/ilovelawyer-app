@@ -993,6 +993,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
           onExpandedChange={setSidebarExpanded}
           isMobileOpen={mobileLibraryOpen}
           onMobileOpenChange={setMobileLibraryOpen}
+          caseId={caseId}
           allPanels={availablePanels}
           visiblePanelIds={layout.panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id)).map((p) => p.id)}
           panelBadges={panelBadges}
