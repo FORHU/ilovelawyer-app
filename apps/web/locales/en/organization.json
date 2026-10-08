@@ -96,5 +96,141 @@
     "switchTitle": "Switch Organization",
     "switchCancelTooltip": "Stay in \"{{currentOrgName}}\" and close this dialog",
     "switchConfirmTooltip": "Leave \"{{currentOrgName}}\" and join \"{{orgName}}\""
+  },
+  "auditLog": {
+    "heading": "Audit log",
+    "subheading": "Sign-ins, membership and permission changes, exports, downloads and deletions in this organization.",
+    "download": "Download PDF",
+    "downloading": "Preparing PDF…",
+    "downloadError": "Couldn't download the audit log.",
+    "categoryLabel": "Activity",
+    "failuresOnly": "Failed attempts only",
+    "loading": "Loading…",
+    "empty": "Nothing recorded for these filters.",
+    "error": "Couldn't load the audit log.",
+    "retry": "Retry",
+    "failed": "Failed",
+    "categories": {
+      "all": "All activity",
+      "auth": "Sign-in",
+      "org": "Members and access",
+      "account": "Accounts",
+      "export": "Exports",
+      "file": "File downloads",
+      "case": "Cases",
+      "document": "Documents",
+      "consultation": "Consultations",
+      "admin": "ilovelawyer staff"
+    },
+    "actions": {
+      "auth": {
+        "signup": "Signed up",
+        "signup_cancelled": "Abandoned signup removed",
+        "login": "Sign-in",
+        "logout": "Signed out",
+        "email_verified": "Email verified",
+        "password_reset_requested": "Password reset requested",
+        "password_reset": "Password reset",
+        "password_changed": "Password changed",
+        "google_linked": "Google sign-in connected"
+      },
+      "account": {
+        "profile_updated": "Profile updated",
+        "deletion_requested": "Account deletion requested",
+        "deletion_cancelled": "Account deletion cancelled",
+        "purged": "Account deleted"
+      },
+      "integration": {
+        "connected": "Integration connected",
+        "disconnected": "Integration disconnected"
+      },
+      "org": {
+        "created": "Organization created",
+        "updated": "Organization details changed",
+        "member_invited": "Member invited",
+        "invite_accepted": "Invite accepted",
+        "invite_declined": "Invite declined",
+        "member_role_changed": "Member role changed",
+        "member_removed": "Member removed",
+        "member_left": "Member left",
+        "case_attached": "Case moved into organization"
+      },
+      "case": {
+        "access_granted": "Case access granted",
+        "deleted": "Case deleted",
+        "item_deleted": "Item deleted from a case"
+      },
+      "consultation": {
+        "invite_created": "Consultation invite created",
+        "invite_accepted": "Consultation invite accepted",
+        "invite_deleted": "Consultation invite revoked",
+        "participant_removed": "Consultation participant removed",
+        "deleted": "Consultation deleted",
+        "message_deleted": "Consultation message deleted"
+      },
+      "admin": {
+        "user": {
+          "approved": "Account approved by ilovelawyer",
+          "denied": "Account denied by ilovelawyer",
+          "reactivated": "Account reactivated by ilovelawyer",
+          "blocked": "Account blocked by ilovelawyer",
+          "unblocked": "Account unblocked by ilovelawyer",
+          "email_verified": "Email verified by ilovelawyer",
+          "tenant_changed": "Region changed by ilovelawyer",
+          "deleted": "Account deleted by ilovelawyer"
+        },
+        "settings": {
+          "signup_auto_approve_changed": "Signup auto-approval changed"
+        },
+        "model_settings": {
+          "updated": "AI model setting changed"
+        },
+        "jurisdiction_module": {
+          "toggled": "Jurisdiction module switched"
+        }
+      },
+      "export": {
+        "case_brief": "Case brief exported",
+        "generated_document": "Document generated",
+        "audit_log": "Audit log exported"
+      },
+      "file": {
+        "accessed": "File opened or downloaded"
+      },
+      "email": {
+        "sent": "Email sent through ilovelawyer"
+      },
+      "document": {
+        "deleted": "Document deleted"
+      },
+      "transcription": {
+        "deleted": "Transcription deleted"
+      },
+      "note": {
+        "deleted": "Note deleted"
+      }
+    },
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next",
+    "last": "Last page",
+    "columns": {
+      "time": "Time",
+      "action": "Action",
+      "actor": "By",
+      "target": "Affected",
+      "details": "Details"
+    },
+    "dateLabel": "Date",
+    "allDates": "All dates",
+    "clearFilters": "Clear filters",
+    "presets": {
+      "today": "Today",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days"
+    },
+    "sortBy": "Sort by this column",
+    "sortedAscending": "Sorted ascending — click to reverse",
+    "sortedDescending": "Sorted descending — click to reverse"
   }
 }

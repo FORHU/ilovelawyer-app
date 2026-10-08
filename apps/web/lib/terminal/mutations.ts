@@ -6,6 +6,7 @@ import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
 import type { CaseChangeSummary, ChangeSummaryDay } from "@/lib/terminal/change-summary"
+import type { EditSession, EditsBeforeRun } from "@/lib/terminal/manual-edits"
 import type {
   Annotation,
   PanelId,
@@ -461,6 +462,30 @@ export function useChangeSummaryDaysQuery(caseId: string, latestId: string | nul
     queryFn: () => apiFetch<ChangeSummaryDay[]>(`/api/my-cases/${caseId}/change-summaries/days?tz=${encodeURIComponent(timeZone)}`),
     enabled: !!caseId && !!latestId,
     staleTime: 0,
+  })
+}
+
+/** One day's editing sessions — lawyers' manual edits, grouped — for the "What changed" modal's
+ * History beside the runs. Fetched while the modal is open; keyed on the newest summary's id too,
+ * so a run that lands (and splits a session) refetches. */
+export function useManualEditSessionsQuery(caseId: string, latestId: string | null, day: string, timeZone: string) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "edits", day, timeZone, latestId] as const,
+    queryFn: () =>
+      apiFetch<EditSession[]>(`/api/my-cases/${caseId}/manual-edits?day=${encodeURIComponent(day)}&tz=${encodeURIComponent(timeZone)}`),
+    enabled: !!caseId && !!day,
+    staleTime: 0,
+  })
+}
+
+/** The edits lawyers made between the previous run and `summaryId` — a run's "N edits since the
+ * previous run" line. */
+export function useEditsBeforeRunQuery(caseId: string, summaryId: string | null) {
+  return useQuery({
+    queryKey: [...terminalKeys.changeSummaries(caseId), "edits-before", summaryId] as const,
+    queryFn: () => apiFetch<EditsBeforeRun>(`/api/my-cases/${caseId}/change-summaries/${summaryId}/edits-before`),
+    enabled: !!caseId && !!summaryId,
+    staleTime: 60_000,
   })
 }
 

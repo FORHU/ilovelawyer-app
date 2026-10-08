@@ -21,6 +21,19 @@ export const UPSTREAM_FETCH_TIMEOUT_MS = 10_000
  * token in the path is the only auth — this route is reachable from a plain <a>, <img>, <audio>
  * or <iframe> src, none of which can carry the app's Bearer access token.
  */
+/** Who is actually opening the file, for the API's file.accessed security audit row — without
+ * these the API would record this server's own address and Node's user agent. Only the last
+ * X-Forwarded-For hop is passed on: that's the one the proxy in front of this app added, while
+ * anything before it is whatever the client chose to send. */
+function viewerHeaders(req: NextRequest): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const userAgent = req.headers.get("user-agent")
+  if (userAgent) headers["user-agent"] = userAgent
+  const lastHop = req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim()
+  if (lastHop) headers["x-forwarded-for"] = lastHop
+  return headers
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
@@ -28,7 +41,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   try {
     const resolveRes = await fetch(
       `${API_URL}${versioned("/api/files/resolve")}?token=${encodeURIComponent(token)}`,
-      { signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS) },
+      { signal: AbortSignal.timeout(RESOLVE_TIMEOUT_MS), headers: viewerHeaders(req) },
     )
     if (!resolveRes.ok) {
       return new Response(null, { status: resolveErrorStatus(resolveRes.status) })
