@@ -46,3 +46,7 @@ Witnesses lose "Score with AI" the same way. The Terminal's Audio Overview pane 
 - Older cases may hold several AI drafts from the old Propose button. Only the newest is rewritten; the others stay until someone retires them.
 - A lawyer editing the narrative while a refresh lands keeps their unsaved draft; the other registers take the new text.
 - Some content can no longer be brought back up to date from the Terminal: an edited reconstruction narrative is never rewritten again, an expanded or edited case map is never rebuilt, and a Case Strategy plan only catches up with a lawyer's own edits (findings, evidence, witnesses) at the next document change. A case whose first map failed to build retries only when its documents next change.
+
+## Amendment
+
+Case Reconstruction audio (the narration and the scene table read) was removed. References above to narration being re-synthesized and to the table read no longer apply; the narrative, scenes and events behave as described. The audio columns are left in the schema, unused.

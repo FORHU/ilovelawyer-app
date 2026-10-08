@@ -34,6 +34,9 @@ export interface SummaryView {
   claims: string | null
   posture: string | null
   risks: SnapshotRisk[]
+  /** Open legal issues and weaknesses, most serious first — the AI's key issues. Listed under the
+   * lawyer's risks so the list matches the Open issues tile, which counts both. */
+  findings: CaseFinding[]
 }
 
 function kpi(value: number, points?: TrendPoint[]): Kpi {
@@ -71,6 +74,11 @@ function nextDeadline(snapshot: CaseSnapshot, now: Date): SummaryView["deadline"
   }
 }
 
+/** Contested legal issues and material weaknesses are the serious ones. */
+export function isSeriousFinding(finding: Pick<CaseFinding, "category" | "tag">): boolean {
+  return (finding.category === "LEGAL_ISSUE" && finding.tag === "CONTESTED") || (finding.category === "WEAKNESS" && finding.tag === "MATERIAL")
+}
+
 /** Legal issues not RESOLVED and weaknesses not CLOSED — same rule as the API's risk score
  * (ilovelawyer-api utils/case-risk-score.ts openFindingCounts). */
 export function openFindings(snapshot: Pick<CaseSnapshot, "findings">): CaseFinding[] {
@@ -82,7 +90,8 @@ export function openFindings(snapshot: Pick<CaseSnapshot, "findings">): CaseFind
 export function buildSummaryView(snapshot: CaseSnapshot, now = new Date()): SummaryView {
   const { trends } = snapshot
   const openRisks = snapshot.risks.filter((r) => r.status === "OPEN").length
-  const findingCount = openFindings(snapshot).length
+  const findings = openFindings(snapshot)
+  const findingCount = findings.length
   return {
     outlook: snapshot.outlook ?? null,
     outlookHistory: (snapshot.outlookHistory ?? []).slice(1, 5),
@@ -96,6 +105,8 @@ export function buildSummaryView(snapshot: CaseSnapshot, now = new Date()): Summ
     claims: snapshot.case.actionType?.trim() || null,
     posture: snapshot.case.jurisdiction?.trim() || null,
     risks: snapshot.risks,
+    // Stable sort: within a tier the findings keep the snapshot's order.
+    findings: [...findings].sort((a, b) => Number(isSeriousFinding(b)) - Number(isSeriousFinding(a))),
   }
 }
 
@@ -137,6 +148,7 @@ export function sampleSummaryView(now = Date.now()): SummaryView {
       risk("r2", "No written protest from client, 4-11 August", "UNVERIFIED", "MEDIUM"),
       risk("r3", "R. Santos sworn statement outstanding", "MISSING_EVIDENCE", "LOW"),
     ],
+    findings: [],
   }
 }
 

@@ -1,21 +1,16 @@
 import { Fragment, useEffect, useRef, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import { DocumentLink } from "@/components/shared/document-viewer"
 import { useTranslation } from "react-i18next"
-import { AlertTriangle, FileText, Loader2, Pencil, Quote, Save, Sparkles, Volume2 } from "lucide-react"
+import { AlertTriangle, Check, ChevronRight, Copy, FileText, Loader2, Pencil, Quote, Save, Sparkles } from "lucide-react"
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
-import AttributedMarkdown, { AttributedTextLegend } from "@/components/shared/attributed-text"
+import AttributedMarkdown, { AttributedTextLegend, type ClaimCategory } from "@/components/shared/attributed-text"
 import {
-  pollReconstructionAudio,
-  terminalKeys,
   useAiJobStatus,
-  useGenerateReconstructionAudioMutation,
   useGenerateReconstructionEventsMutation,
   useGenerateReconstructionScenesMutation,
-  useGenerateTableReadMutation,
   useUpdateReconstructionMutation,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
@@ -35,7 +30,6 @@ import {
   PanelBody,
   SectionLabel,
   ghostBtnClass,
-  labelTextClass,
   primaryBtnClass,
   secondaryTextClass,
   RegenerateButton,
@@ -83,7 +77,6 @@ export function CaseReconstructionPanel({
   caseId: string
 }) {
   const { t } = useTranslation("terminal")
-  const queryClient = useQueryClient()
   const reconstruction = snapshot.reconstruction
   const narrative = reconstruction?.narrative ?? ""
 
@@ -104,13 +97,12 @@ export function CaseReconstructionPanel({
     court: false,
     opposing: false,
   })
-  const [audioPolling, setAudioPolling] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [viewMode, setViewMode] = useState<
     "narrative" | "scenes" | "storyboard" | "events"
   >("narrative")
 
   const update = useUpdateReconstructionMutation(caseId)
-  const generateAudio = useGenerateReconstructionAudioMutation(caseId)
   const generateJob = useAiJobStatus(caseId, "caseReconstruction")
   const isGenerating = generateJob.data?.status === "IN_PROGRESS"
   // The analysis refresh writes the narrative and rewrites it until the lawyer edits any register
@@ -152,25 +144,9 @@ export function CaseReconstructionPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on new content, reads the dirty flags it lands on
   }, [reconstruction])
 
-  // Polls a Polly async job while one is in flight — same "caller drives the loop" contract
-  // as the Transcription feature's job polling, just scoped locally to this panel instead of
-  // a cross-page store, since there's only ever one audio job per reconstruction.
-  useEffect(() => {
-    if (!audioPolling) return
-    const interval = setInterval(() => {
-      pollReconstructionAudio(caseId)
-        .then((result) => {
-          if (result.status === "IN_PROGRESS") return
-          setAudioPolling(false)
-          queryClient.invalidateQueries({
-            queryKey: terminalKeys.snapshot(caseId),
-          })
-        })
-        .catch(() => setAudioPolling(false))
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [audioPolling, caseId, queryClient])
-
+  const sourceLabels = [
+    ...new Set((reconstruction?.claims ?? []).map((c) => c.sourceLabel).filter((l): l is string => !!l)),
+  ]
   const activeDraft = drafts[activeRegister]
   const activeDirty = dirty[activeRegister]
   const activeText = registerText(reconstruction, activeRegister)
@@ -213,16 +189,18 @@ export function CaseReconstructionPanel({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-x-1 border-b border-border">
+      <div role="tablist" className="flex w-full max-w-md flex-wrap gap-0.5 self-start rounded-md bg-muted p-0.5">
         {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
+            role="tab"
+            aria-selected={viewMode === mode}
             onClick={() => setViewMode(mode)}
-            className={`px-2.5 py-1.5 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+            className={`min-w-0 flex-1 rounded px-2.5 py-1.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 ${
               viewMode === mode
-                ? "border-b-2 border-brand-gold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/5"
+                : "text-foreground/70 hover:text-foreground"
             }`}
           >
             {t(RECONSTRUCTION_VIEW_MODE_KEYS[mode])}
@@ -248,18 +226,21 @@ export function CaseReconstructionPanel({
       )}
 
       {viewMode === "narrative" && (
-        <>
-          <div className="flex flex-wrap gap-x-1 border-b border-border">
+        <div className="grid items-start gap-x-10 gap-y-6 @4xl:grid-cols-[minmax(0,66ch)_minmax(16rem,22rem)]">
+          <div className="flex min-w-0 flex-col gap-3">
+          <div role="tablist" className="flex flex-wrap gap-x-4 border-b border-border">
             {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map(
               (register) => (
                 <button
                   key={register}
                   type="button"
+                  role="tab"
+                  aria-selected={activeRegister === register}
                   onClick={() => setActiveRegister(register)}
-                  className={`px-2.5 py-1.5 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                  className={`-mb-px border-b-2 py-1.5 text-xs transition-colors outline-none focus-visible:text-foreground ${
                     activeRegister === register
-                      ? "border-b-2 border-brand-gold text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "border-brand-gold font-medium text-foreground"
+                      : "border-transparent text-foreground/70 hover:text-foreground"
                   }`}
                 >
                   {t(REGISTER_TAB_KEYS[register])}
@@ -267,6 +248,7 @@ export function CaseReconstructionPanel({
               )
             )}
           </div>
+          <p className="text-xs text-foreground/70">{t(`${REGISTER_TAB_KEYS[activeRegister]}Hint`)}</p>
 
           {!narrative && !isGenerating ? (
             <EmptyNote>{t("noReconstruction")}</EmptyNote>
@@ -274,22 +256,35 @@ export function CaseReconstructionPanel({
             <EmptyNote>{t("registerNotGenerated")}</EmptyNote>
           ) : activeRegister === "general" && !isEditingGeneral ? (
             <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                {reconstruction?.claims?.length ? (
-                  <AttributedTextLegend />
-                ) : (
-                  <span />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setIsEditingGeneral(true)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
-                >
-                  <Pencil className="h-3 w-3" aria-hidden="true" />
-                  {t("edit")}
-                </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-foreground/70 tabular-nums">
+                    {t("readTimeMinutes", { n: Math.max(1, Math.round(activeDraft.split(/\s+/).length / 200)) })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(activeDraft).then(() => {
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 1500)
+                      })
+                    }}
+                    className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
+                  >
+                    {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+                    {copied ? t("copiedText") : t("copyText")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingGeneral(true)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden="true" />
+                    {t("edit")}
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5">
+              <div>
                 <AttributedMarkdown
                   content={activeDraft}
                   claims={reconstruction?.claims ?? []}
@@ -313,95 +308,105 @@ export function CaseReconstructionPanel({
           )}
 
           {activeDirty && (
-            <button
-              type="button"
-              onClick={() =>
-                update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
-                  onSuccess: () => {
-                    setDirty((prev) => ({ ...prev, [activeRegister]: false }))
-                    if (activeRegister === "general") setIsEditingGeneral(false)
-                  },
-                })
-              }
-              disabled={update.isPending}
-              className={`inline-flex items-center gap-1.5 self-end ${primaryBtnClass}`}
-            >
-              {update.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="h-3 w-3" aria-hidden="true" />
-              )}
-              {update.isPending ? t("saving") : t("save")}
-            </button>
+            <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-2 border-t border-border bg-card px-1 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDrafts((prev) => ({ ...prev, [activeRegister]: activeText }))
+                  setDirty((prev) => ({ ...prev, [activeRegister]: false }))
+                  if (activeRegister === "general") setIsEditingGeneral(false)
+                }}
+                disabled={update.isPending}
+                className={ghostBtnClass}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
+                    onSuccess: () => {
+                      setDirty((prev) => ({ ...prev, [activeRegister]: false }))
+                      if (activeRegister === "general") setIsEditingGeneral(false)
+                    },
+                  })
+                }
+                disabled={update.isPending}
+                className={`inline-flex items-center gap-1.5 ${primaryBtnClass}`}
+              >
+                {update.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="h-3 w-3" aria-hidden="true" />
+                )}
+                {update.isPending ? t("saving") : t("save")}
+              </button>
+            </div>
           )}
           <MutationError show={update.isError} />
+          </div>
+
+          {/* Record rail: sits beside the prose on wide panes (the prose keeps its reading measure),
+              and stacks under it on narrow ones. */}
+          <aside className="flex min-w-0 flex-col gap-4 @4xl:sticky @4xl:top-0">
+          {reconstruction?.claims?.length ? (
+            <div className="flex flex-col gap-2 @4xl:border-l @4xl:border-border @4xl:pl-5">
+              <SectionLabel>{t("reconstructionSources")}</SectionLabel>
+              <AttributedTextLegend
+                className="flex-col items-start gap-y-1.5"
+                counts={reconstruction.claims.reduce<Partial<Record<ClaimCategory, number>>>((acc, c) => {
+                  acc[c.category] = (acc[c.category] ?? 0) + 1
+                  return acc
+                }, {})}
+              />
+              {sourceLabels.length > 0 && (
+                <ul className="mt-1 space-y-1 text-[12px] leading-5 text-foreground/70">
+                  {sourceLabels.map((label) => (
+                    <li key={label} className="flex items-start gap-1.5">
+                      <FileText className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0">{label}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
 
           {reconstruction && reconstruction.gaps.length > 0 && (
-            <div>
-              <SectionLabel>{t("reconstructionGaps")}</SectionLabel>
-              <ul className="list-disc space-y-1 pl-4 text-[12px] leading-5 text-muted-foreground">
+            <details open className="group border-t border-border pt-3 @4xl:border-l @4xl:border-t-0 @4xl:pt-0 @4xl:pl-5">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-medium text-foreground outline-none focus-visible:text-brand-gold">
+                <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" aria-hidden="true" />
+                {t("reconstructionGaps")}
+                <span className="text-foreground/70">{reconstruction.gaps.length}</span>
+              </summary>
+              <ul className="mt-2 list-disc space-y-1 pl-8 text-[12px] leading-5 text-foreground/70">
                 {reconstruction.gaps.map((gap, index) => (
                   <li key={index}>{gap}</li>
                 ))}
               </ul>
-            </div>
+            </details>
           )}
-
-          {activeRegister === "general" && narrative && (
-            <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <SectionLabel>{t("audioNarration")}</SectionLabel>
-                <button
-                  type="button"
-                  onClick={() =>
-                    generateAudio.mutate(undefined, {
-                      onSuccess: () => {
-                        setAudioPolling(true)
-                        queryClient.invalidateQueries({
-                          queryKey: terminalKeys.snapshot(caseId),
-                        })
-                      },
-                    })
-                  }
-                  disabled={generateAudio.isPending || audioPolling}
-                  className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
-                >
-                  {generateAudio.isPending || audioPolling ? (
-                    <Loader2
-                      className="h-3 w-3 animate-spin"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Volume2 className="h-3 w-3" aria-hidden="true" />
-                  )}
-                  {generateAudio.isPending || audioPolling
-                    ? t("generatingAudio")
-                    : reconstruction?.audioFile?.fileUrl
-                      ? t("regenerateAudio")
-                      : t("generateAudio")}
-                </button>
-              </div>
-
-              <MutationError show={generateAudio.isError} />
-              {reconstruction?.audioFile?.fileUrl && (
-                <audio
-                  controls
-                  src={reconstruction.audioFile.fileUrl}
-                  className="h-8 w-full"
-                />
-              )}
-              {reconstruction?.audioStaleAt && (
-                <p className="text-[11px] text-muted-foreground">
-                  {t("audioOutOfDate")}
-                </p>
-              )}
-            </div>
-          )}
-        </>
+          </aside>
+        </div>
       )}
         </>
       )}
     </PanelBody>
+  )
+}
+
+// Shape-matched placeholder while a generate job runs with nothing to show yet.
+function RowSkeletons() {
+  return (
+    <div className="space-y-4 motion-safe:animate-pulse" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="space-y-2">
+          <div className="h-3 w-2/5 rounded bg-muted" />
+          <div className="h-3 w-full rounded bg-muted" />
+          <div className="h-3 w-4/5 rounded bg-muted" />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -439,11 +444,6 @@ function ScenesView({
   const scenesJob = useAiJobStatus(caseId, "caseReconstructionScenes")
   const isGeneratingScenes =
     generateScenes.isPending || scenesJob.data?.status === "IN_PROGRESS"
-
-  const generateTableRead = useGenerateTableReadMutation(caseId)
-  const tableReadJob = useAiJobStatus(caseId, "caseReconstructionTableRead")
-  const isGeneratingTableRead =
-    generateTableRead.isPending || tableReadJob.data?.status === "IN_PROGRESS"
 
   const scenesListRef = useRef<HTMLUListElement>(null)
   const reducedMotion = usePrefersReducedMotion()
@@ -484,46 +484,38 @@ function ScenesView({
       <MutationError show={generateScenes.isError} />
 
       {!scenes || scenes.length === 0 ? (
-        <EmptyNote>{t("noScenes")}</EmptyNote>
+        isGeneratingScenes ? <RowSkeletons /> : <EmptyNote>{t("noScenes")}</EmptyNote>
       ) : (
         <>
-          <ul ref={scenesListRef} className="space-y-2">
+          <ul ref={scenesListRef} className="divide-y divide-border">
             {scenes.map((scene) => (
-              <li
-                key={scene.index}
-                className="rounded-md border border-border px-3 py-2.5"
-              >
+              <li key={scene.index} className="py-3 first:pt-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 text-[12px] font-semibold text-foreground">
+                  <p className="min-w-0 flex-1 font-[family-name:var(--font-reading)] text-[15px] font-semibold text-foreground">
                     {[scene.time, scene.location].filter(Boolean).join(" · ") ||
                       t("sceneUntitled", { n: scene.index + 1 })}
                   </p>
                   <SceneConfidenceBadge confidence={scene.confidence} />
                 </div>
                 {scene.actors.length > 0 && (
-                  <p className="mt-1 text-[10px] tracking-wider text-muted-foreground uppercase">
-                    {scene.actors.join(" · ")}
+                  <p className="mt-0.5 text-[11px] text-foreground/70">
+                    {scene.actors.join(", ")}
                   </p>
                 )}
-                <p className="mt-1.5 text-[12px] leading-4 text-foreground">
+                <p className="mt-2 text-[13px] leading-6 text-foreground">
                   {scene.action}
                 </p>
                 {scene.dialogue.length > 0 && (
-                  <ul className="mt-1.5 space-y-0.5">
+                  <dl className="mt-2 grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 gap-y-1 border-l-2 border-border pl-3 text-[12px] leading-5">
                     {scene.dialogue.map((d, i) => (
-                      <li
-                        key={i}
-                        className="text-[12px] leading-4 text-muted-foreground"
-                      >
-                        <span className="font-semibold text-foreground">
-                          {d.actor}:{" "}
-                        </span>
-                        {d.line}
-                      </li>
+                      <Fragment key={i}>
+                        <dt className="font-semibold text-foreground">{d.actor}</dt>
+                        <dd className="text-foreground/70">{d.line}</dd>
+                      </Fragment>
                     ))}
-                  </ul>
+                  </dl>
                 )}
-                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                <p className="mt-2 text-[11px] text-foreground/70">
                   {t("sourcesVerifiedCount", { n: scene.sourceRefs.length })}
                 </p>
                 {scene.unresolved.length > 0 && (
@@ -539,7 +531,7 @@ function ScenesView({
                         />
                         <span>
                           {u}{" "}
-                          <span className="text-muted-foreground">
+                          <span className="text-foreground/70">
                             ({t("addedAsWeakness")})
                           </span>
                         </span>
@@ -550,47 +542,6 @@ function ScenesView({
               </li>
             ))}
           </ul>
-
-          <div className="border-t border-border pt-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <SectionLabel>{t("tableRead")}</SectionLabel>
-              <button
-                type="button"
-                onClick={() => generateTableRead.mutate()}
-                disabled={isGeneratingTableRead}
-                className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
-              >
-                {isGeneratingTableRead ? (
-                  <Loader2
-                    className="h-3 w-3 animate-spin"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Volume2 className="h-3 w-3" aria-hidden="true" />
-                )}
-                {isGeneratingTableRead
-                  ? t("generatingAudio")
-                  : reconstruction?.tableReadFile?.fileUrl
-                    ? t("regenerateTableRead")
-                    : t("generateTableRead")}
-              </button>
-            </div>
-            <MutationError show={generateTableRead.isError} />
-            {reconstruction?.tableReadFile?.fileUrl ? (
-              <audio
-                controls
-                src={reconstruction.tableReadFile.fileUrl}
-                className="mt-2 h-8 w-full"
-              />
-            ) : (
-              <EmptyNote>{t("noTableRead")}</EmptyNote>
-            )}
-            {reconstruction?.tableReadStaleAt && (
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {t("tableReadOutOfDate")}
-              </p>
-            )}
-          </div>
         </>
       )}
     </div>
@@ -615,6 +566,11 @@ const EVENT_STATUS_BAR_CLASS: Record<ReconstructionEventStatus, string> = {
   VERIFIED: "bg-ok",
   DISPUTED: "bg-danger",
   UNVERIFIED: "bg-muted-foreground/40",
+}
+const EVENT_STATUS_TEXT_CLASS: Record<ReconstructionEventStatus, string> = {
+  VERIFIED: "text-ok",
+  DISPUTED: "text-danger",
+  UNVERIFIED: "text-foreground",
 }
 // Fixed order everywhere a status appears as a set (bar segments, count legend) — never the
 // order events happen to come back in, so the legend doesn't reshuffle between renders.
@@ -657,22 +613,26 @@ function EventRow({
     ))
 
   return (
-    <li className="rounded-md border border-border px-3 py-2.5">
+    <li className="relative border-l border-border pb-5 pl-4 last:border-transparent last:pb-0">
+      <span
+        aria-hidden="true"
+        className={`absolute top-1.5 -left-[4.5px] h-2 w-2 rounded-full ring-2 ring-card ${
+          event.status ? EVENT_STATUS_BAR_CLASS[event.status] : "bg-muted-foreground/40"
+        }`}
+      />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-baseline gap-x-2 text-[12px] font-semibold text-foreground">
-            {dateLabel && <span className="text-muted-foreground">{dateLabel}</span>}
-            <span>{event.proposition}</span>
-          </p>
+          {dateLabel && <p className="text-[11px] font-medium text-foreground/70 tabular-nums">{dateLabel}</p>}
+          <p className="font-[family-name:var(--font-reading)] text-[15px] leading-6 font-semibold text-foreground">{event.proposition}</p>
           {event.assertedBy && (
-            <p className="mt-0.5 text-[11px] text-muted-foreground italic">— {event.assertedBy}</p>
+            <p className="mt-0.5 text-[11px] text-foreground/70 italic">{event.assertedBy}</p>
           )}
         </div>
         {event.status && <EventStatusBadge status={event.status} />}
       </div>
 
       {event.sourceRef && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-foreground/70">
           <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span className="truncate" title={docName ?? undefined}>
             <DocumentLink docId={event.sourceRef.docId}>{docName}</DocumentLink>
@@ -681,15 +641,15 @@ function EventRow({
         </p>
       )}
       {event.sourceRef?.quote && (
-        <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-[11px] text-muted-foreground italic">
+        <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-[11px] text-foreground/70 italic">
           <Quote className="mt-0.5 h-2.5 w-2.5 shrink-0" aria-hidden="true" />
           {event.sourceRef.quote}
         </blockquote>
       )}
 
-      {event.statusNote && <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">{event.statusNote}</p>}
+      {event.statusNote && <p className="mt-1.5 text-[11px] leading-4 text-foreground/70">{event.statusNote}</p>}
       {(event.corroboratedBy?.length || event.contradictedBy?.length) && (
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-[10px] text-foreground/70">
           {event.corroboratedBy?.length ? (
             <>
               {t("eventCorroboratedBy")} <span className="text-ok">{otherDocs(event.corroboratedBy)}</span>
@@ -748,8 +708,6 @@ function EventsView({
   const total = events?.length ?? 0
   const verifiedPct = total ? Math.round(((counts.get("VERIFIED") ?? 0) / total) * 100) : 0
   const present = EVENT_STATUS_ORDER.filter((s) => counts.get(s))
-  const ringR = 15
-  const ringC = 2 * Math.PI * ringR
 
   return (
     <div className="flex flex-col gap-3">
@@ -773,7 +731,7 @@ function EventsView({
       {blockers?.length ? (
         <div className="rounded-md border border-border bg-muted px-3 py-2.5">
           <p className="text-[12px] text-foreground">{t("eventsBlockedIntro")}</p>
-          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-4 text-muted-foreground">
+          <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-4 text-foreground/70">
             {blockers.map((b, i) => (
               <li key={i}>
                 {b.problem} {b.action}
@@ -786,53 +744,29 @@ function EventsView({
       )}
 
       {!events || events.length === 0 ? (
-        <EmptyNote>{t("noEvents")}</EmptyNote>
+        isGenerating ? <RowSkeletons /> : <EmptyNote>{t("noEvents")}</EmptyNote>
       ) : (
         <>
-          <div className="flex items-center gap-3">
-            <div
-              className="relative h-10 w-10 shrink-0"
-              title={t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}
-            >
-              <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
-                <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
-                {/* Skipped at 0%: a zero-length dash with a round linecap still paints a dot. */}
-                {verifiedPct > 0 && (
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r={ringR}
-                    fill="none"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    className="stroke-ok"
-                    strokeDasharray={`${(verifiedPct / 100) * ringC} ${ringC}`}
-                  />
-                )}
-              </svg>
-              <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-semibold ${verifiedPct > 0 ? "text-foreground" : "text-muted-foreground"}`}>
-                {verifiedPct}%
-              </span>
-              <span className="sr-only">{t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}</span>
+          <div title={t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}>
+            <p className="text-[12px] text-foreground/70">
+              <span className="font-semibold text-foreground">{verifiedPct}%</span>{" "}
+              {t("eventStatusVerified").toLowerCase()}
+              {present.map((s) => (
+                <span key={s} className="ml-3 whitespace-nowrap">
+                  {t(EVENT_STATUS_LABEL_KEY[s])}{" "}
+                  <span className={`font-semibold ${EVENT_STATUS_TEXT_CLASS[s]}`}>{counts.get(s)}</span>
+                </span>
+              ))}
+            </p>
+            <div className="mt-1.5 flex h-1 gap-px overflow-hidden rounded-full" aria-hidden="true">
+              {present.map((s) => (
+                <div key={s} className={EVENT_STATUS_BAR_CLASS[s]} style={{ flexGrow: counts.get(s) }} />
+              ))}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex h-1.5 gap-px overflow-hidden rounded-full">
-                {present.map((s) => (
-                  <div key={s} className={EVENT_STATUS_BAR_CLASS[s]} style={{ flexGrow: counts.get(s) }} />
-                ))}
-              </div>
-              <div className={`mt-1.5 flex flex-wrap gap-x-3 ${labelTextClass}`}>
-                {present.map((s) => (
-                  <span key={s} className="inline-flex items-center gap-1">
-                    <span className={`h-1.5 w-1.5 rounded-sm ${EVENT_STATUS_BAR_CLASS[s]}`} />
-                    {t(EVENT_STATUS_LABEL_KEY[s])} <span className="text-foreground">{counts.get(s)}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
+            <span className="sr-only">{t("eventsVerifiedOfTotal", { verified: counts.get("VERIFIED") ?? 0, total })}</span>
           </div>
 
-          <ul ref={rowsRef} className="space-y-2">
+          <ul ref={rowsRef} className="mt-1 ml-1">
             {events.map((event) => (
               <EventRow key={event.index} event={event} docNameById={docNameById} />
             ))}
@@ -859,13 +793,10 @@ function StoryboardView({
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="divide-y divide-border">
       {scenes.map((scene) => (
-        <li
-          key={scene.index}
-          className="rounded-md border border-border px-3 py-2.5"
-        >
-          <p className="text-[12px] font-semibold text-foreground">
+        <li key={scene.index} className="py-3 first:pt-0">
+          <p className="text-[13px] font-semibold text-foreground">
             {[scene.time, scene.location].filter(Boolean).join(" · ") ||
               t("sceneUntitled", { n: scene.index + 1 })}
           </p>
@@ -876,7 +807,7 @@ function StoryboardView({
               {scene.sourceRefs.map((ref, i) => (
                 <li
                   key={i}
-                  className="rounded-md border border-border bg-muted px-2.5 py-2 text-[12px]"
+                  className="rounded-md bg-muted px-2.5 py-2 text-[12px]"
                 >
                   <p className="flex items-center gap-1.5 font-medium text-foreground">
                     <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -884,13 +815,13 @@ function StoryboardView({
                       <DocumentLink docId={ref.docId}>{docNameById.get(ref.docId) ?? t("archivedDocument")}</DocumentLink>
                     </span>
                     {ref.page != null && (
-                      <span className="shrink-0 text-muted-foreground">
+                      <span className="shrink-0 text-foreground/70">
                         · p.{ref.page}
                       </span>
                     )}
                   </p>
                   {ref.quote && (
-                    <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-muted-foreground italic">
+                    <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-foreground/70 italic">
                       <Quote
                         className="mt-0.5 h-2.5 w-2.5 shrink-0"
                         aria-hidden="true"
