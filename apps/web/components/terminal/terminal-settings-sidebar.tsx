@@ -7,6 +7,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { MobileDrawer } from "@/components/mobile-drawer"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
 import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY, type PaneCategory } from "@/components/terminal/terminal-pane-categories"
+import { useConsultationsQuery } from "@/lib/chat/mutations"
+import { useTraceTurnsQuery } from "@/lib/terminal/trace-queries"
 import type { PanelCatalogEntry, PanelId } from "@/lib/terminal/types"
 
 // What the library search matches a pane against: its shown title, the catalog label, and its id
@@ -31,6 +33,7 @@ interface TerminalSettingsSidebarProps {
   // that floating button used to sit directly on top of the "Back to Case" link below `lg`.
   isMobileOpen: boolean
   onMobileOpenChange: (open: boolean) => void
+  caseId: string
   allPanels: PanelCatalogEntry[]
   visiblePanelIds: PanelId[]
   // Real, non-fabricated per-pane status text ("3 docs", "2 found", "Ready" — see
@@ -49,15 +52,28 @@ export default function TerminalSettingsSidebar({
   onExpandedChange,
   isMobileOpen,
   onMobileOpenChange,
+  caseId,
   allPanels,
   visiblePanelIds,
-  panelBadges,
+  panelBadges: snapshotBadges,
   loadingPanels,
   onAddPanel,
   onPanelDragStart,
   onPanelDragEnd,
 }: TerminalSettingsSidebarProps) {
   const { t } = useTranslation("terminal")
+  // Chat and AI Reasoning aren't in the case snapshot, so their badges come from their own
+  // queries. Until those load there is no badge at all (never a premature "Empty").
+  const consultations = useConsultationsQuery(caseId)
+  const traceTurns = useTraceTurnsQuery(caseId)
+  const messageCount = consultations.data?.reduce((sum, c) => sum + (c.messageCount ?? 0), 0)
+  const panelBadges = useMemo((): Partial<Record<PanelId, string>> => {
+    const badges = { ...snapshotBadges }
+    if (messageCount !== undefined && messageCount > 0) badges.chat = t("badgeMessages", { count: messageCount })
+    if (traceTurns.data?.length) badges.trace = t("badgeRuns", { count: traceTurns.data.length })
+    return badges
+  }, [snapshotBadges, messageCount, traceTurns.data, t])
+  const settled = (id: PanelId) => (id === "chat" ? !consultations.isPending : id === "trace" ? !traceTurns.isPending : true)
   const [query, setQuery] = useState("")
   const [showEmpty, setShowEmpty] = useState(false)
   // Set by a collapsed-rail category icon; collapsing the sidebar clears it so the toggle button
@@ -202,8 +218,7 @@ export default function TerminalSettingsSidebar({
                             badge ? "text-muted-foreground" : "text-muted-foreground/60 italic"
                           }`}
                         >
-                          {/* The assistant has no case content to report, so "Empty" would be misleading. */}
-                          {badge ?? (panel.id === "chat" ? null : t("paneEmptyBadge"))}
+                          {badge ?? (settled(panel.id) ? t("paneEmptyBadge") : null)}
                         </span>
                       )}
                       {onScreen ? (
