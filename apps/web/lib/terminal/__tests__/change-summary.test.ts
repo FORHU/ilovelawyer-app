@@ -76,13 +76,35 @@ describe("describeChangeLines", () => {
     ])
   })
 
-  it("leaves out panes with nothing to say, and a first assessment or outlook", () => {
+  it("leaves out panes with nothing to say", () => {
     const lines = describeChangeLines({
       contradictions: contradictions(),
-      redTeam: { status: "unchanged", first: true, riskOfLoss: { from: null, to: 40 }, added: [], dropped: [], restrengthened: [] },
+      redTeam: { status: "unchanged", first: false, riskOfLoss: { from: 40, to: 41 }, added: [], dropped: [], restrengthened: [] },
       reconstruction: { status: "unchanged", outcome: "regenerated", gapsOpened: [], gapsClosed: [] },
     })
     expect(lines).toEqual([])
+  })
+
+  it("describes a pane's first content as what it found", () => {
+    const lines = describeChangeLines({
+      outlook: {
+        status: "changed",
+        first: true,
+        band: { from: null, to: "LEANS_FAVORABLE" },
+        confidence: { from: null, to: "MEDIUM" },
+        driversAdded: [{ label: "Signed letter", direction: "HELPS" }],
+        driversDropped: [],
+      },
+      redTeam: { status: "changed", first: true, riskOfLoss: { from: null, to: 40 }, added: ["A", "B"], dropped: [], restrengthened: [] },
+      reconstruction: { status: "changed", outcome: "generated", gapsOpened: ["Who signed the memo"], gapsClosed: [] },
+      mindMap: { status: "changed", first: true, branchesAdded: ["Evidence", "Witnesses"], branchesRemoved: [], pointsAdded: 0, pointsRemoved: 0, keptUserChanges: false },
+    })
+    expect(lines).toEqual([
+      { pane: "command", parts: [{ key: "changeOutlookFirst", values: { band: "LEANS_FAVORABLE" } }, { key: "changeDriversFirst", values: { count: 1 } }] },
+      { pane: "redTeam", parts: [{ key: "changeRiskOfLossFirst", values: { to: 40 } }, { key: "changeArgumentsFirst", values: { count: 2 } }] },
+      { pane: "caseReconstruction", parts: [{ key: "changeNarrativeWritten" }, { key: "changeGapsFirst", values: { count: 1 } }] },
+      { pane: "mindMap", parts: [{ key: "changeMapFirst", values: { count: 2 } }] },
+    ])
   })
 
   it("says a failed pane wasn't updated, and that an edited narrative was left alone, without a skipped Red Team line", () => {
@@ -255,7 +277,7 @@ describe("History", () => {
 
   it("leads the date picker with the latest run's day even before the day list has it", () => {
     const latest = summary({ id: "s9", createdAt: "2026-10-08T09:00:00.000Z", totalChanges: 4 })
-    expect(changeSummaryDays(latest, undefined, "UTC")).toEqual([{ day: "2026-10-08", runs: 1, totalChanges: 4 }])
+    expect(changeSummaryDays(latest, undefined, "UTC")).toEqual([{ day: "2026-10-08", runs: 1, totalChanges: 4, editSessions: 0 }])
     const fetched = [{ day: "2026-10-07", runs: 3, totalChanges: 20 }]
     expect(changeSummaryDays(latest, fetched, "UTC").map((d) => d.day)).toEqual(["2026-10-08", "2026-10-07"])
     const withToday = [{ day: "2026-10-08", runs: 5, totalChanges: 40 }, ...fetched]
@@ -270,9 +292,9 @@ describe("History", () => {
 })
 
 describe("canViewChangeSummary", () => {
-  it("offers the What changed button for any summary but a case's first analysis", () => {
+  it("offers the What changed button for any summary, a case's first analysis included", () => {
     expect(canViewChangeSummary(summary())).toBe(true)
-    expect(canViewChangeSummary(summary({ firstAnalysis: true }))).toBe(false)
+    expect(canViewChangeSummary(summary({ firstAnalysis: true }))).toBe(true)
     expect(canViewChangeSummary(null)).toBe(false)
   })
 })
@@ -283,8 +305,8 @@ describe("shouldShowChangeSummary", () => {
     expect(shouldShowChangeSummary(summary(), "s1")).toBe(false)
   })
 
-  it("never shows a case's first analysis, or nothing at all", () => {
-    expect(shouldShowChangeSummary(summary({ firstAnalysis: true }), null)).toBe(false)
+  it("opens for a case's first analysis too, but not for nothing at all", () => {
+    expect(shouldShowChangeSummary(summary({ firstAnalysis: true }), null)).toBe(true)
     expect(shouldShowChangeSummary(null, null)).toBe(false)
   })
 })

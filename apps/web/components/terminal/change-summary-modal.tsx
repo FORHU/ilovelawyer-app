@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react"
 import { useTranslation } from "react-i18next"
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, History, X } from "lucide-react"
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, History, Pencil, X } from "lucide-react"
 import {
   canViewChangeSummary,
   changeSummaryDays,
@@ -17,7 +17,24 @@ import {
   type ChangePart,
   type ChangeSummaryDay,
 } from "@/lib/terminal/change-summary"
-import { useChangeSummaryDaysQuery, useChangeSummaryHistoryQuery } from "@/lib/terminal/mutations"
+import {
+  useChangeSummaryDaysQuery,
+  useChangeSummaryHistoryQuery,
+  useEditsBeforeRunQuery,
+  useManualEditSessionsQuery,
+} from "@/lib/terminal/mutations"
+import {
+  describeEditLines,
+  mergeHistory,
+  pickHistoryItem,
+  sessionAuthor,
+  sessionKey,
+  type EditSession,
+  type HistoryFilter,
+  type ManualEdit,
+  type ManualEditValue,
+} from "@/lib/terminal/manual-edits"
+import { useAuthStore } from "@/lib/store/auth.store"
 import {
   readDismissedChangeSummary,
   subscribeDismissedChangeSummaries,
@@ -233,9 +250,18 @@ function DayPicker({
                     {active && <Check className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />}
                   </span>
                   <span className={`truncate text-xs ${active ? "font-semibold text-foreground" : "text-foreground"}`}>{name(d.day)}</span>
-                  <span className="text-right text-[11px] tabular-nums text-muted-foreground">{t("changeDayRuns", { count: d.runs })}</span>
+                  <span className="text-right text-[11px] tabular-nums text-muted-foreground">
+                    {[
+                      d.runs > 0 ? t("changeDayRuns", { count: d.runs }) : null,
+                      d.editSessions ? t("changeDayEditSessions", { count: d.editSessions }) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
                   <span className="truncate text-[10px] text-muted-foreground">{detail(d.day)}</span>
-                  <span className="text-right text-[10px] tabular-nums text-muted-foreground">{t("changeDayChanges", { count: d.totalChanges })}</span>
+                  <span className="text-right text-[10px] tabular-nums text-muted-foreground">
+                    {d.runs > 0 ? t("changeDayChanges", { count: d.totalChanges }) : ""}
+                  </span>
                 </button>
               </li>
             )
@@ -246,10 +272,40 @@ function DayPicker({
   )
 }
 
-/** What a run changed: the latest run by default. The header's date picker chooses a day; the
- * History list then shows that day's runs, newest first, and picking one shows its lines. Each pane
- * line has a link that closes the modal and opens that pane. Days are the viewer's own calendar
- * days (their browser's time zone). */
+const FILTER_KEY = "terminalChangeHistoryFilter"
+
+/** The History filter this browser last chose. Storage that is blocked just means "All". */
+function readHistoryFilter(): HistoryFilter {
+  try {
+    const value = localStorage.getItem(FILTER_KEY)
+    return value === "analysis" || value === "edits" ? value : "all"
+  } catch {
+    return "all"
+  }
+}
+
+function writeHistoryFilter(value: HistoryFilter) {
+  try {
+    localStorage.setItem(FILTER_KEY, value)
+  } catch {
+    // Storage unavailable — the filter lasts until the modal closes.
+  }
+}
+
+/** "credibilityOverride" → "Credibility override", "MATERIAL" → "Material". */
+function humanize(text: string): string {
+  const spaced = text.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().trim()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
+/**
+ * What changed on a day: its AI runs (a refresh or a pane's Regenerate) and lawyers' editing
+ * sessions, in one History list newest first, narrowed by an All / Analysis / Edits filter. The
+ * header's date picker chooses the day; the latest run is selected when the modal opens. A run
+ * shows its pane lines and how many edits lawyers made since the run before it; a session shows its
+ * edits by pane. Every line has a link that closes the modal and opens that pane. Days are the
+ * viewer's own calendar days (their browser's time zone).
+ */
 export function ChangeSummaryModal({
   caseId,
   summary,
@@ -263,17 +319,25 @@ export function ChangeSummaryModal({
   onOpenPane: (pane: PanelId) => void
 }) {
   const { t } = useTranslation("terminal")
+  const viewerId = useAuthStore((state) => state.user?.id)
   const timeZone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", [])
   const [selectedDay, setSelectedDay] = useState(() => dayKeyOf(summary.createdAt, timeZone))
-  // null = the newest run of the selected day.
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // null = the newest entry of the selected day.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [filter, setFilterState] = useState<HistoryFilter>(readHistoryFilter)
 
   const daysQuery = useChangeSummaryDaysQuery(caseId, summary.id, timeZone)
   const days = changeSummaryDays(summary, daysQuery.data, timeZone)
-  const historyQuery = useChangeSummaryHistoryQuery(caseId, summary.id, selectedDay, timeZone)
-  const history = changeSummaryHistory(summary, historyQuery.data, selectedDay, timeZone)
-  const selected = history.find((s) => s.id === selectedId) ?? history[0]
-  const isLatest = selected?.id === summary.id
+  const runsQuery = useChangeSummaryHistoryQuery(caseId, summary.id, selectedDay, timeZone)
+  const sessionsQuery = useManualEditSessionsQuery(caseId, summary.id, selectedDay, timeZone)
+  const runs = changeSummaryHistory(summary, runsQuery.data, selectedDay, timeZone)
+  const items = mergeHistory(runs, sessionsQuery.data ?? [], filter)
+  const selected = pickHistoryItem(items, selectedKey)
+  const selectedRun = selected?.type === "run" ? selected.run : undefined
+  const selectedSession = selected?.type === "edits" ? selected.session : undefined
+  const editsBefore = useEditsBeforeRunQuery(caseId, selectedRun?.id ?? null)
+  const loading = runsQuery.isPending || sessionsQuery.isPending
+  const failed = runsQuery.isError || sessionsQuery.isError
 
   // Read once when the modal opens, for naming days "Today" and "Yesterday".
   const [{ today, yesterday }] = useState(() => {
@@ -282,13 +346,28 @@ export function ChangeSummaryModal({
   })
   const pickDay = (day: string) => {
     setSelectedDay(day)
-    setSelectedId(null)
+    setSelectedKey(null)
+  }
+  const setFilter = (value: HistoryFilter) => {
+    setFilterState(value)
+    writeHistoryFilter(value)
+    setSelectedKey(null)
+  }
+  // "N edits since the previous run" → that day, that session, with edits showing.
+  const openSession = (session: { id: string; startedAt: string }) => {
+    if (filter === "analysis") {
+      setFilterState("all")
+      writeHistoryFilter("all")
+    }
+    setSelectedDay(dayKeyOf(session.startedAt, timeZone))
+    setSelectedKey(sessionKey(session.id))
   }
 
   // Translates one ChangePart, naming outlook bands, pane ids and change counts the way the user reads them.
   const text = ({ key, values }: ChangePart) => {
     if (!values) return t(key)
     if (key === "changeOutlookBand") return t(key, { from: t(`band_${values.from}`), to: t(`band_${values.to}`) })
+    if (key === "changeOutlookFirst") return t(key, { band: t(`band_${values.band}`) })
     return t(key, {
       ...values,
       ...("changes" in values ? { changes: t("changeCount", { count: Number(values.changes) }) } : {}),
@@ -302,15 +381,68 @@ export function ChangeSummaryModal({
       ? date.toLocaleTimeString(undefined, { timeStyle: "short" })
       : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
   }
+  const span = (session: EditSession) => {
+    const from = when(session.startedAt, "time")
+    const to = when(session.endedAt, "time")
+    return from === to ? from : `${from}–${to}`
+  }
   // "Today", "Yesterday", or the date.
   const dayLabel = (day: string) => {
     const part = describeDay(day, today, yesterday)
     return part.key === "changeDayDate" ? formatDay(day, { dateStyle: "medium" }) : t(part.key)
   }
 
-  const lines = !selected || selected.firstAnalysis ? [] : describeChangeLines(selected.perPaneDeltas)
-  const named = selected?.documentsAdded.flatMap((d) => (d.name ? [d.name] : [])) ?? []
-  const moreDocuments = (selected?.documentsAdded.length ?? 0) - Math.min(named.length, MAX_NAMED_DOCUMENTS)
+  // ── Editing sessions ─────────────────────────────────────────────────────────
+  const author = (session: { actorId: string | null; actorName: string | null }) => {
+    const who = sessionAuthor(session, viewerId)
+    return who === "you" ? t("editYou") : (who ?? t("editSomeone"))
+  }
+  const sessionTitle = (session: EditSession) =>
+    sessionAuthor(session, viewerId) === "you" ? t("editSessionYours") : t("editSessionBy", { name: author(session) })
+  const sessionHeadline = (session: EditSession) =>
+    sessionAuthor(session, viewerId) === "you"
+      ? t("editSessionHeadlineYou", { count: session.editCount })
+      : t("editSessionHeadline", { name: author(session), count: session.editCount })
+  const fieldLabel = (field: string) => t(`editField_${field}`, { defaultValue: humanize(field) })
+  const valueText = (value: ManualEditValue | undefined) => {
+    if (value === null || value === undefined || value === "") return "—"
+    if (typeof value === "boolean") return t(value ? "editYes" : "editNo")
+    if (typeof value === "string" && /^[A-Z][A-Z_]+$/.test(value)) return humanize(value)
+    return String(value)
+  }
+  const editText = (edit: ManualEdit) => {
+    const base = t(`editAction_${edit.action}`, { label: edit.label })
+    const changes = (edit.changes ?? []).map((c) =>
+      "from" in c || "to" in c ? `${fieldLabel(c.field)} ${valueText(c.from)} → ${valueText(c.to)}` : fieldLabel(c.field),
+    )
+    return changes.length ? `${base} (${changes.join(", ")})` : base
+  }
+
+  // ── The selected run ─────────────────────────────────────────────────────────
+  const runLines = selectedRun ? describeChangeLines(selectedRun.perPaneDeltas) : []
+  const named = selectedRun?.documentsAdded.flatMap((d) => (d.name ? [d.name] : [])) ?? []
+  const moreDocuments = (selectedRun?.documentsAdded.length ?? 0) - Math.min(named.length, MAX_NAMED_DOCUMENTS)
+  const editsBeforeRun = editsBefore.data && editsBefore.data.count > 0 ? editsBefore.data : null
+
+  const openPaneButton = (pane: PanelId, close: () => void) => (
+    <button
+      type="button"
+      onClick={() => {
+        close()
+        onOpenPane(pane)
+      }}
+      aria-label={t("changeOpenPaneLabel", { pane: PANEL_TITLES[pane] })}
+      className="shrink-0 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline"
+    >
+      {t("changeOpenPane")}
+    </button>
+  )
+
+  const filters: { value: HistoryFilter; label: string }[] = [
+    { value: "all", label: t("historyFilterAll") },
+    { value: "analysis", label: t("historyFilterAnalysis") },
+    { value: "edits", label: t("historyFilterEdits") },
+  ]
 
   return (
     <ModalOverlay
@@ -324,17 +456,32 @@ export function ChangeSummaryModal({
         <>
           <div className="flex shrink-0 items-start gap-3 border-b border-border p-4">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
-              <History className="h-4 w-4" aria-hidden="true" />
+              {selectedSession ? <Pencil className="h-4 w-4" aria-hidden="true" /> : <History className="h-4 w-4" aria-hidden="true" />}
             </span>
             <div className="min-w-0 flex-1">
               <p id="change-summary-title" className="text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
-                {t("changeModalTitle")}
-                {selected && <span className="font-normal normal-case tracking-normal"> · {when(selected.createdAt, "full")}</span>}
+                {selectedSession ? sessionTitle(selectedSession) : t("changeModalTitle")}
+                {selected && (
+                  <span className="font-normal normal-case tracking-normal">
+                    {" · "}
+                    {selectedSession
+                      ? `${formatDay(dayKeyOf(selectedSession.startedAt, timeZone), { dateStyle: "medium" })}, ${span(selectedSession)}`
+                      : when(selected.at, "full")}
+                  </span>
+                )}
               </p>
               <p id="change-summary-headline" className="mt-1 truncate text-sm font-semibold text-foreground">
-                {!selected ? t("changeDayLoading") : selected.firstAnalysis ? t("changeRunFirst") : text(describeChangeHeadline(selected))}
+                {!selected
+                  ? loading
+                    ? t("changeDayLoading")
+                    : t("changeNoLines")
+                  : selectedSession
+                    ? sessionHeadline(selectedSession)
+                    : selectedRun!.firstAnalysis
+                      ? t("changeHeadlineFirst")
+                      : text(describeChangeHeadline(selectedRun!))}
               </p>
-              {/* Always one line, empty or not, so the header keeps its height from run to run. */}
+              {/* Always one line, empty or not, so the header keeps its height from entry to entry. */}
               <p className="mt-1 h-4 truncate text-[11px] text-muted-foreground">
                 {named.length > 0 && (
                   <>
@@ -356,74 +503,120 @@ export function ChangeSummaryModal({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
-            <nav
-                aria-label={t("changeHistory")}
-                className="max-h-40 shrink-0 overflow-y-auto border-b border-border md:max-h-none md:border-b-0 md:border-r"
-              >
-                <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
+            <nav aria-label={t("changeHistory")} className="flex max-h-48 shrink-0 flex-col border-b border-border md:max-h-none md:border-b-0 md:border-r">
+              <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-1 pt-3">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground">
                   {t("changeHistory")} · {dayLabel(selectedDay)}
                 </p>
-                <ul className="grid gap-0.5 px-2 pb-3">
-                  {history.map((run) => {
-                    const active = run.id === selected?.id
-                    return (
-                      <li key={run.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(run.id)}
-                          aria-current={active ? "true" : undefined}
-                          className={`grid w-full gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors ${
-                            active ? "bg-brand-gold/10" : "hover:bg-muted dark:hover:bg-overlay-hover"
-                          }`}
-                        >
-                          <span className={`truncate text-xs ${active ? "font-semibold text-foreground" : "text-foreground"}`}>{text(describeChangeRun(run))}</span>
-                          <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                            <span className="truncate tabular-nums">{when(run.createdAt, "time")}</span>
-                            {!run.firstAnalysis && <span className="shrink-0 tabular-nums">{t("changeCount", { count: run.totalChanges })}</span>}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                  {historyQuery.isPending && history.length === 0 && (
-                    <li className="px-2 py-1.5 text-[11px] text-muted-foreground">{t("changeHistoryLoading")}</li>
-                  )}
-                  {historyQuery.isError && <li className="px-2 py-1.5 text-[11px] text-danger">{t("changeHistoryError")}</li>}
-                </ul>
+              </div>
+              <div role="group" aria-label={t("historyFilterLabel")} className="mx-3 mb-2 grid shrink-0 grid-cols-3 rounded-md border border-border p-0.5">
+                {filters.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setFilter(f.value)}
+                    aria-pressed={filter === f.value}
+                    className={`h-6 rounded text-[10px] font-semibold uppercase tracking-[0.8px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
+                      filter === f.value ? "bg-brand-gold/15 text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <ul className="grid min-h-0 gap-0.5 overflow-y-auto px-2 pb-3">
+                {items.map((item) => {
+                  const active = item.key === selected?.key
+                  const rowClass = `grid w-full gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors ${
+                    active ? "bg-brand-gold/10" : "hover:bg-muted dark:hover:bg-overlay-hover"
+                  }`
+                  return (
+                    <li key={item.key}>
+                      <button type="button" onClick={() => setSelectedKey(item.key)} aria-current={active ? "true" : undefined} className={rowClass}>
+                        {item.type === "run" ? (
+                          <>
+                            <span className={`truncate text-xs text-foreground ${active ? "font-semibold" : ""}`}>{text(describeChangeRun(item.run))}</span>
+                            <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                              <span className="truncate tabular-nums">{when(item.run.createdAt, "time")}</span>
+                              {!item.run.firstAnalysis && <span className="shrink-0 tabular-nums">{t("changeCount", { count: item.run.totalChanges })}</span>}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={`flex min-w-0 items-center gap-1.5 text-xs text-foreground ${active ? "font-semibold" : ""}`}>
+                              <Pencil className="h-3 w-3 shrink-0 text-brand-gold" aria-hidden="true" />
+                              <span className="truncate">{sessionTitle(item.session)}</span>
+                            </span>
+                            <span className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                              <span className="truncate tabular-nums">{span(item.session)}</span>
+                              <span className="shrink-0 tabular-nums">{t("editCount", { count: item.session.editCount })}</span>
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+                {loading && items.length === 0 && <li className="px-2 py-1.5 text-[11px] text-muted-foreground">{t("changeHistoryLoading")}</li>}
+                {!loading && !failed && items.length === 0 && (
+                  <li className="px-2 py-1.5 text-[11px] text-muted-foreground">{t("historyEmpty")}</li>
+                )}
+                {failed && <li className="px-2 py-1.5 text-[11px] text-danger">{t("changeHistoryError")}</li>}
+              </ul>
             </nav>
 
             <div className="min-h-0 overflow-y-auto p-4 text-xs">
-              {selected && !isLatest && (
-                <p className="mb-3 rounded-md bg-muted px-3 py-2 text-[11px] text-muted-foreground dark:bg-overlay-hover">{t("changePastRun")}</p>
-              )}
-              {!selected ? (
-                <p className="text-muted-foreground">{historyQuery.isError ? t("changeHistoryError") : t("changeDayLoading")}</p>
-              ) : selected.firstAnalysis ? (
-                <p className="text-muted-foreground">{t("changeFirstAnalysis")}</p>
-              ) : lines.length > 0 ? (
+              {selectedSession ? (
                 <ul className="grid gap-2">
-                  {lines.map((line, i) => (
-                    <li key={`${line.pane}-${i}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                      <span className="w-40 shrink-0 text-[11px] text-muted-foreground">{PANEL_TITLES[line.pane]}</span>
-                      <span className={`min-w-0 flex-1 ${line.notUpdated ? "text-progress" : "text-foreground"}`}>
-                        {line.parts.map(text).join(", ")}
+                  {describeEditLines(selectedSession).map((line) => (
+                    <li key={line.pane} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                      <span className="w-40 shrink-0 text-[11px] text-muted-foreground">{PANEL_TITLES[line.pane] ?? line.pane}</span>
+                      <span className="min-w-0 flex-1 text-foreground">
+                        {line.edits.map(editText).join("; ")}
+                        {line.more > 0 ? `; ${t("editMore", { count: line.more })}` : ""}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          close()
-                          onOpenPane(line.pane)
-                        }}
-                        aria-label={t("changeOpenPaneLabel", { pane: PANEL_TITLES[line.pane] })}
-                        className="shrink-0 text-[10px] font-semibold uppercase tracking-[1px] text-brand-gold hover:underline"
-                      >
-                        {t("changeOpenPane")}
-                      </button>
+                      {PANEL_TITLES[line.pane] && openPaneButton(line.pane, close)}
                     </li>
                   ))}
                 </ul>
+              ) : selectedRun ? (
+                <>
+                  {selectedRun.id !== summary.id && (
+                    <p className="mb-3 rounded-md bg-muted px-3 py-2 text-[11px] text-muted-foreground dark:bg-overlay-hover">{t("changePastRun")}</p>
+                  )}
+                  {editsBeforeRun && (
+                    <button
+                      type="button"
+                      onClick={() => editsBeforeRun.firstSession && openSession(editsBeforeRun.firstSession)}
+                      disabled={!editsBeforeRun.firstSession}
+                      className="mb-3 flex w-full items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-[11px] text-foreground transition-colors hover:bg-muted disabled:cursor-default dark:hover:bg-overlay-hover"
+                    >
+                      <Pencil className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        {t("editsBeforeRun", { count: editsBeforeRun.count, people: editsBeforeRun.actors.map((a) => author({ actorId: a.id, actorName: a.name })).join(", ") })}
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    </button>
+                  )}
+                  {selectedRun.firstAnalysis && (
+                    <p className="mb-3 rounded-md bg-muted px-3 py-2 text-[11px] text-muted-foreground dark:bg-overlay-hover">{t("changeFirstAnalysis")}</p>
+                  )}
+                  {runLines.length > 0 ? (
+                    <ul className="grid gap-2">
+                      {runLines.map((line, i) => (
+                        <li key={`${line.pane}-${i}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                          <span className="w-40 shrink-0 text-[11px] text-muted-foreground">{PANEL_TITLES[line.pane]}</span>
+                          <span className={`min-w-0 flex-1 ${line.notUpdated ? "text-progress" : "text-foreground"}`}>{line.parts.map(text).join(", ")}</span>
+                          {openPaneButton(line.pane, close)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted-foreground">{t("changeNoLines")}</p>
+                  )}
+                </>
               ) : (
-                <p className="text-muted-foreground">{t("changeNoLines")}</p>
+                <p className="text-muted-foreground">{failed ? t("changeHistoryError") : loading ? t("changeDayLoading") : t("historyEmpty")}</p>
               )}
             </div>
           </div>

@@ -106,6 +106,8 @@ export interface TheoryDelta {
 
 export interface MindMapDelta {
   status: PaneStatus
+  /** No map before this run: `branchesAdded` lists every branch it built. Absent on older rows. */
+  first?: boolean
   branchesAdded: string[]
   branchesRemoved: string[]
   pointsAdded: number
@@ -198,7 +200,12 @@ export function describeChangeLines(deltas: CaseChangeDeltas): ChangeLine[] {
     if (delta?.status === "failed") lines.push({ pane, parts: [{ key: "changeNotUpdated" }], notUpdated: true })
   }
 
-  if (ran(outlook) && !outlook.first) {
+  if (ran(outlook) && outlook.first) {
+    // A first outlook: what it says, not what moved.
+    const parts: ChangePart[] = outlook.band.to ? [{ key: "changeOutlookFirst", values: { band: outlook.band.to } }] : []
+    parts.push(...count("changeDriversFirst", outlook.driversAdded.length))
+    if (parts.length) lines.push({ pane: "command", parts })
+  } else if (ran(outlook)) {
     const parts: ChangePart[] = []
     if (outlook.band.from && outlook.band.to && outlook.band.from !== outlook.band.to) {
       parts.push({ key: "changeOutlookBand", values: { from: outlook.band.from, to: outlook.band.to } })
@@ -268,7 +275,12 @@ export function describeChangeLines(deltas: CaseChangeDeltas): ChangeLine[] {
     lines.push({ pane: "legalIssues", parts: [{ key: "changeFindingsNotUpdated" }], notUpdated: true })
   }
 
-  if (ran(redTeam) && !redTeam.first) {
+  if (ran(redTeam) && redTeam.first) {
+    // A first assessment: its risk of loss and how many arguments it makes.
+    const parts: ChangePart[] = redTeam.riskOfLoss.to !== null ? [{ key: "changeRiskOfLossFirst", values: { to: redTeam.riskOfLoss.to } }] : []
+    parts.push(...count("changeArgumentsFirst", redTeam.added.length))
+    if (parts.length) lines.push({ pane: "redTeam", parts })
+  } else if (ran(redTeam)) {
     const { from, to } = redTeam.riskOfLoss
     const parts: ChangePart[] = []
     if (from !== null && to !== null && Math.abs(to - from) >= RISK_OF_LOSS_THRESHOLD) {
@@ -282,7 +294,12 @@ export function describeChangeLines(deltas: CaseChangeDeltas): ChangeLine[] {
     if (parts.length) lines.push({ pane: "redTeam", parts })
   } else notUpdated("redTeam", redTeam)
 
-  if (ran(theory) && !theory.first) {
+  if (ran(theory) && theory.first) {
+    // A first AI draft: what it argues.
+    const parts: ChangePart[] = theory.title.to ? [{ key: "changeTheoryTitle", values: { label: theory.title.to } }] : []
+    parts.push(...count("changeClaimsFirst", theory.claimsAdded.length))
+    if (parts.length) lines.push({ pane: "theories", parts })
+  } else if (ran(theory)) {
     const parts: ChangePart[] = []
     if (theory.title.to && theory.title.from !== theory.title.to) parts.push({ key: "changeTheoryTitle", values: { label: theory.title.to } })
     parts.push(
@@ -295,6 +312,9 @@ export function describeChangeLines(deltas: CaseChangeDeltas): ChangeLine[] {
 
   if (reconstruction?.status === "skipped" && "outcome" in reconstruction && reconstruction.outcome === "skipped-edited") {
     lines.push({ pane: "caseReconstruction", parts: [{ key: "changeReconstructionKept" }], notUpdated: true })
+  } else if (ran(reconstruction) && reconstruction.outcome === "generated") {
+    // A first narrative: written, with the gaps it found.
+    lines.push({ pane: "caseReconstruction", parts: [{ key: "changeNarrativeWritten" }, ...count("changeGapsFirst", reconstruction.gapsOpened.length)] })
   } else if (ran(reconstruction)) {
     const parts = [...count("changeGapsOpened", reconstruction.gapsOpened.length), ...count("changeGapsClosed", reconstruction.gapsClosed.length)]
     if (parts.length) lines.push({ pane: "caseReconstruction", parts })
@@ -302,6 +322,9 @@ export function describeChangeLines(deltas: CaseChangeDeltas): ChangeLine[] {
 
   if (mindMap?.status === "skipped" && "keptUserChanges" in mindMap && mindMap.keptUserChanges) {
     lines.push({ pane: "mindMap", parts: [{ key: "changeMindMapKept" }], notUpdated: true })
+  } else if (ran(mindMap) && mindMap.first) {
+    // A first map: built, with how many branches.
+    lines.push({ pane: "mindMap", parts: [{ key: "changeMapFirst", values: { count: mindMap.branchesAdded.length } }] })
   } else if (ran(mindMap)) {
     const parts = [
       ...count("changeBranchesAdded", mindMap.branchesAdded.length),
@@ -382,6 +405,8 @@ export interface ChangeSummaryDay {
   day: string
   runs: number
   totalChanges: number
+  /** Lawyers' editing sessions that started that day. Absent from an API older than them. */
+  editSessions?: number
 }
 
 /** The calendar day (YYYY-MM-DD) a moment falls on in `timeZone` — how the API groups days too. */
@@ -395,7 +420,7 @@ export function changeSummaryDays(latest: CaseChangeSummary, fetched: ChangeSumm
   const latestDay = dayKeyOf(latest.createdAt, timeZone)
   const days = fetched ?? []
   if (days.some((d) => d.day === latestDay)) return days
-  return [{ day: latestDay, runs: 1, totalChanges: latest.firstAnalysis ? 0 : latest.totalChanges }, ...days]
+  return [{ day: latestDay, runs: 1, totalChanges: latest.firstAnalysis ? 0 : latest.totalChanges, editSessions: 0 }, ...days]
 }
 
 /** How the date picker names a day: "Today", "Yesterday", or the date (a `date` value, YYYY-MM-DD,
@@ -419,10 +444,10 @@ export function changeSummaryHistory(
   return [latest, ...runs.filter((s) => s.id !== latest.id)]
 }
 
-/** Whether there is a summary to look at: any but a case's first analysis — every pane's first
- * content would otherwise read as a change. Drives the case row's "What changed" button. */
+/** Whether there is a summary to look at — any, a case's first analysis included (it then shows
+ * what that analysis found). Drives the case row's "What changed" button. */
 export function canViewChangeSummary(summary: CaseChangeSummary | null | undefined): summary is CaseChangeSummary {
-  return !!summary && !summary.firstAnalysis
+  return !!summary
 }
 
 /** Whether the "What changed" modal opens by itself for this summary: one there is to look at, that

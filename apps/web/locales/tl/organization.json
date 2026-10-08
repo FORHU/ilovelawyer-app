@@ -100,21 +100,16 @@
   "auditLog": {
     "heading": "Audit log",
     "subheading": "Mga pag-sign in, pagbabago sa miyembro at pahintulot, mga export, download at pagbura sa organisasyong ito.",
-    "export": "I-export ang CSV",
-    "exporting": "Ine-export…",
-    "exportError": "Hindi ma-export ang audit log.",
-    "categoryLabel": "I-filter ayon sa aktibidad",
-    "from": "Mula",
-    "to": "Hanggang",
+    "download": "I-download ang PDF",
+    "downloading": "Inihahanda ang PDF…",
+    "downloadError": "Hindi ma-download ang audit log.",
+    "categoryLabel": "Aktibidad",
     "failuresOnly": "Mga nabigong pagtatangka lamang",
     "loading": "Naglo-load…",
     "empty": "Walang naitala para sa mga filter na ito.",
     "error": "Hindi ma-load ang audit log.",
     "retry": "Subukang Muli",
-    "loadMore": "Mag-load pa",
     "failed": "Nabigo",
-    "noActor": "Walang naka-sign in na user",
-    "case": "Kaso",
     "categories": {
       "all": "Lahat ng aktibidad",
       "auth": "Pag-sign in",
@@ -126,6 +121,26 @@
       "document": "Mga dokumento",
       "consultation": "Mga konsultasyon",
       "admin": "Staff ng ilovelawyer"
+    },
+    "showing": "Ipinapakita ang {{from}}–{{to}} sa {{total}}",
+    "previous": "Nakaraan",
+    "next": "Susunod",
+    "last": "Huling pahina",
+    "columns": {
+      "time": "Oras",
+      "action": "Aksyon",
+      "actor": "Ni",
+      "target": "Apektado",
+      "details": "Detalye",
+      "ip": "IP address"
+    },
+    "dateLabel": "Petsa",
+    "allDates": "Lahat ng petsa",
+    "clearFilters": "I-clear ang mga filter",
+    "presets": {
+      "today": "Ngayon",
+      "last7": "Huling 7 araw",
+      "last30": "Huling 30 araw"
     }
   }
 }

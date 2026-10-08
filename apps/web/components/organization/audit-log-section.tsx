@@ -1,69 +1,49 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Download, Loader2, ShieldAlert } from "lucide-react"
+import { FileDown, Loader2, ShieldAlert } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import { ErrorState } from "@/components/error-state"
+import { Pagination } from "@/components/ui/pagination"
+import {
+  AuditLogFilters,
+  EMPTY_AUDIT_LOG_FILTERS,
+  type AuditLogFilterState,
+} from "@/components/organization/audit-log-filters"
 import { useDateLocale } from "@/lib/i18n/date-locale"
-import { useOrganizationMembersQuery } from "@/lib/organizations/queries"
 import {
   downloadOrganizationAuditLog,
   useOrganizationAuditLogQuery,
-  type AuditLogFilters,
-  type SecurityAuditEventRecord,
+  type AuditLogFilters as AuditLogQueryFilters,
 } from "@/lib/organizations/audit-log"
 
-/** Action groups the log can be narrowed to — prefixes of the API's SECURITY_AUDIT_ACTIONS. */
-const CATEGORIES = [
-  "",
-  "auth.",
-  "org.",
-  "account.",
-  "export.",
-  "file.",
-  "case.",
-  "document.",
-  "consultation.",
-  "admin.",
-] as const
-
-/** A YYYY-MM-DD from <input type="date">, as the start of that local day in ISO. */
-function startOfDayIso(day: string): string {
-  return new Date(`${day}T00:00:00`).toISOString()
+/** The start of `date`'s local day, in ISO. */
+function startOfDayIso(date: Date): string {
+  const day = new Date(date)
+  day.setHours(0, 0, 0, 0)
+  return day.toISOString()
 }
 
-function startOfNextDayIso(day: string): string {
-  const date = new Date(`${day}T00:00:00`)
-  date.setDate(date.getDate() + 1)
-  return date.toISOString()
+/** The start of the local day after `date` — the API's `to` is exclusive. */
+function startOfNextDayIso(date: Date): string {
+  const day = new Date(date)
+  day.setHours(0, 0, 0, 0)
+  day.setDate(day.getDate() + 1)
+  return day.toISOString()
 }
 
-function shortId(id: string): string {
-  return id.length > 8 ? id.slice(0, 8) : id
-}
+const headerCellClass =
+  "px-3 py-2.5 text-left text-[10px] font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase first:pl-6 last:pr-6 md:first:pl-8 md:last:pr-8"
 
-/** "method: password · reason: Invalid email or password" — payloads are small and flat. */
-function payloadSummary(payload: SecurityAuditEventRecord["payload"]): string {
-  if (!payload) return ""
-  return Object.entries(payload)
-    .filter(
-      ([, value]) => value !== null && value !== undefined && value !== ""
-    )
-    .map(
-      ([key, value]) =>
-        `${key}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`
-    )
-    .join(" · ")
-}
-
-const selectClass =
-  "cursor-pointer rounded-full border border-border bg-foreground/5 px-3 py-1.5 text-[12px] text-foreground outline-none transition-colors hover:border-brand-gold/50 focus-visible:ring-2 focus-visible:ring-brand-gold/30 [color-scheme:light] dark:[color-scheme:dark]"
+const cellClass =
+  "px-3 py-3 align-top text-[12px] text-foreground first:pl-6 last:pr-6 md:first:pl-8 md:last:pr-8"
 
 /** The organization's security audit log (ilovelawyer-api docs/adr/0006-security-audit-log.md):
- * sign-ins, membership and permission changes, exports, downloads and deletions. Owners and
- * Admins only — the page renders this for them, and the API refuses anyone else. */
+ * sign-ins, membership and permission changes, exports, downloads and deletions, as a paged table
+ * with a PDF download of whatever the filters show. Owners and Admins only — the page renders this
+ * for them, and the API refuses anyone else. */
 export function AuditLogSection({
   organizationId,
 }: {
@@ -71,72 +51,53 @@ export function AuditLogSection({
 }) {
   const { t } = useTranslation("organization")
   const locale = useDateLocale()
-  const [category, setCategory] = useState<string>("")
-  const [failuresOnly, setFailuresOnly] = useState(false)
-  const [fromDay, setFromDay] = useState("")
-  const [toDay, setToDay] = useState("")
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
+  const [filterState, setFilterState] = useState<AuditLogFilterState>(
+    EMPTY_AUDIT_LOG_FILTERS
+  )
+  const [page, setPage] = useState(1)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
-  const filters = useMemo<AuditLogFilters>(
-    () => ({
+  // One click on the calendar picks a single day; a second click extends it to a range.
+  const filters = useMemo<AuditLogQueryFilters>(() => {
+    const { category, failuresOnly, range } = filterState
+    return {
       action: category || undefined,
       outcome: failuresOnly ? "FAILURE" : undefined,
-      from: fromDay ? startOfDayIso(fromDay) : undefined,
-      to: toDay ? startOfNextDayIso(toDay) : undefined,
-    }),
-    [category, failuresOnly, fromDay, toDay]
-  )
-
-  const query = useOrganizationAuditLogQuery(organizationId, filters)
-  const showSkeleton = useDelayedLoading(query.isLoading)
-  const events = query.data?.pages.flatMap((page) => page.events) ?? []
-
-  // Names members instead of bare ids; anyone no longer in the organization keeps the email the
-  // row snapshotted (actor) or a short id (target).
-  const membersQuery = useOrganizationMembersQuery(organizationId)
-  const memberNames = useMemo(() => {
-    const names = new Map<string, string>()
-    for (const member of membersQuery.data ?? []) {
-      names.set(member.userId, member.user.name ?? member.user.email)
+      from: range?.from ? startOfDayIso(range.from) : undefined,
+      to: range?.from ? startOfNextDayIso(range.to ?? range.from) : undefined,
     }
-    return names
-  }, [membersQuery.data])
+  }, [filterState])
 
-  function actorLabel(event: SecurityAuditEventRecord): string {
-    if (event.actorId)
-      return (
-        memberNames.get(event.actorId) ??
-        event.actorEmail ??
-        shortId(event.actorId)
-      )
-    return t("auditLog.noActor")
+  // Any filter change starts again from the first page.
+  function changeFilters(next: AuditLogFilterState) {
+    setFilterState(next)
+    setPage(1)
   }
 
-  function targetLabel(event: SecurityAuditEventRecord): string | null {
-    if (!event.targetType) return null
-    const type = t(`auditLog.targets.${event.targetType}`, {
-      defaultValue: event.targetType,
-    })
-    if (!event.targetId) return type
-    const name =
-      event.targetType === "user" ? memberNames.get(event.targetId) : undefined
-    return `${type} · ${name ?? shortId(event.targetId)}`
-  }
+  const query = useOrganizationAuditLogQuery(organizationId, filters, page)
+  const showSkeleton = useDelayedLoading(query.isLoading)
+  const data = query.data
+  const events = data?.events ?? []
 
-  async function handleExport() {
-    setExporting(true)
-    setExportError(null)
+  async function handleDownload() {
+    setDownloading(true)
+    setDownloadError(null)
     try {
       await downloadOrganizationAuditLog(organizationId, filters)
+      // The download is itself an audit row; show it.
+      void query.refetch()
     } catch (err) {
-      setExportError(
-        err instanceof Error ? err.message : t("auditLog.exportError")
+      setDownloadError(
+        err instanceof Error ? err.message : t("auditLog.downloadError")
       )
     } finally {
-      setExporting(false)
+      setDownloading(false)
     }
   }
+
+  const firstRow = data ? (data.page - 1) * data.pageSize + 1 : 0
+  const lastRow = data ? firstRow + data.events.length - 1 : 0
 
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 shadow-black/20 ring-black/5 dark:ring-white/[0.06]">
@@ -151,73 +112,31 @@ export function AuditLogSection({
         </div>
         <button
           type="button"
-          onClick={handleExport}
-          disabled={exporting}
+          onClick={handleDownload}
+          disabled={downloading || !data?.total}
           className="flex cursor-pointer items-center gap-2 rounded-full border border-border px-4 py-2 text-[11px] font-semibold tracking-wider text-foreground uppercase transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {exporting ? (
+          {downloading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
           )}
-          {exporting ? t("auditLog.exporting") : t("auditLog.export")}
+          {downloading ? t("auditLog.downloading") : t("auditLog.download")}
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4 md:px-8">
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          aria-label={t("auditLog.categoryLabel")}
-          className={selectClass}
-        >
-          {CATEGORIES.map((value) => (
-            <option key={value || "all"} value={value} className="text-black">
-              {t(`auditLog.categories.${value ? value.slice(0, -1) : "all"}`)}
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-[12px] text-foreground">
-          <span className="text-muted-foreground">{t("auditLog.from")}</span>
-          <input
-            type="date"
-            value={fromDay}
-            max={toDay || undefined}
-            onChange={(e) => setFromDay(e.target.value)}
-            className={selectClass}
-          />
-        </label>
-        <label className="flex items-center gap-2 text-[12px] text-foreground">
-          <span className="text-muted-foreground">{t("auditLog.to")}</span>
-          <input
-            type="date"
-            value={toDay}
-            min={fromDay || undefined}
-            onChange={(e) => setToDay(e.target.value)}
-            className={selectClass}
-          />
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-[12px] text-foreground">
-          <input
-            type="checkbox"
-            checked={failuresOnly}
-            onChange={(e) => setFailuresOnly(e.target.checked)}
-            className="h-3.5 w-3.5 accent-current"
-          />
-          {t("auditLog.failuresOnly")}
-        </label>
-      </div>
+      <AuditLogFilters value={filterState} onChange={changeFilters} />
 
-      {exportError && (
+      {downloadError && (
         <p className="px-6 pt-4 text-[12px] text-red-600 md:px-8 dark:text-red-400">
-          {exportError}
+          {downloadError}
         </p>
       )}
 
       {showSkeleton ? (
         <div className="flex flex-col gap-3 px-6 py-5 md:px-8">
-          {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
       ) : query.isError ? (
@@ -231,75 +150,117 @@ export function AuditLogSection({
           {query.isLoading ? t("auditLog.loading") : t("auditLog.empty")}
         </p>
       ) : (
-        <ol className="flex flex-col divide-y divide-border">
-          {events.map((event) => {
-            const target = targetLabel(event)
-            const details = [
-              event.caseId
-                ? `${t("auditLog.case")} ${shortId(event.caseId)}`
-                : null,
-              payloadSummary(event.payload) || null,
-              event.ip ? `IP ${event.ip}` : null,
-            ].filter(Boolean)
-            return (
-              <li
-                key={event.id}
-                className="flex gap-4 px-6 py-3.5 md:px-8"
-                title={
-                  event.requestId ? `Request ${event.requestId}` : undefined
-                }
-              >
-                <time
-                  dateTime={event.createdAt}
-                  className="w-36 shrink-0 pt-0.5 text-[12px] text-muted-foreground tabular-nums"
-                >
-                  {new Date(event.createdAt).toLocaleString(locale, {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </time>
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 text-[14px] text-foreground">
-                    <span>
-                      {t(`auditLog.actions.${event.action}`, {
-                        defaultValue: event.action,
-                      })}
-                    </span>
-                    {event.outcome === "FAILURE" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-red-600 uppercase dark:text-red-400">
-                        <ShieldAlert className="h-3 w-3" aria-hidden="true" />
-                        {t("auditLog.failed")}
+        <div
+          className={`overflow-x-auto transition-opacity ${query.isPlaceholderData ? "opacity-60" : ""}`}
+        >
+          <table className="w-full min-w-[860px] border-collapse">
+            <thead className="bg-foreground/[0.03]">
+              <tr className="border-b border-border">
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.time")}
+                </th>
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.action")}
+                </th>
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.actor")}
+                </th>
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.target")}
+                </th>
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.details")}
+                </th>
+                <th scope="col" className={headerCellClass}>
+                  {t("auditLog.columns.ip")}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {events.map((event) => {
+                return (
+                  <tr
+                    key={event.id}
+                    title={
+                      event.requestId ? `Request ${event.requestId}` : undefined
+                    }
+                    className={
+                      event.outcome === "FAILURE"
+                        ? "bg-red-500/[0.04]"
+                        : undefined
+                    }
+                  >
+                    <td
+                      className={`${cellClass} whitespace-nowrap text-muted-foreground tabular-nums`}
+                    >
+                      <time dateTime={event.createdAt}>
+                        {new Date(event.createdAt).toLocaleString(locale, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </time>
+                    </td>
+                    <td className={cellClass}>
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        {t(`auditLog.actions.${event.action}`, {
+                          defaultValue: event.action,
+                        })}
+                        {event.outcome === "FAILURE" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-red-600 uppercase dark:text-red-400">
+                            <ShieldAlert
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
+                            {t("auditLog.failed")}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </p>
-                  <p className="truncate text-[12px] text-muted-foreground">
-                    {actorLabel(event)}
-                    {target ? ` → ${target}` : ""}
-                  </p>
-                  {details.length > 0 && (
-                    <p className="truncate text-[11px] text-muted-foreground/80">
-                      {details.join(" · ")}
-                    </p>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
+                    </td>
+                    <td className={`${cellClass} max-w-[180px] break-words`}>
+                      {event.display.actor}
+                    </td>
+                    <td
+                      className={`${cellClass} max-w-[180px] break-words text-muted-foreground`}
+                    >
+                      {event.display.target}
+                    </td>
+                    <td
+                      className={`${cellClass} max-w-[280px] break-words text-muted-foreground`}
+                    >
+                      {event.display.details}
+                    </td>
+                    <td
+                      className={`${cellClass} whitespace-nowrap text-muted-foreground tabular-nums`}
+                    >
+                      {event.display.ip}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {query.hasNextPage && (
-        <div className="border-t border-border px-6 py-4 text-center md:px-8">
-          <button
-            type="button"
-            onClick={() => query.fetchNextPage()}
-            disabled={query.isFetchingNextPage}
-            className="cursor-pointer rounded-full border border-border px-5 py-2 text-[11px] font-semibold tracking-wider text-foreground uppercase transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {query.isFetchingNextPage
-              ? t("auditLog.loading")
-              : t("auditLog.loadMore")}
-          </button>
+      {data && data.total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4 md:px-8">
+          <p className="text-[12px] text-muted-foreground tabular-nums">
+            {t("auditLog.showing", {
+              from: firstRow,
+              to: lastRow,
+              total: data.total,
+            })}
+          </p>
+          <Pagination
+            page={data.page}
+            totalPages={data.totalPages}
+            onPageChange={setPage}
+            labels={{
+              previous: t("auditLog.previous"),
+              next: t("auditLog.next"),
+              last: t("auditLog.last"),
+            }}
+          />
         </div>
       )}
     </section>
