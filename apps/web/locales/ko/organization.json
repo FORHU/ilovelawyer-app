@@ -131,8 +131,7 @@
       "action": "작업",
       "actor": "수행자",
       "target": "대상",
-      "details": "세부 정보",
-      "ip": "IP 주소"
+      "details": "세부 정보"
     },
     "dateLabel": "날짜",
     "allDates": "모든 날짜",
@@ -141,6 +140,9 @@
       "today": "오늘",
       "last7": "최근 7일",
       "last30": "최근 30일"
-    }
+    },
+    "sortBy": "이 열로 정렬",
+    "sortedAscending": "오름차순 정렬됨 — 클릭하면 반대로",
+    "sortedDescending": "내림차순 정렬됨 — 클릭하면 반대로"
   }
 }

@@ -219,8 +219,7 @@
       "action": "Action",
       "actor": "By",
       "target": "Affected",
-      "details": "Details",
-      "ip": "IP address"
+      "details": "Details"
     },
     "dateLabel": "Date",
     "allDates": "All dates",
@@ -229,6 +228,9 @@
       "today": "Today",
       "last7": "Last 7 days",
       "last30": "Last 30 days"
-    }
+    },
+    "sortBy": "Sort by this column",
+    "sortedAscending": "Sorted ascending — click to reverse",
+    "sortedDescending": "Sorted descending — click to reverse"
   }
 }

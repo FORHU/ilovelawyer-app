@@ -131,8 +131,7 @@
       "action": "Aksyon",
       "actor": "Ni",
       "target": "Apektado",
-      "details": "Detalye",
-      "ip": "IP address"
+      "details": "Detalye"
     },
     "dateLabel": "Petsa",
     "allDates": "Lahat ng petsa",
@@ -141,6 +140,9 @@
       "today": "Ngayon",
       "last7": "Huling 7 araw",
       "last30": "Huling 30 araw"
-    }
+    },
+    "sortBy": "Pagsunud-sunurin ayon sa column na ito",
+    "sortedAscending": "Pataas ang ayos — i-click para baligtarin",
+    "sortedDescending": "Pababa ang ayos — i-click para baligtarin"
   }
 }

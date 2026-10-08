@@ -17,7 +17,6 @@ export interface SecurityAuditEventRecord {
     /** What it was done to, e.g. “Affidavit.pdf” in “Smith v Jones”. Empty when nothing was. */
     target: string
     details: string
-    ip: string
   }
 }
 
@@ -36,7 +35,12 @@ export interface AuditLogFilters {
   outcome?: "FAILURE"
   from?: string
   to?: string
+  /** Column to order by — the API sorts, so the order holds across pages and in the PDF. */
+  sort?: AuditLogSortField
+  order?: "asc" | "desc"
 }
+
+export type AuditLogSortField = "time" | "action" | "actor"
 
 function filterParams(filters: AuditLogFilters): URLSearchParams {
   const params = new URLSearchParams()
