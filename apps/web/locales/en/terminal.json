@@ -429,6 +429,7 @@
   "regenerateTimelineHint": "Regenerate the timeline's dates. Case Strategy's plan and to-dos update too, from the same pass.",
   "regenerateContradictionsHint": "Scan the documents for contradictions again. Triage notes you left are kept.",
   "regenerateMissingEvidenceHint": "Read the documents for gaps again. Rows you have triaged are replaced.",
+  "regenerateReconstructionHint": "Regenerate the narrative, scenes, storyboard and event chain. Panes built on it catch up at the next Refresh analysis.",
   "lawGroundsNote_one": "Authorities are pinned to grounds from Legal Issues ({{count}} ground).",
   "lawGroundsNote_other": "Authorities are pinned to grounds from Legal Issues ({{count}} grounds).",
   "regenerateGroundsHint": "Regenerate the legal issues these grounds come from. Legal Issues updates too.",

@@ -158,6 +158,7 @@ export function CaseReconstructionPanel({
         <RegenerateButton
           regen={regen}
           onClick={() => (edited ? setConfirmReplace(true) : regen.start())}
+          hint={t("regenerateReconstructionHint")}
         />
       </div>
       {/* While a run writes this pane, the centered loading state replaces its content. */}
@@ -481,7 +482,8 @@ function ScenesView({
               : t("generateScenes")}
         </button>
       </div>
-      <MutationError show={generateScenes.isError} />
+      {/* The job's own failure too: the pane's Regenerate and the case analysis also build scenes. */}
+      <MutationError show={generateScenes.isError || (!isGeneratingScenes && scenesJob.data?.status === "FAILED")} />
 
       {!scenes || scenes.length === 0 ? (
         isGeneratingScenes ? <RowSkeletons /> : <EmptyNote>{t("noScenes")}</EmptyNote>
@@ -740,7 +742,7 @@ function EventsView({
           </ul>
         </div>
       ) : (
-        <MutationError show={generateEvents.isError} />
+        <MutationError show={generateEvents.isError || (!isGenerating && eventsJob.data?.status === "FAILED")} />
       )}
 
       {!events || events.length === 0 ? (

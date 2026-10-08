@@ -50,3 +50,7 @@ Witnesses lose "Score with AI" the same way. The Terminal's Audio Overview pane 
 ## Amendment
 
 Case Reconstruction audio (the narration and the scene table read) was removed. References above to narration being re-synthesized and to the table read no longer apply; the narrative, scenes and events behave as described. The audio columns are left in the schema, unused.
+
+## Amendment: scenes and events are regenerated too
+
+QA found the Scenes, Storyboard and Events tabs stayed empty after an upload, and the pane's Regenerate rewrote only the narrative, so only each tab's own Generate filled them. The refresh now builds the event chain in wave 1 (it reads only the documents) and the scenes in wave 2 (they need the narrative and read the timeline's dates, both written in wave 1). Storyboard is a view of the scenes. The scenes are rebuilt even over an edited narrative, since they come from the timeline and documents, not its text; a case with no narrative yet skips them. The pane's Regenerate (ADR 0018, `CaseReconstructionSvc.runQueued`) runs the narrative, the scenes and the event chain side by side, all under its `caseReconstruction` job. Scenes need the narrative's row to exist but not its text, so they wait for the narrative only on a case's very first one. Scenes and events keep their own locks, so a tab's own Generate already running is skipped, and a scenes or events failure shows on that tab without failing the narrative.
