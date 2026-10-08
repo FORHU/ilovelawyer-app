@@ -96,5 +96,36 @@
     "switchTitle": "Lumipat ng Organisasyon",
     "switchCancelTooltip": "Manatili sa \"{{currentOrgName}}\" at isara ang dialog na ito",
     "switchConfirmTooltip": "Umalis sa \"{{currentOrgName}}\" at sumali sa \"{{orgName}}\""
+  },
+  "auditLog": {
+    "heading": "Audit log",
+    "subheading": "Mga pag-sign in, pagbabago sa miyembro at pahintulot, mga export, download at pagbura sa organisasyong ito.",
+    "export": "I-export ang CSV",
+    "exporting": "Ine-export…",
+    "exportError": "Hindi ma-export ang audit log.",
+    "categoryLabel": "I-filter ayon sa aktibidad",
+    "from": "Mula",
+    "to": "Hanggang",
+    "failuresOnly": "Mga nabigong pagtatangka lamang",
+    "loading": "Naglo-load…",
+    "empty": "Walang naitala para sa mga filter na ito.",
+    "error": "Hindi ma-load ang audit log.",
+    "retry": "Subukang Muli",
+    "loadMore": "Mag-load pa",
+    "failed": "Nabigo",
+    "noActor": "Walang naka-sign in na user",
+    "case": "Kaso",
+    "categories": {
+      "all": "Lahat ng aktibidad",
+      "auth": "Pag-sign in",
+      "org": "Mga miyembro at access",
+      "account": "Mga account",
+      "export": "Mga export",
+      "file": "Mga download ng file",
+      "case": "Mga kaso",
+      "document": "Mga dokumento",
+      "consultation": "Mga konsultasyon",
+      "admin": "Staff ng ilovelawyer"
+    }
   }
 }

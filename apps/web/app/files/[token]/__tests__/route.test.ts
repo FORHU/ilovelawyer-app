@@ -66,6 +66,22 @@ describe("GET /files/[token]", () => {
     expect(res.headers.get("server")).toBeNull()
   })
 
+  it("tells the resolve endpoint who is opening the file, for its audit log — only the proxy's own X-Forwarded-For hop", async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url).startsWith(RESOLVE_URL_PREFIX)) return Promise.resolve(jsonResponse({ url: S3_URL }))
+      return Promise.resolve(new Response("file-bytes", { status: 200 }))
+    })
+    const req = new NextRequest("http://localhost:3002/files/some-token", {
+      headers: { "user-agent": "Firm Browser/1.0", "x-forwarded-for": "6.6.6.6, 203.0.113.7" },
+    })
+
+    await GET(req, { params: Promise.resolve({ token: "some-token" }) })
+
+    const [, init] = fetchMock.mock.calls.find(([url]) => String(url).startsWith(RESOLVE_URL_PREFIX))!
+    expect(init.headers).toEqual({ "user-agent": "Firm Browser/1.0", "x-forwarded-for": "203.0.113.7" })
+  })
+
   it("never fetches anything other than the URL the resolve endpoint returned (no user-controlled destination)", async () => {
     const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>
     fetchMock.mockImplementation((url: string) => {
