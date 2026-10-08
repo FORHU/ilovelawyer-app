@@ -145,6 +145,8 @@
   "alreadyOnLayout": "On this layout",
   "removePaneHint": "To remove it, use the × on the pane itself",
   "paneEmptyBadge": "Empty",
+  "paneFilterShowing": "Showing: {{category}}",
+  "paneFilterClear": "Show all categories",
   "paneShowEmpty": "Show empty panes ({{count}})",
   "paneHideEmpty": "Hide empty panes",
   "categoryFacts": "Facts",
