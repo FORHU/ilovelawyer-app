@@ -533,7 +533,7 @@
   "damagesDueIn_one": "Sa loob ng {{count}} araw",
   "damagesDueIn_other": "Sa loob ng {{count}} araw",
   "damagesNoDeadline": "Wala pa",
-  "damagesEmpty": "Wala pang danyos o remedyo. Magdagdag, o ipamungkahi mula sa mga dokumento ng kaso.",
+  "damagesEmpty": "Wala pang danyos o remedyo. Magdagdag, o pindutin ang 'I-refresh ang analysis' para hanapin ang mga ito sa mga dokumento ng kaso.",
   "damageKindLabel": "Uri",
   "damageKindDamage": "Danyos",
   "damageKindRemedy": "Remedyo",

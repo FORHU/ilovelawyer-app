@@ -50,11 +50,11 @@ interface Mocks {
     hint: string;
     docs: { name: string; status: string }[];
     timeline: string;
-    events: { date: string; tone: string; text: string }[];
+    events: { date: string; tone: string; text: string; source?: string; status?: string }[];
   };
   redTeam: {
     intro: string;
-    arguments: { title: string; strength: string; note: string }[];
+    arguments: { title: string; strength: string; note: string; response?: string }[];
   };
   chat: {
     anchored: string;
@@ -78,10 +78,10 @@ const GOLD = "text-brand-gold border-brand-gold/40";
 const TEXT_TONE: Record<string, string> = {
   HIGH: RED, STRONG: RED, DIRECT: RED, ADVERSE: RED, BLOCKED: RED, MATERIAL: RED, FAILED: RED, DISPUTED: RED,
   MEDIUM: ORANGE, MODERATE: ORANGE, PENDING: ORANGE, OPEN: ORANGE, CONTESTED: ORANGE, DRAFTING: ORANGE,
-  PARTIAL: ORANGE, OUTSTANDING: ORANGE, PROVISIONAL: ORANGE, INDIRECT: ORANGE, STALE: ORANGE, REJECTED: ORANGE,
+  PARTIAL: ORANGE, OUTSTANDING: ORANGE, ANTICIPATED: ORANGE, UNVERIFIED: ORANGE, ALLEGATION: ORANGE, PROVISIONAL: ORANGE, INDIRECT: ORANGE, STALE: ORANGE, REJECTED: ORANGE,
   READY: GREEN, DONE: GREEN, VERIFIED: GREEN, "ON POINT": GREEN, ANSWERED: GREEN, KEY: GREEN, CONFIRMED: GREEN,
-  MODELED: GREEN, APPROVED: GREEN, FAVOURS: GREEN, FAVORS: GREEN, WEAK: GREEN, SUPPORTS: GREEN,
-  STATUTE: GOLD, ASSIGNED: GOLD, CITED: GOLD, NODE: GOLD, SHARED: GOLD, BRANCH: GOLD,
+  MODELED: GREEN, FACT: GREEN, APPROVED: GREEN, FAVOURS: GREEN, FAVORS: GREEN, WEAK: GREEN, SUPPORTS: GREEN,
+  STATUTE: GOLD, ASSIGNED: GOLD, CITED: GOLD, NODE: GOLD, INFERENCE: GOLD, SHARED: GOLD, BRANCH: GOLD,
 };
 const BAR_TONE: Record<string, string> = { HIGH: "bg-red-400", MEDIUM: "bg-orange-400" };
 
@@ -220,7 +220,15 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
                   event.tone === "red" ? "bg-red-400" : "bg-brand-gold"
                 }`}
               />
-              <span className="text-white">{event.text}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-white">{event.text}</div>
+                {event.source && (
+                  <div className="mt-px flex items-center justify-between gap-2 text-[6.5px] uppercase text-white/50">
+                    <span className="truncate">{event.source}</span>
+                    {event.status && <Badge value={event.status} />}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -240,6 +248,7 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
                 <Badge value={arg.strength} />
               </div>
               <div className="mt-px text-[6.5px] uppercase text-white/50">{arg.note}</div>
+              {arg.response && <div className="mt-px text-[6.5px] text-brand-gold">{arg.response}</div>}
             </div>
           ))}
         </div>

@@ -395,6 +395,7 @@
   },
   "mindMapEdit": {
     "rename": "Rename",
+    "editDetails": "Edit details",
     "addPoint": "Add point",
     "delete": "Delete",
     "save": "Save",
@@ -405,6 +406,7 @@
     "confirmDeleteWithChildren_other": "Delete “{{label}}” and the {{count}} points under it?",
     "added": "Point added.",
     "renamed": "Renamed.",
+    "detailsSaved": "Details saved.",
     "deleted": "Point deleted.",
     "error": "Couldn't save your change. Try again.",
     "changedElsewhere": "This part of the map changed while you were editing. Try again."

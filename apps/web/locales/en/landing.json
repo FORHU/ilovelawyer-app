@@ -177,40 +177,40 @@
         "riskRegister": "Risk Register · 3",
         "add": "+ Add",
         "risks": [
-          { "level": "HIGH", "percent": 78, "text": "Six-month claim window runs from grant of probate, not yet confirmed" },
-          { "level": "MEDIUM", "percent": 54, "text": "No record of maintenance from the deceased, 2019–2023" }
+          { "level": "HIGH", "percent": 78, "text": "Section 4 – six months from first grant of representation; earlier grant not yet ruled out" },
+          { "level": "MEDIUM", "percent": 54, "text": "Purpose of the 2019–2023 transfers unverified: maintenance or gifts" }
         ]
       },
       "evidenceTimeline": {
         "documents": "Documents · 6",
         "hint": "Click a row",
         "docs": [
-          { "name": "last-will-2019.pdf", "status": "READY" },
-          { "name": "grant-of-probate.pdf", "status": "PENDING" },
-          { "name": "bank-statements-2019-2024.xlsx", "status": "READY" }
+          { "name": "grant-of-probate.pdf", "status": "READY" },
+          { "name": "bank-statements-2019-2023.pdf", "status": "READY" },
+          { "name": "letter-of-wishes-2021.pdf", "status": "PENDING" }
         ],
         "timeline": "Timeline",
         "events": [
-          { "date": "12 MAR", "tone": "gold", "text": "Testator dies; will names a charity as sole beneficiary." },
-          { "date": "02 SEP", "tone": "red", "text": "Grant of probate issued; six-month window starts." },
-          { "date": "18 SEP", "tone": "red", "text": "Estate accounts show no provision for the claimant." }
+          { "date": "2019–23", "tone": "gold", "text": "Recurring payments to the claimant.", "source": "bank-statements-2019-2023.pdf · pp.14–37", "status": "VERIFIED" },
+          { "date": "12 MAR", "tone": "gold", "text": "Testator dies; will names a charity as sole beneficiary.", "source": "last-will-2019.pdf · p.2", "status": "VERIFIED" },
+          { "date": "02 SEP", "tone": "red", "text": "Grant of representation issued.", "source": "grant-of-probate.pdf · p.1", "status": "VERIFIED" }
         ]
       },
       "redTeam": {
-        "intro": "Best arguments available to Sterling Trustees, ranked by expected impact.",
+        "intro": "Strongest case for Sterling Trustees, ranked by threat level.",
         "arguments": [
-          { "title": "Claimant is financially independent", "strength": "STRONG", "note": "Adult child, not maintained by the deceased" },
-          { "title": "Testator documented her reasons", "strength": "STRONG", "note": "Weight given to stated wishes" },
-          { "title": "The 2021 letter is ambiguous", "strength": "MODERATE", "note": "Double-edged for both sides" }
+          { "title": "The payments were gifts, not maintenance", "strength": "HIGH", "note": "Evidence: claimant had independent income", "response": "Response: prove the purpose of the payments and her reasonable needs" },
+          { "title": "The letter of wishes justifies the exclusion", "strength": "MEDIUM", "note": "Evidence: 2021 letter · s 3(1)(g)", "response": "Response: Ilott, wishes are one s 3 matter among several" },
+          { "title": "The claim is out of time", "strength": "MEDIUM", "note": "Legal issue: s 4, if an earlier grant exists", "response": "Response: confirm the date of first grant" }
         ]
       },
       "chat": {
         "anchored": "Anchored",
         "thread": "Estate exclusion claim ▾",
         "scope": "● Case + 5 panels",
-        "question": "Which documents best show the claimant was maintained?",
-        "source": "ilovelawyer · from evidence & timeline, contradictions",
-        "answer": "Two documents do real work: the bank statements show regular transfers from the deceased through 2023, while the will records no reason for the exclusion.",
+        "question": "Which documents support the argument that the claimant was maintained?",
+        "source": "ilovelawyer · AI assessment · from evidence & timeline",
+        "answer": "The bank statements (pp.14–37) show recurring transfers from the deceased through 2023. That supports a maintenance argument, subject to verifying the purpose of the transfers and the claimant's financial circumstances.",
         "chips": ["EVIDENCE ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
@@ -344,10 +344,11 @@
       "caseReconstruction": {
         "intro": "Drafted from the case documents · editable",
         "rows": [
-          { "title": "2019 – 2023 · monthly transfers", "note": "Bank statements", "status": "VERIFIED" },
-          { "title": "2021 · letter to the claimant", "note": "Meaning disputed", "status": "DISPUTED" },
-          { "title": "12 Mar · testator dies", "note": "Will leaves the estate to a charity", "status": "VERIFIED" },
-          { "title": "02 Sep · grant of probate", "note": "Six-month window starts", "status": "VERIFIED" }
+          { "title": "2019–2023 · monthly transfers", "note": "Bank statements pp.14–37", "status": "FACT" },
+          { "title": "The transfers were maintenance", "note": "Drawn from their regularity · purpose unverified", "status": "INFERENCE" },
+          { "title": "2021 · letter of wishes explains the exclusion", "note": "Executors' position", "status": "ALLEGATION" },
+          { "title": "12 Mar · testator dies", "note": "Will leaves the estate to a charity", "status": "FACT" },
+          { "title": "02 Sep · grant of representation", "note": "Grant of probate p.1", "status": "FACT" }
         ]
       },
       "law": {
@@ -359,27 +360,32 @@
         ]
       },
       "legalIssues": {
-        "intro": "Questions the court will have to decide.",
+        "intro": "Questions the court will have to decide · issue, authority, evidence.",
         "rows": [
-          { "title": "Is the claim in time?", "note": "s 4 · six months from the grant", "status": "OPEN" },
-          { "title": "Was reasonable provision made?", "note": "s 1(2)(b) · maintenance standard", "status": "CONTESTED" },
-          { "title": "How much do her stated reasons weigh?", "note": "s 3 factors", "status": "OPEN" }
+          { "title": "Is the claim in time?", "note": "s 4 · six months from first grant of representation · grant p.1", "status": "OPEN" },
+          { "title": "Was the claimant maintained by the deceased?", "note": "1975 Act · bank statements · purpose unverified", "status": "UNVERIFIED" },
+          { "title": "Was reasonable financial provision made?", "note": "s 1(2)(b) · maintenance standard · Ilott", "status": "CONTESTED" },
+          { "title": "What s 3 factors will the court consider?", "note": "Needs and resources · beneficiary · estate size", "status": "OPEN" }
         ]
       },
       "decisions": {
-        "intro": "From the latest answer · rule, evidence and the alternative rejected.",
+        "intro": "Reasoning behind the latest answer · provisional AI assessment.",
         "rows": [
-          { "title": "The claimant was maintained", "note": "For: monthly transfers 2019–2023", "status": "FAVOURS" },
-          { "title": "Her stated reasons carry weight", "note": "Against: the letter of wishes", "status": "ADVERSE" },
-          { "title": "Alternative: no maintenance", "note": "Rejected · the transfers were regular", "status": "REJECTED" }
+          { "title": "Was the claimant maintained by the deceased?", "note": "Question", "status": "OPEN" },
+          { "title": "Recurring monthly transfers, 2019–2023", "note": "Evidence supporting · bank statements pp.14–37", "status": "SUPPORTS" },
+          { "title": "Letter of wishes; claimant's own income", "note": "Evidence against", "status": "ADVERSE" },
+          { "title": "The payments were gifts, not maintenance", "note": "Competing interpretation", "status": "OPEN" },
+          { "title": "Maintenance argument supported", "note": "AI assessment · purpose of transfers to verify", "status": "PROVISIONAL" }
         ]
       },
       "procedure": {
-        "intro": "Deadlines and filing checklist.",
+        "intro": "Litigation approach, with the procedural steps that support it.",
         "rows": [
-          { "title": "Issue the claim form (Part 8)", "note": "Within six months of the grant", "status": "OPEN" },
-          { "title": "Claimant's witness statement", "note": "Filed with the claim form", "status": "DRAFTING" },
-          { "title": "Standstill agreement", "note": "Proposed to the executors", "status": "OPEN" }
+          { "title": "Show maintenance and that the will fails to make reasonable financial provision", "note": "Primary strategy", "status": "KEY" },
+          { "title": "Establish nature, regularity and purpose of the support", "note": "Evidential objective · statements, letters, witnesses", "status": "OPEN" },
+          { "title": "Payments were gifts; claimant was independent", "note": "Opponent's likely position", "status": "ANTICIPATED" },
+          { "title": "Obtain full bank records and evidence of needs", "note": "Immediate action", "status": "OPEN" },
+          { "title": "Confirm date of first grant; assess s 4 position", "note": "Procedural priority · then issue the Part 8 claim", "status": "OPEN" }
         ]
       },
       "mindMap": {
@@ -387,14 +393,14 @@
         "rows": [
           { "title": "Legal basis", "note": "s 1(1)(c) · s 1(2)(b) · s 3", "status": "NODE" },
           { "title": "Key facts", "note": "Transfers · will · 2021 letter", "status": "NODE" },
-          { "title": "Remedies", "note": "Lump sum · periodical payments", "status": "NODE" },
-          { "title": "Risks", "note": "Independence · stated wishes", "status": "NODE" }
+          { "title": "Remedies", "note": "s 2(1)(a) · s 2(1)(b) · s 2(1)(c)", "status": "NODE" },
+          { "title": "Risks", "note": "Gifts or maintenance · s 4 timing", "status": "NODE" }
         ]
       },
       "attackStrategy": {
         "intro": "Moves to advance the case.",
         "rows": [
-          { "title": "Prove maintenance with bank records", "note": "Statements 2019–2023", "status": "READY" },
+          { "title": "Evidence maintenance with bank records", "note": "Statements pp.14–37", "status": "READY" },
           { "title": "Challenge the letter of wishes", "note": "Needs the 2021 letter", "status": "DRAFTING" },
           { "title": "Evidence the claimant's needs", "note": "GP statement outstanding", "status": "BLOCKED" }
         ]
@@ -403,8 +409,8 @@
         "intro": "Answers to the executors' likely defences.",
         "rows": [
           { "title": "The claimant is independent", "note": "Benefits letter shows need", "status": "ANSWERED" },
-          { "title": "The testator gave her reasons", "note": "Ilott: wishes are one factor of many", "status": "ANSWERED" },
-          { "title": "The claim is out of time", "note": "Standstill not yet signed", "status": "PARTIAL" }
+          { "title": "The testator gave her reasons", "note": "Ilott: wishes are one s 3 matter of several", "status": "ANSWERED" },
+          { "title": "The claim is out of time", "note": "In time if 02 Sep was the first grant", "status": "PARTIAL" }
         ]
       },
       "theories": {
@@ -426,24 +432,25 @@
       "weaknesses": {
         "intro": "Points that hurt the case.",
         "rows": [
-          { "title": "The claimant is in work", "note": "Suggests independence", "status": "MATERIAL" },
-          { "title": "Letter of wishes explains the exclusion", "note": "Weighed under s 3", "status": "MATERIAL" },
-          { "title": "GP evidence outstanding", "note": "Her needs are unproven", "status": "OPEN" }
+          { "title": "Purpose of the transfers undocumented", "note": "Nothing yet records them as maintenance", "status": "MATERIAL" },
+          { "title": "The claimant is in work", "note": "Bears on her resources under s 3(1)(a)", "status": "MATERIAL" },
+          { "title": "Evidence of needs outstanding", "note": "GP statement and budget not yet obtained", "status": "OPEN" }
         ]
       },
       "strengths": {
         "intro": "Points that help the case.",
         "rows": [
-          { "title": "Regular transfers 2019–2023", "note": "Bank statements", "status": "KEY" },
-          { "title": "No competing need from the charity", "note": "Beneficiary's position under s 3", "status": "KEY" }
+          { "title": "Recurring transfers 2019–2023", "note": "Bank statements pp.14–37 · verified", "status": "KEY" },
+          { "title": "Sole beneficiary is a charity", "note": "s 3(1)(c) · no competing personal need asserted", "status": "SUPPORTS" },
+          { "title": "Net estate can bear an award", "note": "s 3(1)(e) · estate accounts", "status": "SUPPORTS" }
         ]
       },
       "damages": {
         "intro": "Orders sought under s 2 · provisional",
         "rows": [
-          { "title": "Lump sum", "note": "s 2(1)(c) · £60,000 sought", "status": "PROVISIONAL" },
-          { "title": "Periodical payments", "note": "s 2(1)(a)", "status": "CONTESTED" },
-          { "title": "Costs", "note": "From the estate", "status": "OPEN" }
+          { "title": "Periodical payments", "note": "s 2(1)(a) · alternative to a lump sum", "status": "CONTESTED" },
+          { "title": "Lump sum", "note": "s 2(1)(b) · £60,000 sought", "status": "PROVISIONAL" },
+          { "title": "Transfer of property", "note": "s 2(1)(c) · not sought at present", "status": "OPEN" }
         ]
       }
     }

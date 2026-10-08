@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { MindMapEditRequest } from './types';
 import { MIND_MAP_LIMITS } from './constants';
 
@@ -17,13 +17,15 @@ interface NodeEditorProps {
   atNodeCap: boolean;
 }
 
-type Mode = 'idle' | 'rename' | 'add' | 'delete';
+type Mode = 'idle' | 'rename' | 'details' | 'add' | 'delete';
 
 /**
- * Rename / add a point / delete, for one node in the mind map's detail panel. Saves through the
- * API (ilovelawyer-api MindMapSvc.editNode) as a new revision — the canvas has no editing
- * of its own. Same shape rules as the API: nothing on the root, the five top-level branches
- * can't be deleted, and adding respects MIND_MAP_LIMITS.
+ * Rename / edit details / add a point / delete, for one node in the mind map's detail panel.
+ * Saves through the API (ilovelawyer-api MindMapSvc.editNode) as a new revision — the canvas has
+ * no editing of its own. Renaming and editing details are separate: both are a `rename` op, but
+ * a rename sends no description (the API keeps the current one) and a details edit sends the
+ * node's current label back unchanged. Same shape rules as the API: nothing on the root, the
+ * five top-level branches can't be deleted, and adding respects MIND_MAP_LIMITS.
  */
 export function NodeEditor({ node, onEdit, onSaved, disabledReason, atNodeCap }: NodeEditorProps) {
   const { t } = useTranslation('case-portfolio');
@@ -38,7 +40,7 @@ export function NodeEditor({ node, onEdit, onSaved, disabledReason, atNodeCap }:
   const open = (next: Mode) => {
     setMode(next);
     setLabel(next === 'rename' ? node.label : '');
-    setDescription(next === 'rename' ? node.description ?? '' : '');
+    setDescription(next === 'details' ? node.description ?? '' : '');
   };
 
   const submit = async (edit: MindMapEditRequest) => {
@@ -61,6 +63,9 @@ export function NodeEditor({ node, onEdit, onSaved, disabledReason, atNodeCap }:
       <div className="flex flex-wrap items-center gap-1" title={disabledReason}>
         <button type="button" className={ghostBtn} disabled={Boolean(disabledReason)} onClick={() => open('rename')}>
           <Pencil size={12} /> {t('mindMapEdit.rename')}
+        </button>
+        <button type="button" className={ghostBtn} disabled={Boolean(disabledReason)} onClick={() => open('details')}>
+          <FileText size={12} /> {t('mindMapEdit.editDetails')}
         </button>
         {canAdd && (
           <button type="button" className={ghostBtn} disabled={Boolean(disabledReason)} onClick={() => open('add')}>
@@ -107,40 +112,58 @@ export function NodeEditor({ node, onEdit, onSaved, disabledReason, atNodeCap }:
     );
   }
 
-  const trimmed = label.trim();
+  const showLabel = mode !== 'details';
+  const showDescription = mode !== 'rename';
+  // A details edit keeps the node's label, so only the label field (when shown) can block saving.
+  const trimmed = showLabel ? label.trim() : node.label;
   return (
     <form
       className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         if (!trimmed) return;
-        void submit({ op: mode, nodeId: node.id, label: trimmed, description: description.trim() });
+        if (mode === 'add') {
+          void submit({ op: 'add', nodeId: node.id, label: trimmed, description: description.trim() });
+        } else if (mode === 'rename') {
+          void submit({ op: 'rename', nodeId: node.id, label: trimmed });
+        } else {
+          void submit({ op: 'rename', nodeId: node.id, label: trimmed, description: description.trim() });
+        }
       }}
     >
-      <label className="sr-only" htmlFor={`mind-map-${mode}-label-${node.id}`}>
-        {t('mindMapEdit.labelPlaceholder')}
-      </label>
-      <input
-        id={`mind-map-${mode}-label-${node.id}`}
-        autoFocus
-        maxLength={120}
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder={t('mindMapEdit.labelPlaceholder')}
-        className={inputClass}
-      />
-      <label className="sr-only" htmlFor={`mind-map-${mode}-description-${node.id}`}>
-        {t('mindMapEdit.descriptionPlaceholder')}
-      </label>
-      <textarea
-        id={`mind-map-${mode}-description-${node.id}`}
-        rows={3}
-        maxLength={2000}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder={t('mindMapEdit.descriptionPlaceholder')}
-        className={`${inputClass} resize-y`}
-      />
+      {showLabel && (
+        <>
+          <label className="sr-only" htmlFor={`mind-map-${mode}-label-${node.id}`}>
+            {t('mindMapEdit.labelPlaceholder')}
+          </label>
+          <input
+            id={`mind-map-${mode}-label-${node.id}`}
+            autoFocus
+            maxLength={120}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={t('mindMapEdit.labelPlaceholder')}
+            className={inputClass}
+          />
+        </>
+      )}
+      {showDescription && (
+        <>
+          <label className="sr-only" htmlFor={`mind-map-${mode}-description-${node.id}`}>
+            {t('mindMapEdit.descriptionPlaceholder')}
+          </label>
+          <textarea
+            id={`mind-map-${mode}-description-${node.id}`}
+            autoFocus={!showLabel}
+            rows={mode === 'details' ? 5 : 3}
+            maxLength={2000}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t('mindMapEdit.descriptionPlaceholder')}
+            className={`${inputClass} resize-y`}
+          />
+        </>
+      )}
       <div className="flex justify-end gap-2">
         <button type="button" className={ghostBtn} onClick={() => setMode('idle')} disabled={saving}>
           {t('mindMapExpand.cancel')}
