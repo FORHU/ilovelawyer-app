@@ -33,6 +33,8 @@ import {
 type Tab = "signin" | "signup" | "recover";
 
 const OTP_LENGTH = 6;
+// Where an invited user with no organization yet goes to accept their invite.
+const ORGANIZATION_PATH = "/homepage/organization";
 const RESEND_COOLDOWN_SECONDS = 30;
 
 function tabFromParam(value: string | null): Tab {
@@ -71,7 +73,8 @@ function UnifiedAuthContent() {
 
   // Sign up fields
   const [name, setName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
+  // Prefilled from an org-invite email's sign-up link (?email=), which was sent to that address.
+  const [signupEmail, setSignupEmail] = useState(() => searchParams.get("email") ?? "");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmSignupPassword, setConfirmSignupPassword] = useState("");
   const [showSignupPw, setShowSignupPw] = useState(false);
@@ -135,13 +138,18 @@ function UnifiedAuthContent() {
   function selectTab(next: Tab) {
     setTab(next);
     setError(null);
-    router.replace(next === "signin" ? "/login" : `/login?tab=${next}`, { scroll: false });
+    // Keeps the other params (an invite link's next/email) so switching tabs doesn't lose them.
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "signin") params.delete("tab");
+    else params.set("tab", next);
+    const query = params.toString();
+    router.replace(query ? `/login?${query}` : "/login", { scroll: false });
   }
 
   /** A Google user with no organization yet (new, or one who abandoned onboarding) goes
    * through the same WorkspaceSetup step as a freshly-verified password signup; everyone else
-   * continues to `next`. "unknown" (the org lookup failed) also continues — the protected
-   * layout re-checks from there. */
+   * continues to `next`, or to the Organization page when an invite is waiting. "unknown" (the
+   * org lookup failed) also continues — the protected layout re-checks from there. */
   function finishGoogleAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
     googleTokenRef.current = null;
     if (data.organizationStatus === "none") {
@@ -149,7 +157,7 @@ function UnifiedAuthContent() {
       setWorkspaceStep(true);
       return;
     }
-    router.push(sanitizeNextPath(searchParams.get("next")));
+    router.push(data.organizationStatus === "invited" ? ORGANIZATION_PATH : sanitizeNextPath(searchParams.get("next")));
   }
 
   /** Password sign-in counterpart of finishGoogleAuth — the mutation already navigated
@@ -390,6 +398,12 @@ function UnifiedAuthContent() {
       { email: signupEmail, code: otpDigits.join("") },
       {
         onSuccess: (data) => {
+          // An invite approves the account (see AuthSvc.autoApproveIfEnabled), so there's no
+          // workspace to set up — they go accept it.
+          if (data.organizationStatus === "invited") {
+            router.push(ORGANIZATION_PATH);
+            return;
+          }
           setSignInAfterSetup(data.user.approvalStatus === "ACTIVE");
           setOtpStep(false);
           setWorkspaceStep(true);

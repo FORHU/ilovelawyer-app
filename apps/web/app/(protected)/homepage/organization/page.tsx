@@ -32,6 +32,8 @@ import {
   PACKAGE_SKUS,
   type OrganizationRole,
   type PackageSku,
+  type OrganizationMemberRecord,
+  type OrganizationMembersListRecord,
 } from "@/lib/organizations/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import {
@@ -55,6 +57,11 @@ const PLAN_ICONS: Record<PackageSku, typeof UserCircle2> = {
   PROFESSIONAL: Users2,
   ENTERPRISE: Briefcase,
 };
+
+/** An invite to an address with no account yet has only the email to show. */
+function memberName(member: OrganizationMembersListRecord): string {
+  return member.user.name ?? member.user.username ?? member.user.email;
+}
 
 function getInitials(value: string): string {
   const [first, second] = value.split(/[.\s_-]+/).filter(Boolean);
@@ -99,7 +106,7 @@ export default function OrganizationPage() {
   const removeMemberMutation = useRemoveMemberMutation(organization?.id ?? "");
   const updateOrgMutation = useUpdateOrganizationMutation(organization?.id ?? "");
   const otherMembers = (membersQuery.data ?? []).filter(
-    (m) => m.userId !== currentUserId && m.status === "ACCEPTED",
+    (m): m is OrganizationMemberRecord => m.userId !== null && m.userId !== currentUserId && m.status === "ACCEPTED",
   );
   // A user who skipped onboarding is in a private personal workspace, not an organization —
   // they get the same create/join screen as someone with none (see Organization.isPersonal).
@@ -708,7 +715,7 @@ export default function OrganizationPage() {
                       </option>
                       {otherMembers.map((m) => (
                         <option key={m.userId} value={m.userId} className="text-black">
-                          {(m.user.name ?? m.user.username) + ` (${m.role})`}
+                          {memberName(m) + ` (${m.role})`}
                         </option>
                       ))}
                     </select>
@@ -757,12 +764,12 @@ export default function OrganizationPage() {
                     <div key={member.id} className="px-6 md:px-8 py-4 flex items-center gap-4">
                       <UserAvatar
                         avatarUrl={member.user.avatarUrl}
-                        initials={getInitials(member.user.name ?? member.user.username)}
+                        initials={getInitials(memberName(member))}
                         className="h-9 w-9 bg-secondary text-secondary-foreground text-[12px] font-semibold"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] text-foreground truncate">
-                          {member.user.name ?? member.user.username}
+                          {memberName(member)}
                           {member.userId === currentUserId && (
                             <span className="ml-2 text-[11px] text-muted-foreground">({t("members.you")})</span>
                           )}
@@ -788,10 +795,10 @@ export default function OrganizationPage() {
                                           member.userId,
                                           member.role,
                                           e.target.value as OrganizationRole,
-                                          member.user.name ?? member.user.username,
+                                          memberName(member),
                                         )
                                       }
-                                      aria-label={t("members.changeRoleAriaLabel", { name: member.user.name ?? member.user.username })}
+                                      aria-label={t("members.changeRoleAriaLabel", { name: memberName(member) })}
                                       className="cursor-pointer appearance-none rounded-full border border-border bg-foreground/5 pl-3 pr-6 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground outline-none transition-colors hover:border-brand-gold/50 focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light]"
                                     >
                                       {roleOptionsFor(member.role).map((role) => (
@@ -824,9 +831,9 @@ export default function OrganizationPage() {
                                 <TooltipTrigger asChild>
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveMemberClick(member.userId, member.user.name ?? member.user.username)}
+                                    onClick={() => handleRemoveMemberClick(member.userId, memberName(member))}
                                     disabled={removeMemberMutation.isPending && removeMemberMutation.variables === member.userId}
-                                    aria-label={t("members.removeAriaLabel", { name: member.user.name ?? member.user.username })}
+                                    aria-label={t("members.removeAriaLabel", { name: memberName(member) })}
                                     className="cursor-pointer flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-600/10 hover:text-red-600 dark:hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     {removeMemberMutation.isPending && removeMemberMutation.variables === member.userId ? (

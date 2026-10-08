@@ -36,7 +36,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       .then(() => setHydrating(false))
       .catch(() => {
         clearAuth()
-        router.replace("/login")
+        // Keep the deep link (e.g. the org-invite email's /homepage/organization) so login
+        // lands back on it instead of the default /homepage.
+        router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
