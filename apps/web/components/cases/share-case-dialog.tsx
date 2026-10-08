@@ -1,21 +1,22 @@
 "use client";
-import { Loader2, UserMinus, X } from "lucide-react";
+import { Loader2, Lock, UserMinus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuthStore } from "@/lib/store/auth.store";
 import {
-  LEVEL_TO_PERMISSION,
   accessOf,
+  permissionFor,
   useCaseAccessQuery,
   useGrantCaseAccessMutation,
   useRevokeCaseAccessMutation,
+  useSetConfidentialMutation,
   type AccessLevel,
   type CaseAccessPerson,
 } from "@/lib/cases/sharing";
 
-const SOURCE_ORDER = { "org-admin": 0, grant: 1, organization: 2 } as const;
+const SOURCE_ORDER = { "org-admin": 0, grant: 1, organization: 2, walled: 3 } as const;
 
 function initialsOf(person: CaseAccessPerson) {
   const base = person.name?.trim() || person.username;
@@ -27,34 +28,49 @@ function initialsOf(person: CaseAccessPerson) {
 /** Who can reach a case and how (#347). Everyone in the organization can view it; this is where
  * someone who can manage the case's access (org OWNER/ADMIN, or an ADMIN grant on the case) gives
  * a member edit or manage access, or takes it back. Each row says whether the access comes from
- * the organization or from a grant here, since only a grant can be taken back. */
+ * the organization or from a grant here, since only a grant can be taken back.
+ *
+ * It's also where a case is made confidential (#346): then only the organization's owner and
+ * people granted access here can reach it — org admins included need a grant — and it disappears
+ * for everyone else. */
 export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string; caseName: string; onClose: () => void }) {
   const { t } = useTranslation("case-portfolio");
   const currentUserId = useAuthStore((s) => s.user?.id);
   const { data, isLoading, isError } = useCaseAccessQuery(caseId);
   const grant = useGrantCaseAccessMutation();
   const revoke = useRevokeCaseAccessMutation();
+  const setConfidential = useSetConfidentialMutation();
   const busyUserId = grant.isPending ? grant.variables?.userId : revoke.isPending ? revoke.variables?.userId : undefined;
-  const failed = grant.isError || revoke.isError;
+  const failed = grant.isError || revoke.isError || setConfidential.isError;
+  const confidential = !!data?.confidential;
 
   const people = [...(data?.people ?? [])].sort((a, b) => {
-    const bySource = SOURCE_ORDER[accessOf(a).source] - SOURCE_ORDER[accessOf(b).source];
+    const bySource = SOURCE_ORDER[accessOf(a, confidential).source] - SOURCE_ORDER[accessOf(b, confidential).source];
     return bySource || (a.name ?? a.username).localeCompare(b.name ?? b.username);
   });
 
   const changeLevel = (person: CaseAccessPerson, level: AccessLevel) => {
     grant.reset();
     revoke.reset();
-    if (level === "view") {
-      // Everyone in the organization can already view — "view" means no grant.
+    setConfidential.reset();
+    const permission = permissionFor(level, confidential);
+    // No grant behind this level — "No access", or an ordinary case's "Can view", which everyone
+    // in the organization already has.
+    if (!permission) {
       if (person.grant) revoke.mutate({ caseId, userId: person.userId });
       return;
     }
-    grant.mutate({ caseId, userId: person.userId, permission: LEVEL_TO_PERMISSION[level] });
+    grant.mutate({ caseId, userId: person.userId, permission });
   };
 
   const levelLabel = (level: AccessLevel) =>
-    level === "manage" ? t("share.levelManage") : level === "edit" ? t("share.levelEdit") : t("share.levelView");
+    level === "manage"
+      ? t("share.levelManage")
+      : level === "edit"
+        ? t("share.levelEdit")
+        : level === "view"
+          ? t("share.levelView")
+          : t("share.levelNone");
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -83,10 +99,41 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
         <div className="flex flex-col gap-4 px-6 py-5">
           <DialogDescription asChild>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {t("share.description")}
+              {confidential ? t("share.descriptionConfidential") : t("share.description")}
               {data && !data.canManage ? ` ${t("share.readOnlyNote")}` : null}
             </p>
           </DialogDescription>
+
+          {data && (data.canManage || confidential) && (
+            <label
+              className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${
+                confidential ? "border-brand-gold/40 bg-brand-gold/5" : "border-border"
+              } ${data.canManage ? "cursor-pointer" : ""}`}
+            >
+              <input
+                type="checkbox"
+                checked={confidential}
+                disabled={!data.canManage || setConfidential.isPending}
+                onChange={(e) => {
+                  grant.reset();
+                  revoke.reset();
+                  setConfidential.mutate({ caseId, confidential: e.target.checked });
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-brand-gold"
+                aria-describedby="share-confidential-hint"
+              />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("share.confidentialLabel")}
+                  {setConfidential.isPending && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />}
+                </span>
+                <span id="share-confidential-hint" className="text-[12px] text-muted-foreground">
+                  {t("share.confidentialHint")}
+                </span>
+              </span>
+            </label>
+          )}
 
           {isLoading && (
             <div className="flex justify-center py-6">
@@ -98,7 +145,7 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
           {data && (
             <ul className="-mx-2 flex max-h-[50vh] flex-col overflow-y-auto" aria-label={t("share.peopleLabel")}>
               {people.map((person) => {
-                const access = accessOf(person);
+                const access = accessOf(person, confidential);
                 const name = person.name?.trim() || person.username;
                 const isBusy = busyUserId === person.userId;
                 const sourceLabel =
@@ -110,7 +157,9 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
                       ? t("share.formerMember")
                       : access.granted
                         ? t("share.sourceGrant")
-                        : t("share.sourceOrganization");
+                        : access.source === "walled"
+                          ? t("share.sourceWalled")
+                          : t("share.sourceOrganization");
                 return (
                   <li key={person.userId} className="flex items-center gap-3 rounded-lg px-2 py-2.5" data-testid={`share-row-${person.userId}`}>
                     <UserAvatar
@@ -136,6 +185,7 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
                             aria-label={t("share.levelLabel", { name })}
                             className="h-8 rounded-md border border-border bg-background px-2 text-[13px] text-foreground disabled:opacity-50"
                           >
+                            {confidential && <option value="none">{t("share.levelNone")}</option>}
                             <option value="view">{t("share.levelView")}</option>
                             <option value="edit">{t("share.levelEdit")}</option>
                             <option value="manage">{t("share.levelManage")}</option>

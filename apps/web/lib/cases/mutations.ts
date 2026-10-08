@@ -66,6 +66,8 @@ export interface CaseRecord {
   /** Which side the lawyer acts for; the AI findings are written from it. Null when not set. */
   clientSide?: ClientSide | null
   status: CaseStatus
+  /** Only the org owner and people with a grant can reach it (ilovelawyer-api #346). */
+  confidential?: boolean
   createdAt: string
   /** Last real activity on the case (edits, documents, chat, decisions, events) — not views. */
   updatedAt: string

@@ -492,6 +492,13 @@
     "removeLabel": "Remove {{name}}'s access",
     "you": "(you)",
     "loadError": "Couldn't load who has access.",
-    "saveError": "Couldn't change access. Try again."
-  }
+    "saveError": "Couldn't change access. Try again.",
+    "descriptionConfidential": "This case is confidential: only the organization owner and the people below with access can see it. Everyone else, admins included, can't find it at all.",
+    "confidentialLabel": "Confidential",
+    "confidentialHint": "Hide this case from everyone except the organization owner and people you give access to here. You keep manage access.",
+    "levelNone": "No access",
+    "sourceWalled": "Not on this case"
+  },
+  "confidentialBadge": "Confidential",
+  "confidentialTooltip": "Only the organization owner and people given access can see this case"
 }
