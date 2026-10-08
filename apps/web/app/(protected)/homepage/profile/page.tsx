@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { AtSign, CalendarDays, Camera, Check, Clock, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
+import { AtSign, CalendarDays, Camera, Check, Clock, Download, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
 import { UserAvatar } from "@/components/user-avatar";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
 import ChangePasswordModal from "@/components/account/change-password-modal";
+import ExportDataModal from "@/components/account/export-data-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import {
@@ -20,6 +21,7 @@ import {
   useUploadAvatarMutation,
   useCurrentUserQuery,
   useDeleteAccountMutation,
+  useExportMyDataMutation,
   useUpdateCurrentUserMutation,
 } from "@/lib/user/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -147,6 +149,7 @@ export default function ProfilePage() {
   const updateName = useUpdateCurrentUserMutation();
   const updateUsername = useUpdateCurrentUserMutation();
   const deleteAccount = useDeleteAccountMutation();
+  const exportMyData = useExportMyDataMutation();
   const cancelDeletion = useCancelDeletionMutation();
   const changePassword = useChangePasswordMutation();
   const uploadAvatar = useUploadAvatarMutation();
@@ -214,6 +217,8 @@ export default function ProfilePage() {
   const [deletionSuccessDate, setDeletionSuccessDate] = useState<Date | null>(null);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [passwordJustChanged, setPasswordJustChanged] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [dataDownloadStarted, setDataDownloadStarted] = useState(false);
 
   const deletionRequestedAt = currentUser?.deletionRequestedAt ?? null;
   const scheduledDeletionDate = deletionRequestedAt ? addDays(deletionRequestedAt, ACCOUNT_DELETION_GRACE_PERIOD_DAYS) : null;
@@ -723,6 +728,49 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {/* Your data */}
+        <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-6 md:px-8 py-5 border-b border-border">
+            <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("yourData.heading")}</h2>
+            <p className="text-[13px] text-muted-foreground mt-0.5">{t("yourData.subheading")}</p>
+          </div>
+
+          <div className="flex flex-col divide-y divide-border">
+            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex flex-1 min-w-[16rem] gap-4 items-center">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-[16px]">{t("yourData.download.title")}</p>
+                  <p className="text-muted-foreground text-[14px]">{t("yourData.download.description")}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {dataDownloadStarted && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                    {t("yourData.download.started")}
+                  </span>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setIsExportModalOpen(true)}
+                      className="cursor-pointer flex items-center gap-2 bg-brand-navy-900 text-white px-6 py-2.5 text-[12px] font-semibold tracking-[1.2px] uppercase rounded-lg hover:bg-brand-navy-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      {t("yourData.download.button")}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download a copy of your data</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+          </div>
+        </section>
           </>
         )}
 
@@ -809,6 +857,27 @@ export default function ProfilePage() {
           onClose={() => {
             setIsChangePasswordModalOpen(false);
             changePassword.reset();
+          }}
+        />
+      )}
+
+      {isExportModalOpen && (
+        <ExportDataModal
+          isPending={exportMyData.isPending}
+          error={exportMyData.error ? (exportMyData.error as Error).message : null}
+          requiresPassword={!!currentUser?.hasPassword}
+          onConfirm={(password) =>
+            exportMyData.mutate(password, {
+              onSuccess: () => {
+                setIsExportModalOpen(false);
+                flashSaved(setDataDownloadStarted);
+                exportMyData.reset();
+              },
+            })
+          }
+          onClose={() => {
+            setIsExportModalOpen(false);
+            exportMyData.reset();
           }}
         />
       )}

@@ -69,6 +69,26 @@
       "closeModal": "Close"
     }
   },
+  "yourData": {
+    "heading": "Your Data",
+    "subheading": "A copy of the personal data we hold about you.",
+    "download": {
+      "title": "Download my data",
+      "description": "A zip with a readable PDF summary, the complete record in a data file, and the files you uploaded. Cases and documents that belong to an organization you don't own are not included.",
+      "button": "Download",
+      "preparing": "Preparing…",
+      "started": "Download started",
+      "confirmTitle": "Download your data?",
+      "confirmDescription": "We'll prepare a zip with a PDF summary of what we hold about you, the complete record, and the files you uploaded. It can take a minute for larger accounts. Keep this tab open until the download starts.",
+      "confirmButton": "Download",
+      "passwordLabel": "Confirm Your Password",
+      "passwordHint": "Enter the password you use to sign in. This keeps your data private if someone else has your device.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "cancel": "Cancel",
+      "closeModal": "Close"
+    }
+  },
   "dangerZone": {
     "heading": "Danger Zone",
     "subheading": "Irreversible and destructive actions for this account.",
