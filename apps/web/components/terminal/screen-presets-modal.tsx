@@ -251,7 +251,7 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent overlayClassName="z-(--z-canvas-overlay)" className="z-(--z-canvas-overlay) flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
         <div className="flex shrink-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border bg-muted/60 py-5 pl-6 pr-12">
           <div className="min-w-0">
             <DialogTitle asChild>
