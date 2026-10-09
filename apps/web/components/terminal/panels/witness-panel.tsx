@@ -186,8 +186,9 @@ export function WitnessPanel({
             const status = w.status ?? "OUTSTANDING"
             const override = w.credibilityOverride ?? null
             const ai = w.aiCredibility ?? null
-            // Manual override wins, then the AI score, then the legacy stored value.
-            const credibility = override ?? ai ?? w.credibility ?? 50
+            // Manual override wins, then the AI score. Unscored reads as 0 — not the legacy column,
+            // whose default of 50 drew a half-full bar for a witness nobody had scored.
+            const credibility = override ?? ai ?? 0
             const hasScore = override !== null || ai !== null
             const scoredNoData = !hasScore && !!w.scoredAt
             const style = STATUS_STYLE[status]
@@ -288,20 +289,24 @@ export function WitnessPanel({
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="relative h-1.5 flex-1 rounded-full bg-muted">
-                    <div
-                      className="h-full overflow-hidden rounded-full"
-                      style={{ width: `${credibility}%` }}
-                    >
-                      {/* Gradient is sized to the full track so the fill reveals red→amber→green by score. */}
+                  {/* bg-foreground/10, not bg-muted: the empty track has to read as a bar on the dark
+                      card, or an unscored witness shows a 0 beside nothing. */}
+                  <div className="relative h-1.5 flex-1 rounded-full bg-foreground/10">
+                    {credibility > 0 ? (
                       <div
-                        className="h-full"
-                        style={{
-                          width: credibility ? `${10000 / credibility}%` : "100%",
-                          background: "linear-gradient(90deg, #f87171, #fbbf24 50%, #34d399)",
-                        }}
-                      />
-                    </div>
+                        className="h-full overflow-hidden rounded-full"
+                        style={{ width: `${credibility}%` }}
+                      >
+                        {/* Gradient is sized to the full track so the fill reveals red→amber→green by score. */}
+                        <div
+                          className="h-full"
+                          style={{
+                            width: credibility ? `${10000 / credibility}%` : "100%",
+                            background: "linear-gradient(90deg, #f87171, #fbbf24 50%, #34d399)",
+                          }}
+                        />
+                      </div>
+                    ) : null}
                     <input
                       type="range"
                       min={0}
@@ -314,8 +319,8 @@ export function WitnessPanel({
                       className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
                     />
                   </div>
-                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${hasScore ? scoreTextClass(credibility) : style.text}`}>
-                    {hasScore ? credibility : "—"}
+                  <span className={`w-6 text-right text-xs font-semibold tabular-nums ${hasScore ? scoreTextClass(credibility) : "text-muted-foreground"}`}>
+                    {credibility}
                   </span>
                 </div>
                 <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${labelTextClass}`}>
@@ -325,7 +330,8 @@ export function WitnessPanel({
                       : ai !== null
                         ? band
                           ? `${t("witnessAiScore")} · ${t(`witnessBand${band[0]}${band.slice(1).toLowerCase()}`)} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}${w.aiFactors?.reviewCount ? ` \u00b7 ${t("witnessLowConfidence", { count: w.aiFactors.reviewCount })}` : ""}`
-                          : t("witnessAiScore")
+                          : // No band: the record was too thin for a full score, so the number is provisional.
+                            `${t("witnessProvisionalScore")} · ${t("witnessCoverage", { points: w.aiFactors?.assessable ?? 0 })}`
                         : scoredNoData
                           ? t("witnessNotEnoughData")
                           : t("witnessNotScored")}

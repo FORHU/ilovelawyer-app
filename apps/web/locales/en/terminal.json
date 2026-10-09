@@ -585,6 +585,7 @@
   "witnessCycleStatus": "Change status",
   "witnessScoring": "Scoring…",
   "witnessAiScore": "AI score",
+  "witnessProvisionalScore": "Provisional AI score",
   "witnessManualScore": "Set by you",
   "witnessNotEnoughData": "Not enough data to score",
   "witnessNotScored": "Not scored yet",
