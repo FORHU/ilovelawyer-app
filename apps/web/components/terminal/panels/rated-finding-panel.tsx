@@ -31,6 +31,7 @@ import {
   PaneLoadingState,
   RegenerateButton,
   PanelBody,
+  PanelStickyHeader,
   PanelRow,
   PanelRowList,
   TONE_STYLE,
@@ -192,24 +193,26 @@ export function RatedFindingPanel({
       ) : (
         <>
       {rows.length > 1 ? (
-        <TagMixSummary
-          catalog
-          ring={{
-            pct: Math.round((inRing / rows.length) * 100),
-            tone: "ok",
-            title: t(config.ringTitleKey, { done: inRing, total: rows.length }),
-            label: (() => {
-              const ringTagConfig = config.tags.find((s) => s.tag === config.ringTag)
-              return ringTagConfig ? t(ringTagConfig.label) : undefined
-            })(),
-          }}
-          segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
-            key: s.key,
-            label: t(s.label),
-            count: counts.get(s.key) ?? 0,
-            tone: s.tone,
-          }))}
-        />
+        <PanelStickyHeader>
+          <TagMixSummary
+            catalog
+            ring={{
+              pct: Math.round((inRing / rows.length) * 100),
+              tone: "ok",
+              title: t(config.ringTitleKey, { done: inRing, total: rows.length }),
+              label: (() => {
+                const ringTagConfig = config.tags.find((s) => s.tag === config.ringTag)
+                return ringTagConfig ? t(ringTagConfig.label) : undefined
+              })(),
+            }}
+            segments={[...config.tags.map((s) => ({ key: s.tag as string, ...s })), { key: "UNRATED", ...UNRATED }].map((s) => ({
+              key: s.key,
+              label: t(s.label),
+              count: counts.get(s.key) ?? 0,
+              tone: s.tone,
+            }))}
+          />
+        </PanelStickyHeader>
       ) : null}
 
       {/* Same shrink-0 wrapper as WitnessPanel: PanelRowList's <ul> is overflow-hidden. */}

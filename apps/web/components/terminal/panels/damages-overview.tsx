@@ -4,7 +4,7 @@ import { CalendarClock, CircleAlert, CircleCheck, Gavel, Scale, Sparkles } from 
 import { cn } from "@workspace/ui/lib/utils"
 import type { DamageClaim, DamagesSummary } from "@/lib/terminal/types"
 import { deadlineStats, formatMoney, formatMoneyCompact } from "@/lib/terminal/damages-format"
-import { labelTextClass } from "@/components/terminal/panel-kit"
+import { PanelStickyHeader, labelTextClass } from "@/components/terminal/panel-kit"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
 /**
@@ -38,64 +38,70 @@ export function DamagesOverview({
   const nextDate = next ? new Date(next.dueDate).toLocaleDateString(dateLocale(), { timeZone: "UTC", month: "short", day: "numeric" }) : null
 
   return (
-    <div className={cn("@container flex shrink-0 flex-col gap-3 transition-opacity", dimmed && "opacity-60")}>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
-        <div className="flex flex-col gap-1">
-          <p className={labelTextClass}>{t("damagesTotalClaim")}</p>
-          <p
-            className="font-['Libre_Caslon_Text'] text-[30px] leading-none font-normal tracking-[-0.02em] text-foreground tabular-nums"
-            title={money(summary.total)}
-          >
-            {formatMoneyCompact(displayTotal, summary.currency)}
-          </p>
+    <>
+      {/* The total and its awarded/open meter stay pinned while the entries scroll; the tiles
+          scroll away with them. Fades the content, not the sticky box, so rows never show through. */}
+      <PanelStickyHeader>
+        <div className={cn("flex flex-col gap-3 transition-opacity", dimmed && "opacity-60")}>
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
+          <div className="flex flex-col gap-1">
+            <p className={labelTextClass}>{t("damagesTotalClaim")}</p>
+            <p
+              className="font-['Libre_Caslon_Text'] text-[30px] leading-none font-normal tracking-[-0.02em] text-foreground tabular-nums"
+              title={money(summary.total)}
+            >
+              {formatMoneyCompact(displayTotal, summary.currency)}
+            </p>
+          </div>
+          {summary.total > 0 ? (
+            <p className="text-[12px] text-muted-foreground tabular-nums">
+              <span className="font-semibold text-ok">{t("damagesAwardedShare", { pct: pct(awardedShare) })}</span>{" "}
+              {t("damagesAwardedShareOf", { total: money(summary.total) })}
+            </p>
+          ) : null}
         </div>
-        {summary.total > 0 ? (
-          <p className="text-[12px] text-muted-foreground tabular-nums">
-            <span className="font-semibold text-ok">{t("damagesAwardedShare", { pct: pct(awardedShare) })}</span>{" "}
-            {t("damagesAwardedShareOf", { total: money(summary.total) })}
+
+        {/* AI suggestions are left out of the total until accepted; this says they are there, and
+            what they would add, so a total of zero beside a list of entries isn't a puzzle. */}
+        {suggestedCount > 0 ? (
+          <p className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground tabular-nums">
+            <Sparkles className="size-3.5 text-warn" aria-hidden="true" />
+            <span className="font-semibold text-foreground">{t("damagesSuggestedWaiting", { count: suggestedCount })}</span>
+            {suggestedTotal > 0 ? <span>· {t("damagesSuggestedAmount", { total: money(suggestedTotal) })}</span> : null}
           </p>
         ) : null}
-      </div>
 
-      {/* AI suggestions are left out of the total until accepted; this says they are there, and
-          what they would add, so a total of zero beside a list of entries isn't a puzzle. */}
-      {suggestedCount > 0 ? (
-        <p className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground tabular-nums">
-          <Sparkles className="size-3.5 text-warn" aria-hidden="true" />
-          <span className="font-semibold text-foreground">{t("damagesSuggestedWaiting", { count: suggestedCount })}</span>
-          {suggestedTotal > 0 ? <span>· {t("damagesSuggestedAmount", { total: money(suggestedTotal) })}</span> : null}
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-2">
-          {/* Awarded | still open, end to end with a 2px gap. The track is the open colour's own
-              tint, so the bar reads as one whole. */}
-          <div
-            className={cn("flex h-2 w-full gap-[2px] overflow-hidden rounded-full", summary.total > 0 ? "bg-warn/15" : "bg-muted")}
-            role="img"
-            aria-label={t("damagesMeterLabel", { awarded: money(summary.awarded), open: money(open) })}
-          >
-            {summary.awarded > 0 ? (
-              <div
-                className="h-full rounded-full bg-ok"
-                style={{ width: `${awardedShare * 100}%` }}
-                title={`${t("damagesLegendAwarded")}: ${money(summary.awarded)} (${pct(awardedShare)}%)`}
-              />
-            ) : null}
-            {open > 0 ? (
-              <div
-                className="h-full flex-1 rounded-full bg-warn"
-                title={`${t("damagesLegendOpen")}: ${money(open)} (${100 - pct(awardedShare)}%)`}
-              />
-            ) : null}
+        <div className="flex flex-col gap-2">
+            {/* Awarded | still open, end to end with a 2px gap. The track is the open colour's own
+                tint, so the bar reads as one whole. */}
+            <div
+              className={cn("flex h-2 w-full gap-[2px] overflow-hidden rounded-full", summary.total > 0 ? "bg-warn/15" : "bg-muted")}
+              role="img"
+              aria-label={t("damagesMeterLabel", { awarded: money(summary.awarded), open: money(open) })}
+            >
+              {summary.awarded > 0 ? (
+                <div
+                  className="h-full rounded-full bg-ok"
+                  style={{ width: `${awardedShare * 100}%` }}
+                  title={`${t("damagesLegendAwarded")}: ${money(summary.awarded)} (${pct(awardedShare)}%)`}
+                />
+              ) : null}
+              {open > 0 ? (
+                <div
+                  className="h-full flex-1 rounded-full bg-warn"
+                  title={`${t("damagesLegendOpen")}: ${money(open)} (${100 - pct(awardedShare)}%)`}
+                />
+              ) : null}
+            </div>
+            <ul className="flex flex-wrap gap-x-5 gap-y-1 text-[12px]">
+              <LegendItem dotClass="bg-ok" label={t("damagesLegendAwarded")} value={money(summary.awarded)} />
+              <LegendItem dotClass="bg-warn" label={t("damagesLegendOpen")} value={money(open)} />
+            </ul>
           </div>
-          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-[12px]">
-            <LegendItem dotClass="bg-ok" label={t("damagesLegendAwarded")} value={money(summary.awarded)} />
-            <LegendItem dotClass="bg-warn" label={t("damagesLegendOpen")} value={money(open)} />
-          </ul>
         </div>
+      </PanelStickyHeader>
 
-      <div className="grid grid-cols-1 gap-2 @3xs:grid-cols-2 @lg:grid-cols-4">
+      <div className={cn("grid shrink-0 grid-cols-1 gap-2 transition-opacity @3xs:grid-cols-2 @lg:grid-cols-4", dimmed && "opacity-60")}>
         <Tile icon={<Scale className="size-3.5" aria-hidden="true" />} label={t("damagesTileDamages")} value={summary.damageCount} tone="damage" />
         <Tile icon={<Gavel className="size-3.5" aria-hidden="true" />} label={t("damagesTileRemedies")} value={summary.remedyCount} tone="remedy" />
         <Tile
@@ -116,7 +122,7 @@ export function DamagesOverview({
           foot={next ? (next.days === 0 ? t("damagesDueToday") : t("damagesDueIn", { count: next.days })) : t("damagesNoDeadline")}
         />
       </div>
-    </div>
+    </>
   )
 }
 
