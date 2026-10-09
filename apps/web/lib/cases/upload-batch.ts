@@ -83,7 +83,7 @@ const MB = 1024 * 1024
 /** Per-file cap for a case document (ilovelawyer-api#91). Mirrors ilovelawyer-api's
  * DOCUMENT_MAX_BYTES, which the API enforces against S3 at confirm time, so change both
  * together. Checking here too just refuses the file before it's uploaded instead of after. */
-export const MAX_FILE_SIZE_BYTES = 25 * MB
+export const MAX_FILE_SIZE_BYTES = 100 * MB
 
 /** Images get a smaller cap: the API OCRs them with Textract's synchronous call, which takes at
  * most 5 MB (ilovelawyer-api's IMAGE_DOCUMENT_MAX_BYTES). */

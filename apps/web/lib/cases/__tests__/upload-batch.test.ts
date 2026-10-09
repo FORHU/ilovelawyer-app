@@ -33,7 +33,7 @@ describe("upload size limits — mirror ilovelawyer-api's DOCUMENT_MAX_BYTES / I
 
   it("names each oversized file with its own limit", () => {
     expect(oversizedFilesLabel([file("bundle.pdf", 0), file("scan.png", 0)])).toBe(
-      "bundle.pdf (25MB limit), scan.png (5MB limit)",
+      "bundle.pdf (100MB limit), scan.png (5MB limit)",
     )
   })
 })
