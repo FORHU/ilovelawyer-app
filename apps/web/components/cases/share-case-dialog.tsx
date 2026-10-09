@@ -74,7 +74,10 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent showCloseButton={false} className="max-w-lg gap-0 overflow-hidden p-0">
+      {/* grid-cols-[minmax(0,1fr)]: DialogContent is a grid with an auto column, which a long
+          (nowrap, truncated) case name would otherwise stretch past the dialog's width — clipping
+          the close button and every row's right edge. */}
+      <DialogContent showCloseButton={false} className="max-w-lg grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden p-0">
         <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-border bg-muted/60">
           <DialogTitle asChild>
             <h2 className="min-w-0 truncate font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">

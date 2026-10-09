@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { isNotFoundError } from "@/lib/fetch";
-import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square } from "lucide-react";
+import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -623,6 +624,10 @@ export default function ConsultationChat({
       : pendingCaseId || null);
 
   const { data: caseDocuments } = useCaseDocumentsQuery(linkedCaseId || caseId || "");
+  // A view-only person on a confidential case can read its consultations but not ask in them,
+  // their own included (useCanContributeToCase; the API refuses it too): the composer becomes a
+  // read-only note, and starting, renaming or regenerating anything here is hidden.
+  const chatReadOnly = !useCanContributeToCase(linkedCaseId || caseId || undefined);
   const { data: consultationDocuments } = useConsultationDocumentsQuery(consultationId ?? undefined);
   const ragStatusById = new Map(
     [...(caseDocuments ?? []), ...(consultationDocuments ?? [])].map((doc) => [doc.id, doc.ragStatus]),
@@ -837,7 +842,11 @@ export default function ConsultationChat({
   );
   const { t: tMindMap } = useTranslation("case-portfolio");
   const mindMapExpansion = useMindMapExpansion(mindMapExpansionTarget, {
-    disabledReason: isGeneratingMindMap ? tMindMap("workspace.replyInProgressHint") : undefined,
+    disabledReason: chatReadOnly
+      ? tMindMap("caseMindMap.viewOnly")
+      : isGeneratingMindMap
+        ? tMindMap("workspace.replyInProgressHint")
+        : undefined,
   });
 
   // The Mind Map tab's auto/manual "generate" turn is a system-driven request the user never
@@ -1762,7 +1771,19 @@ export default function ConsultationChat({
     }
   };
 
-  const chatInputBar = (
+  const chatInputBar = chatReadOnly ? (
+    <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
+      <p
+        role="note"
+        className={`flex items-center justify-center gap-2 border border-border bg-card px-4 py-3 text-center text-[13px] font-['Inter'] text-muted-foreground ${
+          embedded ? "rounded-3xl" : "rounded-[26px]"
+        }`}
+      >
+        <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {t("input.viewOnlyConfidential")}
+      </p>
+    </div>
+  ) : (
     <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
       <form
         data-tour-id="composer-input"
@@ -2314,7 +2335,7 @@ export default function ConsultationChat({
                     consultationId={consultationId ?? undefined}
                     isStale={snapshotQuery.data?.mindMap.isStale}
                     regenerating={isGeneratingMindMap}
-                    onRegenerate={() => void doSend(AUTO_MINDMAP_PROMPT)}
+                    onRegenerate={chatReadOnly ? undefined : () => void doSend(AUTO_MINDMAP_PROMPT)}
                     expansion={mindMapExpansion}
                   />
                 ) : (
@@ -2335,7 +2356,7 @@ export default function ConsultationChat({
                     ) : (
                       <p className="text-sm text-muted-foreground max-w-sm font-['Inter']">{t("mindMap.emptyState")}</p>
                     )}
-                    {!isGeneratingMindMap && (
+                    {!isGeneratingMindMap && !chatReadOnly && (
                       <button
                         type="button"
                         onClick={() => void doSend(AUTO_MINDMAP_PROMPT)}
@@ -2455,6 +2476,7 @@ export default function ConsultationChat({
                       rail, both of which have no room on a phone header — only rendered when
                       there's actually something for it to hold. */}
                   <div className="lg:hidden flex items-center gap-1 shrink-0">
+                    {!chatReadOnly && (
                     <button
                       type="button"
                       onClick={handleNewChat}
@@ -2464,6 +2486,7 @@ export default function ConsultationChat({
                     >
                       <SquarePen className="h-4 w-4" aria-hidden="true" />
                     </button>
+                    )}
                     {(linkedCaseId || hasTopics) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

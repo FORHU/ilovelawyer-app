@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
 import ConsultationChat from "@/components/chat/consultation-chat"
 import { MindMap } from "@/components/chat/mind-map"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map"
 import { PaneLoadingState, primaryBtnClass } from "@/components/terminal/panel-kit"
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status"
@@ -28,6 +29,9 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
   const { t } = useTranslation("case-portfolio")
   const caseMindMap = useCaseMindMap(caseId)
   const generate = useGenerateCaseMindMapMutation(caseId)
+  // View-only on a confidential case: no build or rebuild (expand/edit are held back inside
+  // useMindMapExpansion).
+  const canContribute = useCanContributeToCase(caseId)
   const documentsQuery = useCaseDocumentsQuery(caseId)
   // A build (blocks expand/edit) vs. what the spinner and building view show: that build, or an
   // Analysis Refresh that will end by replacing the map (useCaseMindMap).
@@ -69,7 +73,7 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
             consultationId={`case:${caseId}`}
             isStale={snapshot.caseMindMap?.isStale}
             staleDetail={caseMindMapStaleDetail(t, snapshot.caseMindMap)}
-            onRegenerate={() => generate.mutate()}
+            onRegenerate={canContribute ? () => generate.mutate() : undefined}
             expansion={expansion}
             documentNames={documentNames}
           />
@@ -82,16 +86,22 @@ export function CaseMindMapPanel({ caseId, snapshot }: { caseId: string; snapsho
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center-safe gap-4 overflow-y-auto p-4 text-center">
         <p className="max-w-xs text-sm text-muted-foreground">
-          {caseMindMap.retired ? t("caseMindMap.retired") : t("caseMindMap.emptyWithDocuments")}
+          {caseMindMap.retired
+            ? t("caseMindMap.retired")
+            : canContribute
+              ? t("caseMindMap.emptyWithDocuments")
+              : t("caseMindMap.viewOnly")}
         </p>
-        <button
-          type="button"
-          onClick={() => generate.mutate()}
-          disabled={generate.isPending || caseMindMap.isRefreshing}
-          className={primaryBtnClass}
-        >
-          {t("caseMindMap.buildCta")}
-        </button>
+        {canContribute && (
+          <button
+            type="button"
+            onClick={() => generate.mutate()}
+            disabled={generate.isPending || caseMindMap.isRefreshing}
+            className={primaryBtnClass}
+          >
+            {t("caseMindMap.buildCta")}
+          </button>
+        )}
         {(caseMindMap.buildFailed || generate.isError) && (
           <p className="text-xs text-red-600 dark:text-red-400">{t("caseMindMap.buildError")}</p>
         )}

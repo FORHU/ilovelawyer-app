@@ -920,13 +920,15 @@ function CreateCasePageContent() {
                   </div>
 
                   {formData.uploadedFiles.length > 0 && (
-                    <>
+                    <div className="flex flex-col gap-2 shrink-0">
                       <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                         {t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}
                       </span>
 
                       {/* Bounded + scrollable instead of growing the page forever — a handful of
-                          files fit with no scrollbar at all, more than that scrolls within this box. */}
+                          files fit with no scrollbar at all, more than that scrolls within this box.
+                          shrink-0 on the wrapper stops the parent flex column (itself height-capped
+                          on md+) from squashing this list down to a single row. */}
                       <div className="flex flex-col border border-border rounded-xl overflow-y-auto max-h-72">
                         {formData.uploadedFiles.map((f) => (
                         <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px]">
@@ -970,7 +972,7 @@ function CreateCasePageContent() {
                         </div>
                         ))}
                       </div>
-                    </>
+                    </div>
                   )}
 
                   <div className="flex flex-col gap-3 pt-2 border-t border-border">

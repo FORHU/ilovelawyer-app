@@ -11,6 +11,7 @@ import {
   useUnarchiveConsultationMutation,
   type Consultation,
 } from "@/lib/chat/mutations";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { formatRelativeTime } from "@/lib/notifications/format";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -125,6 +126,8 @@ function ArchivedConsultationsModal({
   const { t } = useTranslation("homepage");
   const { data: archived, isLoading, isError, refetch } = useConsultationsQuery(caseId, { status: "ARCHIVED" });
   const myUserId = useAuthStore((s) => s.user?.id);
+  // Read-only for a view-only person on a confidential case: no restore or delete, their own included.
+  const readOnly = !useCanContributeToCase(caseId);
   const unarchive = useUnarchiveConsultationMutation();
   const remove = useDeleteConsultationMutation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -254,7 +257,7 @@ function ArchivedConsultationsModal({
                   </div>
                   {/* Same rule as the list's Archive: offered on your own; the API also lets case
                       editors act on a colleague's (see ChatSvc.assertCanRemove). */}
-                  {selected.userId === myUserId && (
+                  {selected.userId === myUserId && !readOnly && (
                     <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"

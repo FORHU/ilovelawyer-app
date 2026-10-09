@@ -2,6 +2,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Archive, ChevronDown, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { useArchiveConsultation } from "@/components/chat/archived-consultations";
 import { useConsultationsQuery, useMessagesQuery, type Consultation } from "@/lib/chat/mutations";
@@ -39,6 +40,8 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
   const myUserId = useAuthStore((s) => s.user?.id);
   const sendingIds = useSendingConsultationsStore((s) => s.sendingConsultationIds);
   const { requestArchive, archiveDialog } = useArchiveConsultation();
+  // Read-only for a view-only person on a confidential case: no archiving, their own included.
+  const readOnly = !useCanContributeToCase(caseId);
 
   // Every consultation starts collapsed — the open one included — and only expands when the user
   // expands it; the chat on screen is already its full conversation, so its Topics stay out of the
@@ -122,7 +125,7 @@ export function ConsultationTree({ caseId, activeConsultationId, isDraftActive, 
               // here (the API also lets case editors — see ChatSvc.assertCanRemove). Permanent
               // deletion is only offered from the archive below.
               action={
-                c.userId === myUserId
+                c.userId === myUserId && !readOnly
                   ? {
                       icon: Archive,
                       label: t("sidebar.archiveConsultationNamed", { name: titleOf(c) }),

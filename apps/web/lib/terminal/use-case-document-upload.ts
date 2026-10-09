@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useUploadCaseDocumentsMutation } from "@/lib/cases/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 
 /** Uploads files to a case from a Terminal pane: drops unsupported/oversized files with a toast
@@ -10,6 +11,9 @@ import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from
 export function useCaseDocumentUpload(caseId: string) {
   const { t } = useTranslation("terminal")
   const uploadDocuments = useUploadCaseDocumentsMutation()
+  // A view-only person on a confidential case can't upload (see useCanContributeToCase) — the panes
+  // hide their upload controls on this.
+  const canUpload = useCanContributeToCase(caseId)
 
   const upload = (files: File[]) => {
     const [supported, unsupported] = [files.filter(isAllowedFileType), files.filter((f) => !isAllowedFileType(f))]
@@ -50,5 +54,5 @@ export function useCaseDocumentUpload(caseId: string) {
     )
   }
 
-  return { upload, isUploading: uploadDocuments.isPending }
+  return { upload, isUploading: uploadDocuments.isPending, canUpload }
 }

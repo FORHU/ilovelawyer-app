@@ -29,7 +29,7 @@ import {
 } from "@/lib/cases/mutations"
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
-import { useCanEditCase } from "@/lib/cases/permissions"
+import { useCanEditCase, useCanContributeToCase } from "@/lib/cases/permissions"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
 import { DocumentFileCard } from "@/components/cases/document-file-card"
 import DeleteDocumentModal from "@/components/cases/delete-document-modal"
@@ -60,6 +60,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // Archive/restore/delete/exhibit need edit access to the case (see useCanEditCase) — without it
   // the cards are read-only and there's no select mode, since every bulk action is one of those.
   const canEdit = useCanEditCase(caseId)
+  // View-only on a confidential case: no add button, no drag/drop (see useCanContributeToCase).
+  const canUpload = useCanContributeToCase(caseId)
   const { t } = useTranslation("case-portfolio")
   // AttachmentPreview's own strings (loading/fallback text) already live under this namespace —
   // reused here rather than duplicated into case-portfolio.json for just the one header action.
@@ -198,7 +200,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   // Uploads always land as ACTIVE documents (see useUploadCaseDocumentsMutation) — dropping
   // files while looking at the Archived list would silently upload into the wrong context, so
   // drag/drop upload is disabled there.
-  const activeDragHandlers = showArchived ? {} : dragHandlers
+  const activeDragHandlers = showArchived || !canUpload ? {} : dragHandlers
 
   const openPreview = (doc: UserDocument) =>
     setPreviewDoc({ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null })
@@ -359,7 +361,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
               <TooltipContent>{t("detail.viewArchived")}</TooltipContent>
             </Tooltip>
           )}
-          {!showArchived && (
+          {!showArchived && canUpload && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -618,7 +620,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     body =
       folderDocs.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border p-8 text-center">
-          <span className="text-sm text-muted-foreground">{t("detail.dropToUpload")}</span>
+          <span className="text-sm text-muted-foreground">{canUpload ? t("detail.dropToUpload") : t("detail.noDocuments")}</span>
         </div>
       ) : (
         <div className={gridClass}>

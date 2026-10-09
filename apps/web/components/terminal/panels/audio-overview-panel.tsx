@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2, Volume2, XCircle } from "lucide-react"
 import { AudioOverviewPlayerBar } from "@/components/audio-overview-player"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useAudioOverviewPlayer } from "@/lib/chat/use-audio-overview-player"
 import {
   useLatestAudioOverviewQuery,
@@ -142,6 +143,8 @@ function AudioOverviewCurrent({
 }) {
   const { t } = useTranslation("case-portfolio")
   const record = useRecordAudioOverviewMutation(caseId)
+  // Recording takes edit access — a view-only person on a confidential case gets no button.
+  const canRecord = useCanContributeToCase(caseId)
   const renderedAudioUrl = overview?.audio?.fileUrl ?? null
   const {
     audioElement,
@@ -221,6 +224,7 @@ function AudioOverviewCurrent({
     >
       {recordFailed && <XCircle className="h-3.25 w-3.25 shrink-0" strokeWidth={2.2} aria-hidden="true" />}
       {recordFailed ? t("workspace.audioOverviewRenderError") : t("workspace.audioOverviewHistoryScriptOnlyNote")}
+      {canRecord && (
       <button
         type="button"
         onClick={() => record.mutate(overview.id)}
@@ -230,6 +234,7 @@ function AudioOverviewCurrent({
       >
         {recordFailed ? t("workspace.audioOverviewRetryRecording") : t("workspace.audioOverviewRenderAudio")}
       </button>
+      )}
     </div>
   ) : null
 
