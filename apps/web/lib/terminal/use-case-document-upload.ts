@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { useUploadCaseDocumentsMutation } from "@/lib/cases/mutations"
 import { useCanContributeToCase } from "@/lib/cases/permissions"
-import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
+import { ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, isWithinSizeLimit, oversizedFilesLabel } from "@/lib/cases/upload-batch"
 
 /** Uploads files to a case from a Terminal pane: drops unsupported/oversized files with a toast
  * each, uploads the rest, and toasts every per-file failure the mutation collects (presign / S3 /
@@ -28,15 +28,14 @@ export function useCaseDocumentUpload(caseId: string) {
     }
 
     const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+      supported.filter(isWithinSizeLimit),
+      supported.filter((f) => !isWithinSizeLimit(f)),
     ]
     if (oversized.length > 0) {
       toast.error(
         t("attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+          defaultValue: `${oversizedFilesLabel(oversized)} — over the per-file size limit, wasn't added.`,
+          fileNames: oversizedFilesLabel(oversized),
         }),
       )
     }

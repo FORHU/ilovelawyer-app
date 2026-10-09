@@ -78,13 +78,32 @@ export function isAllowedFileType(file: File): boolean {
   return !!ext && ALLOWED_EXTENSIONS.includes(ext)
 }
 
-/** No server-side size cap on the presigned-S3 case-document path (presign/S3-PUT/confirm all
- * accept any size — confirmed against ilovelawyer-api's presign/S3/Joi validation, none of which
- * carry a max). Enforced client-side only, reusing the /api/files/upload route's existing 25MB
- * multer cap (see ilovelawyer-api/src/routes/files.route.ts) purely so every upload surface in
- * the app shares one sane, consistent ceiling rather than letting a single attachment stall the
- * browser upload / RAG indexing for minutes. */
-export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024
+const MB = 1024 * 1024
+
+/** Per-file cap for a case document (ilovelawyer-api#91). Mirrors ilovelawyer-api's
+ * DOCUMENT_MAX_BYTES, which the API enforces against S3 at confirm time, so change both
+ * together. Checking here too just refuses the file before it's uploaded instead of after. */
+export const MAX_FILE_SIZE_BYTES = 25 * MB
+
+/** Images get a smaller cap: the API OCRs them with Textract's synchronous call, which takes at
+ * most 5 MB (ilovelawyer-api's IMAGE_DOCUMENT_MAX_BYTES). */
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"]
+export const MAX_IMAGE_FILE_SIZE_BYTES = 5 * MB
+
+export function maxFileSizeBytes(file: File): number {
+  const ext = file.name.split(".").pop()?.toLowerCase()
+  return ext && IMAGE_EXTENSIONS.includes(ext) ? MAX_IMAGE_FILE_SIZE_BYTES : MAX_FILE_SIZE_BYTES
+}
+
+export function isWithinSizeLimit(file: File): boolean {
+  return file.size <= maxFileSizeBytes(file)
+}
+
+/** "bundle.pdf (100MB limit), scan.png (5MB limit)" — for the "wasn't added" toast, since the
+ * limit differs between documents and images. */
+export function oversizedFilesLabel(files: File[]): string {
+  return files.map((f) => `${f.name} (${maxFileSizeBytes(f) / MB}MB limit)`).join(", ")
+}
 
 /** Straight to S3 — not apiFetch, so we never attach the API bearer token to a third-party URL.
  * `contentType` must be the exact value that was signed at presign time (see resolveContentType) —

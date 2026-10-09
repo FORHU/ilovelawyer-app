@@ -15,7 +15,7 @@ import {
   useUploadCaseDocumentsMutation,
   type ClientSide,
 } from "@/lib/cases/mutations";
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, isWithinSizeLimit, oversizedFilesLabel } from "@/lib/cases/upload-batch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
 import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
@@ -349,15 +349,14 @@ function CreateCasePageContent() {
     }
 
     const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+      supported.filter(isWithinSizeLimit),
+      supported.filter((f) => !isWithinSizeLimit(f)),
     ];
     if (oversized.length > 0) {
       toast.error(
         t("sectionEvidence.attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+          defaultValue: `${oversizedFilesLabel(oversized)} — over the per-file size limit, wasn't added.`,
+          fileNames: oversizedFilesLabel(oversized),
         })
       );
     }
