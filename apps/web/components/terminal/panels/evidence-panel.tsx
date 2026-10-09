@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   ArrowLeft,
   ChevronDown,
+  ChevronRight,
   Folder,
   Loader2,
   Plus,
@@ -264,15 +265,22 @@ export function EvidencePanel({
               <p className={labelTextClass}>
                 {t("documents")} · {snapshot.documents.length}
               </p>
-              {/* Sits with the count, not the upload control — next to "Add evidence file" it read as an upload button. */}
-              <button
-                type="button"
-                onClick={() => setShowArchived(true)}
-                className={`flex shrink-0 items-center gap-1 rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${labelTextClass}`}
-              >
-                <Archive className="size-3 shrink-0" aria-hidden="true" />
-                {t("archivedDocuments")}
-              </button>
+              {/* Sits with the count, not the upload control — next to "Add evidence file" it read as an upload button.
+                  Outlined chip + chevron so it reads as a control that opens a view, not a second count label. */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchived(true)}
+                    className={`flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-muted/40 pl-2 pr-1.5 transition-colors hover:border-foreground/25 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${labelTextClass}`}
+                  >
+                    <Archive className="size-3 shrink-0" aria-hidden="true" />
+                    {t("archivedDocuments")}
+                    <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("viewArchivedDocuments")}</TooltipContent>
+              </Tooltip>
             </div>
           )}
           <div className="flex items-center gap-2">

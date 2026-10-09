@@ -370,6 +370,7 @@
   "archiveDocument": "I-archive ang {{documentName}}",
   "restoreDocument": "Ibalik ang {{documentName}}",
   "archivedDocuments": "Naka-archive",
+  "viewArchivedDocuments": "Tingnan ang mga naka-archive na dokumento",
   "backToActiveDocuments": "Bumalik sa mga aktibong dokumento",
   "noArchivedDocuments": "Walang naka-archive na dokumento.",
   "archivedDocumentsHint": "I-archive muna ang dokumento — ang mga naka-archive lang ang maaaring permanenteng tanggalin.",
