@@ -202,6 +202,16 @@ export function useConsentsQuery() {
   })
 }
 
+/** True until the first-login AI processing question is out of the way: while the answer is still
+ * loading, and while it's unanswered (AiConsentPrompt is showing). Anything that starts on its own
+ * over the page, like a first-visit tour, waits for this. A failed lookup shows no prompt, so it
+ * doesn't hold anything back either. */
+export function useAiConsentPending() {
+  const consents = useConsentsQuery()
+  if (consents.isLoading) return true
+  return consents.data?.find((c) => c.purpose === "AI_PROCESSING")?.status === "not_set"
+}
+
 /** Grants or withdraws one purpose. The API returns the full updated list. */
 export function useSetConsentMutation() {
   const queryClient = useQueryClient()

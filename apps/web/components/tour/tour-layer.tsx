@@ -13,6 +13,7 @@ import { pageGuideFor } from "@/lib/tour/page-tours"
 import { placeTip, TIP_WIDTH, type Rect } from "@/lib/tour/placement"
 import { useIsFirstVisit } from "@/lib/tour/use-first-visit"
 import { useTourT } from "@/lib/tour/use-tour-t"
+import { useAiConsentPending } from "@/lib/user/mutations"
 import { GuideDrawer } from "@/components/tour/guide-drawer"
 import { PageTour } from "@/components/tour/page-tour"
 import { firstVisible, rectMoved, spotlightRect, SpotlightBackdrop } from "@/components/tour/spotlight"
@@ -51,6 +52,7 @@ export function TourLayer() {
   const pageGuide = pageGuideFor(pathname)
   const pageTourDef = pageGuide?.kind === "page" ? pageGuide : null
   const firstVisit = useIsFirstVisit(pageTourDef?.track ?? null)
+  const aiConsentPending = useAiConsentPending()
   // A first-visit tour gets one try per page per tab: if the page had nothing to show, it stays
   // unseen (and runs on a later visit) rather than retrying in a loop.
   const autoTried = useRef(new Set<string>())
@@ -68,13 +70,13 @@ export function TourLayer() {
     setPageTour(null)
   }, [pathname, setPageTour])
 
-  // First visit: start this page's tour.
+  // First visit: start this page's tour, once the first-login AI processing question is answered.
   useEffect(() => {
-    if (!pageTourDef || !firstVisit || pageTour || guideOpen || guideSpot) return
+    if (!pageTourDef || !firstVisit || pageTour || guideOpen || guideSpot || aiConsentPending) return
     if (autoTried.current.has(pageTourDef.track)) return
     autoTried.current.add(pageTourDef.track)
     setPageTour("auto")
-  }, [firstVisit, guideOpen, guideSpot, pageTour, pageTourDef, setPageTour])
+  }, [aiConsentPending, firstVisit, guideOpen, guideSpot, pageTour, pageTourDef, setPageTour])
 
   const restoreGuide = useCallback(() => {
     setGuideSpot(null)
