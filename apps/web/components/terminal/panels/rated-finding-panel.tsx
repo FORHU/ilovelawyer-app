@@ -158,7 +158,7 @@ export function RatedFindingPanel({
   const [open, setOpen] = useState<string | null>(null)
   const [detail, setDetail] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { upload, isUploading } = useCaseDocumentUpload(caseId)
+  const { upload, isUploading, canUpload } = useCaseDocumentUpload(caseId)
 
   const styleOf = (tag: FindingTag | null) => config.tags.find((s) => s.tag === tag) ?? null
   const rows = [...items].sort(byPanelOrder(config.doneTag))
@@ -443,7 +443,7 @@ export function RatedFindingPanel({
           setNewTag("")
         }}
       >
-        {config.upload ? (
+        {config.upload && canUpload ? (
           <>
             {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
                 automatic analysis then reads — findings aren't stored per-document. */}

@@ -65,12 +65,12 @@ export function RegenerateButton({
   onClick,
   hint,
 }: {
-  regen: { start: () => void; running: boolean; busy: boolean; failed: boolean; errorStatus: number | null }
+  regen: { start: () => void; running: boolean; busy: boolean; failed: boolean; errorStatus: number | null; readOnly?: boolean }
   onClick?: () => void
   hint?: string
 }) {
   const { t } = useTranslation("terminal")
-  const disabled = regen.running || regen.busy
+  const disabled = regen.running || regen.busy || !!regen.readOnly
   // During the case analysis its own steps hold some panes' kinds, so `running` can be true there
   // too: that's the analysis working, not this pane's button — keep the plain, disabled label.
   const ownRun = regen.running && !regen.busy
@@ -80,7 +80,7 @@ export function RegenerateButton({
         type="button"
         onClick={onClick ?? regen.start}
         disabled={disabled}
-        title={regen.busy ? t("regenerateWhileAnalysis") : (hint ?? t("regenerateHint"))}
+        title={regen.readOnly ? t("viewOnlyConfidential") : regen.busy ? t("regenerateWhileAnalysis") : (hint ?? t("regenerateHint"))}
         className="inline-flex h-7 items-center gap-1.5 rounded-md border border-brand-gold/45 bg-brand-gold/10 px-2.5 text-[10px] font-semibold tracking-[1px] whitespace-nowrap text-brand-gold uppercase transition-colors hover:border-brand-gold/70 hover:bg-brand-gold/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-brand-gold/45 disabled:hover:bg-brand-gold/10"
       >
         {ownRun ? (

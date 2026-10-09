@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { apiFetch } from "@/lib/fetch"
 import {
   terminalKeys,
@@ -138,6 +139,8 @@ export function CaseTimelineView({
   const update = useUpdateTimelineMutation(caseId)
   const queryClient = useQueryClient()
   const generate = useGenerateTimelineMutation(caseId)
+  // Generating takes edit access — disabled for a view-only person on a confidential case.
+  const viewOnly = !useCanContributeToCase(caseId)
   const generateStatus = useAiJobStatus(caseId, "timelineGenerate")
   // Automatic generation runs as one step inside a document upload's post-extraction
   // "caseRefresh" job (queues/case-post-extraction.ts), not under "timelineGenerate" — both kinds
@@ -255,7 +258,7 @@ export function CaseTimelineView({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  disabled={isGenerating || generate.isPending}
+                  disabled={isGenerating || generate.isPending || viewOnly}
                   onClick={() => generate.mutate()}
                   aria-label={
                     isGenerating || generate.isPending
@@ -272,7 +275,9 @@ export function CaseTimelineView({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left">
-                {isGenerating || generate.isPending
+                {viewOnly
+                  ? tt("viewOnlyConfidential")
+                  : isGenerating || generate.isPending
                   ? t("timeline.generating", { defaultValue: "Generating…" })
                   : t("timeline.generate", { defaultValue: "Generate timeline" })}
               </TooltipContent>

@@ -379,6 +379,7 @@
   "caseMindMap": {
     "building": "Building the mind map from your documents…",
     "rebuilding": "The map is being rebuilt from the documents.",
+    "viewOnly": "You have view-only access to this confidential case.",
     "fromDocuments_one": "From {{count}} document",
     "fromDocuments_other": "From {{count}} documents",
     "emptyWithDocuments": "Build a case strategy map from this case's documents.",

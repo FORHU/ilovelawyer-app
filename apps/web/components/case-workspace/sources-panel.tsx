@@ -3,6 +3,7 @@ import { useEffect, useState, type MouseEvent, type ReactNode, type RefObject } 
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ListTree, MessagesSquare, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, Plus, ChevronDown, Gavel, CheckCircle2, ExternalLink, Scale } from "lucide-react";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { TopicNavigatorList, TopicNavigatorLoading } from "@/components/chat/topic-navigator";
 import { ConsultationTree } from "@/components/case-workspace/consultation-tree";
 import { ArchivedConsultationsButton } from "@/components/chat/archived-consultations";
@@ -94,6 +95,8 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   const CollapseIcon = side === "left" ? PanelLeftClose : PanelRightClose;
   const ExpandIcon = side === "left" ? PanelLeft : PanelRight;
   const { data: relatedCasesData } = useRelatedCasesQuery(activeConsultationId ?? undefined);
+  // A view-only person on a confidential case can read its consultations but not start one.
+  const consultationsReadOnly = !useCanContributeToCase(consultationList?.caseId);
   const relatedCases = relatedCasesData?.relatedCases ?? [];
   // Newest prompt's decisions open by default, older prompts collapsed — same "only an explicit
   // toggle is stored, openness otherwise derives from latest" idiom as TopicNavigatorList's own
@@ -348,7 +351,7 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
             </span>
           </span>
         )}
-        {expanded && consultationList && (
+        {expanded && consultationList && !consultationsReadOnly && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button

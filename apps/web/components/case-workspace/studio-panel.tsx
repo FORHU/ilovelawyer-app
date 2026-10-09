@@ -32,6 +32,7 @@ import {
 } from "@/lib/terminal/mutations";
 import { caseRefreshRewriting } from "@/lib/terminal/case-refresh-stage";
 import { PaneLoadingState, RegenerateButton } from "@/components/terminal/panel-kit";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
@@ -315,6 +316,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   // the fallback while the case has none yet.
   const caseMindMap = useCaseMindMap(caseId);
   const generateCaseMindMap = useGenerateCaseMindMapMutation(caseId);
+  // A view-only person on a confidential case can't build, rebuild, expand or edit the case map
+  // (useCanContributeToCase; expand/edit are held back inside useMindMapExpansion). A chat-made
+  // map is their own consultation's, so its chat "Generate" stays.
+  const canContribute = useCanContributeToCase(caseId);
   const showingCaseMap = Boolean(caseMindMap.tree);
   const shownMindMap = caseMindMap.tree ?? activeMindMap;
   // The map's own build (blocks expand/edit), vs. what the tile, empty state and Regenerate icon
@@ -855,7 +860,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     // While the case analysis runs, the line above is the one indicator and
                     // Regenerate is disabled (it rebuilds the case map itself), as in the Terminal;
                     // a chat-made map (no documents) can still be regenerated through chat.
-                    onRegenerate={regenerateShownMap}
+                    onRegenerate={buildsCaseMap && !canContribute ? undefined : regenerateShownMap}
                     expansion={mindMapExpansion}
                     documentNames={showingCaseMap ? documentNames : undefined}
                   />
@@ -863,8 +868,10 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               </div>
             ) : readyDocumentCount > 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                <p className="max-w-xs text-sm text-muted-foreground">{t("caseMindMap.emptyWithDocuments")}</p>
-                {(
+                <p className="max-w-xs text-sm text-muted-foreground">
+                  {canContribute ? t("caseMindMap.emptyWithDocuments") : t("caseMindMap.viewOnly")}
+                </p>
+                {canContribute && (
                   <button
                     type="button"
                     onClick={() => generateCaseMindMap.mutate()}
@@ -987,7 +994,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                     {t("workspace.audioOverviewRecording")}
                   </div>
-                ) : audioRecordFailed || audioScriptOnly ? (
+                ) : (audioRecordFailed || audioScriptOnly) && !audioRegen.readOnly ? (
                   <div
                     role={audioRecordFailed ? "alert" : undefined}
                     className={`flex shrink-0 items-center gap-2 rounded-md border py-2 pr-2 pl-3 text-xs ${

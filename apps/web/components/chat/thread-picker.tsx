@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { useConsultationsQuery, useRenameConsultationMutation } from "@/lib/chat/mutations";
 import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -32,7 +33,9 @@ export function ThreadPicker({ caseId, activeConsultationId, isDraftActive = fal
     ? draftLabel
     : consultations?.find((c) => c.id === activeConsultationId)?.title?.trim() ||
       (activeConsultationId ? t("sidebar.untitledConsultation") : t("sidebar.newChat"));
-  const canRename = Boolean(activeConsultationId) || isDraftActive;
+  // Not for a view-only person on a confidential case, who can read its consultations only.
+  const readOnly = !useCanContributeToCase(caseId);
+  const canRename = (Boolean(activeConsultationId) || isDraftActive) && !readOnly;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(activeLabel);

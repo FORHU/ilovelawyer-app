@@ -5,6 +5,7 @@ import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
 import { useIsCaseRoomSubscribed } from "@/lib/cases/case-room"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { CaseChangeSummary, ChangeSummaryDay } from "@/lib/terminal/change-summary"
 import type { EditSession, EditsBeforeRun } from "@/lib/terminal/manual-edits"
 import type {
@@ -249,9 +250,12 @@ export type PaneRegenerateAction = keyof typeof PANE_REGENERATE
  * job; `busy`: the case analysis is running and about to rewrite the pane anyway (the button is
  * disabled, and the API would refuse with a 409). Regenerating one pane never updates the panes
  * built on it — they catch up at the next "Refresh analysis". When the pane's job finishes, the
- * snapshot reloads (useAiJobStatus) and so do the graph views the findings and witness panes read. */
+ * snapshot reloads (useAiJobStatus) and so do the graph views the findings and witness panes read.
+ * `readOnly`: a view-only person on a confidential case — every one of these routes takes edit
+ * access, so the button is disabled rather than left to fail. */
 export function usePaneRegenerate(caseId: string, action: PaneRegenerateAction) {
   const queryClient = useQueryClient()
+  const readOnly = !useCanContributeToCase(caseId)
   const config: { path: string; kind: AiGenerationKind; body?: Record<string, string> } = PANE_REGENERATE[action]
   const job = useAiJobStatus(caseId, config.kind)
   const busy = useAnalysisRefreshing(caseId)
@@ -278,6 +282,7 @@ export function usePaneRegenerate(caseId: string, action: PaneRegenerateAction) 
     start: () => mutation.mutate(),
     running: mutation.isPending || job.data?.status === "IN_PROGRESS",
     busy,
+    readOnly,
     failed: mutation.isError || job.data?.status === "FAILED",
     errorStatus: error?.status ?? null,
   }

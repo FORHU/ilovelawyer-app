@@ -214,7 +214,7 @@ export function EvidencePanel({
   const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { upload, isUploading } = useCaseDocumentUpload(caseId)
+  const { upload, isUploading, canUpload } = useCaseDocumentUpload(caseId)
   const { isDragOver, dragHandlers } = useFileDrop(upload, undefined)
 
   const archived = useArchivedCaseDocumentsQuery(caseId, showArchived)
@@ -248,7 +248,7 @@ export function EvidencePanel({
   return (
     <PanelBody gap="4">
       {/* No drop target while the Archived list is up — a dropped file would land in the active list unseen. */}
-      <div {...(showArchived ? {} : dragHandlers)} className="relative rounded-lg">
+      <div {...(showArchived || !canUpload ? {} : dragHandlers)} className="relative rounded-lg">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           {showArchived ? (
             <button
@@ -285,24 +285,26 @@ export function EvidencePanel({
               <>
                 {/* A hint, not a control — dropped in a narrow pane so the count and upload button keep their row. */}
                 <p className={`hidden @xs:block ${labelTextClass}`}>{t("clickRowForMetadata")}</p>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isUploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      aria-label={t("addDocument")}
-                      className="flex size-5 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60"
-                    >
-                      {isUploading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Plus className="h-3 w-3" aria-hidden="true" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("dropToUpload")}</TooltipContent>
-                </Tooltip>
+                {canUpload && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isUploading}
+                        onClick={() => fileInputRef.current?.click()}
+                        aria-label={t("addDocument")}
+                        className="flex size-5 shrink-0 items-center justify-center rounded-full border border-brand-gold/30 bg-brand-gold/10 text-brand-gold transition-colors hover:border-brand-gold/50 hover:bg-brand-gold/15 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Plus className="h-3 w-3" aria-hidden="true" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("dropToUpload")}</TooltipContent>
+                  </Tooltip>
+                )}
               </>
             )}
           </div>
