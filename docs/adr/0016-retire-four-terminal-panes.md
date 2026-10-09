@@ -27,3 +27,7 @@ Remove the panes, keep the data and the API (option A of the removal plan).
 - Lawyers can no longer map authorities to claims, run the adverse sweep, or read the audit log or the verifier's full results inside the Terminal.
 - Some API routes are now called by nothing in the app (citation map seed, claim and ground editing, sweep and adverse decisions, contradiction scan, team, grounding list). Removing them is a separate change.
 - Whether the grounding verifier keeps running is a deployment setting (`USE_GROUNDING_VERIFIER`), not part of this change.
+
+## Follow-up: adverse sweep retired
+
+The adverse-citation sweep never got the new home this ADR left room for, so it was removed outright (ilovelawyer-api #380). Its routes, job, Jev check (`USE_JEV_ADVERSE_SWEEP`), the `AdverseCitationHit` table and `Case.adverseSweptAt` are gone. Weaknesses a lawyer created by accepting a hit are ordinary findings and were kept.
