@@ -5,11 +5,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock, Eye,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock, Eye, ArrowRight,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
+import CustomSelect from "@/components/ui/custom-select";
 import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useOverviewParties } from "@/components/cases/overview-parties";
 import { useOverviewNotes } from "@/components/cases/case-notes-card";
@@ -40,6 +41,13 @@ import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case
 import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
 
 type DetailTab = "overview" | "workspace";
+
+const DAY_MS = 86_400_000;
+// Deadlines have no "met" state yet, so only recent past ones read as overdue.
+const OVERDUE_WINDOW_DAYS = 14;
+// Rows shown in the Documents / Consultations previews before "View all".
+const PREVIEW_COUNT = 5;
+const ISSUES_PREVIEW = 6;
 
 export default function CaseDetailPage() {
   const { t } = useTranslation(["case-portfolio", "common"]);
@@ -250,23 +258,49 @@ function ClientSideSelect({ id, value }: { id: string; value: ClientSide | null 
   const { t } = useTranslation("case-portfolio");
   const { mutate: updateCase, isPending } = useUpdateCaseMutation();
   const canEdit = useCanEditCase(id);
+  const [editing, setEditing] = useState(false);
+  const options = [
+    // Unset on an editable case doubles as the prompt: the findings have no side until it's set.
+    { value: "", label: canEdit ? t("overview.clientSideSet") : t("overview.clientSideUnset") },
+    { value: "CLAIMANT", label: t("overview.clientSideClaimant") },
+    { value: "RESPONDENT", label: t("overview.clientSideRespondent") },
+  ];
+  // A set value reads as a plain fact (like Jurisdiction); the dropdown only shows while it's
+  // unset or being changed.
+  const showSelect = canEdit && (value === null || editing);
   return (
-    <label className="mt-4 flex flex-col gap-1 border-t border-border pt-3">
+    <div className="flex flex-col gap-1">
       <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
         {t("overview.clientSide")}
       </span>
-      <select
-        value={value ?? ""}
-        disabled={isPending || !canEdit}
-        onChange={(e) => updateCase({ id, payload: { clientSide: (e.target.value || null) as ClientSide | null } })}
-        className="h-9 rounded-md border border-border bg-background px-2 text-[13px] text-foreground disabled:opacity-50"
-      >
-        <option value="">{t("overview.clientSideUnset")}</option>
-        <option value="CLAIMANT">{t("overview.clientSideClaimant")}</option>
-        <option value="RESPONDENT">{t("overview.clientSideRespondent")}</option>
-      </select>
-      <span className="text-[12px] text-muted-foreground">{t("overview.clientSideHint")}</span>
-    </label>
+      {showSelect ? (
+        <CustomSelect
+          value={value ?? ""}
+          onChange={(v) => {
+            setEditing(false);
+            updateCase({ id, payload: { clientSide: (v || null) as ClientSide | null } });
+          }}
+          options={options}
+          triggerTooltip={t("overview.clientSideHint")}
+          className={`w-64 ${isPending ? "pointer-events-none opacity-60" : ""}`}
+        />
+      ) : (
+        <span className="flex min-h-[38px] items-center gap-1 text-[15px] font-medium text-foreground">
+          {options.find((o) => o.value === (value ?? ""))?.label}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              title={t("overview.clientSideHint")}
+              aria-label={t("overview.clientSide")}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -433,6 +467,7 @@ function OverviewTab({
   const canStartConsultation = useCanContributeToCase(id);
   const parties = useOverviewParties(caseRecord);
   const notes = useOverviewNotes(caseRecord);
+  const [showAllIssues, setShowAllIssues] = useState(false);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
   // UK cases store a sub-jurisdiction (England and Wales / Scotland / Northern Ireland); PH cases
@@ -445,10 +480,12 @@ function OverviewTab({
   // A case's analysis often lands only in Legal Issues / Weaknesses, never the risk register —
   // list those rather than claiming there's no analysis.
   const findings = snapshot && risks.length === 0 ? openFindings(snapshot) : [];
-  // Calendar dates plus the case's procedural deadlines, today onward.
+  // Calendar dates plus the case's procedural deadlines. Deadlines carry no "met" state, so a
+  // past one only counts as overdue for OVERDUE_WINDOW_DAYS; older ones sit under "Past".
+  // ponytail: window heuristic until deadlines get a "mark as met" field (follow-up ticket).
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const upcomingDates = [
+  const dated = [
     ...(snapshot?.dates ?? []).map((d) => ({ id: d.id, title: d.title, dateTime: d.dateTime, type: d.type })),
     ...(snapshot?.procedure.deadlines ?? []).map((d) => ({
       id: d.id,
@@ -457,22 +494,77 @@ function OverviewTab({
       type: t("overview.deadline"),
     })),
   ]
-    .filter((d) => new Date(d.dateTime) >= today)
-    .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime())
-    .slice(0, 5);
+    .map((d) => {
+      const due = new Date(d.dateTime);
+      due.setHours(0, 0, 0, 0);
+      return { ...d, days: Math.round((due.getTime() - today.getTime()) / DAY_MS) };
+    })
+    .filter((d) => !Number.isNaN(d.days))
+    .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+  const overdueDates = dated.filter((d) => d.days < 0 && d.days >= -OVERDUE_WINDOW_DAYS);
+  const pastDates = dated.filter((d) => d.days < -OVERDUE_WINDOW_DAYS).reverse();
+  const upcomingDates = dated.filter((d) => d.days >= 0).slice(0, 5);
+  const shownDates = [...overdueDates, ...upcomingDates];
+
+  const shownDocs = documents?.slice(0, PREVIEW_COUNT) ?? [];
+  const shownConsultations = consultations?.slice(0, PREVIEW_COUNT) ?? [];
+
+  const headerAction =
+    "inline-flex items-center gap-1.5 p-2 -m-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer";
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-10 py-8">
-      {/* One grid (not two independent columns) so every row's cards share a height: the three
-          summary cards, then each wide card paired with the narrow card beside it. */}
+      {/* Read order is the lawyer's: case frame, what's due, exposure, then working material.
+          Rows 1-2 are cards; the last row is plain columns so it doesn't compete with them. */}
       <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title={t("overview.notes")} headerRight={notes.header} className="lg:col-span-3">
-          {notes.body}
-        </Card>
-
-        <Card title={t("overview.parties")} headerRight={parties.addButton}>
-          {parties.body}
+        <div className="lg:col-span-3 flex flex-wrap items-start gap-x-10 gap-y-4 border-b border-border pb-5">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
+              {t("overview.jurisdiction")}
+            </span>
+            {/* min-h matches the "We act for" dropdown beside it so both rows share a baseline. */}
+            <span className="flex min-h-[38px] items-center text-[15px] font-medium text-foreground">
+              {ukJurisdiction ?? countryName}
+              {ukJurisdiction && <span className="font-normal text-muted-foreground">, {countryName}</span>}
+            </span>
+            {court && <span className="text-[13px] text-muted-foreground">{court}</span>}
+          </div>
           {caseRecord && <ClientSideSelect id={id} value={caseRecord.clientSide ?? null} />}
+        </div>
+
+        <Card title={t("overview.upcoming")} className="lg:col-span-2">
+          {isSnapshotLoading ? (
+            <LoadingRow />
+          ) : shownDates.length > 0 || pastDates.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {shownDates.map((d) => (
+                <DeadlineRow key={d.id} d={d} />
+              ))}
+              {shownDates.length === 0 && (
+                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  {t("overview.noUpcoming")}
+                </span>
+              )}
+              {pastDates.length > 0 && (
+                <details className="border-t border-border pt-3">
+                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+                    {t("overview.pastDeadlines", { count: pastDates.length })}
+                  </summary>
+                  <div className="mt-4 flex flex-col gap-4 opacity-70">
+                    {pastDates.map((d) => (
+                      <DeadlineRow key={d.id} d={d} />
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          ) : (
+            <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              {t("overview.noUpcoming")}
+            </span>
+          )}
         </Card>
 
         <Card
@@ -499,24 +591,17 @@ function OverviewTab({
           )}
         </Card>
 
-        <Card title={t("overview.jurisdiction")}>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[15px] font-medium text-foreground">{ukJurisdiction ?? countryName}</span>
-            {ukJurisdiction && (
-              <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{countryName}</span>
-            )}
-            {court && <span className="mt-1.5 text-[13px] text-muted-foreground">{court}</span>}
-          </div>
-        </Card>
-
         <Card title={t("overview.keyIssues")} className="lg:col-span-2">
           {isSnapshotLoading ? (
             <LoadingRow />
           ) : risks.length > 0 ? (
-            <KeyIssuesList caseId={id} risks={risks.slice(0, 6)} />
+            <>
+              <KeyIssuesList caseId={id} risks={showAllIssues ? risks : risks.slice(0, ISSUES_PREVIEW)} />
+              <IssuesFooter total={risks.length} expanded={showAllIssues} onToggle={() => setShowAllIssues((v) => !v)} onOpenWorkspace={onOpenWorkspace} />
+            </>
           ) : findings.length > 0 ? (
             <div className="flex flex-col gap-1">
-              {findings.slice(0, 6).map((f) => (
+              {(showAllIssues ? findings : findings.slice(0, ISSUES_PREVIEW)).map((f) => (
                 <div key={f.id} className="flex items-start gap-2.5 py-1.5 text-[14px] leading-relaxed text-foreground">
                   <AlertCircle className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden="true" />
                   <span className="min-w-0 flex-1">{f.label}</span>
@@ -525,131 +610,82 @@ function OverviewTab({
                   </span>
                 </div>
               ))}
-              {findings.length > 6 && (
-                <span className="text-[12px] text-muted-foreground">{t("overview.moreIssues", { count: findings.length - 6 })}</span>
-              )}
+              <IssuesFooter total={findings.length} expanded={showAllIssues} onToggle={() => setShowAllIssues((v) => !v)} onOpenWorkspace={onOpenWorkspace} />
             </div>
           ) : (
-            <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noRisk")}</span>
+            <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noIssues")}</span>
           )}
         </Card>
 
-        <Card title={t("overview.upcoming")}>
-          {isSnapshotLoading ? (
-            <LoadingRow />
-          ) : upcomingDates.length > 0 ? (
-            <div className="flex flex-col gap-4">
-              {upcomingDates.map((d) => {
-                const dt = new Date(d.dateTime);
-                return (
-                  <div key={d.id} className="flex gap-3.5 items-start">
-                    <div className="flex flex-col items-center w-9 shrink-0">
-                      <span className="font-['Libre_Caslon_Text'] text-lg leading-none text-foreground">
-                        {dt.toLocaleDateString(dateLocale(), { day: "2-digit" })}
-                      </span>
-                      <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
-                        {dt.toLocaleDateString(dateLocale(), { month: "short" })}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[13.5px] leading-snug text-foreground">{d.title}</span>
-                      {d.type && <span className="text-[11px] text-muted-foreground">{d.type}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              {t("overview.noUpcoming")}
-            </span>
-          )}
+        <Card title={t("overview.parties")} headerRight={parties.addButton}>
+          {parties.body}
         </Card>
 
         <Card
-          className="lg:col-span-2"
+          plain
           title={`${t("overview.documents")}${documents ? ` · ${documents.length}` : ""}`}
           headerRight={
-            <button
-              type="button"
-              onClick={onOpenWorkspace}
-              className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              {sharedWithMe ? <Eye className="w-3 h-3" aria-hidden="true" /> : <Plus className="w-3 h-3" aria-hidden="true" />}
+            <button type="button" onClick={onOpenWorkspace} className={headerAction}>
+              {sharedWithMe ? <Eye className="w-3.5 h-3.5" aria-hidden="true" /> : <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />}
               {sharedWithMe ? t("portfolioView.viewDocuments") : t("overview.manageDocuments")}
             </button>
           }
-          noPadding
         >
           {isDocsLoading ? (
-            <LoadingRow className="px-5 py-4" />
+            <LoadingRow />
           ) : documents && documents.length > 0 ? (
-            // Was capped to the first 6 with no way to reach the rest, so the header's real
-            // total (documents.length) never matched what was actually visible below it.
-            // Scrolling the full list here (instead of paging it) keeps this a lightweight
-            // preview card rather than turning it into a second document manager — "Manage in
-            // Workspace" above is still where full management (delete, re-upload, etc.) lives.
-            <div className="flex flex-col max-h-76 overflow-y-auto">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-3 px-5 py-3 border-t border-border first:border-t-0 text-[13px]">
-                  <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <span className="flex-1 min-w-0 truncate">{doc.name}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
-                  </span>
-                  <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
-                    {ragStatusLabel(t, doc.ragStatus)}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col">
+                {shownDocs.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0 text-[13px]">
+                    <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <span className="flex-1 min-w-0 truncate">{doc.name}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
+                    </span>
+                    <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground border border-border rounded-md px-1.5 py-0.5">
+                      {ragStatusLabel(t, doc.ragStatus)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <ShowingFooter shown={shownDocs.length} total={documents.length} onViewAll={onOpenWorkspace} />
+            </>
           ) : (
-            <span className="block px-5 py-4 text-[13px] text-muted-foreground">{t("overview.noDocuments")}</span>
+            <span className="block text-[13px] text-muted-foreground">{t("overview.noDocuments")}</span>
           )}
         </Card>
 
         <Card
+          plain
           title={t("overview.consultations")}
           headerRight={
-            <div className="flex items-center gap-4">
-              {/* Opens the Case's draft Consultation in the Workspace (`?c=new`) — nothing is
-               * saved until its first message. */}
-              {canStartConsultation && (
-              <button
-                type="button"
-                onClick={() => onOpenConsultation(DRAFT_CONSULTATION_PARAM)}
-                className="p-2 -m-2 flex items-center gap-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                <Plus className="h-3 w-3" aria-hidden="true" />
+            canStartConsultation ? (
+              // Opens the Case's draft Consultation in the Workspace (`?c=new`) — nothing is
+              // saved until its first message.
+              <button type="button" onClick={() => onOpenConsultation(DRAFT_CONSULTATION_PARAM)} className={headerAction}>
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 {t("overview.newConsultation")}
               </button>
-              )}
-              <button
-                type="button"
-                onClick={onOpenWorkspace}
-                className="p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {t("overview.openWorkspace")}
-              </button>
-            </div>
+            ) : undefined
           }
         >
           {isConsultationsLoading ? (
             <LoadingRow />
           ) : consultations && consultations.length > 0 ? (
-            // Full list, scrolled — same reason as the Documents card: a `slice(0, 5)` cap left
-            // the header's total (consultations.length) out of step with what was visible.
-            <div className="flex flex-col gap-2 max-h-76 overflow-y-auto">
-              {consultations.map((c: Consultation) => (
-                <ConsultationRow
-                  key={c.id}
-                  consultation={c}
-                  fallbackTitle={t("overview.consultations")}
-                  onOpen={(promptNumber) => onOpenConsultation(c.id, promptNumber)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col gap-2">
+                {shownConsultations.map((c: Consultation) => (
+                  <ConsultationRow
+                    key={c.id}
+                    consultation={c}
+                    fallbackTitle={t("overview.consultations")}
+                    onOpen={(promptNumber) => onOpenConsultation(c.id, promptNumber)}
+                  />
+                ))}
+              </div>
+              <ShowingFooter shown={shownConsultations.length} total={consultations.length} onViewAll={onOpenWorkspace} />
+            </>
           ) : (
             <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
               <MessageSquare className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -657,7 +693,95 @@ function OverviewTab({
             </span>
           )}
         </Card>
+
+        <Card plain title={t("overview.notes")} headerRight={notes.header}>
+          {notes.body}
+        </Card>
       </div>
+    </div>
+  );
+}
+
+/** One deadline / calendar date: day-month block, title, full date (with year) and a relative
+ * label. Overdue gets an icon and weight as well as colour, so it isn't colour-only. */
+function DeadlineRow({ d }: { d: { title: string; dateTime: string; type?: string | null; days: number } }) {
+  const { t } = useTranslation("case-portfolio");
+  const dt = new Date(d.dateTime);
+  const overdue = d.days < 0;
+  const relative =
+    d.days === 0 ? t("overview.dueToday") : overdue ? t("overview.overdueBy", { count: -d.days }) : t("overview.dueIn", { count: d.days });
+  return (
+    <div className="flex gap-3.5 items-start">
+      <div className="flex flex-col items-center w-9 shrink-0">
+        <span className="font-['Libre_Caslon_Text'] text-lg leading-none text-foreground">
+          {dt.toLocaleDateString(dateLocale(), { day: "2-digit" })}
+        </span>
+        <span className="text-[9.5px] font-semibold tracking-[1px] uppercase text-muted-foreground">
+          {dt.toLocaleDateString(dateLocale(), { month: "short" })}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+        <span className="text-[13.5px] leading-snug text-foreground">{d.title}</span>
+        <span className="text-[11px] text-muted-foreground">
+          {[d.type, dt.toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}
+        </span>
+      </div>
+      <span
+        className={`shrink-0 inline-flex items-center gap-1 text-[12px] ${overdue ? "font-semibold text-red-500" : "text-muted-foreground"}`}
+      >
+        {overdue && <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />}
+        {relative}
+      </span>
+    </div>
+  );
+}
+
+/** Key Issues footer: "View all" expands the list in place; once everything is shown, a link
+ * to the Workspace (where issues are managed) sits beside "Show less". */
+function IssuesFooter({
+  total,
+  expanded,
+  onToggle,
+  onOpenWorkspace,
+}: {
+  total: number;
+  expanded: boolean;
+  onToggle: () => void;
+  onOpenWorkspace: () => void;
+}) {
+  const { t } = useTranslation("case-portfolio");
+  const collapsible = total > ISSUES_PREVIEW;
+  const allShown = !collapsible || expanded;
+  const linkClass = "font-medium text-foreground hover:underline cursor-pointer";
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>{t("overview.showingOf", { shown: allShown ? total : ISSUES_PREVIEW, total })}</span>
+      <div className="flex items-center gap-4">
+        {collapsible && (
+          <button type="button" onClick={onToggle} aria-expanded={expanded} className={linkClass}>
+            {expanded ? t("overview.showLess") : t("overview.viewAll")}
+          </button>
+        )}
+        {allShown && (
+          <button type="button" onClick={onOpenWorkspace} className={linkClass}>
+            {t("overview.openWorkspace")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** "Showing 5 of 12 · View all" — keeps the visible rows honest against the header total. */
+function ShowingFooter({ shown, total, onViewAll }: { shown: number; total: number; onViewAll: () => void }) {
+  const { t } = useTranslation("case-portfolio");
+  if (total <= shown) return null;
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>{t("overview.showingOf", { shown, total })}</span>
+      <button type="button" onClick={onViewAll} className="font-medium text-foreground hover:underline cursor-pointer">
+        {t("overview.viewAll")}
+      </button>
     </div>
   );
 }
@@ -714,23 +838,28 @@ function ConsultationRow({
 function Card({
   title,
   headerRight,
-  noPadding,
+  plain,
   className,
   children,
 }: {
   title: string;
   headerRight?: ReactNode;
-  noPadding?: boolean;
+  /** Unboxed: a top rule instead of a card, for secondary material. */
+  plain?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`min-w-0 border border-border rounded-2xl bg-card overflow-hidden flex flex-col ${className ?? ""}`}>
-      <div className={`flex items-center justify-between gap-3 ${noPadding ? "px-5 py-4 border-b border-border" : "px-5 pt-5"}`}>
-        <span className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{title}</span>
+    <section
+      className={`min-w-0 flex flex-col ${
+        plain ? "border-t border-border pt-5" : "border border-border rounded-2xl bg-card overflow-hidden"
+      } ${className ?? ""}`}
+    >
+      <div className={`flex items-center justify-between gap-3 ${plain ? "" : "px-5 pt-5"}`}>
+        <h2 className="text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">{title}</h2>
         {headerRight}
       </div>
-      <div className={noPadding ? "" : "px-5 pb-5 pt-3.5"}>{children}</div>
+      <div className={plain ? "pt-3.5" : "px-5 pb-5 pt-3.5"}>{children}</div>
     </section>
   );
 }
@@ -752,8 +881,9 @@ function RiskBar({ label, score }: { label: string; score: number }) {
 
 function LoadingRow({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-2 text-muted-foreground text-xs ${className}`}>
-      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+    <div className={`flex flex-col gap-2.5 motion-safe:animate-pulse ${className}`} aria-busy="true">
+      <div className="h-3 w-3/4 rounded bg-muted" />
+      <div className="h-3 w-1/2 rounded bg-muted" />
     </div>
   );
 }
