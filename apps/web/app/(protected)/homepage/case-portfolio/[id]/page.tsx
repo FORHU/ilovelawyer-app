@@ -154,21 +154,6 @@ export default function CaseDetailPage() {
                       {canEdit && <UnarchiveButton id={id} caseName={caseRecord.caseName} />}
                     </>
                   )}
-                  {caseRecord && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => setSharing(true)}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                        >
-                          <Users className="h-3 w-3" aria-hidden="true" />
-                          {t("share.button")}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{t("share.buttonTooltip")}</TooltipContent>
-                    </Tooltip>
-                  )}
                 </div>
                 {/* Stands in for GlobalHeader's own hamburger (hidden here via
                  * mobileHeaderMerged) — opens the exact same drawer. */}
@@ -190,6 +175,9 @@ export default function CaseDetailPage() {
 
             {/* Horizontally scrollable (no visible scrollbar) instead of wrapping/shrinking —
              * three tabs at their normal size don't fit a 320px viewport otherwise. */}
+            {/* Share is a case-level action, not a status: it ends the tab row, past a divider
+             * (icon-only below sm so the tabs keep their room). */}
+            <div className="flex min-w-0 items-start gap-4 sm:gap-6">
             <nav className="flex gap-3.5 sm:gap-7 overflow-x-auto scrollbar-none text-[9.5px] sm:text-[10px] font-semibold tracking-[1px] sm:tracking-[1.2px] uppercase -mx-6 px-6 sm:mx-0 sm:px-0">
               <TabButton active={activeTab === "workspace"} onClick={() => switchTab("workspace")} icon={PanelsTopLeft}>
                 {t("overview.tabWorkspace")}
@@ -205,6 +193,26 @@ export default function CaseDetailPage() {
                 {t("overview.tabTerminal")}
               </Link>
             </nav>
+            {caseRecord && (
+              <>
+                <span className="mt-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setSharing(true)}
+                      aria-label={t("share.button")}
+                      className="-mt-1 mb-2 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.98]"
+                    >
+                      <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="hidden sm:inline">{t("share.button")}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("share.buttonTooltip")}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            </div>
           </div>
         </div>
 
