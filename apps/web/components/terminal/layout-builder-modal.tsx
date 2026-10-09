@@ -272,8 +272,8 @@ export function LayoutBuilderModal({ open, onOpenChange, detectedCount, caseId, 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        overlayClassName="backdrop-blur-sm"
-        className="flex h-[90vh] max-h-[90vh] w-[96vw] max-w-[96vw] flex-col gap-0 overflow-hidden p-0"
+        overlayClassName="z-(--z-canvas-overlay) backdrop-blur-sm"
+        className="z-(--z-canvas-overlay) flex h-[90vh] max-h-[90vh] w-[96vw] max-w-[96vw] flex-col gap-0 overflow-hidden p-0"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 py-4 pl-6 pr-12">
           <div>
