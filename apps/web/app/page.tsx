@@ -22,6 +22,7 @@ import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { hostForTenantCode, protocolForHost } from "@/lib/tenant-code/resolve-host";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { FaqSection } from "@/components/landing/faq-section";
+import { DeveloperCredit } from "@/components/landing/developer-credit";
 import { BRAND_ORIGIN, brandJsonLd } from "@/lib/seo/brand";
 import { getFaqItems, getFaqLede } from "@/lib/seo/faq";
 
@@ -185,6 +186,7 @@ export default async function LandingPage() {
             <UkConsultationSection />
             <UkFirmsSection />
             {faqSection}
+            <DeveloperCredit />
           </main>
           <UkLandingFooter />
         </ScrollSmootherProvider>
@@ -209,6 +211,7 @@ export default async function LandingPage() {
           <ConsultationSection />
           <FirmsSection />
           {faqSection}
+          <DeveloperCredit />
         </main>
         <LandingFooter />
       </ScrollSmootherProvider>
