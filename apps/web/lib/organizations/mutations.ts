@@ -136,6 +136,12 @@ export function useRemoveMemberMutation(organizationId: string) {
   })
 }
 
+/** The API's answer to accepting an invite whose organization is being deleted (its last member
+ * left): the invite is gone, so there's nothing left to accept or decline. */
+export function isInviteNoLongerValidError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { status?: unknown }).status === 410
+}
+
 export function useAcceptInviteMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -145,6 +151,10 @@ export function useAcceptInviteMutation() {
       }),
     // Accepting can move the user out of the org they were in.
     onSuccess: () => removeOrganizationScopedQueries(queryClient),
+    // The API used the invite up, so the invite card would otherwise linger.
+    onError: (err) => {
+      if (isInviteNoLongerValidError(err)) queryClient.invalidateQueries({ queryKey: organizationKeys.myInvite() })
+    },
   })
 }
 

@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -46,6 +47,7 @@ import {
   useUpdateOrganizationMutation,
   useAcceptInviteMutation,
   useDeclineInviteMutation,
+  isInviteNoLongerValidError,
 } from "@/lib/organizations/mutations";
 
 const ROLE_RANK: Record<OrganizationRole, number> = { OWNER: 4, ADMIN: 3, MANAGER: 2, MEMBER: 1 };
@@ -161,6 +163,9 @@ export default function OrganizationPage() {
   // Mirrors the API's leave rule, which accepting an invite elsewhere goes through: the only
   // owner can't leave teammates behind without handing ownership over first.
   const mustTransferBeforeLeaving = isOwner && otherMembers.length > 0 && acceptedOwnerCount <= 1;
+  // The API archives an organization its last member leaves (by leaving, or by accepting an
+  // invite elsewhere) and deletes it after 30 days — the confirmations say so.
+  const isLastMember = !isPersonal && membersQuery.isSuccess && otherMembers.length === 0;
   // Nobody can select OWNER here — see GRANTABLE_ROLES. An OWNER row only appears in this
   // list at all for the (legacy/edge-case) member who is already an OWNER, so their current
   // value still renders correctly; it lets another owner demote them, never promote into it.
@@ -339,7 +344,12 @@ export default function OrganizationPage() {
       onSuccess: () => {
         setOrganization(toActiveOrg({ ...invite.organization, role: invite.role }));
       },
-      onError: (err) => setInviteActionError((err as Error).message),
+      onError: (err) => {
+        // The invite is gone (its organization is being deleted), and its card with it, so the
+        // message can't sit under the card.
+        if (isInviteNoLongerValidError(err)) toast.error((err as Error).message);
+        else setInviteActionError((err as Error).message);
+      },
     });
   }
 
@@ -1117,7 +1127,7 @@ export default function OrganizationPage() {
                 <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
               </div>
               <p id="leave-org-desc" className="text-sm text-foreground leading-relaxed">
-                {t("overview.leaveConfirm")}
+                {isLastMember ? t("overview.leaveLastMemberConfirm") : t("overview.leaveConfirm")}
               </p>
             </div>
 
@@ -1142,10 +1152,16 @@ export default function OrganizationPage() {
                     disabled={leaveMutation.isPending}
                     className="cursor-pointer rounded-xl bg-red-600 px-6 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-sm shadow-red-600/30 transition-colors hover:bg-red-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {leaveMutation.isPending ? t("overview.leaving") : t("overview.leaveButton")}
+                    {leaveMutation.isPending
+                      ? t("overview.leaving")
+                      : isLastMember
+                        ? t("overview.leaveAndArchive")
+                        : t("overview.leaveButton")}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Leave this organization</TooltipContent>
+                <TooltipContent>
+                  {isLastMember ? t("overview.leaveAndArchiveTooltip") : "Leave this organization"}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -1189,7 +1205,10 @@ export default function OrganizationPage() {
                 <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" />
               </div>
               <p id="switch-org-desc" className="text-sm text-foreground leading-relaxed">
-                {t("invite.switchConfirm", { orgName: myInviteQuery.data.organization.name, currentOrgName: organization.name })}
+                {t(isLastMember ? "invite.switchLastMemberConfirm" : "invite.switchConfirm", {
+                  orgName: myInviteQuery.data.organization.name,
+                  currentOrgName: organization.name,
+                })}
               </p>
             </div>
 

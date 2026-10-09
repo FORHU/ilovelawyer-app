@@ -42,6 +42,9 @@
     "leaveButton": "Leave Organization",
     "leaveCancel": "Cancel",
     "leaveConfirm": "Are you sure you want to leave this organization? Cases you created here will be copied to your portfolio; the originals stay with the organization.",
+    "leaveLastMemberConfirm": "You're the only member of this organization. Leaving will archive it, and it will be permanently deleted in 30 days. Pending invitations will stop working. Cases you created here will be copied to your portfolio. To restore the organization within 30 days, contact support.",
+    "leaveAndArchive": "Leave and Archive",
+    "leaveAndArchiveTooltip": "Leave, archive this organization and delete it in 30 days",
     "leaving": "Leaving…",
     "transferPrompt": "You're the owner. Choose a new owner before you leave.",
     "transferSelectPlaceholder": "Select a member…",
@@ -93,6 +96,7 @@
     "switchOwnerBlocked": "You're the only owner of \"{{currentOrgName}}\". Make another member an owner before you accept.",
     "switchAccept": "Leave & Join",
     "switchConfirm": "Leave \"{{currentOrgName}}\" and join \"{{orgName}}\"? Cases you created in \"{{currentOrgName}}\" will be copied to your portfolio; the originals stay there.",
+    "switchLastMemberConfirm": "You're the only member of \"{{currentOrgName}}\". Joining \"{{orgName}}\" will archive it, and it will be permanently deleted in 30 days. Pending invitations to it will stop working. Cases you created there will be copied to your portfolio. To restore it within 30 days, contact support.",
     "switchTitle": "Switch Organization",
     "switchCancelTooltip": "Stay in \"{{currentOrgName}}\" and close this dialog",
     "switchConfirmTooltip": "Leave \"{{currentOrgName}}\" and join \"{{orgName}}\""
