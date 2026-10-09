@@ -16,7 +16,7 @@ import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
-import { EmptyNote, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
+import { EmptyNote, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelStickyHeader, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -137,7 +137,7 @@ export function WitnessPanel({
       ) : (
         <>
       {total > 0 ? (
-        <div className="flex items-center gap-3">
+        <PanelStickyHeader className="flex items-center gap-3">
           <div className="relative h-10 w-10 shrink-0">
             <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
               <circle cx="18" cy="18" r={ringR} fill="none" strokeWidth="3" className="stroke-border" />
@@ -176,7 +176,7 @@ export function WitnessPanel({
               ))}
             </div>
           </div>
-        </div>
+        </PanelStickyHeader>
       ) : null}
       {/* PanelRowList's <ul> is overflow-hidden: as a direct flex child of the scrolling PanelBody it
           would shrink to the pane height and clip rows instead of letting the body scroll. */}

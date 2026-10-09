@@ -724,6 +724,29 @@ export function PanelBody({
   )
 }
 
+/**
+ * A pane's summary graph pinned to the top of PanelBody's scroll area, so it stays in view while
+ * the rows scroll underneath. Must be a direct child of PanelBody — sticky only holds within its
+ * parent. Sticky offsets are measured inside the scroller's padding, so a negative top equal to
+ * PanelBody's padding pins it flush to the pane edge; negative x margins span that padding so rows
+ * don't show at the sides, and -my/py keep the surrounding spacing unchanged. The border and
+ * shadow set it apart from the rows passing beneath.
+ */
+export function PanelStickyHeader({ className, children }: { className?: string; children: ReactNode }) {
+  const dense = useTerminalDisplayStore((state) => state.highDensity)
+  return (
+    <div
+      className={cn(
+        "sticky z-10 -my-2 shrink-0 border-b border-border bg-card py-2 shadow-[0_6px_8px_-6px_rgb(0_0_0/0.25)]",
+        dense ? "-top-2.5 -mx-2.5 px-2.5" : "-top-4 -mx-4 px-4",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
 // The one place every arrangement mode (Free canvas, Columns, Tabs, Focus) builds pane chrome —
 // was duplicated 4x by hand in legal-terminal.tsx before this, one copy per arrangement mode,
 // each with its own flat `rounded-lg border` and no shadow (unlike the rest of the app's real
