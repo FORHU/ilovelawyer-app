@@ -82,21 +82,28 @@ export interface CaseRecord {
  * the calendar/transcription case-linking pickers and the Terminal landing page's case
  * switcher, none of which pass this param — automatically keeps excluding archived cases
  * without needing any change. Only Case Portfolio's own Archived tab passes "ARCHIVED". */
+/** Case Portfolio's sort. "opened" is the requesting user's own Last opened; cases they've never
+ * opened come after, in either order. Omitted, the API sorts by "updated", "desc". */
+export type CaseListSort = "created" | "updated" | "opened"
+export type CaseListOrder = "asc" | "desc"
+
 export function useCasesQuery(
   page = 1,
   limit = 20,
   search = "",
   status: CaseStatus = "ACTIVE",
   createdBy?: string,
-  { enabled = true }: { enabled?: boolean } = {},
+  { enabled = true, sort, order }: { enabled?: boolean; sort?: CaseListSort; order?: CaseListOrder } = {},
 ) {
   return useQuery({
     enabled,
-    queryKey: caseKeys.list({ page, limit, search, status, createdBy }),
+    queryKey: caseKeys.list({ page, limit, search, status, createdBy, sort, order }),
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), status })
       if (search) params.set("search", search)
       if (createdBy) params.set("createdBy", createdBy)
+      if (sort) params.set("sort", sort)
+      if (order) params.set("order", order)
       return apiFetch<{ total: number; data: CaseRecord[] }>(`/api/my-cases?${params.toString()}`)
     },
   })

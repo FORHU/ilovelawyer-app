@@ -62,9 +62,10 @@ interface SourcesPanelProps {
    * one of those icons only expands the panel too, so in the Terminal chat pane (where Topics is
    * the only section left) it was a second button doing exactly what the toggle above it does. */
   showRailSections?: boolean;
-  /** Case Workspace only: the panel becomes the Case's Consultations list (consultation-tree.tsx),
-   * every Consultation expanding to its own Topics — the open one's being this panel's usual
-   * Topics body. Omitted by the Terminal chat pane, which shows just its one consultation's. */
+  /** The panel becomes the Case's Consultations list (consultation-tree.tsx), every Consultation
+   * expanding to its own Topics — the open one's being this panel's usual Topics body. Set by Case
+   * Workspace (`onSelect` drives `?c=`) and the Terminal chat pane (`onSelect` drives its local
+   * state). */
   consultationList?: {
     caseId: string;
     isDraftActive: boolean;

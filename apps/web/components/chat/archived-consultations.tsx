@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Archive, ArrowLeft, Loader2, RotateCcw, Trash2, X } from "lucide-react";
+import { Archive, ArrowLeft, Building2, Loader2, Lock, RotateCcw, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -13,7 +13,8 @@ import {
 } from "@/lib/chat/mutations";
 import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { formatRelativeTime } from "@/lib/notifications/format";
-import { useAuthStore } from "@/lib/store/auth.store";
+import { useAuthStore, type Workspace } from "@/lib/store/auth.store";
+import { useSwitchWorkspace } from "@/lib/organizations/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog";
 import AssistantMessage from "@/components/chat/assistant-message";
@@ -71,14 +72,41 @@ export function useArchiveConsultation() {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Joining an organization parks the user's personal workspace as their portfolio, and requests
+ * only go to the workspace being viewed — so the consultations they archived before joining
+ * (or those archived in the organization, while viewing the portfolio) dropped out of sight. The
+ * general archive (not a case's: a case's consultations live where the case does) therefore also
+ * reaches the other workspace. `other` is null when there isn't one: a personal workspace, or the
+ * portfolio not loaded yet. */
+function useArchiveWorkspaces(caseId?: string) {
+  const organization = useAuthStore((s) => s.organization);
+  const portfolio = useAuthStore((s) => s.portfolio);
+  // Mirrors activeWorkspaceId: "portfolio" only counts once the portfolio is known.
+  const current: Workspace = useAuthStore((s) => (s.workspace === "portfolio" && s.portfolio ? "portfolio" : "organization"));
+  const other =
+    caseId || !organization || organization.isPersonal || !portfolio
+      ? null
+      : current === "portfolio"
+        ? { workspace: "organization" as const, id: organization.id }
+        : { workspace: "portfolio" as const, id: portfolio.id };
+  return { current, other, organizationName: organization?.name ?? "" };
+}
+
 /** The archive's entry point, pinned under a consultation list (Case Workspace's — pass `caseId`
  * — or /homepage's standalone one): one button with a count that opens ArchivedConsultationsModal.
  * Nothing archived is listed in the panel itself. */
 export function ArchivedConsultationsButton({ caseId, onRestored }: { caseId?: string; onRestored?: (id: string) => void }) {
   const { t } = useTranslation("homepage");
   const [open, setOpen] = useState(false);
+  const { other } = useArchiveWorkspaces(caseId);
   const { data: archived } = useConsultationsQuery(caseId, { status: "ARCHIVED" });
-  const count = archived?.length ?? 0;
+  // The other workspace's count too — otherwise nothing hints they're still there.
+  const { data: otherArchived } = useConsultationsQuery(undefined, {
+    status: "ARCHIVED",
+    organizationId: other?.id,
+    enabled: !!other,
+  });
+  const count = (archived?.length ?? 0) + (other ? (otherArchived?.length ?? 0) : 0);
 
   return (
     <>
@@ -124,12 +152,21 @@ function ArchivedConsultationsModal({
   onRestored: (id: string) => void;
 }) {
   const { t } = useTranslation("homepage");
-  const { data: archived, isLoading, isError, refetch } = useConsultationsQuery(caseId, { status: "ARCHIVED" });
+  const { current, other, organizationName } = useArchiveWorkspaces(caseId);
+  const switchWorkspace = useSwitchWorkspace();
+  // Which workspace's archive is shown; starts on the one being viewed.
+  const [viewing, setViewing] = useState<Workspace>(current);
+  // Undefined while showing the active workspace — requests then go there as usual.
+  const viewingId = other && viewing === other.workspace ? other.id : undefined;
+  const { data: archived, isLoading, isError, refetch } = useConsultationsQuery(caseId, {
+    status: "ARCHIVED",
+    organizationId: viewingId,
+  });
   const myUserId = useAuthStore((s) => s.user?.id);
   // Read-only for a view-only person on a confidential case: no restore or delete, their own included.
   const readOnly = !useCanContributeToCase(caseId);
-  const unarchive = useUnarchiveConsultationMutation();
-  const remove = useDeleteConsultationMutation();
+  const unarchive = useUnarchiveConsultationMutation({ organizationId: viewingId });
+  const remove = useDeleteConsultationMutation({ organizationId: viewingId });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Consultation | null>(null);
 
@@ -140,9 +177,20 @@ function ArchivedConsultationsModal({
 
   const titleOf = (c: Consultation) => c.title?.trim() || t("sidebar.untitledConsultation");
 
+  const showWorkspace = (next: Workspace) => {
+    setViewing(next);
+    setSelectedId(null);
+    setShowPreviewOnMobile(false);
+  };
+
   const handleRestore = (c: Consultation) => {
     unarchive.mutate(c.id, {
-      onSuccess: () => onRestored(c.id),
+      onSuccess: () => {
+        // A consultation only opens in its own workspace, so restoring one from the other
+        // workspace moves there first (the header's portfolio pill leads back).
+        if (viewingId) switchWorkspace(viewing);
+        onRestored(c.id);
+      },
       onError: () => toast.error(t("sidebar.restoreConsultationFailed")),
     });
   };
@@ -185,6 +233,39 @@ function ArchivedConsultationsModal({
             <TooltipContent>{t("sidebar.closeDialog")}</TooltipContent>
           </Tooltip>
         </div>
+
+        {other && (
+          <div className="flex shrink-0 flex-col gap-2 border-b border-border px-5 py-3">
+            <div
+              role="group"
+              aria-label={t("sidebar.archivedWorkspaceSwitch")}
+              className="flex items-center gap-1 self-start rounded-lg border border-border bg-muted p-1 dark:bg-white/[0.06]"
+            >
+              {(
+                [
+                  { workspace: "organization", label: organizationName, Icon: Building2 },
+                  { workspace: "portfolio", label: t("sidebar.archivedPortfolioTab"), Icon: Lock },
+                ] as const
+              ).map(({ workspace, label, Icon }) => (
+                <button
+                  key={workspace}
+                  type="button"
+                  onClick={() => showWorkspace(workspace)}
+                  aria-pressed={viewing === workspace}
+                  className={`inline-flex h-7 max-w-[220px] cursor-pointer items-center gap-1.5 rounded-md border px-3 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                    viewing === workspace
+                      ? "border-border bg-card text-foreground shadow-sm dark:bg-white/15"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
+            {viewing === "portfolio" && <p className="text-[12px] text-muted-foreground">{t("sidebar.archivedPortfolioHint")}</p>}
+          </div>
+        )}
 
         {isLoading ? (
           <p className="p-6 text-[13px] text-muted-foreground">{t("sidebar.loadingConsultations")}</p>
@@ -286,7 +367,7 @@ function ArchivedConsultationsModal({
                     </div>
                   )}
                 </div>
-                <ArchivedTranscript consultationId={selected.id} />
+                <ArchivedTranscript consultationId={selected.id} organizationId={viewingId} />
               </section>
             )}
           </div>
@@ -322,9 +403,9 @@ function ArchivedMeta({ consultation }: { consultation: Consultation }) {
 
 /** The archived consultation's conversation, read-only — the same bubbles as the chat, without
  * the composer or any of the live tooling around them. */
-function ArchivedTranscript({ consultationId }: { consultationId: string }) {
+function ArchivedTranscript({ consultationId, organizationId }: { consultationId: string; organizationId?: string }) {
   const { t } = useTranslation("homepage");
-  const { data: history, isLoading, isError, refetch } = useMessagesQuery(consultationId);
+  const { data: history, isLoading, isError, refetch } = useMessagesQuery(consultationId, { organizationId });
   const messages = useMemo(() => visibleChatMessages(history), [history]);
 
   return (

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ChevronDown, Plus } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
 import { useAddAuthorityMutation } from "@/lib/terminal/mutations"
 import type { AuthorityStance, CaseFinding } from "@/lib/terminal/types"
 import {
@@ -37,6 +38,8 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
   const [rationale, setRationale] = useState("")
   const [subtitle, setSubtitle] = useState("")
   const [ground, setGround] = useState("")
+  const groundTriggerRef = useRef<HTMLButtonElement>(null)
+  const [groundBoundary, setGroundBoundary] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
     if (open) titleRef.current?.focus()
@@ -123,22 +126,37 @@ export function AuthorityComposer({ caseId, grounds }: { caseId: string; grounds
       {/* Required when the case has grounds: an authority tied to none supports nothing in the coverage ring. */}
       {grounds.length > 0 && (
         <Field label={t("authorityGround")} htmlFor={`${uid}-ground`}>
-          <select
-            id={`${uid}-ground`}
+          {/* Not a native <select>: its OS-drawn popup sizes to the longest ground and spills
+              past the pane. This one is held to the pane's scroll area — trigger-wide, labels
+              wrap, and its height capped to the room left inside the pane. */}
+          <Select
             value={ground}
-            onChange={(e) => setGround(e.target.value)}
+            onValueChange={setGround}
             required
-            className={fieldClass}
+            onOpenChange={(next) => {
+              if (next) setGroundBoundary(groundTriggerRef.current?.closest<HTMLElement>("[data-panel-scroll]") ?? null)
+            }}
           >
-            <option value="" disabled>
-              {t("authorityPickGround")}
-            </option>
-            {grounds.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              ref={groundTriggerRef}
+              id={`${uid}-ground`}
+              className={cn(fieldClass, "w-full text-left [&>span]:min-w-0 [&>span]:truncate")}
+            >
+              <SelectValue placeholder={t("authorityPickGround")} />
+            </SelectTrigger>
+            <SelectContent
+              collisionBoundary={groundBoundary}
+              collisionPadding={8}
+              hideWhenDetached
+              className="w-(--radix-select-trigger-width) max-w-(--radix-select-content-available-width)"
+            >
+              {grounds.map((g) => (
+                <SelectItem key={g.id} value={g.id} className="text-xs">
+                  {g.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
       )}
 

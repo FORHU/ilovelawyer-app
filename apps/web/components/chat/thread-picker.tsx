@@ -10,8 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 interface ThreadPickerProps {
   caseId: string;
   activeConsultationId: string | null;
-  /** `?c=new` — the Case's unsaved draft is open (see consultation-drafts.store.ts). Only the
-   * URL-driven Case Workspace sets it; Terminal's chat pane never has a draft. */
+  /** The Case's unsaved draft is open (see consultation-drafts.store.ts) — `?c=new` in Case
+   * Workspace, or the same marker in the local state of Terminal's chat pane. */
   isDraftActive?: boolean;
 }
 

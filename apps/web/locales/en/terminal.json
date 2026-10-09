@@ -407,6 +407,7 @@
   "archiveDocument": "Archive {{documentName}}",
   "restoreDocument": "Restore {{documentName}}",
   "archivedDocuments": "Archived",
+  "viewArchivedDocuments": "View archived documents",
   "backToActiveDocuments": "Back to active documents",
   "noArchivedDocuments": "No archived documents.",
   "archivedDocumentsHint": "Archive a document here first — only archived documents can be removed for good.",

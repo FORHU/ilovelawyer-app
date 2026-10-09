@@ -362,6 +362,7 @@
   "archiveDocument": "{{documentName}} 보관",
   "restoreDocument": "{{documentName}} 복원",
   "archivedDocuments": "보관됨",
+  "viewArchivedDocuments": "보관된 문서 보기",
   "backToActiveDocuments": "활성 문서로 돌아가기",
   "noArchivedDocuments": "보관된 문서가 없습니다.",
   "archivedDocumentsHint": "먼저 문서를 보관하세요 — 보관된 문서만 영구 삭제할 수 있습니다.",

@@ -394,8 +394,8 @@ export default function ConsultationChat({
   enableFileChips = false,
   panelTitles,
   onJumpToPanel,
-  scrollToPromptNumber,
-  onScrolledToPrompt,
+  scrollToPromptNumber: scrollToPromptNumberProp,
+  onScrolledToPrompt: onScrolledToPromptProp,
 }: ConsultationChatProps) {
   const { t } = useTranslation("homepage");
   const router = useRouter();
@@ -485,13 +485,20 @@ export default function ConsultationChat({
   // alongside another ConsultationChat sharing the same page URL.
   const [localConsultationId, setLocalConsultationId] = useState<string | null>(null);
   const consultationParam = isolateConsultation ? localConsultationId : searchParams.get("c");
+  // Same for the one-shot "land on this prompt" (Case Workspace's `?p=`): an isolated pane gets it
+  // from its own Consultations list (a topic clicked under a consultation that wasn't open).
+  const [localPromptNumber, setLocalPromptNumber] = useState<number | null>(null);
+  const clearLocalPromptNumber = useCallback(() => setLocalPromptNumber(null), []);
+  const scrollToPromptNumber = isolateConsultation ? localPromptNumber : scrollToPromptNumberProp;
+  const onScrolledToPrompt = isolateConsultation ? clearLocalPromptNumber : onScrolledToPromptProp;
   const queryClient = useQueryClient();
 
   const consultationId = consultationIdFromParam(consultationParam);
-  // A Case's URL-driven chat (Case Workspace) can sit on its unsaved draft (`?c=new`, see
-  // consultation-drafts.store.ts) — saved nowhere but this browser until its first message.
-  // Not for Terminal's isolated panes (no URL to hold it) or the case-less /homepage chat.
-  const draftEnabled = Boolean(caseId) && !isolateConsultation;
+  // A Case's chat can sit on its unsaved draft (`?c=new`, see consultation-drafts.store.ts) —
+  // saved nowhere but this browser until its first message. Case Workspace holds it in the URL;
+  // Terminal's Chat pane holds the same marker in its local state (isolateConsultation), so both
+  // open the Case's one draft. Not for the map-only pane or the case-less /homepage chat.
+  const draftEnabled = Boolean(caseId) && !mindMapOnly;
   const isDraft = draftEnabled && isDraftConsultationParam(consultationParam);
   const { draft, hydrated: draftsHydrated } = useConsultationDraft(draftEnabled ? caseId : undefined);
   const ensureDraft = useConsultationDraftsStore((s) => s.ensureDraft);
@@ -889,9 +896,10 @@ export default function ConsultationChat({
   // item below — same condition as the <TopicNavigator> mount further down, kept in sync
   // rather than duplicated ad hoc.
   const hasTopics = (showTopicNavigator ?? !embedded) && (splitTopics.length > 0 || isGeneratingTopics);
-  // Terminal's inline Topics panel (Case Workspace's SourcesPanel, docked right) — shown for any
-  // open consultation, either expanded or minimized to its icon rail (`terminalTopicsOpen`).
-  const terminalTopicsPanelVisible = Boolean(embedded && showTopicNavigator && consultationId);
+  // Terminal's inline Consultations panel (Case Workspace's SourcesPanel, docked right) — shown
+  // for the Case even with nothing open yet (it's where a consultation gets picked or started),
+  // either expanded or minimized to its icon rail (`terminalTopicsOpen`).
+  const terminalTopicsPanelVisible = Boolean(embedded && showTopicNavigator && caseId);
 
   // Every piece of evidence quoted for the latest turn's decisions, handed to *every* bubble in
   // the transcript so each can highlight yellow whichever quotes actually appear in its own
@@ -1154,6 +1162,16 @@ export default function ConsultationChat({
     setIsFinalizing(false);
     setActiveTab("chat");
     navigateToConsultation(draftEnabled ? DRAFT_CONSULTATION_PARAM : null);
+  };
+
+  // Terminal's Chat pane only: its Consultations list (the docked SourcesPanel) opens a
+  // consultation, the draft, or nothing — the same as Case Workspace's selectConsultation, but into
+  // this pane's local state. Only the selection changes here; the consultationId effect above
+  // resets the send state, exactly as it does for Case Workspace's `?c=` switches.
+  const handleSelectFromList = (param: string | null, promptNumber?: number) => {
+    setActiveTab("chat");
+    if (promptNumber !== undefined) setLocalPromptNumber(promptNumber);
+    navigateToConsultation(param);
   };
 
   const handleSelectConsultation = (id: string) => {
@@ -2263,10 +2281,12 @@ export default function ConsultationChat({
          * Gated on isolateConsultation specifically, not embedded: Case Workspace's chat is
          * embedded too, and would otherwise get this a second time, stacked on top of its own
          * picker. Here it stays a plain label of what's open, not the Case Workspace's switcher:
-         * this pane tracks its consultation in local state, not the `?c=` the switcher drives. */}
+         * this pane tracks its consultation in local state; choosing between consultations, "New
+         * consultation" and the archive live in its docked Consultations list (SourcesPanel below),
+         * as in Case Workspace's left panel. */}
         {isolateConsultation && !mindMapOnly && caseId && (
           <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
-            <ThreadPicker caseId={caseId} activeConsultationId={consultationId} />
+            <ThreadPicker caseId={caseId} activeConsultationId={consultationId} isDraftActive={isDraft} />
           </div>
         )}
         {(() => {
@@ -2747,9 +2767,11 @@ export default function ConsultationChat({
           );
         })()}
         </div>
-        {terminalTopicsPanelVisible && (
-          // Same panel as Case Workspace's left Topics sidebar (sources-panel.tsx) — topics and
-          // related cases (decisions hidden here via showDecisions={false}), collapsing to an icon rail — docked on this pane's right.
+        {terminalTopicsPanelVisible && caseId && (
+          // Same panel as Case Workspace's left sidebar (sources-panel.tsx) — the Case's
+          // Consultations, each expanding to its own Topics, plus "New consultation" and the archive;
+          // the open one's Topics carry related cases too (decisions hidden here via
+          // showDecisions={false}). Collapses to an icon rail, docked on this pane's right.
           // In a narrow pane (terminalChatNarrow) the expanded panel overlays the transcript
           // instead of squeezing it; the collapsed icon rail is slim enough to stay inline.
           <div
@@ -2768,6 +2790,7 @@ export default function ConsultationChat({
               transcriptRef={transcriptRef}
               showDecisions={false}
               showRailSections={false}
+              consultationList={{ caseId, isDraftActive: isDraft, onSelect: handleSelectFromList }}
               width={TERMINAL_TOPICS_WIDTH}
               isResizing={false}
               className={terminalTopicsOpen ? "flex rounded-lg border" : "flex"}
