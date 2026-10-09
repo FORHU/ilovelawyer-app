@@ -12,6 +12,7 @@ import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useOverviewParties } from "@/components/cases/overview-parties";
+import { useOverviewNotes } from "@/components/cases/case-notes-card";
 import {
   useCaseQuery,
   useCaseDocumentsQuery,
@@ -431,6 +432,7 @@ function OverviewTab({
   // A view-only person on a confidential case can read its consultations but not start one.
   const canStartConsultation = useCanContributeToCase(id);
   const parties = useOverviewParties(caseRecord);
+  const notes = useOverviewNotes(caseRecord);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
   // UK cases store a sub-jurisdiction (England and Wales / Scotland / Northern Ireland); PH cases
@@ -464,6 +466,10 @@ function OverviewTab({
       {/* One grid (not two independent columns) so every row's cards share a height: the three
           summary cards, then each wide card paired with the narrow card beside it. */}
       <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card title={t("overview.notes")} headerRight={notes.header} className="lg:col-span-3">
+          {notes.body}
+        </Card>
+
         <Card title={t("overview.parties")} headerRight={parties.addButton}>
           {parties.body}
           {caseRecord && <ClientSideSelect id={id} value={caseRecord.clientSide ?? null} />}

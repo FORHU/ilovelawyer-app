@@ -41,6 +41,11 @@
     "step3Body": "Indexed for chat within minutes, then open the Workspace or Terminal."
   },
   "overview": {
+    "notes": "Notes",
+    "notesEmpty": "No notes yet.",
+    "notesShowMore": "Show more",
+    "notesShowLess": "Show less",
+    "notesEdit": "Edit",
     "clientSide": "We act for",
     "clientSideUnset": "Not set",
     "clientSideClaimant": "Claimant / prosecution",
