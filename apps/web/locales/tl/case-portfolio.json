@@ -1,4 +1,8 @@
 {
+  "sortBy": "Pagbukud-bukurin ayon sa",
+  "sortByColumn": "Pagsunud-sunurin ayon sa column na ito",
+  "sortedNewestFirst": "Pinakabago muna — i-click para baligtarin",
+  "sortedOldestFirst": "Pinakaluma muna — i-click para baligtarin",
   "title": "Case Portfolio",
   "managingActiveProceedings": "Pinamamahalaan ang {{count}} aktibong legal na paglilitis.",
   "searchPlaceholder": "Maghanap ayon sa pangalan ng kaso, docket number, o kliyente...",

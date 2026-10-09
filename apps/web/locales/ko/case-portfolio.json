@@ -1,4 +1,8 @@
 {
+  "sortBy": "정렬 기준",
+  "sortByColumn": "이 열로 정렬",
+  "sortedNewestFirst": "최신순 — 클릭하면 반대로",
+  "sortedOldestFirst": "오래된 순 — 클릭하면 반대로",
   "title": "사건 포트폴리오",
   "managingActiveProceedings": "진행 중인 법적 절차 {{count}}건을 관리하고 있습니다.",
   "searchPlaceholder": "사건명, 사건번호 또는 의뢰인으로 검색...",

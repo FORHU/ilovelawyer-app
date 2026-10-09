@@ -10,7 +10,7 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X, Building2, Lock, AlertTriangle } from "lucide-react";
+import { Search, Briefcase, Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X, Building2, Lock, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { ErrorState } from "@/components/error-state";
 import {
@@ -30,6 +31,8 @@ import {
   useUnarchiveCaseMutation,
   useBulkArchiveCasesMutation,
   useBulkUnarchiveCasesMutation,
+  type CaseListOrder,
+  type CaseListSort,
   type CaseRecord,
   type CaseStatus,
   type UpdateCasePayload,
@@ -87,7 +90,45 @@ function CopyProgress({ copies }: { copies: CaseCopyRecord[] }) {
   );
 }
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
+
+// Each sort is labelled with its column's own header, so the mobile dropdown and the table agree.
+const SORT_LABEL_KEYS: Record<CaseListSort, string> = {
+  created: "tableCreatedHeader",
+  updated: "tableUpdatedHeader",
+  opened: "tableOpenedHeader",
+};
+const SORT_FIELDS = Object.keys(SORT_LABEL_KEYS) as CaseListSort[];
+
+/** A date column header that sorts the list by it — same look as the Audit log's sortable headers:
+ * ⇅ (faint) when another column is sorted, ↓/↑ on the sorted one. A new column starts newest
+ * first; clicking the sorted one again reverses it. */
+function SortableDateHeader({
+  field,
+  sort,
+  onSort,
+}: {
+  field: CaseListSort;
+  sort: { field: CaseListSort; order: CaseListOrder };
+  onSort: (field: CaseListSort) => void;
+}) {
+  const { t } = useTranslation("case-portfolio");
+  const active = sort.field === field;
+  const Icon = !active ? ArrowUpDown : sort.order === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`-mx-1 inline-flex min-w-0 cursor-pointer items-center gap-1.5 justify-self-start rounded px-1 py-0.5 uppercase tracking-[1px] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${active ? "text-foreground" : ""}`}
+    >
+      <span className="truncate">{t(SORT_LABEL_KEYS[field])}</span>
+      <Icon className={`h-3 w-3 shrink-0 ${active ? "" : "opacity-40"}`} aria-hidden="true" />
+      <span className="sr-only">
+        {active ? t(sort.order === "asc" ? "sortedOldestFirst" : "sortedNewestFirst") : t("sortByColumn")}
+      </span>
+    </button>
+  );
+}
 
 // "Sep 24, 2026" (US order), pinned to en-US so the table doesn't shift format with the browser's locale.
 // Built per call, not at module load: the locale follows the tenant (en-GB on the UK site).
@@ -129,6 +170,7 @@ export default function CaseManagerDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<CaseStatus>("ACTIVE");
+  const [sort, setSort] = useState<{ field: CaseListSort; order: CaseListOrder }>({ field: "updated", order: "desc" });
   // Organization view only: every case, or just the ones the user created.
   const [createdByMe, setCreatedByMe] = useState(false);
   const organization = useAuthStore((s) => s.organization);
@@ -173,6 +215,15 @@ export default function CaseManagerDashboard() {
     exitSelectMode();
   };
 
+  // Clicking the sorted column reverses it; any other column starts newest first.
+  const switchSort = (field: CaseListSort) => {
+    setSort((current) =>
+      current.field === field ? { field, order: current.order === "asc" ? "desc" : "asc" } : { field, order: "desc" },
+    );
+    setPage(1);
+    exitSelectMode();
+  };
+
   const openWorkspace = (next: "organization" | "portfolio") => {
     switchWorkspace(next);
     setPage(1);
@@ -197,6 +248,7 @@ export default function CaseManagerDashboard() {
     debouncedSearch,
     statusFilter,
     !inPortfolio && createdByMe ? (currentUserId ?? undefined) : undefined,
+    { sort: sort.field, order: sort.order },
   );
   const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
@@ -459,6 +511,29 @@ export default function CaseManagerDashboard() {
             </div>
           )}
 
+          {/* Mobile only: the stacked cards have no column headers to click (md+ sorts from those). */}
+          <Select value={sort.field} onValueChange={(v) => switchSort(v as CaseListSort)}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SelectTrigger
+                  aria-label={t("sortBy")}
+                  className="md:hidden h-10 w-auto shrink-0 gap-2 rounded-full bg-card px-4 text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+                >
+                  <span className="text-muted-foreground">{t("sortBy")}</span>
+                  <SelectValue />
+                </SelectTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{t("sortBy")}</TooltipContent>
+            </Tooltip>
+            <SelectContent align="end" className="w-auto">
+              {SORT_FIELDS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(SORT_LABEL_KEYS[value])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Grouped with the status toggle as a sibling, not off on its own — both are
            * compact enough to wrap onto the same line together once the (full-width-on-
            * mobile) search box above has taken its own line. The full bulk-action bar below
@@ -570,9 +645,9 @@ export default function CaseManagerDashboard() {
              * the stacked mobile card has no columns to label. */}
             <div className="hidden md:grid md:grid-cols-[minmax(160px,2fr)_104px_104px_104px_108px_44px] lg:grid-cols-[minmax(180px,2fr)_108px_108px_108px_210px_56px] gap-4 md:min-w-[750px] lg:min-w-[900px] pl-4 pr-6 py-3 border-b border-border text-[10px] font-semibold tracking-[1px] uppercase text-muted-foreground">
               <span>{t("tableCaseHeader")}</span>
-              <span className="truncate">{t("tableCreatedHeader")}</span>
-              <span className="truncate">{t("tableUpdatedHeader")}</span>
-              <span className="truncate">{t("tableOpenedHeader")}</span>
+              {SORT_FIELDS.map((field) => (
+                <SortableDateHeader key={field} field={field} sort={sort} onSort={switchSort} />
+              ))}
               <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
               {/* Kept as an empty cell without actions, so the grid columns still line up. */}
               <span className="text-right">{canEdit ? t("tableActionHeader") : null}</span>

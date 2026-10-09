@@ -1,4 +1,8 @@
 {
+  "sortBy": "Sort by",
+  "sortByColumn": "Sort by this column",
+  "sortedNewestFirst": "Newest first — click to reverse",
+  "sortedOldestFirst": "Oldest first — click to reverse",
   "title": "Case Portfolio",
   "managingActiveProceedings": "Managing {{count}} active legal proceedings.",
   "listSubtitle": "Every case opens into its Workspace or straight into the Legal Terminal — same record, two ways in.",
