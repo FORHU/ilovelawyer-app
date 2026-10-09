@@ -55,6 +55,15 @@
     },
     {
       "number": "제5조",
+      "title": "AI Processing and Your Responsibilities",
+      "paragraphs": [
+        "The Platform uses artificial intelligence to analyse the documents and information you upload, answer your questions and help you draft. AI processing is on by default for every account. By agreeing to these Terms and using the Platform, you consent to your content being processed by AI in this way.",
+        "You can switch AI processing off at any time under Profile > Your Data. While it is off, the Platform's AI features, including chat, case analysis and the automatic analysis after an upload, will not work. Switching it off does not delete content already generated.",
+        "You are responsible for the content you upload and for having the right to upload and process it, including the lawfulness of using client and third-party information on the Platform and any duties of confidentiality, privilege and data protection that apply to it. You are responsible for reviewing all AI output before relying on it. To the fullest extent permitted by applicable law, ilovelawyer is not liable for loss arising from your content, your use of AI output, or your failure to meet those duties."
+      ]
+    },
+    {
+      "number": "제6조",
       "title": "계약 해지",
       "paragraphs": [
         "당사는 본 약관 위반 시 사전 통지 없이 플랫폼에 대한 귀하의 접근을 정지하거나 종료할 권리를 보유합니다. 계약 해지는 서비스 기간 중 발생한 미지급 수수료 또는 의무에 대한 귀하의 책임을 면제하지 않습니다.",

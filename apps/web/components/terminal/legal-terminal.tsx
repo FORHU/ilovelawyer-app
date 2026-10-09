@@ -865,9 +865,11 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                       ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[refreshBlockedBy] })
                       : refreshErrorStatus === 409
                       ? t("refreshAnalysisBusy")
-                      : refreshErrorStatus === 403
-                        ? t("refreshAnalysisNoAccess")
-                        : t("genericSaveError")}
+                      : refreshError?.code === "CONSENT_REQUIRED"
+                        ? t("refreshAnalysisNoConsent")
+                        : refreshErrorStatus === 403
+                          ? t("refreshAnalysisNoAccess")
+                          : t("genericSaveError")}
                   </p>
                 ) : null}
                 <div className="mt-4 flex justify-end gap-2">

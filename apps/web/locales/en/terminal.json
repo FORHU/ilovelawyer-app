@@ -40,6 +40,7 @@
   "refreshAnalysisWaitPane": "{{pane}} is regenerating. Refresh analysis is available when it finishes.",
   "refreshAnalysisBusy": "The analysis is already updating. Wait for it to finish.",
   "refreshAnalysisNoAccess": "You need edit access to this case to refresh its analysis.",
+  "refreshAnalysisNoConsent": "AI processing is switched off for your account. Switch it on under Profile > Your Data to refresh the analysis.",
   "updatingAnalysis": "Updating analysis…",
   "preset": "Preset",
   "presetEvidenceCheck": "Evidence Check",
