@@ -107,7 +107,6 @@ export type AiGenerationKind =
   | "damagesExtract"
   | "claimExtract"
   | "citationGrounds"
-  | "adverseSweep"
   | "mindMapExpand"
   | "caseMindMap"
   | "missingEvidence"
