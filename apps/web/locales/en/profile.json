@@ -87,6 +87,21 @@
       "hidePassword": "Hide password",
       "cancel": "Cancel",
       "closeModal": "Close"
+    },
+    "aiProcessing": {
+      "title": "AI processing",
+      "description": "Lets ilovelawyer use AI on your cases and documents, including the automatic analysis after you upload. Switch it off and AI features stop working for you until you switch it back on.",
+      "error": "We couldn't save that. Please try again.",
+      "confirmTitle": "Switch off AI processing?",
+      "confirmDescription": "AI features will stop working for your account:",
+      "confirmChat": "Chat won't reply to new messages.",
+      "confirmCase": "Refresh analysis and every Generate button on your cases will be refused.",
+      "confirmUpload": "Documents you upload won't be analysed automatically.",
+      "confirmUndo": "You can switch it back on here at any time.",
+      "confirmButton": "Switch off",
+      "switchingOff": "Switching off…",
+      "cancel": "Keep it on",
+      "closeModal": "Close"
     }
   },
   "dangerZone": {

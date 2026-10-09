@@ -183,3 +183,37 @@ export function useCancelDeletionMutation() {
     onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }
+
+export type ConsentPurpose = "TERMS_OF_SERVICE" | "AI_PROCESSING" | "ANALYTICS" | "MARKETING"
+
+export interface ConsentState {
+  purpose: ConsentPurpose
+  status: "granted" | "withdrawn" | "not_set"
+}
+
+/** The signed-in user's answer for each consent purpose. */
+export function useConsentsQuery() {
+  const accessToken = useAuthStore((s) => s.accessToken)
+
+  return useQuery({
+    queryKey: userKeys.consents(),
+    queryFn: () => apiFetch<ConsentState[]>("/api/consents"),
+    enabled: !!accessToken,
+  })
+}
+
+/** Grants or withdraws one purpose. The API returns the full updated list. */
+export function useSetConsentMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ purpose, granted }: { purpose: ConsentPurpose; granted: boolean }) =>
+      apiFetch<ConsentState[]>(`/api/consents/${purpose}`, {
+        method: "PUT",
+        body: JSON.stringify({ granted }),
+      }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(userKeys.consents(), updated)
+    },
+  })
+}

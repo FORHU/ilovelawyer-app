@@ -27,6 +27,7 @@
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
+  "sendErrorNoConsent": "AI processing is switched off for your account, so this message wasn't sent. Switch it on under Profile > Your Data to continue.",
   "historyLoadError": "Couldn't load this consultation.",
   "historyLoadRetry": "Try again",
   "thinking": "is thinking",

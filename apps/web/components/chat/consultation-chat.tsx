@@ -1556,7 +1556,10 @@ export default function ConsultationChat({
         setPendingTurn((prev) => {
           if (!prev) return prev;
           const nextMessages = [...prev.messages];
-          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t("sendError") };
+          // The API refuses (403 CONSENT_REQUIRED) before anything is saved when the person has
+          // switched AI processing off — say so, instead of the generic failure.
+          const consentOff = (error as { code?: string } | null)?.code === "CONSENT_REQUIRED";
+          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(consentOff ? "sendErrorNoConsent" : "sendError") };
           return { ...prev, messages: nextMessages };
         });
       }
