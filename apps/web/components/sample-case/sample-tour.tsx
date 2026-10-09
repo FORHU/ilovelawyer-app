@@ -17,12 +17,15 @@ export function SampleTour({
   view,
   onView,
   onTile,
+  onChanges,
   onEnd,
 }: {
   track: SampleTourTrack
   view: SampleView
   onView: (view: SampleView) => void
   onTile: (tile: SampleTile) => void
+  /** Opens or closes the Terminal's "What changed" panel. */
+  onChanges: (open: boolean) => void
   /** Called once, after progress is saved and the closing toast is up. */
   onEnd: () => void
 }) {
@@ -62,10 +65,11 @@ export function SampleTour({
     [index, key, onEnd, save, steps.length, t],
   )
 
-  // Show the step's tab and tile, and save where the user is.
+  // Show the step's tab, tile and "What changed" panel, and save where the user is.
   useEffect(() => {
     if (step.view !== view) onView(step.view)
     if (step.tile) onTile(step.tile)
+    onChanges(!!step.changes)
     save("IN_PROGRESS", index)
     // Only when the step changes — not on every re-render of the page around it.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -28,6 +28,19 @@ export interface SampleRow {
   meter?: number
 }
 
+/** One line of the sample "What changed": the pane it's about and what changed there. */
+export interface SampleChangeLine {
+  pane: PanelId
+  text: string
+}
+
+/** The sample "What changed" history: the latest analysis run (after new documents) and the
+ * editing session a lawyer made the day before it. */
+export interface SampleChanges {
+  run: { time: string; documents: string[]; lines: SampleChangeLine[] }
+  edits: { author: string; time: string; lines: SampleChangeLine[] }
+}
+
 export interface SampleCase {
   title: string
   number: string
@@ -46,6 +59,7 @@ export interface SampleCase {
   brief: { facts: string; issues: string[]; arguments: string[]; relief: string }
   /** What the panes on the sample grid show. */
   panes: Partial<Record<PanelId, SampleRow[]>>
+  changes: SampleChanges
 }
 
 // ── PH: People v. Dela Cruz ─────────────────────────────────────────────────
@@ -191,6 +205,29 @@ const PH_CASE: SampleCase = {
       { title: "Legal interest, 6% a year, 3 Mar to 2 Oct 2026", value: "₱84,032.88" },
       { title: "Total to date", value: "₱2,484,032.88" },
     ],
+  },
+  changes: {
+    run: {
+      time: "9:42 AM",
+      documents: ["Bank-transfer-records.xlsx", "Pre-trial-brief-draft.txt"],
+      lines: [
+        { pane: "command", text: "Overall risk Medium → High" },
+        { pane: "evidence", text: "Bank transfer records now verified" },
+        { pane: "witnesses", text: "Bank officer: credibility 71 → 85" },
+        { pane: "procedure", text: "New key date: pre-trial brief due 7 Oct" },
+        { pane: "redTeam", text: "New: “The Viber screenshots need authenticating”" },
+        { pane: "damages", text: "Legal interest recalculated to 2 Oct 2026" },
+      ],
+    },
+    edits: {
+      author: "Atty. Reyes",
+      time: "4:10–4:25 PM",
+      lines: [
+        { pane: "legalIssues", text: "Re-rated “Demand letter receipt” (Severity Low → Med)" },
+        { pane: "witnesses", text: "Added “Process server”" },
+        { pane: "redTeam", text: "Resolved “The partnership note is undated”" },
+      ],
+    },
   },
 }
 
@@ -341,6 +378,29 @@ const UK_CASE: SampleCase = {
       { title: "Interest, 8% a year under s.69 CCA 1984, 4 Nov 2025 to 2 Oct 2026", value: "£17,464.11" },
       { title: "Total to date", value: "£257,464.11" },
     ],
+  },
+  changes: {
+    run: {
+      time: "9:42 AM",
+      documents: ["Bank-statements.xlsx", "Draft-directions.txt"],
+      lines: [
+        { pane: "command", text: "Overall risk Low → Medium" },
+        { pane: "evidence", text: "Bank statements now verified" },
+        { pane: "witnesses", text: "Council planning officer: credibility 70 → 85" },
+        { pane: "procedure", text: "New key date: budget discussion report due 21 Oct" },
+        { pane: "redTeam", text: "New: “The planning evidence is only a screenshot”" },
+        { pane: "damages", text: "Interest recalculated to 2 Oct 2026" },
+      ],
+    },
+    edits: {
+      author: "James Patel",
+      time: "4:10–4:25 PM",
+      lines: [
+        { pane: "legalIssues", text: "Re-rated “Joint venture or contract” (Severity Low → Med)" },
+        { pane: "witnesses", text: "Added “Site manager”" },
+        { pane: "redTeam", text: "Resolved “The heads of terms are unsigned”" },
+      ],
+    },
   },
 }
 

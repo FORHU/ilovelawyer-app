@@ -232,6 +232,7 @@
     "close": "Close {{pane}}",
     "closeSheet": "Close",
     "emptyPane": "In a real case this pane fills in from your documents.",
+    "changesSample": "A sample history. In your own case, this fills in each time the analysis runs or someone edits a pane.",
     "tour": {
       "skipped": "Tour skipped.",
       "studio": {
@@ -307,6 +308,14 @@
           "redTeam": {
             "title": "Red Team",
             "body": "The strongest case against your position, so nothing in court surprises you."
+          },
+          "whatChanged": {
+            "title": "What changed",
+            "body": "Each time the analysis runs, after a refresh or a new document, a gold dot appears here. Press it to see what moved."
+          },
+          "changeHistory": {
+            "title": "Every run, pane by pane",
+            "body": "What each run changed in every pane, next to the edits your team made by hand. Open jumps straight to the pane."
           },
           "addPane": {
             "title": "21 panes, five groups",

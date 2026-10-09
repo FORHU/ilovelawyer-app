@@ -25,6 +25,7 @@ export function SampleCaseView() {
   const params = useSearchParams()
   const [view, setView] = useState<SampleView>(params.get("view") === "terminal" ? "terminal" : "workspace")
   const [openTile, setOpenTile] = useState<SampleTile | null>(null)
+  const [changesOpen, setChangesOpen] = useState(false)
   const requested = params.get("tour")
   const [tour, setTour] = useState<SampleTourTrack | null>(requested === "studio" || requested === "terminal" ? requested : null)
   const returnPath = safeReturnPath(params.get("from"))
@@ -111,12 +112,14 @@ export function SampleCaseView() {
           {view === "workspace" ? (
             <SampleWorkspace data={data} openTile={openTile} onOpenTile={setOpenTile} onReadOnly={readOnly} />
           ) : (
-            <SampleTerminal data={data} onReadOnly={readOnly} />
+            <SampleTerminal data={data} changesOpen={changesOpen} onChangesOpen={setChangesOpen} onReadOnly={readOnly} />
           )}
         </div>
       </div>
 
-      {activeTour && <SampleTour key={activeTour} track={activeTour} view={view} onView={setView} onTile={setOpenTile} onEnd={endTour} />}
+      {activeTour && (
+        <SampleTour key={activeTour} track={activeTour} view={view} onView={setView} onTile={setOpenTile} onChanges={setChangesOpen} onEnd={endTour} />
+      )}
     </div>
   )
 }
