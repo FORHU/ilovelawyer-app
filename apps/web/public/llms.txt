@@ -28,10 +28,12 @@ ilovelawyer is a software application — not a law firm or legal service provid
 - [ilovelawyer Philippines](https://ph.ilovelawyer.com/): the above, with cited Philippine jurisprudence, a Philippine statutory code library, and full deadline tracking.
 - [ilovelawyer UK](https://uk.ilovelawyer.com/): the above, with cited UK precedent (England and Wales, Scotland, Northern Ireland), live case law/legislation search (TNA Find Case Law, legislation.gov.uk), and provisional CPR deadline tracking (dual-attorney-confirmation gated).
 
+A longer version of this file is at https://ph.ilovelawyer.com/llms-full.txt and https://uk.ilovelawyer.com/llms-full.txt.
+
 ## FAQ
 
 Each site has a FAQ section with answers about what ilovelawyer is, how citations are verified, the Legal Terminal, Case Workspace, firm plans and jurisdiction coverage: https://ph.ilovelawyer.com/#faq and https://uk.ilovelawyer.com/#faq
 
 ## Brand
 
-Also written "I Love Lawyer". Developed by Forhu AI.
+Also written "I Love Lawyer". Developed by Forhu AI (https://forhu.ai/ilovelawyer).

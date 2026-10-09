@@ -17,6 +17,20 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 const SLIDE_KEYS = ["slideOne", "slideTwo", "slideThree"] as const;
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#221f1a]";
 
+// The animated slide headlines below are decoration (they rotate, and only the first slide is in
+// the server HTML), so the page's single <h1> is this fixed, keyword-bearing line instead.
+// Hardcoded rather than routed through i18next for the same reason as TENANT_SEO in app/page.tsx.
+const HERO_H1: Record<TenantCode, { heading: string; lede: string }> = {
+  PH: {
+    heading: "ilovelawyer: AI legal intelligence for Philippine lawyers",
+    lede: "Case management, AI consultation with cited Philippine jurisprudence, and the Legal Terminal.",
+  },
+  UK: {
+    heading: "ilovelawyer UK: AI legal intelligence for lawyers",
+    lede: "Case management, AI consultation with cited UK precedent, and the Legal Terminal.",
+  },
+};
+
 const lineVariants = {
   hidden: { y: "110%", opacity: 0 },
   visible: (i: number) => ({
@@ -90,19 +104,24 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
       <div className="absolute inset-0 bg-gradient-to-b from-black/32 via-black/5 to-black/42" />
       <div className="absolute inset-x-0 bottom-0 h-[180px] bg-gradient-to-t from-[#0b0b0b] to-transparent" />
 
+      <div className="absolute left-6 md:left-16 top-[18%] z-10 max-w-[min(420px,calc(100%-7rem))] text-white">
+        <h1 className="text-sm font-medium leading-[1.35]">{HERO_H1[tenantCode].heading}</h1>
+        <p className="mt-1 text-[13px] leading-[1.4] text-white/80">{HERO_H1[tenantCode].lede}</p>
+      </div>
+
       <div className="relative z-10 w-full px-6 pb-16 pt-24">
         <div className="flex flex-col">
           {reduce ? (
             <div className="flex flex-col">
               {(["line1", "line2"] as const).map((lineKey, i) => (
-                <h1
+                <p
                   key={lineKey}
                   className={`font-display text-white text-[clamp(72px,13.5vw,200px)] font-light leading-[0.95] tracking-[-0.03em] ${
                     i === 0 ? "text-left" : "text-right"
                   }`}
                 >
                   {t(`hero.${SLIDE_KEYS[index]}.${lineKey}`, tCtx)}
-                </h1>
+                </p>
               ))}
             </div>
           ) : (
@@ -112,7 +131,7 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
               <div key={index} className="flex flex-col">
                 {(["line1", "line2"] as const).map((lineKey, i) => (
                   <div key={lineKey} className="overflow-hidden pt-[0.2em] pb-[0.6em] -mt-[0.2em] -mb-[0.6em] text-[clamp(72px,13.5vw,200px)]">
-                    <motion.h1
+                    <motion.p
                       custom={i}
                       initial="hidden"
                       animate="visible"
@@ -123,7 +142,7 @@ export function HeroSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
                       }`}
                     >
                       {t(`hero.${SLIDE_KEYS[index]}.${lineKey}`, tCtx)}
-                    </motion.h1>
+                    </motion.p>
                   </div>
                 ))}
               </div>

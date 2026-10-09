@@ -11,9 +11,16 @@ export const BRAND_ALTERNATE_NAMES = ["I Love Lawyer"]
 // links are the strongest brand-matching signal.
 export const BRAND_SAME_AS: string[] = []
 
+export const DEVELOPER_NAME = "Forhu AI"
+export const DEVELOPER_PAGE_URL = "https://forhu.ai/ilovelawyer"
+
+// Same @id as the Organization on forhu.ai (which lists ilovelawyer's ph. and uk. sites as
+// brands), so the relationship is stated from both sides.
 const DEVELOPER = {
   "@type": "Organization",
-  name: "Forhu AI",
+  "@id": "https://forhu.ai/#organization",
+  name: DEVELOPER_NAME,
+  url: "https://forhu.ai",
   sameAs: ["https://www.instagram.com/forhu_ai/"],
 }
 
