@@ -71,6 +71,7 @@
     "attachedDossiers": "Attached Documents ({{count}}):",
     "retryUpload": "Retry uploading {{fileName}}",
     "removeFile": "Remove {{fileName}}",
+    "removeAll": "Remove all",
     "uploadFailed": "Upload failed."
   },
   "submitting": "Submitting…",

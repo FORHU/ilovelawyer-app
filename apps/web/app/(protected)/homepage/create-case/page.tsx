@@ -385,6 +385,10 @@ function CreateCasePageContent() {
     }));
   };
 
+  const removeAllFiles = () => {
+    setFormData((prev) => ({ ...prev, uploadedFiles: [] }));
+  };
+
   // Only reachable once a submit attempt has already run (that's the only way a file can be
   // in "error" state), so createdCaseId is guaranteed to be set here.
   const retryUpload = (id: string) => {
@@ -920,9 +924,21 @@ function CreateCasePageContent() {
 
                   {formData.uploadedFiles.length > 0 && (
                     <div className="flex flex-col gap-2 shrink-0">
-                      <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                        {t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          {t("sectionEvidence.attachedDossiers", { count: formData.uploadedFiles.length })}
+                        </span>
+                        {/* Disabled mid-upload: a file being uploaded right now would still land on the
+                            case after being cleared from this list. */}
+                        <button
+                          type="button"
+                          onClick={removeAllFiles}
+                          disabled={hasFilesUploading}
+                          className="rounded px-1 text-[11px] font-medium text-muted-foreground hover:text-red-600 dark:hover:text-red-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          {t("sectionEvidence.removeAll")}
+                        </button>
+                      </div>
 
                       {/* Bounded + scrollable instead of growing the page forever — a handful of
                           files fit with no scrollbar at all, more than that scrolls within this box.

@@ -40,6 +40,7 @@
     "attachedDossiers": "Mga Nakalakip na Dokumento ({{count}}):",
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
     "removeFile": "Alisin ang {{fileName}}",
+    "removeAll": "Alisin lahat",
     "uploadFailed": "Nabigo ang pag-upload."
   },
   "submitting": "Isinusumite…",

@@ -40,6 +40,7 @@
     "attachedDossiers": "첨부된 자료 ({{count}}개):",
     "retryUpload": "{{fileName}} 업로드 재시도",
     "removeFile": "{{fileName}} 삭제",
+    "removeAll": "모두 삭제",
     "uploadFailed": "업로드에 실패했습니다."
   },
   "submitting": "제출 중…",
