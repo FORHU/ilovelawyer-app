@@ -8,6 +8,7 @@ import { MobileDrawer } from "@/components/mobile-drawer"
 import { PANEL_TITLES } from "@/components/terminal/legal-terminal"
 import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY, type PaneCategory } from "@/components/terminal/terminal-pane-categories"
 import { useConsultationsQuery } from "@/lib/chat/mutations"
+import { useCaseSnapshotQuery } from "@/lib/terminal/mutations"
 import { useTraceTurnsQuery } from "@/lib/terminal/trace-queries"
 import type { PanelCatalogEntry, PanelId } from "@/lib/terminal/types"
 
@@ -67,13 +68,25 @@ export default function TerminalSettingsSidebar({
   const consultations = useConsultationsQuery(caseId)
   const traceTurns = useTraceTurnsQuery(caseId)
   const messageCount = consultations.data?.reduce((sum, c) => sum + (c.messageCount ?? 0), 0)
+  const snapshot = useCaseSnapshotQuery(caseId).data
   const panelBadges = useMemo((): Partial<Record<PanelId, string>> => {
     const badges = { ...snapshotBadges }
     if (messageCount !== undefined && messageCount > 0) badges.chat = t("badgeMessages", { count: messageCount })
     if (traceTurns.data?.length) badges.trace = t("badgeRuns", { count: traceTurns.data.length })
+    // computePanelBadges is shared with the canvas windows and only counts one metric per pane, so
+    // a pane with content it doesn't count (all to-dos done, deadlines only, an event chain with no
+    // narrative, no parties but a timeline) read "Empty" here. Fill those gaps for the library only.
+    if (snapshot) {
+      const found = (n: number) => (n > 0 ? t("badgeFound", { count: n }) : undefined)
+      badges.procedure ??= found(snapshot.procedure.items.length + snapshot.procedure.deadlines.length)
+      badges.command ??= found(snapshot.timeline.length + snapshot.risks.length + snapshot.dates.length)
+      badges.evidence ??= found(snapshot.evidence.matrix.length)
+      badges.law ??= found(snapshot.law.authorities.length)
+      if (snapshot.reconstructionEvents?.events.length) badges.caseReconstruction ??= t("badgeReady")
+    }
     return badges
-  }, [snapshotBadges, messageCount, traceTurns.data, t])
-  const settled = (id: PanelId) => (id === "chat" ? !consultations.isPending : id === "trace" ? !traceTurns.isPending : true)
+  }, [snapshotBadges, messageCount, traceTurns.data, snapshot, t])
+  const settled = (id: PanelId) => (id === "chat" ? !consultations.isPending : id === "trace" ? !traceTurns.isPending : !!snapshot)
   const [query, setQuery] = useState("")
   const [showEmpty, setShowEmpty] = useState(false)
   // Set by a collapsed-rail category icon; collapsing the sidebar clears it so the toggle button

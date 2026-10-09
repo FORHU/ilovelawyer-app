@@ -55,6 +55,15 @@
     },
     {
       "number": "Seksyon 05",
+      "title": "AI Processing and Your Responsibilities",
+      "paragraphs": [
+        "The Platform uses artificial intelligence to analyse the documents and information you upload, answer your questions and help you draft. AI processing is on by default for every account. By agreeing to these Terms and using the Platform, you consent to your content being processed by AI in this way.",
+        "You can switch AI processing off at any time under Profile > Your Data. While it is off, the Platform's AI features, including chat, case analysis and the automatic analysis after an upload, will not work. Switching it off does not delete content already generated.",
+        "You are responsible for the content you upload and for having the right to upload and process it, including the lawfulness of using client and third-party information on the Platform and any duties of confidentiality, privilege and data protection that apply to it. You are responsible for reviewing all AI output before relying on it. To the fullest extent permitted by applicable law, ilovelawyer is not liable for loss arising from your content, your use of AI output, or your failure to meet those duties."
+      ]
+    },
+    {
+      "number": "Seksyon 06",
       "title": "Pagwawakas",
       "paragraphs": [
         "Nakalaan sa amin ang karapatang suspindihin o wakasan ang iyong access sa Platform nang walang paunang abiso para sa anumang paglabag sa mga Tuntuning ito. Hindi napapawalang-bisa ng pagwawakas ang iyong pananagutan para sa mga natitirang bayarin o obligasyong naipon sa panahon ng serbisyo.",

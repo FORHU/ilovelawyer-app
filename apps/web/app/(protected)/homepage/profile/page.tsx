@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { AtSign, CalendarDays, Camera, Check, Clock, Download, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Trash2, User } from "lucide-react";
+import { AtSign, CalendarDays, Camera, Check, Clock, Download, KeyRound, LogOut, Mail, Pencil, ShieldCheck, Sparkles, Trash2, User } from "lucide-react";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 import { PageShell } from "@/components/page-shell";
@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import DeleteAccountModal from "@/components/account/delete-account-modal";
 import ChangePasswordModal from "@/components/account/change-password-modal";
 import ExportDataModal from "@/components/account/export-data-modal";
+import SwitchOffAiModal from "@/components/account/switch-off-ai-modal";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import {
@@ -22,6 +23,8 @@ import {
   useCurrentUserQuery,
   useDeleteAccountMutation,
   useExportMyDataMutation,
+  useConsentsQuery,
+  useSetConsentMutation,
   useUpdateCurrentUserMutation,
 } from "@/lib/user/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -150,6 +153,10 @@ export default function ProfilePage() {
   const updateUsername = useUpdateCurrentUserMutation();
   const deleteAccount = useDeleteAccountMutation();
   const exportMyData = useExportMyDataMutation();
+  const consents = useConsentsQuery();
+  const setConsent = useSetConsentMutation();
+  // Nothing answered counts as allowed for AI processing (the API's rule too).
+  const aiProcessingOn = consents.data?.find((c) => c.purpose === "AI_PROCESSING")?.status !== "withdrawn";
   const cancelDeletion = useCancelDeletionMutation();
   const changePassword = useChangePasswordMutation();
   const uploadAvatar = useUploadAvatarMutation();
@@ -218,6 +225,7 @@ export default function ProfilePage() {
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [passwordJustChanged, setPasswordJustChanged] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSwitchOffAiOpen, setIsSwitchOffAiOpen] = useState(false);
   const [dataDownloadStarted, setDataDownloadStarted] = useState(false);
 
   const deletionRequestedAt = currentUser?.deletionRequestedAt ?? null;
@@ -769,6 +777,38 @@ export default function ProfilePage() {
                 </Tooltip>
               </div>
             </div>
+
+            <div className="px-6 md:px-8 py-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex flex-1 min-w-[16rem] gap-4 items-center">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/5 text-primary">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-[16px]">{t("yourData.aiProcessing.title")}</p>
+                  <p className="text-muted-foreground text-[14px]">{t("yourData.aiProcessing.description")}</p>
+                  {setConsent.isError && (
+                    <p className="text-[13px] text-red-600 mt-1" role="alert">{t("yourData.aiProcessing.error")}</p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={aiProcessingOn}
+                aria-label={t("yourData.aiProcessing.title")}
+                disabled={consents.isLoading || setConsent.isPending}
+                onClick={() => {
+                  // Switching off asks first; switching back on needs no warning.
+                  if (aiProcessingOn) setIsSwitchOffAiOpen(true);
+                  else setConsent.mutate({ purpose: "AI_PROCESSING", granted: true });
+                }}
+                className={`cursor-pointer relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40 focus-visible:ring-offset-2 ${aiProcessingOn ? "bg-brand-gold" : "bg-muted-foreground/30"}`}
+              >
+                <span
+                  className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-background dark:bg-foreground shadow transition-transform ${aiProcessingOn ? "translate-x-[22px]" : "translate-x-0.5"}`}
+                />
+              </button>
+            </div>
           </div>
         </section>
           </>
@@ -861,6 +901,22 @@ export default function ProfilePage() {
         />
       )}
 
+      {isSwitchOffAiOpen && (
+        <SwitchOffAiModal
+          isPending={setConsent.isPending}
+          error={setConsent.isError ? t("yourData.aiProcessing.error") : null}
+          onConfirm={() =>
+            setConsent.mutate(
+              { purpose: "AI_PROCESSING", granted: false },
+              { onSuccess: () => setIsSwitchOffAiOpen(false) },
+            )
+          }
+          onClose={() => {
+            setConsent.reset();
+            setIsSwitchOffAiOpen(false);
+          }}
+        />
+      )}
       {isExportModalOpen && (
         <ExportDataModal
           isPending={exportMyData.isPending}

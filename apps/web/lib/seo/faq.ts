@@ -62,6 +62,27 @@ const SHARED: FaqItem[] = [
       "Yes. ilovelawyer offers multi-user firm accounts on Solo, Professional and Enterprise plans, with role-based invites for Owners, Admins and Members.",
   },
   {
+    question: "Which countries and jurisdictions does ilovelawyer cover?",
+    answer:
+      "ilovelawyer currently serves the Philippines and the United Kingdom, as separate jurisdiction-specific sites: ph.ilovelawyer.com and uk.ilovelawyer.com.",
+    detail: "The UK site covers England and Wales, Scotland and Northern Ireland.",
+  },
+  {
+    question: "Can ilovelawyer find contradictions in my case documents?",
+    answer:
+      "Yes. ilovelawyer's contradiction scan flags inconsistencies across a case's documents and testimony.",
+  },
+  {
+    question: "Can ilovelawyer generate a case brief?",
+    answer:
+      "Yes. The ilovelawyer Case Workspace can generate a downloadable Word or PDF Case Brief from the case's current snapshot.",
+  },
+  {
+    question: "Does ilovelawyer include transcription and a case calendar?",
+    answer:
+      "Yes. ilovelawyer includes document management, transcription, and deadline and calendar tracking tied to each case.",
+  },
+  {
     question: "Is ilovelawyer the same as “I Love Lawyers” merchandise or a lawyer community?",
     answer:
       "No. ilovelawyer is legal software for case management, cited AI research and litigation analysis — it is not an apparel brand, social account or networking group.",

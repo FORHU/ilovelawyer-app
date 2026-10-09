@@ -1,0 +1,61 @@
+# ilovelawyer (full reference)
+
+> AI legal intelligence platform for lawyers: case management, AI consultation with cited case law, and a Legal Terminal. Developed by Forhu AI (https://forhu.ai/ilovelawyer).
+
+ilovelawyer (also written "I Love Lawyer") is a software application — not a law firm or legal service provider. It does not give legal advice or provide legal services to the public. Its output is a research and drafting aid and should be reviewed by a qualified lawyer before it is relied on. It is used by legal professionals to manage cases, research case law, and consult an AI assistant grounded in verified, citation-checked sources.
+
+This is the long form of https://ph.ilovelawyer.com/llms.txt and https://uk.ilovelawyer.com/llms.txt.
+
+## Sites
+
+- ilovelawyer Philippines — https://ph.ilovelawyer.com/ — cited Philippine jurisprudence, a Philippine statutory code library, and full deadline tracking.
+- ilovelawyer UK — https://uk.ilovelawyer.com/ — cited UK precedent (England and Wales, Scotland, Northern Ireland), live case law and legislation search (TNA Find Case Law, legislation.gov.uk), and provisional CPR deadline tracking that is not treated as final until two attorneys have confirmed it.
+
+The two sites are separate and jurisdiction-specific.
+
+## AI legal consultation
+
+Ask a question and get a cited answer streamed in as it is written, with related case law listed alongside it: title, citation, source link, excerpt, and a vetted or unvetted marker. Attach a document and the assistant searches inside it.
+
+## Citation verification
+
+Every authority the assistant quotes is checked against a real source document before it is shown, which reduces hallucinated citations. A contradiction scan flags inconsistencies across a case's documents and testimony.
+
+## Case Workspace
+
+A per-case screen combining Sources, Chat and Studio in one view. Documents added to a case become Sources that the chat and Studio draw on. Studio generates artifacts on demand from the case's chat and documents:
+
+- Mind Map — a visual map of the case's issues, claims and relationships.
+- Timeline — a chronological view of case events and key dates.
+- Data Table — a structured table of facts extracted from case materials.
+- Audio Overview — two AI hosts discuss the case aloud.
+- Case Brief — a downloadable Word or PDF brief generated from the case's current snapshot.
+
+## Legal Terminal
+
+A configurable litigation cockpit: arrange panes of case intelligence, drag and resize them freely, save the layout, and reload it on any machine. Panes include:
+
+- Red Team — surfaces the argument the opposing side will likely make against a given position.
+- Case Reconstruction — separates client, court and opposing narratives of the same case.
+- Decisions — tracks conclusions the AI has reached, the rule applied, and the evidence for and against each.
+- Visual Strategy Map, Mind Map, Timeline, and others.
+
+## Research library
+
+Searchable case law and statutory or legislative sources, with citation checking so every quoted authority is verified against a real source document.
+
+## Case files, transcription and calendar
+
+Document management, transcription, and deadline and calendar tracking, tied to each case.
+
+## Firms and teams
+
+Multi-user firm accounts on Solo, Professional and Enterprise plans, with role-based invites for Owners, Admins and Members.
+
+## Naming
+
+The product name is "ilovelawyer". "I Love Lawyer" is an alternate spelling. It is not an apparel brand, social account or networking group.
+
+## Developer
+
+Developed by Forhu AI — https://forhu.ai/ilovelawyer

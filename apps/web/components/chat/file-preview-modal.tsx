@@ -10,26 +10,34 @@ import type { MessageAttachment } from "@/components/chat/message-attachments";
 interface FilePreviewModalProps {
   attachment: MessageAttachment;
   onClose: () => void;
+  /** z-index class for the backdrop. Defaults to the global modal layer; the Terminal passes
+   * z-(--z-canvas-overlay) so the viewer clears a maximized pane (z-[90]) and Free-canvas panes. */
+  layerClassName?: string;
 }
 
 /** Modal chrome (backdrop, title bar, Escape-to-close) around AttachmentPreview — used for the
  * chat attachment-chip preview. Studio's inline Documents preview (DocumentFolderBrowser) embeds
  * AttachmentPreview directly instead, with its own back-navigation header, since a full-viewport
  * overlay doesn't make sense inside a docked sidebar. */
-export default function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps) {
+export default function FilePreviewModal({ attachment, onClose, layerClassName = "z-(--z-modal)" }: FilePreviewModalProps) {
   const { t } = useTranslation("homepage");
 
   useEffect(() => {
+    // Capture phase + stopPropagation: this is the topmost layer, so Escape is ours. Otherwise
+    // focus is often still on the trigger inside an underlying overlay (e.g. a maximized
+    // Terminal pane), whose own Escape handler would close *it* and leave this preview open.
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      onClose();
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-(--z-modal) flex items-center justify-center bg-black/50 px-4 py-8"
+      className={`fixed inset-0 ${layerClassName} flex items-center justify-center bg-black/50 px-4 py-8`}
       onClick={onClose}
       role="presentation"
     >
@@ -59,7 +67,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </TooltipTrigger>
-                <TooltipContent>{t("attachment.openInNewTab")}</TooltipContent>
+                <TooltipContent className={layerClassName}>{t("attachment.openInNewTab")}</TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
@@ -73,7 +81,7 @@ export default function FilePreviewModal({ attachment, onClose }: FilePreviewMod
                   <X className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{t("attachment.closePreview")}</TooltipContent>
+              <TooltipContent className={layerClassName}>{t("attachment.closePreview")}</TooltipContent>
             </Tooltip>
           </div>
         </div>
