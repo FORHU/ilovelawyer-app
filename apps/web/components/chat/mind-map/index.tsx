@@ -182,7 +182,13 @@ function MindMapInner({ rootTitle = "Case Analysis", data, consultationId, isSta
     setIsLayoutMenuOpen(false);
   }, [data]);
 
+  // Folding or unfolding a node re-lays out the map, so an open details card would float over
+  // a node that has moved (or is now hidden) — close it. No refit, unlike handleCloseDetails:
+  // the user is working on this part of the map, so the view stays where it is.
   const handleToggleCollapse = useCallback((id: string) => {
+    setSelectedNodeId(null);
+    setSelected3DNodeData(null);
+    setPlayingAudio(null);
     setCollapsedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
