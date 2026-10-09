@@ -42,6 +42,9 @@
     "leaveButton": "Umalis sa Organisasyon",
     "leaveCancel": "Kanselahin",
     "leaveConfirm": "Sigurado ka bang gusto mong umalis sa organisasyong ito? Kokopyahin sa portfolio mo ang mga kasong ginawa mo rito; mananatili sa organisasyon ang mga orihinal.",
+    "leaveLastMemberConfirm": "Ikaw na lang ang miyembro ng organisasyong ito. Kapag umalis ka, ia-archive ito at permanenteng buburahin pagkalipas ng 30 araw. Hindi na gagana ang mga nakabinbing imbitasyon. Kokopyahin sa portfolio mo ang mga kasong ginawa mo rito. Para maibalik ang organisasyon sa loob ng 30 araw, makipag-ugnayan sa support.",
+    "leaveAndArchive": "Umalis at I-archive",
+    "leaveAndArchiveTooltip": "Umalis, i-archive ang organisasyong ito at burahin ito pagkalipas ng 30 araw",
     "leaving": "Umaalis…",
     "transferPrompt": "Ikaw ang may-ari. Pumili ng bagong may-ari bago ka umalis.",
     "transferSelectPlaceholder": "Pumili ng miyembro…",
@@ -93,6 +96,7 @@
     "switchOwnerBlocked": "Ikaw lang ang may-ari ng \"{{currentOrgName}}\". Gawing may-ari ang ibang miyembro bago ka tumanggap.",
     "switchAccept": "Umalis at Sumali",
     "switchConfirm": "Aalis sa \"{{currentOrgName}}\" at sasali sa \"{{orgName}}\"? Kokopyahin sa portfolio mo ang mga kasong ginawa mo sa \"{{currentOrgName}}\"; mananatili roon ang mga orihinal.",
+    "switchLastMemberConfirm": "Ikaw na lang ang miyembro ng \"{{currentOrgName}}\". Kapag sumali ka sa \"{{orgName}}\", ia-archive ito at permanenteng buburahin pagkalipas ng 30 araw. Hindi na gagana ang mga nakabinbing imbitasyon dito. Kokopyahin sa portfolio mo ang mga kasong ginawa mo roon. Para maibalik ito sa loob ng 30 araw, makipag-ugnayan sa support.",
     "switchTitle": "Lumipat ng Organisasyon",
     "switchCancelTooltip": "Manatili sa \"{{currentOrgName}}\" at isara ang dialog na ito",
     "switchConfirmTooltip": "Umalis sa \"{{currentOrgName}}\" at sumali sa \"{{orgName}}\""
