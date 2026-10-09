@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import EditCaseModal from "@/components/cases/edit-case-modal";
+import { flattenNotes } from "@/lib/cases/notes";
 import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
@@ -139,6 +140,17 @@ const noSubscription = () => () => {};
 
 const formatCaseDate = (iso: string) =>
   new Intl.DateTimeFormat(dateLocale(), { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
+
+/** A case's notes as one truncated line under the parties; nothing when there are none. */
+function CaseNotesLine({ notes }: { notes: string | null }) {
+  const line = flattenNotes(notes)
+  if (!line) return null
+  return (
+    <span className="text-muted-foreground/80 text-[12px] truncate" title={notes ?? undefined}>
+      {line}
+    </span>
+  )
+}
 
 // Mirrors the real row grid below (name/parties, created/updated/opened dates, open-in links,
 // action menu) so the swap from skeleton to real rows doesn't jump layout.
@@ -740,6 +752,7 @@ export default function CaseManagerDashboard() {
                         <span className="text-muted-foreground text-[12px] truncate">
                           {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
                         </span>
+                        <CaseNotesLine notes={c.notes} />
                         <CaseOrigin caseRecord={c} />
                       </div>
                     </div>
@@ -752,6 +765,7 @@ export default function CaseManagerDashboard() {
                       <span className="text-muted-foreground text-[12px] truncate">
                         {c.parties.length > 0 ? c.parties.map((p) => p.name).join(" · ") : t("noPartyListed")}
                       </span>
+                      <CaseNotesLine notes={c.notes} />
                       <CaseOrigin caseRecord={c} />
                     </Link>
                   )}
