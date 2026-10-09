@@ -423,6 +423,7 @@
   "regenerateWhileAnalysis": "The case analysis is updating this pane.",
   "regenerateBusy": "This pane is already updating. Try again when it finishes.",
   "regenerateNoAccess": "You need edit access to this case to regenerate it.",
+  "viewOnlyConfidential": "You have view-only access to this confidential case.",
   "regenerateNothingYet": "Nothing to build from yet. Add documents so the analysis can run first.",
   "regenerateFailed": "Couldn't regenerate this pane. Try again.",
   "regenerateStrategyHint": "Regenerate the plan, to-dos and timeline dates. The timeline in Evidence & Timeline updates too.",

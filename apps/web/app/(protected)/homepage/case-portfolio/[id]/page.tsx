@@ -28,7 +28,7 @@ import { AUTO_AUDIO_OVERVIEW_PROMPT, AUTO_MINDMAP_PROMPT } from "@/lib/chat/auto
 import { DRAFT_CONSULTATION_PARAM } from "@/lib/chat/consultation-param";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { useCanEditCase } from "@/lib/cases/permissions";
+import { useCanContributeToCase, useCanEditCase } from "@/lib/cases/permissions";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
@@ -412,6 +412,8 @@ function OverviewTab({
   const { data: snapshot, isLoading: isSnapshotLoading } = useCaseSnapshotQuery(id);
   const { data: documents, isLoading: isDocsLoading } = useCaseDocumentsQuery(id);
   const { data: consultations, isLoading: isConsultationsLoading } = useConsultationsQuery(id);
+  // A view-only person on a confidential case can read its consultations but not start one.
+  const canStartConsultation = useCanContributeToCase(id);
   const parties = useOverviewParties(caseRecord);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
@@ -591,6 +593,7 @@ function OverviewTab({
             <div className="flex items-center gap-4">
               {/* Opens the Case's draft Consultation in the Workspace (`?c=new`) — nothing is
                * saved until its first message. */}
+              {canStartConsultation && (
               <button
                 type="button"
                 onClick={() => onOpenConsultation(DRAFT_CONSULTATION_PARAM)}
@@ -599,6 +602,7 @@ function OverviewTab({
                 <Plus className="h-3 w-3" aria-hidden="true" />
                 {t("overview.newConsultation")}
               </button>
+              )}
               <button
                 type="button"
                 onClick={onOpenWorkspace}

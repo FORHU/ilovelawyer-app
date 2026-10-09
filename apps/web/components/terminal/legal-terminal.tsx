@@ -1,5 +1,6 @@
 "use client"
 
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useHasAudioOverview } from "@/lib/chat/use-audio-overview"
 import {
   useEffect,
@@ -162,6 +163,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   const damagesJob = useAiJobStatus(caseId, "damagesExtract")
   const analysisRunning = shouldShowUpdatingAnalysis(refreshJob.data?.status, damagesJob.data?.status)
   const refreshAnalysis = useRefreshAnalysisMutation(caseId)
+  // A view-only person on a confidential case can't re-run the analysis (it takes edit access).
+  const viewOnly = !useCanContributeToCase(caseId)
   // What the last analysis (or a pane's Regenerate) changed — opens by itself for a new one, and
   // from the case row's "What changed" button.
   const changeSummary = useChangeSummaryModal(caseId, snapshot.data?.latestChangeSummary, analysisRunning)
@@ -795,9 +798,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                   refreshAnalysis.reset()
                   setConfirmRefreshOpen(true)
                 }}
-                disabled={!!runningPane}
-                title={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : undefined}
-                aria-label={runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : t("refresh")}
+                disabled={!!runningPane || viewOnly}
+                title={viewOnly ? t("viewOnlyConfidential") : runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : undefined}
+                aria-label={viewOnly ? t("viewOnlyConfidential") : runningPane ? t("refreshAnalysisWaitPane", { pane: PANEL_TITLES[runningPane] }) : t("refresh")}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted px-3 text-[10px] font-semibold uppercase tracking-[1px] text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-overlay-hover"
               >
                 <RefreshCw className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />

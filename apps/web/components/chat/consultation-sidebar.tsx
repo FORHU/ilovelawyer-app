@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, History, Image as ImageIcon, PanelLeft, PanelLeftClose, X, Pencil, Archive, Check, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { useConsultationsQuery, useRenameConsultationMutation } from "@/lib/chat/mutations";
 import { ArchivedConsultationsButton, useArchiveConsultation } from "@/components/chat/archived-consultations";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -44,6 +45,9 @@ export default function ConsultationSidebar({
   const organization = useAuthStore((s) => s.organization);
   const sendingConsultationIds = useSendingConsultationsStore((s) => s.sendingConsultationIds);
   const renameConsultation = useRenameConsultationMutation();
+  // A view-only person on a confidential case can open its consultations but not start, rename
+  // or archive one — their own included.
+  const readOnly = !useCanContributeToCase(caseId);
   const { requestArchive, archiveDialog, archivingId } = useArchiveConsultation();
   const asideRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -93,7 +97,7 @@ export default function ConsultationSidebar({
       {/* Desktop/tablet rail only — mobile has its own "new chat" pencil in the sticky
           header's kebab row (consultation-chat.tsx), reachable without opening this drawer
           first, so this would just be a redundant second way to do the same thing here. */}
-      {!isMobile && (
+      {!isMobile && !readOnly && (
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -227,6 +231,7 @@ export default function ConsultationSidebar({
 
                   {/* Revealed on hover/focus so the row stays clean the rest of the time;
                       always shown on mobile, where there's no hover state to reveal them. */}
+                  {!readOnly && (
                   <div
                     className={`flex items-center gap-0.5 pr-1.5 shrink-0 ${
                       isMobile ? "" : "opacity-0 group-hover/row:opacity-100 focus-within:opacity-100"
@@ -271,6 +276,7 @@ export default function ConsultationSidebar({
                       </TooltipContent>
                     </Tooltip>
                   </div>
+                  )}
                 </div>
               );
             })}

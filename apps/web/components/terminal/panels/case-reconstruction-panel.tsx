@@ -5,6 +5,7 @@ import { AlertTriangle, Check, ChevronRight, Copy, FileText, Loader2, Pencil, Qu
 import gsap from "gsap"
 import { useGSAP } from "@gsap/react"
 import { Badge } from "@workspace/ui/components/badge"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import AttributedMarkdown, { AttributedTextLegend, type ClaimCategory } from "@/components/shared/attributed-text"
 import {
@@ -442,6 +443,8 @@ function ScenesView({
   const scenes = reconstruction?.scenes ?? null
 
   const generateScenes = useGenerateReconstructionScenesMutation(caseId)
+  // Generating takes edit access — disabled for a view-only person on a confidential case.
+  const viewOnly = !useCanContributeToCase(caseId)
   const scenesJob = useAiJobStatus(caseId, "caseReconstructionScenes")
   const isGeneratingScenes =
     generateScenes.isPending || scenesJob.data?.status === "IN_PROGRESS"
@@ -467,7 +470,8 @@ function ScenesView({
         <button
           type="button"
           onClick={() => generateScenes.mutate()}
-          disabled={isGeneratingScenes}
+          disabled={isGeneratingScenes || viewOnly}
+          title={viewOnly ? t("viewOnlyConfidential") : undefined}
           className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
         >
           {isGeneratingScenes ? (
@@ -683,6 +687,8 @@ function EventsView({
   const docNameById = new Map(documents.map((d) => [d.id, d.name]))
 
   const generateEvents = useGenerateReconstructionEventsMutation(caseId)
+  // Generating takes edit access — disabled for a view-only person on a confidential case.
+  const viewOnly = !useCanContributeToCase(caseId)
   const eventsJob = useAiJobStatus(caseId, "caseReconstructionEvents")
   const isGenerating = generateEvents.isPending || eventsJob.data?.status === "IN_PROGRESS"
 
@@ -718,7 +724,8 @@ function EventsView({
         <button
           type="button"
           onClick={() => generateEvents.mutate()}
-          disabled={isGenerating}
+          disabled={isGenerating || viewOnly}
+          title={viewOnly ? t("viewOnlyConfidential") : undefined}
           className={`inline-flex items-center gap-1.5 ${ghostBtnClass}`}
         >
           {isGenerating ? (

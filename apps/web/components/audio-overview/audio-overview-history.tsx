@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ChevronDown, Download, History, Loader2, Pause, Play, XCircle } from "lucide-react"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useAudioOverviewHistoryQuery, useRecordAudioOverviewMutation, type AudioOverviewHistoryEntry } from "@/lib/terminal/mutations"
 import { triggerBriefDownload } from "@/lib/terminal/download-brief"
 import { AudioOverviewTurns } from "@/components/audio-overview/audio-overview-turns"
@@ -166,6 +167,8 @@ function HistoryEntry({
   const { t } = useTranslation("case-portfolio")
   // The case route, not the chat one: an overview the case analysis wrote has no consultation.
   const renderAudio = useRecordAudioOverviewMutation(caseId)
+  // Recording takes edit access — a view-only person on a confidential case gets no button.
+  const canRecord = useCanContributeToCase(caseId)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   // Reactive twin of audioRef, so the waveform binds on the render after the <audio> mounts.
@@ -292,7 +295,7 @@ function HistoryEntry({
           ) : (
             <div className={`flex items-center gap-2 pt-2 text-xs ${state === "failed" ? "text-danger" : "text-muted-foreground"}`}>
               <span className="min-w-0 flex-1">{note}</span>
-              {(state === "failed" || state === "scriptOnly") && (
+              {(state === "failed" || state === "scriptOnly") && canRecord && (
                 <button
                   type="button"
                   onClick={render}

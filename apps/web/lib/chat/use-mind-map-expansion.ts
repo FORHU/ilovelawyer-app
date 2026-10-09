@@ -18,6 +18,7 @@ import { caseKeys, chatKeys } from "@/lib/query-keys";
 import { mindMapNodeKey, useExpandingMindMapNodesStore } from "@/lib/store/expanding-mind-map-nodes.store";
 import type { MindMapEditRequest, MindMapExpansion } from "@/components/chat/mind-map/types";
 import { MIND_MAP_LIMITS } from "@/components/chat/mind-map/constants";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 
 /** Which map "Expand with AI" acts on: a consultation's chat map (addressed by the message that
  * carries it) or the case's document-built map. */
@@ -31,7 +32,9 @@ export type MindMapExpansionTarget =
  * survives remounts), and swapping the new tree into the right cache.
  *
  * `disabledReason` is set while something is about to replace this map (a chat reply generating,
- * a rebuild running) — expanding is refused then, with that as the hint, same as Regenerate.
+ * a rebuild running) — expanding is refused then, with that as the hint, same as Regenerate. The
+ * case map is also read-only for a view-only person on a confidential case (useCanContributeToCase),
+ * which takes precedence as the reason.
  */
 export function useMindMapExpansion(
   target: MindMapExpansionTarget | undefined,
@@ -42,6 +45,8 @@ export function useMindMapExpansion(
   const expandingKeys = useExpandingMindMapNodesStore((s) => s.expandingKeys);
   const start = useExpandingMindMapNodesStore((s) => s.start);
   const stop = useExpandingMindMapNodesStore((s) => s.stop);
+  const canContribute = useCanContributeToCase(target?.kind === "case" ? target.caseId : undefined);
+  const disabledReason = !canContribute ? t("caseMindMap.viewOnly") : opts.disabledReason;
 
   // Store keys are scoped per map, so a chat map and the case map can't share a node's spinner.
   const scope = target ? (target.kind === "consultation" ? target.consultationId : `case:${target.caseId}`) : undefined;
@@ -165,7 +170,7 @@ export function useMindMapExpansion(
       : target.expandedCount
     : 0;
   return useMemo(
-    () => (target ? { expand, edit, expandingNodeIds, disabledReason: opts.disabledReason, expandedCount } : undefined),
-    [target, expand, edit, expandingNodeIds, opts.disabledReason, expandedCount],
+    () => (target ? { expand, edit, expandingNodeIds, disabledReason, expandedCount } : undefined),
+    [target, expand, edit, expandingNodeIds, disabledReason, expandedCount],
   );
 }

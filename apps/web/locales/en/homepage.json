@@ -5,6 +5,7 @@
     "summarizeDocumentPrompt": "Summarize \"{{fileName}}\""
   },
   "input": {
+    "viewOnlyConfidential": "Read-only: you have view-only access to this confidential case.",
     "placeholder": "Draft your legal inquiry or case particulars here...",
     "attachFile": "Attach file",
     "viewCaseFiles": "View case files",

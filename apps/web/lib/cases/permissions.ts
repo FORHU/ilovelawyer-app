@@ -33,3 +33,13 @@ export function useCanEditCase(caseId: string | undefined): boolean {
   const { data } = useCaseAccessQuery(caseId)
   return data ? data.canEdit : byRole
 }
+
+/** Whether the user can add to or change this case's material — upload a document, add a
+ * transcription, regenerate or edit the case mind map. Mirrors the API's
+ * CaseAccess.assertCanContribute: anyone who can open an ordinary case may, but a confidential one
+ * takes edit access — there "Can view" is read-only. Until GET /access arrives, allows it and
+ * leaves a refusal to the API. */
+export function useCanContributeToCase(caseId: string | undefined): boolean {
+  const { data } = useCaseAccessQuery(caseId)
+  return !data || !data.confidential || data.canEdit
+}
