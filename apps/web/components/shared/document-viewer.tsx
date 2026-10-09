@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react"
+import { createPortal } from "react-dom"
 import { FileSearch } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import FilePreviewModal from "@/components/chat/file-preview-modal"
@@ -52,7 +53,19 @@ export function DocumentViewerProvider({ caseId, children }: { caseId: string; c
   return (
     <DocumentViewerContext.Provider value={viewer}>
       {children}
-      {attachment ? <FilePreviewModal attachment={attachment} onClose={() => setOpenId(null)} /> : null}
+      {/* Portaled to <body> on the canvas-overlay layer: opened from inside a maximized Terminal
+          pane (z-[90]) or a brought-to-front Free-canvas pane, the default modal layer (50)
+          rendered it behind the pane that opened it. */}
+      {attachment
+        ? createPortal(
+            <FilePreviewModal
+              attachment={attachment}
+              onClose={() => setOpenId(null)}
+              layerClassName="z-(--z-canvas-overlay)"
+            />,
+            document.body,
+          )
+        : null}
     </DocumentViewerContext.Provider>
   )
 }

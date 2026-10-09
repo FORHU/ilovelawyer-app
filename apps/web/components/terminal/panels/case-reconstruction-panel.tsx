@@ -366,7 +366,11 @@ export function CaseReconstructionPanel({
                   {sourceLabels.map((label) => (
                     <li key={label} className="flex items-start gap-1.5">
                       <FileText className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                      <span className="min-w-0">{label}</span>
+                      {/* Claims only keep the file name, so the viewer resolves it by name; a source no
+                          longer in the case (archived/removed) stays plain text. */}
+                      <span className="min-w-0">
+                        <DocumentLink name={label}>{label}</DocumentLink>
+                      </span>
                     </li>
                   ))}
                 </ul>
