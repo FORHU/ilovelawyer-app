@@ -1241,22 +1241,11 @@ export default function ConsultationChat({
       );
     }
 
-    const [withinSizeLimit, oversized] = [
-      supported.filter(isWithinSizeLimit),
-      supported.filter((f) => !isWithinSizeLimit(f)),
-    ];
-    if (oversized.length > 0) {
-      toast.error(
-        t("input.attachmentTooLarge", {
-          defaultValue: `${oversizedFilesLabel(oversized)} — over the per-file size limit, wasn't added.`,
-          fileNames: oversizedFilesLabel(oversized),
-        })
-      );
-    }
-
+    // Oversized files are queued too, shown in red, and block Send until removed (see
+    // oversizedQueued) — so the user sees exactly which file is the problem.
     const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
-    const accepted = withinSizeLimit.slice(0, remaining);
-    if (accepted.length < withinSizeLimit.length) {
+    const accepted = supported.slice(0, remaining);
+    if (accepted.length < supported.length) {
       toast.warning(
         t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })
       );
@@ -1280,6 +1269,8 @@ export default function ConsultationChat({
   const handleRemoveFile = (id: string) => {
     setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
   };
+
+  const oversizedQueued = queuedFiles.filter((f) => !isWithinSizeLimit(f.file)).map((f) => f.file);
 
   // Only a drag that actually carries files is an attach gesture — selecting text in the textarea
   // and dragging it (or a text/link drag from elsewhere on the page) also fires dragover on this
@@ -1709,6 +1700,8 @@ export default function ConsultationChat({
     // A previous Send click's upload is still in flight — ignore this click rather than
     // starting a second overlapping upload pass over the same entries.
     if (queuedFiles.some((f) => f.status === "uploading")) return;
+    // Send is disabled for this too; this also covers Enter, which submits the form directly.
+    if (oversizedQueued.length > 0) return;
 
     const alreadyUploaded = queuedFiles.filter((f) => f.status === "uploaded");
     const needsUpload = queuedFiles.filter((f) => f.status !== "uploaded");
@@ -1841,9 +1834,13 @@ export default function ConsultationChat({
               {queuedFiles.map((f) => (
                 <span
                   key={f.id}
-                  className="flex items-center gap-2 max-w-full rounded-full border border-border bg-background text-foreground/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
+                  className={`flex items-center gap-2 max-w-full rounded-full border bg-background text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit ${
+                    isWithinSizeLimit(f.file) ? "border-border text-foreground/85" : "border-red-500 text-red-600 dark:text-red-400"
+                  }`}
                 >
-                  {f.status === "uploading" ? (
+                  {!isWithinSizeLimit(f.file) ? (
+                    <AlertCircle className="w-3 h-3 shrink-0 text-red-500" aria-hidden="true" />
+                  ) : f.status === "uploading" ? (
                     <Loader2 className="w-3 h-3 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
                   ) : f.status === "uploaded" && resolvedRagStatus(f) === "PENDING" ? (
                     <Loader2 className="w-3 h-3 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -1888,6 +1885,14 @@ export default function ConsultationChat({
                 </span>
               ))}
             </div>
+            {oversizedQueued.length > 0 && (
+              <span className="text-[10.5px] text-red-500 pl-1" role="alert">
+                {t("input.attachmentTooLargeHint", {
+                  defaultValue: `Too large: ${oversizedFilesLabel(oversizedQueued)}. Remove to send.`,
+                  fileNames: oversizedFilesLabel(oversizedQueued),
+                })}
+              </span>
+            )}
             {queuedFiles.some((f) => f.status === "error") && (
               <span className="text-[10.5px] text-red-500 pl-1">{t("input.attachmentUploadError")}</span>
             )}
@@ -2099,7 +2104,7 @@ export default function ConsultationChat({
                   <TooltipTrigger asChild>
                     <button
                       type="submit"
-                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading") || oversizedQueued.length > 0}
                       aria-label={t("input.sendMessage")}
                       className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold text-brand-gold-foreground transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 disabled:opacity-50"
                     >
@@ -2184,7 +2189,7 @@ export default function ConsultationChat({
                   <TooltipTrigger asChild>
                     <button
                       type="submit"
-                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading")}
+                      disabled={isBusy || !session || queuedFiles.some((f) => f.status === "uploading") || oversizedQueued.length > 0}
                       aria-label={t("input.sendMessage")}
                       // Icon-only below `sm` — the full pill (label + padding) doesn't shrink
                       // and would otherwise dominate a narrow composer row alongside the

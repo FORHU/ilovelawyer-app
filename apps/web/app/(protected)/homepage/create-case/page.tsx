@@ -348,21 +348,11 @@ function CreateCasePageContent() {
       );
     }
 
-    const [withinSizeLimit, oversized] = [
-      supported.filter(isWithinSizeLimit),
-      supported.filter((f) => !isWithinSizeLimit(f)),
-    ];
-    if (oversized.length > 0) {
-      toast.error(
-        t("sectionEvidence.attachmentTooLarge", {
-          defaultValue: `${oversizedFilesLabel(oversized)} — over the per-file size limit, wasn't added.`,
-          fileNames: oversizedFilesLabel(oversized),
-        })
-      );
-    }
-    if (withinSizeLimit.length === 0) return;
+    // Oversized files are listed too, shown in red, and block submitting until removed (see
+    // oversizedFiles) — so the user sees exactly which file is the problem.
+    if (supported.length === 0) return;
 
-    const entries: UploadedFile[] = withinSizeLimit.map((file) => ({
+    const entries: UploadedFile[] = supported.map((file) => ({
       id: generateId(),
       file,
       status: "pending",
@@ -421,6 +411,7 @@ function CreateCasePageContent() {
   // Errored files don't block resubmission — clicking submit again is the retry path, since
   // the case (once created) is reused rather than duplicated.
   const hasFilesUploading = formData.uploadedFiles.some((f) => f.status === "uploading");
+  const oversizedFiles = formData.uploadedFiles.filter((f) => !isWithinSizeLimit(f.file)).map((f) => f.file);
 
   const goToStep = (n: number) => {
     if (n <= maxStepReached) setStep(n);
@@ -462,6 +453,8 @@ function CreateCasePageContent() {
       return;
     }
     if (hasFilesUploading) return;
+    // The submit button is disabled for this too; this also covers Enter submitting the form.
+    if (oversizedFiles.length > 0) return;
 
     try {
       // Reuse the case from a prior attempt if this is a retry after some files failed to
@@ -946,10 +939,19 @@ function CreateCasePageContent() {
                           on md+) from squashing this list down to a single row. */}
                       <div className="flex flex-col border border-border rounded-xl overflow-y-auto max-h-72">
                         {formData.uploadedFiles.map((f) => (
-                        <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px]">
-                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                        <div
+                          key={f.id}
+                          className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px] ${
+                            isWithinSizeLimit(f.file) ? "" : "bg-red-500/5 text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {isWithinSizeLimit(f.file) ? (
+                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" aria-hidden="true" />
+                          )}
                           <span className="flex-1 min-w-0 truncate">{f.file.name}</span>
-                          <span className="text-[11px] text-muted-foreground">{(f.file.size / 1024).toFixed(1)} KB</span>
+                          <span className={`text-[11px] ${isWithinSizeLimit(f.file) ? "text-muted-foreground" : ""}`}>{(f.file.size / 1024).toFixed(1)} KB</span>
                           {f.status === "uploading" && (
                             <Loader2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin" aria-hidden="true" />
                           )}
@@ -987,6 +989,14 @@ function CreateCasePageContent() {
                         </div>
                         ))}
                       </div>
+                      {oversizedFiles.length > 0 && (
+                        <p className="text-[12px] text-red-600 dark:text-red-400" role="alert">
+                          {t("sectionEvidence.attachmentTooLargeHint", {
+                            defaultValue: `Too large: ${oversizedFilesLabel(oversizedFiles)}. Remove to create the case.`,
+                            fileNames: oversizedFilesLabel(oversizedFiles),
+                          })}
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -1060,7 +1070,7 @@ function CreateCasePageContent() {
                     <TooltipTrigger asChild>
                       <button
                         type="submit"
-                        disabled={hasFilesUploading || isSubmitting}
+                        disabled={hasFilesUploading || isSubmitting || oversizedFiles.length > 0}
                         className="flex items-center gap-2.5 h-11 sm:h-10 px-5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:opacity-85 transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {isSubmitting ? t("submitting") : t("initiateFiling")}

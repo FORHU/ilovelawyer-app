@@ -72,6 +72,7 @@
     "retryUpload": "Retry uploading {{fileName}}",
     "removeFile": "Remove {{fileName}}",
     "removeAll": "Remove all",
+    "attachmentTooLargeHint": "Too large: {{fileNames}}. Remove to create the case.",
     "uploadFailed": "Upload failed."
   },
   "submitting": "Submitting…",

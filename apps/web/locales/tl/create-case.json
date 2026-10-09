@@ -41,6 +41,7 @@
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
     "removeFile": "Alisin ang {{fileName}}",
     "removeAll": "Alisin lahat",
+    "attachmentTooLargeHint": "Masyadong malaki: {{fileNames}}. Alisin para magawa ang kaso.",
     "uploadFailed": "Nabigo ang pag-upload."
   },
   "submitting": "Isinusumite…",
