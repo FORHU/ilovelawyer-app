@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog";
 import { useDeleteRiskMutation, useUpdateRiskMutation } from "@/lib/terminal/mutations";
+import { useCanContributeToCase } from "@/lib/cases/permissions";
 import type { SnapshotRisk } from "@/lib/terminal/types";
 
 /** Case Overview's Key Issues — the case's risk register (the same records as the Terminal's
@@ -39,6 +40,9 @@ export function KeyIssuesList({ caseId, risks }: { caseId: string; risks: Snapsh
 function KeyIssueRow({ caseId, risk, onDelete }: { caseId: string; risk: SnapshotRisk; onDelete: () => void }) {
   const { t } = useTranslation("case-portfolio");
   const updateRisk = useUpdateRiskMutation(caseId);
+  // Read-only for anyone who can't change the case: a read-only share, or "Can view" on a
+  // confidential case.
+  const canChange = useCanContributeToCase(caseId);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -89,7 +93,7 @@ function KeyIssueRow({ caseId, risk, onDelete }: { caseId: string; risk: Snapsho
           )}
         </span>
       )}
-      {!isEditing && (
+      {!isEditing && canChange && (
         // Always visible on touch (no hover), revealed on hover/focus with a mouse.
         <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover/issue:opacity-100 md:group-focus-within/issue:opacity-100">
           <Tooltip>

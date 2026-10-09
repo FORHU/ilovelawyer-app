@@ -87,10 +87,22 @@ async function attemptRefresh(): Promise<void> {
   }
 }
 
-function buildHeaders(extra?: HeadersInit, isFormData?: boolean): HeadersInit {
+/** The APIs a read-only share reaches (ilovelawyer-api's resolveOrganizationAllowingGuests).
+ * While a shared case is open only these go to the owner's portfolio; everything else the page
+ * still calls (notifications, the account, the header's org list) stays in the user's own
+ * workspace, which the API would otherwise refuse. */
+const SHARED_WORKSPACE_API = /^\/api\/(my-cases|terminal|documents|transcriptions|chat)(\/|\?|$)/
+
+/** The X-Organization-Id a request to `path` carries. */
+export function workspaceIdForRequest(path: string, state: Parameters<typeof activeWorkspaceId>[0]): string | null {
+  if (state.workspace === "shared" && !SHARED_WORKSPACE_API.test(path)) return activeWorkspaceId({ ...state, workspace: "organization" })
+  return activeWorkspaceId(state)
+}
+
+function buildHeaders(path: string, extra?: HeadersInit, isFormData?: boolean): HeadersInit {
   const state = useAuthStore.getState()
   const { accessToken } = state
-  const workspaceId = activeWorkspaceId(state)
+  const workspaceId = workspaceIdForRequest(path, state)
   return {
     // Omitted for FormData bodies — the browser must set its own multipart boundary.
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
@@ -127,7 +139,7 @@ export async function apiFetchRaw(path: string, options?: FetchOptions): Promise
   const res = await fetch(url, {
     ...fetchOptions,
     credentials: "include",
-    headers: buildHeaders(fetchOptions.headers, isFormData),
+    headers: buildHeaders(path, fetchOptions.headers, isFormData),
   })
 
   if (res.status === 401 && !skipAuthRefresh) {
@@ -136,7 +148,7 @@ export async function apiFetchRaw(path: string, options?: FetchOptions): Promise
     const retry = await fetch(url, {
       ...fetchOptions,
       credentials: "include",
-      headers: buildHeaders(fetchOptions.headers, isFormData),
+      headers: buildHeaders(path, fetchOptions.headers, isFormData),
     })
 
     await throwIfNotOk(retry)

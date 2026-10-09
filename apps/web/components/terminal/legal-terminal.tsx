@@ -281,7 +281,10 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
 
   useEffect(() => {
     if (!catalog.data || catalog.isLoading || workspaces.isLoading || layout) return
-    const lastUsed = workspaces.data?.find((w) => w.isLastUsed)
+    // Layouts are shared by everyone on the case, so someone opening it for the first time has no
+    // last-used tab of their own yet: they land on the case's first layout, not an empty board
+    // (which would make a fresh "Untitled" the moment they add a pane).
+    const lastUsed = workspaces.data?.find((w) => w.isLastUsed) ?? workspaces.data?.[0]
     const fallback: WorkspaceLayout = {
       preset: catalog.data.defaultPreset,
       arrangement: "free",
@@ -298,13 +301,16 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
       lastSavedLayoutRef.current = JSON.stringify(hydrated)
       setLayout(hydrated)
       setSelectedWorkspaceId(lastUsed.id)
+      // Make the case's first layout this person's own last-used one, so a canvas window opened
+      // from here loads the same tab.
+      if (!lastUsed.isLastUsed) applyWorkspace.mutate(lastUsed.id)
       return
     }
-    // No saved workspace means the user intentionally has an empty terminal. Keep every pane
+    // No saved workspace means the case intentionally has an empty terminal. Keep every pane
     // hidden so a refresh does not recreate the default preset after the final layout was deleted.
     lastSavedLayoutRef.current = JSON.stringify(fallback)
     setLayout(fallback)
-  }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout])
+  }, [catalog.data, catalog.isLoading, workspaces.data, workspaces.isLoading, layout, applyWorkspace])
 
   useEffect(() => {
     if (!layout || !selectedWorkspaceId) return
@@ -322,6 +328,9 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     // lastSavedLayoutRef comparison above, so adopting a REMOTE broadcast (which sets
     // lastSavedLayoutRef before setLayout) never bounces straight back out as a new one.
     broadcastLayout(layout)
+    // A view-only person on a confidential case can still arrange panes for themselves, but the
+    // layout is shared with the case and the API refuses their changes.
+    if (viewOnly) return
 
     pendingSaveRef.current = { workspaceId: selectedWorkspaceId, layoutJson: layout }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -356,7 +365,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         saveTimerRef.current = null
       }
     }
-  }, [layout, selectedWorkspaceId, updateWorkspace, broadcastLayout])
+  }, [layout, selectedWorkspaceId, updateWorkspace, broadcastLayout, viewOnly])
 
   // The autosave above waits 1.2s after the last edit, so a refresh/close inside that window used
   // to drop the change. On page hide, send whatever is still pending with `keepalive` so the
@@ -383,7 +392,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
   // firing on the render between mutate() and the pending flag flipping.
   const autoCreatingWorkspaceRef = useRef(false)
   useEffect(() => {
-    if (!layout || selectedWorkspaceId || !catalog.data || autoCreatingWorkspaceRef.current) return
+    if (!layout || selectedWorkspaceId || !catalog.data || viewOnly || autoCreatingWorkspaceRef.current) return
     if (!layout.panels.some((panel) => panel.visible)) return
     autoCreatingWorkspaceRef.current = true
     const layoutJson = layout
@@ -403,7 +412,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
         // API is failing. A failed create just stays unsaved until the next reload.
       },
     )
-  }, [layout, selectedWorkspaceId, catalog.data, caseId, createWorkspace, applyWorkspace, t])
+  }, [layout, selectedWorkspaceId, catalog.data, caseId, createWorkspace, applyWorkspace, t, viewOnly])
 
   const arrangement: ArrangementValue = layout?.arrangement ?? "free"
   const arrangementStageRef = useRef<HTMLDivElement>(null)
@@ -680,6 +689,34 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
     })
   }
 
+  // Another member deleted the tab this person is on (layouts are shared by the case and the list
+  // is re-fetched — see useTerminalWorkspacesQuery): fall back the same way closing it here does.
+  // Only for an id the list has already shown — a just-created tab is selected before the
+  // re-fetch that adds it lands, and must not be mistaken for a deleted one.
+  const seenWorkspaceIdsRef = useRef(new Set<string>())
+  useEffect(() => {
+    if (!workspaces.data) return
+    const current = new Set(workspaces.data.map((w) => w.id))
+    const removed = !!selectedWorkspaceId && seenWorkspaceIdsRef.current.has(selectedWorkspaceId) && !current.has(selectedWorkspaceId)
+    seenWorkspaceIdsRef.current = current
+    if (!removed || deleteWorkspace.isPending) return
+    if (pendingSaveRef.current?.workspaceId === selectedWorkspaceId) pendingSaveRef.current = null
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    const [fallback] = workspaces.data
+    if (fallback) {
+      selectWorkspace(fallback.id)
+      return
+    }
+    setSelectedWorkspaceId("")
+    lastSavedLayoutRef.current = ""
+    setLayout((prev) => (prev ? { ...prev, panels: prev.panels.map((panel) => ({ ...panel, visible: false })) } : prev))
+    // selectWorkspace is redefined every render; this only needs to react to the list changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaces.data])
+
   // `layout` isn't set until the effect above sees both catalog and workspaces resolved, so the
   // loading gate has to track workspaces too — otherwise a workspaces fetch that outlasts
   // catalog/snapshot closes this gate one render early and falls through to the error state below
@@ -910,6 +947,7 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
             }}
             onNew={openLayoutBuilder}
             onRename={(id, name) => renameWorkspace.mutate({ id, name })}
+            readOnly={viewOnly}
             labels={{
               close: t("closeLayout"),
               newLayout: t("newLayout"),

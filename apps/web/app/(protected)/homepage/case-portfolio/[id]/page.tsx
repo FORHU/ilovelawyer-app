@@ -5,10 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock, Eye,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
+import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { KeyIssuesList } from "@/components/cases/key-issues-list";
 import { useOverviewParties } from "@/components/cases/overview-parties";
 import {
@@ -48,6 +49,9 @@ export default function CaseDetailPage() {
   const toggleMobileMenu = useMobileNavStore((s) => s.toggle);
   const canEdit = useCanEditCase(id);
   const [sharing, setSharing] = useState(false);
+  // Reading a case someone shared with this user: everything shows, read-only (the API refuses
+  // any change, and canContribute hides the controls), and it can't be shared on.
+  const sharedWithMe = useIsSharedWorkspace();
 
   const activeTab: DetailTab = searchParams.get("tab") === "overview" ? "overview" : "workspace";
 
@@ -106,7 +110,7 @@ export default function CaseDetailPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link
-                      href="/homepage/case-portfolio"
+                      href={sharedWithMe ? "/homepage/case-portfolio?view=shared" : "/homepage/case-portfolio"}
                       className="-my-1 -ml-1 flex shrink-0 items-center gap-1.5 rounded-md px-1 py-1 text-[10px] font-semibold tracking-[1.2px] uppercase hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     >
                       <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
@@ -124,7 +128,7 @@ export default function CaseDetailPage() {
                     </span>
                   </>
                 )}
-                {caseRecord && (
+                {caseRecord && !sharedWithMe && (
                   <>
                     <span className="hidden h-3 w-px shrink-0 bg-border sm:block" aria-hidden="true" />
                     <CaseOrigin caseRecord={caseRecord} className="hidden text-xs sm:inline-flex" />
@@ -193,7 +197,7 @@ export default function CaseDetailPage() {
                 {t("overview.tabTerminal")}
               </Link>
             </nav>
-            {caseRecord && (
+            {caseRecord && !sharedWithMe && (
               <>
                 <span className="mt-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
                 <Tooltip>
@@ -222,12 +226,13 @@ export default function CaseDetailPage() {
             caseId={id}
             onOpenWorkspace={() => switchTab("workspace")}
             onOpenConsultation={(consultationId, promptNumber) => switchTab("workspace", consultationId, promptNumber)}
+            sharedWithMe={sharedWithMe}
           />
         ) : (
           <div className="min-h-0 flex-1">
             <CaseWorkspace caseId={id} />
             {/* First visit to any case's Workspace: its tour, on the sample case. */}
-            <SampleTourAutoStart track="studio" />
+            {!sharedWithMe && <SampleTourAutoStart track="studio" />}
           </div>
         )}
       </div>
@@ -409,11 +414,14 @@ function OverviewTab({
   id,
   onOpenWorkspace,
   onOpenConsultation,
+  sharedWithMe,
 }: {
   id: string;
   caseId: string;
   onOpenWorkspace: () => void;
   onOpenConsultation: (consultationId: string, promptNumber?: number) => void;
+  /** A case shared with this user to view: documents are read there, not managed. */
+  sharedWithMe: boolean;
 }) {
   const { t } = useTranslation("case-portfolio");
   const { data: caseRecord } = useCaseQuery(id);
@@ -562,8 +570,8 @@ function OverviewTab({
               onClick={onOpenWorkspace}
               className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
-              <Plus className="w-3 h-3" aria-hidden="true" />
-              {t("overview.manageDocuments")}
+              {sharedWithMe ? <Eye className="w-3 h-3" aria-hidden="true" /> : <Plus className="w-3 h-3" aria-hidden="true" />}
+              {sharedWithMe ? t("portfolioView.viewDocuments") : t("overview.manageDocuments")}
             </button>
           }
           noPadding

@@ -114,7 +114,9 @@ export default function TerminalCanvasWindowPage() {
   // subset of ITS panels carry this screen's index, nothing more.
   useEffect(() => {
     if (layout || !workspaces.data) return
-    const lastUsed = workspaces.data.find((w) => w.isLastUsed)
+    // Same fallback as the primary window: layouts are shared by the case, so someone who hasn't
+    // picked one yet is on its first.
+    const lastUsed = workspaces.data.find((w) => w.isLastUsed) ?? workspaces.data[0]
     if (!lastUsed) return
     // Same as the primary window: a layout saved before ADR 0016 may list retired panes, which would crash PaneCode.
     const cleaned = dropUnknownPanels(lastUsed.layoutJson)

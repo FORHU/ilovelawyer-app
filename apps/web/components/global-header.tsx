@@ -15,6 +15,7 @@ import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { PortfolioPill } from "@/components/portfolio-pill";
+import { SharedWorkspacePill } from "@/components/shared-workspace";
 import { NotificationBellTrigger } from "@/components/notifications/notification-bell-trigger";
 import { useNotificationBellState } from "@/components/notifications/use-notification-bell-state";
 import { ThemeToggle } from "@/components/theme-provider";
@@ -276,6 +277,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           </Tooltip>
 
           <PortfolioPill />
+          <SharedWorkspacePill />
 
           <span data-tour-id="header-theme" className="inline-flex">
             <ThemeToggle />

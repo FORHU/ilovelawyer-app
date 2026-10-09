@@ -24,7 +24,8 @@
     "dropFilesHint": "Drop files to attach",
     "indexing": "Indexing for chat…",
     "indexingHint": "You can send now. Chat can search this file once indexing finishes.",
-    "indexingFailed": "Couldn't index this file for chat."
+    "indexingFailed": "Couldn't index this file for chat.",
+    "viewOnlyShared": "Read-only: this case was shared with you to view."
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",

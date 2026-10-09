@@ -3,6 +3,7 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tansta
 import { apiFetch } from "@/lib/fetch"
 import { notificationKeys, chatKeys, caseKeys } from "@/lib/query-keys"
 import { registerDocumentSocketHandlers } from "@/lib/cases/document-socket"
+import { registerShareSocketHandlers } from "@/lib/cases/shared"
 import { terminalKeys } from "@/lib/terminal/mutations"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
@@ -148,6 +149,7 @@ export function useNotificationSocket() {
     socket.on("chat:title-updated", handleTitleUpdated)
     socket.on("chat:citation-ranking", handleCitationRanking)
     const unregisterDocumentHandlers = registerDocumentSocketHandlers(socket, queryClient)
+    const unregisterShareHandlers = registerShareSocketHandlers(socket, queryClient)
     socket.connect()
 
     return () => {
@@ -156,6 +158,7 @@ export function useNotificationSocket() {
       socket.off("chat:title-updated", handleTitleUpdated)
       socket.off("chat:citation-ranking", handleCitationRanking)
       unregisterDocumentHandlers()
+      unregisterShareHandlers()
       socket.disconnect()
     }
   }, [accessToken, queryClient])

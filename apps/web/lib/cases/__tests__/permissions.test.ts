@@ -23,6 +23,11 @@ describe("canEditCases — mirrors the API's CaseAccess.assertCanEdit", () => {
     expect(canEditCases({ workspace: "organization", organization: org("OWNER", true) })).toBe(true)
   })
 
+  it("refuses in someone else's portfolio, opened through a read-only share", () => {
+    expect(canEditCases({ workspace: "shared", organization: org("OWNER") })).toBe(false)
+    expect(canEditCases({ workspace: "shared", organization: org("OWNER", true) })).toBe(false)
+  })
+
   it("refuses while no organization is loaded yet", () => {
     expect(canEditCases({ workspace: "organization", organization: null })).toBe(false)
   })
