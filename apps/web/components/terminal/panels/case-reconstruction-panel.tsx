@@ -842,19 +842,8 @@ function StoryboardView({
                   key={i}
                   className="rounded-md bg-muted px-2.5 py-2 text-[12px]"
                 >
-                  <p className="flex items-center gap-1.5 font-medium text-foreground">
-                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate" title={docNameById.get(ref.docId) ?? t("archivedDocument")}>
-                      <DocumentLink docId={ref.docId}>{docNameById.get(ref.docId) ?? t("archivedDocument")}</DocumentLink>
-                    </span>
-                    {ref.page != null && (
-                      <span className="shrink-0 text-foreground/70">
-                        · p.{ref.page}
-                      </span>
-                    )}
-                  </p>
                   {ref.quote && (
-                    <blockquote className="mt-1 flex items-start gap-1 border-l-2 border-border pl-2 text-foreground/70 italic">
+                    <blockquote className="mb-1.5 flex items-start gap-1 border-l-2 border-border pl-2 text-[13px] font-medium text-foreground italic">
                       <Quote
                         className="mt-0.5 h-2.5 w-2.5 shrink-0"
                         aria-hidden="true"
@@ -862,6 +851,15 @@ function StoryboardView({
                       {ref.quote}
                     </blockquote>
                   )}
+                  <p className="flex items-center gap-1.5 text-[11px] text-foreground/70">
+                    <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate" title={docNameById.get(ref.docId) ?? t("archivedDocument")}>
+                      <DocumentLink docId={ref.docId}>{docNameById.get(ref.docId) ?? t("archivedDocument")}</DocumentLink>
+                    </span>
+                    {ref.page != null && (
+                      <span className="shrink-0">· p.{ref.page}</span>
+                    )}
+                  </p>
                 </li>
               ))}
             </ul>
