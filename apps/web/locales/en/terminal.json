@@ -161,6 +161,7 @@
   "badgeDocs": "{{count}} docs",
   "badgeCited": "{{count}} cited",
   "badgeParties": "{{count}} parties",
+  "badgeOpenIssues": "{{count}} open issues",
   "badgeToDos": "{{count}} to-dos",
   "badgeWitnesses": "{{count}} witnesses",
   "badgeHeads_one": "{{count}} entry",

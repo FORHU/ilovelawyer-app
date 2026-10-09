@@ -1,6 +1,7 @@
 import { HIDDEN_PANELS, type PaneRect } from "@/components/terminal/terminal-canvas"
 import type { ArrangementValue, CaseSnapshot, FindingCategory, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
 import { damagesBadge } from "@/lib/terminal/damages-format"
+import { openFindings } from "@/lib/terminal/case-summary-view"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
 // Up to 5 secondary screens (1-5) plus the primary (0) — see the plan's data model doc comment
@@ -195,7 +196,7 @@ export function computePanelBadges(
   const found = (n: number) => (n > 0 ? t("badgeFound", { count: n }) : undefined)
   const byCategory = (category: FindingCategory) => found(data.findings.filter((f) => f.category === category).length)
   const badges: Partial<Record<PanelId, string>> = {
-    command: data.case.parties.length > 0 ? t("badgeParties", { count: data.case.parties.length }) : undefined,
+    command: commandBadge(data, t),
     evidence: data.documents.length > 0 ? t("badgeDocs", { count: data.documents.length }) : undefined,
     law: data.law.citations.length > 0 ? t("badgeCited", { count: data.law.citations.length }) : undefined,
     // The case's document-built map when it has a live one (what the panel shows), else the
@@ -229,6 +230,17 @@ export function computePanelBadges(
     theories: data.theories.length > 0 ? t("badgeTheories", { count: data.theories.length }) : undefined,
   }
   return badges
+}
+
+// Case Summary shows the outlook, health and open issues — not only parties, which a case can have
+// none of while the pane is full. So: its open issues (same count as its Open issues tile: open
+// risks plus open findings, see buildSummaryView), else parties, else "Ready" for an outlook or
+// health score alone.
+function commandBadge(data: CaseSnapshot, t: (key: string, opts?: Record<string, unknown>) => string): string | undefined {
+  const openIssues = data.risks.filter((r) => r.status === "OPEN").length + openFindings(data).length
+  if (openIssues > 0) return t("badgeOpenIssues", { count: openIssues })
+  if (data.case.parties.length > 0) return t("badgeParties", { count: data.case.parties.length })
+  return data.outlook || data.riskAnalysis ? t("badgeReady") : undefined
 }
 
 // Richer, still real-data-only summaries for Focus mode's stack cards — composites of 2-3 facts
