@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useCanContributeToCase } from "@/lib/cases/permissions";
+import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { isNotFoundError } from "@/lib/fetch";
 import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, Lock } from "lucide-react";
 import {
@@ -635,6 +636,8 @@ export default function ConsultationChat({
   // their own included (useCanContributeToCase; the API refuses it too): the composer becomes a
   // read-only note, and starting, renaming or regenerating anything here is hidden.
   const chatReadOnly = !useCanContributeToCase(linkedCaseId || caseId || undefined);
+  // The same read-only chat for a case someone shared with this user — only the note differs.
+  const sharedWithMe = useIsSharedWorkspace();
   const { data: consultationDocuments } = useConsultationDocumentsQuery(consultationId ?? undefined);
   const ragStatusById = new Map(
     [...(caseDocuments ?? []), ...(consultationDocuments ?? [])].map((doc) => [doc.id, doc.ragStatus]),
@@ -1798,7 +1801,7 @@ export default function ConsultationChat({
         }`}
       >
         <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        {t("input.viewOnlyConfidential")}
+        {sharedWithMe ? t("input.viewOnlyShared") : t("input.viewOnlyConfidential")}
       </p>
     </div>
   ) : (

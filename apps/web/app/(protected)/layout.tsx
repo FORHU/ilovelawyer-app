@@ -11,6 +11,7 @@ import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
 import { TourLayer } from "@/components/tour/tour-layer"
+import { SharedWorkspaceGuard } from "@/components/shared-workspace"
 import { WorkspaceSetup } from "@/app/(auth)/_components/workspace-setup"
 import AiConsentPrompt from "@/components/account/ai-consent-prompt"
 
@@ -220,6 +221,7 @@ function CurrentUserSync({
     <>
       {/* Page transitions live in homepage/layout.tsx, below its persistent header. */}
       {children}
+      <SharedWorkspaceGuard />
       {/* The onboarding tour and Ask the guide, over every signed-in page. */}
       <TourLayer />
       {/* First login: everyone answers for AI processing once. */}

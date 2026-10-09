@@ -8,6 +8,12 @@ export const lawyerKeys = {
   detail: (id: string) => [...lawyerKeys.details(), id] as const,
 }
 
+// Portfolio cases other people shared with this user — see lib/cases/shared.ts.
+export const sharedCaseKeys = {
+  all: ["shared-cases"] as const,
+  list: () => [...sharedCaseKeys.all, "list"] as const,
+}
+
 export const caseKeys = {
   all: ["cases"] as const,
   lists: () => [...caseKeys.all, "list"] as const,

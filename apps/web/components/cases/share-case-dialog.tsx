@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog";
 import { UserAvatar } from "@/components/user-avatar";
+import { PortfolioSharePanel, initialsOf } from "@/components/cases/portfolio-share-panel";
 import { useAuthStore } from "@/lib/store/auth.store";
 import {
   accessOf,
@@ -17,13 +18,6 @@ import {
 } from "@/lib/cases/sharing";
 
 const SOURCE_ORDER = { "org-admin": 0, grant: 1, organization: 2, walled: 3 } as const;
-
-function initialsOf(person: CaseAccessPerson) {
-  const base = person.name?.trim() || person.username;
-  const [first, second] = base.split(/[.\s_-]+/).filter(Boolean);
-  if (!first) return "?";
-  return (second ? `${first[0]}${second[0]}` : first.slice(0, 2)).toUpperCase();
-}
 
 /** Who can reach a case and how (#347). Everyone in the organization can view it; this is where
  * someone who can manage the case's access (org OWNER/ADMIN, or an ADMIN grant on the case) gives
@@ -99,6 +93,12 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
           </Tooltip>
         </div>
 
+        {data?.portfolio ? (
+          <div className="flex flex-col gap-4 px-6 py-5">
+            <DialogDescription className="sr-only">{t("share.portfolioDescription")}</DialogDescription>
+            <PortfolioSharePanel caseId={caseId} data={data} />
+          </div>
+        ) : (
         <div className="flex flex-col gap-4 px-6 py-5">
           <DialogDescription asChild>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -229,6 +229,7 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
             </p>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

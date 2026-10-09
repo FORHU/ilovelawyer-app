@@ -1,9 +1,9 @@
-import { useAuthStore } from "@/lib/store/auth.store"
+import { useAuthStore, type Workspace } from "@/lib/store/auth.store"
 import type { OrganizationRole } from "@/lib/organizations/queries"
 import { useCaseAccessQuery } from "@/lib/cases/sharing"
 
 type CaseEditState = {
-  workspace: "organization" | "portfolio"
+  workspace: Workspace
   organization: { role: OrganizationRole; isPersonal: boolean } | null
 }
 
@@ -16,6 +16,8 @@ type CaseEditState = {
  * The API also accepts an explicit per-case EDIT/ADMIN grant, which this can't see — where one
  * case is in view, use useCanEditCase instead. */
 export function canEditCases(state: CaseEditState): boolean {
+  // Someone else's portfolio, opened through a read-only share.
+  if (state.workspace === "shared") return false
   if (state.workspace === "portfolio") return true
   if (!state.organization) return false
   if (state.organization.isPersonal) return true
@@ -41,5 +43,8 @@ export function useCanEditCase(caseId: string | undefined): boolean {
  * leaves a refusal to the API. */
 export function useCanContributeToCase(caseId: string | undefined): boolean {
   const { data } = useCaseAccessQuery(caseId)
-  return !data || !data.confidential || data.canEdit
+  if (!data) return true
+  // The API's own answer, which also covers a read-only share of a portfolio case.
+  if (data.canContribute !== undefined) return data.canContribute
+  return !data.confidential || data.canEdit
 }

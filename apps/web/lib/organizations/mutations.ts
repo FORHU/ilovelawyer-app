@@ -1,12 +1,13 @@
 import { useCallback } from "react"
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { authKeys, caseKeys, organizationKeys, tourKeys, userKeys } from "@/lib/query-keys"
-import { useAuthStore, type Workspace } from "@/lib/store/auth.store"
+import { authKeys, caseKeys, organizationKeys, sharedCaseKeys, tourKeys, userKeys } from "@/lib/query-keys"
+import { useAuthStore, type SharedWorkspace, type Workspace } from "@/lib/store/auth.store"
 import type { OrganizationRecord, OrganizationMemberRecord, OrganizationRole } from "./queries"
 
 /** Query roots that belong to the signed-in account rather than its organization. */
-const USER_SCOPED_ROOTS = new Set<unknown>([userKeys.all[0], authKeys.all[0], tourKeys.all[0]])
+// The shared-with-me list too: it spans other people's portfolios, whichever workspace is open.
+const USER_SCOPED_ROOTS = new Set<unknown>([userKeys.all[0], authKeys.all[0], tourKeys.all[0], sharedCaseKeys.all[0]])
 
 /** For when the user changes organization (leaving one, or accepting an invite that moves them).
  * Removed, not invalidated: everything cached apart from the account itself was fetched as a
@@ -23,12 +24,28 @@ export function useSwitchWorkspace() {
   const queryClient = useQueryClient()
   const setWorkspace = useAuthStore((s) => s.setWorkspace)
   return useCallback(
-    (workspace: Workspace) => {
+    (workspace: Exclude<Workspace, "shared">) => {
       if (useAuthStore.getState().workspace === workspace) return
       setWorkspace(workspace)
       removeOrganizationScopedQueries(queryClient)
     },
     [queryClient, setWorkspace],
+  )
+}
+
+/** Opens someone else's portfolio to read a case they shared with this user. Same reset as
+ * switching workspace: nothing fetched for the user's own workspace may show in theirs. */
+export function useEnterSharedWorkspace() {
+  const queryClient = useQueryClient()
+  const enterSharedWorkspace = useAuthStore((s) => s.enterSharedWorkspace)
+  return useCallback(
+    (shared: SharedWorkspace) => {
+      const state = useAuthStore.getState()
+      if (state.workspace === "shared" && state.shared?.id === shared.id) return
+      enterSharedWorkspace(shared)
+      removeOrganizationScopedQueries(queryClient)
+    },
+    [queryClient, enterSharedWorkspace],
   )
 }
 

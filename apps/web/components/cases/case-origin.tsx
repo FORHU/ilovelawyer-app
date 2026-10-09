@@ -19,7 +19,7 @@ function initialsOf(name: string) {
 /** True while the user is looking at their portfolio — the portfolio view from an organization,
  * or their personal workspace itself (which is the same thing). */
 export function useInPortfolio() {
-  return useAuthStore((s) => s.workspace === "portfolio" || !!s.organization?.isPersonal)
+  return useAuthStore((s) => s.workspace === "portfolio" || (s.workspace === "organization" && !!s.organization?.isPersonal))
 }
 
 /**

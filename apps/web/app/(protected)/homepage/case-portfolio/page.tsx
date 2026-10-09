@@ -10,7 +10,10 @@ import DeleteCaseModal from "@/components/cases/delete-case-modal";
 import ArchiveCaseModal from "@/components/cases/archive-case-modal";
 import BulkArchiveCasesModal from "@/components/cases/bulk-archive-cases-modal";
 import BulkRestoreCasesModal from "@/components/cases/bulk-restore-cases-modal";
-import { Search, Briefcase, Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X, Building2, Lock, AlertTriangle } from "lucide-react";
+import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
+import { SharedCasesList } from "@/components/cases/shared-cases-list";
+import { useSharedCasesQuery } from "@/lib/cases/shared";
+import { Search, Briefcase, Archive, ArchiveRestore, ArrowDown, ArrowUp, ArrowUpDown, CheckSquare, Loader2, Pencil, Trash2, ArrowUpRight, MoreHorizontal, X, Building2, Lock, AlertTriangle, Users, Share2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
@@ -132,6 +135,8 @@ function SortableDateHeader({
 
 // "Sep 24, 2026" (US order), pinned to en-US so the table doesn't shift format with the browser's locale.
 // Built per call, not at module load: the locale follows the tenant (en-GB on the UK site).
+const noSubscription = () => () => {};
+
 const formatCaseDate = (iso: string) =>
   new Intl.DateTimeFormat(dateLocale(), { month: "short", day: "numeric", year: "numeric" }).format(new Date(iso));
 
@@ -189,6 +194,24 @@ export default function CaseManagerDashboard() {
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
   const [deletingCase, setDeletingCase] = useState<CaseRecord | null>(null);
   const [archivingCase, setArchivingCase] = useState<CaseRecord | null>(null);
+  const [sharingCase, setSharingCase] = useState<CaseRecord | null>(null);
+  // An organization case is shared among that organization's members. A portfolio case is shared
+  // with individual registered users, read-only — except a copy kept from an organization the
+  // user has left, whose client material stays with that organization.
+  const canShareCase = (c: CaseRecord) => (inPortfolio ? !c.copiedFromCaseId : hasPortfolioTab);
+  // "Shared with me": portfolio cases other people shared with this user. Shown once there are
+  // any, or when a share notification links here with ?view=shared.
+  // Until the user picks a view themselves, the link decides. Read through useSyncExternalStore so
+  // the server render (no query string) and hydration agree.
+  const linkedToShared = React.useSyncExternalStore(
+    noSubscription,
+    () => new URLSearchParams(window.location.search).get("view") === "shared",
+    () => false,
+  );
+  const [pickedShared, setShowShared] = useState<boolean | null>(null);
+  const showShared = pickedShared ?? linkedToShared;
+  const sharedCases = useSharedCasesQuery();
+  const hasSharedTab = showShared || (sharedCases.data?.length ?? 0) > 0;
   // Bulk selection — available on both tabs (Active gets bulk archive, Archived gets bulk
   // restore), scoped to the current page of results (same "select what's on screen" scope as
   // DocumentFolderBrowser's bulk selection), so it's cleared whenever the page, tab, or search
@@ -225,6 +248,7 @@ export default function CaseManagerDashboard() {
   };
 
   const openWorkspace = (next: "organization" | "portfolio") => {
+    setShowShared(false);
     switchWorkspace(next);
     setPage(1);
     exitSelectMode();
@@ -369,13 +393,13 @@ export default function CaseManagerDashboard() {
           <div className="flex flex-col gap-3.5">
             <span className="flex items-center gap-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-gold" aria-hidden="true" />
-              {t("caseCountBadge", { count: data?.total ?? cases.length })}
+              {t("caseCountBadge", { count: showShared ? (sharedCases.data?.length ?? 0) : (data?.total ?? cases.length) })}
             </span>
             <h1 className="font-['Libre_Caslon_Text'] text-[23px] sm:text-[clamp(34px,3.6vw,48px)] font-light leading-none tracking-[-0.02em] text-foreground">
               {t("title")}
             </h1>
             <p className="text-muted-foreground text-[13px] sm:text-[15px] leading-relaxed max-w-[520px]">
-              {inPortfolio ? t("portfolioView.portfolioSubtitle") : t("listSubtitle")}
+              {showShared ? t("portfolioView.sharedSubtitle") : inPortfolio ? t("portfolioView.portfolioSubtitle") : t("listSubtitle")}
             </p>
           </div>
 
@@ -395,29 +419,32 @@ export default function CaseManagerDashboard() {
           </Tooltip>
         </div>
 
-        {hasPortfolioTab && (
-          <div className={`${TOGGLE_TRACK} self-start`} role="group" aria-label={t("portfolioView.switchLabel")}>
+        {(hasPortfolioTab || hasSharedTab) && (
+          <div className={`${TOGGLE_TRACK} self-start flex-wrap`} role="group" aria-label={t("portfolioView.switchLabel")}>
+            {hasPortfolioTab && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => openWorkspace("organization")}
-                  aria-pressed={workspace === "organization"}
-                  className={`${toggleButton(workspace === "organization")} max-w-[220px] normal-case tracking-normal text-[12px]`}
+                  aria-pressed={!showShared && workspace === "organization"}
+                  className={`${toggleButton(!showShared && workspace === "organization")} max-w-[220px] normal-case tracking-normal text-[12px]`}
                 >
                   <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   <span className="truncate">{organization.name}</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{t("portfolioView.orgTabTooltip", { orgName: organization.name })}</TooltipContent>
+              <TooltipContent>{t("portfolioView.orgTabTooltip", { orgName: organization?.name ?? "" })}</TooltipContent>
             </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => openWorkspace("portfolio")}
-                  aria-pressed={workspace === "portfolio"}
-                  className={`${toggleButton(workspace === "portfolio")} normal-case tracking-normal text-[12px]`}
+                  // In a personal workspace this is already the portfolio; it just leaves "Shared with me".
+                  onClick={() => (hasPortfolioTab ? openWorkspace("portfolio") : setShowShared(false))}
+                  aria-pressed={!showShared && inPortfolio}
+                  className={`${toggleButton(!showShared && inPortfolio)} normal-case tracking-normal text-[12px]`}
                 >
                   <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {t("portfolioView.portfolioTab")}
@@ -425,10 +452,34 @@ export default function CaseManagerDashboard() {
               </TooltipTrigger>
               <TooltipContent>{t("portfolioView.portfolioTabTooltip")}</TooltipContent>
             </Tooltip>
+            {hasSharedTab && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowShared(true);
+                      exitSelectMode();
+                    }}
+                    aria-pressed={showShared}
+                    className={`${toggleButton(showShared)} normal-case tracking-normal text-[12px]`}
+                  >
+                    <Share2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {t("portfolioView.sharedTab")}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("portfolioView.sharedTabTooltip")}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
 
-        {inPortfolio && <CopyProgress copies={copies} />}
+        {showShared && <SharedCasesList />}
+
+        {!showShared && inPortfolio && <CopyProgress copies={copies} />}
+
+        {!showShared && (
+        <>
 
         <div className="flex flex-wrap items-center gap-4">
             <div data-tour-id="cases-search" className="relative w-full sm:max-w-80 flex items-center">
@@ -781,6 +832,12 @@ export default function CaseManagerDashboard() {
                             <DropdownMenuContent>
                               {c.status === "ARCHIVED" ? (
                                 <>
+                                  {canShareCase(c) && (
+                                    <DropdownMenuItem onSelect={() => setSharingCase(c)}>
+                                      <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                                      {t("share.button")}
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onSelect={() => unarchiveCase(c.id)}>
                                     <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
                                     {t("unarchiveCaseCta")}
@@ -797,6 +854,12 @@ export default function CaseManagerDashboard() {
                                     <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                                     {t("editModal.editCase")}
                                   </DropdownMenuItem>
+                                  {canShareCase(c) && (
+                                    <DropdownMenuItem onSelect={() => setSharingCase(c)}>
+                                      <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                                      {t("share.button")}
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onSelect={() => setArchivingCase(c)}>
                                     <Archive className="w-3.5 h-3.5" aria-hidden="true" />
                                     {t("archiveCaseCta")}
@@ -910,6 +973,8 @@ export default function CaseManagerDashboard() {
             </div>
           </div>
         )}
+        </>
+        )}
       </main>
 
       {editingCase && (
@@ -940,6 +1005,10 @@ export default function CaseManagerDashboard() {
           onConfirm={() => void handleConfirmArchive()}
           onClose={() => setArchivingCase(null)}
         />
+      )}
+
+      {sharingCase && (
+        <ShareCaseDialog key={sharingCase.id} caseId={sharingCase.id} caseName={sharingCase.caseName} onClose={() => setSharingCase(null)} />
       )}
 
       {confirmingBulkArchive && (

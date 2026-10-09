@@ -10,6 +10,9 @@ interface LayoutTabStripProps {
   onClose: (id: string) => void
   onNew: () => void
   onRename: (id: string, name: string) => void
+  /** Hides rename, close and "New layout" — for a view-only person on a confidential case, whose
+   * changes to the case's shared layouts the API refuses. */
+  readOnly?: boolean
   labels: { close: string; newLayout: string; scrollLeft: string; scrollRight: string; rename: string; renameHint: string; renameKeys: string }
 }
 
@@ -25,7 +28,7 @@ const MAX_EDIT_WIDTH_CH = 28
 // scrollbar; this hides it and instead shows ‹ › buttons only while the tabs actually overflow,
 // scrolls with the mouse wheel, keeps the active tab in view, and pins "New layout" outside the
 // scroller so it's always reachable.
-export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNew, onRename, labels }: LayoutTabStripProps) {
+export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNew, onRename, readOnly = false, labels }: LayoutTabStripProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [overflow, setOverflow] = useState({ overflowing: false, atStart: true, atEnd: true })
   // Inline rename (double-click a tab title). `draft` is what's being typed; the tab's real name
@@ -166,7 +169,7 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                   }}
                   onKeyDown={(e) => {
                     // Keyboard equivalent of the hover edit button below.
-                    if (e.key === "F2") {
+                    if (e.key === "F2" && !readOnly) {
                       e.preventDefault()
                       startEditing(tab)
                     }
@@ -179,7 +182,7 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                   {tab.name}
                 </button>
               )}
-              {!editing && (
+              {!editing && !readOnly && (
                 // Collapsed to zero width (not just invisible) so an inactive tab doesn't reserve
                 // room for these two buttons — the gap only appears once the tab is hovered/focused.
                 <span className="flex w-0 shrink-0 items-center gap-0.5 overflow-hidden opacity-0 transition-[width,opacity,margin-left] duration-150 group-hover/tab:ml-1 group-hover/tab:w-9 group-hover/tab:opacity-100 group-focus-within/tab:ml-1 group-focus-within/tab:w-9 group-focus-within/tab:opacity-100">
@@ -211,14 +214,16 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
           <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       )}
-      <button
-        type="button"
-        onClick={onNew}
-        className="flex shrink-0 items-center gap-1.5 self-center whitespace-nowrap text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <Plus className="h-3 w-3" aria-hidden="true" />
-        {labels.newLayout}
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={onNew}
+          className="flex shrink-0 items-center gap-1.5 self-center whitespace-nowrap text-[10px] font-semibold uppercase tracking-[1.2px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Plus className="h-3 w-3" aria-hidden="true" />
+          {labels.newLayout}
+        </button>
+      )}
     </div>
   )
 }

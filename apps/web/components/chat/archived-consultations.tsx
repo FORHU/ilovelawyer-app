@@ -21,6 +21,9 @@ import AssistantMessage from "@/components/chat/assistant-message";
 import { ConsultationConfirmModal } from "@/components/chat/consultation-confirm-modal";
 import { visibleChatMessages } from "@/lib/chat/use-topic-navigator";
 
+/** The archive only moves between the user's own workspaces — never a case shared with them. */
+type OwnWorkspace = Exclude<Workspace, "shared">;
+
 /** Archiving a consultation: `requestArchive` opens a confirmation (render `archiveDialog`
  * wherever the list is), and once confirmed the toast still carries an Undo. `onArchived` runs
  * once it's out of the list, e.g. to move off it when it was the one open. */
@@ -82,7 +85,7 @@ function useArchiveWorkspaces(caseId?: string) {
   const organization = useAuthStore((s) => s.organization);
   const portfolio = useAuthStore((s) => s.portfolio);
   // Mirrors activeWorkspaceId: "portfolio" only counts once the portfolio is known.
-  const current: Workspace = useAuthStore((s) => (s.workspace === "portfolio" && s.portfolio ? "portfolio" : "organization"));
+  const current: OwnWorkspace = useAuthStore((s) => (s.workspace === "portfolio" && s.portfolio ? "portfolio" : "organization"));
   const other =
     caseId || !organization || organization.isPersonal || !portfolio
       ? null
@@ -155,7 +158,7 @@ function ArchivedConsultationsModal({
   const { current, other, organizationName } = useArchiveWorkspaces(caseId);
   const switchWorkspace = useSwitchWorkspace();
   // Which workspace's archive is shown; starts on the one being viewed.
-  const [viewing, setViewing] = useState<Workspace>(current);
+  const [viewing, setViewing] = useState<OwnWorkspace>(current);
   // Undefined while showing the active workspace — requests then go there as usual.
   const viewingId = other && viewing === other.workspace ? other.id : undefined;
   const { data: archived, isLoading, isError, refetch } = useConsultationsQuery(caseId, {
@@ -177,7 +180,7 @@ function ArchivedConsultationsModal({
 
   const titleOf = (c: Consultation) => c.title?.trim() || t("sidebar.untitledConsultation");
 
-  const showWorkspace = (next: Workspace) => {
+  const showWorkspace = (next: OwnWorkspace) => {
     setViewing(next);
     setSelectedId(null);
     setShowPreviewOnMobile(false);

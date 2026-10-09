@@ -412,11 +412,20 @@ export function useTerminalCatalogQuery() {
   })
 }
 
+// Layouts are shared by everyone on the case, so another member's rename, new tab or deletion has
+// to reach this window without a reload: re-fetched on focus and on this interval. Only the list
+// (names, which tabs exist) is picked up live — the open tab's panes aren't re-hydrated under
+// the person working in them; re-selecting the tab or reloading does that.
+const WORKSPACES_POLL_MS = 15_000
+
 export function useTerminalWorkspacesQuery(caseId: string) {
   return useQuery({
     queryKey: terminalKeys.workspaces(caseId),
     queryFn: () => apiFetch<TerminalWorkspace[]>(`/api/terminal/workspaces?caseId=${caseId}`),
     enabled: !!caseId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: WORKSPACES_POLL_MS,
   })
 }
 

@@ -16,9 +16,18 @@ export interface CaseAccessPerson {
   /** Null for someone holding a grant who's no longer in the case's organization. */
   orgRole: OrganizationRole | null
   grant: CasePermission | null
+  /** A portfolio share: when it was made. */
+  sharedAt?: string
 }
 
 export interface CaseAccessList {
+  /** A case in someone's portfolio. It's shared with individual people, read-only, rather than
+   * with an organization's members, and only its owner sees `people`. */
+  portfolio?: boolean
+  /** Whether the caller may share it: false for a copy of an organization's case. */
+  shareable?: boolean
+  /** Whether the caller may add to or change it — false on a read-only share. */
+  canContribute?: boolean
   /** A confidential case (#346): only the org OWNER and people with a grant can reach it. */
   confidential: boolean
   /** What the caller may do on this case, from the API's own rule (includes per-case grants). */
@@ -93,6 +102,22 @@ export function useRevokeCaseAccessMutation() {
       await apiFetchRaw(`/api/my-cases/${caseId}/access/${userId}`, { method: "DELETE" })
     },
     onSuccess: (_data, { caseId }) => invalidate(caseId),
+  })
+}
+
+/** A registered user found by their exact email, to confirm before sharing a portfolio case. */
+export interface ShareRecipient {
+  id: string
+  name: string | null
+  email: string
+  username: string
+  avatarUrl: string | null
+}
+
+export function useShareLookupMutation() {
+  return useMutation({
+    mutationFn: ({ caseId, email }: { caseId: string; email: string }) =>
+      apiFetch<ShareRecipient>(`/api/my-cases/${caseId}/access/lookup?email=${encodeURIComponent(email)}`),
   })
 }
 

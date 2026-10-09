@@ -25,6 +25,28 @@ export function CaseUnavailable() {
   const hasPortfolio = !!organization && !organization.isPersonal
   const inPortfolio = workspace === "portfolio"
 
+  // A shared case that's no longer shared (or was deleted): back to the list of shared cases,
+  // which the guard leaves the owner's portfolio for.
+  if (workspace === "shared") {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6 pt-24 pb-16">
+        <div className="flex max-w-[440px] flex-col items-center gap-4 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card text-muted-foreground">
+            <Briefcase className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <h1 className="font-['Libre_Caslon_Text'] text-[24px] text-foreground">{t("portfolioView.unavailableTitle")}</h1>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">{t("portfolioView.sharedUnavailable")}</p>
+          <Link
+            href="/homepage/case-portfolio?view=shared"
+            className="mt-2 rounded-full border border-border px-6 py-2.5 text-[11px] font-semibold uppercase tracking-[1.2px] text-foreground transition-colors hover:border-foreground/40"
+          >
+            {t("portfolioView.backToShared")}
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
   const openOther = () => {
     switchWorkspace(inPortfolio ? "organization" : "portfolio")
     router.push("/homepage/case-portfolio")
