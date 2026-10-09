@@ -5,7 +5,8 @@ export type SampleTourTrack = "studio" | "terminal"
 export type SampleTile = "audio" | "mindmap" | "timeline" | "datatable" | "decisions" | "brief"
 
 /** A step of a sample-case tour. `target` is a `data-sample-tour` value on the sample page;
- * `tile` opens that Studio tile first so the step can show its output. Copy lives under
+ * `tile` opens that Studio tile first so the step can show its output, and `changes` opens the
+ * Terminal's "What changed" panel (every other step closes it). Copy lives under
  * `sampleCase.tour.<track>.steps.<id>` in tour.json. */
 export interface SampleTourStep {
   id: string
@@ -13,6 +14,7 @@ export interface SampleTourStep {
   target: string
   placement: Placement
   tile?: SampleTile
+  changes?: boolean
 }
 
 export const SAMPLE_TILES: SampleTile[] = ["audio", "mindmap", "timeline", "datatable", "decisions", "brief"]
@@ -32,6 +34,8 @@ export const SAMPLE_TOURS: Record<SampleTourTrack, SampleTourStep[]> = {
     { id: "legalIssues", view: "terminal", target: "pane-legalIssues", placement: "left" },
     { id: "procedure", view: "terminal", target: "pane-procedure", placement: "left" },
     { id: "redTeam", view: "terminal", target: "pane-redTeam", placement: "right" },
+    { id: "whatChanged", view: "terminal", target: "what-changed", placement: "bottom" },
+    { id: "changeHistory", view: "terminal", target: "changes", placement: "bottom", changes: true },
     { id: "addPane", view: "terminal", target: "add-pane", placement: "bottom" },
     { id: "arrange", view: "terminal", target: "arrange", placement: "bottom" },
   ],

@@ -48,6 +48,34 @@ describe("sample panes", () => {
   })
 })
 
+describe("sample What changed", () => {
+  it("lists a run and an editing session, only about panes on the sample grid", () => {
+    for (const tenant of ["PH", "UK"] as const) {
+      const { run, edits } = sampleCaseFor(tenant).changes
+      expect(run.documents.length, tenant).toBeGreaterThan(0)
+      for (const lines of [run.lines, edits.lines]) {
+        expect(lines.length, tenant).toBeGreaterThan(0)
+        for (const line of lines) expect(SAMPLE_GRID, `${tenant} ${line.pane}`).toContain(line.pane)
+      }
+    }
+  })
+
+  it("names only documents in the sample case", () => {
+    for (const tenant of ["PH", "UK"] as const) {
+      const data = sampleCaseFor(tenant)
+      const files = data.documents.flatMap((f) => f.files.map((file) => file.name))
+      for (const name of data.changes.run.documents) expect(files, `${tenant} ${name}`).toContain(name)
+    }
+  })
+
+  it("is shown in the Terminal tour: the button, then the panel it opens", () => {
+    const ids = SAMPLE_TOURS.terminal.map((s) => s.id)
+    expect(ids.indexOf("changeHistory")).toBe(ids.indexOf("whatChanged") + 1)
+    expect(SAMPLE_TOURS.terminal.find((s) => s.id === "whatChanged")?.target).toBe("what-changed")
+    expect(SAMPLE_TOURS.terminal.filter((s) => s.changes).map((s) => s.target)).toEqual(["changes"])
+  })
+})
+
 describe("sample case per jurisdiction", () => {
   // Terms, courts and currency that only belong to one jurisdiction's sample.
   const PH_ONLY = /₱|estafa|Revised Penal|RPC|Art\. 315|RA 10951|Republic Act|G\.R\.|RTC|Quezon|Viber|pre-trial|Information\.pdf/i

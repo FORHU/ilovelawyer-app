@@ -11,6 +11,8 @@ import { ARRANGEMENT_VALUES, type ArrangementValue, type PanelId } from "@/lib/t
 import { PANE_CATEGORY_META, PANE_CATEGORY_ORDER, PANEL_CATEGORY } from "@/components/terminal/terminal-pane-categories"
 import { PANE_INFO, SAMPLE_GRID, type SampleCase } from "@/lib/sample-case/data"
 import { SeverityChip } from "@/components/sample-case/severity-chip"
+import { SampleChangesPanel } from "@/components/sample-case/sample-changes"
+import { ChangeSummaryButton } from "@/components/terminal/change-summary-modal"
 import { useTourT } from "@/lib/tour/use-tour-t"
 
 const GRID_CLASS: Record<ArrangementValue, string> = {
@@ -22,15 +24,31 @@ const GRID_CLASS: Record<ArrangementValue, string> = {
 const iconButton =
   "inline-flex size-6 cursor-pointer items-center justify-center rounded-full border border-border hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
-/** The sample case's Legal Terminal: a pane grid with sample content, the three arrangements, and
- * Add pane listing every pane by group. Rearranging works; anything that would save doesn't. */
-export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadOnly: () => void }) {
+/** The sample case's Legal Terminal: a pane grid with sample content, the three arrangements,
+ * "What changed" with a sample history, and Add pane listing every pane by group. Rearranging
+ * works; anything that would save doesn't. */
+export function SampleTerminal({
+  data,
+  changesOpen,
+  onChangesOpen,
+  onReadOnly,
+}: {
+  data: SampleCase
+  /** Whether the "What changed" panel is showing — the page's, so the tour can open it. */
+  changesOpen: boolean
+  onChangesOpen: (open: boolean) => void
+  onReadOnly: () => void
+}) {
   const { t } = useTourT()
   const { t: tTerminal } = useTranslation("terminal")
   const [grid, setGrid] = useState<PanelId[]>(SAMPLE_GRID)
   const [focused, setFocused] = useState<PanelId>(SAMPLE_GRID[0]!)
   const [arrangement, setArrangement] = useState<ArrangementValue>("free")
   const [catalogOpen, setCatalogOpen] = useState(false)
+  // Like a real case with a run not looked at yet: the button's dot shows until the panel has
+  // been open, by the user or the tour.
+  const [changesSeen, setChangesSeen] = useState(false)
+  if (changesOpen && !changesSeen) setChangesSeen(true)
 
   const singlePane = arrangement === "focus"
   const shown = singlePane ? grid.filter((id) => id === focused) : grid
@@ -72,6 +90,9 @@ export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadO
         </div>
         <span className="font-mono text-[11px] text-muted-foreground">{t("sampleCase.paneCount", { count: grid.length })}</span>
         <span className="flex-1" />
+        <span data-sample-tour="what-changed" className="inline-flex rounded-md">
+          <ChangeSummaryButton unseen={!changesSeen} onClick={() => onChangesOpen(true)} />
+        </span>
         <Button variant="outline" className="h-9 rounded-full px-4 text-[10px] font-semibold uppercase tracking-[1px]" onClick={onReadOnly}>
           {t("sampleCase.refresh")}
         </Button>
@@ -79,6 +100,17 @@ export function SampleTerminal({ data, onReadOnly }: { data: SampleCase; onReadO
           + {t("sampleCase.addPane")}
         </Button>
       </div>
+
+      {changesOpen && (
+        <SampleChangesPanel
+          changes={data.changes}
+          onClose={() => onChangesOpen(false)}
+          onOpenPane={(id) => {
+            onChangesOpen(false)
+            add(id)
+          }}
+        />
+      )}
 
       <div className={`grid gap-3 ${GRID_CLASS[arrangement]}`}>
         {shown.map((id) => {
