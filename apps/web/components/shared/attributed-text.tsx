@@ -114,11 +114,20 @@ export function AttributedTextLegend({
 /** Markdown renderer with per-sentence claim attribution — hover a highlighted phrase to see
  * why it's colored the way it is. `claims` matching happens at render time against whatever
  * `content` currently is, so nothing about the stored text is ever modified. */
-export default function AttributedMarkdown({ content, claims }: { content: string; claims: Claim[] }) {
+export default function AttributedMarkdown({
+  content,
+  claims,
+  className = "max-w-[66ch]",
+}: {
+  content: string;
+  claims: Claim[];
+  /** Replaces the default 66ch measure, for hosts that fill a wide pane. */
+  className?: string;
+}) {
   const components = React.useMemo(() => buildComponents(claims), [claims]);
   return (
     // Reading face (--font-reading, loaded in app/layout.tsx, same as chat answers) at a book-like measure.
-    <div className="max-w-[66ch] font-[family-name:var(--font-reading)] text-[15px] leading-7 text-pretty text-foreground selection:bg-brand-gold/20">
+    <div className={`${className} font-[family-name:var(--font-reading)] text-[15px] leading-7 text-pretty text-foreground selection:bg-brand-gold/20`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>
