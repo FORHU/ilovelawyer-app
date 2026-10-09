@@ -87,7 +87,14 @@ export function CaseReconstructionPanel({
   // it defaults to a read-only highlighted view; editing is a deliberate switch, same tradeoff
   // Red Team avoids by not being editable at all. Court/Opposing have no claims and stay
   // textarea-only, same as before this feature.
-  const [isEditingGeneral, setIsEditingGeneral] = useState(false)
+  // Court/Opposing follow the same read-first rule, just without claim highlighting.
+  const [editing, setEditing] = useState<Record<ReconstructionRegister, boolean>>({
+    general: false,
+    court: false,
+    opposing: false,
+  })
+  const setEditingFor = (register: ReconstructionRegister, value: boolean) =>
+    setEditing((prev) => ({ ...prev, [register]: value }))
   const [drafts, setDrafts] = useState<Record<ReconstructionRegister, string>>({
     general: registerText(reconstruction, "general"),
     court: registerText(reconstruction, "court"),
@@ -141,7 +148,11 @@ export function CaseReconstructionPanel({
       court: dirty.court ? prev.court : registerText(reconstruction, "court"),
       opposing: dirty.opposing ? prev.opposing : registerText(reconstruction, "opposing"),
     }))
-    if (!dirty.general) setIsEditingGeneral(false)
+    setEditing((prev) => ({
+      general: dirty.general && prev.general,
+      court: dirty.court && prev.court,
+      opposing: dirty.opposing && prev.opposing,
+    }))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on new content, reads the dirty flags it lands on
   }, [reconstruction])
 
@@ -154,13 +165,33 @@ export function CaseReconstructionPanel({
 
   return (
     <PanelBody gap="3">
-      <div className="flex items-start justify-between gap-3">
-        <SectionLabel>{t("reconstructionNarrative")}</SectionLabel>
-        <RegenerateButton
-          regen={regen}
-          onClick={() => (edited ? setConfirmReplace(true) : regen.start())}
-          hint={t("regenerateReconstructionHint")}
-        />
+      {/* View tabs and the pane's Regenerate share one row, so no separate header repeats the active tab's name. */}
+      <div className="flex items-end justify-between gap-3 border-b border-border">
+        <div role="tablist" className="flex min-w-0 flex-wrap gap-x-5">
+          {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={viewMode === mode}
+              onClick={() => setViewMode(mode)}
+              className={`-mb-px shrink-0 border-b-2 px-0.5 pt-1 pb-2 text-[13px] transition-colors outline-none focus-visible:text-brand-gold ${
+                viewMode === mode
+                  ? "border-brand-gold font-medium text-foreground"
+                  : "border-transparent text-foreground/70 hover:text-foreground"
+              }`}
+            >
+              {t(RECONSTRUCTION_VIEW_MODE_KEYS[mode])}
+            </button>
+          ))}
+        </div>
+        <div className="shrink-0 pb-1.5">
+          <RegenerateButton
+            regen={regen}
+            onClick={() => (edited ? setConfirmReplace(true) : regen.start())}
+            hint={t("regenerateReconstructionHint")}
+          />
+        </div>
       </div>
       {/* While a run writes this pane, the centered loading state replaces its content. */}
       {loadingLabel ? (
@@ -191,25 +222,6 @@ export function CaseReconstructionPanel({
         </div>
       ) : null}
 
-      <div role="tablist" className="flex w-full max-w-md flex-wrap gap-0.5 self-start rounded-md bg-muted p-0.5">
-        {(["narrative", "scenes", "storyboard", "events"] as const).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            role="tab"
-            aria-selected={viewMode === mode}
-            onClick={() => setViewMode(mode)}
-            className={`min-w-0 flex-1 rounded px-2.5 py-1.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 ${
-              viewMode === mode
-                ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/5"
-                : "text-foreground/70 hover:text-foreground"
-            }`}
-          >
-            {t(RECONSTRUCTION_VIEW_MODE_KEYS[mode])}
-          </button>
-        ))}
-      </div>
-
       {viewMode === "scenes" && (
         <ScenesView caseId={caseId} reconstruction={reconstruction} />
       )}
@@ -228,9 +240,10 @@ export function CaseReconstructionPanel({
       )}
 
       {viewMode === "narrative" && (
-        <div className="grid items-start gap-x-10 gap-y-6 @4xl:grid-cols-[minmax(0,66ch)_minmax(16rem,22rem)]">
+        <div className="grid items-start gap-x-10 gap-y-6 @4xl:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)]">
           <div className="flex min-w-0 flex-col gap-3">
-          <div role="tablist" className="flex flex-wrap gap-x-4 border-b border-border">
+          {/* Second level: a filled pill switcher, so it never reads as a repeat of the underlined view tabs above. */}
+          <div role="tablist" className="flex w-fit max-w-full flex-wrap gap-0.5 rounded-md bg-muted p-0.5">
             {(Object.keys(REGISTER_TAB_KEYS) as ReconstructionRegister[]).map(
               (register) => (
                 <button
@@ -239,10 +252,10 @@ export function CaseReconstructionPanel({
                   role="tab"
                   aria-selected={activeRegister === register}
                   onClick={() => setActiveRegister(register)}
-                  className={`-mb-px border-b-2 py-1.5 text-xs transition-colors outline-none focus-visible:text-foreground ${
+                  className={`rounded px-2.5 py-1 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/40 ${
                     activeRegister === register
-                      ? "border-brand-gold font-medium text-foreground"
-                      : "border-transparent text-foreground/70 hover:text-foreground"
+                      ? "bg-card font-medium text-foreground shadow-sm ring-1 ring-foreground/5"
+                      : "text-foreground/70 hover:text-foreground"
                   }`}
                 >
                   {t(REGISTER_TAB_KEYS[register])}
@@ -250,49 +263,94 @@ export function CaseReconstructionPanel({
               )
             )}
           </div>
-          <p className="text-xs text-foreground/70">{t(`${REGISTER_TAB_KEYS[activeRegister]}Hint`)}</p>
+          {/* While editing, this row pins to the top of the scroll area and carries Cancel / Save, so
+              they stay in reach however long the text runs. */}
+          <div
+            className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${
+              editing[activeRegister] ? "sticky -top-4 z-10 -mx-4 border-b border-border bg-card px-4 pt-4 pb-2" : ""
+            }`}
+          >
+            <p className="text-xs text-foreground/70">{t(`${REGISTER_TAB_KEYS[activeRegister]}Hint`)}</p>
+            {editing[activeRegister] && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrafts((prev) => ({ ...prev, [activeRegister]: activeText }))
+                    setDirty((prev) => ({ ...prev, [activeRegister]: false }))
+                    setEditingFor(activeRegister, false)
+                  }}
+                  disabled={update.isPending}
+                  className={ghostBtnClass}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
+                      onSuccess: () => {
+                        setDirty((prev) => ({ ...prev, [activeRegister]: false }))
+                        setEditingFor(activeRegister, false)
+                      },
+                    })
+                  }
+                  disabled={update.isPending}
+                  className={`inline-flex items-center gap-1.5 ${primaryBtnClass}`}
+                >
+                  {update.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {update.isPending ? t("saving") : t("save")}
+                </button>
+              </div>
+            )}
+            {narrative && !editing[activeRegister] && (activeRegister === "general" || activeText) && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-foreground/70 tabular-nums">
+                  {t("readTimeMinutes", { n: Math.max(1, Math.round(activeDraft.split(/\s+/).length / 200)) })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(activeDraft).then(() => {
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1500)
+                    })
+                  }}
+                  className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
+                >
+                  {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
+                  {copied ? t("copiedText") : t("copyText")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingFor(activeRegister, true)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
+                >
+                  <Pencil className="h-3 w-3" aria-hidden="true" />
+                  {t("edit")}
+                </button>
+              </div>
+            )}
+          </div>
 
           {!narrative && !isGenerating ? (
             <EmptyNote>{t("noReconstruction")}</EmptyNote>
           ) : activeRegister !== "general" && !activeText && !activeDirty ? (
             <EmptyNote>{t("registerNotGenerated")}</EmptyNote>
-          ) : activeRegister === "general" && !isEditingGeneral ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-foreground/70 tabular-nums">
-                    {t("readTimeMinutes", { n: Math.max(1, Math.round(activeDraft.split(/\s+/).length / 200)) })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(activeDraft).then(() => {
-                        setCopied(true)
-                        setTimeout(() => setCopied(false), 1500)
-                      })
-                    }}
-                    className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
-                  >
-                    {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
-                    {copied ? t("copiedText") : t("copyText")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingGeneral(true)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
-                  >
-                    <Pencil className="h-3 w-3" aria-hidden="true" />
-                    {t("edit")}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <AttributedMarkdown
-                  content={activeDraft}
-                  claims={reconstruction?.claims ?? []}
-                />
-              </div>
-            </div>
+          ) : activeRegister === "general" && !editing.general ? (
+            <AttributedMarkdown
+              content={activeDraft}
+              claims={reconstruction?.claims ?? []}
+              className="max-w-none"
+            />
+          ) : activeRegister !== "general" && !editing[activeRegister] ? (
+            <p className="font-[family-name:var(--font-reading)] text-[15px] leading-7 text-pretty whitespace-pre-wrap text-foreground">
+              {activeDraft}
+            </p>
           ) : (
             <textarea
               key={activeRegister}
@@ -304,46 +362,10 @@ export function CaseReconstructionPanel({
                 }))
                 setDirty((prev) => ({ ...prev, [activeRegister]: true }))
               }}
-              rows={16}
-              className="flex-1 rounded-md border border-border bg-muted px-3 py-2.5 text-[13px] leading-6 text-foreground outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
+              // Same face, size and leading as the read view, and it grows with the text so the
+              // pane scrolls once instead of the textarea scrolling inside it.
+              className="field-sizing-content min-h-80 w-full resize-none rounded-md border border-border bg-muted/40 px-4 py-3 font-[family-name:var(--font-reading)] text-[15px] leading-7 text-foreground outline-none focus:border-brand-gold/60 focus:ring-2 focus:ring-brand-gold/20"
             />
-          )}
-
-          {activeDirty && (
-            <div className="sticky bottom-0 -mx-1 flex items-center justify-end gap-2 border-t border-border bg-card px-1 py-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setDrafts((prev) => ({ ...prev, [activeRegister]: activeText }))
-                  setDirty((prev) => ({ ...prev, [activeRegister]: false }))
-                  if (activeRegister === "general") setIsEditingGeneral(false)
-                }}
-                disabled={update.isPending}
-                className={ghostBtnClass}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  update.mutate(buildUpdatePayload(activeRegister, activeDraft), {
-                    onSuccess: () => {
-                      setDirty((prev) => ({ ...prev, [activeRegister]: false }))
-                      if (activeRegister === "general") setIsEditingGeneral(false)
-                    },
-                  })
-                }
-                disabled={update.isPending}
-                className={`inline-flex items-center gap-1.5 ${primaryBtnClass}`}
-              >
-                {update.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="h-3 w-3" aria-hidden="true" />
-                )}
-                {update.isPending ? t("saving") : t("save")}
-              </button>
-            </div>
           )}
           <MutationError show={update.isError} />
           </div>
@@ -469,8 +491,7 @@ function ScenesView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <SectionLabel>{t("scenesLabel")}</SectionLabel>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           onClick={() => generateScenes.mutate()}
@@ -497,9 +518,9 @@ function ScenesView({
         isGeneratingScenes ? <RowSkeletons /> : <EmptyNote>{t("noScenes")}</EmptyNote>
       ) : (
         <>
-          <ul ref={scenesListRef} className="divide-y divide-border">
+          <ul ref={scenesListRef} className="@3xl:grid @3xl:grid-cols-2 @3xl:gap-x-8">
             {scenes.map((scene) => (
-              <li key={scene.index} className="py-3 first:pt-0">
+              <li key={scene.index} className="border-b border-border py-3 first:pt-0 last:border-b-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="min-w-0 flex-1 font-[family-name:var(--font-reading)] text-[15px] font-semibold text-foreground">
                     {[scene.time, scene.location].filter(Boolean).join(" · ") ||
@@ -723,8 +744,7 @@ function EventsView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <SectionLabel>{t("eventsLabel")}</SectionLabel>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           onClick={() => generateEvents.mutate()}
@@ -816,7 +836,7 @@ function StoryboardView({
           {scene.sourceRefs.length === 0 ? (
             <EmptyNote>{t("noExhibitsForScene")}</EmptyNote>
           ) : (
-            <ul className="mt-2 grid grid-cols-1 gap-2 @sm:grid-cols-2">
+            <ul className="mt-2 grid grid-cols-1 gap-2 @sm:grid-cols-2 @2xl:grid-cols-3 @4xl:grid-cols-4">
               {scene.sourceRefs.map((ref, i) => (
                 <li
                   key={i}

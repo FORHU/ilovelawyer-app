@@ -518,7 +518,10 @@ function PaneHeaderActions({
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={onToggleMaximize}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+            aria-pressed={isMaximized}
+            className={`rounded p-1 transition-colors hover:bg-muted dark:hover:bg-overlay-hover ${
+              isMaximized ? "text-brand-gold" : "text-muted-foreground hover:text-foreground"
+            }`}
             aria-label={isMaximized ? t("restorePane") : t("maximizePane")}
           >
             {isMaximized ? <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />}

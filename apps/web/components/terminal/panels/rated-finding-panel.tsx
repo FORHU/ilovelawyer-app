@@ -292,26 +292,45 @@ export function RatedFindingPanel({
                     </div>
 
                     <form
-                      className="flex flex-wrap gap-2"
+                      className="flex flex-col gap-2"
                       onSubmit={(e) => {
                         e.preventDefault()
                         update.mutate({ id: f.id, detail: detail.trim() || null })
                       }}
                     >
-                      <input
+                      {/* A textarea that grows with its text (field-sizing), so a long detail wraps
+                          in full instead of scrolling out of a one-line input. Enter saves; Shift+Enter breaks the line. */}
+                      <textarea
                         value={detail}
+                        rows={2}
                         onChange={(e) => setDetail(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                            e.preventDefault()
+                            e.currentTarget.form?.requestSubmit()
+                          }
+                        }}
                         placeholder={t(config.detailPlaceholderKey)}
                         aria-label={t(config.detailPlaceholderKey)}
-                        className={`flex-1 ${fieldClass}`}
+                        className={`w-full resize-none py-1.5 text-[13px] leading-5 [field-sizing:content] ${fieldClass} h-auto min-h-[3.25rem]`}
                       />
-                      <button
-                        type="submit"
-                        disabled={update.isPending || detail.trim() === (f.detail ?? "")}
-                        className={ghostBtnClass}
-                      >
-                        {t("save")}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDetail(f.detail ?? "")}
+                          disabled={update.isPending || detail === (f.detail ?? "")}
+                          className={ghostBtnClass}
+                        >
+                          {t("cancel")}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={update.isPending || detail.trim() === (f.detail ?? "")}
+                          className={update.isPending || detail.trim() === (f.detail ?? "") ? ghostBtnClass : primaryBtnClass}
+                        >
+                          {t("save")}
+                        </button>
+                      </div>
                     </form>
 
                     {isAi || f.sourceLabel ? (
