@@ -184,7 +184,7 @@ export function useCancelDeletionMutation() {
   })
 }
 
-export type ConsentPurpose = "TERMS_OF_SERVICE" | "AI_PROCESSING" | "ANALYTICS" | "MARKETING"
+export type ConsentPurpose = "TERMS_OF_SERVICE" | "AI_PROCESSING"
 
 export interface ConsentState {
   purpose: ConsentPurpose
@@ -207,10 +207,10 @@ export function useSetConsentMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ purpose, granted }: { purpose: ConsentPurpose; granted: boolean }) =>
+    mutationFn: ({ purpose, granted, source }: { purpose: ConsentPurpose; granted: boolean; source?: "settings" | "first_login" }) =>
       apiFetch<ConsentState[]>(`/api/consents/${purpose}`, {
         method: "PUT",
-        body: JSON.stringify({ granted }),
+        body: JSON.stringify({ granted, source }),
       }),
     onSuccess: (updated) => {
       queryClient.setQueryData(userKeys.consents(), updated)
