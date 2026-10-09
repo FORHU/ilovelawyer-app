@@ -18,6 +18,7 @@
     "defaultAttachmentMessage": "첨부된 문서를 검토해 주세요: {{fileName}}",
     "defaultAttachmentMessageMultiple": "첨부된 문서({{count}}개)를 검토해 주세요.",
     "attachmentUploadError": "하나 이상의 파일을 업로드하지 못했습니다. 다시 시도하거나 제거해 주세요.",
+    "attachmentTooLargeHint": "파일이 너무 큽니다: {{fileNames}}. 삭제한 후 보내세요.",
     "retryUpload": "{{fileName}} 업로드 재시도",
     "dropFilesHint": "파일을 여기에 놓아 첨부하세요",
     "indexing": "채팅용 색인 중…",

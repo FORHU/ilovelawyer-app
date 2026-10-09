@@ -27,7 +27,7 @@ import {
   useUploadCaseDocumentsMutation,
   type UserDocument,
 } from "@/lib/cases/mutations"
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, isWithinSizeLimit, oversizedFilesLabel } from "@/lib/cases/upload-batch"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { useCanEditCase, useCanContributeToCase } from "@/lib/cases/permissions"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
@@ -134,15 +134,14 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
     }
 
     const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
+      supported.filter(isWithinSizeLimit),
+      supported.filter((f) => !isWithinSizeLimit(f)),
     ]
     if (oversized.length > 0) {
       toast.error(
         t("detail.attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
+          defaultValue: `${oversizedFilesLabel(oversized)} — over the per-file size limit, wasn't added.`,
+          fileNames: oversizedFilesLabel(oversized),
         })
       )
     }

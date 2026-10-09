@@ -18,6 +18,7 @@
     "defaultAttachmentMessage": "Pakisuri ang nakalakip na dokumento: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Pakisuri ang mga nakalakip na dokumento ({{count}}).",
     "attachmentUploadError": "Hindi na-upload ang isa o higit pang file. Subukang muli o alisin ang mga ito.",
+    "attachmentTooLargeHint": "Masyadong malaki: {{fileNames}}. Alisin para maipadala.",
     "retryUpload": "Subukan ulit i-upload ang {{fileName}}",
     "dropFilesHint": "I-drop ang mga file dito para ilakip",
     "indexing": "Ini-index para sa chat…",

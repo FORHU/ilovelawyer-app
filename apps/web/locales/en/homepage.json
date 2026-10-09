@@ -20,6 +20,7 @@
     "defaultAttachmentMessage": "Please review the attached document: {{fileName}}",
     "defaultAttachmentMessageMultiple": "Please review the attached documents ({{count}}).",
     "attachmentUploadError": "Couldn't upload one or more files. Retry or remove them and try again.",
+    "attachmentTooLargeHint": "Too large: {{fileNames}}. Remove to send.",
     "retryUpload": "Retry uploading {{fileName}}",
     "dropFilesHint": "Drop files to attach",
     "indexing": "Indexing for chat…",

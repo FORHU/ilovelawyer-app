@@ -375,6 +375,7 @@ export const PANE_INFO: Partial<Record<PanelId, { category: PaneCategory; descri
   strengths: { category: "risk", description: "What your case does well, with the evidence behind it." },
   damages: { category: "risk", description: "Each damages head with its figure, source and total." },
   chat: { category: "team", description: "Chat that already knows this case's documents, parties and issues." },
+  trace: { category: "team", description: "How the AI reached each answer, one run at a time." },
 }
 
 /** The panes on the sample grid when it opens, in order — the same in every jurisdiction. */
