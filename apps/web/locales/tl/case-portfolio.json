@@ -33,6 +33,13 @@
     "mindMap": "Mind Map",
     "timeline": "Timeline"
   },
+  "overview": {
+    "notes": "Mga tala",
+    "notesEmpty": "Wala pang tala.",
+    "notesShowMore": "Magpakita pa",
+    "notesShowLess": "Magpakita ng kaunti",
+    "notesEdit": "I-edit"
+  },
   "detail": {
     "backToPortfolio": "Bumalik sa Case Portfolio",
     "caseLabel": "Kaso",

@@ -146,9 +146,9 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
       <button
         type="button"
         onClick={() => openEditor()}
-        className="inline-flex items-center gap-1.5 p-2 -m-2 text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 p-2 -m-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
-        <Plus className="w-3 h-3" aria-hidden="true" />
+        <Plus className="w-3.5 h-3.5" aria-hidden="true" />
         {t("overview.addParty")}
       </button>
     ) : undefined;
@@ -156,10 +156,10 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
   // Past a handful of parties the list scrolls inside the card (scrollbar hidden) instead of
   // stretching the whole first row of Overview cards; the bottom fade says there's more below.
   // -mx-2/px-2 leave room for the rows' -mx-2 hover background, which overflow would clip.
-  const scrolls = parties.length > 4;
+  const scrolls = parties.length > 6;
   const body = (
     <div
-      className={`-mx-2 flex max-h-72 flex-col gap-3 overflow-y-auto overscroll-contain px-2 scrollbar-none [-ms-overflow-style:none] ${
+      className={`-mx-2 flex max-h-96 flex-col gap-3 overflow-y-auto overscroll-contain px-2 scrollbar-none [-ms-overflow-style:none] ${
         scrolls ? "pb-6 mask-[linear-gradient(to_bottom,#000_calc(100%-24px),transparent)]" : ""
       }`}
     >

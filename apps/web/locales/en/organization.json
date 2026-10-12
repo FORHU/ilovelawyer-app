@@ -161,6 +161,8 @@
       },
       "case": {
         "access_granted": "Case access granted",
+        "access_revoked": "Case access revoked",
+        "confidential_changed": "Case confidentiality changed",
         "deleted": "Case deleted",
         "item_deleted": "Item deleted from a case"
       },

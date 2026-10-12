@@ -2,3 +2,4 @@
 // rejects anything longer — keep the two in step.
 export const CASE_NAME_MAX_LENGTH = 150;
 export const PARTY_NAME_MAX_LENGTH = 80;
+export const CASE_NOTES_MAX_LENGTH = 5000;

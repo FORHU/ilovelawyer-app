@@ -33,6 +33,13 @@
     "mindMap": "마인드맵",
     "timeline": "타임라인"
   },
+  "overview": {
+    "notes": "메모",
+    "notesEmpty": "아직 메모가 없습니다.",
+    "notesShowMore": "더 보기",
+    "notesShowLess": "접기",
+    "notesEdit": "편집"
+  },
   "detail": {
     "backToPortfolio": "사건 포트폴리오로 돌아가기",
     "caseLabel": "사건",

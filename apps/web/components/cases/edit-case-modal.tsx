@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, Plus, X } from "lucide-react";
 import CustomSelect from "@/components/ui/custom-select";
 import { CharCount } from "@/components/ui/char-count";
-import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
+import { CASE_NAME_MAX_LENGTH, CASE_NOTES_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
 import type { CaseRecord, UpdateCasePayload } from "@/lib/cases/mutations";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
@@ -248,9 +248,12 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
               id="edit-case-notes"
               rows={4}
               className="w-full rounded-xl border border-border bg-transparent px-3 py-2.5 outline-none text-base sm:text-sm transition-colors resize-none hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+              maxLength={CASE_NOTES_MAX_LENGTH}
+              aria-describedby="edit-case-notes-count"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
+            <CharCount id="edit-case-notes-count" length={notes.length} max={CASE_NOTES_MAX_LENGTH} />
           </div>
         </div>
 
