@@ -8,7 +8,7 @@ import { PageShell } from "@/components/page-shell";
 import CustomSelect from "@/components/ui/custom-select";
 import {
   UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Loader2,
-  ArrowLeft, ArrowRight, ArrowUpRight, CircleCheck, PanelsTopLeft, Scale,
+  ArrowLeft, ArrowRight, ArrowUpRight, CircleCheck, PanelsTopLeft, Scale, Lock,
 } from "lucide-react";
 import {
   useCreateCaseMutation,
@@ -22,6 +22,7 @@ import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits"
 import { CharCount } from "@/components/ui/char-count";
 import { DesignationPicker, splitDesignationLabel } from "@/components/cases/designation-picker";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useInPortfolio } from "@/components/cases/case-origin";
 import { getTenantCodeConfig, UK_JURISDICTION_LABEL_KEYS } from "@/config/tenant-codes";
 
 const DESIGNATION_OPTIONS = [
@@ -125,6 +126,10 @@ function CreateCasePageContent() {
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
   const tenantConfig = getTenantCodeConfig(tenantCode);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // An organization case can be walled off from the rest of the firm from the start; a portfolio
+  // case is already private. Not saved with the draft, so it's always a deliberate choice.
+  const inPortfolio = useInPortfolio();
+  const [confidential, setConfidential] = useState(false);
   // Seeded party keeps a stable id (safe for the initial server/client render);
   // parties added afterward only ever happen client-side, via addParty below.
   const [formData, setFormData] = useState({
@@ -477,6 +482,7 @@ function CreateCasePageContent() {
           parties: parties.length > 0 ? parties : undefined,
           ukJurisdiction: formData.ukJurisdiction || undefined,
           clientSide: formData.clientSide || undefined,
+          confidential: !inPortfolio && confidential ? true : undefined,
         });
         caseId = newCase.id;
         setCreatedCaseId(caseId);
@@ -973,6 +979,33 @@ function CreateCasePageContent() {
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {!inPortfolio && (
+                    <label
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 ${
+                        confidential ? "border-brand-gold/40 bg-brand-gold/5" : "border-border"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        id="confidential"
+                        checked={confidential}
+                        disabled={!!createdCaseId}
+                        onChange={(e) => setConfidential(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-brand-gold"
+                        aria-describedby="confidential-hint"
+                      />
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                          <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t("confidentialLabel")}
+                        </span>
+                        <span id="confidential-hint" className="text-[12px] text-muted-foreground">
+                          {t("confidentialHint")}
+                        </span>
+                      </span>
+                    </label>
                   )}
 
                   <div className="flex flex-col gap-3 pt-2 border-t border-border">
