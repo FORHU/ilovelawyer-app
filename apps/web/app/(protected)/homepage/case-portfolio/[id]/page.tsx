@@ -468,6 +468,7 @@ function OverviewTab({
   const parties = useOverviewParties(caseRecord);
   const notes = useOverviewNotes(caseRecord);
   const [showAllIssues, setShowAllIssues] = useState(false);
+  const [docPageRaw, setDocPage] = useState(0);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
   // UK cases store a sub-jurisdiction (England and Wales / Scotland / Northern Ireland); PH cases
@@ -506,7 +507,9 @@ function OverviewTab({
   const upcomingDates = dated.filter((d) => d.days >= 0).slice(0, 5);
   const shownDates = [...overdueDates, ...upcomingDates];
 
-  const shownDocs = documents?.slice(0, PREVIEW_COUNT) ?? [];
+  const docPages = Math.max(1, Math.ceil((documents?.length ?? 0) / PREVIEW_COUNT));
+  const docPage = Math.min(docPageRaw, docPages - 1); // clamp if documents shrink (delete/archive)
+  const shownDocs = documents?.slice(docPage * PREVIEW_COUNT, (docPage + 1) * PREVIEW_COUNT) ?? [];
   const shownConsultations = consultations?.slice(0, PREVIEW_COUNT) ?? [];
 
   const headerAction =
@@ -649,7 +652,29 @@ function OverviewTab({
                   </div>
                 ))}
               </div>
-              <ShowingFooter shown={shownDocs.length} total={documents.length} onViewAll={onOpenWorkspace} />
+              {docPages > 1 && (
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>{docPage + 1} / {docPages}</span>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      disabled={docPage === 0}
+                      onClick={() => setDocPage(docPage - 1)}
+                      className="font-medium text-foreground hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-default"
+                    >
+                      {t("pagination.previous")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={docPage >= docPages - 1}
+                      onClick={() => setDocPage(docPage + 1)}
+                      className="font-medium text-foreground hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-default"
+                    >
+                      {t("pagination.next")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <span className="block text-[13px] text-muted-foreground">{t("overview.noDocuments")}</span>
