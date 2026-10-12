@@ -209,7 +209,7 @@ function ConsultationNode({
                 }}
                 aria-disabled={action.disabledReason ? true : undefined}
                 aria-label={action.label}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-card hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-overlay-hover [@media(hover:none)]:opacity-100 aria-disabled:cursor-not-allowed aria-disabled:group-hover:opacity-40 aria-disabled:focus-visible:opacity-40 aria-disabled:[@media(hover:none)]:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground dark:aria-disabled:hover:bg-transparent"
+                className="flex h-7 w-0 shrink-0 items-center justify-center overflow-hidden rounded-full text-muted-foreground opacity-0 transition-opacity group-hover:w-7 focus-visible:w-7 [@media(hover:none)]:w-7 hover:bg-card hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:hover:bg-overlay-hover [@media(hover:none)]:opacity-100 aria-disabled:cursor-not-allowed aria-disabled:group-hover:opacity-40 aria-disabled:focus-visible:opacity-40 aria-disabled:[@media(hover:none)]:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground dark:aria-disabled:hover:bg-transparent"
               >
                 <ActionIcon className="h-3.5 w-3.5" aria-hidden="true" />
               </button>

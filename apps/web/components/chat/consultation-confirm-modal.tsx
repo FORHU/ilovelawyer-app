@@ -60,7 +60,7 @@ export function ConsultationConfirmModal({ action, name, isPending, onConfirm, o
             {isDelete ? <AlertTriangle className="h-4.5 w-4.5" aria-hidden="true" /> : <Archive className="h-4.5 w-4.5" aria-hidden="true" />}
           </div>
           <DialogDescription asChild>
-            <p className="text-sm text-foreground leading-relaxed">
+            <p className="min-w-0 flex-1 text-sm text-foreground leading-relaxed [overflow-wrap:anywhere]">
               {isDelete ? t("sidebar.deleteConsultationConfirm", { name }) : t("sidebar.archiveConsultationConfirm", { name })}
             </p>
           </DialogDescription>
