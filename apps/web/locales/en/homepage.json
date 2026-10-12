@@ -11,6 +11,7 @@
     "viewCaseFiles": "View case files",
     "removeAttachedFile": "Remove attached file",
     "removeFile": "Remove {{fileName}}",
+    "removeAllFiles": "Remove all",
     "startRecording": "Start recording",
     "stopRecording": "Stop recording",
     "sendMessage": "Send message",
