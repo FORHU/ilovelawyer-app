@@ -1,5 +1,5 @@
 import type { Dispatch, DragEvent, RefObject, SetStateAction } from "react"
-import { HIDDEN_PANELS, cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, snapValue, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
+import { cascadeRect, clamp, columnsOf, GRID_SNAP_STEP, snapValue, type PaneDragPreview } from "@/components/terminal/terminal-canvas"
 import { slotForGroup } from "@/lib/terminal/slot-for-group"
 import { arrangementForScreen, autoTileLayout } from "@/lib/terminal/multi-screen"
 import type { ArrangementValue, PanelId, PanelLayout, WorkspaceLayout } from "@/lib/terminal/types"
@@ -98,15 +98,10 @@ export function createPanelPlacementActions(params: PanelPlacementParams): Panel
         ? prev.panels.map((panel) => (panel.id === id ? { ...panel, ...next } : panel))
         : [...prev.panels, next]
       const added = { ...prev, panels }
-      // Free canvas: a plain add (the library's click) tiles the board so the first pane fills it
-      // and each further pane splits the space, instead of floating a cascaded window on top of
-      // the others. A drop rect from an actual drag is a deliberate position, so it's respected —
-      // except for the very first pane, where "where" has no meaning and a full canvas is the
-      // sensible start.
-      const isFree = arrangementForScreen(prev, targetScreen) === "free"
-      const explicitRect = extra?.x !== undefined || extra?.y !== undefined
-      const onlyPane = panels.filter((p) => p.visible && !HIDDEN_PANELS.has(p.id) && (p.screen ?? 0) === targetScreen).length === 1
-      return isFree && (!explicitRect || onlyPane) ? autoTileLayout(added, id, targetScreen) : added
+      // Free canvas: every add — library click or drag-drop — tiles the board so the first pane
+      // fills it and each further pane splits the space, instead of floating on top of the others
+      // (#727). The drop rect is only a seed; autoTileLayout (which skips pinned layouts) owns sizing.
+      return arrangementForScreen(prev, targetScreen) === "free" ? autoTileLayout(added, id, targetScreen) : added
     })
   }
 

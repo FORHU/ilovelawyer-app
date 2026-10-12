@@ -1855,11 +1855,20 @@ export default function ConsultationChat({
 
         {queuedFiles.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
-            <div className="flex flex-wrap gap-1.5">
+            {queuedFiles.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setQueuedFiles([])}
+                className="self-end rounded-full px-2.5 py-1 text-[12px] font-['Inter'] text-muted-foreground hover:text-foreground hover:bg-card dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                {t("input.removeAllFiles")}
+              </button>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {queuedFiles.map((f) => (
                 <span
                   key={f.id}
-                  className="flex items-center gap-2 max-w-full rounded-full border border-border bg-background text-foreground/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px] w-fit"
+                  className="flex items-center gap-2 min-w-0 rounded-full border border-border bg-background text-foreground/85 text-[12.5px] font-['Inter'] pl-3 pr-1.5 py-[5px]"
                 >
                   {f.status === "uploading" ? (
                     <Loader2 className="w-3 h-3 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -1874,7 +1883,7 @@ export default function ConsultationChat({
                   ) : (
                     <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                   )}
-                  <span className="truncate max-w-[220px]">{f.file.name}</span>
+                  <span className="truncate flex-1 min-w-0" title={f.file.name}>{f.file.name}</span>
                   {f.status === "uploading" && (
                     <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{f.progress ?? 0}%</span>
                   )}

@@ -10,6 +10,7 @@
     "viewCaseFiles": "View case files",
     "removeAttachedFile": "Alisin ang nakalakip na file",
     "removeFile": "Alisin ang {{fileName}}",
+    "removeAllFiles": "Alisin lahat",
     "startRecording": "Simulan ang pagre-record",
     "stopRecording": "Ihinto ang pagre-record",
     "sendMessage": "Ipadala ang mensahe",
