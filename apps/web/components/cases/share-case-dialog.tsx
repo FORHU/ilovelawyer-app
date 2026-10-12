@@ -20,8 +20,10 @@ import {
 const SOURCE_ORDER = { "org-admin": 0, grant: 1, organization: 2, walled: 3 } as const;
 
 /** Who can reach a case and how (#347). Everyone in the organization can view it; this is where
- * someone who can manage the case's access (org OWNER/ADMIN, or an ADMIN grant on the case) gives
- * a member edit or manage access, or takes it back. Each row says whether the access comes from
+ * someone who can manage the case's access gives a member edit or manage access, or takes it
+ * back. The org OWNER/ADMIN does so without limits; a MANAGER (on an ordinary case) or an ADMIN
+ * grant holder gives View or Edit only, and can't change their own access or anyone's manage
+ * access (`canManageFully`). Each row says whether the access comes from
  * the organization or from a grant here, since only a grant can be taken back.
  *
  * It's also where a case is made confidential (#346): then only the organization's owner and
@@ -37,6 +39,13 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
   const busyUserId = grant.isPending ? grant.variables?.userId : revoke.isPending ? revoke.variables?.userId : undefined;
   const failed = grant.isError || revoke.isError || setConfidential.isError;
   const confidential = !!data?.confidential;
+  const manageFully = data?.canManageFully ?? !!data?.canManage;
+  // Walling a case off narrows access, so an ADMIN grant holder may; lifting the wall takes the
+  // org OWNER/ADMIN.
+  const canToggleConfidential = !!data?.canManage && (confidential ? manageFully : (data.canMarkConfidential ?? manageFully));
+  /** Whether the caller may change this person's access here. */
+  const canChange = (person: CaseAccessPerson) =>
+    !!data?.canManage && (manageFully || (person.userId !== currentUserId && person.grant !== "ADMIN"));
 
   const people = [...(data?.people ?? [])].sort((a, b) => {
     const bySource = SOURCE_ORDER[accessOf(a, confidential).source] - SOURCE_ORDER[accessOf(b, confidential).source];
@@ -104,6 +113,7 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
             <p className="text-sm text-muted-foreground leading-relaxed">
               {confidential ? t("share.descriptionConfidential") : t("share.description")}
               {data && !data.canManage ? ` ${t("share.readOnlyNote")}` : null}
+              {data?.canManage && !manageFully ? ` ${t("share.limitedNote")}` : null}
             </p>
           </DialogDescription>
 
@@ -111,12 +121,12 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
             <label
               className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${
                 confidential ? "border-brand-gold/40 bg-brand-gold/5" : "border-border"
-              } ${data.canManage ? "cursor-pointer" : ""}`}
+              } ${canToggleConfidential ? "cursor-pointer" : ""}`}
             >
               <input
                 type="checkbox"
                 checked={confidential}
-                disabled={!data.canManage || setConfidential.isPending}
+                disabled={!canToggleConfidential || setConfidential.isPending}
                 onChange={(e) => {
                   grant.reset();
                   revoke.reset();
@@ -178,7 +188,7 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
                       <span className="truncate text-[12px] text-muted-foreground">{person.email}</span>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-0.5">
-                      {data.canManage && access.source !== "org-admin" && person.orgRole ? (
+                      {canChange(person) && access.source !== "org-admin" && person.orgRole ? (
                         <div className="flex items-center gap-1.5">
                           {isBusy && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-hidden="true" />}
                           <select
@@ -191,13 +201,13 @@ export function ShareCaseDialog({ caseId, caseName, onClose }: { caseId: string;
                             {confidential && <option value="none">{t("share.levelNone")}</option>}
                             <option value="view">{t("share.levelView")}</option>
                             <option value="edit">{t("share.levelEdit")}</option>
-                            <option value="manage">{t("share.levelManage")}</option>
+                            {manageFully && <option value="manage">{t("share.levelManage")}</option>}
                           </select>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <span className="text-[13px] text-foreground">{levelLabel(access.level)}</span>
-                          {data.canManage && !person.orgRole && person.grant && (
+                          {canChange(person) && !person.orgRole && person.grant && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button

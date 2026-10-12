@@ -198,9 +198,13 @@ export default function CaseManagerDashboard() {
   // personal workspace is already looking at it.
   const hasPortfolioTab = !!organization && !organization.isPersonal;
   const inPortfolio = useInPortfolio();
-  // Rename/archive/restore/delete need OWNER/ADMIN in an organization (see canEditCases) — a
-  // MANAGER or MEMBER gets neither the row menu nor bulk select, instead of actions that 404.
-  const canEdit = useCanEditCases();
+  // Rename/archive/restore follow each case's own edit access, which the list returns per row: an
+  // org OWNER/ADMIN, or an EDIT/ADMIN grant — a MANAGER/MEMBER gets one on the cases they create.
+  // Until a row says, fall back to the role rule. Deleting stays with the OWNER/ADMIN (or the
+  // portfolio's owner) even with edit access — see ilovelawyer-api's CaseAccess.assertCanDelete.
+  const canEditByRole = useCanEditCases();
+  const canEditCase = (c: CaseRecord) => c.canEdit ?? canEditByRole;
+  const canDeleteCase = (c: CaseRecord) => canEditByRole && canEditCase(c);
   const portfolioQuery = usePortfolioQuery({ enabled: !!organization });
   const copies = portfolioQuery.data?.copies ?? [];
   const [editingCase, setEditingCase] = useState<CaseRecord | null>(null);
@@ -288,6 +292,7 @@ export default function CaseManagerDashboard() {
   );
   const isLoading = useDelayedLoading(isFetching);
   const cases = data?.data ?? [];
+  const editableCases = cases.filter(canEditCase);
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
 
   // The current page can outlive the data that justified it — e.g. archiving/deleting the
@@ -332,10 +337,11 @@ export default function CaseManagerDashboard() {
     });
   };
 
-  const allCasesSelected = cases.length > 0 && selectedCaseIds.size === cases.length;
+  // Only cases the user can change are selectable, so a bulk action never includes one it can't.
+  const allCasesSelected = editableCases.length > 0 && selectedCaseIds.size === editableCases.length;
 
   const toggleSelectAllCases = () => {
-    setSelectedCaseIds(allCasesSelected ? new Set() : new Set(cases.map((c) => c.id)));
+    setSelectedCaseIds(allCasesSelected ? new Set() : new Set(editableCases.map((c) => c.id)));
   };
 
   const handleBulkArchive = async () => {
@@ -629,7 +635,7 @@ export default function CaseManagerDashboard() {
            * mobile) search box above has taken its own line. The full bulk-action bar below
            * (checkbox/count/archive/cancel) is different enough — and wide enough — that it
            * still expands into its own row instead of joining this cluster. */}
-          {canEdit && !isLoading && !isError && cases.length > 0 && !selectMode && (
+          {!isLoading && !isError && editableCases.length > 0 && !selectMode && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -652,7 +658,7 @@ export default function CaseManagerDashboard() {
          * it clears the selection), so a second control for the same thing was redundant; the
          * archive/restore button now sits in the space that freed up, back on the one row.
          * Cancel (X) is pinned to the card's own top-right corner rather than sitting inline. */}
-        {canEdit && !isLoading && !isError && cases.length > 0 && selectMode && (
+        {!isLoading && !isError && editableCases.length > 0 && selectMode && (
           <div className="relative flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 pr-9 dark:bg-overlay-hover/40">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -740,7 +746,7 @@ export default function CaseManagerDashboard() {
               ))}
               <span className="pl-[17px]">{t("tableOpenInHeader")}</span>
               {/* Kept as an empty cell without actions, so the grid columns still line up. */}
-              <span className="text-right">{canEdit ? t("tableActionHeader") : null}</span>
+              <span className="text-right">{editableCases.length > 0 ? t("tableActionHeader") : null}</span>
             </div>
             <div className="md:min-w-[750px] lg:min-w-[900px]">
               {cases.map((c) => (
@@ -748,7 +754,7 @@ export default function CaseManagerDashboard() {
                   key={c.id}
                   className="group/row flex flex-col gap-3 border-b border-border pl-4 pr-6 py-4 transition-colors md:grid md:grid-cols-[minmax(160px,2fr)_104px_104px_104px_108px_44px] lg:grid-cols-[minmax(180px,2fr)_108px_108px_108px_210px_56px] md:items-center md:gap-4 md:rounded-lg md:hover:bg-card dark:md:hover:bg-overlay-hover"
                 >
-                  {selectMode ? (
+                  {selectMode && canEditCase(c) ? (
                     <div
                       role="checkbox"
                       aria-checked={selectedCaseIds.has(c.id)}
@@ -853,7 +859,7 @@ export default function CaseManagerDashboard() {
                         </Tooltip>
                       </div>
 
-                      {canEdit && (
+                      {canEditCase(c) && (
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <Tooltip>
@@ -883,11 +889,15 @@ export default function CaseManagerDashboard() {
                                     <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
                                     {t("unarchiveCaseCta")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem variant="destructive" onSelect={() => setDeletingCase(c)}>
-                                    <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                                    {t("editModal.deleteCase")}
-                                  </DropdownMenuItem>
+                                  {canDeleteCase(c) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem variant="destructive" onSelect={() => setDeletingCase(c)}>
+                                        <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                        {t("editModal.deleteCase")}
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 </>
                               ) : (
                                 <>

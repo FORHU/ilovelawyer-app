@@ -68,6 +68,9 @@ export interface CaseRecord {
   status: CaseStatus
   /** Only the org owner and people with a grant can reach it (ilovelawyer-api #346). */
   confidential?: boolean
+  /** Whether the current user can change this case — the API's own rule, per-case grants (a
+   * creator's included) counted. Only present on list responses. */
+  canEdit?: boolean
   createdAt: string
   /** Last real activity on the case (edits, documents, chat, decisions, events) — not views. */
   updatedAt: string
@@ -149,6 +152,9 @@ export interface CreateCasePayload {
   /** Which side the lawyer acts for; omitted when not chosen yet (it can be set later). */
   clientSide?: ClientSide
   notes?: string
+  /** An organization case hidden from the rest of the firm from the start; the creator manages
+   * who else can see it. Not for a portfolio case, which is already private. */
+  confidential?: boolean
 }
 
 export function useCreateCaseMutation() {

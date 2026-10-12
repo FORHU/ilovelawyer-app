@@ -7,14 +7,13 @@ type CaseEditState = {
   organization: { role: OrganizationRole; isPersonal: boolean } | null
 }
 
-/** Whether the user can rename, archive, restore or delete cases — and update, archive or delete
- * the documents attached to them — in the workspace they're looking at. Mirrors ilovelawyer-api's
- * CaseAccess.assertCanEdit (#345): the user's own portfolio (their personal workspace, which they
- * own), or OWNER/ADMIN in an organization. MANAGER and MEMBER can't, so the actions are hidden
- * rather than left to 404.
+/** Whether the user can change every case in the workspace they're looking at by role alone: the
+ * user's own portfolio (their personal workspace, which they own), or OWNER/ADMIN in an
+ * organization. It's also who may delete a case (ilovelawyer-api's CaseAccess.assertCanDelete).
  *
- * The API also accepts an explicit per-case EDIT/ADMIN grant, which this can't see — where one
- * case is in view, use useCanEditCase instead. */
+ * The API also lets a per-case EDIT/ADMIN grant change a case — which a MANAGER or MEMBER gets on
+ * the cases they create — and this can't see that. Where one case is in view use useCanEditCase;
+ * the case list returns `canEdit` per row. */
 export function canEditCases(state: CaseEditState): boolean {
   // Someone else's portfolio, opened through a read-only share.
   if (state.workspace === "shared") return false

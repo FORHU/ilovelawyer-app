@@ -33,6 +33,12 @@ export interface CaseAccessList {
   /** What the caller may do on this case, from the API's own rule (includes per-case grants). */
   canEdit: boolean
   canManage: boolean
+  /** Whether the caller manages access without limits — the org OWNER/ADMIN. A MANAGER or an
+   * ADMIN grant holder gives View or Edit only: not manage access, not their own, and they can't
+   * make a confidential case ordinary again. Missing from an older API: treated as `canManage`. */
+  canManageFully?: boolean
+  /** Whether the caller may make this case confidential: the org OWNER/ADMIN or an ADMIN grant. */
+  canMarkConfidential?: boolean
   people: CaseAccessPerson[]
 }
 
