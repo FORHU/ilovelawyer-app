@@ -283,6 +283,10 @@
   "portfolioView": {
     "switchLabel": "작업 공간",
     "portfolioTab": "내 포트폴리오",
+    "newOrgCase": "새 {{orgName}} 사건",
+    "newOrgCaseTooltip": "{{orgName}}에서 사건을 시작합니다 — 구성원과 공유됩니다",
+    "newPortfolioCase": "새 개인 사건",
+    "newPortfolioCaseTooltip": "내 포트폴리오에서 사건을 시작합니다 — 나만 볼 수 있습니다",
     "orgTabTooltip": "{{orgName}}의 사건 — 구성원과 공유됩니다",
     "portfolioTabTooltip": "나만의 사건 — 어느 조직에 있든 나만 볼 수 있습니다",
     "portfolioSubtitle": "나만의 사건: 혼자 만든 사건과, 떠난 조직에서 만든 사건의 사본입니다. 직접 만든 사건을 공유하지 않는 한 나만 볼 수 있습니다.",

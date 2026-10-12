@@ -376,6 +376,15 @@ export default function CaseManagerDashboard() {
     setArchivingCase(null);
   };
 
+  // A new case lands in whichever workspace is open. For a member of a real organization the
+  // button names it, so an organization case and a private portfolio case can't be confused;
+  // someone with only a personal workspace gets the plain button.
+  const newCaseTarget: "organization" | "portfolio" | null = hasPortfolioTab
+    ? inPortfolio
+      ? "portfolio"
+      : "organization"
+    : null;
+
   const handleNewFiling = () => {
     router.push("/homepage/create-case");
   };
@@ -421,13 +430,31 @@ export default function CaseManagerDashboard() {
                 type="button"
                 onClick={handleNewFiling}
                 data-tour-id="cases-new"
-                className="flex items-center gap-2.5 bg-brand-gold text-brand-gold-foreground font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] rounded-full hover:opacity-85 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50"
+                className={`flex items-center gap-2.5 font-semibold text-[11px] tracking-[1.2px] uppercase px-6 h-[42px] max-w-full rounded-full transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold/50 ${
+                  newCaseTarget === "portfolio"
+                    ? "border border-foreground/80 text-foreground bg-transparent hover:bg-foreground/5"
+                    : "bg-brand-gold text-brand-gold-foreground hover:opacity-85"
+                }`}
               >
-                {t("newCase")}
-                <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+                {newCaseTarget === "organization" && <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                {newCaseTarget === "portfolio" && <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                <span className="truncate max-w-[260px]">
+                  {newCaseTarget === "organization"
+                    ? t("portfolioView.newOrgCase", { orgName: organization?.name ?? "" })
+                    : newCaseTarget === "portfolio"
+                      ? t("portfolioView.newPortfolioCase")
+                      : t("newCase")}
+                </span>
+                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               </button>
             </TooltipTrigger>
-            <TooltipContent>Start a new case intake form</TooltipContent>
+            <TooltipContent>
+              {newCaseTarget === "organization"
+                ? t("portfolioView.newOrgCaseTooltip", { orgName: organization?.name ?? "" })
+                : newCaseTarget === "portfolio"
+                  ? t("portfolioView.newPortfolioCaseTooltip")
+                  : "Start a new case intake form"}
+            </TooltipContent>
           </Tooltip>
         </div>
 

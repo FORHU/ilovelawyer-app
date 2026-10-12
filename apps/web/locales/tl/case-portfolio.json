@@ -291,6 +291,10 @@
   "portfolioView": {
     "switchLabel": "Workspace",
     "portfolioTab": "Aking portfolio",
+    "newOrgCase": "Bagong kaso sa {{orgName}}",
+    "newOrgCaseTooltip": "Magsimula ng kaso sa {{orgName}}, kahati ng mga miyembro nito",
+    "newPortfolioCase": "Bagong pribadong kaso",
+    "newPortfolioCaseTooltip": "Magsimula ng kaso sa iyong portfolio, ikaw lang ang nakakakita",
     "orgTabTooltip": "Mga kaso sa {{orgName}}, kahati ng mga miyembro nito",
     "portfolioTabTooltip": "Sarili mong mga kaso — ikaw lang ang nakakakita, saanmang organisasyon ka",
     "portfolioSubtitle": "Sarili mong mga kaso: ang mga ginawa mo nang mag-isa, at mga kopya ng mga ginawa mo sa mga organisasyong iniwan mo. Ikaw lang ang nakakakita nito, maliban kung ibahagi mo ang isang ginawa mo.",
