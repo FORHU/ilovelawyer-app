@@ -58,6 +58,7 @@
     "pastDeadlines": "Past ({{count}})",
     "noIssues": "No key issues identified yet.",
     "showingOf": "Showing {{shown}} of {{total}}",
+    "showingRange": "Showing {{first}}–{{last}} of {{total}}",
     "viewAll": "View all",
     "showLess": "Show less",
     "tabOverview": "Overview",
