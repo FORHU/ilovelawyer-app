@@ -1234,6 +1234,10 @@ export default function ConsultationChat({
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
     if (list.length === 0) return;
+    if (isBusy) {
+      toast.warning(t("input.attachmentBusy", { defaultValue: "Wait for the current response to finish before attaching files." }));
+      return;
+    }
 
     // Files already attached count toward the same 1 GB: they all upload together on Send.
     const queuedBytes = queuedFiles.reduce((sum, f) => sum + f.file.size, 0);
@@ -1287,6 +1291,7 @@ export default function ConsultationChat({
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
     if (!isFileDrag(e)) return;
     e.preventDefault();
+    if (isBusy) return; // no drop overlay while generating; the drop itself shows the alert
     setIsDraggingOver(true);
   };
 
@@ -1565,7 +1570,8 @@ export default function ConsultationChat({
         if (sendTokenRef.current === myToken) setPendingTurn(null);
         return;
       }
-      console.error("Failed to send message:", error);
+      // Consent-off is an expected refusal, surfaced in the reply bubble below — not worth a console error.
+      if ((error as { code?: string } | null)?.code !== "CONSENT_REQUIRED") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -2038,7 +2044,7 @@ export default function ConsultationChat({
                     <button
                       type="button"
                       onClick={handleClipClick}
-                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
+                      disabled={isBusy || queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
                       data-tour-id="composer-attach"
                       className="order-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none"
@@ -2137,7 +2143,7 @@ export default function ConsultationChat({
                     <button
                       type="button"
                       onClick={handleClipClick}
-                      disabled={queuedFiles.length >= MAX_ATTACHED_FILES}
+                      disabled={isBusy || queuedFiles.length >= MAX_ATTACHED_FILES}
                       aria-label={t("input.attachFile")}
                       data-tour-id="composer-attach"
                       className={`order-2 ${isComposerMultiline ? "" : "sm:order-1"} w-9 h-9 shrink-0 flex items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:pointer-events-none`}
