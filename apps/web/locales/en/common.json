@@ -67,5 +67,9 @@
       "mediaInquiries": "Media Inquiries",
       "contactUs": "Contact Us"
     }
+  },
+  "uploadLimit": {
+    "batchTooLarge": "These files total {{total}} — you can upload up to {{limit}} at once. Remove some files or upload them in smaller groups.",
+    "dismiss": "Dismiss"
   }
 }

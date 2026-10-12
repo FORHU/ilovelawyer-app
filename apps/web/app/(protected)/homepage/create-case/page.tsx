@@ -15,7 +15,8 @@ import {
   useUploadCaseDocumentsMutation,
   type ClientSide,
 } from "@/lib/cases/mutations";
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, checkUploadSelection, formatBytes } from "@/lib/cases/upload-batch";
+import { UploadLimitBanner } from "@/components/cases/upload-limit-banner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { generateId } from "@/lib/id";
 import { CASE_NAME_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
@@ -50,6 +51,8 @@ interface UploadedFile {
   id: string;
   file: File;
   status: UploadStatus;
+  /** S3 upload progress while "uploading", whole percent 0–100. */
+  progress?: number;
   documentId?: string;
   error?: string;
 }
@@ -144,6 +147,8 @@ function CreateCasePageContent() {
   const [showAllParties, setShowAllParties] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** Total of the last selection rejected for being over the 1 GB batch limit; null when none. */
+  const [limitNoticeBytes, setLimitNoticeBytes] = useState<number | null>(null);
   // Set once the case is created on first submit. Kept across retries so a resubmit after a
   // partial upload failure reuses the existing case instead of creating a duplicate.
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
@@ -302,12 +307,23 @@ function CreateCasePageContent() {
   // already exists (from handleSubmitFiling), so there's no separate link step afterward.
   const uploadBatch = async (entries: UploadedFile[], caseId: string): Promise<boolean> => {
     if (entries.length === 0) return true;
-    entries.forEach((entry) => updateUploadedFile(entry.id, { status: "uploading", error: undefined }));
+    entries.forEach((entry) => updateUploadedFile(entry.id, { status: "uploading", progress: 0, error: undefined }));
+
+    // Whole percents only, so a large file's many progress events re-render the list ~100 times, not thousands.
+    const lastPercent = new Map<File, number>();
+    const onFileProgress = (file: File, fraction: number) => {
+      const percent = Math.floor(fraction * 100);
+      if (lastPercent.get(file) === percent) return;
+      lastPercent.set(file, percent);
+      const entry = entries.find((e) => e.file === file);
+      if (entry) updateUploadedFile(entry.id, { progress: percent });
+    };
 
     try {
       const { confirmed, failed, succeededFiles } = await uploadDocuments({
         files: entries.map((entry) => entry.file),
         caseId,
+        onFileProgress,
       });
 
       succeededFiles.forEach((file, i) => {
@@ -339,10 +355,9 @@ function CreateCasePageContent() {
     const incoming = Array.from(files);
     if (incoming.length === 0) return;
 
-    const [supported, unsupported] = [
-      incoming.filter(isAllowedFileType),
-      incoming.filter((f) => !isAllowedFileType(f)),
-    ];
+    // Files already listed count toward the same 1 GB: they all upload together on submit.
+    const queuedBytes = formData.uploadedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    const { accepted, unsupported, batchTooLarge, totalBytes } = checkUploadSelection(incoming, queuedBytes);
     if (unsupported.length > 0) {
       toast.error(
         t("sectionEvidence.unsupportedFileType", {
@@ -353,22 +368,10 @@ function CreateCasePageContent() {
       );
     }
 
-    const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
-    ];
-    if (oversized.length > 0) {
-      toast.error(
-        t("sectionEvidence.attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-        })
-      );
-    }
-    if (withinSizeLimit.length === 0) return;
+    setLimitNoticeBytes(batchTooLarge ? totalBytes : null);
+    if (accepted.length === 0) return;
 
-    const entries: UploadedFile[] = withinSizeLimit.map((file) => ({
+    const entries: UploadedFile[] = accepted.map((file) => ({
       id: generateId(),
       file,
       status: "pending",
@@ -925,6 +928,8 @@ function CreateCasePageContent() {
                     </p>
                   </div>
 
+                  <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={() => setLimitNoticeBytes(null)} />
+
                   {formData.uploadedFiles.length > 0 && (
                     <div className="flex flex-col gap-2 shrink-0">
                       <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
@@ -940,9 +945,12 @@ function CreateCasePageContent() {
                         <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 text-[13px]">
                           <FileText className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           <span className="flex-1 min-w-0 truncate">{f.file.name}</span>
-                          <span className="text-[11px] text-muted-foreground">{(f.file.size / 1024).toFixed(1)} KB</span>
+                          <span className="text-[11px] text-muted-foreground">{formatBytes(f.file.size)}</span>
                           {f.status === "uploading" && (
-                            <Loader2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin" aria-hidden="true" />
+                            <>
+                              <span className="text-[11px] tabular-nums text-muted-foreground">{f.progress ?? 0}%</span>
+                              <Loader2 className="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin" aria-hidden="true" />
+                            </>
                           )}
                           {f.status === "uploaded" && (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />

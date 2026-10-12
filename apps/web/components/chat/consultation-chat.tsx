@@ -58,7 +58,8 @@ import { parseStreamingReply, getActiveMindMap, getActiveMindMapRecord, type Min
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch";
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, checkUploadSelection } from "@/lib/cases/upload-batch";
+import { UploadLimitBanner } from "@/components/cases/upload-limit-banner";
 import { useCaseSnapshotQuery, useAiJobStatus } from "@/lib/terminal/mutations";
 import {
   useUploadAudioMutation,
@@ -445,9 +446,13 @@ export default function ConsultationChat({
       id: string;
       file: File;
       status: "pending" | "uploading" | "uploaded" | "error";
+      /** S3 upload progress while "uploading", whole percent 0–100. */
+      progress?: number;
       doc?: { id: string; name: string; aiSummary: string | null; ragStatus?: "PENDING" | "READY" | "FAILED" };
     }>
   >([]);
+  /** Total of the last selection rejected for being over the 1 GB batch limit; null when none. */
+  const [limitNoticeBytes, setLimitNoticeBytes] = useState<number | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // The attachment chip currently open in FilePreviewModal, or null when the modal is closed.
@@ -1230,10 +1235,9 @@ export default function ConsultationChat({
     const list = Array.from(files);
     if (list.length === 0) return;
 
-    const [supported, unsupported] = [
-      list.filter(isAllowedFileType),
-      list.filter((f) => !isAllowedFileType(f)),
-    ];
+    // Files already attached count toward the same 1 GB: they all upload together on Send.
+    const queuedBytes = queuedFiles.reduce((sum, f) => sum + f.file.size, 0);
+    const { accepted: withinBatchLimit, unsupported, batchTooLarge, totalBytes } = checkUploadSelection(list, queuedBytes);
     if (unsupported.length > 0) {
       toast.error(
         t("input.attachmentUnsupportedType", {
@@ -1244,23 +1248,11 @@ export default function ConsultationChat({
       );
     }
 
-    const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
-    ];
-    if (oversized.length > 0) {
-      toast.error(
-        t("input.attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-        })
-      );
-    }
+    setLimitNoticeBytes(batchTooLarge ? totalBytes : null);
 
     const remaining = Math.max(0, MAX_ATTACHED_FILES - queuedFiles.length);
-    const accepted = withinSizeLimit.slice(0, remaining);
-    if (accepted.length < withinSizeLimit.length) {
+    const accepted = withinBatchLimit.slice(0, remaining);
+    if (accepted.length < withinBatchLimit.length) {
       toast.warning(
         t("input.attachmentLimitHit", { defaultValue: `Only ${MAX_ATTACHED_FILES} files can be attached at once — the rest weren't added.`, max: MAX_ATTACHED_FILES })
       );
@@ -1333,7 +1325,16 @@ export default function ConsultationChat({
   // case yet (the backend prioritizes `caseId` over it, so it's harmless to always pass both).
   const uploadQueuedFiles = async (entries: typeof queuedFiles, consultationId?: string) => {
     const ids = new Set(entries.map((e) => e.id));
-    setQueuedFiles((prev) => prev.map((f) => (ids.has(f.id) ? { ...f, status: "uploading" } : f)));
+    setQueuedFiles((prev) => prev.map((f) => (ids.has(f.id) ? { ...f, status: "uploading", progress: 0 } : f)));
+
+    // Whole percents only, so a large file's many progress events re-render ~100 times, not thousands.
+    const lastPercent = new Map<File, number>();
+    const onFileProgress = (file: File, fraction: number) => {
+      const percent = Math.floor(fraction * 100);
+      if (lastPercent.get(file) === percent) return;
+      lastPercent.set(file, percent);
+      setQueuedFiles((prev) => prev.map((f) => (f.file === file && ids.has(f.id) ? { ...f, progress: percent } : f)));
+    };
 
     // The confirm call (POST /api/documents) can reject outright — e.g. a backend/frontend
     // payload mismatch — not just have individual files fail. Without this catch that throw
@@ -1349,6 +1350,7 @@ export default function ConsultationChat({
         files: entries.map((e) => e.file),
         caseId: linkedCaseId ?? undefined,
         consultationId,
+        onFileProgress,
       }));
     } catch (error) {
       console.error("Failed to confirm document upload:", error);
@@ -1839,6 +1841,12 @@ export default function ConsultationChat({
           onChange={handleFileChange}
         />
 
+        {limitNoticeBytes !== null && (
+          <div className="px-2 pt-1.5">
+            <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={() => setLimitNoticeBytes(null)} />
+          </div>
+        )}
+
         {queuedFiles.length > 0 && (
           <div className="flex flex-col gap-1.5 pt-1.5 px-2 pb-0.5">
             <div className="flex flex-wrap gap-1.5">
@@ -1861,6 +1869,9 @@ export default function ConsultationChat({
                     <Paperclip className="w-3 h-3 shrink-0 text-muted-foreground" aria-hidden="true" />
                   )}
                   <span className="truncate max-w-[220px]">{f.file.name}</span>
+                  {f.status === "uploading" && (
+                    <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">{f.progress ?? 0}%</span>
+                  )}
                   {f.status === "error" && (
                     <Tooltip>
                       <TooltipTrigger asChild>
