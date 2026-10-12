@@ -38,7 +38,19 @@
     "notesEmpty": "Wala pang tala.",
     "notesShowMore": "Magpakita pa",
     "notesShowLess": "Magpakita ng kaunti",
-    "notesEdit": "I-edit"
+    "notesEdit": "I-edit",
+    "notesAdd": "Magdagdag ng tala",
+    "notesDelete": "Burahin",
+    "notesDeleteTitle": "Burahin ang tala?",
+    "notesDeleting": "Binubura…",
+    "notesDeleted": "Nabura na ang tala.",
+    "notesDeleteError": "Hindi mabura ang tala. Subukan muli.",
+    "notesDeleteConfirm": "Burahin ang talang ito? Hindi ito maibabalik.",
+    "notesAddTitle": "Magdagdag ng tala",
+    "notesEditTitle": "I-edit ang tala",
+    "notesSave": "I-save",
+    "notesSaving": "Sine-save…",
+    "notesCancel": "Kanselahin"
   },
   "detail": {
     "backToPortfolio": "Bumalik sa Case Portfolio",
