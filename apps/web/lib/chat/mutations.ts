@@ -234,36 +234,26 @@ export function useCreateConsultationMutation() {
  * (everyone's on that Case); without it, only standalone ones. `status: "ARCHIVED"` lists the
  * archive instead, most recently archived first; `enabled: false` holds off fetching it until
  * it's actually opened. */
-/** Sends a request to a workspace other than the one being viewed — the archive reaching the
- * user's portfolio from inside their organization (or back). Undefined: the active workspace. */
-const workspaceHeaders = (organizationId?: string) =>
-  organizationId ? { "X-Organization-Id": organizationId } : undefined
-
+/* The standalone list is the user's own and reads the same from every workspace — it is not tied
+ * to the organization they're in (the API lists it by user), so there is no per-workspace variant. */
 export function useConsultationsQuery(
   caseId?: string,
   {
     status = "ACTIVE",
     enabled = true,
-    organizationId,
   }: {
     status?: Exclude<ConsultationStatus, "FOR_DELETION">
     enabled?: boolean
-    /** Another workspace's list (see workspaceHeaders) — keyed apart from the active one's. */
-    organizationId?: string
   } = {},
 ) {
   return useQuery({
-    queryKey: organizationId
-      ? [...chatKeys.consultations(caseId, status), organizationId]
-      : chatKeys.consultations(caseId, status),
+    queryKey: chatKeys.consultations(caseId, status),
     queryFn: () => {
       const params = new URLSearchParams()
       if (caseId) params.set("caseId", caseId)
       if (status !== "ACTIVE") params.set("status", status)
       const query = params.toString()
-      return apiFetch<Consultation[]>(`/api/chat/consultations${query ? `?${query}` : ""}`, {
-        headers: workspaceHeaders(organizationId),
-      })
+      return apiFetch<Consultation[]>(`/api/chat/consultations${query ? `?${query}` : ""}`)
     },
     enabled,
   })
@@ -295,14 +285,11 @@ export function useArchiveConsultationMutation() {
   })
 }
 
-export function useUnarchiveConsultationMutation({ organizationId }: { organizationId?: string } = {}) {
+export function useUnarchiveConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (consultationId: string) =>
-      apiFetch<Consultation>(`/api/chat/consultations/${consultationId}/unarchive`, {
-        method: "POST",
-        headers: workspaceHeaders(organizationId),
-      }),
+      apiFetch<Consultation>(`/api/chat/consultations/${consultationId}/unarchive`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
@@ -312,14 +299,11 @@ export function useUnarchiveConsultationMutation({ organizationId }: { organizat
 /** Schedules permanent deletion, only for an archived consultation (the API answers 409
  * otherwise). It stays in the archive, restorable, for a 30-day grace period; then its messages go
  * and the files uploaded only to it are queued for removal from storage. */
-export function useDeleteConsultationMutation({ organizationId }: { organizationId?: string } = {}) {
+export function useDeleteConsultationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (consultationId: string) =>
-      apiFetch<{ deletionScheduledFor: string }>(`/api/chat/consultations/${consultationId}`, {
-        method: "DELETE",
-        headers: workspaceHeaders(organizationId),
-      }),
+      apiFetch<{ deletionScheduledFor: string }>(`/api/chat/consultations/${consultationId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: chatKeys.consultationsAll() })
     },
@@ -336,15 +320,10 @@ export function useDeleteConsultationMutation({ organizationId }: { organization
  * `pendingReplyContent` on the last message are the durable ground truth consultation-chat.tsx
  * reads to render a "still generating" state after a cold load or remount; this interval is what
  * keeps that state from being able to hang indefinitely on a missed push. */
-export function useMessagesQuery(consultationId: string | undefined, { organizationId }: { organizationId?: string } = {}) {
+export function useMessagesQuery(consultationId: string | undefined) {
   return useQuery({
-    // Consultation ids are unique across workspaces, so another workspace's transcript (see
-    // workspaceHeaders) can share the key.
     queryKey: chatKeys.messages(consultationId ?? ""),
-    queryFn: () =>
-      apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`, {
-        headers: workspaceHeaders(organizationId),
-      }),
+    queryFn: () => apiFetch<ChatMessage[]>(`/api/chat/consultations/${consultationId}/messages`),
     enabled: !!consultationId,
     // A 404 means the consultation was deleted (ConsultationChat then says so and moves on) —
     // asking again only delays that.
