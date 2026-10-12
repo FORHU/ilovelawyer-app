@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
+import { DocumentLink, DocumentViewerProvider } from "@/components/shared/document-viewer";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import CustomSelect from "@/components/ui/custom-select";
 import { KeyIssuesList } from "@/components/cases/key-issues-list";
@@ -516,6 +517,7 @@ function OverviewTab({
     "inline-flex items-center gap-1.5 p-2 -m-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer";
 
   return (
+    <DocumentViewerProvider caseId={id}>
     <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-10 py-8">
       {/* Read order is the lawyer's: case frame, what's due, exposure, then working material.
           Rows 1-2 are cards; the last row is plain columns so it doesn't compete with them. */}
@@ -642,7 +644,9 @@ function OverviewTab({
                 {shownDocs.map((doc) => (
                   <div key={doc.id} className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0 text-[13px]">
                     <FileText className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                    <span className="flex-1 min-w-0 truncate">{doc.name}</span>
+                    <span className="flex-1 min-w-0 truncate">
+                      <DocumentLink docId={doc.id}>{doc.name}</DocumentLink>
+                    </span>
                     <span className="text-[11px] text-muted-foreground">
                       {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : "—"}
                     </span>
@@ -724,6 +728,7 @@ function OverviewTab({
         </Card>
       </div>
     </div>
+    </DocumentViewerProvider>
   );
 }
 
