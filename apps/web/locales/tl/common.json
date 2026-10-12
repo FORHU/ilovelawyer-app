@@ -66,5 +66,9 @@
       "mediaInquiries": "Mga Katanungan mula sa Media",
       "contactUs": "Makipag-ugnayan"
     }
+  },
+  "uploadLimit": {
+    "batchTooLarge": "Ang kabuuang laki ng mga file na ito ay {{total}} — hanggang {{limit}} lang ang maaaring i-upload nang sabay-sabay. Mag-alis ng ilang file o i-upload ang mga ito nang paunti-unti.",
+    "dismiss": "Isara"
   }
 }

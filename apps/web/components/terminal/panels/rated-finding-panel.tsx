@@ -15,6 +15,7 @@ import {
 } from "@/lib/terminal/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
+import { UploadLimitBanner } from "@/components/cases/upload-limit-banner"
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
@@ -159,7 +160,7 @@ export function RatedFindingPanel({
   const [open, setOpen] = useState<string | null>(null)
   const [detail, setDetail] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { upload, isUploading, canUpload } = useCaseDocumentUpload(caseId)
+  const { upload, isUploading, canUpload, limitNoticeBytes, dismissLimitNotice } = useCaseDocumentUpload(caseId)
 
   const styleOf = (tag: FindingTag | null) => config.tags.find((s) => s.tag === tag) ?? null
   const rows = [...items].sort(byPanelOrder(config.doneTag))
@@ -454,73 +455,76 @@ export function RatedFindingPanel({
         </PanelRowList>
       </div>
 
-      <form
-        className="mt-auto flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const value = label.trim()
-          if (!value) return
-          create.mutate({ category: config.category, label: value, tag: newTag || null })
-          setLabel("")
-          setNewTag("")
-        }}
-      >
-        {config.upload && canUpload ? (
-          <>
-            {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
-                automatic analysis then reads — findings aren't stored per-document. */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? [])
-                e.target.value = ""
-                if (files.length > 0) upload(files)
-              }}
-            />
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label={t("uploadDocuments")}
-              title={t("uploadDocuments")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
-            >
-              {isUploading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-            </button>
-          </>
-        ) : null}
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder={t(config.addKey)}
-          aria-label={t(config.addKey)}
-          className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
-        />
-        <select
-          value={newTag}
-          onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
-          aria-label={t("findingStatus")}
-          className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
+      <div className="mt-auto flex flex-col gap-2">
+        <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={dismissLimitNotice} />
+        <form
+          className="flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = label.trim()
+            if (!value) return
+            create.mutate({ category: config.category, label: value, tag: newTag || null })
+            setLabel("")
+            setNewTag("")
+          }}
         >
-          <option value="">{t("findingStatus")}</option>
-          {config.tags.map((option) => (
-            <option key={option.tag} value={option.tag}>
-              {t(option.label)}
-            </option>
-          ))}
-        </select>
-        <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
-          {t("add")}
-        </button>
-      </form>
+          {config.upload && canUpload ? (
+            <>
+              {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
+                  automatic analysis then reads — findings aren't stored per-document. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? [])
+                  e.target.value = ""
+                  if (files.length > 0) upload(files)
+                }}
+              />
+              <button
+                type="button"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label={t("uploadDocuments")}
+                title={t("uploadDocuments")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+              </button>
+            </>
+          ) : null}
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={t(config.addKey)}
+            aria-label={t(config.addKey)}
+            className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
+          />
+          <select
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
+            aria-label={t("findingStatus")}
+            className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
+          >
+            <option value="">{t("findingStatus")}</option>
+            {config.tags.map((option) => (
+              <option key={option.tag} value={option.tag}>
+                {t(option.label)}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+            {t("add")}
+          </button>
+        </form>
+      </div>
       <MutationError show={create.isError || update.isError || del.isError || todos.isError || flagRisk.isError} />
         </>
       )}

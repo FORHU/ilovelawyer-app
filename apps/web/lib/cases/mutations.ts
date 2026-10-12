@@ -4,6 +4,7 @@ import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { caseKeys, chatKeys } from "@/lib/query-keys"
 import { useNotificationSocketStatus } from "@/lib/notifications/queries"
 import {
+  assertWithinBatchLimit,
   CONFIRM_BATCH_SIZE,
   chunk,
   isAllowedFileType,
@@ -334,12 +335,16 @@ export function useUploadCaseDocumentsMutation() {
       files,
       caseId,
       category,
+      onFileProgress,
     }: {
       files: File[]
       caseId: string
       /** Uploading straight into a folder card — see `DocumentDataEntry.metaData.category`. */
       category?: string
+      /** Each file's S3 upload progress, 0–1. */
+      onFileProgress?: (file: File, fraction: number) => void
     }): Promise<BulkUploadResult> => {
+      assertWithinBatchLimit(files)
       const confirmed: UserDocument[] = []
       const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
@@ -359,7 +364,7 @@ export function useUploadCaseDocumentsMutation() {
             {
               method: "POST",
               body: JSON.stringify({
-                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i] })),
+                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i], fileSize: file.size })),
                 caseId,
               }),
             },
@@ -375,7 +380,7 @@ export function useUploadCaseDocumentsMutation() {
         const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
           const { uploadUrl, key } = items[i]!
           const contentType = contentTypes[i]!
-          await putFileToS3(uploadUrl, file, contentType)
+          await putFileToS3(uploadUrl, file, contentType, onFileProgress && ((fraction) => onFileProgress(file, fraction)))
           return { file, key, contentType }
         })
 
@@ -433,11 +438,15 @@ export function useUploadDocumentsMutation() {
       files,
       caseId,
       consultationId,
+      onFileProgress,
     }: {
       files: File[]
       caseId?: string
       consultationId?: string
+      /** Each file's S3 upload progress, 0–1. */
+      onFileProgress?: (file: File, fraction: number) => void
     }): Promise<BulkUploadResult> => {
+      assertWithinBatchLimit(files)
       const confirmed: UserDocument[] = []
       const failed: { file: File; reason: string }[] = []
       const succeededFiles: File[] = []
@@ -457,7 +466,7 @@ export function useUploadDocumentsMutation() {
             {
               method: "POST",
               body: JSON.stringify({
-                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i] })),
+                files: fileChunk.map((file, i) => ({ filename: file.name, contentType: contentTypes[i], fileSize: file.size })),
                 caseId,
                 consultationId,
               }),
@@ -474,7 +483,7 @@ export function useUploadDocumentsMutation() {
         const settled = await mapPoolSettled(fileChunk, UPLOAD_CONCURRENCY, async (file, i) => {
           const { uploadUrl, key } = items[i]!
           const contentType = contentTypes[i]!
-          await putFileToS3(uploadUrl, file, contentType)
+          await putFileToS3(uploadUrl, file, contentType, onFileProgress && ((fraction) => onFileProgress(file, fraction)))
           return { file, key, contentType }
         })
 

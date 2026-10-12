@@ -47,3 +47,29 @@ the backend out of the file-bytes path entirely. `apps/web/lib/cases/mutations.t
   unconfirmed — worth asking the BE team directly rather than assuming either way.
 - `POST /api/documents`'s request contract changed (multipart file → JSON body) — the frontend was
   updated to match (`useUploadCaseDocumentMutation`).
+
+## Addendum: 1 GB upload limit
+
+One upload — everything a person picks or drops at once, plus files already queued on that screen
+(Create Case's list, chat attachments) — may total at most 1 GB (1024³ bytes). There is no separate
+per-file cap; the old client-only 25 MB per-file limit was removed, so one file can be up to 1 GB.
+
+- **Web:** `checkUploadSelection` (`apps/web/lib/cases/upload-batch.ts`) drops unsupported types,
+  then rejects a selection over 1 GB whole and shows `UploadLimitBanner` with the total. Nothing
+  from that selection uploads. The upload mutations re-check as a backstop.
+- **API:** presign and confirm reject a request whose files total over 1 GB with a 413
+  (`UPLOAD_BATCH_TOO_LARGE`). Presign takes each file's `fileSize` and signs it into the URL, so S3
+  rejects (403) a PUT of any other size. `fileSize` on presign is optional until this web release is
+  verified in production, then becomes required. Upload URLs now expire after 1 hour, not 5 minutes.
+- **Known limitation:** the API checks 1 GB per request, and a request carries at most 50 files. A
+  selection the web app splits across several requests is held to 1 GB in total only by the web
+  app; a client calling the API directly could exceed it by splitting files across requests.
+  Revisit with an upload batch id or a per-user rolling quota if direct-API abuse shows up.
+- **Extraction:** every file stays eligible for text extraction and indexing whatever its size.
+  See ilovelawyer-api's `DocumentExtractionSvc` (temp-file download, streamed TXT/large XLSX,
+  size-scaled job timeout) and the opt-in standalone extraction worker (`DOCUMENT_EXTRACTION_IN_API`).
+  Text with no blank lines is chunked as packed lines up to the tier's chunk size (not one chunk per
+  line), and documents over 3,200 chunks are embedded and stored in rounds so memory stays flat.
+  Case analysis reads document text through `DocumentChunkRepo.findFullTextsByDocuments`, which now
+  stops at the caller's per-document budget, or 5M characters by default, instead of loading every
+  chunk; a 45 MB spreadsheet's full 112M characters ran the API out of memory.
