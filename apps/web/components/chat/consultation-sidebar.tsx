@@ -160,6 +160,7 @@ export default function ConsultationSidebar({
                     <input
                       ref={editInputRef}
                       value={editValue}
+                      maxLength={60}
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") commitEdit();
@@ -198,25 +199,20 @@ export default function ConsultationSidebar({
                   }`}
                 >
                   {isActive && <span className="ml-3 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-gold" aria-hidden="true" />}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => {
-                          onSelectConsultation(c.id);
-                          onMobileOpenChange(false);
-                        }}
-                        // Gemini-style pill: the consultation you're currently in gets its own
-                        // rounded, bordered chip; a transparent border of the same width is kept
-                        // on inactive rows so hovering doesn't shift layout by 1px.
-                        className={`min-w-0 flex-1 text-left truncate py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
-                          isActive ? "pl-2.5 pr-1 text-foreground font-semibold" : "pl-7 pr-1 text-foreground/75 hover:text-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Open this consultation: {label}</TooltipContent>
-                  </Tooltip>
+                  <button
+                    onClick={() => {
+                      onSelectConsultation(c.id);
+                      onMobileOpenChange(false);
+                    }}
+                    // Gemini-style pill: the consultation you're currently in gets its own
+                    // rounded, bordered chip; a transparent border of the same width is kept
+                    // on inactive rows so hovering doesn't shift layout by 1px.
+                    className={`min-w-0 flex-1 text-left truncate py-2.5 text-[13px] font-['Inter'] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-full ${
+                      isActive ? "pl-2.5 pr-1 text-foreground font-semibold" : "pl-7 pr-1 text-foreground/75 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
 
                   {/* ChatGPT-style: a spinner beside the title while this consultation's reply is
                       still generating, so a turn left running in the background (user started a new
@@ -233,8 +229,12 @@ export default function ConsultationSidebar({
                       always shown on mobile, where there's no hover state to reveal them. */}
                   {!readOnly && (
                   <div
-                    className={`flex items-center gap-0.5 pr-1.5 shrink-0 ${
-                      isMobile ? "" : "opacity-0 group-hover/row:opacity-100 focus-within:opacity-100"
+                    // Collapsed to zero width (not just transparent) until hovered, so the title
+                    // gets the full row; still focusable, and focus-within expands it for keyboards.
+                    className={`flex items-center gap-0.5 shrink-0 ${
+                      isMobile
+                        ? "pr-1.5"
+                        : "w-0 overflow-hidden opacity-0 group-hover/row:w-auto group-hover/row:overflow-visible group-hover/row:pr-1.5 group-hover/row:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:pr-1.5 focus-within:opacity-100"
                     }`}
                   >
                     <Tooltip>

@@ -87,6 +87,7 @@ export function ThreadPicker({ caseId, activeConsultationId, isDraftActive = fal
         <input
           ref={inputRef}
           value={editValue}
+          maxLength={60}
           placeholder={isDraftActive ? t("sidebar.newConsultation") : undefined}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={(e) => {

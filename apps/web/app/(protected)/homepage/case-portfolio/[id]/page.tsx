@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, LayoutGrid, PanelsTopLeft, Scale, Loader2,
-  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock, Eye, ArrowRight,
+  FileText, Plus, Clock, MessageSquare, Pencil, Menu, ArchiveRestore, AlertCircle, Users, Lock, Eye, ArrowRight, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { PageShell } from "@/components/page-shell";
 import { CaseWorkspace } from "@/components/case-workspace/case-workspace";
@@ -468,7 +468,7 @@ function OverviewTab({
   const canStartConsultation = useCanContributeToCase(id);
   const parties = useOverviewParties(caseRecord);
   const notes = useOverviewNotes(caseRecord);
-  const [showAllIssues, setShowAllIssues] = useState(false);
+  const [issuesPageRaw, setIssuesPage] = useState(1);
   const [docPageRaw, setDocPage] = useState(0);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
@@ -482,6 +482,9 @@ function OverviewTab({
   // A case's analysis often lands only in Legal Issues / Weaknesses, never the risk register —
   // list those rather than claiming there's no analysis.
   const findings = snapshot && risks.length === 0 ? openFindings(snapshot) : [];
+  // Clamped so deleting the last issue on a page falls back to the previous page.
+  const issuesPage = Math.min(issuesPageRaw, Math.max(1, Math.ceil((risks.length || findings.length) / ISSUES_PREVIEW)));
+  const issuesStart = (issuesPage - 1) * ISSUES_PREVIEW;
   // Calendar dates plus the case's procedural deadlines. Deadlines carry no "met" state, so a
   // past one only counts as overdue for OVERDUE_WINDOW_DAYS; older ones sit under "Past".
   // ponytail: window heuristic until deadlines get a "mark as met" field (follow-up ticket).
@@ -601,12 +604,12 @@ function OverviewTab({
             <LoadingRow />
           ) : risks.length > 0 ? (
             <>
-              <KeyIssuesList caseId={id} risks={showAllIssues ? risks : risks.slice(0, ISSUES_PREVIEW)} />
-              <IssuesFooter total={risks.length} expanded={showAllIssues} onToggle={() => setShowAllIssues((v) => !v)} onOpenWorkspace={onOpenWorkspace} />
+              <KeyIssuesList caseId={id} risks={risks.slice(issuesStart, issuesStart + ISSUES_PREVIEW)} />
+              <IssuesFooter total={risks.length} page={issuesPage} onPageChange={setIssuesPage} onOpenWorkspace={onOpenWorkspace} />
             </>
           ) : findings.length > 0 ? (
             <div className="flex flex-col gap-1">
-              {(showAllIssues ? findings : findings.slice(0, ISSUES_PREVIEW)).map((f) => (
+              {findings.slice(issuesStart, issuesStart + ISSUES_PREVIEW).map((f) => (
                 <div key={f.id} className="flex items-start gap-2.5 py-1.5 text-[14px] leading-relaxed text-foreground">
                   <AlertCircle className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-gold" aria-hidden="true" />
                   <span className="min-w-0 flex-1">{f.label}</span>
@@ -615,7 +618,7 @@ function OverviewTab({
                   </span>
                 </div>
               ))}
-              <IssuesFooter total={findings.length} expanded={showAllIssues} onToggle={() => setShowAllIssues((v) => !v)} onOpenWorkspace={onOpenWorkspace} />
+              <IssuesFooter total={findings.length} page={issuesPage} onPageChange={setIssuesPage} onOpenWorkspace={onOpenWorkspace} />
             </div>
           ) : (
             <span className="text-[13px] text-muted-foreground leading-relaxed">{t("overview.noIssues")}</span>
@@ -770,34 +773,49 @@ function DeadlineRow({ d }: { d: { title: string; dateTime: string; type?: strin
  * to the Workspace (where issues are managed) sits beside "Show less". */
 function IssuesFooter({
   total,
-  expanded,
-  onToggle,
+  page,
+  onPageChange,
   onOpenWorkspace,
 }: {
   total: number;
-  expanded: boolean;
-  onToggle: () => void;
+  page: number;
+  onPageChange: (page: number) => void;
   onOpenWorkspace: () => void;
 }) {
   const { t } = useTranslation("case-portfolio");
-  const collapsible = total > ISSUES_PREVIEW;
-  const allShown = !collapsible || expanded;
-  const linkClass = "font-medium text-foreground hover:underline cursor-pointer";
+  const first = (page - 1) * ISSUES_PREVIEW + 1;
+  const last = Math.min(page * ISSUES_PREVIEW, total);
+  const totalPages = Math.ceil(total / ISSUES_PREVIEW);
+  // Same quiet round buttons as the row actions in KeyIssuesList.
+  const pageBtn =
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none tabular-nums text-muted-foreground transition-colors cursor-pointer hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 disabled:cursor-not-allowed";
   return (
-    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-      <span>{t("overview.showingOf", { shown: allShown ? total : ISSUES_PREVIEW, total })}</span>
-      <div className="flex items-center gap-4">
-        {collapsible && (
-          <button type="button" onClick={onToggle} aria-expanded={expanded} className={linkClass}>
-            {expanded ? t("overview.showLess") : t("overview.viewAll")}
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>{t("overview.showingRange", { first, last, total })}</span>
+      {totalPages > 1 && (
+        <nav aria-label="Pagination" className="flex items-center gap-0.5">
+          <button type="button" disabled={page === 1} onClick={() => onPageChange(page - 1)} aria-label={t("pagination.previous")} className={`${pageBtn} hover:text-foreground`}>
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
-        )}
-        {allShown && (
-          <button type="button" onClick={onOpenWorkspace} className={linkClass}>
-            {t("overview.openWorkspace")}
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onPageChange(n)}
+              aria-current={n === page ? "page" : undefined}
+              className={`${pageBtn} ${n === page ? "bg-white/70 font-semibold text-foreground shadow-sm ring-1 ring-black/10 hover:bg-white/70 dark:bg-white/15 dark:ring-white/20 dark:hover:bg-white/15 cursor-default" : ""}`}
+            >
+              {n}
+            </button>
+          ))}
+          <button type="button" disabled={page === totalPages} onClick={() => onPageChange(page + 1)} aria-label={t("pagination.next")} className={`${pageBtn} hover:text-foreground`}>
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
-        )}
-      </div>
+        </nav>
+      )}
+      <button type="button" onClick={onOpenWorkspace} className="font-medium text-foreground hover:underline cursor-pointer">
+        {t("overview.openWorkspace")}
+      </button>
     </div>
   );
 }

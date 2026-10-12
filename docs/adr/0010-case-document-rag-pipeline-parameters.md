@@ -65,3 +65,19 @@ or mirrored legal-rag's reactive pattern instead is unconfirmed.
 - `ragStatus` is never surfaced to the user as an error either way (per the confirm endpoint's own
   description) — a Document uploaded moments ago may not yet be searchable with no UI indication of
   that.
+
+## Amendment: packing for large documents (1 GB upload limit, see ADR 0009)
+
+The chunker (ilovelawyer-api `src/utils/chunking.ts`) sizes chunks by tier — compact 1,200, default
+2,000, large 4,000, bulk 6,000 characters — but kept one chunk per paragraph at every tier. With
+uploads up to 1 GB that no longer holds up: a 100 MB transcript of short paragraphs was ~300,000
+chunks (an hour of embedding, ~1.8 GB of vectors). Two changes:
+
+- **Bulk tier packs paragraphs.** Consecutive paragraphs on the same page share a chunk, up to the
+  6,000-character size (`ChunkingProfile.packParagraphs`). The same 100 MB file is ~17,600 chunks.
+  Compact, default and large tiers keep one chunk per paragraph, so ordinary case documents chunk
+  exactly as before. Chunks never cross a page, so page citations are unchanged.
+- **Text with no blank lines packs lines** (every tier). Such text used to fall back to one chunk
+  per line; lines are now joined up to the tier's chunk size.
+
+An oversized paragraph or line is still hard-cut, never dropped.

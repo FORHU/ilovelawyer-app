@@ -38,7 +38,19 @@
     "notesEmpty": "아직 메모가 없습니다.",
     "notesShowMore": "더 보기",
     "notesShowLess": "접기",
-    "notesEdit": "편집"
+    "notesEdit": "편집",
+    "notesAdd": "메모 추가",
+    "notesDelete": "삭제",
+    "notesDeleteTitle": "메모를 삭제할까요?",
+    "notesDeleting": "삭제 중…",
+    "notesDeleted": "메모를 삭제했습니다.",
+    "notesDeleteError": "메모를 삭제하지 못했습니다. 다시 시도해 주세요.",
+    "notesDeleteConfirm": "이 메모를 삭제할까요? 되돌릴 수 없습니다.",
+    "notesAddTitle": "메모 추가",
+    "notesEditTitle": "메모 편집",
+    "notesSave": "저장",
+    "notesSaving": "저장 중…",
+    "notesCancel": "취소"
   },
   "detail": {
     "backToPortfolio": "사건 포트폴리오로 돌아가기",

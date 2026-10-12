@@ -32,6 +32,7 @@ import {
 import { ALLOWED_EXTENSIONS } from "@/lib/cases/upload-batch"
 import { useCanEditCase } from "@/lib/cases/permissions"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
+import { UploadLimitBanner } from "@/components/cases/upload-limit-banner"
 import { fileExtensionLabel, fileTypeColorClass, fileTypeIcon } from "@/lib/cases/file-type-icon"
 import { countByStatus, documentSizeLabel, groupByCategory, ingestTone } from "@/lib/terminal/evidence-status"
 import { useFileDrop } from "@/hooks/use-file-drop"
@@ -215,7 +216,7 @@ export function EvidencePanel({
   const [deletingDoc, setDeletingDoc] = useState<UserDocument | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { upload, isUploading, canUpload } = useCaseDocumentUpload(caseId)
+  const { upload, isUploading, canUpload, limitNoticeBytes, dismissLimitNotice } = useCaseDocumentUpload(caseId)
   const { isDragOver, dragHandlers } = useFileDrop(upload, undefined)
 
   const archived = useArchivedCaseDocumentsQuery(caseId, showArchived)
@@ -329,6 +330,7 @@ export function EvidencePanel({
             if (files.length > 0) upload(files)
           }}
         />
+        <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={dismissLimitNotice} className="mb-3" />
         {showArchived ? (
           archived.isLoading ? (
             <div className="flex justify-center py-6">

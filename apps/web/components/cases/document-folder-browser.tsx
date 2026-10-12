@@ -27,7 +27,8 @@ import {
   useUploadCaseDocumentsMutation,
   type UserDocument,
 } from "@/lib/cases/mutations"
-import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, isAllowedFileType, MAX_FILE_SIZE_BYTES } from "@/lib/cases/upload-batch"
+import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, checkUploadSelection } from "@/lib/cases/upload-batch"
+import { UploadLimitBanner } from "@/components/cases/upload-limit-banner"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { useCanEditCase, useCanContributeToCase } from "@/lib/cases/permissions"
 import { DocumentFolderCard } from "@/components/cases/document-folder-card"
@@ -97,6 +98,8 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const [isBulkRestoring, setIsBulkRestoring] = useState(false)
   const [archivingDoc, setArchivingDoc] = useState<UserDocument | null>(null)
   const [restoringDoc, setRestoringDoc] = useState<UserDocument | null>(null)
+  /** Total of the last selection rejected for being over the 1 GB batch limit; null when none. */
+  const [limitNoticeBytes, setLimitNoticeBytes] = useState<number | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -119,10 +122,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   const { mutateAsync: bulkUnarchiveDocumentsAsync } = useBulkUnarchiveCaseDocumentsMutation()
 
   const upload = (files: File[], category?: string) => {
-    const [supported, unsupported] = [
-      files.filter(isAllowedFileType),
-      files.filter((f) => !isAllowedFileType(f)),
-    ]
+    const { accepted, unsupported, batchTooLarge, totalBytes } = checkUploadSelection(files)
     if (unsupported.length > 0) {
       toast.error(
         t("detail.attachmentUnsupportedType", {
@@ -133,23 +133,11 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
       )
     }
 
-    const [withinSizeLimit, oversized] = [
-      supported.filter((f) => f.size <= MAX_FILE_SIZE_BYTES),
-      supported.filter((f) => f.size > MAX_FILE_SIZE_BYTES),
-    ]
-    if (oversized.length > 0) {
-      toast.error(
-        t("detail.attachmentTooLarge", {
-          defaultValue: `${oversized.map((f) => f.name).join(", ")} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit per file, wasn't added.`,
-          fileNames: oversized.map((f) => f.name).join(", "),
-          maxMb: MAX_FILE_SIZE_BYTES / (1024 * 1024),
-        })
-      )
-    }
-    if (withinSizeLimit.length === 0) return
+    setLimitNoticeBytes(batchTooLarge ? totalBytes : null)
+    if (accepted.length === 0) return
 
     uploadDocuments(
-      { files: withinSizeLimit, caseId, category },
+      { files: accepted, caseId, category },
       {
         onSuccess: (result) => {
           result.failed.forEach(({ file, reason }) => {
@@ -745,6 +733,7 @@ export function DocumentFolderBrowser({ caseId, variant }: { caseId: string; var
   return (
     <div className="flex min-w-0 flex-col gap-3" {...activeDragHandlers}>
       {header}
+      <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={() => setLimitNoticeBytes(null)} />
       {selectionBar}
       <div
         className={`relative rounded-xl border transition-colors ${

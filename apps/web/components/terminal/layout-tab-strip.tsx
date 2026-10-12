@@ -167,6 +167,9 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                   onClick={() => {
                     if (!active) onSelect(tab.id)
                   }}
+                  onDoubleClick={() => {
+                    if (!readOnly) startEditing(tab)
+                  }}
                   onKeyDown={(e) => {
                     // Keyboard equivalent of the hover edit button below.
                     if (e.key === "F2" && !readOnly) {
@@ -174,7 +177,7 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                       startEditing(tab)
                     }
                   }}
-                  title={tab.name}
+                  title={readOnly ? tab.name : `${tab.name} — ${labels.renameHint}`}
                   className={`max-w-44 truncate whitespace-nowrap border-b-2 py-1 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors ${
                     active ? "border-brand-gold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
@@ -190,7 +193,7 @@ export default function LayoutTabStrip({ tabs, activeId, onSelect, onClose, onNe
                     type="button"
                     onClick={() => startEditing(tab)}
                     aria-label={labels.rename}
-                    title={labels.renameHint}
+                    title={labels.rename}
                     className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground dark:hover:bg-overlay-hover"
                   >
                     <Pencil className="h-3 w-3" aria-hidden="true" />
