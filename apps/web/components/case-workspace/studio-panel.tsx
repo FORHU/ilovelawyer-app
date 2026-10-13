@@ -659,10 +659,13 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             {/* Always shown, like Timeline and Data Table: greyed out with the reason until this
              * chat has a legal question to have decisions from. */}
             <StudioTile
-              icon={Scale}
+              icon={isMindMapConsultationBusy ? Loader2 : Scale}
+              iconSpinning={isMindMapConsultationBusy}
               label={t("workspace.decisionsTile")}
               note={
-                decisionGroups.length > 0
+                isMindMapConsultationBusy
+                  ? t("workspace.tileUpdating")
+                  : decisionGroups.length > 0
                   ? t("workspace.decisionsNoteThread", { count: decisionGroups.reduce((sum, g) => sum + g.records.length, 0) })
                   : undefined
               }
@@ -771,7 +774,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
           {openTile === "documents" ? (
             <DocumentFolderBrowser caseId={caseId} variant="full" />
           ) : openTile === "decisions" ? (
-            decisionGroupsNewestFirst.length > 0 ? (
+            isMindMapConsultationBusy ? (
+              <PaneLoadingState fill>{t("workspace.decisionsGenerating")}</PaneLoadingState>
+            ) : decisionGroupsNewestFirst.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {decisionGroupsNewestFirst.map((group) => {
                   const isOpen = isDecisionGroupOpen(group.promptIndex);
