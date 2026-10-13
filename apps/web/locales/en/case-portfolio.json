@@ -316,6 +316,7 @@
     "mindMapEmpty": "No mind map generated for this chat yet.",
     "mindMapGenerateCta": "Generate mind map",
     "mindMapRegenerateCta": "Regenerate mind map",
+    "decisionsGenerating": "Generating answer — decisions will appear once it's done…",
     "mindMapGenerating": "Generating mind map…",
     "mindMapGenerateError": "Couldn't generate a mind map. Try again.",
     "updatedJustNow": "Updated just now",

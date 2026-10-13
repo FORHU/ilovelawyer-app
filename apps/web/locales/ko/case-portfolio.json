@@ -147,6 +147,7 @@
     "mindMapEmpty": "이 채팅에 대해 생성된 마인드맵이 아직 없습니다.",
     "mindMapGenerateCta": "마인드맵 생성",
     "mindMapRegenerateCta": "마인드맵 다시 생성",
+    "decisionsGenerating": "답변 생성 중 — 완료되면 결정이 표시됩니다…",
     "mindMapGenerating": "마인드맵 생성 중…",
     "mindMapGenerateError": "마인드맵을 생성하지 못했습니다. 다시 시도해 주세요.",
     "updatedJustNow": "방금 업데이트됨",
