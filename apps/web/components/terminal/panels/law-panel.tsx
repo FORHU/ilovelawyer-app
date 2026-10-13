@@ -17,6 +17,7 @@ import type {
   SnapshotAuthoritySummary,
   SnapshotCitation,
 } from "@/lib/terminal/types"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
 import {
   EmptyNote,
   Field,
@@ -231,6 +232,8 @@ function AuthorityRow({
   const [subtitle, setSubtitle] = useState(authority.subtitle ?? "")
   const [rationale, setRationale] = useState(authority.rationale ?? "")
   const [ground, setGround] = useState(authority.findingId ?? "")
+  const [submitted, setSubmitted] = useState(false)
+  const titleError = submitted && !title.trim() ? t("fieldRequiredNamed", { field: t("authorityTitle") }) : null
 
   // Re-seeded each time editing starts, so a cancelled edit (or a newer server version) never
   // leaves stale text in the form.
@@ -240,6 +243,7 @@ function AuthorityRow({
     setSubtitle(authority.subtitle ?? "")
     setRationale(authority.rationale ?? "")
     setGround(authority.findingId ?? "")
+    setSubmitted(false)
     update.reset()
     setEditing(true)
   }
@@ -248,12 +252,17 @@ function AuthorityRow({
     return (
       <PanelRow className="flex-col items-stretch gap-2" {...rest}>
         <form
+          noValidate
           className="flex flex-col gap-3"
           onKeyDown={(e) => e.key === "Escape" && !update.isPending && setEditing(false)}
           onSubmit={(e) => {
             e.preventDefault()
             const value = title.trim()
-            if (!value) return
+            if (!value) {
+              setSubmitted(true)
+              focusFirstInvalid(e.currentTarget)
+              return
+            }
             // Every field is sent (blank as "") so emptying a box actually clears it server-side.
             update.mutate(
               {
@@ -268,14 +277,13 @@ function AuthorityRow({
             )
           }}
         >
-          <Field label={t("authorityTitle")} htmlFor={`${uid}-title`}>
+          <Field label={t("authorityTitle")} htmlFor={`${uid}-title`} required error={titleError}>
             <input
               id={`${uid}-title`}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("authorityTitleExample")}
               autoFocus
-              required
               className={fieldClass}
             />
           </Field>
@@ -321,7 +329,7 @@ function AuthorityRow({
           )}
           <MutationError show={update.isError} />
           <div className="flex flex-wrap items-center gap-2">
-            <button type="submit" disabled={update.isPending || !title.trim()} className={primaryBtnClass}>
+            <button type="submit" disabled={update.isPending} className={primaryBtnClass}>
               {update.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("save")}
             </button>
             <button type="button" onClick={() => setEditing(false)} disabled={update.isPending} className={ghostBtnClass}>
@@ -441,6 +449,8 @@ function CitationRow({
   const [citedReference, setCitedReference] = useState(citation.citedReference ?? "")
   const [pinpoint, setPinpoint] = useState(citation.pinpoint ?? "")
   const [officialText, setOfficialText] = useState(citation.officialText ?? "")
+  const [submitted, setSubmitted] = useState(false)
+  const quoteError = submitted && !quotedText.trim() ? t("fieldRequiredNamed", { field: t("quote") }) : null
 
   // Re-seeded from the citation each time editing starts, so a cancelled edit (or a newer server
   // version, e.g. after a re-verify) never leaves stale text sitting in the form.
@@ -449,6 +459,7 @@ function CitationRow({
     setCitedReference(citation.citedReference ?? "")
     setPinpoint(citation.pinpoint ?? "")
     setOfficialText(citation.officialText ?? "")
+    setSubmitted(false)
     update.reset()
     setMode("edit")
   }
@@ -457,12 +468,17 @@ function CitationRow({
     return (
       <PanelRow className="@container flex-col items-stretch gap-2" {...rest}>
         <form
+          noValidate
           className="flex flex-col gap-3"
           onKeyDown={(e) => e.key === "Escape" && !update.isPending && setMode("view")}
           onSubmit={(e) => {
             e.preventDefault()
             const quote = quotedText.trim()
-            if (!quote) return
+            if (!quote) {
+              setSubmitted(true)
+              focusFirstInvalid(e.currentTarget)
+              return
+            }
             // Every field is sent (blank as "") so emptying a box actually clears it server-side.
             update.mutate(
               { id: citation.id, quotedText: quote, citedReference: citedReference.trim(), pinpoint: pinpoint.trim(), officialText: officialText.trim() },
@@ -470,14 +486,13 @@ function CitationRow({
             )
           }}
         >
-          <Field label={t("quote")} htmlFor={`${uid}-quote`}>
+          <Field label={t("quote")} htmlFor={`${uid}-quote`} required error={quoteError}>
             <textarea
               id={`${uid}-quote`}
               value={quotedText}
               onChange={(e) => setQuotedText(e.target.value)}
               rows={3}
               autoFocus
-              required
               className={`${fieldClass} h-auto resize-none py-1.5`}
             />
           </Field>
@@ -514,7 +529,7 @@ function CitationRow({
           </Field>
           <MutationError show={update.isError} />
           <div className="flex items-center gap-2">
-            <button type="submit" disabled={update.isPending || !quotedText.trim()} className={primaryBtnClass}>
+            <button type="submit" disabled={update.isPending} className={primaryBtnClass}>
               {update.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : t("save")}
             </button>
             <button type="button" onClick={() => setMode("view")} disabled={update.isPending} className={ghostBtnClass}>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useReducer, useState, type Dispatch, type SetStateAction } from "react"
+import { useEffect, useReducer, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { useTranslation } from "react-i18next"
 import { RefreshCw } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
@@ -89,6 +89,9 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [saveName, setSaveName] = useState("")
+  const [nameTouched, setNameTouched] = useState(false)
+  const nameInvalid = nameTouched && !saveName.trim()
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Screens can change while the modal is open (a monitor unplugged or plugged back in).
   // ScreenDetails is live, so follow its change events: re-count the screens (which also refetches
@@ -242,11 +245,17 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
   }
 
   const handleSave = () => {
-    if (!layout || !count || !saveName.trim()) return
+    if (!layout || !count) return
+    if (!saveName.trim()) {
+      setNameTouched(true)
+      nameInputRef.current?.focus()
+      return
+    }
     const screens = captureCurrentScreens(layout, count)
     if (screens.length === 0) return
     createPreset.mutate({ name: saveName.trim(), screens })
     setSaveName("")
+    setNameTouched(false)
   }
 
   return (
@@ -309,16 +318,20 @@ export function ScreenPresetsModal({ open, onOpenChange, detectedCount, detected
 
               <div className="flex items-center gap-1.5 border-t border-border/70 p-2">
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   placeholder={t("savePresetPlaceholder")}
-                  className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  aria-label={t("savePresetPlaceholder")}
+                  aria-required="true"
+                  aria-invalid={nameInvalid}
+                  className={`h-7 min-w-0 flex-1 rounded border ${nameInvalid ? "border-danger" : "border-border"} bg-background px-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none`}
                 />
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={!saveName.trim() || createPreset.isPending}
+                  disabled={createPreset.isPending}
                   className="h-7 shrink-0 rounded border border-border px-2 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
                 >
                   {t("savePreset")}

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Loader2, Search, UserMinus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { RequiredMark } from "@workspace/ui/components/input";
+import { focusFirstInvalid } from "@/lib/focus-first-invalid";
 import { UserAvatar } from "@/components/user-avatar";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import {
@@ -27,6 +29,7 @@ const AVATAR_CLASS = "h-8 w-8 border border-border bg-muted text-[11px] font-sem
 export function PortfolioSharePanel({ caseId, data }: { caseId: string; data: CaseAccessList }) {
   const { t } = useTranslation("case-portfolio");
   const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const lookup = useShareLookupMutation();
   const grant = useGrantCaseAccessMutation();
   const revoke = useRevokeCaseAccessMutation();
@@ -36,6 +39,7 @@ export function PortfolioSharePanel({ caseId, data }: { caseId: string; data: Ca
     return <p className="text-sm text-muted-foreground leading-relaxed">{t("share.portfolioCopy")}</p>;
   }
 
+  const emailMissing = emailTouched && !email.trim();
   const found = lookup.data;
   const alreadyShared = !!found && data.people.some((person) => person.userId === found.id);
   const lookupStatus = (lookup.error as (Error & { status?: number; code?: string }) | null) ?? null;
@@ -50,7 +54,11 @@ export function PortfolioSharePanel({ caseId, data }: { caseId: string; data: Ca
   const find = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = email.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setEmailTouched(true);
+      focusFirstInvalid(e.currentTarget);
+      return;
+    }
     grant.reset();
     lookup.mutate({ caseId, email: trimmed });
   };
@@ -75,9 +83,10 @@ export function PortfolioSharePanel({ caseId, data }: { caseId: string; data: Ca
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground leading-relaxed">{t("share.portfolioDescription")}</p>
 
-      <form onSubmit={find} className="flex flex-col gap-1.5">
+      <form onSubmit={find} noValidate className="flex flex-col gap-1.5">
         <label htmlFor="share-email" className="text-[12px] font-medium text-foreground">
           {t("share.emailLabel")}
+          <RequiredMark />
         </label>
         <div className="flex gap-2">
           <input
@@ -90,17 +99,25 @@ export function PortfolioSharePanel({ caseId, data }: { caseId: string; data: Ca
               if (lookup.data || lookup.error) lookup.reset();
             }}
             placeholder={t("share.emailPlaceholder")}
-            className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-base sm:text-sm text-foreground outline-none focus:border-foreground/40 focus:ring-2 focus:ring-primary/20"
+            aria-required="true"
+            aria-invalid={emailMissing}
+            aria-describedby={emailMissing ? "share-email-error" : undefined}
+            className={`h-10 min-w-0 flex-1 rounded-md border ${emailMissing ? "border-danger" : "border-border"} bg-background px-3 text-base sm:text-sm text-foreground outline-none focus:border-foreground/40 focus:ring-2 focus:ring-primary/20`}
           />
           <button
             type="submit"
-            disabled={!email.trim() || lookup.isPending}
+            disabled={lookup.isPending}
             className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-[13px] font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:cursor-default disabled:opacity-50"
           >
             {lookup.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Search className="h-3.5 w-3.5" aria-hidden="true" />}
             {t("share.find")}
           </button>
         </div>
+        {emailMissing && (
+          <p id="share-email-error" role="alert" className="text-[12px] text-danger">
+            {t("share.emailRequired", { defaultValue: "Enter the email address of the person to share with." })}
+          </p>
+        )}
         {lookupMessage && (
           <p role="alert" className="text-[12px] text-danger">
             {lookupMessage}

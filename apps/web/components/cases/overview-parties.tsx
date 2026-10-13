@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { RequiredMark } from "@workspace/ui/components/input";
+import { focusFirstInvalid } from "@/lib/focus-first-invalid";
 import CustomSelect from "@/components/ui/custom-select";
 import { CharCount } from "@/components/ui/char-count";
 import { PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
@@ -30,6 +32,9 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
+  const nameMissing = nameTouched && !name.trim();
+  const formRef = useRef<HTMLFormElement>(null);
   const [designation, setDesignation] = useState<string>(DESIGNATION_OPTIONS[0].value);
 
   const parties = caseRecord?.parties ?? [];
@@ -60,6 +65,7 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
     update.reset();
     setConfirmRemove(null);
     setEditing(party?.id ?? NEW_PARTY);
+    setNameTouched(false);
     setName(party?.name ?? "");
     // A first party is usually the client's side; later ones default to the other side.
     setDesignation(party?.designation ?? (parties.length === 0 ? DESIGNATION_OPTIONS[0].value : DESIGNATION_OPTIONS[1].value));
@@ -72,7 +78,12 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
 
   const submit = () => {
     const trimmed = name.trim();
-    if (!trimmed || update.isPending) return;
+    if (update.isPending) return;
+    if (!trimmed) {
+      setNameTouched(true);
+      focusFirstInvalid(formRef.current);
+      return;
+    }
     const next =
       editing === NEW_PARTY
         ? [...parties, { id: NEW_PARTY, name: trimmed, designation }]
@@ -89,6 +100,8 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
 
   const editor = (
     <form
+      ref={formRef}
+      noValidate
       className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 p-2.5"
       onSubmit={(e) => {
         e.preventDefault();
@@ -96,17 +109,29 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
       }}
       onKeyDown={(e) => e.key === "Escape" && closeEditor()}
     >
+      <label htmlFor="overview-party-name" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+        {t("sectionParties.fullNameLabel", { ns: "create-case" })}
+        <RequiredMark />
+      </label>
       <input
+        id="overview-party-name"
         autoFocus
+        aria-required="true"
+        aria-invalid={nameMissing}
         value={name}
         maxLength={PARTY_NAME_MAX_LENGTH}
-        aria-describedby="overview-party-name-count"
+        aria-describedby={nameMissing ? "overview-party-name-error overview-party-name-count" : "overview-party-name-count"}
         onChange={(e) => setName(e.target.value)}
         placeholder={t("overview.partyNamePlaceholder")}
         aria-label={t("sectionParties.fullNameLabel", { ns: "create-case" })}
         disabled={update.isPending}
-        className="w-full rounded-lg border border-border bg-card px-3 py-2 text-base sm:text-sm outline-none transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+        className={`w-full rounded-lg border ${nameMissing ? "border-danger" : "border-border"} bg-card px-3 py-2 text-base sm:text-sm outline-none transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5`}
       />
+      {nameMissing && (
+        <p id="overview-party-name-error" role="alert" className="text-[12px] text-danger">
+          {t("overview.partyNameRequired", { defaultValue: "Enter the party's name." })}
+        </p>
+      )}
       <CharCount id="overview-party-name-count" length={name.length} max={PARTY_NAME_MAX_LENGTH} />
       <CustomSelect
         value={designation}
@@ -125,7 +150,7 @@ export function useOverviewParties(caseRecord: CaseRecord | undefined) {
         </button>
         <button
           type="submit"
-          disabled={update.isPending || !name.trim()}
+          disabled={update.isPending}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold text-brand-gold-foreground text-[10px] font-semibold tracking-[1.2px] uppercase hover:bg-brand-gold-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {update.isPending ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Check className="h-3 w-3" aria-hidden="true" />}

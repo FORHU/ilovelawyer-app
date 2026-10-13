@@ -22,7 +22,8 @@ import type {
   SnapshotEvidenceMatrixItem,
   Witness,
 } from "@/lib/terminal/types"
-import { MutationError, dangerIconBtnClass, fieldClass, formatDate, primaryBtnClass } from "@/components/terminal/panel-kit"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
+import { Field, MutationError, dangerIconBtnClass, fieldClass, formatDate, primaryBtnClass } from "@/components/terminal/panel-kit"
 import { HEARSAY_CATEGORY_KEYS, PRIVILEGE_STATUS_KEYS } from "@/components/terminal/panels/evidence-panel"
 
 export function EvidenceDetailDrawer({
@@ -49,6 +50,8 @@ export function EvidenceDetailDrawer({
   const [custodyAction, setCustodyAction] = useState("")
   const [custodyDate, setCustodyDate] = useState("")
   const [custodyNotes, setCustodyNotes] = useState("")
+  const [custodySubmitted, setCustodySubmitted] = useState(false)
+  const requiredMsg = (key: string) => t("fieldRequiredNamed", { field: t(key) })
 
   if (!document) return null
 
@@ -198,12 +201,17 @@ export function EvidenceDetailDrawer({
             )}
 
             <form
+              noValidate
               className="mt-2 flex flex-col gap-2"
               onSubmit={(e) => {
                 e.preventDefault()
                 const name = custodianName.trim()
                 const action = custodyAction.trim()
-                if (!name || !action || !custodyDate) return
+                if (!name || !action || !custodyDate) {
+                  setCustodySubmitted(true)
+                  focusFirstInvalid(e.currentTarget)
+                  return
+                }
                 addCustody.mutate({
                   documentId: document.id,
                   custodianName: name,
@@ -215,37 +223,59 @@ export function EvidenceDetailDrawer({
                 setCustodyAction("")
                 setCustodyDate("")
                 setCustodyNotes("")
+                setCustodySubmitted(false)
               }}
             >
-              <input
-                value={custodianName}
-                onChange={(e) => setCustodianName(e.target.value)}
-                placeholder={t("custodianName")}
-                aria-label={t("custodianName")}
-                className={fieldClass}
-              />
-              <input
-                value={custodyAction}
-                onChange={(e) => setCustodyAction(e.target.value)}
-                placeholder={t("custodyAction")}
-                aria-label={t("custodyAction")}
-                className={fieldClass}
-              />
-              <input
-                type="date"
-                value={custodyDate}
-                onChange={(e) => setCustodyDate(e.target.value)}
-                aria-label={t("custodyDate")}
-                className={fieldClass}
-              />
-              <textarea
-                value={custodyNotes}
-                onChange={(e) => setCustodyNotes(e.target.value)}
-                placeholder={t("custodyNotes")}
-                aria-label={t("custodyNotes")}
-                rows={2}
-                className={`resize-none py-1.5 ${fieldClass} h-auto`}
-              />
+              <Field
+                label={t("custodianName")}
+                htmlFor="custody-name"
+                required
+                error={custodySubmitted && !custodianName.trim() ? requiredMsg("custodianName") : null}
+              >
+                <input
+                  id="custody-name"
+                  value={custodianName}
+                  onChange={(e) => setCustodianName(e.target.value)}
+                  className={fieldClass}
+                />
+              </Field>
+              <Field
+                label={t("custodyActionLabel")}
+                htmlFor="custody-action"
+                required
+                error={custodySubmitted && !custodyAction.trim() ? requiredMsg("custodyActionLabel") : null}
+              >
+                <input
+                  id="custody-action"
+                  value={custodyAction}
+                  onChange={(e) => setCustodyAction(e.target.value)}
+                  placeholder={t("custodyAction")}
+                  className={fieldClass}
+                />
+              </Field>
+              <Field
+                label={t("custodyDateLabel")}
+                htmlFor="custody-date"
+                required
+                error={custodySubmitted && !custodyDate ? requiredMsg("custodyDateLabel") : null}
+              >
+                <input
+                  id="custody-date"
+                  type="date"
+                  value={custodyDate}
+                  onChange={(e) => setCustodyDate(e.target.value)}
+                  className={fieldClass}
+                />
+              </Field>
+              <Field label={t("custodyNotes")} htmlFor="custody-notes">
+                <textarea
+                  id="custody-notes"
+                  value={custodyNotes}
+                  onChange={(e) => setCustodyNotes(e.target.value)}
+                  rows={2}
+                  className={`resize-none py-1.5 ${fieldClass} h-auto`}
+                />
+              </Field>
               <button
                 type="submit"
                 disabled={addCustody.isPending}
