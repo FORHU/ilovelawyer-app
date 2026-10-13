@@ -434,8 +434,9 @@ export function CaseTimelineView({
         <div className="mt-auto border-t border-border pt-5">
           <button
             type="button"
+            disabled={isGenerating || generate.isPending}
             onClick={() => setAddOpen(true)}
-            className="h-9 rounded-full bg-primary px-4 text-[11px] font-semibold uppercase tracking-[1px] text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98]"
+            className="h-9 rounded-full bg-primary px-4 text-[11px] font-semibold uppercase tracking-[1px] text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
           >
             {t("timeline.addHeading", { defaultValue: "Add event" })}
           </button>
