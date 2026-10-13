@@ -20,6 +20,7 @@ import { usePrefersReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@workspace/ui/lib/utils"
 import type { PanelId } from "@/lib/terminal/types"
 import { Badge } from "@workspace/ui/components/badge"
+import { RequiredMark } from "@workspace/ui/components/input"
 import { dateLocale } from "@/lib/i18n/date-locale"
 
 gsap.registerPlugin(Flip)
@@ -324,24 +325,52 @@ export function JevCheck({
 }
 
 // A form control with its visible label above it (never placeholder-as-label) and optional hint below.
+// `required` adds the asterisk; `error` (set after a failed submit) replaces the hint and, when the
+// child is a plain DOM control, marks it aria-invalid with the danger border. A child that is a
+// component (e.g. a Radix Select) must take `aria-invalid` itself.
 export function Field({
   label,
   htmlFor,
   hint,
+  required,
+  error,
   children,
 }: {
   label: string
   htmlFor: string
   hint?: string
+  required?: boolean
+  error?: string | null
   children: ReactNode
 }) {
+  const errorId = `${htmlFor}-error`
+  const control =
+    isValidElement<{ className?: string }>(children) && typeof children.type === "string"
+      ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+          "aria-required": required || undefined,
+          ...(error
+            ? {
+                "aria-invalid": true,
+                "aria-describedby": errorId,
+                className: cn(children.props.className, "border-danger focus:border-danger focus:ring-danger/20"),
+              }
+            : {}),
+        })
+      : children
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={htmlFor} className={labelTextClass}>
         {label}
+        {required && <RequiredMark />}
       </label>
-      {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {control}
+      {error ? (
+        <p id={errorId} role="alert" className="text-[11px] text-danger">
+          {error}
+        </p>
+      ) : (
+        hint && <p className="text-[11px] text-muted-foreground">{hint}</p>
+      )}
     </div>
   )
 }

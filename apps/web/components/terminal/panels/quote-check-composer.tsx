@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { ChevronDown, Plus } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 import { useCheckCitationMutation } from "@/lib/terminal/mutations"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
 import {
   Field,
   MutationError,
@@ -24,6 +25,8 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
   const [citedReference, setCitedReference] = useState("")
   const [pinpoint, setPinpoint] = useState("")
   const [officialText, setOfficialText] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  const quoteError = submitted && !quotedText.trim() ? t("fieldRequiredNamed", { field: t("quote") }) : null
 
   useEffect(() => {
     if (open) quoteRef.current?.focus()
@@ -32,6 +35,7 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
   const close = () => {
     setOpen(false)
     setShowDetails(false)
+    setSubmitted(false)
     check.reset()
   }
 
@@ -50,12 +54,17 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
 
   return (
     <form
+      noValidate
       className="flex shrink-0 flex-col gap-3 rounded-md border border-border bg-muted/40 p-3"
       onKeyDown={(e) => e.key === "Escape" && close()}
       onSubmit={(e) => {
         e.preventDefault()
         const quote = quotedText.trim()
-        if (!quote) return
+        if (!quote) {
+          setSubmitted(true)
+          focusFirstInvalid(e.currentTarget)
+          return
+        }
         check.mutate(
           {
             quotedText: quote,
@@ -75,7 +84,7 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
         )
       }}
     >
-      <Field label={t("quote")} htmlFor={`${uid}-quote`}>
+      <Field label={t("quote")} htmlFor={`${uid}-quote`} required error={quoteError}>
         <textarea
           ref={quoteRef}
           id={`${uid}-quote`}
@@ -83,7 +92,6 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
           onChange={(e) => setQuotedText(e.target.value)}
           placeholder={t("quoteExample")}
           rows={2}
-          required
           className={`${fieldClass} h-auto resize-none py-1.5`}
         />
       </Field>
@@ -134,7 +142,7 @@ export function QuoteCheckComposer({ caseId }: { caseId: string }) {
 
       <MutationError show={check.isError} />
       <div className="flex flex-wrap items-center gap-2">
-        <button type="submit" disabled={check.isPending || !quotedText.trim()} className={primaryBtnClass}>
+        <button type="submit" disabled={check.isPending} className={primaryBtnClass}>
           {check.isPending ? t("verifying") : t("verify")}
         </button>
         <button type="button" onClick={close} className={ghostBtnClass}>

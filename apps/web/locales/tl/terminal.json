@@ -600,7 +600,7 @@
   "custodianName": "Pangalan ng custodian",
   "custodyAction": "Aksyon (hal. natanggap, inilipat)",
   "custodyDate": "Petsa ng custody event",
-  "custodyNotes": "Mga tala (opsyonal)",
+  "custodyNotes": "Mga tala",
   "addCustodyEvent": "Itala ang custody event",
   "custodyEventCount": "{{n}} custody event",
   "reconstructionNarrative": "Salaysay",

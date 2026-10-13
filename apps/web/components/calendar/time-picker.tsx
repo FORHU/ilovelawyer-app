@@ -24,6 +24,8 @@ type TimePickerProps = {
   placeholder?: string;
   "aria-label"?: string;
   className?: string;
+  /** Marks the trigger invalid (red border + aria-invalid) after a failed submit. */
+  invalid?: boolean;
   /** "HH:mm" — options at or before this are disabled (e.g. End must follow Start). */
   minTime?: string;
   /** Show each option's length relative to `minTime` ("30m", "1h 30m"). */
@@ -39,6 +41,7 @@ export function TimePicker({
   placeholder = "Select time",
   "aria-label": ariaLabel,
   className,
+  invalid,
   minTime,
   showDuration = false,
   dateLabel,
@@ -192,9 +195,11 @@ export function TimePicker({
         <button
           type="button"
           aria-label={ariaLabel}
+          aria-invalid={invalid}
           className={cn(
             "flex w-full items-center justify-between gap-2 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm tabular-nums outline-none transition-colors focus:border-primary data-[state=open]:border-primary",
             current !== null ? "text-foreground" : "text-muted-foreground",
+            invalid && "border-danger",
             className
           )}
         >

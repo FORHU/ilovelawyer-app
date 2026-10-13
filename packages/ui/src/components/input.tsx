@@ -30,6 +30,17 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input"> &
 )
 Input.displayName = "Input"
 
+/** The one required-field marker: a red asterisk for sighted users, "(required)" for screen
+ * readers. Drop it inside any label; `srLabel` is only for non-English call sites. */
+function RequiredMark({ srLabel = "required" }: { srLabel?: string }) {
+  return (
+    <>
+      <span aria-hidden="true" className="ml-0.5 normal-case text-danger">*</span>
+      <span className="sr-only"> ({srLabel})</span>
+    </>
+  )
+}
+
 interface TextFieldProps extends React.ComponentProps<"input"> {
   label: React.ReactNode
   /** Optional hint shown under the label, above the input. */
@@ -45,7 +56,7 @@ interface TextFieldProps extends React.ComponentProps<"input"> {
  * you need a bespoke label layout `TextField` doesn't cover (e.g. edit-case-modal's party rows).
  */
 const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
-  ({ label, helperText, errorText, containerClassName, id, ...props }, ref) => {
+  ({ label, helperText, errorText, containerClassName, id, required, ...props }, ref) => {
     const generatedId = React.useId()
     const inputId = id ?? generatedId
     const errorId = errorText ? `${inputId}-error` : undefined
@@ -54,6 +65,7 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
       <div className={cn("flex flex-col gap-2", containerClassName)}>
         <label htmlFor={inputId} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
           {label}
+          {required && <RequiredMark />}
         </label>
         {helperText && !errorText && <p className="text-xs text-muted-foreground">{helperText}</p>}
         <Input
@@ -61,6 +73,7 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
           id={inputId}
           invalid={!!errorText}
           aria-describedby={errorId}
+          aria-required={required || undefined}
           {...props}
         />
         {errorText && (
@@ -75,4 +88,4 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
 )
 TextField.displayName = "TextField"
 
-export { Input, TextField }
+export { Input, RequiredMark, TextField }

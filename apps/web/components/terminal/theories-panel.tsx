@@ -567,6 +567,8 @@ function TheoryInlineInput({
 }) {
   const { t } = useTranslation("terminal")
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const [touched, setTouched] = useState(false)
+  const invalid = touched && !value.trim()
 
   // Opening to edit puts the caret after the existing text rather than at the start.
   useEffect(() => {
@@ -585,12 +587,18 @@ function TheoryInlineInput({
 
   return (
     <form
-      className="flex items-end gap-1.5 rounded-lg border border-border bg-muted/40 p-1 transition-colors focus-within:border-brand-gold/50"
+      noValidate
+      className={`flex items-end gap-1.5 rounded-lg border bg-muted/40 p-1 transition-colors ${invalid ? "border-danger" : "border-border focus-within:border-brand-gold/50"}`}
       onKeyDown={(e) => e.key === "Escape" && onCancel()}
       onSubmit={(e) => {
         e.preventDefault()
         const v = value.trim()
-        if (!v || isPending) return
+        if (isPending) return
+        if (!v) {
+          setTouched(true)
+          inputRef.current?.focus()
+          return
+        }
         onSubmit(v)
       }}
     >
@@ -630,13 +638,15 @@ function TheoryInlineInput({
         }}
         placeholder={placeholder}
         aria-label={placeholder}
+        aria-required="true"
+        aria-invalid={invalid}
         rows={1}
         autoFocus
         className="max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1.5 py-1.5 text-xs leading-4 text-foreground outline-none wrap-break-word placeholder:text-muted-foreground"
       />
       <button
         type="submit"
-        disabled={isPending || !value.trim()}
+        disabled={isPending}
         aria-label={submitLabel}
         title={submitLabel}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-gold text-brand-gold-foreground transition-colors hover:bg-brand-gold/85 disabled:opacity-40"
@@ -652,6 +662,11 @@ function TheoryInlineInput({
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
+      {invalid && (
+        <p role="alert" className="sr-only">
+          {t("fieldRequiredNamed", { field: placeholder })}
+        </p>
+      )}
     </form>
   )
 }

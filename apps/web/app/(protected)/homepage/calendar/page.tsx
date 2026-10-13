@@ -12,6 +12,8 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { RequiredMark } from "@workspace/ui/components/input";
+import { focusFirstInvalid } from "@/lib/focus-first-invalid";
 import CustomSelect from "@/components/ui/custom-select";
 import { cn } from "@workspace/ui/lib/utils";
 import type { DayButton } from "react-day-picker";
@@ -303,6 +305,9 @@ function PlannerPanel({
   const [editOriginalReminder, setEditOriginalReminder] = React.useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  // Set by a submit with a required field empty; the fields below derive their error from it.
+  const [showRequired, setShowRequired] = React.useState(false);
+  const formRef = React.useRef<HTMLFormElement>(null);
   // Appointments the one being saved clashes with; non-null shows the overlap warning.
   const [overlaps, setOverlaps] = React.useState<Appointment[] | null>(null);
   const [isCheckingOverlap, setIsCheckingOverlap] = React.useState(false);
@@ -439,6 +444,12 @@ function PlannerPanel({
     }
   }
 
+  React.useEffect(() => setShowRequired(false), [modalOpen, entryType, editingId, editingNoteId]);
+  const noteMissing = showRequired && !noteBody.trim();
+  const titleMissing = showRequired && !title.trim();
+  const startMissing = showRequired && !startTime;
+  const endMissing = showRequired && !endTime;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     void submitForm();
@@ -453,7 +464,11 @@ function PlannerPanel({
 
     if (entryType === "note") {
       if (!editingNoteId && isPastSelected) return;
-      if (!noteBody.trim()) return setFormError(t("errors.noteRequired"));
+      if (!noteBody.trim()) {
+        setShowRequired(true);
+        focusFirstInvalid(formRef.current);
+        return;
+      }
       try {
         if (editingNoteId) {
           await updateNote.mutateAsync({ id: editingNoteId, body: noteBody.trim() });
@@ -468,8 +483,11 @@ function PlannerPanel({
       return;
     }
 
-    if (!title.trim()) return setFormError(t("errors.titleRequired"));
-    if (!startTime || !endTime) return setFormError(t("errors.timeRequired"));
+    if (!title.trim() || !startTime || !endTime) {
+      setShowRequired(true);
+      focusFirstInvalid(formRef.current);
+      return;
+    }
     // Presence alone doesn't guarantee shape: <input type="time"> can fall back to free text on
     // some browsers (older/desktop Safari, some mobile browsers), letting through values like
     // "9:00 AM" or "14h30" that would otherwise reach the mutation's Date construction and throw
@@ -778,7 +796,7 @@ function PlannerPanel({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <form onSubmit={handleSubmit} ref={formRef} noValidate className="flex flex-col gap-2">
           {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
 
           {!editingId && !editingNoteId && (
@@ -808,10 +826,17 @@ function PlannerPanel({
 
           {entryType === "note" ? (
             <div className="flex flex-col gap-1">
+              <label htmlFor="cal-note" className="text-xs font-medium text-foreground">
+                {t("notePlaceholder")}
+                <RequiredMark />
+              </label>
               <textarea
+                id="cal-note"
                 ref={autoGrowTextarea}
                 placeholder={t("notePlaceholder")}
-                aria-label={t("notePlaceholder")}
+                aria-required="true"
+                aria-invalid={noteMissing}
+                aria-describedby={noteMissing ? "cal-note-error" : undefined}
                 value={noteBody}
                 onChange={(e) => {
                   setNoteBody(e.target.value.slice(0, NOTE_MAX_LENGTH));
@@ -819,8 +844,16 @@ function PlannerPanel({
                 }}
                 maxLength={NOTE_MAX_LENGTH}
                 rows={4}
-                className="w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                className={cn(
+                  "w-full max-h-64 resize-none overflow-y-auto rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary",
+                  noteMissing && "border-danger"
+                )}
               />
+              {noteMissing && (
+                <p id="cal-note-error" role="alert" className="text-xs text-danger">
+                  {t("errors.noteRequired")}
+                </p>
+              )}
               <p className="self-end text-xs text-muted-foreground">
                 {noteBody.length}/{NOTE_MAX_LENGTH}
               </p>
@@ -828,15 +861,30 @@ function PlannerPanel({
           ) : (
             <>
               <div className="flex flex-col gap-1">
+                <label htmlFor="cal-title" className="text-xs font-medium text-foreground">
+                  {t("titlePlaceholder")}
+                  <RequiredMark />
+                </label>
                 <input
+                  id="cal-title"
                   type="text"
                   placeholder={t("titlePlaceholder")}
-                  aria-label={t("titlePlaceholder")}
+                  aria-required="true"
+                  aria-invalid={titleMissing}
+                  aria-describedby={titleMissing ? "cal-title-error" : undefined}
                   value={title}
                   onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX_LENGTH))}
                   maxLength={TITLE_MAX_LENGTH}
-                  className="w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                  className={cn(
+                    "w-full rounded-md border border-border bg-transparent px-2.5 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary",
+                    titleMissing && "border-danger"
+                  )}
                 />
+                {titleMissing && (
+                  <p id="cal-title-error" role="alert" className="text-xs text-danger">
+                    {t("errors.titleRequired")}
+                  </p>
+                )}
                 <p className="self-end text-xs text-muted-foreground">
                   {title.length}/{TITLE_MAX_LENGTH}
                 </p>
@@ -872,24 +920,43 @@ function PlannerPanel({
                 </Popover>
               )}
               <div className="flex gap-2">
-                <TimePicker
-                  value={startTime}
-                  onChange={handleStartTimeChange}
-                  placeholder={t("startTime")}
-                  aria-label={t("startTime")}
-                  dateLabel={pickerDateLabel}
-                />
-                <TimePicker
-                  value={endTime}
-                  onChange={setEndTime}
-                  placeholder={t("endTime")}
-                  aria-label={t("endTime")}
-                  dateLabel={pickerDateLabel}
-                  minTime={startTime || undefined}
-                  showDuration
-                  align="end"
-                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-xs font-medium text-foreground">
+                    {t("startTime")}
+                    <RequiredMark />
+                  </span>
+                  <TimePicker
+                    value={startTime}
+                    onChange={handleStartTimeChange}
+                    placeholder={t("startTime")}
+                    aria-label={t("startTime")}
+                    dateLabel={pickerDateLabel}
+                    invalid={startMissing}
+                  />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-xs font-medium text-foreground">
+                    {t("endTime")}
+                    <RequiredMark />
+                  </span>
+                  <TimePicker
+                    value={endTime}
+                    onChange={setEndTime}
+                    placeholder={t("endTime")}
+                    aria-label={t("endTime")}
+                    dateLabel={pickerDateLabel}
+                    minTime={startTime || undefined}
+                    showDuration
+                    align="end"
+                    invalid={endMissing}
+                  />
+                </div>
               </div>
+              {(startMissing || endMissing) && (
+                <p role="alert" className="text-xs text-danger">
+                  {t("errors.timeRequired")}
+                </p>
+              )}
               {(() => {
                 // Guidance shown in our own styling instead of a `min` attribute — a `min` on
                 // the end-time input works, but Chrome pops up its own native constraint

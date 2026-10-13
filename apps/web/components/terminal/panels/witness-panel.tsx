@@ -16,7 +16,8 @@ import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
-import { EmptyNote, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelStickyHeader, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
+import { EmptyNote, Field, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelStickyHeader, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
 
 const STATUSES: WitnessStatus[] = ["READY", "ADVERSE", "OUTSTANDING"]
 const STATUS_STYLE: Record<WitnessStatus, { text: string; badge: string; bar: string; label: string }> = {
@@ -73,6 +74,7 @@ export function WitnessPanel({
   const [factorFor, setFactorFor] = useState<{ nodeId: string; factor: string } | null>(null)
   const [factorAnswer, setFactorAnswer] = useState("")
   const [factorNote, setFactorNote] = useState("")
+  const [factorSubmitted, setFactorSubmitted] = useState(false)
   const docs = useCaseDocumentsQuery(caseId).data ?? []
   const todos = useLinkedTodos(caseId)
   const docName = (id: string) => docs.find((d) => d.id === id)?.name ?? t("witnessProofDocGone")
@@ -495,6 +497,7 @@ export function WitnessPanel({
                                 setFactorFor(factorOpen ? null : { nodeId: node.id, factor: n.factor! })
                                 setFactorAnswer("")
                                 setFactorNote("")
+                                setFactorSubmitted(false)
                               }}
                               aria-expanded={factorOpen}
                               className="ml-2 text-[12px] underline underline-offset-2 hover:text-foreground"
@@ -516,7 +519,14 @@ export function WitnessPanel({
                           {factorOpen && n.options ? (
                             <div className="mt-2 flex flex-col gap-2 rounded-md bg-muted px-3 py-2">
                               {n.question ? <p className="text-[12px] text-foreground">{n.question}</p> : null}
+                              <Field
+                                label={t("witnessFactorChoose")}
+                                htmlFor={`factor-answer-${node.id}`}
+                                required
+                                error={factorSubmitted && !factorAnswer ? t("fieldRequiredNamed", { field: t("witnessFactorChoose") }) : null}
+                              >
                               <select
+                                id={`factor-answer-${node.id}`}
                                 value={factorAnswer}
                                 onChange={(e) => setFactorAnswer(e.target.value)}
                                 aria-label={t("witnessFactorChoose")}
@@ -529,26 +539,40 @@ export function WitnessPanel({
                                   </option>
                                 ))}
                               </select>
+                              </Field>
+                              <Field
+                                label={t("witnessFactorNote")}
+                                htmlFor={`factor-note-${node.id}`}
+                                required
+                                error={factorSubmitted && !factorNote.trim() ? t("fieldRequiredNamed", { field: t("witnessFactorNote") }) : null}
+                              >
                               <input
+                                id={`factor-note-${node.id}`}
                                 value={factorNote}
                                 onChange={(e) => setFactorNote(e.target.value)}
                                 placeholder={t("witnessFactorNote")}
                                 aria-label={t("witnessFactorNote")}
                                 className={fieldClass}
                               />
+                              </Field>
                               {setFactor.isError && setFactor.error instanceof Error ? (
                                 <p className="text-[11px] text-danger">{setFactor.error.message}</p>
                               ) : null}
                               <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
-                                  disabled={!factorAnswer || !factorNote.trim() || setFactor.isPending}
-                                  onClick={() =>
+                                  disabled={setFactor.isPending}
+                                  onClick={(e) => {
+                                    if (!factorAnswer || !factorNote.trim()) {
+                                      setFactorSubmitted(true)
+                                      focusFirstInvalid(e.currentTarget.closest("div.rounded-md") as HTMLElement | null)
+                                      return
+                                    }
                                     setFactor.mutate(
                                       { id: node.refId, factor: n.factor!, answer: factorAnswer, note: factorNote.trim() },
                                       { onSuccess: () => setFactorFor(null) },
                                     )
-                                  }
+                                  }}
                                   className={primaryBtnClass}
                                 >
                                   {t("witnessFactorSave")}

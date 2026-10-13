@@ -2,6 +2,8 @@
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Plus, X } from "lucide-react";
+import { RequiredMark } from "@workspace/ui/components/input";
+import { focusFirstInvalid } from "@/lib/focus-first-invalid";
 import CustomSelect from "@/components/ui/custom-select";
 import { CharCount } from "@/components/ui/char-count";
 import { CASE_NAME_MAX_LENGTH, CASE_NOTES_MAX_LENGTH, PARTY_NAME_MAX_LENGTH } from "@/lib/cases/limits";
@@ -70,6 +72,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
     e.preventDefault();
     if (!caseName.trim()) {
       setNameError(true);
+      focusFirstInvalid(e.currentTarget);
       return;
     }
     onSubmit({
@@ -123,6 +126,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
           <div className="flex flex-col gap-2">
             <label htmlFor="edit-case-name" className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
               {t("Case Name")}
+              <RequiredMark />
             </label>
             <input
               id="edit-case-name"
@@ -139,6 +143,7 @@ export default function EditCaseModal({ caseRecord, isSubmitting, onSubmit, onCl
                 setCaseName(e.target.value);
                 if (e.target.value.trim()) setNameError(false);
               }}
+              aria-required="true"
               aria-invalid={nameError}
             />
             {nameError && (
