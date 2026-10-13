@@ -211,20 +211,8 @@ export interface LawDocument {
     cited_gr_numbers: string[]
     cited_ra_numbers: string[]
   }
-  /** UK legislation only, when the API serves its own saved copies: the latest copy per part
-   * ("" = whole Act, "section/29"). Absent when the viewer always shows the live document. */
-  copies?: LawDocumentCopy[]
   source: "juris.ph" | "cache" | "uk-legal-mcp" | string
   notice: string
-}
-
-export interface LawDocumentCopy {
-  part: string
-  /** When legislation.gov.uk last served the bytes we hold (ISO). */
-  checked_at: string
-  /** true: the viewer shows this copy. false: it shows the live document, and this copy only when
-   * legislation.gov.uk can't be reached. */
-  fresh: boolean
 }
 
 // ── GET /api/law/preview — the chat citation hover card ─────────────────────
