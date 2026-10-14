@@ -123,6 +123,7 @@ function SortableDateHeader({
     <button
       type="button"
       onClick={() => onSort(field)}
+      data-tour-id={`cases-sort-${field}`}
       className={`-mx-1 inline-flex min-w-0 cursor-pointer items-center gap-1.5 justify-self-start rounded px-1 py-0.5 uppercase tracking-[1px] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${active ? "text-foreground" : ""}`}
     >
       <span className="truncate">{t(SORT_LABEL_KEYS[field])}</span>
@@ -607,28 +608,46 @@ export default function CaseManagerDashboard() {
             </div>
           )}
 
-          {/* Mobile only: the stacked cards have no column headers to click (md+ sorts from those). */}
-          <Select value={sort.field} onValueChange={(v) => switchSort(v as CaseListSort)}>
+          {/* Mobile only: the stacked cards have no column headers to click (md+ sorts from those).
+           * Picking the option that's already selected doesn't fire onValueChange, so reversing
+           * the order gets its own button. */}
+          <div data-tour-id="cases-sort-menu" className="flex shrink-0 items-center gap-2 md:hidden">
+            <Select value={sort.field} onValueChange={(v) => switchSort(v as CaseListSort)}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SelectTrigger
+                    aria-label={t("sortBy")}
+                    className="h-10 w-auto shrink-0 gap-2 rounded-full bg-card px-4 text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+                  >
+                    <span className="text-muted-foreground">{t("sortBy")}</span>
+                    <SelectValue />
+                  </SelectTrigger>
+                </TooltipTrigger>
+                <TooltipContent>{t("sortBy")}</TooltipContent>
+              </Tooltip>
+              <SelectContent align="end" className="w-auto">
+                {SORT_FIELDS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(SORT_LABEL_KEYS[value])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Tooltip>
               <TooltipTrigger asChild>
-                <SelectTrigger
-                  aria-label={t("sortBy")}
-                  className="md:hidden h-10 w-auto shrink-0 gap-2 rounded-full bg-card px-4 text-[13px] hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
+                <button
+                  type="button"
+                  onClick={() => switchSort(sort.field)}
+                  aria-label={t(sort.order === "asc" ? "sortedOldestFirst" : "sortedNewestFirst")}
+                  className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13px] transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/5"
                 >
-                  <span className="text-muted-foreground">{t("sortBy")}</span>
-                  <SelectValue />
-                </SelectTrigger>
+                  {sort.order === "asc" ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {t(sort.order === "asc" ? "sortOldest" : "sortNewest")}
+                </button>
               </TooltipTrigger>
-              <TooltipContent>{t("sortBy")}</TooltipContent>
+              <TooltipContent>{t("reverseOrder")}</TooltipContent>
             </Tooltip>
-            <SelectContent align="end" className="w-auto">
-              {SORT_FIELDS.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {t(SORT_LABEL_KEYS[value])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          </div>
 
           {/* Grouped with the status toggle as a sibling, not off on its own — both are
            * compact enough to wrap onto the same line together once the (full-width-on-
