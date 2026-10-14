@@ -37,6 +37,11 @@ export const PAGE_TOURS: Record<string, PageTour> = {
       { target: "cases-new", placement: "bottom" },
       { target: "cases-search", placement: "bottom" },
       { target: "cases-filters", placement: "bottom" },
+      // A phone gets the Sort by menu; md+ gets the three column headers instead.
+      { target: "cases-sort-menu", placement: "bottom" },
+      { target: "cases-sort-created", placement: "bottom" },
+      { target: "cases-sort-updated", placement: "bottom" },
+      { target: "cases-sort-opened", placement: "bottom" },
       // Only there while the user has no cases — it says where Workspace and Terminal will be.
       { target: "cases-create-first", placement: "right" },
       { target: "case-row-workspace", placement: "left" },

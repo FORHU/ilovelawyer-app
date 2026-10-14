@@ -115,6 +115,21 @@ describe("matchGuideAnswer", () => {
     }
   })
 
+  it("answers sorting questions with the column they ask about", () => {
+    expect(answerFor("How do I sort my cases by last updated?")).toBe("sortUpdated")
+    expect(answerFor("Show the cases I recently opened")).toBe("sortOpened")
+    expect(answerFor("Can I sort by date created?")).toBe("sortCreated")
+    expect(answerFor("How do I reverse the order to oldest first?")).toBe("sortCreated")
+    expect(answerFor("How do I sort my cases?")).toBe("sortCases")
+  })
+
+  it("sends a user with no case to create one before sorting", () => {
+    const m = matchGuideAnswer("How do I sort my cases by last opened?", { case: false })
+    expect(m.kind).toBe("blocked")
+    expect(m.kind === "blocked" && m.missing).toBe("case")
+    expect(matchGuideAnswer("How do I sort my cases by last opened?", { case: true }).kind).toBe("answer")
+  })
+
   it("admits when it has no answer", () => {
     expect(answerFor("What's the weather like?")).toBe("none")
   })

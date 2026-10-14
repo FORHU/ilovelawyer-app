@@ -32,6 +32,12 @@ const TARGETS = {
   "cases-new": { route: CASES_PATH },
   "cases-search": { route: CASES_PATH },
   "cases-filters": { route: CASES_PATH },
+  // The column headers only show at md+ and once there are cases; on a phone the Sort by menu
+  // stands in.
+  "cases-sort-created": { route: CASES_PATH, fallback: "cases-sort-menu" },
+  "cases-sort-updated": { route: CASES_PATH, fallback: "cases-sort-menu" },
+  "cases-sort-opened": { route: CASES_PATH, fallback: "cases-sort-menu" },
+  "cases-sort-menu": { route: CASES_PATH },
   "case-row-terminal": { route: CASES_PATH },
   "case-row-workspace": { route: CASES_PATH },
   "header-account": { route: null, fallback: "header-menu" },
@@ -68,7 +74,11 @@ export type Prerequisite = "case"
 /** `target` is the control that meets the prerequisite; `unlocks` are the controls that only
  * appear once it's met, so the guide must never point at them before then. */
 export const PREREQUISITES: Record<Prerequisite, { target: TourTargetId; route: string; unlocks: TourTargetId[] }> = {
-  case: { target: "cases-create-first", route: CASES_PATH, unlocks: ["case-row-workspace", "case-row-terminal"] },
+  case: {
+    target: "cases-create-first",
+    route: CASES_PATH,
+    unlocks: ["case-row-workspace", "case-row-terminal", "cases-sort-created", "cases-sort-updated", "cases-sort-opened"],
+  },
 }
 
 /** Which prerequisites the user has met. One that's unknown (still loading) counts as met, so
@@ -112,6 +122,10 @@ export const GUIDE_ANSWERS: GuideAnswer[] = [
   { id: "librarySearch", keys: ["search law", "search the library", "find a decision", "g.r. no", "search library"], target: "library-search", route: LIBRARY_PATH, topic: "library" },
   { id: "terminal", keys: ["terminal", "pane", "grid"], target: "case-row-terminal", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "openTerminal"], sample: "terminal" },
   { id: "workspace", keys: ["workspace", "sources", "studio", "audio overview", "case brief", "mind map"], target: "case-row-workspace", route: CASES_PATH, topic: "workspace", path: ["createCase", "addDocuments", "openStudio"], sample: "studio" },
+  { id: "sortUpdated", keys: ["last updated", "recently updated", "recently changed", "recently edited"], target: "cases-sort-updated", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "sortCases"] },
+  { id: "sortOpened", keys: ["last opened", "recently opened", "recently viewed"], target: "cases-sort-opened", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "sortCases"] },
+  { id: "sortCreated", keys: ["date created", "creation date", "by created", "when it was created", "newest first", "oldest first", "reverse the order"], target: "cases-sort-created", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "sortCases"] },
+  { id: "sortCases", keys: ["sort", "order my cases", "rearrange"], target: "cases-sort-created", route: CASES_PATH, topic: "casePortfolio", path: ["createCase", "sortCases"] },
   { id: "findCase", keys: ["search case", "find a case", "find case", "look up a case"], target: "cases-search", route: CASES_PATH, topic: "casePortfolio" },
   { id: "statusFilter", keys: ["archive", "archived", "closed case"], target: "cases-filters", route: CASES_PATH, topic: "casePortfolio" },
   { id: "newCase", keys: ["new case", "create a case", "filing", "add a case", "start a case"], target: "cases-new", route: CASES_PATH, topic: "casePortfolio" },
@@ -140,7 +154,7 @@ export const LEGAL_SIGNALS = [
 export const GUIDE_SUGGESTIONS_BY_ROUTE: Record<string, string[]> = {
   [LIBRARY_PATH]: ["searchLibrary", "filterLibrary", "switchCategory"],
   [CALENDAR_PATH]: ["addHearing", "reminder", "editEvent"],
-  [CASES_PATH]: ["findCase", "workspace", "openTerminal", "archived"],
+  [CASES_PATH]: ["findCase", "sortCases", "workspace", "openTerminal", "archived"],
   [CONSULTATION_PATH]: ["dictate", "newConsultation", "upload"],
 }
 

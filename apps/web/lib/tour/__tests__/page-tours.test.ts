@@ -47,6 +47,13 @@ describe("page tours", () => {
     }
   })
 
+  it("show every way to sort the case list: the phone menu and each date column", () => {
+    const targets = PAGE_TOURS[CASES_PATH]!.steps.map((s) => s.target)
+    for (const target of ["cases-sort-menu", "cases-sort-created", "cases-sort-updated", "cases-sort-opened"] as const) {
+      expect(targets).toContain(target)
+    }
+  })
+
   it("don't visit the same control twice on one page", () => {
     for (const [path, { steps }] of Object.entries(PAGE_TOURS)) {
       const targets = steps.map((s) => s.target)
