@@ -7,6 +7,8 @@ import { PageTransition } from "@/components/page-transition"
 // Routes whose first segment doesn't match their nav tab by name.
 const TAB_ALIASES: Record<string, ActiveTab> = {
   "sample-case": "case-portfolio",
+  // Terminal has no nav item of its own; it's reached by drilling into a case.
+  terminal: "case-portfolio",
 }
 
 function toActiveTab(segment: string | undefined): ActiveTab | undefined {
