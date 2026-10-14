@@ -1,13 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import type { TraceStep } from "@/lib/chat/mind-map-parser";
+import { leadingSentences } from "@/lib/chat/trace-label";
 
 const MAX_VISIBLE_STEPS = 5;
 
 function StepLabel({ step }: { step: TraceStep }) {
   return (
-    <span className="line-clamp-2 min-w-0 break-words" title={step.label}>
-      {step.label}
+    <span className="min-w-0 break-words">
+      {leadingSentences(step.label)}
       {typeof step.count === "number" && (
         <span className="text-muted-foreground/70">
           {" "}
