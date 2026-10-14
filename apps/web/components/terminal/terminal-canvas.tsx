@@ -1273,7 +1273,10 @@ export function TerminalCanvas({
   const maximizedPanel = maximizedId ? visiblePanels.find((p) => p.id === maximizedId) : undefined
 
   return (
-    <div ref={stageRef} className="relative min-h-0 flex-1 overflow-hidden p-3">
+    // `isolate`: the stage is its own stacking context, so the maximized pane (z-[90]), the
+    // Columns overlays and Free-canvas pane z-indexes stay local to the canvas and can never
+    // outrank modals, drawers or popovers rendered outside it.
+    <div ref={stageRef} className="relative isolate min-h-0 flex-1 overflow-hidden p-3">
       {visiblePanels.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
           <div className="flex w-full max-w-md flex-col items-center rounded-xl border border-dashed border-border/80 bg-card/70 px-6 py-10 shadow-sm">
