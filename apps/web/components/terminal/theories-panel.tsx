@@ -25,6 +25,7 @@ import {
   type TheoryItemKind,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { CaseSnapshot, CaseTheory, TheoryStance } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { dangerIconBtnClass, editIconBtnClass, fieldClass, ghostBtnClass, primaryBtnClass, MutationError, PanelBody, SectionLabel, EmptyNote, RegenerateButton, PaneLoadingState, usePaneLoadingLabel } from "@/components/terminal/panel-kit"
@@ -44,6 +45,8 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
   const theories = snapshot.theories ?? []
 
   const create = useCreateTheoryMutation(caseId)
+  // A view-only person on a confidential case reads the theories but can't write, fork or diff them.
+  const viewOnly = !useCanContributeToCase(caseId)
   const [showCreate, setShowCreate] = useState(false)
   const [title, setTitle] = useState("")
   const [thesis, setThesis] = useState("")
@@ -87,9 +90,11 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
         <SectionLabel>{t("theories")}</SectionLabel>
         <div className="flex items-center gap-3">
           <RegenerateButton regen={regen} />
-          <button type="button" onClick={() => setShowCreate((s) => !s)} className={primaryBtnClass}>
-            {t("newTheory")}
-          </button>
+          {!viewOnly && (
+            <button type="button" onClick={() => setShowCreate((s) => !s)} className={primaryBtnClass}>
+              {t("newTheory")}
+            </button>
+          )}
         </div>
       </div>
       {/* While a run writes this pane, the centered loading state replaces its content. */}
@@ -97,7 +102,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
         <PaneLoadingState>{loadingLabel}</PaneLoadingState>
       ) : (
         <>
-      {showCreate && (
+      {showCreate && !viewOnly && (
         <form
           className="flex flex-col gap-2 rounded-md border border-border p-3"
           onSubmit={(e) => {
@@ -144,6 +149,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
               theory={theory}
               caseId={caseId}
               isMine={!!userId && theory.authorUserId === userId}
+              readOnly={viewOnly}
               parentTitle={theories.find((th) => th.id === theory.forkedFromId)?.title}
             />
           ))}
@@ -181,7 +187,7 @@ export function TheoriesPanel({ snapshot, caseId }: { snapshot: CaseSnapshot; ca
               ))}
             </select>
           </div>
-          {pickedA && pickedB && <TheoryDiffSection caseId={caseId} theoryAId={pickedA} theoryBId={pickedB} />}
+          {pickedA && pickedB && <TheoryDiffSection caseId={caseId} theoryAId={pickedA} theoryBId={pickedB} readOnly={viewOnly} />}
         </div>
       )}
         </>
@@ -194,11 +200,14 @@ function TheoryCard({
   theory,
   caseId,
   isMine,
+  readOnly,
   parentTitle,
 }: {
   theory: CaseTheory
   caseId: string
   isMine: boolean
+  /** A view-only person on a confidential case: the theory shows, but nothing on it changes. */
+  readOnly: boolean
   /** Title of the theory this one was forked from, when it's still in the list. */
   parentTitle?: string
 }) {
@@ -217,7 +226,8 @@ function TheoryCard({
   const isAiProposed = theory.authorUserId === null
   // Mirrors CaseTheorySvc.remove: the author can delete their own theory, and an AI-proposed one
   // (no author) can be dismissed by anyone — another lawyer's theory can't be deleted.
-  const canDelete = isMine || isAiProposed
+  const canDelete = (isMine || isAiProposed) && !readOnly
+  const canEdit = isMine && !readOnly
   const bullet = <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" aria-hidden="true" />
 
   return (
@@ -257,7 +267,7 @@ function TheoryCard({
         <TheorySection
           label={t("theoryClaims")}
           count={theory.claims.length}
-          canAdd={isMine}
+          canAdd={canEdit}
           withStance
           placeholder={t("addClaimPlaceholder")}
           isPending={addClaim.isPending}
@@ -275,7 +285,7 @@ function TheoryCard({
               id={c.id}
               text={c.statement}
               stance={c.stance}
-              editable={isMine}
+              editable={canEdit}
               lead={
                 <Badge tone={c.stance === "ASSERTS" ? "success" : "danger"} className="mt-0.5 w-16 justify-center">
                   {c.stance === "ASSERTS" ? t("asserts") : t("denies")}
@@ -288,7 +298,7 @@ function TheoryCard({
         <TheorySection
           label={t("theoryAssumptions")}
           count={theory.assumptions.length}
-          canAdd={isMine}
+          canAdd={canEdit}
           placeholder={t("addAssumptionPlaceholder")}
           isPending={addAssumption.isPending}
           isError={addAssumption.isError}
@@ -302,7 +312,7 @@ function TheoryCard({
               kind="assumptions"
               id={a.id}
               text={a.statement}
-              editable={isMine}
+              editable={canEdit}
               lead={bullet}
             />
           ))}
@@ -311,7 +321,7 @@ function TheoryCard({
         <TheorySection
           label={t("theoryOpenQuestions")}
           count={theory.openQuestions.length}
-          canAdd={isMine}
+          canAdd={canEdit}
           placeholder={t("addOpenQuestionPlaceholder")}
           isPending={addOpenQuestion.isPending}
           isError={addOpenQuestion.isError}
@@ -325,7 +335,7 @@ function TheoryCard({
               kind="open-questions"
               id={q.id}
               text={q.question}
-              editable={isMine}
+              editable={canEdit}
               lead={bullet}
             />
           ))}
@@ -341,7 +351,7 @@ function TheoryCard({
           <MessageSquareWarning className="h-3 w-3" aria-hidden="true" />
           {t("notes")}
         </button>
-        {isMine && theory.status === "DRAFT" && (
+        {canEdit && theory.status === "DRAFT" && (
           <button
             type="button"
             onClick={() => publish.mutate(theory.id)}
@@ -351,7 +361,7 @@ function TheoryCard({
             {t("publish")}
           </button>
         )}
-        {isMine && theory.status !== "RETIRED" && (
+        {canEdit && theory.status !== "RETIRED" && (
           <button
             type="button"
             onClick={() => retire.mutate(theory.id)}
@@ -374,7 +384,7 @@ function TheoryCard({
             {t("delete")}
           </button>
         )}
-        {!isMine && (
+        {!isMine && !readOnly && (
           <button
             type="button"
             onClick={() => fork.mutate(theory.id)}
@@ -778,7 +788,17 @@ function TheoryItemRow({
   )
 }
 
-function TheoryDiffSection({ caseId, theoryAId, theoryBId }: { caseId: string; theoryAId: string; theoryBId: string }) {
+function TheoryDiffSection({
+  caseId,
+  theoryAId,
+  theoryBId,
+  readOnly,
+}: {
+  caseId: string
+  theoryAId: string
+  theoryBId: string
+  readOnly: boolean
+}) {
   const { t } = useTranslation("terminal")
   const queryClient = useQueryClient()
   const { data: diff } = useTheoryDiffQuery(caseId, theoryAId, theoryBId)
@@ -800,8 +820,9 @@ function TheoryDiffSection({ caseId, theoryAId, theoryBId }: { caseId: string; t
       <button
         type="button"
         onClick={() => generate.mutate({ theoryAId, theoryBId })}
-        disabled={isDiffing}
-        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:opacity-50"
+        disabled={isDiffing || readOnly}
+        title={readOnly ? t("viewOnlyConfidential") : undefined}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2.5 py-1.5 text-[10px] font-semibold tracking-[1px] text-foreground uppercase transition-colors hover:bg-muted/70 dark:hover:bg-overlay-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isDiffing ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Send className="h-3 w-3" aria-hidden="true" />}
         {diff ? t("regenerateDiff") : t("generateDiff")}

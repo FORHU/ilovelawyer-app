@@ -1,4 +1,5 @@
 import { useCaseSnapshotQuery, useCreateProcedureItemMutation } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { ProcedureSourceKind, SnapshotProcedureItem } from "@/lib/terminal/types"
 
 export interface TodoSource {
@@ -22,6 +23,8 @@ export function useLinkedTodos(caseId: string) {
   const items = useCaseSnapshotQuery(caseId).data?.procedure.items ?? []
   const create = useCreateProcedureItemMutation(caseId)
   const pending = create.isPending ? create.variables : undefined
+  // A view-only person on a confidential case can't add to-dos (the API takes edit access).
+  const readOnly = !useCanContributeToCase(caseId)
 
   return {
     /** An open to-do already raised on this item. */
@@ -31,5 +34,6 @@ export function useLinkedTodos(caseId: string) {
     send: (source: TodoSource, label: string, sourceLabel: string) =>
       create.mutate({ kind: "TODO", label, sourceLabel, sourceKind: source.kind, sourceId: source.id, sourceKey: source.key }),
     isError: create.isError,
+    readOnly,
   }
 }

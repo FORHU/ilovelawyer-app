@@ -9,6 +9,7 @@ import {
   useResolveAnnotationMutation,
   useReopenAnnotationMutation,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { Annotation, AnnotationKind, AnnotationTargetType } from "@/lib/terminal/types"
 
 const KIND_KEYS: Record<AnnotationKind, string> = {
@@ -27,7 +28,8 @@ function AnnotationRow({
   onToggleResolved,
 }: {
   annotation: Annotation
-  onToggleResolved: () => void
+  /** Absent for a view-only person on a confidential case. */
+  onToggleResolved?: () => void
 }) {
   const { t } = useTranslation("terminal")
   const resolved = !!annotation.resolvedAt
@@ -42,18 +44,20 @@ function AnnotationRow({
           </span>
           <p className="text-foreground">{annotation.body}</p>
         </div>
-        <button
-          type="button"
-          onClick={onToggleResolved}
-          className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
-          aria-label={t(resolved ? "reopen" : "resolveAnnotation")}
-        >
-          {resolved ? (
-            <RotateCcw className="h-3 w-3" aria-hidden="true" />
-          ) : (
-            <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
-          )}
-        </button>
+        {onToggleResolved && (
+          <button
+            type="button"
+            onClick={onToggleResolved}
+            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground"
+            aria-label={t(resolved ? "reopen" : "resolveAnnotation")}
+          >
+            {resolved ? (
+              <RotateCcw className="h-3 w-3" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+            )}
+          </button>
+        )}
       </div>
     </li>
   )
@@ -77,6 +81,8 @@ export function AnnotationThread({
   const create = useCreateAnnotationMutation(caseId)
   const resolve = useResolveAnnotationMutation(caseId)
   const reopen = useReopenAnnotationMutation(caseId)
+  // A view-only person on a confidential case reads the notes but can't add or resolve them.
+  const viewOnly = !useCanContributeToCase(caseId)
   const [body, setBody] = useState("")
 
   const items = annotations ?? []
@@ -91,28 +97,30 @@ export function AnnotationThread({
             <AnnotationRow
               key={a.id}
               annotation={a}
-              onToggleResolved={() =>
-                (a.resolvedAt ? reopen : resolve).mutate({ id: a.id, targetType, targetId })
+              onToggleResolved={
+                viewOnly ? undefined : () => (a.resolvedAt ? reopen : resolve).mutate({ id: a.id, targetType, targetId })
               }
             />
           ))}
         </ul>
       )}
-      <form
-        className="flex gap-1.5"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const value = body.trim()
-          if (!value) return
-          create.mutate({ targetType, targetId, kind: "NOTE", body: value })
-          setBody("")
-        }}
-      >
-        <input value={body} onChange={(e) => setBody(e.target.value)} placeholder={t("addNote")} className={fieldClass} />
-        <button type="submit" disabled={create.isPending} className={submitBtnClass}>
-          {t("add")}
-        </button>
-      </form>
+      {!viewOnly && (
+        <form
+          className="flex gap-1.5"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = body.trim()
+            if (!value) return
+            create.mutate({ targetType, targetId, kind: "NOTE", body: value })
+            setBody("")
+          }}
+        >
+          <input value={body} onChange={(e) => setBody(e.target.value)} placeholder={t("addNote")} className={fieldClass} />
+          <button type="submit" disabled={create.isPending} className={submitBtnClass}>
+            {t("add")}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

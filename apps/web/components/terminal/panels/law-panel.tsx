@@ -10,6 +10,7 @@ import {
   useUpdateCitationMutation,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type {
   AuthorityStance,
   CaseSnapshot,
@@ -140,6 +141,8 @@ export function LawPanel({
   const { t } = useTranslation("terminal")
   const updateAuthority = useUpdateAuthorityMutation(caseId)
   const removeAuthority = useRemoveAuthorityMutation(caseId)
+  // A view-only person on a confidential case reads the authorities and quotes but can't change them.
+  const viewOnly = !useCanContributeToCase(caseId)
 
   const { authorities, summary } = snapshot.law
   const grounds = snapshot.findings.filter((finding) => finding.category === "LEGAL_ISSUE")
@@ -173,11 +176,12 @@ export function LawPanel({
               onRemove={() => removeAuthority.mutate(authority.id)}
               stancePending={updateAuthority.isPending}
               removePending={removeAuthority.isPending}
+              readOnly={viewOnly}
               caseId={caseId}
             />
           ))}
         </PanelRowList>
-        <AuthorityComposer caseId={caseId} grounds={grounds} />
+        {!viewOnly && <AuthorityComposer caseId={caseId} grounds={grounds} />}
         <MutationError show={updateAuthority.isError || removeAuthority.isError} />
         </>
       )}
@@ -190,10 +194,10 @@ export function LawPanel({
       </div>
       <PanelRowList empty={<EmptyNote>{t("noCitations")}</EmptyNote>}>
         {snapshot.law.citations.map((citation) => (
-          <CitationRow key={citation.id} citation={citation} caseId={caseId} />
+          <CitationRow key={citation.id} citation={citation} caseId={caseId} readOnly={viewOnly} />
         ))}
       </PanelRowList>
-      <QuoteCheckComposer caseId={caseId} />
+      {!viewOnly && <QuoteCheckComposer caseId={caseId} />}
     </PanelBody>
   )
 }
@@ -210,6 +214,7 @@ function AuthorityRow({
   onRemove,
   stancePending,
   removePending,
+  readOnly,
   caseId,
   ...rest
 }: {
@@ -220,6 +225,7 @@ function AuthorityRow({
   onRemove: () => void
   stancePending: boolean
   removePending: boolean
+  readOnly: boolean
   caseId: string
 } & ComponentPropsWithoutRef<"li">) {
   const { t } = useTranslation("terminal")
@@ -377,7 +383,7 @@ function AuthorityRow({
             <Sparkles size={10} aria-hidden="true" />
             {t("jevAgrees")}
           </p>
-        ) : (
+        ) : readOnly ? null : (
           <button
             type="button"
             onClick={() => onStanceChange(authority.jevStance!)}
@@ -400,33 +406,35 @@ function AuthorityRow({
           {t("authorityGround")}: {groundLabel}
         </p>
       )}
-      <div className="flex items-center gap-2">
-        <select
-          value={authority.stance}
-          onChange={(e) => onStanceChange(e.target.value as AuthorityStance)}
-          aria-label={t("authorityStanceLabel")}
-          className={fieldClass}
-        >
-          {STANCES.map((stance) => (
-            <option key={stance} value={stance}>
-              {t(`authorityStance.${stance}`)}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={startEdit} aria-label={t("editAuthority")} title={t("editAuthority")} className={editIconBtnClass}>
-          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={removePending}
-          aria-label={t("removeAuthority")}
-          title={t("removeAuthority")}
-          className={dangerIconBtnClass}
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-2">
+          <select
+            value={authority.stance}
+            onChange={(e) => onStanceChange(e.target.value as AuthorityStance)}
+            aria-label={t("authorityStanceLabel")}
+            className={fieldClass}
+          >
+            {STANCES.map((stance) => (
+              <option key={stance} value={stance}>
+                {t(`authorityStance.${stance}`)}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={startEdit} aria-label={t("editAuthority")} title={t("editAuthority")} className={editIconBtnClass}>
+            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={removePending}
+            aria-label={t("removeAuthority")}
+            title={t("removeAuthority")}
+            className={dangerIconBtnClass}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </PanelRow>
   )
 }
@@ -436,8 +444,9 @@ function AuthorityRow({
 function CitationRow({
   citation,
   caseId,
+  readOnly,
   ...rest
-}: { citation: SnapshotCitation; caseId: string } & ComponentPropsWithoutRef<"li">) {
+}: { citation: SnapshotCitation; caseId: string; readOnly: boolean } & ComponentPropsWithoutRef<"li">) {
   const { t } = useTranslation("terminal")
   const update = useUpdateCitationMutation(caseId)
   const del = useDeleteCitationMutation(caseId)
@@ -562,7 +571,7 @@ function CitationRow({
             </span>
           )}
         </div>
-        {mode === "view" && (
+        {mode === "view" && !readOnly && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover/citation:opacity-100">
             <button type="button" onClick={startEdit} className={editIconBtnClass} aria-label={t("editCitation")} title={t("editCitation")}>
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />

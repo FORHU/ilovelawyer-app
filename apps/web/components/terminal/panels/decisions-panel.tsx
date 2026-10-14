@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { MessageSquare, MessageSquareWarning, RotateCcw } from "lucide-react"
 import { AnnotationThread } from "@/components/shared/annotation-thread"
 import { DecisionConfidenceBadge, DecisionDetailBody } from "@/components/shared/decision-detail"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useDisputeDecisionMutation, useReactivateDecisionMutation } from "@/lib/terminal/mutations"
 import type { CaseSnapshot, DecisionRecord } from "@/lib/terminal/types"
 import { EmptyNote, MutationError, PanelBody, PanelRow, PanelRowList, fieldClass, ghostBtnClass, primaryBtnClass } from "@/components/terminal/panel-kit"
@@ -22,6 +23,8 @@ export function DecisionsPanel({
   const { t } = useTranslation("terminal")
   const dispute = useDisputeDecisionMutation(caseId)
   const reactivate = useReactivateDecisionMutation(caseId)
+  // A view-only person on a confidential case reads the decisions but can't dispute or reactivate them.
+  const viewOnly = !useCanContributeToCase(caseId)
   const decisions = snapshot.decisions ?? []
 
   return (
@@ -36,6 +39,7 @@ export function DecisionsPanel({
             onReactivate={() => reactivate.mutate({ id: decision.id })}
             isPending={dispute.isPending || reactivate.isPending}
             isError={dispute.isError || reactivate.isError}
+            readOnly={viewOnly}
           />
         ))}
       </PanelRowList>
@@ -50,6 +54,7 @@ function DecisionCard({
   onReactivate,
   isPending,
   isError,
+  readOnly,
   ...rest
 }: {
   caseId: string
@@ -58,6 +63,7 @@ function DecisionCard({
   onReactivate: () => void
   isPending: boolean
   isError: boolean
+  readOnly: boolean
 } & ComponentPropsWithoutRef<"li">) {
   const { t } = useTranslation("terminal")
   const [disputing, setDisputing] = useState(false)
@@ -111,7 +117,7 @@ function DecisionCard({
         >
           {t("notes")}
         </button>
-        {disputed ? (
+        {readOnly ? null : disputed ? (
           <button
             type="button"
             onClick={onReactivate}

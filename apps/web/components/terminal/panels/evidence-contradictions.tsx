@@ -8,6 +8,7 @@ import {
   type ContradictionStatus,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import {
   EmptyNote,
@@ -108,6 +109,8 @@ function contradictionHeadline(item: ContradictionMetadata) {
 // instead of slicing CaseSnapshot, which carries no status for these rows.
 export function EvidenceContradictions({ caseId }: { caseId: string }) {
   const { t } = useTranslation("terminal")
+  // A view-only person on a confidential case reads these but can't resolve, dismiss or reopen them.
+  const viewOnly = !useCanContributeToCase(caseId)
   const update = useUpdateContradictionMutation(caseId)
   const job = useAiJobStatus(caseId, "contradictions")
   // This section's own Rescan; the case analysis rescans too, in its first wave.
@@ -247,51 +250,56 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
                           })
                         : t("contradictionConfidence", { pct: Math.round((m.confidence ?? 0.5) * 100) })}
                     </p>
-                    <div className="flex flex-col gap-1.5 border-t border-border pt-2">
-                      {handled ? (
-                        <>
-                          {m.resolutionNote ? <p className="text-foreground">“{m.resolutionNote}”</p> : null}
-                          <button
-                            type="button"
-                            onClick={() => setStatus(edge.id, "OPEN")}
-                            disabled={update.isPending}
-                            className={`self-start ${ghostBtnClass}`}
-                          >
-                            {t("contradictionReopen")}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <input
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            placeholder={t("contradictionNotePlaceholder")}
-                            aria-label={t("contradictionNotePlaceholder")}
-                            className={fieldClass}
-                          />
-                          <div className="flex flex-wrap gap-2">
+                    {viewOnly && handled && m.resolutionNote ? (
+                      <p className="border-t border-border pt-2 text-foreground">“{m.resolutionNote}”</p>
+                    ) : null}
+                    {!viewOnly && (
+                      <div className="flex flex-col gap-1.5 border-t border-border pt-2">
+                        {handled ? (
+                          <>
+                            {m.resolutionNote ? <p className="text-foreground">“{m.resolutionNote}”</p> : null}
                             <button
                               type="button"
-                              onClick={() => setStatus(edge.id, "RESOLVED")}
+                              onClick={() => setStatus(edge.id, "OPEN")}
                               disabled={update.isPending}
-                              className={ghostBtnClass}
-                              title={t("contradictionResolveHint")}
+                              className={`self-start ${ghostBtnClass}`}
                             >
-                              {t("contradictionResolve")}
+                              {t("contradictionReopen")}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => setStatus(edge.id, "DISMISSED")}
-                              disabled={update.isPending}
-                              className={ghostBtnClass}
-                              title={t("contradictionDismissHint")}
-                            >
-                              {t("contradictionDismiss")}
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              value={note}
+                              onChange={(e) => setNote(e.target.value)}
+                              placeholder={t("contradictionNotePlaceholder")}
+                              aria-label={t("contradictionNotePlaceholder")}
+                              className={fieldClass}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setStatus(edge.id, "RESOLVED")}
+                                disabled={update.isPending}
+                                className={ghostBtnClass}
+                                title={t("contradictionResolveHint")}
+                              >
+                                {t("contradictionResolve")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStatus(edge.id, "DISMISSED")}
+                                disabled={update.isPending}
+                                className={ghostBtnClass}
+                                title={t("contradictionDismissHint")}
+                              >
+                                {t("contradictionDismiss")}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </PanelRow>

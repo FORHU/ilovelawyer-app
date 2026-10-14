@@ -111,6 +111,8 @@ export function CaseReconstructionPanel({
   >("narrative")
 
   const update = useUpdateReconstructionMutation(caseId)
+  // A view-only person on a confidential case reads the narrative but can't edit it.
+  const viewOnly = !useCanContributeToCase(caseId)
   const generateJob = useAiJobStatus(caseId, "caseReconstruction")
   const isGenerating = generateJob.data?.status === "IN_PROGRESS"
   // The analysis refresh writes the narrative and rewrites it until the lawyer edits any register
@@ -325,14 +327,16 @@ export function CaseReconstructionPanel({
                   {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
                   {copied ? t("copiedText") : t("copyText")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingFor(activeRegister, true)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
-                >
-                  <Pencil className="h-3 w-3" aria-hidden="true" />
-                  {t("edit")}
-                </button>
+                {!viewOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingFor(activeRegister, true)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 ${ghostBtnClass}`}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden="true" />
+                    {t("edit")}
+                  </button>
+                )}
               </div>
             )}
           </div>

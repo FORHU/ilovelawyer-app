@@ -5,6 +5,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@workspace/ui/components/select"
 import { useCreateRiskMutation, useUpdateRiskMutation, usePaneRegenerate } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { useTerminalDisplayStore } from "@/lib/store/terminal-display.store"
 import type { CaseSnapshot, SnapshotRisk } from "@/lib/terminal/types"
 import {
@@ -55,10 +56,13 @@ function RiskRow({
   caseId,
   risk,
   onSampleEdit,
+  readOnly,
 }: {
   caseId: string
   risk: SnapshotRisk
   onSampleEdit?: (patch: Partial<SnapshotRisk>) => void
+  /** A view-only person on a confidential case: the tier and title show, but don't edit. */
+  readOnly?: boolean
 }) {
   const { t } = useTranslation("terminal")
   const update = useUpdateRiskMutation(caseId)
@@ -75,6 +79,20 @@ function RiskRow({
     const trimmed = draft.trim()
     setEditing(false)
     if (trimmed && trimmed !== risk.title) save({ title: trimmed })
+  }
+
+  if (readOnly) {
+    return (
+      <PanelRow className="flex-wrap items-start px-0 py-1.5">
+        <span className={TIER_COL}>
+          <Badge tone={tier.tone} shape="pill" className={TIER_BADGE}>
+            {t(`tier_${tier.label}`)}
+          </Badge>
+        </span>
+        <span className="min-w-0 flex-1 text-[13px] leading-5 text-foreground">{title}</span>
+        {risk.confidence ? <ConfidenceMeter level={risk.confidence} label={t(`confidence_${risk.confidence}`)} /> : null}
+      </PanelRow>
+    )
   }
 
   return (
@@ -191,6 +209,8 @@ export function CommandPanel({
   const { t, i18n } = useTranslation("terminal")
   const dense = useTerminalDisplayStore((state) => state.highDensity)
   const createRisk = useCreateRiskMutation(caseId)
+  // A view-only person on a confidential case reads the key issues but can't add or edit them.
+  const viewOnly = !useCanContributeToCase(caseId)
   // The outlook's own Regenerate (the case analysis also rewrites it, after the findings).
   const regen = usePaneRegenerate(caseId, "outlook")
   const loadingLabel = usePaneLoadingLabel(regen)
@@ -325,15 +345,17 @@ export function CommandPanel({
             <p className={labelTextClass}>
               {t("keyIssues")} · {risks.length + view.findings.length}
             </p>
-            <button
-              type="button"
-              onClick={() => setAdding((v) => !v)}
-              aria-expanded={adding}
-              className="inline-flex items-center gap-1 rounded text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase transition-colors hover:text-brand-gold/80 focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none"
-            >
-              <Plus className="size-3" aria-hidden="true" />
-              {t("add")}
-            </button>
+            {!viewOnly && (
+              <button
+                type="button"
+                onClick={() => setAdding((v) => !v)}
+                aria-expanded={adding}
+                className="inline-flex items-center gap-1 rounded text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase transition-colors hover:text-brand-gold/80 focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none"
+              >
+                <Plus className="size-3" aria-hidden="true" />
+                {t("add")}
+              </button>
+            )}
           </div>
           <PanelRowList bare empty={<EmptyNote>{t("noKeyIssues")}</EmptyNote>}>
             {risks.map((risk) => (
@@ -341,6 +363,7 @@ export function CommandPanel({
                 key={risk.id}
                 caseId={caseId}
                 risk={risk}
+                readOnly={viewOnly}
                 onSampleEdit={
                   CASE_SUMMARY_SAMPLE ? (patch) => setSampleEdits((prev) => ({ ...prev, [risk.id]: { ...prev[risk.id], ...patch } })) : undefined
                 }
@@ -361,7 +384,7 @@ export function CommandPanel({
               )
             })}
           </PanelRowList>
-          {adding ? (
+          {adding && !viewOnly ? (
             <form
               className="mt-3 flex gap-2"
               onSubmit={(e) => {
