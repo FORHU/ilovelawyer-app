@@ -115,15 +115,11 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
   const showSection = isUkLegislation && !!section && !wholeAct
   // Several upstreams (legislation.gov.uk, the TNA judgment site, and juris.ph itself for PH
   // jurisprudence/republic-acts) send X-Frame-Options/CSP headers that block framing outright —
-  // a direct top-level link to the same URL (pdfSourceLink, below) opens fine, but as an
-  // <iframe src> it renders blank. Every document loads through our same-origin
-  // `/api/law/:id/pdf` proxy instead, which re-serves the bytes without those headers. The proxy
-  // 502s (blank frame + "open in a new tab" link) if the upstream is unreachable.
+  // a direct top-level link to the same URL opens fine, but as an <iframe src> it renders blank.
+  // Every document loads through our same-origin `/api/law/:id/pdf` proxy instead, which re-serves
+  // the bytes without those headers. The proxy 502s (blank frame) if the upstream is unreachable;
+  // the header's "View source" link is the way out then.
   const pdfSrc = `${API_BASE_URL}/api/law/${item.stored_id}/pdf${showSection ? `?section=${encodeURIComponent(section!)}` : ""}`
-  const pdfSourceLink =
-    showSection && item.source_url
-      ? `${item.source_url.replace(/\/+$/, "")}/section/${section}`
-      : item.pdf_url || item.source_url || item.juris_url
   const hasPdf = isUk || !!item.pdf_url
   // Fallback for the common PH case: no framable PDF (every Republic Act, plus any decision
   // juris.ph didn't supply a source_pdf_url for) but a PDF-extracted full text is available —
@@ -196,6 +192,55 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
         />
       )}
     </>
+  )
+
+  const cards = (
+    <>
+      {sections}
+      {detail.keywords.length > 0 && (
+        <Card label={t("lawDoc.keywords")}>
+          <div className="flex flex-wrap gap-1.5">
+            {detail.keywords.map((k) => (
+              <span
+                key={k}
+                className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+              >
+                {k}
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+    </>
+  )
+
+  const documentPanel = hasDocument && (
+    <section className="flex h-[75vh] min-w-0 flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:h-[calc(100vh-7rem)]">
+      <div className="flex items-center justify-between gap-2 px-1">
+        <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          {showSection
+            ? t("lawDoc.sectionHeading", { section })
+            : // UK legislation is legislation.gov.uk's HTML text, not a PDF — don't call it a document.
+              t(isUkLegislation ? "lawDoc.fullText" : "lawDoc.document")}
+        </h2>
+        {isUkLegislation && section && (
+          <button
+            type="button"
+            onClick={() => setWholeAct((v) => !v)}
+            className="text-xs text-blue-900 hover:underline dark:text-blue-400"
+          >
+            {wholeAct ? t("lawDoc.viewSection", { section }) : t("lawDoc.viewWholeAct")}
+          </button>
+        )}
+      </div>
+      <div className="min-h-0 flex-1">
+        {hasPdf ? (
+          <LawPdfViewer url={pdfSrc} />
+        ) : (
+          <LawFullTextViewer text={item.full_text!} />
+        )}
+      </div>
+    </section>
   )
 
   return (
@@ -272,54 +317,21 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
         </p>
       )}
 
-      {/* ── Body: sections (above, in a card grid) + document (below, full width) ──
-       * Used to sit side by side sharing the row's width with the document; moved to a
-       * stacked layout instead so the document (the thing people actually came to read) gets
-       * the page's full width rather than splitting it with a sidebar. */}
+      {/* ── Body ──
+       * Both at full width. Legislation: the document first, its cards (Sections, Key provisions …)
+       * in a grid below it. Case law: cards above in a grid, the judgment below. */}
       {hasDocument ? (
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {sections}
-            {detail.keywords.length > 0 && (
-              <Card label={t("lawDoc.keywords")}>
-                <div className="flex flex-wrap gap-1.5">
-                  {detail.keywords.map((k) => (
-                    <span
-                      key={k}
-                      className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-                    >
-                      {k}
-                    </span>
-                  ))}
-                </div>
-              </Card>
-            )}
+        isRa ? (
+          <div className="flex flex-col gap-6">
+            {documentPanel}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{cards}</div>
           </div>
-
-          <section className="flex h-[75vh] flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:h-[calc(100vh-7rem)]">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                {showSection ? t("lawDoc.sectionHeading", { section }) : t("lawDoc.document")}
-              </h2>
-              {isUkLegislation && section && (
-                <button
-                  type="button"
-                  onClick={() => setWholeAct((v) => !v)}
-                  className="text-xs text-blue-900 hover:underline dark:text-blue-400"
-                >
-                  {wholeAct ? t("lawDoc.viewSection", { section }) : t("lawDoc.viewWholeAct")}
-                </button>
-              )}
-            </div>
-            <div className="min-h-0 flex-1">
-              {hasPdf ? (
-                <LawPdfViewer url={pdfSrc} sourceUrl={pdfSourceLink} />
-              ) : (
-                <LawFullTextViewer text={item.full_text!} sourceUrl={pdfSourceLink} />
-              )}
-            </div>
-          </section>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{cards}</div>
+            {documentPanel}
+          </div>
+        )
       ) : (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           {!isUk && (
@@ -327,21 +339,7 @@ function DocumentBody({ doc, section }: { doc: LawDocument; section: string | nu
               {t("lawDoc.documentTextUnavailable")}
             </p>
           )}
-          {sections}
-          {detail.keywords.length > 0 && (
-            <Card label={t("lawDoc.keywords")}>
-              <div className="flex flex-wrap gap-1.5">
-                {detail.keywords.map((k) => (
-                  <span
-                    key={k}
-                    className="rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-                  >
-                    {k}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          )}
+          {cards}
         </div>
       )}
 

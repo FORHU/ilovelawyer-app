@@ -2,6 +2,7 @@ import { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
 import type { DamageClaim, DamageClaimBody, DamageKind } from "@/lib/terminal/types"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
 import { Field, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass } from "@/components/terminal/panel-kit"
 
 export const DAMAGE_KIND_KEYS: Record<DamageKind, string> = {
@@ -83,15 +84,23 @@ export function DamageHeadEditor({
 
   const amount = draft.amount.trim() === "" ? null : Number(draft.amount.replace(/,/g, ""))
   const amountInvalid = amount !== null && !(Number.isFinite(amount) && amount >= 0)
-  const canSave = draft.title.trim() !== "" && !amountInvalid && !pending
+  const [submitted, setSubmitted] = useState(false)
+  const titleError = submitted && draft.title.trim() === "" ? t("fieldRequiredNamed", { field: t("damageTitleField") }) : null
+  const canSave = !amountInvalid && !pending
 
   return (
     <form
+      noValidate
       className="flex flex-col gap-3"
       aria-label={head ? t("damageEditorEdit") : t("damageEditorAdd")}
       onSubmit={(e) => {
         e.preventDefault()
         if (!canSave) return
+        if (draft.title.trim() === "") {
+          setSubmitted(true)
+          focusFirstInvalid(e.currentTarget)
+          return
+        }
         onSave({
           kind: draft.kind,
           title: draft.title.trim(),
@@ -121,14 +130,13 @@ export function DamageHeadEditor({
         </div>
       </fieldset>
 
-      <Field label={t("damageTitleField")} htmlFor={fid("title")}>
+      <Field label={t("damageTitleField")} htmlFor={fid("title")} required error={titleError}>
         <input
           id={fid("title")}
           value={draft.title}
           onChange={(e) => set("title", e.target.value)}
           placeholder={t(draft.kind === "REMEDY" ? "damageTitleRemedyExample" : "damageTitleDamageExample")}
           maxLength={200}
-          required
           className={fieldClass}
         />
       </Field>

@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspace/ui/components/dialog"
+import { RequiredMark } from "@workspace/ui/components/input"
+import { focusFirstInvalid } from "@/lib/focus-first-invalid"
 import CustomSelect from "@/components/ui/custom-select"
 
 export interface NewTimelineEvent {
@@ -59,7 +61,10 @@ export function AddTimelineEventDialog({ open, onOpenChange, documents, isPendin
       next.page = t("timeline.errPage", { defaultValue: "Enter a page inside the document." })
     }
     setErrors(next)
-    if (Object.keys(next).length) return
+    if (Object.keys(next).length) {
+      focusFirstInvalid(e.currentTarget)
+      return
+    }
     onSubmit({ title: title.trim(), date, time, description: description.trim(), documentId, pageNumber: documentId ? pageNumber : null })
     reset()
   }
@@ -78,11 +83,12 @@ export function AddTimelineEventDialog({ open, onOpenChange, documents, isPendin
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="tl-title" className={LABEL}>{t("timeline.addTitleLabel", { defaultValue: "Event title" })}</label>
+            <label htmlFor="tl-title" className={LABEL}>{t("timeline.addTitleLabel", { defaultValue: "Event title" })}<RequiredMark /></label>
             <input
               id="tl-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              aria-required="true"
               aria-invalid={!!errors.title}
               aria-describedby={errors.title ? "tl-title-err" : undefined}
               placeholder={t("timeline.addTitlePh", { defaultValue: "e.g. Termination letter issued" })}
@@ -93,12 +99,13 @@ export function AddTimelineEventDialog({ open, onOpenChange, documents, isPendin
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <label htmlFor="tl-date" className={LABEL}>{t("timeline.date", { defaultValue: "Date" })}</label>
+              <label htmlFor="tl-date" className={LABEL}>{t("timeline.date", { defaultValue: "Date" })}<RequiredMark /></label>
               <input
                 id="tl-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                aria-required="true"
                 aria-invalid={!!errors.date}
                 aria-describedby={errors.date ? "tl-date-err" : undefined}
                 className={FIELD}

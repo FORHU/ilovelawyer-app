@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
+import { RequiredMark } from "@workspace/ui/components/input";
 import CustomSelect from "@/components/ui/custom-select";
 import {
   UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Loader2,
@@ -431,9 +432,13 @@ function CreateCasePageContent() {
     if (n <= maxStepReached) setStep(n);
   };
 
+  // Deferred a frame: on a submit from step 3 the title field only mounts once step 1 renders.
+  const focusCaseTitle = () => requestAnimationFrame(() => document.getElementById("caseTitle")?.focus());
+
   const handleContinue = () => {
     if (step === 1 && !formData.caseTitle.trim()) {
       setCaseTitleError(true);
+      focusCaseTitle();
       return;
     }
     const next = Math.min(3, step + 1);
@@ -464,6 +469,7 @@ function CreateCasePageContent() {
     if (!formData.caseTitle.trim()) {
       setStep(1);
       setCaseTitleError(true);
+      focusCaseTitle();
       return;
     }
     if (hasFilesUploading) return;
@@ -665,7 +671,7 @@ function CreateCasePageContent() {
 
                   <div className="flex flex-col gap-3">
                     <label htmlFor="caseTitle" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                      {t("sectionIdentity.caseTitleLabel")} <span className="text-brand-gold normal-case font-normal">{t("sectionIdentity.required")}</span>
+                      {t("sectionIdentity.caseTitleLabel")}<RequiredMark />
                     </label>
                     <input
                       id="caseTitle"
@@ -679,7 +685,8 @@ function CreateCasePageContent() {
                       value={formData.caseTitle}
                       maxLength={CASE_NAME_MAX_LENGTH}
                       onChange={(e) => handleInputChange("caseTitle", e.target.value)}
-                      aria-invalid={caseTitleError}
+                      aria-required="true"
+      aria-invalid={caseTitleError}
                       aria-describedby={caseTitleError ? "caseTitle-error caseTitle-count" : "caseTitle-count"}
                     />
                     <CharCount id="caseTitle-count" length={formData.caseTitle.length} max={CASE_NAME_MAX_LENGTH} />

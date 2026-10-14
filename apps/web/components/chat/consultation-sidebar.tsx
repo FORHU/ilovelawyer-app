@@ -160,7 +160,7 @@ export default function ConsultationSidebar({
                     <input
                       ref={editInputRef}
                       value={editValue}
-                      maxLength={60}
+                      maxLength={80}
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") commitEdit();
