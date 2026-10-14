@@ -19,10 +19,11 @@ export function ToChecklistButton({
   const { t } = useTranslation("terminal")
   const added = todos.isOnChecklist(source)
   const sending = todos.isSending(source)
+  if (todos.readOnly && !added) return null
   return (
     <button
       type="button"
-      disabled={added || sending}
+      disabled={added || sending || todos.readOnly}
       onClick={() => todos.send(source, label, sourceLabel)}
       title={added ? t("addedToChecklistHint") : t("toChecklistHint")}
       className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-foreground disabled:opacity-60"

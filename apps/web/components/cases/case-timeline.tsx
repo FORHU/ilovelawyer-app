@@ -352,7 +352,7 @@ export function CaseTimelineView({
                         >
                           <DocumentLink docId={item.documentId}>{sourceLabel(item, tone, sourceDoc)}</DocumentLink>
                         </p>
-                        {item.rawId && !isEditing ? (
+                        {item.rawId && !isEditing && !viewOnly ? (
                           <button
                             type="button"
                             onClick={() => {
@@ -364,7 +364,7 @@ export function CaseTimelineView({
                             {t("timeline.editDate", { defaultValue: "Edit date" })}
                           </button>
                         ) : null}
-                        {item.rawId && isEditing ? (
+                        {item.rawId && isEditing && !viewOnly ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <input
                               type="date"
@@ -431,16 +431,18 @@ export function CaseTimelineView({
           </div>
         )}
 
-        <div className="mt-auto border-t border-border pt-5">
-          <button
-            type="button"
-            disabled={isGenerating || generate.isPending}
-            onClick={() => setAddOpen(true)}
-            className="h-9 rounded-full bg-primary px-4 text-[11px] font-semibold uppercase tracking-[1px] text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
-          >
-            {t("timeline.addHeading", { defaultValue: "Add event" })}
-          </button>
-        </div>
+        {!viewOnly && (
+          <div className="mt-auto border-t border-border pt-5">
+            <button
+              type="button"
+              disabled={isGenerating || generate.isPending}
+              onClick={() => setAddOpen(true)}
+              className="h-9 rounded-full bg-primary px-4 text-[11px] font-semibold uppercase tracking-[1px] text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+            >
+              {t("timeline.addHeading", { defaultValue: "Add event" })}
+            </button>
+          </div>
+        )}
         <AddTimelineEventDialog
           open={addOpen}
           onOpenChange={(open) => {

@@ -17,6 +17,7 @@ import {
   useUpdateProcedureItemMutation,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { CaseSnapshot } from "@/lib/terminal/types"
 import { useAuthStore } from "@/lib/store/auth.store"
 import { getStatus } from "@/config/tenant-codes/capabilities"
@@ -146,6 +147,8 @@ export function ProcedurePanel({
   const createItem = useCreateProcedureItemMutation(caseId)
   const updateItem = useUpdateProcedureItemMutation(caseId)
   const recomputeStale = useRecomputeStaleDeadlinesMutation(caseId)
+  // A view-only person on a confidential case reads the plan, to-dos and deadlines but can't change them.
+  const viewOnly = !useCanContributeToCase(caseId)
   // The case analysis rewrites the plan, to-dos and key dates whenever the documents change; the
   // pane's own Regenerate redoes the same pass on demand (and so updates the timeline too).
   const regen = usePaneRegenerate(caseId, "strategy")
@@ -179,11 +182,13 @@ export function ProcedurePanel({
 
   const renderTodo = (item: (typeof todoItems)[number]) => (
     <li key={item.id}>
-      <label className="flex cursor-pointer items-start gap-2.5">
+      <label className={`flex items-start gap-2.5 ${viewOnly ? "cursor-default" : "cursor-pointer"}`}>
         <input
           type="checkbox"
           checked={item.done}
           onChange={() => updateItem.mutate({ id: item.id, done: !item.done })}
+          disabled={viewOnly}
+          title={viewOnly ? t("viewOnlyConfidential") : undefined}
           className="mt-0.5 h-3.5 w-3.5 rounded border-border bg-muted accent-brand-gold"
         />
         <span className="min-w-0 flex-1">
@@ -332,31 +337,33 @@ export function ProcedurePanel({
             )}
           </>
         )}
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const value = todoLabel.trim()
-            if (!value) return
-            createItem.mutate({ kind: "TODO", label: value })
-            setTodoLabel("")
-          }}
-        >
-          <input
-            value={todoLabel}
-            onChange={(e) => setTodoLabel(e.target.value)}
-            placeholder={t("addTodo")}
-            aria-label={t("addTodo")}
-            className={`flex-1 ${fieldClass}`}
-          />
-          <button
-            type="submit"
-            disabled={createItem.isPending}
-            className={primaryBtnClass}
+        {!viewOnly && (
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const value = todoLabel.trim()
+              if (!value) return
+              createItem.mutate({ kind: "TODO", label: value })
+              setTodoLabel("")
+            }}
           >
-            {t("add")}
-          </button>
-        </form>
+            <input
+              value={todoLabel}
+              onChange={(e) => setTodoLabel(e.target.value)}
+              placeholder={t("addTodo")}
+              aria-label={t("addTodo")}
+              className={`flex-1 ${fieldClass}`}
+            />
+            <button
+              type="submit"
+              disabled={createItem.isPending}
+              className={primaryBtnClass}
+            >
+              {t("add")}
+            </button>
+          </form>
+        )}
         <MutationError show={createItem.isError || updateItem.isError} />
       </div>
 
@@ -387,7 +394,7 @@ export function ProcedurePanel({
             </Badge>
           )}
         </div>
-        {staleDeadlineIds.length > 1 && (
+        {staleDeadlineIds.length > 1 && !viewOnly && (
           <button
             type="button"
             onClick={() => recomputeStale.mutate()}
@@ -429,86 +436,90 @@ export function ProcedurePanel({
                     · {confirms}/{snapshot.procedure.requiredConfirmations}{" "}
                     {t("confirmed")}
                   </p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <button
-                      type="button"
-                      onClick={() => confirmDeadline.mutate(deadline.id)}
-                      disabled={confirmDeadline.isPending}
-                      className="text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
-                    >
-                      {t("confirmDeadline")}
-                    </button>
-                    {stale && (
+                  {!viewOnly && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <button
                         type="button"
-                        onClick={() => recomputeDeadline.mutate(deadline.id)}
-                        disabled={recomputeDeadline.isPending}
+                        onClick={() => confirmDeadline.mutate(deadline.id)}
+                        disabled={confirmDeadline.isPending}
                         className="text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
                       >
-                        {t("recomputeDeadline")}
+                        {t("confirmDeadline")}
                       </button>
-                    )}
-                  </div>
+                      {stale && (
+                        <button
+                          type="button"
+                          onClick={() => recomputeDeadline.mutate(deadline.id)}
+                          disabled={recomputeDeadline.isPending}
+                          className="text-[10px] font-semibold tracking-[1px] text-brand-gold uppercase hover:underline disabled:opacity-50"
+                        >
+                          {t("recomputeDeadline")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </PanelRow>
               )
           })}
         </PanelRowList>
-        <form
-          className="mt-3 flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (!ruleCode || !triggerDate) return
-            createDeadline.mutate({
-              ruleCode,
-              triggerDate,
-              sourceTimelineEventId: sourceTimelineEventId || undefined,
-            })
-          }}
-        >
-          <select
-            value={ruleCode}
-            onChange={(e) => setRuleCode(e.target.value)}
-            aria-label={t("computeDeadline")}
-            className={fieldClass}
+        {!viewOnly && (
+          <form
+            className="mt-3 flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!ruleCode || !triggerDate) return
+              createDeadline.mutate({
+                ruleCode,
+                triggerDate,
+                sourceTimelineEventId: sourceTimelineEventId || undefined,
+              })
+            }}
           >
-            <option value="">{t("computeDeadline")}</option>
-            {(rules.data ?? []).map((rule) => (
-              <option key={rule.code} value={rule.code}>
-                {rule.label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={triggerDate}
-            onChange={(e) => setTriggerDate(e.target.value)}
-            aria-label={t("triggerDate")}
-            className={fieldClass}
-          />
-          <select
-            value={sourceTimelineEventId}
-            onChange={(e) => setSourceTimelineEventId(e.target.value)}
-            aria-label={t("linkToTimelineEvent")}
-            className={fieldClass}
-          >
-            <option value="">{t("noTimelineLink")}</option>
-            {timelineEventOptions.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.title}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-muted-foreground">
-            {t("linkToTimelineEvent")}
-          </p>
-          <button
-            type="submit"
-            disabled={createDeadline.isPending}
-            className={`${primaryBtnClass} self-start`}
-          >
-            {t("computeDeadline")}
-          </button>
-        </form>
+            <select
+              value={ruleCode}
+              onChange={(e) => setRuleCode(e.target.value)}
+              aria-label={t("computeDeadline")}
+              className={fieldClass}
+            >
+              <option value="">{t("computeDeadline")}</option>
+              {(rules.data ?? []).map((rule) => (
+                <option key={rule.code} value={rule.code}>
+                  {rule.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={triggerDate}
+              onChange={(e) => setTriggerDate(e.target.value)}
+              aria-label={t("triggerDate")}
+              className={fieldClass}
+            />
+            <select
+              value={sourceTimelineEventId}
+              onChange={(e) => setSourceTimelineEventId(e.target.value)}
+              aria-label={t("linkToTimelineEvent")}
+              className={fieldClass}
+            >
+              <option value="">{t("noTimelineLink")}</option>
+              {timelineEventOptions.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.title}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground">
+              {t("linkToTimelineEvent")}
+            </p>
+            <button
+              type="submit"
+              disabled={createDeadline.isPending}
+              className={`${primaryBtnClass} self-start`}
+            >
+              {t("computeDeadline")}
+            </button>
+          </form>
+        )}
         <MutationError show={confirmDeadline.isError || recomputeDeadline.isError || recomputeStale.isError || createDeadline.isError} />
       </div>
         </>

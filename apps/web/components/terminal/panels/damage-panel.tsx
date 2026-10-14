@@ -14,6 +14,7 @@ import {
   useUpdateDamageMutation,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type { CaseSnapshot, PanelId } from "@/lib/terminal/types"
 import { daysUntil, formatMoney, sortDamageHeads } from "@/lib/terminal/damages-format"
 import {
@@ -64,6 +65,8 @@ export function DamagePanel({
   const del = useDeleteDamageMutation(caseId)
   const accept = useAcceptDamageMutation(caseId)
   const todos = useLinkedTodos(caseId)
+  // A view-only person on a confidential case reads the entries but can't add, accept or edit them.
+  const viewOnly = !useCanContributeToCase(caseId)
   // Damages change in two background jobs, and there is no manual "Propose from documents": the
   // extraction (DamagesExtractSvc, its own "damagesExtract" job) reads new documents for heads, and
   // the case analysis ("caseRefresh") re-rates every head against the new findings near its end.
@@ -191,26 +194,28 @@ export function DamagePanel({
                 {open ? (
                   <div id={`damage-detail-${d.id}`} className="flex flex-col gap-2 border-t border-border px-3 py-2.5 pl-9">
                     {/* Set the status here, like a finding's pill. An AI suggestion is accepted first. */}
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("damageDoneField")}>
-                      {STATUSES.map((option) => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          onClick={() => update.mutate({ id: d.id, done: option.done })}
-                          disabled={!d.accepted || update.isPending || option.done === d.done}
-                          aria-pressed={option.done === d.done}
-                          title={!d.accepted ? t("damageAcceptFirst") : undefined}
-                          className={cn(
-                            "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors disabled:cursor-default",
-                            option.done !== d.done
-                              ? "border-border text-muted-foreground hover:text-foreground disabled:opacity-50"
-                              : TONE_STYLE[option.tone].badge,
-                          )}
-                        >
-                          {t(option.label)}
-                        </button>
-                      ))}
-                    </div>
+                    {!viewOnly && (
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("damageDoneField")}>
+                        {STATUSES.map((option) => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            onClick={() => update.mutate({ id: d.id, done: option.done })}
+                            disabled={!d.accepted || update.isPending || option.done === d.done}
+                            aria-pressed={option.done === d.done}
+                            title={!d.accepted ? t("damageAcceptFirst") : undefined}
+                            className={cn(
+                              "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors disabled:cursor-default",
+                              option.done !== d.done
+                                ? "border-border text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                : TONE_STYLE[option.tone].badge,
+                            )}
+                          >
+                            {t(option.label)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {d.description ? <p className="text-[13px] text-foreground">{d.description}</p> : null}
                     {d.amountBasis && d.amountNote ? (
                       <p className="text-[12px] text-muted-foreground">
@@ -260,7 +265,7 @@ export function DamagePanel({
                           />
                         </span>
                       ) : null}
-                      {!d.accepted ? (
+                      {!d.accepted && !viewOnly ? (
                         <button
                           type="button"
                           onClick={() => accept.mutate(d.id)}
@@ -272,20 +277,24 @@ export function DamagePanel({
                           {t("damageAccept")}
                         </button>
                       ) : null}
-                      <button type="button" onClick={() => setEditing(d.id)} className={cn(ghostBtnClass, "inline-flex items-center gap-1.5")}>
-                        <Pencil className="h-3 w-3" aria-hidden="true" />
-                        {t("damageEdit")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => del.mutate(d.id, { onSuccess: () => setOpenId(null) })}
-                        disabled={del.isPending}
-                        className={dangerIconBtnClass}
-                        aria-label={t("delete")}
-                        title={t("delete")}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
+                      {!viewOnly && (
+                        <>
+                          <button type="button" onClick={() => setEditing(d.id)} className={cn(ghostBtnClass, "inline-flex items-center gap-1.5")}>
+                            <Pencil className="h-3 w-3" aria-hidden="true" />
+                            {t("damageEdit")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => del.mutate(d.id, { onSuccess: () => setOpenId(null) })}
+                            disabled={del.isPending}
+                            className={dangerIconBtnClass}
+                            aria-label={t("delete")}
+                            title={t("delete")}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -295,14 +304,16 @@ export function DamagePanel({
         </PanelRowList>
       )}
 
-      <div className={cn("flex flex-wrap gap-2", heads.length === 0 && "justify-center")}>
-        {/* The main action while the list is empty; an ordinary one once it has entries. */}
-        <button type="button" onClick={() => setEditing("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
-          {t("damageEditorAdd")}
-        </button>
-      </div>
+      {!viewOnly && (
+        <div className={cn("flex flex-wrap gap-2", heads.length === 0 && "justify-center")}>
+          {/* The main action while the list is empty; an ordinary one once it has entries. */}
+          <button type="button" onClick={() => setEditing("new")} className={heads.length > 0 ? ghostBtnClass : primaryBtnClass}>
+            {t("damageEditorAdd")}
+          </button>
+        </div>
+      )}
 
-      {editing !== null ? (
+      {editing !== null && !viewOnly ? (
         <DamageHeadEditorDialog
           key={editing}
           head={editorHead}

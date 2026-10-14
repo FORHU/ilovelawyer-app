@@ -15,6 +15,7 @@ import type { PanelId, Witness, WitnessNeed, WitnessNeedDone, WitnessStatus } fr
 import { useCaseDocumentsQuery } from "@/lib/cases/mutations"
 import { graphViewKeys, useGraphViewQuery } from "@/lib/graph-view/mutations"
 import { useLinkedTodos } from "@/lib/terminal/linked-todos"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { ToChecklistButton } from "@/components/terminal/to-checklist-button"
 import { focusFirstInvalid } from "@/lib/focus-first-invalid"
 import { EmptyNote, Field, MutationError, PaneLoadingState, PanelBody, PanelRow, PanelStickyHeader, PanelRowList, dangerIconBtnClass, fieldClass, ghostBtnClass, labelTextClass, primaryBtnClass, RegenerateButton } from "@/components/terminal/panel-kit"
@@ -56,6 +57,8 @@ export function WitnessPanel({
   const update = useUpdateWitnessMutation(caseId)
   const setFactor = useSetWitnessFactorMutation(caseId)
   const del = useDeleteWitnessMutation(caseId)
+  // A view-only person on a confidential case reads the witnesses but can't change them.
+  const viewOnly = !useCanContributeToCase(caseId)
   // The case analysis (and the pane's own Regenerate) reads new documents for witnesses and then
   // scores everyone (WitnessExtractSvc, WitnessScoringSvc on the API). A lawyer's status, score
   // override and factor answers are never overwritten by a re-score.
@@ -271,24 +274,34 @@ export function WitnessPanel({
                       </blockquote>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => update.mutate({ id: node.refId, status: nextStatus })}
-                    disabled={update.isPending}
-                    title={t("witnessCycleStatus")}
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] disabled:opacity-50 ${style.badge}`}
-                  >
-                    {t(style.label)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => del.mutate(node.refId)}
-                    disabled={del.isPending}
-                    className={dangerIconBtnClass}
-                    aria-label={t("delete")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
+                  {viewOnly ? (
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] ${style.badge}`}
+                    >
+                      {t(style.label)}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => update.mutate({ id: node.refId, status: nextStatus })}
+                        disabled={update.isPending}
+                        title={t("witnessCycleStatus")}
+                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] disabled:opacity-50 ${style.badge}`}
+                      >
+                        {t(style.label)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => del.mutate(node.refId)}
+                        disabled={del.isPending}
+                        className={dangerIconBtnClass}
+                        aria-label={t("delete")}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   {/* bg-foreground/10, not bg-muted: the empty track has to read as a bar on the dark
@@ -309,17 +322,19 @@ export function WitnessPanel({
                         />
                       </div>
                     ) : null}
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      defaultValue={credibility}
-                      key={credibility}
-                      aria-label={t("witnessCredibility")}
-                      onPointerUp={(e) => commitCredibility(Number(e.currentTarget.value))}
-                      onKeyUp={(e) => commitCredibility(Number(e.currentTarget.value))}
-                      className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
-                    />
+                    {!viewOnly && (
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        defaultValue={credibility}
+                        key={credibility}
+                        aria-label={t("witnessCredibility")}
+                        onPointerUp={(e) => commitCredibility(Number(e.currentTarget.value))}
+                        onKeyUp={(e) => commitCredibility(Number(e.currentTarget.value))}
+                        className="absolute inset-x-0 -top-1.5 h-4 w-full cursor-pointer opacity-0"
+                      />
+                    )}
                   </div>
                   <span className={`w-6 text-right text-xs font-semibold tabular-nums ${hasScore ? scoreTextClass(credibility) : "text-muted-foreground"}`}>
                     {credibility}
@@ -338,7 +353,7 @@ export function WitnessPanel({
                           ? t("witnessNotEnoughData")
                           : t("witnessNotScored")}
                   </span>
-                  {override !== null && ai !== null ? (
+                  {override !== null && ai !== null && !viewOnly ? (
                     <button
                       type="button"
                       onClick={() => update.mutate({ id: node.refId, credibilityOverride: null })}
@@ -358,7 +373,7 @@ export function WitnessPanel({
                       {t("witnessWhy")}
                     </button>
                   ) : null}
-                  {suggested ? (
+                  {suggested && !viewOnly ? (
                     <span className="inline-flex items-center gap-1.5">
                       {t("witnessAiSuggests", { status: t(STATUS_STYLE[suggested].label) })}
                       <button
@@ -460,14 +475,15 @@ export function WitnessPanel({
                             type="checkbox"
                             checked={!!doneItem}
                             onChange={() => toggleNeed(n.key)}
-                            disabled={update.isPending}
+                            disabled={update.isPending || viewOnly}
+                            title={viewOnly ? t("viewOnlyConfidential") : undefined}
                             aria-label={t("witnessNeedsDone")}
                             className="mt-0.5 shrink-0"
                           />
                           <div className="min-w-0 flex-1">
                           <span className={doneItem ? "text-muted-foreground" : undefined}>
                             {n.text}
-                            {n.link === "STATEMENT" && !w.statementReceived ? (
+                            {n.link === "STATEMENT" && !w.statementReceived && !viewOnly ? (
                               <>
                                 {" "}
                                 <button
@@ -490,7 +506,7 @@ export function WitnessPanel({
                               {t("witnessOpenEvidence")}
                             </button>
                           ) : null}
-                          {!doneItem && n.link === "FACTOR" && n.options ? (
+                          {!doneItem && n.link === "FACTOR" && n.options && !viewOnly ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -666,14 +682,16 @@ export function WitnessPanel({
                             <span className="font-medium">{o.label}:</span> {o.answerLabel}
                             {o.note ? <span className="text-muted-foreground"> — {o.note}</span> : null}
                           </span>
-                          <button
-                            type="button"
-                            disabled={setFactor.isPending}
-                            onClick={() => setFactor.mutate({ id: node.refId, factor: o.factor, answer: null })}
-                            className="shrink-0 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-                          >
-                            {t("witnessFactorRemove")}
-                          </button>
+                          {!viewOnly && (
+                            <button
+                              type="button"
+                              disabled={setFactor.isPending}
+                              onClick={() => setFactor.mutate({ id: node.refId, factor: o.factor, answer: null })}
+                              className="shrink-0 underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                            >
+                              {t("witnessFactorRemove")}
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -684,49 +702,51 @@ export function WitnessPanel({
           })}
         </PanelRowList>
       </div>
-      <form
-        className="mt-auto flex flex-col gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const value = name.trim()
-          if (!value) return
-          create.mutate({
-            name: value,
-            role: role.trim() || undefined,
-            summary: summary.trim() || undefined,
-          })
-          setName("")
-          setRole("")
-          setSummary("")
-        }}
-      >
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("witnessName")}
-          aria-label={t("witnessName")}
-          className={fieldClass}
-        />
-        <input
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          placeholder={t("witnessSummary")}
-          aria-label={t("witnessSummary")}
-          className={fieldClass}
-        />
-        <div className="flex gap-2">
+      {!viewOnly && (
+        <form
+          className="mt-auto flex flex-col gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = name.trim()
+            if (!value) return
+            create.mutate({
+              name: value,
+              role: role.trim() || undefined,
+              summary: summary.trim() || undefined,
+            })
+            setName("")
+            setRole("")
+            setSummary("")
+          }}
+        >
           <input
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder={t("witnessRole")}
-            aria-label={t("witnessRole")}
-            className={`flex-1 ${fieldClass}`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("witnessName")}
+            aria-label={t("witnessName")}
+            className={fieldClass}
           />
-          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
-            {t("add")}
-          </button>
-        </div>
-      </form>
+          <input
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder={t("witnessSummary")}
+            aria-label={t("witnessSummary")}
+            className={fieldClass}
+          />
+          <div className="flex gap-2">
+            <input
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder={t("witnessRole")}
+              aria-label={t("witnessRole")}
+              className={`flex-1 ${fieldClass}`}
+            />
+            <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+              {t("add")}
+            </button>
+          </div>
+        </form>
+      )}
       <MutationError show={create.isError || update.isError || del.isError || todos.isError} />
         </>
       )}

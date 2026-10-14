@@ -23,6 +23,7 @@ import type {
   Witness,
 } from "@/lib/terminal/types"
 import { focusFirstInvalid } from "@/lib/focus-first-invalid"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { Field, MutationError, dangerIconBtnClass, fieldClass, formatDate, primaryBtnClass } from "@/components/terminal/panel-kit"
 import { HEARSAY_CATEGORY_KEYS, PRIVILEGE_STATUS_KEYS } from "@/components/terminal/panels/evidence-panel"
 
@@ -45,6 +46,8 @@ export function EvidenceDetailDrawer({
   const updateMatrix = useUpdateEvidenceMatrixMutation(caseId)
   const addCustody = useAddCustodyEventMutation(caseId)
   const deleteCustody = useDeleteCustodyEventMutation(caseId)
+  // A view-only person on a confidential case sees the metadata but can't change it.
+  const viewOnly = !useCanContributeToCase(caseId)
 
   const [custodianName, setCustodianName] = useState("")
   const [custodyAction, setCustodyAction] = useState("")
@@ -77,7 +80,9 @@ export function EvidenceDetailDrawer({
                   privilegeStatus: e.target.value as PrivilegeStatus,
                 })
               }
-              className={`w-full ${fieldClass}`}
+              disabled={viewOnly}
+              title={viewOnly ? t("viewOnlyConfidential") : undefined}
+              className={`w-full ${fieldClass} disabled:cursor-not-allowed disabled:opacity-60`}
             >
               {(Object.keys(PRIVILEGE_STATUS_KEYS) as PrivilegeStatus[]).map(
                 (status) => (
@@ -101,7 +106,9 @@ export function EvidenceDetailDrawer({
                   hearsayCategory: e.target.value as HearsayCategory,
                 })
               }
-              className={`w-full ${fieldClass}`}
+              disabled={viewOnly}
+              title={viewOnly ? t("viewOnlyConfidential") : undefined}
+              className={`w-full ${fieldClass} disabled:cursor-not-allowed disabled:opacity-60`}
             >
               {(Object.keys(HEARSAY_CATEGORY_KEYS) as HearsayCategory[]).map(
                 (category) => (
@@ -130,7 +137,9 @@ export function EvidenceDetailDrawer({
                     sponsoringWitnessId: e.target.value || null,
                   })
                 }
-                className={`w-full ${fieldClass}`}
+                disabled={viewOnly}
+                title={viewOnly ? t("viewOnlyConfidential") : undefined}
+                className={`w-full ${fieldClass} disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <option value="">{t("noSponsoringWitness")}</option>
                 {witnesses.map((w) => (
@@ -181,109 +190,113 @@ export function EvidenceDetailDrawer({
                         </p>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        deleteCustody.mutate({
-                          documentId: document.id,
-                          eventId: event.id,
-                        })
-                      }
-                      disabled={deleteCustody.isPending}
-                      className={dangerIconBtnClass}
-                      aria-label={t("delete")}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    {!viewOnly && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteCustody.mutate({
+                            documentId: document.id,
+                            eventId: event.id,
+                          })
+                        }
+                        disabled={deleteCustody.isPending}
+                        className={dangerIconBtnClass}
+                        aria-label={t("delete")}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
 
-            <form
-              noValidate
-              className="mt-2 flex flex-col gap-2"
-              onSubmit={(e) => {
-                e.preventDefault()
-                const name = custodianName.trim()
-                const action = custodyAction.trim()
-                if (!name || !action || !custodyDate) {
-                  setCustodySubmitted(true)
-                  focusFirstInvalid(e.currentTarget)
-                  return
-                }
-                addCustody.mutate({
-                  documentId: document.id,
-                  custodianName: name,
-                  action,
-                  occurredAt: custodyDate,
-                  notes: custodyNotes.trim() || undefined,
-                })
-                setCustodianName("")
-                setCustodyAction("")
-                setCustodyDate("")
-                setCustodyNotes("")
-                setCustodySubmitted(false)
-              }}
-            >
-              <Field
-                label={t("custodianName")}
-                htmlFor="custody-name"
-                required
-                error={custodySubmitted && !custodianName.trim() ? requiredMsg("custodianName") : null}
+            {!viewOnly && (
+              <form
+                noValidate
+                className="mt-2 flex flex-col gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const name = custodianName.trim()
+                  const action = custodyAction.trim()
+                  if (!name || !action || !custodyDate) {
+                    setCustodySubmitted(true)
+                    focusFirstInvalid(e.currentTarget)
+                    return
+                  }
+                  addCustody.mutate({
+                    documentId: document.id,
+                    custodianName: name,
+                    action,
+                    occurredAt: custodyDate,
+                    notes: custodyNotes.trim() || undefined,
+                  })
+                  setCustodianName("")
+                  setCustodyAction("")
+                  setCustodyDate("")
+                  setCustodyNotes("")
+                  setCustodySubmitted(false)
+                }}
               >
-                <input
-                  id="custody-name"
-                  value={custodianName}
-                  onChange={(e) => setCustodianName(e.target.value)}
-                  className={fieldClass}
-                />
-              </Field>
-              <Field
-                label={t("custodyActionLabel")}
-                htmlFor="custody-action"
-                required
-                error={custodySubmitted && !custodyAction.trim() ? requiredMsg("custodyActionLabel") : null}
-              >
-                <input
-                  id="custody-action"
-                  value={custodyAction}
-                  onChange={(e) => setCustodyAction(e.target.value)}
-                  placeholder={t("custodyAction")}
-                  className={fieldClass}
-                />
-              </Field>
-              <Field
-                label={t("custodyDateLabel")}
-                htmlFor="custody-date"
-                required
-                error={custodySubmitted && !custodyDate ? requiredMsg("custodyDateLabel") : null}
-              >
-                <input
-                  id="custody-date"
-                  type="date"
-                  value={custodyDate}
-                  onChange={(e) => setCustodyDate(e.target.value)}
-                  className={fieldClass}
-                />
-              </Field>
-              <Field label={t("custodyNotes")} htmlFor="custody-notes">
-                <textarea
-                  id="custody-notes"
-                  value={custodyNotes}
-                  onChange={(e) => setCustodyNotes(e.target.value)}
-                  rows={2}
-                  className={`resize-none py-1.5 ${fieldClass} h-auto`}
-                />
-              </Field>
-              <button
-                type="submit"
-                disabled={addCustody.isPending}
-                className={primaryBtnClass}
-              >
-                {t("addCustodyEvent")}
-              </button>
-            </form>
+                <Field
+                  label={t("custodianName")}
+                  htmlFor="custody-name"
+                  required
+                  error={custodySubmitted && !custodianName.trim() ? requiredMsg("custodianName") : null}
+                >
+                  <input
+                    id="custody-name"
+                    value={custodianName}
+                    onChange={(e) => setCustodianName(e.target.value)}
+                    className={fieldClass}
+                  />
+                </Field>
+                <Field
+                  label={t("custodyActionLabel")}
+                  htmlFor="custody-action"
+                  required
+                  error={custodySubmitted && !custodyAction.trim() ? requiredMsg("custodyActionLabel") : null}
+                >
+                  <input
+                    id="custody-action"
+                    value={custodyAction}
+                    onChange={(e) => setCustodyAction(e.target.value)}
+                    placeholder={t("custodyAction")}
+                    className={fieldClass}
+                  />
+                </Field>
+                <Field
+                  label={t("custodyDateLabel")}
+                  htmlFor="custody-date"
+                  required
+                  error={custodySubmitted && !custodyDate ? requiredMsg("custodyDateLabel") : null}
+                >
+                  <input
+                    id="custody-date"
+                    type="date"
+                    value={custodyDate}
+                    onChange={(e) => setCustodyDate(e.target.value)}
+                    className={fieldClass}
+                  />
+                </Field>
+                <Field label={t("custodyNotes")} htmlFor="custody-notes">
+                  <textarea
+                    id="custody-notes"
+                    value={custodyNotes}
+                    onChange={(e) => setCustodyNotes(e.target.value)}
+                    rows={2}
+                    className={`resize-none py-1.5 ${fieldClass} h-auto`}
+                  />
+                </Field>
+                <button
+                  type="submit"
+                  disabled={addCustody.isPending}
+                  className={primaryBtnClass}
+                >
+                  {t("addCustodyEvent")}
+                </button>
+              </form>
+            )}
             <MutationError show={addCustody.isError || deleteCustody.isError} />
           </div>
         </div>

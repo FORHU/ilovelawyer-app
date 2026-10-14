@@ -13,6 +13,7 @@ import {
   usePaneRegenerate,
   type PaneRegenerateAction,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { useCaseDocumentUpload } from "@/lib/terminal/use-case-document-upload"
 import { UploadLimitBanner } from "@/components/cases/upload-limit-banner"
@@ -125,6 +126,8 @@ export function RatedFindingPanel({
   const jevCheck = useJevCheckFindingMutation(caseId)
   const todos = useLinkedTodos(caseId)
   const flagRisk = useCreateRiskMutation(caseId)
+  // A view-only person on a confidential case reads the findings but can't rate, edit, add or delete them.
+  const viewOnly = !useCanContributeToCase(caseId)
   // Ids flagged from this panel this session, so a second click can't double-add.
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
   // The row whose delete is waiting for a second click — same confirm step as citations.
@@ -270,72 +273,76 @@ export function RatedFindingPanel({
 
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px] text-foreground">
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("findingStatus")}>
-                      {config.tags.map((option) => (
-                        <button
-                          key={option.tag}
-                          type="button"
-                          // Picking the pill already set does nothing — a rating changes by picking another
-                          // pill. Clicking it used to clear the rating, which left AI rows "Unrated" by accident.
-                          onClick={() => option.tag !== f.tag && update.mutate({ id: f.id, tag: option.tag })}
-                          disabled={update.isPending}
-                          aria-pressed={option.tag === f.tag}
-                          className={cn(
-                            "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors disabled:opacity-50",
-                            option.tag !== f.tag
-                              ? "border-border text-muted-foreground hover:text-foreground"
-                              : option.tone === "neutral"
-                                ? // The neutral pill's bg-muted would vanish on this bg-muted box.
-                                  "border-foreground/30 bg-background text-foreground"
-                                : TONE_STYLE[option.tone].badge,
-                          )}
-                        >
-                          {t(option.label)}
-                        </button>
-                      ))}
-                    </div>
-
-                    <form
-                      className="flex flex-col gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        update.mutate({ id: f.id, detail: detail.trim() || null })
-                      }}
-                    >
-                      {/* A textarea that grows with its text (field-sizing), so a long detail wraps
-                          in full instead of scrolling out of a one-line input. Enter saves; Shift+Enter breaks the line. */}
-                      <textarea
-                        value={detail}
-                        rows={2}
-                        onChange={(e) => setDetail(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                            e.preventDefault()
-                            e.currentTarget.form?.requestSubmit()
-                          }
-                        }}
-                        placeholder={t(config.detailPlaceholderKey)}
-                        aria-label={t(config.detailPlaceholderKey)}
-                        className={`w-full resize-none py-1.5 text-[13px] leading-5 [field-sizing:content] ${fieldClass} h-auto min-h-[3.25rem]`}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setDetail(f.detail ?? "")}
-                          disabled={update.isPending || detail === (f.detail ?? "")}
-                          className={ghostBtnClass}
-                        >
-                          {t("cancel")}
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={update.isPending || detail.trim() === (f.detail ?? "")}
-                          className={update.isPending || detail.trim() === (f.detail ?? "") ? ghostBtnClass : primaryBtnClass}
-                        >
-                          {t("save")}
-                        </button>
+                    {!viewOnly && (
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("findingStatus")}>
+                        {config.tags.map((option) => (
+                          <button
+                            key={option.tag}
+                            type="button"
+                            // Picking the pill already set does nothing — a rating changes by picking another
+                            // pill. Clicking it used to clear the rating, which left AI rows "Unrated" by accident.
+                            onClick={() => option.tag !== f.tag && update.mutate({ id: f.id, tag: option.tag })}
+                            disabled={update.isPending}
+                            aria-pressed={option.tag === f.tag}
+                            className={cn(
+                              "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[1.2px] transition-colors disabled:opacity-50",
+                              option.tag !== f.tag
+                                ? "border-border text-muted-foreground hover:text-foreground"
+                                : option.tone === "neutral"
+                                  ? // The neutral pill's bg-muted would vanish on this bg-muted box.
+                                    "border-foreground/30 bg-background text-foreground"
+                                  : TONE_STYLE[option.tone].badge,
+                            )}
+                          >
+                            {t(option.label)}
+                          </button>
+                        ))}
                       </div>
-                    </form>
+                    )}
+
+                    {!viewOnly && (
+                      <form
+                        className="flex flex-col gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          update.mutate({ id: f.id, detail: detail.trim() || null })
+                        }}
+                      >
+                        {/* A textarea that grows with its text (field-sizing), so a long detail wraps
+                            in full instead of scrolling out of a one-line input. Enter saves; Shift+Enter breaks the line. */}
+                        <textarea
+                          value={detail}
+                          rows={2}
+                          onChange={(e) => setDetail(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                              e.preventDefault()
+                              e.currentTarget.form?.requestSubmit()
+                            }
+                          }}
+                          placeholder={t(config.detailPlaceholderKey)}
+                          aria-label={t(config.detailPlaceholderKey)}
+                          className={`w-full resize-none py-1.5 text-[13px] leading-5 [field-sizing:content] ${fieldClass} h-auto min-h-[3.25rem]`}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetail(f.detail ?? "")}
+                            disabled={update.isPending || detail === (f.detail ?? "")}
+                            className={ghostBtnClass}
+                          >
+                            {t("cancel")}
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={update.isPending || detail.trim() === (f.detail ?? "")}
+                            className={update.isPending || detail.trim() === (f.detail ?? "") ? ghostBtnClass : primaryBtnClass}
+                          >
+                            {t("save")}
+                          </button>
+                        </div>
+                      </form>
+                    )}
 
                     {isAi || f.sourceLabel ? (
                       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
@@ -365,7 +372,7 @@ export function RatedFindingPanel({
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {/* Lawyer-entered rows get Jev's read on request; AI ones were read when generated. */}
-                        {!isAi ? (
+                        {!isAi && !viewOnly ? (
                           <button
                             type="button"
                             onClick={() => jevCheck.mutate(f.id)}
@@ -391,37 +398,41 @@ export function RatedFindingPanel({
                             sourceLabel={`${t(`findingCategory.${config.category}`)}: ${f.label}`.slice(0, 200)}
                           />
                         ) : null}
+                        {!viewOnly && (
+                          <button
+                            type="button"
+                            disabled={flagged.has(f.id) || flagRisk.isPending}
+                            onClick={() =>
+                              flagRisk.mutate(
+                                { title: f.label, severity: "UNVERIFIED" },
+                                { onSuccess: () => setFlagged((prev) => new Set(prev).add(f.id)) },
+                              )
+                            }
+                            title={t("flagRiskHint")}
+                            className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-riskmed disabled:opacity-60"
+                          >
+                            {flagged.has(f.id) ? (
+                              <Check className="h-3 w-3" aria-hidden="true" />
+                            ) : (
+                              <TriangleAlert className="h-3 w-3" aria-hidden="true" />
+                            )}
+                            {flagged.has(f.id) ? t("riskFlagged") : t("flagRisk")}
+                          </button>
+                        )}
+                      </div>
+                      {!viewOnly && (
                         <button
                           type="button"
-                          disabled={flagged.has(f.id) || flagRisk.isPending}
-                          onClick={() =>
-                            flagRisk.mutate(
-                              { title: f.label, severity: "UNVERIFIED" },
-                              { onSuccess: () => setFlagged((prev) => new Set(prev).add(f.id)) },
-                            )
-                          }
-                          title={t("flagRiskHint")}
-                          className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-riskmed disabled:opacity-60"
+                          onClick={() => setConfirmDelete(f.id)}
+                          disabled={del.isPending}
+                          className={dangerIconBtnClass}
+                          aria-label={t("delete")}
                         >
-                          {flagged.has(f.id) ? (
-                            <Check className="h-3 w-3" aria-hidden="true" />
-                          ) : (
-                            <TriangleAlert className="h-3 w-3" aria-hidden="true" />
-                          )}
-                          {flagged.has(f.id) ? t("riskFlagged") : t("flagRisk")}
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(f.id)}
-                        disabled={del.isPending}
-                        className={dangerIconBtnClass}
-                        aria-label={t("delete")}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      </button>
+                      )}
                     </div>
-                    {confirmDelete === f.id && (
+                    {confirmDelete === f.id && !viewOnly && (
                       <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-danger/10 px-2.5 py-2">
                         <p className="min-w-0 flex-1 text-[12px] text-foreground">{t("deleteFindingConfirm")}</p>
                         <button
@@ -455,76 +466,78 @@ export function RatedFindingPanel({
         </PanelRowList>
       </div>
 
-      <div className="mt-auto flex flex-col gap-2">
-        <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={dismissLimitNotice} />
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const value = label.trim()
-            if (!value) return
-            create.mutate({ category: config.category, label: value, tag: newTag || null })
-            setLabel("")
-            setNewTag("")
-          }}
-        >
-          {config.upload && canUpload ? (
-            <>
-              {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
-                  automatic analysis then reads — findings aren't stored per-document. */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? [])
-                  e.target.value = ""
-                  if (files.length > 0) upload(files)
-                }}
-              />
-              <button
-                type="button"
-                disabled={isUploading}
-                onClick={() => fileInputRef.current?.click()}
-                aria-label={t("uploadDocuments")}
-                title={t("uploadDocuments")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
-              >
-                {isUploading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-              </button>
-            </>
-          ) : null}
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder={t(config.addKey)}
-            aria-label={t(config.addKey)}
-            className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
-          />
-          <select
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
-            aria-label={t("findingStatus")}
-            className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
+      {!viewOnly && (
+        <div className="mt-auto flex flex-col gap-2">
+          <UploadLimitBanner totalBytes={limitNoticeBytes} onDismiss={dismissLimitNotice} />
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const value = label.trim()
+              if (!value) return
+              create.mutate({ category: config.category, label: value, tag: newTag || null })
+              setLabel("")
+              setNewTag("")
+            }}
           >
-            <option value="">{t("findingStatus")}</option>
-            {config.tags.map((option) => (
-              <option key={option.tag} value={option.tag}>
-                {t(option.label)}
-              </option>
-            ))}
-          </select>
-          <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
-            {t("add")}
-          </button>
-        </form>
-      </div>
+            {config.upload && canUpload ? (
+              <>
+                {/* Uploads go to the case's one document pool (same as the Evidence pane), which the
+                    automatic analysis then reads — findings aren't stored per-document. */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",")}
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? [])
+                    e.target.value = ""
+                    if (files.length > 0) upload(files)
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={t("uploadDocuments")}
+                  title={t("uploadDocuments")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </>
+            ) : null}
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={t(config.addKey)}
+              aria-label={t(config.addKey)}
+              className={`min-w-0 flex-[1_1_8rem] ${fieldClass}`}
+            />
+            <select
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value as FindingTag | "")}
+              aria-label={t("findingStatus")}
+              className={`min-w-0 flex-[1_1_7rem] @sm:w-28 @sm:flex-none ${fieldClass}`}
+            >
+              <option value="">{t("findingStatus")}</option>
+              {config.tags.map((option) => (
+                <option key={option.tag} value={option.tag}>
+                  {t(option.label)}
+                </option>
+              ))}
+            </select>
+            <button type="submit" disabled={create.isPending} className={primaryBtnClass}>
+              {t("add")}
+            </button>
+          </form>
+        </div>
+      )}
       <MutationError show={create.isError || update.isError || del.isError || todos.isError || flagRisk.isError} />
         </>
       )}

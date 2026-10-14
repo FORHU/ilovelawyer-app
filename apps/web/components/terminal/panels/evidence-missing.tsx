@@ -4,6 +4,7 @@ import {
   useUpdateMissingEvidenceMutation,
   usePaneRegenerate,
 } from "@/lib/terminal/mutations"
+import { useCanContributeToCase } from "@/lib/cases/permissions"
 import type {
   MissingEvidenceSeverity,
   MissingEvidenceStatus,
@@ -44,6 +45,8 @@ export function EvidenceMissing({
   items: SnapshotMissingEvidence[]
 }) {
   const { t } = useTranslation("terminal")
+  // A view-only person on a confidential case reads these but can't resolve, dismiss or reopen them.
+  const viewOnly = !useCanContributeToCase(caseId)
   const update = useUpdateMissingEvidenceMutation(caseId)
   const regen = usePaneRegenerate(caseId, "missingEvidence")
   const loadingLabel = usePaneLoadingLabel(regen)
@@ -124,51 +127,56 @@ export function EvidenceMissing({
                           {item.suggestedSource ?? t("missingEvidenceNoSource")}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1.5 border-t border-border pt-2">
-                        {handled ? (
-                          <>
-                            {item.resolutionNote ? <p className="text-foreground">“{item.resolutionNote}”</p> : null}
-                            <button
-                              type="button"
-                              onClick={() => setStatus(item.id, "OPEN")}
-                              disabled={update.isPending}
-                              className={`self-start ${ghostBtnClass}`}
-                            >
-                              {t("missingEvidenceReopen")}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <input
-                              value={note}
-                              onChange={(e) => setNote(e.target.value)}
-                              placeholder={t("missingEvidenceNotePlaceholder")}
-                              aria-label={t("missingEvidenceNotePlaceholder")}
-                              className={fieldClass}
-                            />
-                            <div className="flex flex-wrap gap-2">
+                      {viewOnly && handled && item.resolutionNote ? (
+                        <p className="border-t border-border pt-2 text-foreground">“{item.resolutionNote}”</p>
+                      ) : null}
+                      {!viewOnly && (
+                        <div className="flex flex-col gap-1.5 border-t border-border pt-2">
+                          {handled ? (
+                            <>
+                              {item.resolutionNote ? <p className="text-foreground">“{item.resolutionNote}”</p> : null}
                               <button
                                 type="button"
-                                onClick={() => setStatus(item.id, "RESOLVED")}
+                                onClick={() => setStatus(item.id, "OPEN")}
                                 disabled={update.isPending}
-                                className={ghostBtnClass}
-                                title={t("missingEvidenceResolveHint")}
+                                className={`self-start ${ghostBtnClass}`}
                               >
-                                {t("missingEvidenceResolve")}
+                                {t("missingEvidenceReopen")}
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setStatus(item.id, "DISMISSED")}
-                                disabled={update.isPending}
-                                className={ghostBtnClass}
-                                title={t("missingEvidenceDismissHint")}
-                              >
-                                {t("missingEvidenceDismiss")}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder={t("missingEvidenceNotePlaceholder")}
+                                aria-label={t("missingEvidenceNotePlaceholder")}
+                                className={fieldClass}
+                              />
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setStatus(item.id, "RESOLVED")}
+                                  disabled={update.isPending}
+                                  className={ghostBtnClass}
+                                  title={t("missingEvidenceResolveHint")}
+                                >
+                                  {t("missingEvidenceResolve")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStatus(item.id, "DISMISSED")}
+                                  disabled={update.isPending}
+                                  className={ghostBtnClass}
+                                  title={t("missingEvidenceDismissHint")}
+                                >
+                                  {t("missingEvidenceDismiss")}
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ) : null}
                 </PanelRow>
