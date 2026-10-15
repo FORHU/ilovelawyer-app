@@ -1,29 +1,62 @@
-name: Deploy Production
+name: Deploy Production (dev host)
+
+# ilovelawyer-app production on the shared host, replacing the SSH deploy to
+# i-09ee0651b89dbdca5.
+#
+# WHAT CHANGES
+#   - SSM instead of scp + ssh. No EC2_SSH_KEY, no EC2_HOST, no open port. The
+#     EC2_HOST secret is also what broke on 2026-10-14 when that box's address
+#     changed on a stop/start.
+#   - The runtime env file is assembled on the host from Parameter Store rather
+#     than copied, so nothing lands on a runner's disk.
+#   - Container `ilovelawyer-prod-app` on 4033. The SAME host already runs the
+#     dev app on 4030; reusing either would stop dev rather than fail.
+#   - The "clean up stale env path" step is gone. It existed because an earlier
+#     scp created a DIRECTORY where a file was expected; with no scp there is
+#     nothing to clean.
+#
+# WHAT DOES NOT CHANGE
+#   - Lint and typecheck still gate the build.
+#   - apps/web/.env.staging is still written BEFORE `docker build`, because
+#     NEXT_PUBLIC_* is inlined into the client bundle at `next build` and not
+#     read at runtime — see docs/adr/0005-web-env-vars-baked-at-build-time.md.
+#     The builder stage's `COPY . .` is what carries it into the image.
+#   - The same file is also given to the container at runtime, as it is today.
+#     The values are already baked in, so this is belt and braces rather than
+#     load-bearing; it is kept so behaviour on the new host is identical.
+#
+# Dispatch only: the existing workflow still deploys on push to main, and two
+# workflows racing the same commit to two hosts is how a brand half-migrates.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag, or SHA to deploy"
-        required: true
-        default: main
+        description: "Branch, tag or SHA to deploy"
+        required: false
 
 concurrency:
-  group: ilovelawyer-app-deploy-production
-  cancel-in-progress: true
+  group: ilovelawyer-prod-app-dev-host
+  cancel-in-progress: false
 
 env:
-  ECR_REPOSITORY: ilovelawyer-app
   AWS_REGION: ap-southeast-1
-  IMAGE_TAG: ${{ github.sha }}
+  ACCOUNT_ID: "617163942417"
+  INSTANCE_ID: i-0f95a93145ea25e7a
+  ECR_REPOSITORY: ilovelawyer-app
+  CONTAINER: ilovelawyer-prod-app
+  NETWORK: forhu-dev
+  HOST_PORT: "4033"
+  APP_PORT: "3002"
+  NODE_ENV: production
+  ENV_PARAM: /forhu-dev/ilovelawyer-prod-app/env
+  MERGED_ENV: /opt/forhu-dev/ilovelawyer-prod-app.env
 
 jobs:
   deploy:
-    name: Lint, Build, Push & Deploy (production)
-    # Native arm64 — matches Graviton EC2. Do not build linux/arm64 via QEMU on
-    # ubuntu-latest; pnpm/next under emulation looks stuck and can take hours.
+    name: Lint, build, push and deploy (ilovelawyer production app)
+    # Native arm64 — the host is Graviton. pnpm and next under QEMU look hung
+    # and can take hours.
     runs-on: ubuntu-24.04-arm
     environment: production
 
@@ -35,7 +68,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+          ref: ${{ github.event.inputs.ref || github.ref_name }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -57,25 +90,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Get ECR auth token
-        id: ecr-token
-        run: |
-          echo "password=$(aws ecr get-login-password --region ${{ env.AWS_REGION }})" >> $GITHUB_OUTPUT
-
-      # The dev Google client ID is baked into the bundle at build time. An empty one
-      # compiles and deploys but breaks Google sign-in with nothing in any log. Fail the
-      # build instead (create DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID in the `production` environment).
-      - name: Check dev Google client ID is populated
+      # Baked into the bundle at build time. An empty value compiles, deploys and
+      # then breaks Google sign-in with nothing in any log, so fail here instead.
+      - name: Check Google client ID is populated
         env:
           DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
@@ -84,25 +101,50 @@ jobs:
             exit 1
           fi
 
-      # NEXT_PUBLIC_* values are inlined into the client JS bundle at `next build` time,
-      # not read at container runtime — see docs/adr/0005-web-env-vars-baked-at-build-time.md.
-      # This file must exist before `docker build` runs, since the builder stage's
-      # `COPY . .` is what carries it into the image.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEV_DEPLOY_ROLE_ARN || 'arn:aws:iam::617163942417:role/forhu-deploy' }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          echo "tag=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "registry=${{ env.ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "${{ env.AWS_REGION }}" \
+            | docker login --username AWS --password-stdin "${{ steps.tag.outputs.registry }}"
+
+      # Must exist before docker build — see the header.
       - name: Write web env file
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
-          cat > ${{ github.workspace }}/apps/web/.env.staging << EOF
-          NODE_ENV=${NODE_ENV}
+          set -euo pipefail
+          umask 077
+          cat > "${{ github.workspace }}/apps/web/.env.staging" << EOF
+          NODE_ENV=${{ env.NODE_ENV }}
           NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
           NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
           EOF
 
+          # NODE_ENV was interpolated from an unset variable in the old workflow,
+          # so this file began with a bare `NODE_ENV=`. Harmless for a Next build,
+          # which defaults to production, but it meant the file never said what it
+          # claimed to.
+          grep -q '^NEXT_PUBLIC_API_URL=.' apps/web/.env.staging || {
+            echo "::error::NEXT_PUBLIC_API_URL is empty — the bundle would ship with no API to call."
+            exit 1
+          }
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -110,51 +152,111 @@ jobs:
           push: true
           platforms: linux/arm64
           provenance: false
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          tags: ${{ steps.tag.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.tag.outputs.tag }}
 
-      - name: Clean up stale env path on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            [ -d /home/ec2-user/ilovelawyer-app/.env.staging ] && rm -rf /home/ec2-user/ilovelawyer-app/.env.staging || true
-
-      - name: Copy env file to EC2
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "apps/web/.env.staging"
-          target: "/home/ec2-user/ilovelawyer-app"
-          strip_components: 2
-
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Publish runtime env to Parameter Store
         env:
-          ECR_PASSWORD: ${{ steps.ecr-token.outputs.password }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          DEPLOY_IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 20m
-          envs: ECR_PASSWORD,ECR_REGISTRY,DEPLOY_IMAGE_TAG
-          script: |
-            set -e
-            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-            docker pull --platform linux/arm64 "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.DEV_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          {
+            printf 'NODE_ENV=%s\n' '${{ env.NODE_ENV }}'
+            printf 'PORT=%s\n'     '${{ env.APP_PORT }}'
+            printf 'NEXT_PUBLIC_API_URL=%s\n'          "$NEXT_PUBLIC_API_URL"
+            printf 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=%s\n' "$NEXT_PUBLIC_GOOGLE_CLIENT_ID"
+          } > env.tmp
 
-            docker stop ilovelawyer-app 2>/dev/null || true
-            docker rm   ilovelawyer-app 2>/dev/null || true
-            docker run -d --name ilovelawyer-app --restart unless-stopped \
-              --platform linux/arm64 \
-              -p 127.0.0.1:3002:3002 \
-              --env-file /home/ec2-user/ilovelawyer-app/.env.staging \
-              "$ECR_REGISTRY/ilovelawyer-app:$DEPLOY_IMAGE_TAG"
-            docker image prune -f
+          aws ssm put-parameter \
+            --name "${{ env.ENV_PARAM }}" \
+            --type SecureString --overwrite \
+            --value "file://env.tmp" \
+            --region "${{ env.AWS_REGION }}" > /dev/null
+          rm -f env.tmp
+
+      - name: Deploy via SSM
+        id: send
+        env:
+          REGISTRY: ${{ steps.tag.outputs.registry }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          IMAGE="${REGISTRY}/${{ env.ECR_REPOSITORY }}:${TAG}"
+
+          COMMANDS=(
+            "set -euo pipefail"
+            "aws ssm get-parameter --name ${{ env.ENV_PARAM }} --with-decryption --region ${{ env.AWS_REGION }} --query Parameter.Value --output text > ${{ env.MERGED_ENV }}"
+            "chmod 600 ${{ env.MERGED_ENV }}"
+            "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${REGISTRY}"
+            "docker container prune -f || true"
+            "docker image prune -af || true"
+            "docker pull --platform linux/arm64 ${IMAGE}"
+            "docker rm -f ${{ env.CONTAINER }} 2>/dev/null || true"
+            "docker run -d --name ${{ env.CONTAINER }} --restart unless-stopped --platform linux/arm64 --network ${{ env.NETWORK }} --env-file ${{ env.MERGED_ENV }} -p 127.0.0.1:${{ env.HOST_PORT }}:${{ env.APP_PORT }} ${IMAGE}"
+          )
+
+          PARAMS=$(printf '%s\n' "${COMMANDS[@]}" | jq -R . | jq -sc '{commands: .}')
+
+          CMD_ID=$(aws ssm send-command \
+            --region "${{ env.AWS_REGION }}" \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${{ env.CONTAINER }} ${TAG}" \
+            --timeout-seconds 900 \
+            --parameters "${PARAMS}" \
+            --query Command.CommandId --output text)
+
+          echo "command_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          echo "SSM command: $CMD_ID"
+
+      - name: Wait for the deploy
+        run: |
+          set -uo pipefail
+          STATUS=Pending
+          for i in $(seq 1 90); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region "${{ env.AWS_REGION }}" \
+              --command-id "${{ steps.send.outputs.command_id }}" \
+              --instance-id "${{ env.INSTANCE_ID }}" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            echo "status: $STATUS"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 10
+          done
+
+          aws ssm get-command-invocation \
+            --region "${{ env.AWS_REGION }}" \
+            --command-id "${{ steps.send.outputs.command_id }}" \
+            --instance-id "${{ env.INSTANCE_ID }}" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+
+          [ "$STATUS" = "Success" ] || { echo "::error::deploy $STATUS"; exit 1; }
+
+      # Against the container on the host, not the public hostname. Until DNS is
+      # cut over, app.ilovelawyer.com still answers from the OLD box — a smoke
+      # test against it would pass while this deploy was broken.
+      - name: Smoke test (host port)
+        run: |
+          set -uo pipefail
+          CMD_ID=$(aws ssm send-command \
+            --region "${{ env.AWS_REGION }}" \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
+            --document-name AWS-RunShellScript \
+            --comment "smoke ${{ env.CONTAINER }}" \
+            --parameters commands='["for i in $(seq 1 12); do CODE=$(curl -sL -o /dev/null -m 10 -w %{http_code} http://127.0.0.1:'"${{ env.HOST_PORT }}"'/ || echo 000); echo attempt $i: $CODE; [ \"$CODE\" = \"200\" ] && exit 0; sleep 5; done; exit 1"]' \
+            --query Command.CommandId --output text)
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation --region "${{ env.AWS_REGION }}" \
+              --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+
+          aws ssm get-command-invocation --region "${{ env.AWS_REGION }}" \
+            --command-id "$CMD_ID" --instance-id "${{ env.INSTANCE_ID }}" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+
+          [ "$STATUS" = "Success" ] || { echo "::error::app did not answer on ${{ env.HOST_PORT }}"; exit 1; }
