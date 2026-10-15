@@ -40,7 +40,7 @@ env:
   ACCOUNT_ID: "617163942417"
   INSTANCE_ID: i-0f95a93145ea25e7a
   ECR_REPOSITORY: ilovelawyer-app
-  CONTAINER: ilovelawyer-app
+  CONTAINER: ilovelawyer-app-dev
   NETWORK: forhu-dev
   HOST_PORT: "4030"
   APP_PORT: "3002"
