@@ -9,8 +9,8 @@ name: Deploy Production (dev host)
 #     changed on a stop/start.
 #   - The runtime env file is assembled on the host from Parameter Store rather
 #     than copied, so nothing lands on a runner's disk.
-#   - Container `ilovelawyer-prod-app` on 4033. The SAME host already runs the
-#     dev app on 4030; reusing either would stop dev rather than fail.
+#   - Container `ilovelawyer-app` on 4033, matching Cloudflare: production is the
+#     plain name, dev is ilovelawyer-app-dev on 4030.
 #   - The "clean up stale env path" step is gone. It existed because an earlier
 #     scp created a DIRECTORY where a file was expected; with no scp there is
 #     nothing to clean.
@@ -44,7 +44,7 @@ env:
   ACCOUNT_ID: "617163942417"
   INSTANCE_ID: i-0f95a93145ea25e7a
   ECR_REPOSITORY: ilovelawyer-app
-  CONTAINER: ilovelawyer-prod-app
+  CONTAINER: ilovelawyer-app
   NETWORK: forhu-dev
   HOST_PORT: "4033"
   APP_PORT: "3002"
