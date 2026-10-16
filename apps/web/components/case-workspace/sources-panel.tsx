@@ -12,6 +12,7 @@ import { useTopicNavigator, decisionAnchorElementId, evidenceQuoteElementId, cle
 import { useRelatedCasesQuery, type RelatedCase } from "@/lib/chat/mutations";
 import { EvidenceItem, RuleItem, Label } from "@/components/shared/decision-detail";
 import { useActiveHighlightStore } from "@/lib/store/active-highlight.store";
+import { usePromptOpenOverridesStore } from "@/lib/store/prompt-open-overrides.store";
 import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
@@ -103,12 +104,17 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
   // toggle is stored, openness otherwise derives from latest" idiom as TopicNavigatorList's own
   // `overrides` (topic-navigator.tsx), so a new turn arriving auto-opens without disturbing a
   // toggle the user already made on an earlier prompt.
-  const [decisionOverrides, setDecisionOverrides] = useState<Map<number, boolean>>(() => new Map());
+  // Kept in a store keyed by consultation (not local state) so it survives the mobile layout
+  // unmounting this panel on a tab switch, and so one consultation's toggles can't land on
+  // another's prompts (every consultation reuses prompt indexes).
+  const decisionScope = `decisions:${activeConsultationId ?? "none"}`;
+  const decisionOverrides = usePromptOpenOverridesStore((s) => s.overrides[decisionScope]);
+  const setPromptOverride = usePromptOpenOverridesStore((s) => s.setOverride);
   const latestDecisionPromptIndex = decisionGroups[decisionGroups.length - 1]?.promptIndex ?? null;
   const isDecisionGroupOpen = (promptIndex: number) =>
-    decisionOverrides.get(promptIndex) ?? promptIndex === latestDecisionPromptIndex;
+    decisionOverrides?.[promptIndex] ?? promptIndex === latestDecisionPromptIndex;
   const toggleDecisionGroup = (promptIndex: number) =>
-    setDecisionOverrides((prev) => new Map(prev).set(promptIndex, !isDecisionGroupOpen(promptIndex)));
+    setPromptOverride(decisionScope, promptIndex, !isDecisionGroupOpen(promptIndex));
   const activeHighlightId = useActiveHighlightStore((s) => s.activeHighlightId);
   const setActiveHighlight = useActiveHighlightStore((s) => s.setActiveHighlight);
 
@@ -122,11 +128,6 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
     setActiveHighlight(null);
     clearFallbackHighlight();
   }, [activeConsultationId, setActiveHighlight]);
-  const [overridesConsultationId, setOverridesConsultationId] = useState(activeConsultationId);
-  if (overridesConsultationId !== activeConsultationId) {
-    setOverridesConsultationId(activeConsultationId);
-    setDecisionOverrides(new Map());
-  }
 
   const handleJump = (index: number) => {
     if (!onBeforeJump) return scrollToTopic(index);
@@ -280,9 +281,8 @@ export function SourcesPanel({ expanded, onExpandedChange, activeConsultationId,
         <div className="border-t border-border pt-3 first:border-0 first:pt-0">
           {promptGroups.length > 0 ? (
             <TopicNavigatorList
-              // Remounted per consultation: its open/closed toggles are keyed by prompt
-              // index, which every consultation reuses — see the decisionOverrides reset.
-              key={activeConsultationId ?? "none"}
+              // Toggles persist per consultation (prompt indexes are reused by every one).
+              persistKey={`topics:${activeConsultationId ?? "none"}`}
               groups={promptGroups}
               activeIndex={activeIndex}
               onJump={handleJump}

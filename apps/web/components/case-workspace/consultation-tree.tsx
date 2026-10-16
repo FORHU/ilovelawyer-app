@@ -239,6 +239,7 @@ function ConsultationTopicsPreview({ consultationId, onOpenPrompt }: { consultat
   }
   return (
     <TopicNavigatorList
+      persistKey={`topics:${consultationId}`}
       groups={groups}
       activeIndex={null}
       onJump={(index) => onOpenPrompt(Math.max(0, promptNumberAt(visible, index)))}

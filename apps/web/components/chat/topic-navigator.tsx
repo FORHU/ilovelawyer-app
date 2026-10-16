@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ListTree, Loader2, PanelRightClose, PanelRightOpen, X } from "lucide-react";
 import { MobileDrawer } from "@/components/mobile-drawer";
+import { usePromptOpenOverridesStore } from "@/lib/store/prompt-open-overrides.store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 
 export interface TopicNavigatorItem {
@@ -93,11 +94,15 @@ export function TopicNavigatorList({
   onJump,
   compact = false,
   renderGroupFooter,
+  persistKey,
 }: {
   groups: TopicNavigatorGroup[];
   activeIndex: number | null;
   onJump: (index: number) => void;
   compact?: boolean;
+  /** Scope (e.g. a consultation id) under which prompt open/closed toggles persist across
+   * unmounts. Local, per-mount state when omitted. */
+  persistKey?: string;
   /** Extra content rendered inside a prompt's expanded dropdown, after its last topic — Case
    * Workspace's Sources panel uses this to show that same prompt's Decision Records in place,
    * rather than in a second, separately-grouped list keyed by the same prompts. Ignored in
@@ -110,11 +115,19 @@ export function TopicNavigatorList({
   // "open by default" is derived from `latestPromptIndex` on every render instead of synced via
   // effect, so a new turn arriving auto-opens its own topics without fighting a toggle the user
   // already made on an older prompt.
-  const [overrides, setOverrides] = useState<Map<number, boolean>>(() => new Map());
+  // With a `persistKey` the toggles live in a store instead, so they survive this list unmounting
+  // (mobile Case Workspace tab switches).
+  const [localOverrides, setLocalOverrides] = useState<Map<number, boolean>>(() => new Map());
+  const storedOverrides = usePromptOpenOverridesStore((s) => (persistKey ? s.overrides[persistKey] : undefined));
+  const setStoredOverride = usePromptOpenOverridesStore((s) => s.setOverride);
   const latestPromptIndex = groups[groups.length - 1]?.promptIndex ?? null;
-  const isPromptOpen = (promptIndex: number) => overrides.get(promptIndex) ?? promptIndex === latestPromptIndex;
-  const togglePrompt = (promptIndex: number) =>
-    setOverrides((prev) => new Map(prev).set(promptIndex, !isPromptOpen(promptIndex)));
+  const isPromptOpen = (promptIndex: number) =>
+    (persistKey ? storedOverrides?.[promptIndex] : localOverrides.get(promptIndex)) ?? promptIndex === latestPromptIndex;
+  const togglePrompt = (promptIndex: number) => {
+    const next = !isPromptOpen(promptIndex);
+    if (persistKey) setStoredOverride(persistKey, promptIndex, next);
+    else setLocalOverrides((prev) => new Map(prev).set(promptIndex, next));
+  };
 
   if (compact) {
     return (
