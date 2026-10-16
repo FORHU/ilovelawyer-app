@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { RequiredMark } from "@workspace/ui/components/input";
 import CustomSelect from "@/components/ui/custom-select";
 import {
   UploadCloud, FileText, X, CheckCircle2, AlertCircle, Plus, RotateCw, Loader2,
-  ArrowLeft, ArrowRight, ArrowUpRight, CircleCheck, PanelsTopLeft, Scale, Lock,
+  ArrowLeft, ArrowRight, ArrowUpRight, CircleCheck, Lock,
 } from "lucide-react";
 import {
   useCreateCaseMutation,
@@ -58,8 +58,6 @@ interface UploadedFile {
   error?: string;
 }
 
-type OpenTarget = "workspace" | "terminal";
-
 // Parties listed in the filing summary before the rest fold behind "+N more".
 const SUMMARY_PARTY_LIMIT = 4;
 
@@ -77,7 +75,6 @@ interface CaseDraft {
   clientSide?: ClientSide | "";
   step: number;
   maxStepReached: number;
-  openTarget: OpenTarget;
   createdCaseId: string | null;
 }
 
@@ -126,7 +123,6 @@ export default function CreateCasePage() {
 function CreateCasePageContent() {
   const { t } = useTranslation("create-case");
   const router = useRouter();
-  const searchParams = useSearchParams();
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
   const tenantConfig = getTenantCodeConfig(tenantCode);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,11 +158,6 @@ function CreateCasePageContent() {
   // submitting with zero files before the user ever sees the dropzone. Guards handleSubmitFiling
   // against firing within this window of a step change landing on 3.
   const stepEnteredAtRef = useRef(Date.now());
-  // Defaults to Terminal when arriving via ?next=terminal (e.g. from the Legal Terminal's own
-  // "new case" entry point) — otherwise the user can still flip it before filing.
-  const [openTarget, setOpenTarget] = useState<OpenTarget>(
-    searchParams.get("next") === "terminal" ? "terminal" : "workspace",
-  );
 
   const { mutateAsync: uploadDocuments } = useUploadCaseDocumentsMutation();
   const { mutateAsync: createCase, isPending: isSubmitting } = useCreateCaseMutation();
@@ -211,7 +202,6 @@ function CreateCasePageContent() {
     const resumeStep = !draft.caseTitle.trim() ? 1 : !partiesComplete(draft.parties) ? Math.min(draft.step, 2) : draft.step;
     setStep(resumeStep);
     setMaxStepReached(draft.maxStepReached);
-    setOpenTarget(draft.openTarget);
     setCreatedCaseId(draft.createdCaseId);
     stepEnteredAtRef.current = Date.now();
 
@@ -245,10 +235,9 @@ function CreateCasePageContent() {
       clientSide: formData.clientSide,
       step,
       maxStepReached,
-      openTarget,
       createdCaseId,
     });
-  }, [formData.caseTitle, formData.jurisdiction, formData.ukJurisdiction, formData.parties, formData.clientSide, step, maxStepReached, openTarget, createdCaseId]);
+  }, [formData.caseTitle, formData.jurisdiction, formData.ukJurisdiction, formData.parties, formData.clientSide, step, maxStepReached, createdCaseId]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -506,11 +495,8 @@ function CreateCasePageContent() {
       }
 
       clearDraft();
-      router.push(
-        openTarget === "terminal"
-          ? `/homepage/terminal/${caseId}`
-          : `/homepage/case-portfolio/${caseId}`,
-      );
+      // Always the Legal Terminal — it links on to the case's workspace from there.
+      router.push(`/homepage/terminal/${caseId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : t("submitFailed"));
     }
@@ -1022,36 +1008,6 @@ function CreateCasePageContent() {
                       </span>
                     </label>
                   )}
-
-                  <div className="flex flex-col gap-3 pt-2 border-t border-border">
-                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("openInLabel")}</span>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setOpenTarget("workspace")}
-                        className={`h-11 sm:h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
-                          openTarget === "workspace"
-                            ? "bg-foreground text-background"
-                            : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-                        }`}
-                      >
-                        <PanelsTopLeft className="w-3.5 h-3.5" aria-hidden="true" />
-                        {t("openInWorkspace")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setOpenTarget("terminal")}
-                        className={`h-11 sm:h-9 inline-flex items-center gap-2 px-4 rounded-full text-[10px] font-semibold tracking-[1.2px] uppercase transition-colors cursor-pointer ${
-                          openTarget === "terminal"
-                            ? "bg-foreground text-background"
-                            : "border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-                        }`}
-                      >
-                        <Scale className="w-3.5 h-3.5" aria-hidden="true" />
-                        {t("openInTerminal")}
-                      </button>
-                    </div>
-                  </div>
                 </section>
               )}
 

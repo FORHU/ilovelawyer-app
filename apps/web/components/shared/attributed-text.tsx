@@ -2,6 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
+import { convertHtmlAnchors } from "@/lib/law/html-anchors";
 import { findClaimMatches, type Claim, type ClaimCategory } from "./attributed-text-match";
 
 export type { Claim, ClaimCategory } from "./attributed-text-match";
@@ -125,11 +126,14 @@ export default function AttributedMarkdown({
   className?: string;
 }) {
   const components = React.useMemo(() => buildComponents(claims), [claims]);
+  // Display-only: the stored text keeps Chat Wonder's raw legal-ref anchors; they're turned into
+  // markdown links here so they render as links instead of literal `<a href=...>` text.
+  const markdown = React.useMemo(() => convertHtmlAnchors(content), [content]);
   return (
     // Reading face (--font-reading, loaded in app/layout.tsx, same as chat answers) at a book-like measure.
     <div className={`${className} font-[family-name:var(--font-reading)] text-[15px] leading-7 text-pretty text-foreground selection:bg-brand-gold/20`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

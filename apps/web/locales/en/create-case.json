@@ -27,9 +27,6 @@
   },
   "confidentialLabel": "Confidential",
   "confidentialHint": "Only your organization's owner and the people you add can see this case. You can add teammates from Share after filing.",
-  "openInLabel": "After filing, open in",
-  "openInWorkspace": "Workspace",
-  "openInTerminal": "Legal Terminal",
   "steps": {
     "identity": { "numeral": "I", "title": "Case identity", "hint": "Caption and venue" },
     "parties": { "numeral": "II", "title": "Parties", "hint": "Everyone named, on either side" },

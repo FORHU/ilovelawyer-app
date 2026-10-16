@@ -2,6 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import { FloatingDelayGroup } from "@floating-ui/react";
 import { isInternalLibraryHref } from "@/lib/law/internal-library-link";
+import { convertHtmlAnchors } from "@/lib/law/html-anchors";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { useTranslation } from "react-i18next";
@@ -298,15 +299,6 @@ function stripRelatedQueries(content: string): string {
 // is a no-op for them.
 function stripTraceBlocks(content: string): string {
   return content.replace(/\[TRACE\][\s\S]*?\[\/TRACE\]/gi, "").trimStart();
-}
-
-// Chat Wonder sometimes cites controlling authorities as literal `<a href="...">text</a>`
-// HTML anchors rather than markdown link syntax. react-markdown doesn't render embedded
-// raw HTML (by design, to avoid piping untrusted LLM output straight into the DOM), so
-// left alone these show up as literal tag text. Convert them to markdown links instead
-// of turning on raw HTML rendering.
-function convertHtmlAnchors(content: string): string {
-  return content.replace(/<a\s+[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, "[$2]($1)");
 }
 
 // Same cleanup the component applies before handing text to ReactMarkdown — exported so
