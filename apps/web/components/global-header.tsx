@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
+import { useTrial } from "@/lib/trial";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
@@ -92,6 +93,10 @@ const MOBILE_NAV_ITEMS = [
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
+  // so the shape of the product still shows. Terms stay open.
+  const trial = useTrial();
+  const trialLocked = (href: string) => !!trial && href !== "/homepage/term";
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
   const openGuide = useTourStore((s) => s.setGuideOpen);
@@ -341,22 +346,38 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                   </div>
                 )}
 
-                {USER_MENU_ITEMS.map((item) => (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-                      >
-                        <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                        {t(item.labelKey)}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{item.tooltip}</TooltipContent>
-                  </Tooltip>
-                ))}
+                {USER_MENU_ITEMS.map((item) =>
+                  trialLocked(item.href) ? (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <span
+                          role="menuitem"
+                          aria-disabled="true"
+                          className="flex cursor-default items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground opacity-50"
+                        >
+                          <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {t(item.labelKey)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{t("trial.notIncluded")}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          role="menuitem"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                        >
+                          <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {t(item.labelKey)}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{item.tooltip}</TooltipContent>
+                    </Tooltip>
+                  ),
+                )}
 
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -504,21 +525,33 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             </TooltipTrigger>
             <TooltipContent side="left">{t("feedback.open", { defaultValue: "Send feedback" })}</TooltipContent>
           </Tooltip>
-          {USER_MENU_ITEMS.map((item) => (
-            <Tooltip key={item.href}>
-              <TooltipTrigger asChild>
-                <Link
-                  href={item.href}
-                  onClick={closeMobileMenu}
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <item.icon className="size-4 shrink-0" aria-hidden="true" />
-                  {t(item.labelKey)}
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="left">{item.tooltip}</TooltipContent>
-            </Tooltip>
-          ))}
+          {USER_MENU_ITEMS.map((item) =>
+            trialLocked(item.href) ? (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                title={t("trial.notIncluded")}
+                className="flex cursor-default items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground opacity-50"
+              >
+                <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                {t(item.labelKey)}
+              </span>
+            ) : (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                    {t(item.labelKey)}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left">{item.tooltip}</TooltipContent>
+              </Tooltip>
+            ),
+          )}
         </div>
 
         {/* mt-auto pins sign-out to the bottom of the sheet regardless of how much content is

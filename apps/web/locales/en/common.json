@@ -1,5 +1,8 @@
 {
   "appName": "ilovelawyer",
+  "trial": {
+    "notIncluded": "Not included in the trial. Create an account to use it."
+  },
   "nav": {
     "consultation": "Consultation",
     "case": "Case",

@@ -10,6 +10,11 @@ import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { useStartTrialMutation } from "@/lib/auth/mutations"
 import { useTrialConfig } from "@/lib/trial"
 
+const PRIMARY_BUTTON =
+  "inline-flex h-12 cursor-pointer items-center justify-center whitespace-nowrap rounded-full bg-brand-gold px-8 text-xs font-semibold uppercase tracking-[1.2px] text-brand-gold-foreground transition-[background-color,transform] duration-200 hover:bg-brand-gold/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
+const SECONDARY_BUTTON =
+  "inline-flex h-12 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border border-border px-8 text-xs font-semibold uppercase tracking-[1.2px] text-foreground transition-[background-color,transform] duration-200 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
+
 // Where the landing page's "Start a consultation" goes for a visitor with no account: the notice
 // they accept, then a throwaway guest account and the real consultation page. UK only; any other
 // host carries on to the normal sign-in.
@@ -48,15 +53,30 @@ export default function TrialPage() {
               <p className="m-0 text-[13.5px] leading-relaxed text-foreground">{t("trial.notice")}</p>
             </div>
 
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              {config?.sampleCase && (
+                <button
+                  type="button"
+                  disabled={start.isPending}
+                  onClick={() => start.mutate("case")}
+                  className={`${PRIMARY_BUTTON} gap-2`}
+                >
+                  {start.isPending && start.variables === "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                  {start.isPending && start.variables === "case" ? t("trial.starting") : t("trial.startCase")}
+                </button>
+              )}
               <button
                 type="button"
                 disabled={start.isPending}
-                onClick={() => start.mutate()}
-                className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-brand-gold px-8 text-xs font-semibold uppercase tracking-[1.2px] text-brand-gold-foreground transition-[background-color,transform] duration-200 hover:bg-brand-gold/85 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-wait disabled:opacity-70"
+                onClick={() => start.mutate("consultation")}
+                className={config?.sampleCase ? SECONDARY_BUTTON : `${PRIMARY_BUTTON} gap-2`}
               >
-                {start.isPending && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                {start.isPending ? t("trial.starting") : t("trial.start")}
+                {start.isPending && start.variables !== "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                {start.isPending && start.variables !== "case"
+                  ? t("trial.starting")
+                  : config?.sampleCase
+                    ? t("trial.startConsultation")
+                    : t("trial.start")}
               </button>
               <Link
                 href="/login"
