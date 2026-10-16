@@ -28,6 +28,7 @@ import {
 import { TerminalPanelBody } from "@/components/terminal/terminal-panels"
 import { PaneActivityMark } from "@/components/terminal/pane-activity"
 import { Pane, PaneCode } from "@/components/terminal/panel-kit"
+import { PaneFeedbackButton } from "@/components/feedback/pane-feedback-button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip"
 import type { ArrangementValue, CaseSnapshot, PanelId, PanelLayout } from "@/lib/terminal/types"
 import { onlyKnownPanels } from "@/lib/terminal/drop-unknown-panels"
@@ -436,6 +437,7 @@ function AnimatedPanelBody({
 // per-pane screen reassignment; unused in the primary Terminal, which keeps onPopOut instead).
 function PaneHeaderActions({
   t,
+  panelId,
   isMaximized,
   onToggleMaximize,
   onHide,
@@ -447,6 +449,8 @@ function PaneHeaderActions({
   onMoveToScreen,
 }: {
   t: (key: string, opts?: Record<string, unknown>) => string
+  /** The pane these actions belong to, so the flag can say which pane feedback is about. */
+  panelId: string
   isMaximized: boolean
   onToggleMaximize: () => void
   onHide: () => void
@@ -462,6 +466,7 @@ function PaneHeaderActions({
 }) {
   return (
     <div className="flex shrink-0 items-center gap-0.5">
+      <PaneFeedbackButton panelId={panelId} />
       {onMoveToScreen && screenCount !== undefined && screenCount > 1 && (
         <select
           value={currentScreen ?? 0}
@@ -869,6 +874,7 @@ function ColumnStack({
                 <PaneActivityMark panelId={panel.id} />
                 <PaneHeaderActions
                   t={t}
+                  panelId={panel.id}
                   isMaximized={false}
                   onToggleMaximize={() => onToggleMaximize(panel.id)}
                   onHide={() => onHide(panel.id)}
@@ -954,6 +960,7 @@ function FocusArrangement({
               <PaneActivityMark panelId={focusPanel.id} />
               <PaneHeaderActions
                 t={t}
+                panelId={focusPanel.id}
                 isMaximized={false}
                 onToggleMaximize={() => onToggleMaximize(focusPanel.id)}
                 onHide={() => onHide(focusPanel.id)}
@@ -1385,6 +1392,7 @@ export function TerminalCanvas({
                     <PaneActivityMark panelId={panel.id} />
                     <PaneHeaderActions
                       t={t}
+                      panelId={panel.id}
                       isMaximized={false}
                       onToggleMaximize={() => onToggleMaximize(panel.id)}
                       onHide={() => onHide(panel.id)}
@@ -1496,6 +1504,7 @@ export function TerminalCanvas({
                 <PaneActivityMark panelId={maximizedPanel.id} />
                 <PaneHeaderActions
                   t={t}
+                  panelId={maximizedPanel.id}
                   isMaximized
                   onToggleMaximize={close}
                   onHide={() => onHide(maximizedPanel.id)}

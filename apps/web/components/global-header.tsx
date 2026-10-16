@@ -3,13 +3,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, Sparkles, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useTourStore } from "@/lib/store/tour.store";
+import { useFeedbackStore } from "@/lib/store/feedback.store";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { MobileDrawer } from "@/components/mobile-drawer";
@@ -94,6 +95,12 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
   const openGuide = useTourStore((s) => s.setGuideOpen);
+  const setFeedbackOpen = useFeedbackStore((s) => s.setOpen);
+  // Both are right-hand drawers, so opening one closes the other.
+  const openFeedback = () => {
+    openGuide(false);
+    setFeedbackOpen(true);
+  };
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   // Lifted into a store (not local state) so a page can render its own trigger — see
   // mobileHeaderMerged's comment below — that opens this exact same drawer.
@@ -259,6 +266,21 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
           <span data-tour-id="header-lang" className="inline-flex">
             <LanguageSwitcher />
           </span>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={openFeedback}
+                aria-label={t("feedback.open", { defaultValue: "Send feedback" })}
+                className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border pl-2.5 pr-3 text-[10px] uppercase tracking-[1px] text-foreground transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <MessageSquareText className="size-3" aria-hidden="true" />
+                {t("feedback.button", { defaultValue: "Feedback" })}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("feedback.open", { defaultValue: "Send feedback" })}</TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -464,6 +486,22 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="left">{tTour("guide.open")}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  openFeedback();
+                }}
+                className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] tracking-[1px] uppercase text-foreground transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <MessageSquareText className="size-4 shrink-0" aria-hidden="true" />
+                {t("feedback.open", { defaultValue: "Send feedback" })}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">{t("feedback.open", { defaultValue: "Send feedback" })}</TooltipContent>
           </Tooltip>
           {USER_MENU_ITEMS.map((item) => (
             <Tooltip key={item.href}>
