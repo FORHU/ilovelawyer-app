@@ -375,6 +375,31 @@ export function useConsumeLoginLinkMutation() {
   })
 }
 
+/** The landing page's trial: starts a throwaway guest account (POST /api/trial/start, which sets the
+ * refresh cookie like any sign-in) and opens the real consultation page as them. */
+export function useStartTrialMutation() {
+  const router = useRouter()
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const setOrganization = useAuthStore((s) => s.setOrganization)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<AuthTokensResponse & { consultationId: string }>("/api/trial/start", {
+        method: "POST",
+        body: JSON.stringify({ acceptedNotice: true }),
+        skipAuthRefresh: true,
+      }),
+    onSuccess: async (data) => {
+      setAuth({ accessToken: data.accessToken, user: data.user })
+      queryClient.invalidateQueries({ queryKey: chatKeys.session() })
+      await hydrateActiveOrganization(setOrganization)
+      // Opens on the sample consultation the guest starts with (TrialSvc.seedSampleConsultation).
+      router.replace(`/homepage?c=${data.consultationId}`)
+    },
+  })
+}
+
 export function useLogoutMutation() {
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)

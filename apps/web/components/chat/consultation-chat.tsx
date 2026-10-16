@@ -1575,8 +1575,10 @@ export default function ConsultationChat({
         if (sendTokenRef.current === myToken) setPendingTurn(null);
         return;
       }
-      // Consent-off is an expected refusal, surfaced in the reply bubble below — not worth a console error.
-      if ((error as { code?: string } | null)?.code !== "CONSENT_REQUIRED") console.error("Failed to send message:", error);
+      // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
+      // not worth a console error.
+      const refusal = (error as { code?: string } | null)?.code;
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1600,9 +1602,10 @@ export default function ConsultationChat({
           if (!prev) return prev;
           const nextMessages = [...prev.messages];
           // The API refuses (403 CONSENT_REQUIRED) before anything is saved when the person has
-          // switched AI processing off — say so, instead of the generic failure.
-          const consentOff = (error as { code?: string } | null)?.code === "CONSENT_REQUIRED";
-          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(consentOff ? "sendErrorNoConsent" : "sendError") };
+          // switched AI processing off, and (403 TRIAL_LIMIT_REACHED) when a trial guest has spent
+          // their answers — say so, instead of the generic failure.
+          const refusalKey = refusal === "CONSENT_REQUIRED" ? "sendErrorNoConsent" : refusal === "TRIAL_LIMIT_REACHED" ? "sendErrorTrialUsedUp" : "sendError";
+          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };
         });
       }

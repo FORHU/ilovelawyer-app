@@ -12,6 +12,8 @@ export const AUTH_PATHS = [
   "/api/auth/reset-password",
   "/api/auth/verify-otp",
   "/api/auth/login-link/consume",
+  // Starts a landing-page trial guest, and sets its refresh cookie like a sign-in does.
+  "/api/trial/start",
 ] as const
 
 // Defaults to "" (no-op — paths hit the backend exactly as written, today's behavior) until

@@ -24,6 +24,10 @@ export interface CurrentUser {
   avatarUrl: string | null
   /** A Google Calendar grant is stored (Connect Google Calendar on the profile page). */
   googleCalendarConnected: boolean
+  /** Set only for a landing-page trial guest: when the trial ends, and how many of its AI answers
+   * are spent (TRIAL_MESSAGE_LIMIT on the API). Null for a real account. */
+  trialExpiresAt: string | null
+  trialMessagesUsed: number
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -34,6 +38,8 @@ export function useCurrentUserQuery() {
     queryKey: userKeys.me(),
     queryFn: () => apiFetch<CurrentUser>("/api/users/me"),
     enabled: !!accessToken,
+    // A trial guest's answers-left count follows each message they send (see lib/trial.ts).
+    refetchInterval: (query) => (query.state.data?.trialExpiresAt ? 10_000 : false),
   })
 }
 

@@ -3,6 +3,9 @@
 import { useSelectedLayoutSegments } from "next/navigation"
 import GlobalHeader, { ACTIVE_TABS, type ActiveTab } from "@/components/global-header"
 import { PageTransition } from "@/components/page-transition"
+import { TrialBanner } from "@/components/trial/trial-banner"
+import { TrialLocked } from "@/components/trial/trial-locked"
+import { useTrial } from "@/lib/trial"
 
 // Routes whose first segment doesn't match their nav tab by name.
 const TAB_ALIASES: Record<string, ActiveTab> = {
@@ -23,16 +26,21 @@ function toActiveTab(segment: string | undefined): ActiveTab | undefined {
 // Only the page content below it animates in (PageTransition), not the header.
 export default function HomepageLayout({ children }: { children: React.ReactNode }) {
   const segments = useSelectedLayoutSegments()
+  const trial = useTrial()
 
   // The Terminal's pop-out window for a secondary screen and its Document Viewer tab are
   // deliberately chrome-less — see terminal/[caseId]/canvas/[screenIndex]/page.tsx and
   // terminal/[caseId]/document/page.tsx.
   if (segments[0] === "terminal" && (segments[2] === "canvas" || segments[2] === "document")) return children
 
+  // A trial guest gets the consultation and a way to sign up; every other page shows the lock.
+  const locked = !!trial && !!segments[0] && segments[0] !== "profile"
+
   return (
     <>
       <GlobalHeader activeTab={toActiveTab(segments[0])} />
-      <PageTransition>{children}</PageTransition>
+      <PageTransition>{locked ? <TrialLocked /> : children}</PageTransition>
+      <TrialBanner />
     </>
   )
 }
