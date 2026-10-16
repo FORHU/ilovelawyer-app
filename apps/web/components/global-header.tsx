@@ -17,6 +17,7 @@ import { MobileDrawer } from "@/components/mobile-drawer";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { PortfolioPill } from "@/components/portfolio-pill";
 import { SharedWorkspacePill } from "@/components/shared-workspace";
+import { TrialBanner } from "@/components/trial/trial-banner";
 import { NotificationBellTrigger } from "@/components/notifications/notification-bell-trigger";
 import { useNotificationBellState } from "@/components/notifications/use-notification-bell-state";
 import { ThemeToggle } from "@/components/theme-provider";
@@ -263,6 +264,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
 
         {/* Icons are now inside the main flex row */}
         <div className="hidden lg:flex justify-self-end items-center gap-5 text-foreground">
+          <TrialBanner inHeader />
+
           <span data-tour-id="header-lang" className="inline-flex">
             <LanguageSwitcher />
           </span>

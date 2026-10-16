@@ -12,8 +12,9 @@ export function useCreateAccountFromTrial() {
   return () => logout.mutate(undefined, { onSettled: () => router.push("/login?tab=signup") })
 }
 
-/** Answers left and the way out of the trial, over every page a guest can open. */
-export function TrialBanner() {
+/** Answers left and the way out of the trial. In the header on lg+ (where it can't cover the
+ * composer or the topics rail); a floating pill below that, where the header's right group is hidden. */
+export function TrialBanner({ inHeader = false }: { inHeader?: boolean }) {
   const { t } = useTranslation("landing")
   const trial = useTrial()
   const createAccount = useCreateAccountFromTrial()
@@ -22,7 +23,11 @@ export function TrialBanner() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 right-4 z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 text-[12.5px] text-card-foreground shadow-lg"
+      className={
+        inHeader
+          ? "flex items-center gap-3 rounded-full border border-border py-0.5 pl-3 pr-0.5 text-[11px] text-foreground"
+          : "fixed bottom-4 right-4 lg:hidden z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 text-[12.5px] text-card-foreground shadow-lg"
+      }
     >
       <span>{trial.answersLeft > 0 ? t("trial.answersLeft", { count: trial.answersLeft }) : t("trial.noAnswersLeft")}</span>
       <button
