@@ -57,6 +57,7 @@ import {
 import { parseStreamingReply, getActiveMindMap, getActiveMindMapRecord, type MindMapItem, type TraceStep } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { ResearchTraceList } from "@/components/chat/research-trace-list";
+import { MessageFeedback } from "@/components/feedback/message-feedback";
 import { useCaseQuery, useCaseDocumentsQuery, useConsultationDocumentsQuery, useUploadDocumentsMutation } from "@/lib/cases/mutations";
 import { ALLOWED_EXTENSIONS, ALLOWED_FILE_TYPES_LABEL, checkUploadSelection } from "@/lib/cases/upload-batch";
 import { UploadLimitBanner } from "@/components/cases/upload-limit-banner";
@@ -96,6 +97,9 @@ function StoppedNotice({ label, compact }: { label: string; compact?: boolean })
 }
 
 interface DisplayMessage {
+  /** The saved message's id. Unset while a reply is still streaming and for any not yet saved, which
+   * is why the feedback thumbs wait for it. */
+  id?: string;
   role: "user" | "assistant";
   content: string;
   /** Grounding verification rows for this reply, straight off the messages API — see
@@ -667,6 +671,7 @@ export default function ConsultationChat({
         ? (history ?? [])
             .filter((m) => m.role !== "system")
             .map((m, i, visible) => ({
+              id: m.id,
               role: m.role as "user" | "assistant",
               content: m.content,
               // A stopped turn keeps the user message (replyStatus CANCELLED) and, if any text
@@ -2758,7 +2763,7 @@ export default function ConsultationChat({
                             </div>
                           )}
                           {!isStreamingThis && m.content && isLastOfGroup && (
-                            <div className="mt-2 flex justify-start">
+                            <div className="mt-2 flex flex-wrap items-center justify-start">
                               <CopyMessageButton
                                 text={fullReplyText}
                                 label={t("message.copy", { defaultValue: "Copy response" })}
@@ -2766,6 +2771,10 @@ export default function ConsultationChat({
                                 failedLabel={t("message.copyFailed", { defaultValue: "Couldn't copy" })}
                                 compact={embedded}
                               />
+                              {/* A split answer is one reply: like Copy, the thumbs sit once, under its last card. */}
+                              {m.id && consultationId && (
+                                <MessageFeedback key={m.id} messageId={m.id} consultationId={consultationId} caseId={caseId} compact={embedded} />
+                              )}
                             </div>
                           )}
                           {m.stopped && (

@@ -71,5 +71,42 @@
   "uploadLimit": {
     "batchTooLarge": "These files total {{total}} — you can upload up to {{limit}} at once. Remove some files or upload them in smaller groups.",
     "dismiss": "Dismiss"
+  },
+  "feedback": {
+    "button": "Feedback",
+    "open": "Send feedback",
+    "eyebrow": "Feedback",
+    "title": "Tell us what happened",
+    "close": "Close feedback",
+    "kindLabel": "What kind of feedback? (optional)",
+    "categories": {
+      "BUG": "Something is broken",
+      "WRONG_ANSWER": "Answer was wrong or incomplete",
+      "IDEA": "Idea or request",
+      "QUESTION": "Question"
+    },
+    "detailsLabel": "Details",
+    "detailsPlaceholder": "What were you doing, and what did you expect?",
+    "generalNote": "Sent with it: the page you're on, your account and organization, and your browser. No case text or documents.",
+    "send": "Send",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "sent": "Thanks, your feedback was sent.",
+    "failed": "Couldn't send your feedback. Please try again.",
+    "message": {
+      "helpful": "Helpful",
+      "notHelpful": "Not helpful",
+      "titleUp": "What worked?",
+      "titleDown": "What went wrong?",
+      "placeholderUp": "What worked well? (optional)",
+      "placeholderDown": "What was wrong with this answer?",
+      "note": "Sends a reference to this answer, not its text, so case content stays in the case."
+    },
+    "pane": {
+      "flag": "Flag this pane",
+      "placeholder": "What is wrong or missing in this pane?",
+      "note": "Sends which pane and case this is. Not the pane's text."
+    },
+    "hintComment": "Add a few words to send."
   }
 }
