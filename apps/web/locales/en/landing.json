@@ -46,7 +46,6 @@
       "Case Workspace",
       "Legal Terminal",
       "Research library",
-      "Transcription",
       "Document upload",
       "Calendar",
       "Visual Strategy Map",
@@ -551,7 +550,6 @@
         "heading": "Resources",
         "links": {
           "helpCentre": "Help centre and FAQ",
-          "transcription": "Transcription",
           "documentUpload": "Document upload",
           "calendar": "Calendar"
         }

@@ -46,7 +46,6 @@
       "Case Workspace",
       "리걸 터미널",
       "리서치 라이브러리",
-      "녹취록 작성",
       "문서 업로드",
       "캘린더",
       "비주얼 전략 맵",
@@ -201,7 +200,6 @@
         "heading": "리소스",
         "links": {
           "helpCentre": "고객센터 및 FAQ",
-          "transcription": "녹취록 작성",
           "documentUpload": "문서 업로드",
           "calendar": "캘린더"
         }
