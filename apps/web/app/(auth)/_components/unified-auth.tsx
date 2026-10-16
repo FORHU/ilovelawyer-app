@@ -56,6 +56,8 @@ function UnifiedAuthContent() {
   const [error, setError] = useState<string | null>(null);
   const tenantCodeHint = useTenantCodeHint();
   const tenantCodeConfig = getTenantCodeConfig(tenantCodeHint);
+  // UK hosts get `_UK` placeholder copy (UK names and .co.uk emails) instead of the PH examples.
+  const tCtx = tenantCodeHint === "UK" ? { context: "UK" as const } : undefined;
 
   // Sign in fields
   const [signinEmail, setSigninEmail] = useState("");
@@ -915,7 +917,7 @@ function UnifiedAuthContent() {
                       type="email"
                       value={signinEmail}
                       onChange={(e) => setSigninEmail(e.target.value)}
-                      placeholder={t("login.emailPlaceholder")}
+                      placeholder={t("login.emailPlaceholder", tCtx)}
                       required
                       className={inputClass}
                       style={{ fontFamily: "Inter, sans-serif" }}
@@ -1086,7 +1088,7 @@ function UnifiedAuthContent() {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder={t("signup.fullNamePlaceholder")}
+                        placeholder={t("signup.fullNamePlaceholder", tCtx)}
                         required
                         className={inputClass}
                         style={{ fontFamily: "Inter, sans-serif" }}
@@ -1104,7 +1106,7 @@ function UnifiedAuthContent() {
                         type="email"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
-                        placeholder={t("signup.emailPlaceholder")}
+                        placeholder={t("signup.emailPlaceholder", tCtx)}
                         required
                         className={inputClass}
                         style={{ fontFamily: "Inter, sans-serif" }}
@@ -1311,7 +1313,7 @@ function UnifiedAuthContent() {
                         type="email"
                         value={recoverEmail}
                         onChange={(e) => setRecoverEmail(e.target.value)}
-                        placeholder={t("forgotPassword.emailPlaceholder")}
+                        placeholder={t("forgotPassword.emailPlaceholder", tCtx)}
                         required
                         className={inputClass}
                         style={{ fontFamily: "Inter, sans-serif" }}

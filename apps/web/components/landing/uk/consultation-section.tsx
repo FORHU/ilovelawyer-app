@@ -1,5 +1,5 @@
 import { ConsultationSectionBase } from "@/components/landing/consultation-section-base";
 
 export function UkConsultationSection() {
-  return <ConsultationSectionBase />;
+  return <ConsultationSectionBase tenantCode="UK" />;
 }
