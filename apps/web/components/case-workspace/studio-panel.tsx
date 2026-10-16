@@ -37,6 +37,7 @@ import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map";
+import { useTrial, type TrialFeature } from "@/lib/trial";
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status";
 import { chatKeys } from "@/lib/query-keys";
 import { dateLocale } from "@/lib/i18n/date-locale";
@@ -145,6 +146,11 @@ interface StudioPanelProps {
  * reused as-is; only where it's surfaced moved, not how documents are stored or uploaded. */
 export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange, width, isResizing, onOpenMindMap, onOpenDataTable, onConsultationCreated, fullWidth = false, className = "flex" }: StudioPanelProps) {
   const { t } = useTranslation("case-portfolio");
+  // A trial guest on the sample case: Decisions and Timeline are greyed out, and the capped
+  // features (mind map, audio overview, case brief) say how many uses are left — the API enforces it.
+  const trial = useTrial();
+  const trialUsesLeft = (feature: TrialFeature) =>
+    trial?.featuresLeft ? t("workspace.trialUsesLeft", { count: trial.featuresLeft[feature] }) : undefined;
   // The shared pane controls' wording (RegenerateButton, updating lines) lives in the Terminal's strings.
   const { t: tTerminal } = useTranslation("terminal");
   const [openTile, setOpenTile] = useState<StudioTileKind | null>(null);
@@ -670,8 +676,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                   : undefined
               }
               expanded={expanded}
-              disabled={!hasPrompt}
-              disabledHint={!hasPrompt ? t("workspace.decisionsNeedsChatHint") : undefined}
+              disabled={!!trial || !hasPrompt}
+              disabledHint={trial ? t("workspace.trialNotIncludedHint") : !hasPrompt ? t("workspace.decisionsNeedsChatHint") : undefined}
               onClick={() => openStudioTile("decisions")}
             />
             {/* Same "open directly" shape as Documents/Timeline/Data Table below — opens the
@@ -691,7 +697,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               icon={isMindMapTileBusy ? Loader2 : Workflow}
               iconSpinning={isMindMapTileBusy}
               label={t("workspace.mindMapTile")}
-              note={isMindMapTileBusy ? t("workspace.tileUpdating") : mindMapStatusLabel || undefined}
+              note={isMindMapTileBusy ? t("workspace.tileUpdating") : trialUsesLeft("mindMap") ?? (mindMapStatusLabel || undefined)}
               expanded={expanded}
               disabled={!mindMapAvailable}
               disabledHint={!mindMapAvailable ? t("workspace.mindMapNeedsSourceHint") : undefined}
@@ -716,8 +722,8 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     : undefined
               }
               expanded={expanded}
-              disabled={noDocuments}
-              disabledHint={noDocuments ? t("workspace.needsDocumentsHint") : undefined}
+              disabled={!!trial || noDocuments}
+              disabledHint={trial ? t("workspace.trialNotIncludedHint") : noDocuments ? t("workspace.needsDocumentsHint") : undefined}
               onClick={() => openStudioTile("timeline")}
             />
             {/* Same "open directly" shape as Documents: Witnesses/Damages/Deadlines/Findings are
@@ -750,7 +756,11 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
               icon={isGeneratingAudioOverview || isRecordingAudioOverview ? Loader2 : AudioLines}
               iconSpinning={isGeneratingAudioOverview || isRecordingAudioOverview}
               label={t("workspace.audioOverviewTile")}
-              note={audioOverviewStatusLabel || undefined}
+              note={
+                isGeneratingAudioOverview || isRecordingAudioOverview
+                  ? audioOverviewStatusLabel || undefined
+                  : trialUsesLeft("audioOverview") ?? (audioOverviewStatusLabel || undefined)
+              }
               expanded={expanded}
               disabled={!audioOverviewAvailable}
               disabledHint={!audioOverviewAvailable ? t("workspace.needsDocumentsHint") : undefined}
@@ -762,6 +772,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
             <StudioTile
               icon={Download}
               label={t("workspace.downloadCaseBrief")}
+              note={trialUsesLeft("caseBrief")}
               expanded={expanded}
               onClick={() => openStudioTile("caseBrief")}
             />

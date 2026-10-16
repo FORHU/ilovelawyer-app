@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
 import { useIsFirstVisit } from "@/lib/tour/use-first-visit"
 import { sampleCaseHref, type SampleTourTrack } from "@/lib/sample-case/tours"
-import { useAiConsentPending } from "@/lib/user/mutations"
+import { useAiConsentPending, useCurrentUserQuery } from "@/lib/user/mutations"
 
 // One automatic start per tour per account per tab — if saving the "seen" status fails, the user
 // isn't sent to the sample case every time they open a case. Keyed by account, so someone who
@@ -26,15 +26,20 @@ export function SampleTourAutoStart({ track }: { track: SampleTourTrack }) {
   const guideBusy = useTourStore((s) => s.guideOpen || s.guideSpot !== null)
   // Nor before the first-login AI processing question is answered: the tour would sit under it.
   const aiConsentPending = useAiConsentPending()
+  // Nor a trial guest: the sample case is outside what the trial opens (it would land them on the
+  // lock screen), and the sample case they chose is already the case in front of them.
+  // Waits for the user to load: until then a guest can't be told from a real account.
+  const me = useCurrentUserQuery()
+  const trial = !me.data || !!me.data.trialExpiresAt
 
   useEffect(() => {
-    if (!firstVisit || guideBusy || aiConsentPending || !userId) return
+    if (trial || !firstVisit || guideBusy || aiConsentPending || !userId) return
     const key = `${userId}:${track}`
     if (started.has(key)) return
     started.add(key)
     const here = params.size ? `${pathname}?${params}` : pathname
     router.replace(sampleCaseHref(track, here))
-  }, [aiConsentPending, firstVisit, guideBusy, params, pathname, router, track, userId])
+  }, [aiConsentPending, firstVisit, guideBusy, params, pathname, router, track, trial, userId])
 
   return null
 }

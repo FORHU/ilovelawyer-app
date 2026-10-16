@@ -28,6 +28,8 @@ export interface CurrentUser {
    * are left (the API owns the limit). Null for a real account. */
   trialExpiresAt: string | null
   trialMessagesLeft: number | null
+  /** A trial guest's uses left of each capped Studio feature (mindMap, audioOverview, audioRecording, caseBrief). */
+  trialFeaturesLeft?: Record<string, number> | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
