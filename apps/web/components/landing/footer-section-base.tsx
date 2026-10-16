@@ -11,7 +11,7 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render the same footer shell (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files), but their column links genuinely differ
-// (different jurisdiction, different support email, transcription linked differently) —
+// (different jurisdiction, different support email) —
 // so, unlike the other merged sections, this one branches on real per-tenant data rather
 // than just an i18next context suffix.
 
@@ -40,7 +40,6 @@ const PH_COLUMNS = [
     columnKey: "resources",
     links: [
       { key: "helpCentre", href: "mailto:support@ilovelawyer.ph" },
-      { key: "transcription", href: "#capabilities" },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
@@ -65,7 +64,6 @@ const UK_COLUMNS = [
     columnKey: "resources",
     links: [
       { key: "helpCentre", href: "mailto:support@uk.ilovelawyer.com" },
-      { key: "transcription", href: "/homepage/transcription" },
       { key: "documentUpload", href: "#capabilities" },
       { key: "calendar", href: "#capabilities" },
     ],
@@ -75,7 +73,6 @@ const UK_COLUMNS = [
 
 export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
   // The Company links (About, Careers, Terms, Privacy, Accessibility) have no public page yet —
   // a link to "#" went nowhere, so they're left out until those pages exist, and a column with
   // nothing left in it is dropped.
@@ -126,7 +123,6 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
                 </button>
               ))}
             </div>
-            <span>{t("footer.jurisdictionLine", tCtx)}</span>
             <span>&copy; ilovelawyer</span>
           </div>
         </div>

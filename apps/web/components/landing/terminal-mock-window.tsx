@@ -4,14 +4,13 @@ import type { ReactNode } from "react";
 import { Maximize2, Pin, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
-import { PANEL_TITLES } from "@/lib/terminal/panel-titles";
-import type { DetailedMockKey, LandingPanel } from "@/components/landing/terminal-panel-cards";
+import { cardTitleOf, type DetailedMockKey, type LandingPanel } from "@/components/landing/terminal-panel-cards";
 
 // Static miniature "screenshots" of Legal Terminal panes for the landing page's panel carousel.
-// Purely presentational. Four panes have a hand-built layout (`terminal.mocks`); every other pane
+// Purely presentational. Five cards have a hand-built layout (`terminal.mocks`); every other pane
 // uses the generic list layout below, fed by `terminal.samples` — both with a `_UK` variant so a
-// UK visitor sees a UK sample case instead of a Philippine one. The pane header uses the
-// Terminal's own PANEL_TITLES and the same pin / maximise / close controls a real pane has (no
+// UK visitor sees a UK sample case instead of a Philippine one. The pane header uses the card's
+// title (the Terminal's own PANEL_TITLES unless the card overrides it) and the same pin / maximise / close controls a real pane has (no
 // keyboard-shortcut badge — the Terminal has no per-pane shortcuts). Type sizes are deliberately
 // tiny: each window reads as a scaled-down product screenshot, not as page copy.
 
@@ -67,6 +66,14 @@ interface Mocks {
     placeholder: string;
     send: string;
   };
+  chatResponse: {
+    status: string;
+    question: string;
+    source: string;
+    answer: string;
+    citationsLabel: string;
+    citations: { title: string; note: string; status: string }[];
+  };
 }
 
 const RED = "text-red-400 border-red-400/40";
@@ -118,7 +125,7 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
   // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
   // value is a nested object, so it would silently keep returning the Philippine sample data.
   const mocks = t(isUk ? "terminal.mocks_UK" : "terminal.mocks", { returnObjects: true }) as unknown as Mocks;
-  const title = PANEL_TITLES[panel.id];
+  const title = cardTitleOf(panel);
   const mock = panel.detailedMock;
 
   let body: ReactNode;
@@ -249,6 +256,34 @@ export function TerminalMockWindow({ panel, tenantCode }: { panel: LandingPanel;
               </div>
               <div className="mt-px text-[6.5px] uppercase text-white/50">{arg.note}</div>
               {arg.response && <div className="mt-px text-[6.5px] text-brand-gold">{arg.response}</div>}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  } else if (mock === "chatResponse") {
+    const m = mocks.chatResponse;
+    body = (
+      <>
+        <PaneHeader title={title} extra={<span className="text-[6.5px] uppercase text-brand-gold">{m.status}</span>} />
+        <div className="max-w-[85%] self-end rounded-lg bg-[#232323] p-1.5 text-white">{m.question}</div>
+        <Label>{m.source}</Label>
+        <div className="leading-[1.4] text-white">{m.answer}</div>
+        <Label>{m.citationsLabel}</Label>
+        <div className="flex flex-col">
+          {m.citations.map((c, i) => (
+            <div
+              key={c.title}
+              className={`flex items-start justify-between gap-2 py-1 ${i < m.citations.length - 1 ? "border-b border-white/[0.08]" : ""}`}
+            >
+              <div className="flex min-w-0 gap-1.5">
+                <span className="shrink-0 text-brand-gold">{i + 1}</span>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-white">{c.title}</div>
+                  <div className="mt-px text-[6.5px] uppercase text-white/50">{c.note}</div>
+                </div>
+              </div>
+              <Badge value={c.status} />
             </div>
           ))}
         </div>
