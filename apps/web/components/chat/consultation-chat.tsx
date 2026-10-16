@@ -1302,7 +1302,7 @@ export default function ConsultationChat({
   const handleDragOver = (e: React.DragEvent<HTMLFormElement>) => {
     if (!isFileDrag(e)) return;
     e.preventDefault();
-    if (isBusy) return; // no drop overlay while generating; the drop itself shows the alert
+    if (isBusy || trial) return; // no drop overlay while generating, or for a trial guest (no uploads)
     setIsDraggingOver(true);
   };
 
@@ -1319,6 +1319,7 @@ export default function ConsultationChat({
     if (!isFileDrag(e)) return;
     e.preventDefault();
     setIsDraggingOver(false);
+    if (trial) return; // a trial guest can't upload; the drop is swallowed so the browser doesn't open the file
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   };
 
@@ -1327,6 +1328,7 @@ export default function ConsultationChat({
   // never runs and the browser's normal paste behavior still applies.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const files = e.clipboardData?.files;
+    if (trial) return; // a trial guest can't upload
     if (files && files.length > 0) {
       e.preventDefault();
       addFiles(files);
@@ -1992,8 +1994,8 @@ export default function ConsultationChat({
         <div
           className={
             embedded
-              ? `flex items-start gap-1.5 ${isComposerMultiline ? "flex-wrap" : ""}`
-              : `flex flex-wrap items-start gap-1.5 ${isComposerMultiline ? "" : "sm:flex-nowrap"}`
+              ? `flex items-center gap-1.5 ${isComposerMultiline ? "flex-wrap" : ""}`
+              : `flex flex-wrap items-center gap-1.5 ${isComposerMultiline ? "" : "sm:flex-nowrap"}`
           }
         >
           {!isRecording && !transcribingId && (
@@ -2087,7 +2089,7 @@ export default function ConsultationChat({
 
           {embedded ? (
             <>
-              {!isRecording && !transcribingId && (
+              {!trial && !isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -2120,7 +2122,7 @@ export default function ConsultationChat({
                 </Tooltip>
               )}
 
-              {!transcribingId && (
+              {!trial && !transcribingId && (
                 <VoiceDictate
                   disabled={isBusy}
                   onRecordingChange={setIsRecording}
@@ -2186,7 +2188,7 @@ export default function ConsultationChat({
                   the transcribing row above takes over the composer instead. Plain order below
                   `sm` or while isComposerMultiline (row 2, after the textarea's basis-full row),
                   sm:order-1 (leftmost) only for the compact `sm`+ short-prompt single-row case. */}
-              {!isRecording && !transcribingId && (
+              {!trial && !isRecording && !transcribingId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -2204,7 +2206,7 @@ export default function ConsultationChat({
                 </Tooltip>
               )}
 
-              {!transcribingId && (
+              {!trial && !transcribingId && (
                 <VoiceDictate
                   disabled={isBusy}
                   onRecordingChange={setIsRecording}
