@@ -45,6 +45,13 @@ const nextConfig: NextConfig = {
   // Next's default gzip compression buffers the whole response before flushing,
   // which breaks the incremental chat streaming proxied through rewrites() below.
   compress: false,
+  // Transcription was removed as a feature; old links and bookmarks land on the app home.
+  async redirects() {
+    return [
+      { source: "/homepage/transcription", destination: "/homepage", permanent: false },
+      { source: "/homepage/transcription/:path*", destination: "/homepage", permanent: false },
+    ]
+  },
   async rewrites() {
     return AUTH_PATHS.map((p) => {
       const versionedPath = versioned(p)
