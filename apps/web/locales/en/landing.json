@@ -114,7 +114,8 @@
       "weaknesses": "Points that hurt the case's persuasive strength.",
       "strengths": "Points that help the case's persuasive strength.",
       "damages": "Claimed damages and remedies by category, with a running total.",
-      "chat": "Ask questions and get answers grounded in the case."
+      "chat": "Ask questions and get answers grounded in the case.",
+      "chatResponse": "A full answer to a case question, with the sources it relies on."
     },
     "mocks": {
       "caseSummary": {
@@ -164,6 +165,18 @@
         "chips": ["EVIDENCE ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
+      },
+      "chatResponse": {
+        "status": "Grounded · 3 sources",
+        "question": "Can the employer still rely on abandonment as a ground for dismissal?",
+        "source": "ilovelawyer · from evidence & timeline, law & precedent",
+        "answer": "Unlikely. Abandonment needs absence without valid reason and a clear intent to sever employment. Payroll shows attendance through 8 August, and the complaint was filed within a week, which is inconsistent with an intent to abandon.",
+        "citationsLabel": "Sources",
+        "citations": [
+          { "title": "payroll-attendance-aug.pdf", "note": "Evidence · p.2", "status": "SUPPORTS" },
+          { "title": "Labor Code, Art. 297", "note": "Statute · just causes", "status": "STATUTE" },
+          { "title": "Supreme Court ruling on abandonment", "note": "Precedent · two-element test", "status": "CITED" }
+        ]
       }
     },
     "mocks_UK": {
@@ -214,6 +227,18 @@
         "chips": ["EVIDENCE ↗"],
         "placeholder": "Ask about this case…",
         "send": "Send ↗"
+      },
+      "chatResponse": {
+        "status": "Grounded · 3 sources",
+        "question": "Does the claimant have standing under the Inheritance Act 1975?",
+        "source": "ilovelawyer · from evidence & timeline, law & precedent",
+        "answer": "Likely yes, under s.1(1)(e) as a person maintained by the deceased. The bank statements show recurring transfers through 2023. That still depends on showing the transfers were maintenance and not gifts.",
+        "citationsLabel": "Sources",
+        "citations": [
+          { "title": "bank-statements-2019-2023.pdf", "note": "Evidence · pp.14–37", "status": "SUPPORTS" },
+          { "title": "Inheritance Act 1975, s.1(1)(e)", "note": "Statute · eligible applicants", "status": "STATUTE" },
+          { "title": "letter-of-wishes-2021.pdf", "note": "Evidence · executors' position", "status": "UNVERIFIED" }
+        ]
       }
     },
     "samples": {
