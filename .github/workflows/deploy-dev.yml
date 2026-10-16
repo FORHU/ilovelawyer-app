@@ -19,6 +19,12 @@ name: Deploy Dev
 #      RABBITMQ_URL come from the host — do NOT set them here.
 
 on:
+  # Dev tracks main. Without this the dev container only changes when somebody
+  # remembers to dispatch, and it silently falls behind: on 2026-10-16 ilovelawyer
+  # dev was 24h and several merges stale while production deployed on every merge,
+  # which read as "changes not propagating" rather than as a missing trigger.
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
@@ -27,9 +33,6 @@ on:
         # before anything is built. Blank falls back to github.ref_name.
         description: "Branch, tag or SHA to deploy (blank = the branch you ran this from)"
         required: false
-  # Uncomment once a dev branch exists and the team wants push-to-deploy.
-  # push:
-  #   branches: [dev]
 
 concurrency:
   group: forhu-dev-ilovelawyer
