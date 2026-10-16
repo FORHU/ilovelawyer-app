@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next"
 import { LandingNavbar } from "@/components/landing/navbar"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { useStartTrialMutation } from "@/lib/auth/mutations"
-import { TRIAL_MESSAGE_LIMIT } from "@/lib/trial"
+import { useTrialConfig } from "@/lib/trial"
 
 // Where the landing page's "Start a consultation" goes for a visitor with no account: the notice
 // they accept, then a throwaway guest account and the real consultation page. UK only; any other
@@ -18,6 +18,7 @@ export default function TrialPage() {
   const router = useRouter()
   const tenantCode = useTenantCodeHint()
   const start = useStartTrialMutation()
+  const config = useTrialConfig()
 
   useEffect(() => {
     if (tenantCode !== "UK") router.replace("/login?next=%2Fhomepage")
@@ -26,8 +27,8 @@ export default function TrialPage() {
   if (tenantCode !== "UK") return null
 
   const included = [
-    { icon: MessagesSquare, title: t("trial.answersTitle", { count: TRIAL_MESSAGE_LIMIT }), body: t("trial.answersBody") },
-    { icon: Clock, title: t("trial.timeTitle"), body: t("trial.timeBody") },
+    { icon: MessagesSquare, title: config ? t("trial.answersTitle", { count: config.messageLimit }) : t("trial.answersTitleLoading"), body: t("trial.answersBody") },
+    { icon: Clock, title: config ? t("trial.timeTitle", { count: config.durationHours }) : t("trial.timeTitleLoading"), body: t("trial.timeBody") },
     { icon: Lock, title: t("trial.scopeTitle"), body: t("trial.scopeBody") },
   ]
 

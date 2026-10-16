@@ -25,9 +25,9 @@ export interface CurrentUser {
   /** A Google Calendar grant is stored (Connect Google Calendar on the profile page). */
   googleCalendarConnected: boolean
   /** Set only for a landing-page trial guest: when the trial ends, and how many of its AI answers
-   * are spent (TRIAL_MESSAGE_LIMIT on the API). Null for a real account. */
+   * are left (the API owns the limit). Null for a real account. */
   trialExpiresAt: string | null
-  trialMessagesUsed: number
+  trialMessagesLeft: number | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
