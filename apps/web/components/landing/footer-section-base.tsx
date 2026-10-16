@@ -75,7 +75,6 @@ const UK_COLUMNS = [
 
 export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
   // The Company links (About, Careers, Terms, Privacy, Accessibility) have no public page yet —
   // a link to "#" went nowhere, so they're left out until those pages exist, and a column with
   // nothing left in it is dropped.
@@ -126,7 +125,6 @@ export function FooterSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
                 </button>
               ))}
             </div>
-            <span>{t("footer.jurisdictionLine", tCtx)}</span>
             <span>&copy; ilovelawyer</span>
           </div>
         </div>
