@@ -10,9 +10,11 @@ import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { HubRelatedCases } from "@/components/chat/case-hub-widget";
 import type { RelatedCase } from "@/lib/chat/mutations";
+import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
-// PH and UK render identical markup and content (see hero-section-base.tsx for why this is one
-// component instead of two hand-copied files) — the handoff shows the same sample case to both.
+// PH and UK render identical markup (see hero-section-base.tsx for why this is one component
+// instead of two hand-copied files), but each tenant gets its own sample case and citations via
+// the `_UK` locale keys.
 //
 // The citation card carries the `dark` class so it always uses the dark theme tokens, matching the
 // handoff (a permanently dark card, like the rest of the page's chrome) in both light and dark mode.
@@ -29,9 +31,15 @@ interface MockCitation {
   vetted: boolean;
 }
 
-export function ConsultationSectionBase() {
+export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const { t } = useTranslation("landing");
-  const relatedCases = t("consultation.relatedCasesItems", { returnObjects: true }) as MockCitation[];
+  const isUk = tenantCode === "UK";
+  const tCtx = isUk ? { context: "UK" as const } : undefined;
+  // Explicit `_UK` key rather than i18next's `context` option: context is not applied when the
+  // value is a nested object, so it would silently keep returning the Philippine sample data.
+  const relatedCases = t(isUk ? "consultation.relatedCasesItems_UK" : "consultation.relatedCasesItems", {
+    returnObjects: true,
+  }) as MockCitation[];
   const entries: RelatedCase[] = relatedCases.map((c) => ({
     type: "case",
     title: c.title,
@@ -67,7 +75,7 @@ export function ConsultationSectionBase() {
           <h2 className="font-display text-white text-[clamp(38px,5vw,64px)] font-light leading-[0.98] tracking-[-0.02em]">
             {t("consultation.heading")}
           </h2>
-          <p className="text-white/75 text-base leading-[1.6]">{t("consultation.body")}</p>
+          <p className="text-white/75 text-base leading-[1.6]">{t("consultation.body", tCtx)}</p>
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
@@ -89,7 +97,7 @@ export function ConsultationSectionBase() {
           <div className="p-4 border-b border-border flex items-center gap-2">
             <span className="size-1.5 rounded-full bg-brand-gold shrink-0" />
             <span className="font-['Libre_Caslon_Text'] text-card-foreground text-sm uppercase tracking-[-0.01em]">
-              {t("consultation.caseName")}
+              {t("consultation.caseName", tCtx)}
             </span>
           </div>
 
@@ -106,7 +114,7 @@ export function ConsultationSectionBase() {
           <div className="px-4 py-3 border-t border-border flex flex-col items-start gap-1">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] text-card-foreground">
               <Loader2 className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
-              {t("consultation.attachment")}
+              {t("consultation.attachment", tCtx)}
             </span>
             <span className="text-[10.5px] text-muted-foreground">{t("consultation.indexing")}</span>
           </div>

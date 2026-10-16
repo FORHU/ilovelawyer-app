@@ -110,12 +110,18 @@
   "consultation": {
     "heading": "한 번만 물어보세요. 그 근거가 되는 법률까지 함께.",
     "body": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 사건 번호 또는 R.A. 번호, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
+    "body_UK": "모든 상담은 작성되는 즉시 스트리밍되며, 관련 판례가 제목, 중립 인용 또는 판례집 인용, 출처 링크, 발췌문과 함께 옆에 표시되고 검증된 인용은 별도로 표시됩니다. 문서를 첨부하면 색인 작업이 끝나는 대로 어시스턴트가 문서 내부를 검색합니다.",
     "cta": "상담 시작하기",
     "caseName": "Reyes v. Northbridge Logistics",
+    "caseName_UK": "Hughes v Northbridge Logistics Ltd",
     "relatedCases": "관련 사건",
     "relatedCasesItems": [
       { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "snippet": "해고 시 절차적 적법절차는 두 건의 서면 통지와 실질적인 소명 기회를 요구합니다.", "vetted": true },
       { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "snippet": "정당한 사유가 있는 해고이더라도 이중 통지 원칙이 지켜지지 않은 경우 명목적 손해배상이 인정됩니다.", "vetted": false }
+    ],
+    "relatedCasesItems_UK": [
+      { "title": "Polkey v A E Dayton Services Ltd", "citation": "[1987] UKHL 8", "snippet": "고용주에게 해고할 정당한 사유가 있더라도 공정한 절차를 거치지 않으면 부당해고가 될 수 있습니다.", "vetted": true },
+      { "title": "British Home Stores Ltd v Burchell", "citation": "[1980] ICR 303", "snippet": "비위행위를 이유로 한 해고에는 진정한 확신, 합리적 근거, 합리적 조사가 필요합니다.", "vetted": false }
     ],
     "vetted": "검증됨",
     "indexing": "채팅용 색인 중…"

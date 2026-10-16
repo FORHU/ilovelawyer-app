@@ -108,8 +108,8 @@ const BY_TENANT: Record<TenantCode, FaqItem[]> = {
     {
       question: "How does ilovelawyer handle Civil Procedure Rules (CPR) deadlines?",
       answer:
-        "ilovelawyer UK provides provisional CPR deadline tracking, and a deadline is not treated as final until two attorneys have confirmed it.",
-      detail: "This dual-attorney confirmation gate exists so that a calculated date is checked by people before anyone relies on it.",
+        "ilovelawyer UK provides provisional CPR deadline tracking, and a deadline is not treated as final until two members of your team have confirmed it. In a solo or personal workspace, one confirmation is enough.",
+      detail: "This confirmation gate exists so that a calculated date is checked by a person before anyone relies on it.",
     },
     ...SHARED,
   ],
