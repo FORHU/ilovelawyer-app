@@ -10,12 +10,14 @@ import { TerminalMockWindow } from "@/components/landing/terminal-mock-window";
 import {
   PANEL_CATEGORIES,
   PANEL_TEXTURES,
+  cardKeyOf,
+  cardTitleOf,
+  isGridCategory,
   orderForCategory,
   panelsForTenant,
   type LandingPanel,
   type PanelCategory,
 } from "@/components/landing/terminal-panel-cards";
-import { PANEL_TITLES } from "@/lib/terminal/panel-titles";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 
@@ -31,6 +33,7 @@ export function TerminalShowcaseSectionBase({ tenantCode }: { tenantCode: Tenant
   const { t } = useTranslation("landing");
   const router = useRouter();
   const panels = useMemo(() => panelsForTenant(tenantCode), [tenantCode]);
+  const panes = panels.filter((p) => !p.previewOnly).length;
 
   const handleCtaClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,7 +55,7 @@ export function TerminalShowcaseSectionBase({ tenantCode }: { tenantCode: Tenant
         <h2 className="font-display text-white text-[clamp(36px,4.6vw,58px)] font-normal leading-[1.08]">
           {t("terminal.heading")}
         </h2>
-        <p className="text-white/75 text-base leading-[1.6] max-w-[440px]">{t("terminal.body", { count: panels.length })}</p>
+        <p className="text-white/75 text-base leading-[1.6] max-w-[440px]">{t("terminal.body", { count: panes })}</p>
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
@@ -77,7 +80,8 @@ export function TerminalShowcaseSectionBase({ tenantCode }: { tenantCode: Tenant
 // speed can ease — to a stop while hovered, and to ±FAST_FORWARD while an edge arrow is hovered.
 // The set is repeated to at least MIN_SET cards, then doubled, and the offset wraps at one set's
 // width, so the seam is never visible. Narrow/touch/reduced-motion: no loop, no arrows, no
-// duplicates — a native horizontal scroller with snap points instead.
+// duplicates — a native horizontal scroller with snap points instead. Grid tabs (see
+// GRID_CATEGORIES) skip both: every panel in the tab, once, in a static wrapping grid.
 
 const MIN_SET = 8;
 /** Seconds for the strip to travel one card's width at cruising speed. */
@@ -100,8 +104,10 @@ function PanelCarousel({ panels, tenantCode }: { panels: LandingPanel[]; tenantC
   const { t } = useTranslation("landing");
   const reducedMotion = usePrefersReducedMotion();
   const isNarrow = useIsNarrow();
-  const animated = !isNarrow && !reducedMotion;
   const [category, setCategory] = useState<PanelCategory | "all">("all");
+  const grid = isGridCategory(category);
+  const animated = !grid && !isNarrow && !reducedMotion;
+  const mode: CardMode = grid ? "grid" : animated ? "marquee" : "scroller";
 
   const trackRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
@@ -176,6 +182,15 @@ function PanelCarousel({ panels, tenantCode }: { panels: LandingPanel[]; tenantC
         );
       })}
     </div>
+    {grid ? (
+      <ul className="mx-auto grid max-w-[1400px] list-none grid-cols-[repeat(auto-fit,minmax(17rem,20rem))] justify-center gap-4 p-0">
+        {withTexture.map(({ panel, texture }) => (
+          <li key={cardKeyOf(panel)} className="flex min-w-0">
+            <PanelCard panel={panel} texture={texture} duplicate={false} mode="grid" tenantCode={tenantCode} />
+          </li>
+        ))}
+      </ul>
+    ) : (
     <div className="relative">
       {animated && (
         <>
@@ -218,41 +233,48 @@ function PanelCarousel({ panels, tenantCode }: { panels: LandingPanel[]; tenantC
           className={`flex w-max will-change-transform ${animated ? "gap-4 px-6 md:px-16" : "gap-3 px-[10vw]"}`}
         >
           {items.map(({ panel, texture, dup }, i) => (
-            <PanelCard key={`${panel.id}-${i}`} panel={panel} texture={texture} duplicate={dup} animated={animated} tenantCode={tenantCode} />
+            <PanelCard key={`${cardKeyOf(panel)}-${i}`} panel={panel} texture={texture} duplicate={dup} mode={mode} tenantCode={tenantCode} />
           ))}
         </div>
       </div>
     </div>
+    )}
     </>
   );
 }
+
+type CardMode = "marquee" | "scroller" | "grid";
+
+const CARD_MODE_CLASS: Record<CardMode, string> = {
+  marquee: "flex-none w-80 transition-[width] duration-420 ease-landing hover:w-140",
+  scroller: "flex-none w-[80vw] max-w-[360px] snap-center",
+  // No hover-widen here: a widening card would reflow the rest of its row.
+  grid: "w-full motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:-translate-y-1",
+};
 
 function PanelCard({
   panel,
   texture,
   duplicate,
-  animated,
+  mode,
   tenantCode,
 }: {
   panel: LandingPanel;
   texture: string;
   /** A repeat of an earlier card — hidden from assistive tech and the tab order. */
   duplicate: boolean;
-  animated: boolean;
+  mode: CardMode;
   tenantCode: TenantCode;
 }) {
   const { t } = useTranslation("landing");
+  const description = t(`terminal.cards.${cardKeyOf(panel)}`);
   return (
     <Link
       href="/signup"
       aria-hidden={duplicate || undefined}
       tabIndex={duplicate ? -1 : undefined}
-      title={t(`terminal.cards.${panel.id}`)}
-      className={`group relative flex-none min-h-130 overflow-hidden rounded-3xl bg-cover bg-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b] ${
-        animated
-          ? "w-80 transition-[width] duration-420 ease-landing hover:w-140"
-          : "w-[80vw] max-w-[360px] snap-center"
-      }`}
+      title={description}
+      className={`group relative min-h-130 overflow-hidden rounded-3xl bg-cover bg-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b] ${CARD_MODE_CLASS[mode]}`}
       style={{ backgroundImage: `url('${texture}')` }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/70 px-5 py-7">
@@ -260,11 +282,11 @@ function PanelCard({
           {t(`terminal.categories.${panel.category}`)}
         </span>
         <h3 className="font-display text-white text-[22px] whitespace-nowrap [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-          {PANEL_TITLES[panel.id]}
+          {cardTitleOf(panel)}
         </h3>
         {/* Two lines max — a third runs under the mini window; the full line is the card's title tooltip. */}
         <p className="mt-2 max-w-[260px] line-clamp-2 text-white/85 text-[13px] leading-[1.5] [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-          {t(`terminal.cards.${panel.id}`)}
+          {description}
         </p>
       </div>
       <TerminalMockWindow panel={panel} tenantCode={tenantCode} />

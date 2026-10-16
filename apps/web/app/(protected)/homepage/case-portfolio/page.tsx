@@ -214,8 +214,10 @@ export default function CaseManagerDashboard() {
   const [sharingCase, setSharingCase] = useState<CaseRecord | null>(null);
   // An organization case is shared among that organization's members. A portfolio case is shared
   // with individual registered users, read-only — except a copy kept from an organization the
-  // user has left, whose client material stays with that organization.
-  const canShareCase = (c: CaseRecord) => (inPortfolio ? !c.copiedFromCaseId : hasPortfolioTab);
+  // user has left, whose client material stays with that organization. Archived cases can't be
+  // shared until restored.
+  const canShareCase = (c: CaseRecord) =>
+    c.status !== "ARCHIVED" && (inPortfolio ? !c.copiedFromCaseId : hasPortfolioTab);
   // "Shared with me": portfolio cases other people shared with this user. Shown once there are
   // any, or when a share notification links here with ?view=shared.
   // Until the user picks a view themselves, the link decides. Read through useSyncExternalStore so
@@ -898,12 +900,6 @@ export default function CaseManagerDashboard() {
                             <DropdownMenuContent>
                               {c.status === "ARCHIVED" ? (
                                 <>
-                                  {canShareCase(c) && (
-                                    <DropdownMenuItem onSelect={() => setSharingCase(c)}>
-                                      <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                                      {t("share.button")}
-                                    </DropdownMenuItem>
-                                  )}
                                   <DropdownMenuItem onSelect={() => unarchiveCase(c.id)}>
                                     <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
                                     {t("unarchiveCaseCta")}
