@@ -110,12 +110,18 @@
   "consultation": {
     "heading": "Magtanong nang isang beses. Makuha ang batas sa likod nito.",
     "body": "Dumadaloy ang bawat consultation habang isinusulat ito, kasama ang kaugnay na case law sa tabi nito: pamagat, numero ng kaso o R.A., link ng pinagmulan, at excerpt, na may markang beripikadong citation. Mag-attach ng dokumento at hahanapin ito ng assistant kapag natapos na ang pag-index.",
+    "body_UK": "Dumadaloy ang bawat consultation habang isinusulat ito, kasama ang kaugnay na case law sa tabi nito: pamagat, neutral citation o law report reference, link ng pinagmulan, at excerpt, na may markang beripikadong citation. Mag-attach ng dokumento at hahanapin ito ng assistant kapag natapos na ang pag-index.",
     "cta": "Simulan ang Konsultasyon",
     "caseName": "Reyes v. Northbridge Logistics",
+    "caseName_UK": "Hughes v Northbridge Logistics Ltd",
     "relatedCases": "Mga Kaugnay na Kaso",
     "relatedCasesItems": [
       { "title": "Abbott Laboratories v. Alcaraz", "citation": "G.R. No. 192571", "snippet": "Ang procedural due process sa pagtanggal ay nangangailangan ng dalawang nakasulat na abiso at tunay na pagkakataong madinig.", "vetted": true },
       { "title": "Agabon v. NLRC", "citation": "G.R. No. 158693", "snippet": "Nominal na danyos kapag may sapat na dahilan ang pagtanggal ngunit hindi nasunod ang twin-notice rule.", "vetted": false }
+    ],
+    "relatedCasesItems_UK": [
+      { "title": "Polkey v A E Dayton Services Ltd", "citation": "[1987] UKHL 8", "snippet": "Maaaring hindi patas ang pagtanggal kung nilaktawan ng employer ang patas na proseso, kahit may mabuting dahilan para magtanggal.", "vetted": true },
+      { "title": "British Home Stores Ltd v Burchell", "citation": "[1980] ICR 303", "snippet": "Sa pagtanggal dahil sa misconduct: tunay na paniniwala, makatwirang batayan, at makatwirang imbestigasyon.", "vetted": false }
     ],
     "vetted": "Beripikado",
     "indexing": "Ini-index para sa chat…"

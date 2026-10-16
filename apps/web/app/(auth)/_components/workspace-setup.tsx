@@ -6,6 +6,7 @@ import { Building2, Loader2, Mail, UserCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import CustomSelect from "@/components/ui/custom-select";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { toActiveOrg } from "@/lib/auth/mutations";
 import { useMyInviteQuery, type OrganizationRole } from "@/lib/organizations/queries";
 import {
@@ -37,6 +38,8 @@ const secondaryButtonClass =
 export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: string; onDone: () => void }) {
   const { t } = useTranslation(["auth", "organization"]);
   const setOrganization = useAuthStore((s) => s.setOrganization);
+  // The host, not the auth store: the user has no organization yet at this step.
+  const tenantCodeHint = useTenantCodeHint();
   const [choice, setChoice] = useState<Choice>(null);
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -259,7 +262,7 @@ export function WorkspaceSetup({ defaultOrgName, onDone }: { defaultOrgName: str
               type="text"
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
-              placeholder={t("workspace.orgNamePlaceholder")}
+              placeholder={t("workspace.orgNamePlaceholder", tenantCodeHint === "UK" ? { context: "UK" } : undefined)}
               required
               maxLength={120}
               disabled={isPending}
