@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useCanContributeToCase } from "@/lib/cases/permissions";
+import { useTrial } from "@/lib/trial";
+import { useCreateAccountFromTrial } from "@/components/trial/trial-banner";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { isNotFoundError } from "@/lib/fetch";
 import { Paperclip, X, Plus, ArrowUpRight, Loader2, AlertCircle, CheckCircle2, RotateCcw, Workflow, MessageSquare, Clock, Grid2x2, PanelLeft, FolderOpen, Copy, Check, MoreVertical, ListTree, SquarePen, Square, Lock } from "lucide-react";
@@ -70,7 +72,7 @@ import {
   chunkTranscription,
 } from "@/lib/transcription/mutations";
 
-import { chatKeys } from "@/lib/query-keys";
+import { chatKeys, userKeys } from "@/lib/query-keys";
 import { generateId } from "@/lib/id";
 import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
 import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
@@ -645,6 +647,10 @@ export default function ConsultationChat({
   // their own included (useCanContributeToCase; the API refuses it too): the composer becomes a
   // read-only note, and starting, renaming or regenerating anything here is hidden.
   const chatReadOnly = !useCanContributeToCase(linkedCaseId || caseId || undefined);
+  // A trial guest whose answers are spent (see lib/trial.ts): the composer gives way to a sign-up prompt.
+  const trial = useTrial();
+  const trialUsedUp = !!trial && trial.answersLeft === 0;
+  const createAccountFromTrial = useCreateAccountFromTrial();
   // The same read-only chat for a case someone shared with this user — only the note differs.
   const sharedWithMe = useIsSharedWorkspace();
   const { data: consultationDocuments } = useConsultationDocumentsQuery(consultationId ?? undefined);
@@ -1575,8 +1581,10 @@ export default function ConsultationChat({
         if (sendTokenRef.current === myToken) setPendingTurn(null);
         return;
       }
-      // Consent-off is an expected refusal, surfaced in the reply bubble below — not worth a console error.
-      if ((error as { code?: string } | null)?.code !== "CONSENT_REQUIRED") console.error("Failed to send message:", error);
+      // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
+      // not worth a console error.
+      const refusal = (error as { code?: string } | null)?.code;
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1600,13 +1608,17 @@ export default function ConsultationChat({
           if (!prev) return prev;
           const nextMessages = [...prev.messages];
           // The API refuses (403 CONSENT_REQUIRED) before anything is saved when the person has
-          // switched AI processing off — say so, instead of the generic failure.
-          const consentOff = (error as { code?: string } | null)?.code === "CONSENT_REQUIRED";
-          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(consentOff ? "sendErrorNoConsent" : "sendError") };
+          // switched AI processing off, and (403 TRIAL_LIMIT_REACHED) when a trial guest has spent
+          // their answers — say so, instead of the generic failure.
+          const refusalKey = refusal === "CONSENT_REQUIRED" ? "sendErrorNoConsent" : refusal === "TRIAL_LIMIT_REACHED" ? "sendErrorTrialUsedUp" : "sendError";
+          nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };
         });
       }
     } finally {
+      // A trial guest's answers-left count changed with this send: read it now, so the composer
+      // gives way to the sign-up prompt the moment the last answer lands, not on the next poll.
+      if (trial) void queryClient.invalidateQueries({ queryKey: userKeys.me() });
       if (startedConsultationId) stopSending(startedConsultationId);
       if (sendAbortRef.current === abort) sendAbortRef.current = null;
       setIsStopping(false);
@@ -1805,7 +1817,30 @@ export default function ConsultationChat({
     }
   };
 
-  const chatInputBar = chatReadOnly ? (
+  const chatInputBar = trialUsedUp ? (
+    // A trial guest with no answers left: the sign-up prompt replaces the box, so a sixth message
+    // is never typed only to be refused.
+    <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
+      <div
+        role="note"
+        className={`flex flex-wrap items-center justify-between gap-3 border border-border bg-card py-2 pl-5 pr-2 text-[13px] font-['Inter'] text-card-foreground ${
+          embedded ? "rounded-3xl" : "rounded-[26px]"
+        }`}
+      >
+        <span className="flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          {t("input.trialUsedUp")}
+        </span>
+        <button
+          type="button"
+          onClick={createAccountFromTrial}
+          className="cursor-pointer whitespace-nowrap rounded-full bg-brand-gold px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[1.2px] text-brand-gold-foreground transition-colors duration-200 hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {t("input.trialCreateAccount")}
+        </button>
+      </div>
+    </div>
+  ) : chatReadOnly ? (
     <div className={`w-full shrink-0 ${embedded ? (centerContent ? "px-6" : "") : "max-w-3xl mx-auto"}`}>
       <p
         role="note"

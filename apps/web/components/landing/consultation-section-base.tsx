@@ -22,7 +22,9 @@ import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 // as it actually looks in dark mode.
 
 const CONSULTATION_ROUTE = "/homepage";
-const loginHref = `/login?next=${encodeURIComponent(CONSULTATION_ROUTE)}`;
+// A visitor with no account tries the consultation as a trial guest (UK; /trial sends other
+// hosts on to the normal sign-in).
+const TRIAL_ROUTE = "/trial";
 
 interface MockCitation {
   title: string;
@@ -65,7 +67,7 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
         // fall through — hint was stale, visitor isn't actually logged in
       }
     }
-    router.push(loginHref);
+    router.push(TRIAL_ROUTE);
   };
 
   return (
@@ -79,7 +81,7 @@ export function ConsultationSectionBase({ tenantCode }: { tenantCode: TenantCode
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                href={loginHref}
+                href={TRIAL_ROUTE}
                 onClick={(e: React.MouseEvent<HTMLAnchorElement>) => void handleCtaClick(e)}
                 className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-brand-gold text-brand-gold-foreground hover:bg-brand-gold/85 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
               >

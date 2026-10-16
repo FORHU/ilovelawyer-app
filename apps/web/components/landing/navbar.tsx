@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -35,6 +37,10 @@ const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visibl
 // splash) — every NAV_LINKS entry scrolls to one of them, so there they'd silently do nothing.
 export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHero?: boolean; sectionLinks?: boolean }) {
   const { t } = useTranslation("landing");
+  // UK visitors try the product first (see app/trial); other tenants have no trial, so they sign up.
+  const isUk = useTenantCodeHint() === "UK";
+  const ctaHref = isUk ? "/trial" : "/signup";
+  const ctaLabel = isUk ? t("navbar.startTrial") : t("navbar.getStarted");
   const [mobileOpen, setMobileOpen] = useState(false);
   const hasAccessToken = useAuthStore((s) => !!s.accessToken);
   // The public page never runs a silent refresh, so a signed-in visitor arriving fresh has no
@@ -63,22 +69,34 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
   // Once the page is scrolled the hero is no longer guaranteed to sit behind the header, so it
   // switches to the frosted look.
   const transparent = overHero && !scrolled;
-  const LINK_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_INK : SOLID_INK}`;
-  const BORDER_INK = `transition-colors duration-300 ${transparent ? OVER_HERO_BORDER : SOLID_BORDER}`;
+  // Pages with no hero (the trial, the neutral splash) never sit over the dark video, so their bar
+  // follows the app theme; the landing's frosted-over-hero look keeps its fixed light surface.
+  const themed = !overHero;
+  const ink = themed ? "text-foreground" : transparent ? OVER_HERO_INK : SOLID_INK;
+  const LINK_INK = `transition-colors duration-300 ${ink}`;
+  const BORDER_INK = `transition-colors duration-300 ${themed ? "border-border" : transparent ? OVER_HERO_BORDER : SOLID_BORDER}`;
+  const focusRing = themed
+    ? "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    : FOCUS_RING;
+  const surface = themed
+    ? "bg-background/80 backdrop-blur-lg border-border"
+    : transparent
+      ? "bg-transparent border-transparent"
+      : "bg-white/75 backdrop-blur-lg border-b-white/25";
+  // The trial's own button is the call to action there; a second one to the same page is noise.
+  const onTrialPage = usePathname() === "/trial";
 
   // `bg-clip-padding` keeps the frosted white fill out from under the bottom border — otherwise
   // the translucent white border sits on white and never shows against the page below.
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b bg-clip-padding transition-[background-color,backdrop-filter,border-color] duration-300 ${
-        transparent
-          ? "bg-transparent border-transparent"
-          : "bg-white/75 backdrop-blur-lg border-b-white/25"
-      }`}
+      className={`fixed top-0 inset-x-0 z-(--z-header-drawer) w-full flex flex-wrap items-center justify-between gap-3 px-8 py-3.5 backdrop-blur-0 border-b bg-clip-padding transition-[background-color,backdrop-filter,border-color] duration-300 ${surface}`}
     >
-      {/* Rendered even with no links — its flex-1 keeps the logo centered against the right side. */}
+      {/* Only with section links: it is the flex-1 that centres the logo against the right side.
+          Without links the logo sits at the left instead of floating alone in the middle. */}
+      {sectionLinks && (
       <nav className={`hidden lg:flex flex-1 items-center gap-1 text-[15px] tracking-[-0.018em] ${LINK_INK}`}>
-        {sectionLinks && NAV_LINKS.map((link) => (
+        {NAV_LINKS.map((link) => (
           <Tooltip key={link.key}>
             <TooltipTrigger asChild>
               <a
@@ -96,6 +114,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
           </Tooltip>
         ))}
       </nav>
+      )}
 
       {/* `forBackground="current"` (not the dashboard header's `"auto"`) — this logo needs to
           transition with `LINK_INK` (transparent-over-hero white → solid-ink-on-hover), which a
@@ -118,7 +137,7 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
             <TooltipTrigger asChild>
               <Link
                 href="/homepage"
-                className={`bg-brand-gold text-brand-gold-foreground text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
+                className={`bg-brand-gold text-brand-gold-foreground text-xs tracking-[1.2px] uppercase font-semibold px-6 py-2.5 rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${focusRing}`}
               >
                 {t("navbar.goToDashboard")}
               </Link>
@@ -131,24 +150,26 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
               <TooltipTrigger asChild>
                 <Link
                   href="/login"
-                  className={`text-xs tracking-[1.2px] uppercase border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK} ${FOCUS_RING}`}
+                  className={`text-xs tracking-[1.2px] uppercase border rounded-full px-5 py-2.5 hover:opacity-62 transition-opacity duration-200 ${BORDER_INK} ${focusRing}`}
                 >
                   {t("navbar.signIn")}
                 </Link>
               </TooltipTrigger>
               <TooltipContent>Log in to your existing account</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/signup"
-                  className={`text-xs tracking-[1.2px] uppercase font-semibold rounded-full px-5 py-2.5 bg-black text-white [text-shadow:none] hover:opacity-62 transition-opacity duration-200 ${FOCUS_RING}`}
-                >
-                  {t("navbar.getStarted")}
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Create your free ilovelawyer account</TooltipContent>
-            </Tooltip>
+            {!onTrialPage && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={ctaHref}
+                    className={`text-xs tracking-[1.2px] uppercase font-semibold rounded-full px-5 py-2.5 [text-shadow:none] hover:opacity-62 transition-opacity duration-200 ${themed ? "bg-foreground text-background" : "bg-black text-white"} ${focusRing}`}
+                  >
+                    {ctaLabel}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>{isUk ? "Try a consultation without an account" : "Create your free ilovelawyer account"}</TooltipContent>
+              </Tooltip>
+            )}
           </>
         )}
       </div>
@@ -209,13 +230,15 @@ export function LandingNavbar({ overHero = true, sectionLinks = true }: { overHe
                 >
                   {t("navbar.signIn")}
                 </Link>
-                <Link
-                  href="/signup"
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex-1 bg-brand-gold text-brand-gold-foreground text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
-                >
-                  {t("navbar.getStarted")}
-                </Link>
+                {!onTrialPage && (
+                  <Link
+                    href={ctaHref}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex-1 bg-brand-gold text-brand-gold-foreground text-xs font-semibold px-4 py-3 text-center rounded-full hover:bg-brand-gold/85 transition-colors duration-200 ${FOCUS_RING}`}
+                  >
+                    {ctaLabel}
+                  </Link>
+                )}
               </>
             )}
           </div>
