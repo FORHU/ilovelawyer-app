@@ -43,6 +43,7 @@ const TARGETS = {
   "header-account": { route: null, fallback: "header-menu" },
   "header-theme": { route: null, fallback: "header-menu" },
   "header-guide": { route: null, fallback: "header-menu" },
+  "header-feedback": { route: null, fallback: "header-menu" },
   "header-bell": { route: null, fallback: "header-menu" },
   "header-lang": { route: null, fallback: "header-menu" },
   "header-menu": { route: null },
@@ -139,6 +140,7 @@ export const GUIDE_ANSWERS: GuideAnswer[] = [
   { id: "theme", keys: ["dark", "light", "theme"], target: "header-theme", route: null, topic: "settings" },
   { id: "language", keys: ["language", "tagalog", "korean", "filipino"], target: "header-lang", route: null, topic: "settings" },
   { id: "notifications", keys: ["notification", "alert", "bell"], target: "header-bell", route: null, topic: "notifications" },
+  { id: "feedback", keys: ["feedback", "report a bug", "report a problem", "something is broken", "wrong answer", "suggest", "feature request"], target: "header-feedback", route: null, topic: "feedback" },
   { id: "tour", keys: ["tour", "onboarding", "walkthrough"], target: "header-guide", route: null, topic: "tour" },
   { id: "library", keys: ["codal", "library", "jurisprudence", "penal code", "civil code", "constitution"], target: "nav-library", route: null, topic: "library" },
 ]
@@ -160,7 +162,7 @@ export const GUIDE_SUGGESTIONS_BY_ROUTE: Record<string, string[]> = {
 
 export const GUIDE_SUGGESTIONS = [
   "addHearing", "openTerminal", "upload", "invite", "newConsultation", "dictate", "findCase",
-  "workspace", "notifications", "searchLibrary", "theme", "language",
+  "workspace", "notifications", "searchLibrary", "theme", "language", "feedback",
 ]
 
 export type GuideMatch =

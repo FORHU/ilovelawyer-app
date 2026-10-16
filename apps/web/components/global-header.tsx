@@ -272,6 +272,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               <button
                 type="button"
                 onClick={openFeedback}
+                data-tour-id="header-feedback"
                 aria-label={t("feedback.open", { defaultValue: "Send feedback" })}
                 className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border pl-2.5 pr-3 text-[10px] uppercase tracking-[1px] text-foreground transition-colors hover:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
