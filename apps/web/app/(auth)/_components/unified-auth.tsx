@@ -23,7 +23,6 @@ import {
   useGoogleAuthMutation,
   useGoogleLinkMutation,
   useLoginMutation,
-  useLogoutMutation,
   useSendOtpMutation,
   useSignupMutation,
   useUpdateRequiredPasswordMutation,
@@ -89,12 +88,8 @@ function UnifiedAuthContent() {
 
   // Post-signup OTP step
   const [otpStep, setOtpStep] = useState(false);
-  // Post-verification workspace step (solo / create org / join org)
+  // Post-verification workspace step (sets up their personal workspace automatically)
   const [workspaceStep, setWorkspaceStep] = useState(false);
-  // The Tenant auto-approved the account at verification — after workspace setup the user
-  // is signed out and asked to sign in again, instead of going straight into the app.
-  const [signInAfterSetup, setSignInAfterSetup] = useState(false);
-  const [accountReady, setAccountReady] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -126,7 +121,6 @@ function UnifiedAuthContent() {
   const sendOtpMutation = useSendOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
   const cancelSignupMutation = useCancelSignupMutation();
-  const logoutMutation = useLogoutMutation();
 
 
   useEffect(() => {
@@ -161,7 +155,7 @@ function UnifiedAuthContent() {
   }
 
   /** Password sign-in counterpart of finishGoogleAuth — the mutation already navigated
-   * unless the user has no organization, in which case they get the (skippable)
+   * unless the user has no organization, in which case they get the
    * WorkspaceSetup step. */
   function finishPasswordAuth(data: { user: { name?: string | null }; organizationStatus: OrganizationStatus }) {
     if (data.organizationStatus !== "none") return;
@@ -404,7 +398,6 @@ function UnifiedAuthContent() {
             router.push(ORGANIZATION_PATH);
             return;
           }
-          setSignInAfterSetup(data.user.approvalStatus === "ACTIVE");
           setOtpStep(false);
           setWorkspaceStep(true);
         },
@@ -413,24 +406,11 @@ function UnifiedAuthContent() {
     );
   }
 
+  /** verify-otp already signed them in, so they go straight into the app — an auto-approved
+   * (ACTIVE) account lands on `next`; a PENDING one is sent on to /account-pending by the
+   * protected layout. */
   function handleWorkspaceDone() {
-    if (!signInAfterSetup) {
-      router.push(sanitizeNextPath(searchParams.get("next")));
-      return;
-    }
-    // Revokes the verification session (useLogoutMutation also clears auth/query state and
-    // routes to /login — this same page, so the local state below survives).
-    logoutMutation.mutate(undefined, {
-      onSettled: () => {
-        setWorkspaceStep(false);
-        setSignInAfterSetup(false);
-        setSigninEmail(signupEmail);
-        setSigninPassword("");
-        setTab("signin");
-        setError(null);
-        setAccountReady(true);
-      },
-    });
+    router.push(sanitizeNextPath(searchParams.get("next")));
   }
 
   function handleResendOtp() {
@@ -870,10 +850,10 @@ function UnifiedAuthContent() {
                 )}
               </div>
 
-              {(legacySignupSuccess || accountReady) && tab === "signin" && (
+              {legacySignupSuccess && tab === "signin" && (
                 <div className="border border-brand-gold bg-accent px-4 py-3">
                   <p className="text-foreground text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-                    {accountReady ? t("login.accountReady") : t("login.signupSuccess")}
+                    {t("login.signupSuccess")}
                   </p>
                 </div>
               )}

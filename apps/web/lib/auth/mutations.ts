@@ -38,7 +38,7 @@ interface SignupResponse {
 }
 
 /** Whether the just-authenticated user already belongs to an organization: "none" means
- * they still need the solo/create-org/join-org WorkspaceSetup step; "invited" means they have
+ * they still need the WorkspaceSetup step (their personal workspace); "invited" means they have
  * none but an invite is waiting, so they skip that step for the Organization page to accept it;
  * "unknown" means the lookup itself failed, so callers should fall through to the app and let
  * (protected)/layout.tsx re-check rather than guess. */
@@ -118,8 +118,8 @@ interface PasswordAuthResult extends AuthTokensResponse {
 
 /** Shared by the password sign-in mutations: establishes the session inside mutationFn (like
  * useCompleteGoogleAuth) so the caller's own onSuccess receives `organizationStatus`. A user
- * with no organization stays on /login for the WorkspaceSetup step (which they can skip
- * straight into a solo workspace); everyone else continues to `next`. */
+ * with no organization stays on /login for the WorkspaceSetup step (which sets them up
+ * with a personal workspace); everyone else continues to `next`. */
 function useCompletePasswordAuth() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -225,7 +225,7 @@ export function useCancelSignupMutation() {
 
 /** Unlike the other post-auth mutations, this deliberately does NOT redirect to
  * /homepage on success. A freshly-verified signup still needs to go through the
- * solo/create-org/join-org workspace step (see WorkspaceSetup) before landing in
+ * WorkspaceSetup step (their personal workspace) before landing in
  * the app — unless it was invited ("invited") — so navigation is left to the caller.
  * Like useCompleteGoogleAuth, the session is set up inside mutationFn so the caller's
  * onSuccess receives `organizationStatus`. */
@@ -272,7 +272,7 @@ function useCompleteGoogleAuth() {
 
 /** Like useVerifyOtpMutation, deliberately does NOT navigate on success: a Google user with no
  * organization yet (brand new, or one who abandoned onboarding) still needs the
- * solo/create-org/join-org WorkspaceSetup step, so the caller routes on `organizationStatus`.
+ * WorkspaceSetup step (their personal workspace), so the caller routes on `organizationStatus`.
  * `remember` is the sign-in tab's checkbox (the sign-up tab sends true, matching verify-otp).
  * `acceptedTerms` is only needed when this call would create the account — without it the API
  * answers 428 TERMS_ACCEPTANCE_REQUIRED and creates nothing. */
