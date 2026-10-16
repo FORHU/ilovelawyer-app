@@ -36,6 +36,7 @@
     "header-account": "Account menu",
     "header-theme": "Theme toggle",
     "header-guide": "Ask the guide",
+    "header-feedback": "Feedback",
     "header-bell": "Notifications",
     "header-lang": "Language",
     "header-menu": "Menu",
@@ -113,6 +114,7 @@
     "notifications": "The **bell** in the header shows indexing, hearing and comment alerts. Unread ones have a gold count.",
     "language": "Switch between English, Tagalog and Korean from the **language** menu in the header.",
     "profile": "Your name, username and password are under **Profile** in the account menu.",
+    "feedback": "Press **Feedback** in the header to tell us something broke, an answer was wrong, or to suggest an idea. It sends the page you're on with it, never case text or documents.",
     "tour": "You can replay the tour from **Ask the guide**: open it and choose Replay the tour.",
     "librarySearch": "Type a topic, a code or a G.R. number into the **Library search** to find matching authorities.",
     "librarySearch_UK": "Type a case name, a neutral citation or an Act title into the **Library search** to find matching authorities.",
@@ -149,6 +151,7 @@
     "workspace": "Case Workspace",
     "notifications": "Notifications",
     "profile": "Profile",
+    "feedback": "Feedback",
     "tour": "Product tour"
   },
   "suggestions": {
@@ -171,7 +174,8 @@
     "switchCategory_UK": "How do I switch to legislation?",
     "reminder": "Can I set a reminder?",
     "editEvent": "How do I reschedule or delete an event?",
-    "archived": "Where are my archived cases?"
+    "archived": "Where are my archived cases?",
+    "feedback": "How do I report a problem?"
   },
   "sampleCase": {
     "badge": "Sample case · read-only",
@@ -363,6 +367,7 @@
       "composer-mic": "Dictate instead of typing. Your words appear in the box so you can edit them before sending.",
       "consult-new": "Start a fresh consultation. Earlier ones stay in your history.",
       "consult-history": "Your past consultations. Open one to pick up where you left off.",
+      "header-feedback": "Something broken, an answer wrong or incomplete, or an idea? Tell us here. We get the page you're on, never your case text or documents.",
       "cases-new": "Start a new case: name the matter, add the parties and attach documents.",
       "cases-search": "Find a case by its name or a party.",
       "cases-filters": "Switch between your active and archived cases. Archived cases keep all their documents.",

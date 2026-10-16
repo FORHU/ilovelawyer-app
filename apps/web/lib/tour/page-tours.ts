@@ -29,6 +29,8 @@ export const PAGE_TOURS: Record<string, PageTour> = {
       { target: "composer-mic", placement: "top" },
       { target: "consult-new", placement: "right" },
       { target: "consult-history", placement: "right" },
+      // Header control, so it's skipped on a phone where it lives in the menu.
+      { target: "header-feedback", placement: "bottom" },
     ],
   },
   [CASES_PATH]: {
