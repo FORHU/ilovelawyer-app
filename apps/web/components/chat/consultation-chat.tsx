@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useCanContributeToCase } from "@/lib/cases/permissions";
-import { useTrial } from "@/lib/trial";
+import { useTrial, useTrialBudget } from "@/lib/trial";
 import { useCreateAccountFromTrial } from "@/components/trial/trial-banner";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { isNotFoundError } from "@/lib/fetch";
@@ -647,9 +647,11 @@ export default function ConsultationChat({
   // their own included (useCanContributeToCase; the API refuses it too): the composer becomes a
   // read-only note, and starting, renaming or regenerating anything here is hidden.
   const chatReadOnly = !useCanContributeToCase(linkedCaseId || caseId || undefined);
-  // A trial guest whose answers are spent (see lib/trial.ts): the composer gives way to a sign-up prompt.
+  // A trial guest whose answers (chat-only trial) or AI budget (full trial) are spent (see
+  // lib/trial.ts): the composer gives way to a sign-up prompt.
   const trial = useTrial();
-  const trialUsedUp = !!trial && trial.answersLeft === 0;
+  const trialBudget = useTrialBudget();
+  const trialUsedUp = trial?.kind === "FULL" ? !!trialBudget?.spent : !!trial && trial.answersLeft === 0;
   const createAccountFromTrial = useCreateAccountFromTrial();
   // The same read-only chat for a case someone shared with this user — only the note differs.
   const sharedWithMe = useIsSharedWorkspace();
@@ -1584,7 +1586,7 @@ export default function ConsultationChat({
       // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
       // not worth a console error.
       const refusal = (error as { code?: string } | null)?.code;
-      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED") console.error("Failed to send message:", error);
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "TRIAL_BUDGET_SPENT") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1608,9 +1610,16 @@ export default function ConsultationChat({
           if (!prev) return prev;
           const nextMessages = [...prev.messages];
           // The API refuses (403 CONSENT_REQUIRED) before anything is saved when the person has
-          // switched AI processing off, and (403 TRIAL_LIMIT_REACHED) when a trial guest has spent
-          // their answers — say so, instead of the generic failure.
-          const refusalKey = refusal === "CONSENT_REQUIRED" ? "sendErrorNoConsent" : refusal === "TRIAL_LIMIT_REACHED" ? "sendErrorTrialUsedUp" : "sendError";
+          // switched AI processing off, and (403 TRIAL_LIMIT_REACHED / TRIAL_BUDGET_SPENT) when a
+          // trial guest has spent their answers or AI budget — say so, instead of the generic failure.
+          const refusalKey =
+            refusal === "CONSENT_REQUIRED"
+              ? "sendErrorNoConsent"
+              : refusal === "TRIAL_LIMIT_REACHED"
+                ? "sendErrorTrialUsedUp"
+                : refusal === "TRIAL_BUDGET_SPENT"
+                  ? "sendErrorTrialBudgetSpent"
+                  : "sendError";
           nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };
         });
@@ -1618,7 +1627,8 @@ export default function ConsultationChat({
     } finally {
       // A trial guest's answers-left count changed with this send: read it now, so the composer
       // gives way to the sign-up prompt the moment the last answer lands, not on the next poll.
-      if (trial) void queryClient.invalidateQueries({ queryKey: userKeys.me() });
+      if (trial?.kind === "CHAT") void queryClient.invalidateQueries({ queryKey: userKeys.me() });
+      if (trial?.kind === "FULL") void queryClient.invalidateQueries({ queryKey: ["trial", "budget"] });
       if (startedConsultationId) stopSending(startedConsultationId);
       if (sendAbortRef.current === abort) sendAbortRef.current = null;
       setIsStopping(false);
@@ -1829,7 +1839,7 @@ export default function ConsultationChat({
       >
         <span className="flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {t("input.trialUsedUp")}
+          {t(trial?.kind === "FULL" ? "input.trialBudgetSpent" : "input.trialUsedUp")}
         </span>
         <button
           type="button"

@@ -31,6 +31,9 @@ export default function TrialPage() {
 
   if (tenantCode !== "UK") return null
 
+  // The full trial is offered only when the API has a budget for it (TRIAL_BUDGET_USD).
+  const fullTrial = config?.budgetUsd != null
+
   const included = [
     { icon: MessagesSquare, title: config ? t("trial.answersTitle", { count: config.messageLimit }) : t("trial.answersTitleLoading"), body: t("trial.answersBody") },
     { icon: Clock, title: config ? t("trial.timeTitle", { count: config.durationHours }) : t("trial.timeTitleLoading"), body: t("trial.timeBody") },
@@ -54,27 +57,27 @@ export default function TrialPage() {
             </div>
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              {config?.sampleCase && (
+              {fullTrial && (
                 <button
                   type="button"
                   disabled={start.isPending}
-                  onClick={() => start.mutate("case")}
+                  onClick={() => start.mutate("full")}
                   className={`${PRIMARY_BUTTON} gap-2`}
                 >
-                  {start.isPending && start.variables === "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                  {start.isPending && start.variables === "case" ? t("trial.starting") : t("trial.startCase")}
+                  {start.isPending && start.variables === "full" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                  {start.isPending && start.variables === "full" ? t("trial.starting") : t("trial.startFull")}
                 </button>
               )}
               <button
                 type="button"
                 disabled={start.isPending}
-                onClick={() => start.mutate("consultation")}
-                className={config?.sampleCase ? SECONDARY_BUTTON : `${PRIMARY_BUTTON} gap-2`}
+                onClick={() => start.mutate("chat")}
+                className={fullTrial ? SECONDARY_BUTTON : `${PRIMARY_BUTTON} gap-2`}
               >
-                {start.isPending && start.variables !== "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                {start.isPending && start.variables !== "case"
+                {start.isPending && start.variables !== "full" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                {start.isPending && start.variables !== "full"
                   ? t("trial.starting")
-                  : config?.sampleCase
+                  : fullTrial
                     ? t("trial.startConsultation")
                     : t("trial.start")}
               </button>

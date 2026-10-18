@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { useLogoutMutation } from "@/lib/auth/mutations"
-import { useTrial } from "@/lib/trial"
+import { useTrial, useTrialBudget } from "@/lib/trial"
 
 /** Ends the guest session, then opens the sign-up tab, so the account they make is a real one. */
 export function useCreateAccountFromTrial() {
@@ -12,19 +12,34 @@ export function useCreateAccountFromTrial() {
   return () => logout.mutate(undefined, { onSettled: () => router.push("/login?tab=signup") })
 }
 
-/** Answers left and the way out of the trial, over every page a guest can open. */
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+
+/** What is left of the trial and the way out of it, over every page a guest can open: answers left
+ * on the chat-only trial, dollars of AI left on the full trial. */
 export function TrialBanner() {
   const { t } = useTranslation("landing")
   const trial = useTrial()
+  const budget = useTrialBudget()
   const createAccount = useCreateAccountFromTrial()
   if (!trial) return null
+
+  const status =
+    trial.kind === "FULL"
+      ? budget
+        ? budget.spent
+          ? t("trial.budgetSpent")
+          : t("trial.budgetLeft", { amount: usd.format(budget.leftUsd) })
+        : null
+      : trial.answersLeft > 0
+        ? t("trial.answersLeft", { count: trial.answersLeft })
+        : t("trial.noAnswersLeft")
 
   return (
     <div
       role="status"
       className="fixed bottom-4 right-4 z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 text-[12.5px] text-card-foreground shadow-lg"
     >
-      <span>{trial.answersLeft > 0 ? t("trial.answersLeft", { count: trial.answersLeft }) : t("trial.noAnswersLeft")}</span>
+      {status && <span>{status}</span>}
       <button
         type="button"
         onClick={createAccount}

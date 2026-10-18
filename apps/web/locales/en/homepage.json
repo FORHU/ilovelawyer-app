@@ -28,11 +28,13 @@
     "indexingFailed": "Couldn't index this file for chat.",
     "viewOnlyShared": "Read-only: this case was shared with you to view.",
     "trialUsedUp": "You've used all your trial answers. Create an account to keep asking.",
+    "trialBudgetSpent": "You've used the AI included in your trial. Create an account to keep going.",
     "trialCreateAccount": "Create account"
   },
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "sendErrorTrialUsedUp": "You've used all your trial answers, so this message wasn't sent. Create an account to keep asking.",
+  "sendErrorTrialBudgetSpent": "You've used the AI included in your trial, so this message wasn't sent. Create an account to keep going.",
   "sendErrorNoConsent":"AI processing is switched off for your account, so this message wasn't sent. Switch it on under Profile > Your Data to continue.",
   "historyLoadError": "Couldn't load this consultation.",
   "historyLoadRetry": "Try again",

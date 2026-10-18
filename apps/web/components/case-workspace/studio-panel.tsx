@@ -37,7 +37,7 @@ import { useGraphViewQuery } from "@/lib/graph-view/mutations";
 import { getActiveMindMap, getActiveMindMapRecord } from "@/lib/chat/mind-map-parser";
 import { useMindMapExpansion, type MindMapExpansionTarget } from "@/lib/chat/use-mind-map-expansion";
 import { useCaseMindMap, useGenerateCaseMindMapMutation } from "@/lib/case-workspace/case-mind-map";
-import { useTrial, type TrialFeature } from "@/lib/trial";
+import { useChatTrial, type TrialFeature } from "@/lib/trial";
 import { caseMindMapStaleDetail } from "@/lib/case-workspace/case-mind-map-status";
 import { chatKeys } from "@/lib/query-keys";
 import { dateLocale } from "@/lib/i18n/date-locale";
@@ -148,7 +148,7 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
   const { t } = useTranslation("case-portfolio");
   // A trial guest on the sample case: Decisions and Timeline are greyed out, and the capped
   // features (mind map, audio overview, case brief) say how many uses are left — the API enforces it.
-  const trial = useTrial();
+  const trial = useChatTrial();
   const trialUsesLeft = (feature: TrialFeature) =>
     trial?.featuresLeft ? t("workspace.trialUsesLeft", { count: trial.featuresLeft[feature] }) : undefined;
   // The shared pane controls' wording (RegenerateButton, updating lines) lives in the Terminal's strings.

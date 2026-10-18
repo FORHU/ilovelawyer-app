@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
-import { useTrial } from "@/lib/trial";
+import { useChatTrial } from "@/lib/trial";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
@@ -95,7 +95,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
   // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
   // so the shape of the product still shows. Terms stay open.
-  const trial = useTrial();
+  const trial = useChatTrial();
   const trialLocked = (href: string) => !!trial && href !== "/homepage/term";
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
