@@ -19,7 +19,7 @@ Lawyers expect the terminal to catch up when documents finish indexing, without 
 
 ## Decision
 
-Treat a **corpus change** (documents becoming READY, or READY documents removed) as the trigger. Coalesce with the existing ~45s quiet window so a large dump is one Chat Wonder batch, not one per file.
+Treat a **corpus change** (documents becoming READY, or READY documents removed) as the trigger. Coalesce with the existing ~20s quiet window so a large dump is one Chat Wonder batch, not one per file.
 
 Run the **same job** as Refresh analysis (`caseRefresh` / `CaseRefreshSvc`), so findings are included. Keep replacing **only** AI-tagged findings and strategy items.
 
