@@ -27,6 +27,7 @@ import VoiceDictate from "@/components/chat/voice-dictate";
 import { AUTO_MINDMAP_PROMPT, AUTO_AUDIO_OVERVIEW_PROMPT } from "@/lib/chat/auto-prompts";
 import { useTopicNavigator, evidenceQuoteElementId } from "@/lib/chat/use-topic-navigator";
 import { useSendingConsultationsStore } from "@/lib/store/sending-consultations.store";
+import { useConsultationPanelsStore } from "@/lib/store/consultation-panels.store";
 import { appendOptimisticUserMessage, resolveOptimisticMessageId, isOptimisticMessageId } from "@/lib/chat/optimistic-messages";
 import { isSuggestableTitle } from "@/lib/chat/suggestable-title";
 import { composerAction, shouldHoldAnswer, ANSWER_HOLD_CAP_MS } from "@/lib/chat/composer-action";
@@ -410,8 +411,10 @@ export default function ConsultationChat({
   // Lifted out of ConsultationSidebar so the workspace below can reserve room for the
   // expanded rail (pushing content over) instead of letting it overlay whatever's at the
   // page's left edge — on the case page that's the back link/case chip header row, which
-  // the expanded rail would otherwise cover.
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  // the expanded rail would otherwise cover. Kept in a store, not local state, so it survives
+  // switching header tabs and back (see consultation-panels.store.ts).
+  const sidebarExpanded = useConsultationPanelsStore((s) => s.sidebarExpanded);
+  const setSidebarExpanded = useConsultationPanelsStore((s) => s.setSidebarExpanded);
   // Mobile drawer open state, also lifted up (same reason as sidebarExpanded) — lets a
   // trigger button render inline with page content (the conversation title / empty-state
   // heading) instead of ConsultationSidebar's own floating circle being the only way in.
@@ -419,7 +422,8 @@ export default function ConsultationChat({
   // Mirrors sidebarExpanded's reserve-room pattern below, but for TopicNavigator on the
   // right — defaults open since the panel only ever mounts for a split reply already on
   // screen (a rare, deliberate moment), unlike the always-present left sidebar.
-  const [topicPanelExpanded, setTopicPanelExpanded] = useState(true);
+  const topicPanelExpanded = useConsultationPanelsStore((s) => s.topicPanelExpanded);
+  const setTopicPanelExpanded = useConsultationPanelsStore((s) => s.setTopicPanelExpanded);
   // TopicNavigator's own mobile drawer, lifted up (same reason as sidebarMobileOpen) so the
   // sticky header's mobile kebab menu can open it instead of TopicNavigator's own floating
   // trigger circle, which the kebab replaces on phones.
