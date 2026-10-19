@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Lock } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -45,6 +45,7 @@ export function FeedbackForm({ source, rating, refs, layout, onSent, onCancel, f
   const [category, setCategory] = useState<FeedbackCategory | null>(null)
   const [comment, setComment] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const counterId = useId()
 
   useEffect(() => {
     textareaRef.current?.focus()
@@ -94,18 +95,31 @@ export function FeedbackForm({ source, rating, refs, layout, onSent, onCancel, f
     )
   }
 
+  const atLimit = comment.length >= FEEDBACK_COMMENT_MAX_CHARS
+
   const textarea = (
-    <textarea
-      ref={textareaRef}
-      value={comment}
-      onChange={(e) => setComment(e.target.value)}
-      maxLength={FEEDBACK_COMMENT_MAX_CHARS}
-      rows={layout === "drawer" ? 6 : 3}
-      placeholder={placeholder}
-      aria-label={placeholder}
-      aria-required={!commentOptional}
-      className="w-full resize-y rounded-[10px] border border-border bg-background px-3 py-2.5 text-[13px] leading-normal text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    />
+    <div className="flex flex-col gap-1.5">
+      <textarea
+        ref={textareaRef}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        maxLength={FEEDBACK_COMMENT_MAX_CHARS}
+        rows={layout === "drawer" ? 6 : 3}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        aria-required={!commentOptional}
+        aria-describedby={counterId}
+        className="w-full resize-y rounded-[10px] border border-border bg-background px-3 py-2.5 text-[13px] leading-normal text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <div id={counterId} className="flex items-start justify-between gap-3 text-[11px] leading-normal">
+        <span role="status" className="text-danger">
+          {atLimit && t("feedback.limitReached", { max: FEEDBACK_COMMENT_MAX_CHARS.toLocaleString(), defaultValue: "You've reached the {{max}}-character limit." })}
+        </span>
+        <span className={`shrink-0 tabular-nums ${atLimit ? "text-danger" : "text-muted-foreground"}`}>
+          {comment.length}/{FEEDBACK_COMMENT_MAX_CHARS}
+        </span>
+      </div>
+    </div>
   )
 
   const footer = (
