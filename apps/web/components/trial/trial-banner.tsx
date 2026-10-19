@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { useLogoutMutation } from "@/lib/auth/mutations"
-import { useTrial, useTrialBudget } from "@/lib/trial"
+import { useTrial } from "@/lib/trial"
+import { useFreeCredit } from "@/lib/free-credit"
 
 /** Ends the guest session, then opens the sign-up tab, so the account they make is a real one. */
 export function useCreateAccountFromTrial() {
@@ -14,32 +15,32 @@ export function useCreateAccountFromTrial() {
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
-/** What is left of the trial and the way out of it, over every page a guest can open: answers left
- * on the chat-only trial, dollars of AI left on the full trial. */
+/** Answers left and the way out of the trial, over every page a guest can open; for a signed-up
+ * account with free AI credit, what is left of that credit. */
 export function TrialBanner() {
   const { t } = useTranslation("landing")
   const trial = useTrial()
-  const budget = useTrialBudget()
+  const freeCredit = useFreeCredit()
   const createAccount = useCreateAccountFromTrial()
+  // A signed-up account with free AI credit: what is left of it (or that it is used up).
+  if (!trial && freeCredit) {
+    return (
+      <div
+        role="status"
+        className="fixed bottom-4 right-4 z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center rounded-full border border-border bg-card px-4 py-2 text-[12.5px] text-card-foreground shadow-lg"
+      >
+        {freeCredit.spent ? t("trial.creditSpent") : t("trial.creditLeft", { amount: usd.format(freeCredit.leftUsd) })}
+      </div>
+    )
+  }
   if (!trial) return null
-
-  const status =
-    trial.kind === "FULL"
-      ? budget
-        ? budget.spent
-          ? t("trial.budgetSpent")
-          : t("trial.budgetLeft", { amount: usd.format(budget.leftUsd) })
-        : null
-      : trial.answersLeft > 0
-        ? t("trial.answersLeft", { count: trial.answersLeft })
-        : t("trial.noAnswersLeft")
 
   return (
     <div
       role="status"
       className="fixed bottom-4 right-4 z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border border-border bg-card py-1.5 pl-4 pr-1.5 text-[12.5px] text-card-foreground shadow-lg"
     >
-      {status && <span>{status}</span>}
+      <span>{trial.answersLeft > 0 ? t("trial.answersLeft", { count: trial.answersLeft }) : t("trial.noAnswersLeft")}</span>
       <button
         type="button"
         onClick={createAccount}

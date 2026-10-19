@@ -5,7 +5,7 @@ import GlobalHeader, { ACTIVE_TABS, type ActiveTab } from "@/components/global-h
 import { PageTransition } from "@/components/page-transition"
 import { TrialBanner } from "@/components/trial/trial-banner"
 import { TrialLocked } from "@/components/trial/trial-locked"
-import { useChatTrial } from "@/lib/trial"
+import { useTrial } from "@/lib/trial"
 
 // Routes whose first segment doesn't match their nav tab by name.
 const TAB_ALIASES: Record<string, ActiveTab> = {
@@ -26,7 +26,7 @@ function toActiveTab(segment: string | undefined): ActiveTab | undefined {
 // Only the page content below it animates in (PageTransition), not the header.
 export default function HomepageLayout({ children }: { children: React.ReactNode }) {
   const segments = useSelectedLayoutSegments()
-  const trial = useChatTrial()
+  const trial = useTrial()
 
   // The Terminal's pop-out window for a secondary screen and its Document Viewer tab are
   // deliberately chrome-less — see terminal/[caseId]/canvas/[screenIndex]/page.tsx and

@@ -24,14 +24,14 @@ export interface CurrentUser {
   avatarUrl: string | null
   /** A Google Calendar grant is stored (Connect Google Calendar on the profile page). */
   googleCalendarConnected: boolean
-  /** Which landing-page trial the user is on (see lib/trial.ts). Null for a real account. */
-  trialKind?: "CHAT" | "FULL" | null
-  /** Set only for a chat-only trial guest: when the trial ends, and how many of its AI answers
-   * are left (the API owns the limit). Null for a real account and a full-trial guest. */
+  /** Set only for a landing-page trial guest: when the trial ends, and how many of its AI answers
+   * are left (the API owns the limit). Null for a real account. */
   trialExpiresAt: string | null
   trialMessagesLeft: number | null
   /** A trial guest's uses left of each capped Studio feature (mindMap, audioOverview, audioRecording, caseBrief). */
   trialFeaturesLeft?: Record<string, number> | null
+  /** The free AI credit (USD) the account got at sign-up; null for accounts created before it existed. */
+  freeCreditUsd?: number | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -43,7 +43,7 @@ export function useCurrentUserQuery() {
     queryFn: () => apiFetch<CurrentUser>("/api/users/me"),
     enabled: !!accessToken,
     // A trial guest's answers-left count follows each message they send (see lib/trial.ts).
-    refetchInterval: (query) => (query.state.data?.trialKind === "CHAT" ? 10_000 : false),
+    refetchInterval: (query) => (query.state.data?.trialExpiresAt ? 10_000 : false),
   })
 }
 

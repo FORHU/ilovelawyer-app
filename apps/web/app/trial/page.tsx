@@ -31,9 +31,6 @@ export default function TrialPage() {
 
   if (tenantCode !== "UK") return null
 
-  // The full trial is offered only when the API has a budget for it (TRIAL_BUDGET_USD).
-  const fullTrial = config?.budgetUsd != null
-
   const included = [
     { icon: MessagesSquare, title: config ? t("trial.answersTitle", { count: config.messageLimit }) : t("trial.answersTitleLoading"), body: t("trial.answersBody") },
     { icon: Clock, title: config ? t("trial.timeTitle", { count: config.durationHours }) : t("trial.timeTitleLoading"), body: t("trial.timeBody") },
@@ -57,30 +54,33 @@ export default function TrialPage() {
             </div>
 
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              {fullTrial && (
+              {config?.sampleCase && (
                 <button
                   type="button"
                   disabled={start.isPending}
-                  onClick={() => start.mutate("full")}
+                  onClick={() => start.mutate("case")}
                   className={`${PRIMARY_BUTTON} gap-2`}
                 >
-                  {start.isPending && start.variables === "full" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                  {start.isPending && start.variables === "full" ? t("trial.starting") : t("trial.startFull")}
+                  {start.isPending && start.variables === "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                  {start.isPending && start.variables === "case" ? t("trial.starting") : t("trial.startCase")}
                 </button>
               )}
               <button
                 type="button"
                 disabled={start.isPending}
-                onClick={() => start.mutate("chat")}
-                className={fullTrial ? SECONDARY_BUTTON : `${PRIMARY_BUTTON} gap-2`}
+                onClick={() => start.mutate("consultation")}
+                className={config?.sampleCase ? SECONDARY_BUTTON : `${PRIMARY_BUTTON} gap-2`}
               >
-                {start.isPending && start.variables !== "full" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                {start.isPending && start.variables !== "full"
+                {start.isPending && start.variables !== "case" && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                {start.isPending && start.variables !== "case"
                   ? t("trial.starting")
-                  : fullTrial
+                  : config?.sampleCase
                     ? t("trial.startConsultation")
                     : t("trial.start")}
               </button>
+              <Link href="/login?tab=signup" className={SECONDARY_BUTTON}>
+                {t("trial.startFull")}
+              </Link>
               <Link
                 href="/login"
                 className="inline-flex h-12 items-center justify-center whitespace-nowrap rounded-full px-6 text-xs uppercase tracking-[1.2px] text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -88,6 +88,12 @@ export default function TrialPage() {
                 {t("trial.haveAccount")}
               </Link>
             </div>
+
+            <p className="m-0 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground">
+              {config?.freeCreditUsd
+                ? t("trial.fullBody", { amount: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(config.freeCreditUsd) })
+                : t("trial.fullBodyNoAmount")}
+            </p>
 
             <p role="alert" className="m-0 min-h-5 text-sm text-destructive">
               {start.isError ? t("trial.error") : ""}

@@ -38,7 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import { CaseOrigin, OpenOriginalButton } from "@/components/cases/case-origin";
-import { useChatTrial } from "@/lib/trial";
+import { useTrial } from "@/lib/trial";
 import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable";
 import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
 
@@ -53,7 +53,7 @@ const ISSUES_PREVIEW = 6;
 
 export default function CaseDetailPage() {
   const { t } = useTranslation(["case-portfolio", "common"]);
-  const trial = useChatTrial();
+  const trial = useTrial();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -375,13 +375,12 @@ export function useConsumeLoginLinkMutation() {
   })
 }
 
-/** Which trial a guest starts: the chat-only one, or the full one (the whole product, limited by
- * spend; see lib/trial.ts). */
-export type TrialKindChoice = "chat" | "full"
+/** What a trial guest starts with: the sample consultation, or their own copy of the sample case. */
+export type TrialSample = "consultation" | "case"
 
 /** The landing page's trial: starts a throwaway guest account (POST /api/trial/start, which sets the
- * refresh cookie like any sign-in) and opens, as them, the real consultation page or — for the full
- * trial — their case portfolio, to open cases of their own. */
+ * refresh cookie like any sign-in) and opens, as them, the real consultation page or — for the
+ * sample case — that case's workspace. */
 export function useStartTrialMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -389,19 +388,23 @@ export function useStartTrialMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (kind: TrialKindChoice = "chat") =>
-      apiFetch<AuthTokensResponse & { consultationId: string }>("/api/trial/start", {
+    mutationFn: (sample: TrialSample = "consultation") =>
+      apiFetch<AuthTokensResponse & { consultationId: string; caseId: string | null; caseConsultationId: string | null }>("/api/trial/start", {
         method: "POST",
-        body: JSON.stringify({ acceptedNotice: true, kind }),
+        body: JSON.stringify({ acceptedNotice: true, sample }),
         skipAuthRefresh: true,
       }),
-    onSuccess: async (data, kind) => {
+    onSuccess: async (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      // The full trial opens on the case portfolio; the chat-only one on the sample consultation
-      // (TrialSvc.seedSampleConsultation).
-      router.replace(kind === "full" ? "/homepage/case-portfolio" : `/homepage?c=${data.consultationId}`)
+      // The sample case's workspace, or the sample consultation (TrialSvc.seedSampleConsultation).
+      // The sample case opens on its "Start here" note (TrialSvc.seedCaseIntro).
+      router.replace(
+        data.caseId
+          ? `/homepage/case-portfolio/${data.caseId}${data.caseConsultationId ? `?c=${data.caseConsultationId}` : ""}`
+          : `/homepage?c=${data.consultationId}`,
+      )
     },
   })
 }

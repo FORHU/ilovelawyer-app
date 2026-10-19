@@ -41,7 +41,7 @@
   "refreshAnalysisBusy": "The analysis is already updating. Wait for it to finish.",
   "refreshAnalysisNoAccess": "You need edit access to this case to refresh its analysis.",
   "refreshAnalysisNoConsent": "AI processing is switched off for your account. Switch it on under Profile > Your Data to refresh the analysis.",
-  "refreshAnalysisTrialBudgetSpent": "You've used the AI included in your trial. Create an account to refresh the analysis.",
+  "refreshAnalysisFreeCreditSpent": "You've used your free AI credit, so the analysis can't be refreshed.",
   "updatingAnalysis": "Updating analysis…",
   "preset": "Preset",
   "presetEvidenceCheck": "Evidence Check",
