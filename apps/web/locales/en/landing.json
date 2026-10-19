@@ -499,7 +499,7 @@
     "timeTitle_one": "{{count}} hour",
     "timeTitle_other": "{{count}} hours",
     "timeTitleLoading": "A timed guest session",
-    "timeBody": "Then the guest workspace is deleted.",
+    "timeBody": "Then the guest session ends.",
     "scopeTitle": "Consultation only",
     "scopeBody": "Uploads, case creation and sharing need an account.",
     "answersLeft_one": "Trial: {{count}} answer left",
