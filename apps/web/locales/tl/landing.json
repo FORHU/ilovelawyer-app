@@ -46,7 +46,6 @@
       "Case Workspace",
       "Legal Terminal",
       "Research library",
-      "Transcription",
       "Pag-upload ng dokumento",
       "Kalendaryo",
       "Visual Strategy Map",
@@ -201,7 +200,6 @@
         "heading": "Mga Resource",
         "links": {
           "helpCentre": "Help Centre at FAQ",
-          "transcription": "Transcription",
           "documentUpload": "Pag-upload ng dokumento",
           "calendar": "Kalendaryo"
         }

@@ -82,6 +82,8 @@ export default function CaseDetailPage() {
   const { data: caseRecord, error: caseError } = useCaseQuery(id);
   const { data: snapshot } = useCaseSnapshotQuery(id);
   useMarkCaseOpened(id);
+  // An archived case can't be shared until it's restored.
+  const canShare = !!caseRecord && !sharedWithMe && caseRecord.status !== "ARCHIVED";
 
   const filedLine = [
     snapshot?.case.actionType,
@@ -209,7 +211,7 @@ export default function CaseDetailPage() {
                 {t("overview.tabTerminal")}
               </Link>
             </nav>
-            {caseRecord && !sharedWithMe && (
+            {canShare && (
               <>
                 <span className="mt-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
                 <Tooltip>
@@ -248,7 +250,7 @@ export default function CaseDetailPage() {
           </div>
         )}
       </div>
-      {sharing && caseRecord && (
+      {sharing && canShare && (
         <ShareCaseDialog caseId={id} caseName={caseRecord.caseName} onClose={() => setSharing(false)} />
       )}
     </PageShell>
