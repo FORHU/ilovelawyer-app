@@ -1,14 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { hasSessionHint, refreshAccessToken } from "@/lib/fetch";
 import { useScrollDrift } from "@/lib/landing/use-scroll-drift";
 import type { TenantCode } from "@/lib/tenant-code/resolve-host";
 
 // PH and UK render identical markup (see hero-section-base.tsx for why this is one
 // component instead of two hand-copied files) — differing only in i18next context.
+
+const ORGANIZATION_ROUTE = "/homepage/organization";
+// Not signed up yet: sign up first, then land on the Organization page to invite the team.
+const signupHref = `/login?tab=signup&next=${encodeURIComponent(ORGANIZATION_ROUTE)}`;
 
 interface Member {
   initials: string;
@@ -25,6 +31,23 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
   const tCtx = tenantCode === "UK" ? { context: "UK" as const } : undefined;
   const members = t("firms.roster", { ...tCtx, returnObjects: true }) as Member[];
   const [ref, y] = useScrollDrift([-20, 20]);
+  const router = useRouter();
+
+  // Same session check as the Legal Terminal CTA: a signed-in visitor goes straight to the
+  // Organization page; anyone else (or a stale session hint) is sent to sign up.
+  const handleInviteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (hasSessionHint()) {
+      try {
+        await refreshAccessToken();
+        router.push(ORGANIZATION_ROUTE);
+        return;
+      } catch {
+        // fall through — hint was stale, visitor isn't actually logged in
+      }
+    }
+    router.push(signupHref);
+  };
 
   return (
     <section id="business" className="bg-brand-navy-950 py-24 px-6 md:px-16">
@@ -96,7 +119,8 @@ export function FirmsSectionBase({ tenantCode }: { tenantCode: TenantCode }) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
-                  href="/signup"
+                  href={signupHref}
+                  onClick={(e: React.MouseEvent<HTMLAnchorElement>) => void handleInviteClick(e)}
                   className="self-start text-xs tracking-[1.2px] uppercase font-semibold px-6 py-3 rounded-full bg-white text-[#0b0b0b] hover:opacity-85 transition-opacity duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0b0b]"
                 >
                   {t("firms.teamsCta")}

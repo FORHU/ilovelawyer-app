@@ -28,7 +28,6 @@ export const ACTIVE_TABS = [
   "library",
   "case-portfolio",
   "terminal",
-  "transcription",
   "calendar",
   "term",
   "profile",
