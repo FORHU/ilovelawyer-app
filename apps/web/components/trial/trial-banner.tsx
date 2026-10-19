@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { useLogoutMutation } from "@/lib/auth/mutations"
 import { useTrial } from "@/lib/trial"
-import { useFreeCredit } from "@/lib/free-credit"
 
 /** Ends the guest session, then opens the sign-up tab, so the account they make is a real one. */
 export function useCreateAccountFromTrial() {
@@ -13,26 +12,11 @@ export function useCreateAccountFromTrial() {
   return () => logout.mutate(undefined, { onSettled: () => router.push("/login?tab=signup") })
 }
 
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
-
-/** Answers left and the way out of the trial, over every page a guest can open; for a signed-up
- * account with free AI credit, what is left of that credit. */
+/** Answers left and the way out of the trial, over every page a guest can open. */
 export function TrialBanner() {
   const { t } = useTranslation("landing")
   const trial = useTrial()
-  const freeCredit = useFreeCredit()
   const createAccount = useCreateAccountFromTrial()
-  // A signed-up account with free AI credit: what is left of it (or that it is used up).
-  if (!trial && freeCredit) {
-    return (
-      <div
-        role="status"
-        className="fixed bottom-4 right-4 z-(--z-sidebar) flex max-w-[calc(100vw-2rem)] items-center rounded-full border border-border bg-card px-4 py-2 text-[12.5px] text-card-foreground shadow-lg"
-      >
-        {freeCredit.spent ? t("trial.creditSpent") : t("trial.creditLeft", { amount: usd.format(freeCredit.leftUsd) })}
-      </div>
-    )
-  }
   if (!trial) return null
 
   return (

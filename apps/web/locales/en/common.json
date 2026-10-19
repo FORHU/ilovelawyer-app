@@ -16,6 +16,12 @@
   },
   "userMenu": {
     "accountMenu": "Account menu",
+    "trialBadge": "Trial",
+    "trialAccount": "Trial account",
+    "creditLeft": "{{amount}} of free AI left",
+    "creditLeftOf": "{{amount}} of {{total}} free AI left",
+    "creditSpent": "Free AI credit used",
+    "creditSpentHint": "New AI work is paused. Everything you made stays available to view.",
     "profile": "Profile",
     "organization": "Organization",
     "terms": "Terms & Conditions",

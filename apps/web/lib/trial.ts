@@ -23,7 +23,7 @@ export function useTrial() {
 export function useTrialConfig() {
   const { data } = useQuery({
     queryKey: ["trial", "config"],
-    queryFn: () => apiFetch<{ messageLimit: number; durationHours: number; sampleCase?: boolean; freeCreditUsd?: number | null }>("/api/trial/config"),
+    queryFn: () => apiFetch<{ messageLimit: number; durationHours: number; sampleCase?: boolean }>("/api/trial/config"),
     staleTime: Infinity,
   })
   return data

@@ -9,6 +9,7 @@ import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
+import { useFreeCredit } from "@/lib/free-credit";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useTourStore } from "@/lib/store/tour.store";
 import { useFeedbackStore } from "@/lib/store/feedback.store";
@@ -75,6 +76,8 @@ function TabLinkContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
   { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
@@ -130,6 +133,9 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
+  // An account on its free AI credit is a trial account until subscription tiers exist: the header
+  // says so and shows what is left of the credit.
+  const freeCredit = useFreeCredit();
 
   const initials = (user?.name ?? user?.username ?? "?")
     .split(/[.\s_-]+/)
@@ -315,6 +321,19 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             <NotificationBell />
           </span>
 
+          {freeCredit && (
+            <span
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.5px] tabular-nums ${
+                freeCredit.spent ? "border-destructive/40 text-destructive" : "border-brand-gold/50 text-foreground"
+              }`}
+            >
+              <span className="rounded-full bg-brand-gold px-1.5 py-px text-[9px] uppercase tracking-[1px] text-brand-gold-foreground">
+                {t("userMenu.trialBadge")}
+              </span>
+              {freeCredit.spent ? t("userMenu.creditSpent") : t("userMenu.creditLeft", { amount: usd.format(freeCredit.leftUsd) })}
+            </span>
+          )}
+
           <div className="relative" ref={userMenuRef}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -343,6 +362,19 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     <p className="truncate text-xs font-bold text-foreground">{user.name ?? user.username}</p>
                     {user.name && <p className="truncate text-[10px] text-muted-foreground">@{user.username}</p>}
                     <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
+                  </div>
+                )}
+                {freeCredit && (
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <span className="inline-block rounded-full bg-brand-gold px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-brand-gold-foreground">
+                      {t("userMenu.trialAccount")}
+                    </span>
+                    <p className={`mt-1.5 text-[11px] tabular-nums ${freeCredit.spent ? "text-destructive" : "text-foreground"}`}>
+                      {freeCredit.spent
+                        ? t("userMenu.creditSpent")
+                        : t("userMenu.creditLeftOf", { amount: usd.format(freeCredit.leftUsd), total: usd.format(freeCredit.creditUsd) })}
+                    </p>
+                    {freeCredit.spent && <p className="mt-1 text-[10px] text-muted-foreground">{t("userMenu.creditSpentHint")}</p>}
                   </div>
                 )}
 

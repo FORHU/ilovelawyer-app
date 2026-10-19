@@ -78,9 +78,6 @@ export default function TrialPage() {
                     ? t("trial.startConsultation")
                     : t("trial.start")}
               </button>
-              <Link href="/login?tab=signup" className={SECONDARY_BUTTON}>
-                {t("trial.startFull")}
-              </Link>
               <Link
                 href="/login"
                 className="inline-flex h-12 items-center justify-center whitespace-nowrap rounded-full px-6 text-xs uppercase tracking-[1.2px] text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -88,12 +85,6 @@ export default function TrialPage() {
                 {t("trial.haveAccount")}
               </Link>
             </div>
-
-            <p className="m-0 max-w-[52ch] text-[13.5px] leading-relaxed text-muted-foreground">
-              {config?.freeCreditUsd
-                ? t("trial.fullBody", { amount: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(config.freeCreditUsd) })
-                : t("trial.fullBodyNoAmount")}
-            </p>
 
             <p role="alert" className="m-0 min-h-5 text-sm text-destructive">
               {start.isError ? t("trial.error") : ""}
