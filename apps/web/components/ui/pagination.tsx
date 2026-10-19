@@ -46,7 +46,8 @@ interface PaginationProps {
   labels: {
     previous: string;
     next: string;
-    last: string;
+    /** Omit to hide the "jump to last page" button. */
+    last?: string;
   };
   className?: string;
 }
@@ -113,20 +114,22 @@ export function Pagination({ page, totalPages, onPageChange, labels, className }
         <TooltipContent>{labels.next}</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label={labels.last}
-            disabled={page === totalPages}
-            onClick={() => onPageChange(totalPages)}
-            className={`${buttonBase} max-sm:hidden`}
-          >
-            <ChevronsRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{labels.last}</TooltipContent>
-      </Tooltip>
+      {labels.last && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={labels.last}
+              disabled={page === totalPages}
+              onClick={() => onPageChange(totalPages)}
+              className={`${buttonBase} max-sm:hidden`}
+            >
+              <ChevronsRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{labels.last}</TooltipContent>
+        </Tooltip>
+      )}
     </nav>
   );
 }

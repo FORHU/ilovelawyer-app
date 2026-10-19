@@ -956,7 +956,6 @@ export default function CaseManagerDashboard() {
             labels={{
               previous: t("pagination.previous"),
               next: t("pagination.next"),
-              last: t("pagination.last"),
             }}
             className="justify-center pt-2"
           />

@@ -127,8 +127,7 @@
   "pagination": {
     "first": "First page",
     "previous": "Previous",
-    "next": "Next",
-    "last": "Last page"
+    "next": "Next"
   },
   "loading": "Loading your cases…",
   "loadError": "Couldn't load your cases.",
