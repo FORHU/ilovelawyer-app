@@ -38,7 +38,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { SampleTourAutoStart } from "@/components/sample-case/sample-tour-autostart";
 import { dateLocale } from "@/lib/i18n/date-locale";
 import { CaseOrigin, OpenOriginalButton } from "@/components/cases/case-origin";
-import { useTrial } from "@/lib/trial";
 import { CaseUnavailable, isCaseUnavailableError } from "@/components/cases/case-unavailable";
 import { ShareCaseDialog } from "@/components/cases/share-case-dialog";
 
@@ -53,7 +52,6 @@ const ISSUES_PREVIEW = 6;
 
 export default function CaseDetailPage() {
   const { t } = useTranslation(["case-portfolio", "common"]);
-  const trial = useTrial();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -193,9 +191,9 @@ export default function CaseDetailPage() {
              * three tabs at their normal size don't fit a 320px viewport otherwise. */}
             {/* Share is a case-level action, not a status: it ends the tab row, past a divider
              * (icon-only below sm so the tabs keep their room). */}
-            {/* sm:shrink-0: side by side with the title, a long case name/description must truncate
-             * rather than squeeze the tabs ("Overview" was clipped and Terminal scrolled away). */}
-            <div className="flex min-w-0 items-start gap-4 sm:shrink-0 sm:gap-6">
+            {/* Never shrinks beside the title from sm up: a long case name or description would
+             * otherwise squeeze this row and clip the last tab. The title side truncates instead. */}
+            <div className="flex min-w-0 sm:shrink-0 items-start gap-4 sm:gap-6">
             <nav className="flex gap-3.5 sm:gap-7 overflow-x-auto scrollbar-none text-[9.5px] sm:text-[10px] font-semibold tracking-[1px] sm:tracking-[1.2px] uppercase -mx-6 px-6 sm:mx-0 sm:px-0">
               <TabButton active={activeTab === "workspace"} onClick={() => switchTab("workspace")} icon={PanelsTopLeft}>
                 {t("overview.tabWorkspace")}
@@ -203,51 +201,30 @@ export default function CaseDetailPage() {
               <TabButton active={activeTab === "overview"} onClick={() => switchTab("overview")} icon={LayoutGrid}>
                 {t("overview.tabOverview")}
               </TabButton>
-              {/* Greyed out for a trial guest: the Legal Terminal is outside the trial. */}
-              {trial ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      aria-disabled="true"
-                      className="pb-3 flex shrink-0 cursor-default items-center gap-1.5 sm:gap-2 uppercase text-muted-foreground opacity-50"
-                    >
-                      <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-                      {t("overview.tabTerminal")}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("trial.notIncluded", { ns: "common" })}</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Link
-                  href={`/homepage/terminal/${id}`}
-                  className="pb-3 flex shrink-0 items-center gap-1.5 sm:gap-2 uppercase text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
-                  {t("overview.tabTerminal")}
-                </Link>
-              )}
+              <Link
+                href={`/homepage/terminal/${id}`}
+                className="pb-3 flex shrink-0 items-center gap-1.5 sm:gap-2 uppercase text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+                {t("overview.tabTerminal")}
+              </Link>
             </nav>
             {caseRecord && !sharedWithMe && (
               <>
                 <span className="mt-0.5 h-4 w-px shrink-0 bg-border" aria-hidden="true" />
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    {/* aria-disabled, not disabled, for a trial guest: a disabled button gets no
-                     * hover, so the tooltip saying why would never show. */}
                     <button
                       type="button"
-                      onClick={() => !trial && setSharing(true)}
+                      onClick={() => setSharing(true)}
                       aria-label={t("share.button")}
-                      aria-disabled={trial ? true : undefined}
-                      className={`-mt-1 mb-2 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
-                        trial ? "cursor-default opacity-50" : "hover:bg-muted dark:hover:bg-overlay-hover active:scale-[0.98]"
-                      }`}
+                      className="-mt-1 mb-2 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground transition-colors hover:bg-muted dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.98]"
                     >
                       <Users className="h-3.5 w-3.5" aria-hidden="true" />
                       <span className="hidden sm:inline">{t("share.button")}</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>{trial ? t("trial.notIncluded", { ns: "common" }) : t("share.buttonTooltip")}</TooltipContent>
+                  <TooltipContent>{t("share.buttonTooltip")}</TooltipContent>
                 </Tooltip>
               </>
             )}

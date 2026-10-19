@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import i18n from "@/lib/i18n/i18n"
 import { apiFetch } from "@/lib/fetch"
+import { useEnterSharedWorkspace } from "@/lib/organizations/mutations"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
 import { useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store"
@@ -386,10 +387,11 @@ export function useStartTrialMutation() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
+  const enterSharedWorkspace = useEnterSharedWorkspace()
 
   return useMutation({
     mutationFn: (sample: TrialSample = "consultation") =>
-      apiFetch<AuthTokensResponse & { consultationId: string; caseId: string | null; caseConsultationId: string | null }>("/api/trial/start", {
+      apiFetch<AuthTokensResponse & { consultationId: string; caseId: string | null; caseOrganizationId: string | null }>("/api/trial/start", {
         method: "POST",
         body: JSON.stringify({ acceptedNotice: true, sample }),
         skipAuthRefresh: true,
@@ -398,13 +400,15 @@ export function useStartTrialMutation() {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      // The sample case's workspace, or the sample consultation (TrialSvc.seedSampleConsultation).
-      // The sample case opens on its "Start here" note (TrialSvc.seedCaseIntro).
-      router.replace(
-        data.caseId
-          ? `/homepage/case-portfolio/${data.caseId}${data.caseConsultationId ? `?c=${data.caseConsultationId}` : ""}`
-          : `/homepage?c=${data.consultationId}`,
-      )
+      // The shared sample case opens read-only in its owner's portfolio, the way a case shared to
+      // view does (SharedWorkspaceGuard); the free chat opens on the sample consultation
+      // (TrialSvc.seedSampleConsultation).
+      if (data.caseId && data.caseOrganizationId) {
+        enterSharedWorkspace({ id: data.caseOrganizationId, ownerName: "ilovelawyer" })
+        router.replace(`/homepage/case-portfolio/${data.caseId}`)
+      } else {
+        router.replace(`/homepage?c=${data.consultationId}`)
+      }
     },
   })
 }

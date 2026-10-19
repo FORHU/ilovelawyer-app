@@ -34,11 +34,10 @@ export default function HomepageLayout({ children }: { children: React.ReactNode
   if (segments[0] === "terminal" && (segments[2] === "canvas" || segments[2] === "document")) return children
 
   // A trial guest gets the consultation and a way to sign up; every other page shows the lock.
-  // A guest who chose the sample case also gets its workspace: their only case, and read-only, since
-  // the API refuses a guest's writes there (blockTrialWrites).
-  // Besides the consultation: their sample case and the read-only sample-case tour (Guide links).
-  // Profile, organization and the Legal Terminal are greyed out in the header and case tabs.
-  const locked = !!trial && !!segments[0] && !["case-portfolio", "sample-case"].includes(segments[0])
+  // A guest who chose the sample case also gets the shared sample case, read-only (it opens as a
+  // case shared to view): its case page and its Terminal. Plus the read-only sample-case tour
+  // (Guide links). Profile and organization are greyed out in the header.
+  const locked = !!trial && !!segments[0] && !["case-portfolio", "terminal", "sample-case"].includes(segments[0])
 
   return (
     <>

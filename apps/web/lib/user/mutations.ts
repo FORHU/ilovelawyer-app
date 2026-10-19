@@ -28,8 +28,6 @@ export interface CurrentUser {
    * are left (the API owns the limit). Null for a real account. */
   trialExpiresAt: string | null
   trialMessagesLeft: number | null
-  /** A trial guest's uses left of each capped Studio feature (mindMap, audioOverview, audioRecording, caseBrief). */
-  trialFeaturesLeft?: Record<string, number> | null
   /** The free AI credit (USD) the account got at sign-up; null for accounts created before it existed. */
   freeCreditUsd?: number | null
 }
