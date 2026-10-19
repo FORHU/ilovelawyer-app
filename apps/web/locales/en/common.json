@@ -116,6 +116,7 @@
       "placeholder": "What is wrong or missing in this pane?",
       "note": "Sends which pane and case this is. Not the pane's text."
     },
-    "hintComment": "Add a few words to send."
+    "hintComment": "Add a few words to send.",
+    "limitReached": "You've reached the {{max}}-character limit."
   }
 }

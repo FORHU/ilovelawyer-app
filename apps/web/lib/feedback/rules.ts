@@ -6,7 +6,7 @@ export const FEEDBACK_CATEGORIES = ["BUG", "WRONG_ANSWER", "IDEA", "QUESTION"] a
 export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number]
 
 /** Keep in step with FEEDBACK_COMMENT_MAX_CHARS in ilovelawyer-api. */
-export const FEEDBACK_COMMENT_MAX_CHARS = 4000
+export const FEEDBACK_COMMENT_MAX_CHARS = 1000
 
 interface Draft {
   source: FeedbackSource
