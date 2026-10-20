@@ -906,6 +906,8 @@ export default function LegalTerminal({ caseId }: { caseId: string }) {
                         ? t("refreshAnalysisNoConsent")
                         : refreshError?.code === "FREE_CREDIT_SPENT"
                         ? t("refreshAnalysisFreeCreditSpent")
+                        : refreshError?.code === "CASE_ALLOWANCE_REACHED"
+                        ? t("refreshAnalysisCaseAllowance")
                         : refreshErrorStatus === 403
                           ? t("refreshAnalysisNoAccess")
                           : t("genericSaveError")}

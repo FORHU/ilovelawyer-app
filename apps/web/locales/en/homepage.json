@@ -34,6 +34,7 @@
   "microphoneError": "Microphone access is required to record. Please allow microphone permissions and try again.",
   "sendError": "Something went wrong. Please try again.",
   "sendErrorFreeCreditSpent": "You've used your free AI credit, so this message wasn't sent.",
+  "sendErrorCaseAllowance": "This case has reached its AI usage allowance, so this message wasn't sent. Contact us to request more.",
   "sendErrorTrialUsedUp": "You've used all your trial answers, so this message wasn't sent. Create an account to keep asking.",
   "sendErrorNoConsent":"AI processing is switched off for your account, so this message wasn't sent. Switch it on under Profile > Your Data to continue.",
   "historyLoadError": "Couldn't load this consultation.",
