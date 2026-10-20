@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import i18n from "@/lib/i18n/i18n"
 import { apiFetch } from "@/lib/fetch"
+import { useEnterSharedWorkspace } from "@/lib/organizations/mutations"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
 import { useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store"
@@ -375,27 +376,39 @@ export function useConsumeLoginLinkMutation() {
   })
 }
 
+/** What a trial guest starts with: the sample consultation, or their own copy of the sample case. */
+export type TrialSample = "consultation" | "case"
+
 /** The landing page's trial: starts a throwaway guest account (POST /api/trial/start, which sets the
- * refresh cookie like any sign-in) and opens the real consultation page as them. */
+ * refresh cookie like any sign-in) and opens, as them, the real consultation page or — for the
+ * sample case — that case's workspace. */
 export function useStartTrialMutation() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
   const queryClient = useQueryClient()
+  const enterSharedWorkspace = useEnterSharedWorkspace()
 
   return useMutation({
-    mutationFn: () =>
-      apiFetch<AuthTokensResponse & { consultationId: string }>("/api/trial/start", {
+    mutationFn: (sample: TrialSample = "consultation") =>
+      apiFetch<AuthTokensResponse & { consultationId: string; caseId: string | null; caseOrganizationId: string | null }>("/api/trial/start", {
         method: "POST",
-        body: JSON.stringify({ acceptedNotice: true }),
+        body: JSON.stringify({ acceptedNotice: true, sample }),
         skipAuthRefresh: true,
       }),
     onSuccess: async (data) => {
       setAuth({ accessToken: data.accessToken, user: data.user })
       queryClient.invalidateQueries({ queryKey: chatKeys.session() })
       await hydrateActiveOrganization(setOrganization)
-      // Opens on the sample consultation the guest starts with (TrialSvc.seedSampleConsultation).
-      router.replace(`/homepage?c=${data.consultationId}`)
+      // The shared sample case opens read-only in its owner's portfolio, the way a case shared to
+      // view does (SharedWorkspaceGuard); the free chat opens on the sample consultation
+      // (TrialSvc.seedSampleConsultation).
+      if (data.caseId && data.caseOrganizationId) {
+        enterSharedWorkspace({ id: data.caseOrganizationId, ownerName: "ilovelawyer" })
+        router.replace(`/homepage/case-portfolio/${data.caseId}`)
+      } else {
+        router.replace(`/homepage?c=${data.consultationId}`)
+      }
     },
   })
 }

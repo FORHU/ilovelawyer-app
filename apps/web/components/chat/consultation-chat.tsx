@@ -7,6 +7,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useCanContributeToCase } from "@/lib/cases/permissions";
 import { useTrial } from "@/lib/trial";
+import { useFreeCredit } from "@/lib/free-credit";
 import { useCreateAccountFromTrial } from "@/components/trial/trial-banner";
 import { useIsSharedWorkspace } from "@/lib/cases/shared";
 import { isNotFoundError } from "@/lib/fetch";
@@ -653,7 +654,10 @@ export default function ConsultationChat({
   const chatReadOnly = !useCanContributeToCase(linkedCaseId || caseId || undefined);
   // A trial guest whose answers are spent (see lib/trial.ts): the composer gives way to a sign-up prompt.
   const trial = useTrial();
-  const trialUsedUp = !!trial && trial.answersLeft === 0;
+  // A signed-up account whose free AI credit is used up gets the same lock, without the sign-up button.
+  const freeCredit = useFreeCredit();
+  const freeCreditSpent = !trial && !!freeCredit?.spent;
+  const trialUsedUp = (!!trial && trial.answersLeft === 0) || freeCreditSpent;
   const createAccountFromTrial = useCreateAccountFromTrial();
   // The same read-only chat for a case someone shared with this user — only the note differs.
   const sharedWithMe = useIsSharedWorkspace();
@@ -1590,7 +1594,7 @@ export default function ConsultationChat({
       // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
       // not worth a console error.
       const refusal = (error as { code?: string } | null)?.code;
-      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED") console.error("Failed to send message:", error);
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1616,7 +1620,14 @@ export default function ConsultationChat({
           // The API refuses (403 CONSENT_REQUIRED) before anything is saved when the person has
           // switched AI processing off, and (403 TRIAL_LIMIT_REACHED) when a trial guest has spent
           // their answers — say so, instead of the generic failure.
-          const refusalKey = refusal === "CONSENT_REQUIRED" ? "sendErrorNoConsent" : refusal === "TRIAL_LIMIT_REACHED" ? "sendErrorTrialUsedUp" : "sendError";
+          const refusalKey =
+            refusal === "CONSENT_REQUIRED"
+              ? "sendErrorNoConsent"
+              : refusal === "TRIAL_LIMIT_REACHED"
+                ? "sendErrorTrialUsedUp"
+                : refusal === "FREE_CREDIT_SPENT"
+                  ? "sendErrorFreeCreditSpent"
+                  : "sendError";
           nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };
         });
@@ -1835,15 +1846,17 @@ export default function ConsultationChat({
       >
         <span className="flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {t("input.trialUsedUp")}
+          {t(freeCreditSpent ? "input.freeCreditSpent" : "input.trialUsedUp")}
         </span>
-        <button
-          type="button"
-          onClick={createAccountFromTrial}
-          className="cursor-pointer whitespace-nowrap rounded-full bg-brand-gold px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[1.2px] text-brand-gold-foreground transition-colors duration-200 hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {t("input.trialCreateAccount")}
-        </button>
+        {!freeCreditSpent && (
+          <button
+            type="button"
+            onClick={createAccountFromTrial}
+            className="cursor-pointer whitespace-nowrap rounded-full bg-brand-gold px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[1.2px] text-brand-gold-foreground transition-colors duration-200 hover:bg-brand-gold/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {t("input.trialCreateAccount")}
+          </button>
+        )}
       </div>
     </div>
   ) : chatReadOnly ? (

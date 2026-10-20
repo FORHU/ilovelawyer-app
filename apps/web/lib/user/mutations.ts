@@ -28,6 +28,8 @@ export interface CurrentUser {
    * are left (the API owns the limit). Null for a real account. */
   trialExpiresAt: string | null
   trialMessagesLeft: number | null
+  /** The free AI credit (USD) the account got at sign-up; null for accounts created before it existed. */
+  freeCreditUsd?: number | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */

@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
+import { useTrial } from "@/lib/trial";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
+import { useFreeCredit } from "@/lib/free-credit";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useTourStore } from "@/lib/store/tour.store";
 import { useFeedbackStore } from "@/lib/store/feedback.store";
@@ -73,6 +75,8 @@ function TabLinkContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
   { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
@@ -91,6 +95,10 @@ const MOBILE_NAV_ITEMS = [
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
+  // so the shape of the product still shows. Terms stay open.
+  const trial = useTrial();
+  const trialLocked = (href: string) => !!trial && href !== "/homepage/term";
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
   const openGuide = useTourStore((s) => s.setGuideOpen);
@@ -124,6 +132,9 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
 
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
+  // An account on its free AI credit is a trial account until subscription tiers exist: the header
+  // says so and shows what is left of the credit.
+  const freeCredit = useFreeCredit();
 
   const initials = (user?.name ?? user?.username ?? "?")
     .split(/[.\s_-]+/)
@@ -309,6 +320,19 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             <NotificationBell />
           </span>
 
+          {freeCredit && (
+            <span
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-[0.5px] tabular-nums ${
+                freeCredit.spent ? "border-destructive/40 text-destructive" : "border-brand-gold/50 text-foreground"
+              }`}
+            >
+              <span className="rounded-full bg-brand-gold px-1.5 py-px text-[9px] uppercase tracking-[1px] text-brand-gold-foreground">
+                {t("userMenu.trialBadge")}
+              </span>
+              {freeCredit.spent ? t("userMenu.creditSpent") : t("userMenu.creditLeft", { amount: usd.format(freeCredit.leftUsd) })}
+            </span>
+          )}
+
           <div className="relative" ref={userMenuRef}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -339,23 +363,52 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
                   </div>
                 )}
+                {freeCredit && (
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <span className="inline-block rounded-full bg-brand-gold px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[1px] text-brand-gold-foreground">
+                      {t("userMenu.trialAccount")}
+                    </span>
+                    <p className={`mt-1.5 text-[11px] tabular-nums ${freeCredit.spent ? "text-destructive" : "text-foreground"}`}>
+                      {freeCredit.spent
+                        ? t("userMenu.creditSpent")
+                        : t("userMenu.creditLeftOf", { amount: usd.format(freeCredit.leftUsd), total: usd.format(freeCredit.creditUsd) })}
+                    </p>
+                    {freeCredit.spent && <p className="mt-1 text-[10px] text-muted-foreground">{t("userMenu.creditSpentHint")}</p>}
+                  </div>
+                )}
 
-                {USER_MENU_ITEMS.map((item) => (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
-                      >
-                        <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
-                        {t(item.labelKey)}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">{item.tooltip}</TooltipContent>
-                  </Tooltip>
-                ))}
+                {USER_MENU_ITEMS.map((item) =>
+                  trialLocked(item.href) ? (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <span
+                          role="menuitem"
+                          aria-disabled="true"
+                          className="flex cursor-default items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground opacity-50"
+                        >
+                          <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {t(item.labelKey)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{t("trial.notIncluded")}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          role="menuitem"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
+                        >
+                          <item.icon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {t(item.labelKey)}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">{item.tooltip}</TooltipContent>
+                    </Tooltip>
+                  ),
+                )}
 
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -503,21 +556,33 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             </TooltipTrigger>
             <TooltipContent side="left">{t("feedback.open", { defaultValue: "Send feedback" })}</TooltipContent>
           </Tooltip>
-          {USER_MENU_ITEMS.map((item) => (
-            <Tooltip key={item.href}>
-              <TooltipTrigger asChild>
-                <Link
-                  href={item.href}
-                  onClick={closeMobileMenu}
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <item.icon className="size-4 shrink-0" aria-hidden="true" />
-                  {t(item.labelKey)}
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="left">{item.tooltip}</TooltipContent>
-            </Tooltip>
-          ))}
+          {USER_MENU_ITEMS.map((item) =>
+            trialLocked(item.href) ? (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                title={t("trial.notIncluded")}
+                className="flex cursor-default items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground opacity-50"
+              >
+                <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                {t(item.labelKey)}
+              </span>
+            ) : (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] tracking-[1px] uppercase text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                    {t(item.labelKey)}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left">{item.tooltip}</TooltipContent>
+              </Tooltip>
+            ),
+          )}
         </div>
 
         {/* mt-auto pins sign-out to the bottom of the sheet regardless of how much content is

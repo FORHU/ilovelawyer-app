@@ -193,7 +193,9 @@ export default function CaseDetailPage() {
              * three tabs at their normal size don't fit a 320px viewport otherwise. */}
             {/* Share is a case-level action, not a status: it ends the tab row, past a divider
              * (icon-only below sm so the tabs keep their room). */}
-            <div className="flex min-w-0 items-start gap-4 sm:gap-6">
+            {/* Never shrinks beside the title from sm up: a long case name or description would
+             * otherwise squeeze this row and clip the last tab. The title side truncates instead. */}
+            <div className="flex min-w-0 sm:shrink-0 items-start gap-4 sm:gap-6">
             <nav className="flex gap-3.5 sm:gap-7 overflow-x-auto scrollbar-none text-[9.5px] sm:text-[10px] font-semibold tracking-[1px] sm:tracking-[1.2px] uppercase -mx-6 px-6 sm:mx-0 sm:px-0">
               <TabButton active={activeTab === "workspace"} onClick={() => switchTab("workspace")} icon={PanelsTopLeft}>
                 {t("overview.tabWorkspace")}
