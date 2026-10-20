@@ -1594,7 +1594,7 @@ export default function ConsultationChat({
       // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
       // not worth a console error.
       const refusal = (error as { code?: string } | null)?.code;
-      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT") console.error("Failed to send message:", error);
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT" && refusal !== "CASE_ALLOWANCE_REACHED") console.error("Failed to send message:", error);
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1627,7 +1627,9 @@ export default function ConsultationChat({
                 ? "sendErrorTrialUsedUp"
                 : refusal === "FREE_CREDIT_SPENT"
                   ? "sendErrorFreeCreditSpent"
-                  : "sendError";
+                  : refusal === "CASE_ALLOWANCE_REACHED"
+                    ? "sendErrorCaseAllowance"
+                    : "sendError";
           nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };
         });

@@ -42,6 +42,7 @@
   "refreshAnalysisNoAccess": "You need edit access to this case to refresh its analysis.",
   "refreshAnalysisNoConsent": "AI processing is switched off for your account. Switch it on under Profile > Your Data to refresh the analysis.",
   "refreshAnalysisFreeCreditSpent": "You've used your free AI credit, so the analysis can't be refreshed.",
+  "refreshAnalysisCaseAllowance": "This case has reached its AI usage allowance, so the analysis can't be refreshed. To request more, send us a message with the Feedback button at the top of the page.",
   "updatingAnalysis": "Updating analysis…",
   "preset": "Preset",
   "presetEvidenceCheck": "Evidence Check",
