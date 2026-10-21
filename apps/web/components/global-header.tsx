@@ -3,11 +3,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, FileText, Inbox, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
+import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
 import { UserAvatar } from "@/components/user-avatar";
 import { useFreeCredit } from "@/lib/free-credit";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
@@ -35,6 +37,7 @@ export const ACTIVE_TABS = [
   "profile",
   "organization",
   "notifications",
+  "client-requests",
   // Secondary destinations — not part of the primary nav
   "constitution",
   "civil-code",
@@ -93,6 +96,16 @@ const MOBILE_NAV_ITEMS = [
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
 
+// Gated separately (isFeatureEnabled check at render time) rather than folded into
+// MOBILE_NAV_ITEMS above: UK-tenant only, see config/tenant-codes/uk.ts's "clientRequests".
+const CLIENT_REQUESTS_NAV_ITEM = {
+  tab: "client-requests",
+  labelKey: "nav.clientRequests",
+  href: "/homepage/client-requests",
+  tooltip: "Client requests waiting for a lawyer to accept",
+  icon: Inbox,
+} as const;
+
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
   // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
@@ -135,6 +148,11 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   // An account on its free AI credit is a trial account until subscription tiers exist: the header
   // says so and shows what is left of the credit.
   const freeCredit = useFreeCredit();
+
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
+  const clientRequestsEnabled = isFeatureEnabled(tenantCode, "clientRequests");
+  const clientRequestsCount = useClientRequestInboxCountQuery(clientRequestsEnabled);
+  const mobileNavItems = clientRequestsEnabled ? [...MOBILE_NAV_ITEMS, CLIENT_REQUESTS_NAV_ITEM] : MOBILE_NAV_ITEMS;
 
   const initials = (user?.name ?? user?.username ?? "?")
     .split(/[.\s_-]+/)
@@ -269,6 +287,23 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             </TooltipTrigger>
             <TooltipContent>View and schedule appointments</TooltipContent>
           </Tooltip>
+
+          {clientRequestsEnabled && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/homepage/client-requests" className={getSubTabClass("client-requests")}>
+                  <TabLinkContent>{t("nav.clientRequests").toUpperCase()}</TabLinkContent>
+                  {clientRequestsCount > 0 && (
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-gold px-1 text-[9px] font-bold text-brand-gold-foreground">
+                      {clientRequestsCount}
+                    </span>
+                  )}
+                  {activeTab === "client-requests" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Client requests waiting for a lawyer to accept</TooltipContent>
+            </Tooltip>
+          )}
         </nav>
 
         {/* Icons are now inside the main flex row */}
@@ -501,7 +536,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         )}
 
         <nav className="flex flex-col gap-1 px-3 py-3">
-          {MOBILE_NAV_ITEMS.map((item) => (
+          {mobileNavItems.map((item) => (
             <Tooltip key={item.tab}>
               <TooltipTrigger asChild>
                 <Link
@@ -512,6 +547,11 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                 >
                   <item.icon className="size-4.5 shrink-0" aria-hidden="true" />
                   <TabLinkContent>{t(item.labelKey)}</TabLinkContent>
+                  {item.tab === "client-requests" && clientRequestsCount > 0 && (
+                    <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-bold text-brand-gold-foreground">
+                      {clientRequestsCount}
+                    </span>
+                  )}
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="left">{item.tooltip}</TooltipContent>

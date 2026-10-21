@@ -8,7 +8,8 @@
     "legalTerminal": "Legal Terminal",
     "library": "Aklatan",
     "transcription": "Transkripsyon",
-    "calendar": "Kalendaryo"
+    "calendar": "Kalendaryo",
+    "clientRequests": "Mga Kahilingan ng Kliyente"
   },
   "userMenu": {
     "accountMenu": "Menu ng account",
