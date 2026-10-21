@@ -160,5 +160,71 @@
     "disconnecting": "Disconnecting…",
     "popupError": "Google didn't complete the connection. Please try again.",
     "genericError": "Couldn't update Google Calendar. Please try again."
+  },
+  "clientRequests": {
+    "heading": "Client requests",
+    "subheading": "Take on clients who ask for a lawyer on ilovelawyer.com. You see an anonymised summary of each case first, and pay a fixed fee only when a client confirms you.",
+    "loadError": "Couldn't load your client request settings. Refresh to try again.",
+    "status": {
+      "UNSUBMITTED": "Not submitted",
+      "PENDING": "Checking your registration",
+      "VERIFIED": "Verified",
+      "REJECTED": "Not verified"
+    },
+    "statusHelp": {
+      "UNSUBMITTED": "Fill in the details above so we can check your registration.",
+      "PENDING": "We're checking your registration with your regulator. This usually takes a working day.",
+      "VERIFIED": "Your registration is verified. Changing your regulator, number or jurisdictions means we check it again.",
+      "REJECTED": "We couldn't verify your registration. Correct your details and save to have it checked again."
+    },
+    "rejectedNote": "Why: {{note}}",
+    "missing": "Still needed before we can check your registration: {{fields}}.",
+    "missingFields": {
+      "regulator": "your regulator",
+      "registrationNumber": "your registration number",
+      "qualifiedJurisdictions": "where you're qualified",
+      "practiceAreas": "at least one practice area"
+    },
+    "accepting": {
+      "title": "Accept client requests",
+      "description": "New requests that match your practice areas and jurisdictions reach you while this is on.",
+      "needsVerification": "You can turn this on once we've verified your registration.",
+      "offByOrganization": "Your organization has turned client requests off for you.",
+      "tooltip": "Turn new client requests on or off"
+    },
+    "regulators": {
+      "SRA": "SRA (England and Wales)",
+      "LSS": "Law Society of Scotland",
+      "LSNI": "Law Society of Northern Ireland"
+    },
+    "areas": {
+      "EMPLOYMENT": "Employment",
+      "PROPERTY": "Property",
+      "FAMILY": "Family",
+      "CONSUMER": "Consumer",
+      "OTHER": "Other",
+      "PERSONAL_INJURY": "Personal injury",
+      "personalInjuryWhy": "Referral fees aren't allowed in personal injury cases, so we can't send these."
+    },
+    "fields": {
+      "regulator": "Regulator",
+      "registrationNumber": "Registration number",
+      "registrationNumberHelp": "Your SRA number, or your Law Society of Scotland or Northern Ireland number.",
+      "jurisdictions": "Qualified in",
+      "practiceAreas": "Practice areas",
+      "bio": "About you",
+      "bioHelp": "Shown to a client when you send them a quote.",
+      "languages": "Languages",
+      "languagesHelp": "Separate them with commas, e.g. English, Welsh.",
+      "fee": "First consultation fee (£)",
+      "feeHelp": "Leave empty if you don't offer one.",
+      "pausedUntil": "Pause until",
+      "pausedUntilHelp": "No new requests until this date. Leave empty to stay on.",
+      "capacity": "Most open clients at once",
+      "capacityHelp": "Leave empty for no limit."
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved"
   }
 }

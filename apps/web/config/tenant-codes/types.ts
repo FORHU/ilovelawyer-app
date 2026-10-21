@@ -25,6 +25,9 @@ export interface TenantCapabilities {
   /** legalRagId-based citation checking in the Legal Terminal. */
   citations: CapabilityStatus
   deadlines: CapabilityStatus
+  /** Receiving clients from the client app (the UK client-to-lawyer hand-off). The API only
+   * serves it to UK lawyers (ilovelawyer-api LawyerProfileSvc). */
+  clientRequests: CapabilityStatus
 }
 
 /**
