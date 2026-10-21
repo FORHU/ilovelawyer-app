@@ -1,6 +1,7 @@
 import enAuth from "@/locales/en/auth.json"
 import enCalendar from "@/locales/en/calendar.json"
 import enCasePortfolio from "@/locales/en/case-portfolio.json"
+import enClientRequest from "@/locales/en/client-request.json"
 import enCommon from "@/locales/en/common.json"
 import enCreateCase from "@/locales/en/create-case.json"
 import enHomepage from "@/locales/en/homepage.json"
@@ -50,6 +51,7 @@ export const I18N_RESOURCES = {
     landing: enLanding,
     homepage: enHomepage,
     calendar: enCalendar,
+    "client-request": enClientRequest,
     "case-portfolio": enCasePortfolio,
     "create-case": enCreateCase,
     library: enLibrary,
