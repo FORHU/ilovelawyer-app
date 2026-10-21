@@ -2,7 +2,7 @@ import { useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { dateLocale } from "@/lib/i18n/date-locale"
 import { MOCK_CLIENT_REQUESTS } from "./mock-data"
-import type { ClientRequest, RequestUrgency } from "./types"
+import type { ClientRequest, RequestUrgency } from "./mock-types"
 
 export const clientRequestKeys = {
   all: ["client-requests"] as const,

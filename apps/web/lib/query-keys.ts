@@ -48,6 +48,7 @@ export const userKeys = {
   all: ["user"] as const,
   me: () => [...userKeys.all, "me"] as const,
   consents: () => [...userKeys.all, "consents"] as const,
+  clientRequestProfile: () => [...userKeys.all, "client-request-profile"] as const,
 }
 
 export const chatKeys = {
@@ -101,4 +102,17 @@ export const legalRagKeys = {
 export const tourKeys = {
   all: ["tour"] as const,
   track: (track: string) => [...tourKeys.all, track] as const,
+}
+
+export const clientRequestKeys = {
+  all: ["client-requests"] as const,
+  lists: () => [...clientRequestKeys.all, "list"] as const,
+  list: (view: string, page: number, limit: number) => [...clientRequestKeys.lists(), view, page, limit] as const,
+  details: () => [...clientRequestKeys.all, "detail"] as const,
+  detail: (id: string) => [...clientRequestKeys.details(), id] as const,
+}
+
+export const billingKeys = {
+  all: ["billing"] as const,
+  card: (organizationId: string) => [...billingKeys.all, "card", organizationId] as const,
 }

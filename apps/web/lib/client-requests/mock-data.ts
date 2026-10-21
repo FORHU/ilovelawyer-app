@@ -1,4 +1,4 @@
-import type { ClientRequest } from "./types"
+import type { ClientRequest } from "./mock-types"
 
 // Placeholder data until the client-requests API exists — see queries.ts, the only importer.
 

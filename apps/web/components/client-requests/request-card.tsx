@@ -6,7 +6,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { formatTimeAgo } from "@/lib/client-requests/queries";
-import type { ClientRequest } from "@/lib/client-requests/types";
+import type { ClientRequest } from "@/lib/client-requests/mock-types";
 import { RequestTags } from "./request-tags";
 
 interface RequestCardProps {

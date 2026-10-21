@@ -13,7 +13,7 @@ import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import { HOLD_DURATION_MS } from "@/lib/client-requests/mock-data";
 import { useClientRequestQuery } from "@/lib/client-requests/queries";
 import { formatCountdown, useCountdown } from "@/lib/client-requests/use-countdown";
-import type { ClientRequest, QuoteType } from "@/lib/client-requests/types";
+import type { ClientRequest, QuoteType } from "@/lib/client-requests/mock-types";
 import { Button } from "@workspace/ui/components/button";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { Skeleton } from "@workspace/ui/components/skeleton";

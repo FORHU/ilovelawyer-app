@@ -44,6 +44,8 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
       // LEGAL_REVIEW_REQUIRED and dual-attorney-confirmation gated on the backend —
       // shown, not hidden.
       deadlines: "available-provisional",
+      // Lawyers receive clients from the client app (ilovelawyer.com): profile settings first.
+      clientRequests: "available",
     },
   },
 }

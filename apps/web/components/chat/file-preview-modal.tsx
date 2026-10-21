@@ -13,13 +13,18 @@ interface FilePreviewModalProps {
   /** z-index class for the backdrop. Defaults to the global modal layer; the Terminal passes
    * z-(--z-canvas-overlay) so the viewer clears a maximized pane (z-[90]) and Free-canvas panes. */
   layerClassName?: string;
+  /** Open a PDF at this page and highlight this passage on it (see AttachmentPreview). */
+  page?: number | null;
+  quote?: string | null;
+  /** Shown beside the file name, e.g. where in a merged bundle the cited passage is. */
+  subtitle?: string | null;
 }
 
 /** Modal chrome (backdrop, title bar, Escape-to-close) around AttachmentPreview — used for the
  * chat attachment-chip preview. Studio's inline Documents preview (DocumentFolderBrowser) embeds
  * AttachmentPreview directly instead, with its own back-navigation header, since a full-viewport
  * overlay doesn't make sense inside a docked sidebar. */
-export default function FilePreviewModal({ attachment, onClose, layerClassName = "z-(--z-modal)" }: FilePreviewModalProps) {
+export default function FilePreviewModal({ attachment, onClose, layerClassName = "z-(--z-modal)", page, quote, subtitle }: FilePreviewModalProps) {
   const { t } = useTranslation("homepage");
 
   useEffect(() => {
@@ -52,6 +57,7 @@ export default function FilePreviewModal({ attachment, onClose, layerClassName =
           <div className="flex min-w-0 items-center gap-2">
             <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="truncate text-sm font-medium text-foreground">{attachment.name}</span>
+            {subtitle ? <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">· {subtitle}</span> : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {attachment.url && (
@@ -87,7 +93,7 @@ export default function FilePreviewModal({ attachment, onClose, layerClassName =
         </div>
 
         <div className="min-h-0 flex-1">
-          <AttachmentPreview attachment={attachment} />
+          <AttachmentPreview attachment={attachment} page={page} quote={quote} />
         </div>
       </div>
     </div>

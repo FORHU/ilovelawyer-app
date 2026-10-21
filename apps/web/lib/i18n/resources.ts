@@ -2,6 +2,7 @@ import enAuth from "@/locales/en/auth.json"
 import enCalendar from "@/locales/en/calendar.json"
 import enCasePortfolio from "@/locales/en/case-portfolio.json"
 import enClientRequest from "@/locales/en/client-request.json"
+import enClientRequests from "@/locales/en/client-requests.json"
 import enCommon from "@/locales/en/common.json"
 import enCreateCase from "@/locales/en/create-case.json"
 import enHomepage from "@/locales/en/homepage.json"
@@ -53,6 +54,7 @@ export const I18N_RESOURCES = {
     calendar: enCalendar,
     "client-request": enClientRequest,
     "case-portfolio": enCasePortfolio,
+    "client-requests": enClientRequests,
     "create-case": enCreateCase,
     library: enLibrary,
     transcription: enTranscription,

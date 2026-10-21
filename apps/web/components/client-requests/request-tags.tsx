@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import { Badge } from "@workspace/ui/components/badge";
-import type { ClientRequest, RequestUrgency } from "@/lib/client-requests/types";
+import type { ClientRequest, RequestUrgency } from "@/lib/client-requests/mock-types";
 
 const URGENCY_TONE = { high: "danger", medium: "caution", low: "success" } as const satisfies Record<RequestUrgency, string>;
 

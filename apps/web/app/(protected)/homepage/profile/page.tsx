@@ -10,6 +10,8 @@ import DeleteAccountModal from "@/components/account/delete-account-modal";
 import ChangePasswordModal from "@/components/account/change-password-modal";
 import ExportDataModal from "@/components/account/export-data-modal";
 import SwitchOffAiModal from "@/components/account/switch-off-ai-modal";
+import { ClientRequestsSettings } from "@/components/account/client-requests-settings";
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import {
@@ -146,6 +148,8 @@ export default function ProfilePage() {
   // full profile (including the display name chosen at signup) lives behind its
   // own endpoint, since login/refresh don't return a user object at all.
   const storeUser = useAuthStore((s) => s.user);
+  // Receiving clients from the client app is UK only.
+  const showClientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "clientRequests");
   const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUserQuery();
   const showSkeleton = useDelayedLoading(isLoadingCurrentUser);
   const logout = useLogoutMutation();
@@ -736,6 +740,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {showClientRequests && <ClientRequestsSettings />}
 
         {/* Your data */}
         <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

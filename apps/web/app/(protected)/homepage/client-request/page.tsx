@@ -10,7 +10,7 @@ import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import { URGENCY_RANK, useClientRequestsQuery } from "@/lib/client-requests/queries";
-import type { RequestUrgency } from "@/lib/client-requests/types";
+import type { RequestUrgency } from "@/lib/client-requests/mock-types";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { PageHeading } from "@workspace/ui/components/page-heading";
 import { Skeleton } from "@workspace/ui/components/skeleton";
