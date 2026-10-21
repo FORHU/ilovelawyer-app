@@ -45,6 +45,10 @@ type ContradictionMetadata = {
   /** Where in the document each side sits, e.g. "D13 p.2" — set by the full-bundle scan. */
   leftLocator?: string | null
   rightLocator?: string | null
+  /** PDF page (1-based) each side is on — set by the full-bundle scan. Unlike the locator, which
+   * counts pages inside an exhibit, this is the page to open the file at. */
+  leftPage?: number | null
+  rightPage?: number | null
 }
 
 // The severity tag is Jev's DIRECT/INFERENTIAL/NOT_A_CONFLICT read when the scan had it, else the
@@ -132,6 +136,8 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
   const [note, setNote] = useState("")
 
   const docName = new Map((graphView.data?.nodes ?? []).map((n) => [n.id, n.label]))
+  // An edge's ends are graph node ids ("document:<uuid>"); the viewer wants the document's own id.
+  const docIdOf = new Map((graphView.data?.nodes ?? []).map((n) => [n.id, n.refId]))
   const rows = (graphView.data?.edges ?? [])
     .map((edge) => {
       const m = edge.metadata as ContradictionMetadata
@@ -230,18 +236,30 @@ export function EvidenceContradictions({ caseId }: { caseId: string }) {
                 {isOpen ? (
                   <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2 text-[12px]">
                     {[
-                      { doc: left, docId: edge.source, excerpt: m.leftExcerpt, value: m.leftValue },
-                      { doc: right, docId: edge.target, excerpt: m.rightExcerpt, value: m.rightValue },
-                    ].map((side, i) => (
-                      <div key={i}>
-                        <p className={labelTextClass}>
-                          <DocumentLink docId={side.docId}>{side.doc}</DocumentLink> · <span className={tone.text}>{formatContradictionValue(m.kind, side.value)}</span>
-                        </p>
-                        <p className="mt-0.5 leading-5 text-foreground">
-                          {side.excerpt ? `“${side.excerpt}”` : t("contradictionNoExcerpt")}
-                        </p>
-                      </div>
-                    ))}
+                      { doc: left, node: edge.source, name: leftDoc, locator: m.leftLocator, page: m.leftPage, excerpt: m.leftExcerpt, value: m.leftValue },
+                      { doc: right, node: edge.target, name: rightDoc, locator: m.rightLocator, page: m.rightPage, excerpt: m.rightExcerpt, value: m.rightValue },
+                    ].map((side, i) => {
+                      // Either end of the label opens the document at this side's page with its
+                      // excerpt highlighted. Without a page (older rows, the sample scan) the
+                      // viewer searches the document for the excerpt instead.
+                      const open = {
+                        docId: docIdOf.get(side.node) ?? side.node,
+                        name: side.name,
+                        page: side.page,
+                        quote: side.excerpt,
+                        label: side.locator,
+                      }
+                      return (
+                        <div key={i}>
+                          <p className={labelTextClass}>
+                            <DocumentLink {...open}>{side.doc}</DocumentLink> · <span className={tone.text}>{formatContradictionValue(m.kind, side.value)}</span>
+                          </p>
+                          <p className="mt-0.5 leading-5 text-foreground">
+                            {side.excerpt ? <DocumentLink {...open}>{`“${side.excerpt}”`}</DocumentLink> : t("contradictionNoExcerpt")}
+                          </p>
+                        </div>
+                      )
+                    })}
                     <p className="text-muted-foreground">
                       {m.nature
                         ? t("contradictionJevSays", {

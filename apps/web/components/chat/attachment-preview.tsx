@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
 import { renderAsync } from "docx-preview";
 import xlsxPreview from "xlsx-preview";
 import { Download, ExternalLink, FileText, Loader2 } from "lucide-react";
@@ -17,12 +19,20 @@ import {
 } from "@/components/chat/message-attachments";
 import { apiFetch } from "@/lib/fetch";
 
+// pdf.js is large and only needed when a PDF is opened at a cited page — keep it out of the
+// bundle every other preview loads.
+const PdfPageView = dynamic(() => import("@/components/shared/pdf-page-view"), { ssr: false });
+
 interface AttachmentPreviewProps {
   attachment: MessageAttachment;
   /** Hides the native PDF viewer's toolbar (`#toolbar=0`). Chrome/Edge's toolbar has a fixed
    * minimum layout and just clips its right-hand actions in a narrow frame — callers in narrow,
    * resizable panels pass this and supply their own always-reachable actions instead. */
   hidePdfToolbar?: boolean;
+  /** Open a PDF at this page (1-based). */
+  page?: number | null;
+  /** Highlight this passage on the page (or find it, when no page is given). PDF only. */
+  quote?: string | null;
 }
 
 // xlsx-preview's genColor() (src/CSSStyles/inline.ts) converts a cell's ARGB font/fill color
@@ -55,9 +65,15 @@ function fixTransparentCellColors(html: string): string {
  * inline Documents preview, so neither has to duplicate the fetch/render logic below. Fills its
  * parent's height — the caller decides whether that's a modal's fixed h-[80vh] body or a
  * resizable sidebar's available height. */
-export function AttachmentPreview({ attachment, hidePdfToolbar = false }: AttachmentPreviewProps) {
+export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, quote }: AttachmentPreviewProps) {
   const { t } = useTranslation("homepage");
+  const { t: tTerminal } = useTranslation("terminal");
   const [inlineFailed, setInlineFailed] = useState(false);
+  // The pdf.js page view could not draw the file: fall back to the browser's own viewer, which can
+  // still open at the page (just without the highlight).
+  const [pdfViewFailed, setPdfViewFailed] = useState(false);
+  const [positionNoticeDismissed, setPositionNoticeDismissed] = useState(false);
+  const wantsPosition = !!page || !!quote?.trim();
   const isPdf = isPdfAttachment(attachment);
   const isImage = isImageAttachment(attachment);
   const isDocx = isDocxAttachment(attachment);
@@ -233,16 +249,49 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false }: Attach
   }, [isLegacyDoc, attachment.id]);
 
   return (
-    <div className="h-full min-h-0 bg-muted/30">
-      {canInlinePreview && isImage ? (
-        <div className="flex h-full items-center justify-center p-4">
-          <img
-            src={attachment.url!}
-            alt={attachment.name}
-            className="max-h-full max-w-full object-contain"
-            onError={() => setInlineFailed(true)}
-          />
+    <div className="relative h-full min-h-0 bg-muted/30">
+      {wantsPosition && !isPdf && !positionNoticeDismissed ? (
+        // Page and highlight only exist for PDFs; say so rather than silently opening at the top.
+        <div
+          role="status"
+          className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 border-t border-border bg-card/95 px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          <p className="min-w-0 flex-1">{tTerminal("pdfHighlightPdfOnly")}</p>
+          <button
+            type="button"
+            onClick={() => setPositionNoticeDismissed(true)}
+            className="shrink-0 rounded-sm px-1.5 py-0.5 font-medium hover:bg-muted hover:text-foreground"
+          >
+            {tTerminal("pdfDismiss")}
+          </button>
         </div>
+      ) : null}
+      {canInlinePreview && isImage ? (
+        <div className="h-full p-4">
+          <div className="relative h-full w-full">
+            {/* `fill` because an attachment's dimensions aren't known up front; `unoptimized` because
+             * the src is a presigned or token-proxied URL for a private file, which Next's image
+             * optimizer can't (and shouldn't) fetch — the browser loads it directly, as before. */}
+            <Image
+              src={attachment.url!}
+              alt={attachment.name}
+              fill
+              unoptimized
+              sizes="100vw"
+              className="object-contain"
+              onError={() => setInlineFailed(true)}
+            />
+          </div>
+        </div>
+      ) : canInlinePreview && isPdf && wantsPosition && !pdfViewFailed ? (
+        <PdfPageView
+          docId={attachment.id}
+          url={attachment.url!}
+          name={attachment.name}
+          page={page}
+          quote={quote}
+          onError={() => setPdfViewFailed(true)}
+        />
       ) : canInlinePreview ? (
         <iframe
           // PDF Open Parameters fragment (Adobe spec, honored by Chrome/Edge's built-in PDFium
@@ -250,7 +299,7 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false }: Attach
           // zoom, which on a narrow mobile width renders the page wider than the iframe with no
           // way to zoom out first, so it never fits the screen. FitH forces "fit to width" so the
           // page always starts scaled to the frame and only needs vertical scroll.
-          src={isPdf ? `${attachment.url!}#${hidePdfToolbar ? "toolbar=0&" : ""}view=FitH` : attachment.url!}
+          src={isPdf ? `${attachment.url!}#${hidePdfToolbar ? "toolbar=0&" : ""}${page ? `page=${page}&` : ""}view=FitH` : attachment.url!}
           title={attachment.name}
           className="h-full w-full touch-pan-y border-0"
           onError={() => setInlineFailed(true)}

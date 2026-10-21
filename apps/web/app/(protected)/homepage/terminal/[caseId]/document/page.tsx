@@ -6,20 +6,21 @@ import { useTranslation } from "react-i18next"
 import { AlertCircle, Download, ExternalLink, FileText, Loader2 } from "lucide-react"
 import { AttachmentPreview } from "@/components/chat/attachment-preview"
 import { useArchivedCaseDocumentsQuery, useCaseDocumentsQuery } from "@/lib/cases/mutations"
-import { findViewerDocument } from "@/lib/terminal/document-viewer"
+import { findViewerDocument, parseViewerParams } from "@/lib/terminal/document-viewer"
 
 const iconLinkClass =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-gold/40 focus-visible:outline-none dark:hover:bg-overlay-hover"
 
 // The Document Viewer tab a Decision Record's evidence opens (see documentViewerHref) — a
 // chrome-less page like the canvas pop-out windows: just the file's name, its open/download
-// actions and the same AttachmentPreview the case Documents view embeds.
+// actions and the same AttachmentPreview the case Documents view embeds. `?page=` and `?q=` open
+// a PDF at that page with the passage highlighted.
 function DocumentViewer() {
   const { t } = useTranslation("terminal")
   const { t: tHome } = useTranslation("homepage")
   const { caseId } = useParams<{ caseId: string }>()
   const search = useSearchParams()
-  const ref = { id: search.get("id"), name: search.get("name") }
+  const { page, quote, label, ...ref } = parseViewerParams(search)
 
   const active = useCaseDocumentsQuery(caseId)
   const activeMatch = active.data ? findViewerDocument(active.data, ref) : undefined
@@ -33,6 +34,8 @@ function DocumentViewer() {
     document.title = `${title} · ${t("documentViewerTitle")}`
   }, [title, t])
 
+  const subtitle = [label, page ? t("pdfPageLabel", { page }) : null].filter(Boolean).join(" · ")
+
   const loading = active.isLoading || (!activeMatch && archived.isLoading)
   const failed = active.isError || (!activeMatch && archived.isError)
 
@@ -42,10 +45,11 @@ function DocumentViewer() {
         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium" title={title}>
           {title}
+          {subtitle ? <span className="ml-2 text-xs font-normal text-muted-foreground">· {subtitle}</span> : null}
         </h1>
         {doc?.fileUrl ? (
           <>
-            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={tHome("attachment.openInNewTab")} title={tHome("attachment.openInNewTab")} className={iconLinkClass}>
+            <a href={page ? `${doc.fileUrl}#page=${page}` : doc.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={tHome("attachment.openInNewTab")} title={tHome("attachment.openInNewTab")} className={iconLinkClass}>
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             </a>
             <a href={doc.fileUrl} download={doc.name} aria-label={tHome("attachment.download")} title={tHome("attachment.download")} className={iconLinkClass}>
@@ -72,7 +76,7 @@ function DocumentViewer() {
           </div>
         ) : (
           <div className="h-full overflow-hidden rounded-xl border border-border">
-            <AttachmentPreview attachment={{ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null }} />
+            <AttachmentPreview attachment={{ id: doc.id, name: doc.name, url: doc.fileUrl, mimeType: doc.mimeType ?? null }} page={page} quote={quote} />
           </div>
         )}
       </main>
