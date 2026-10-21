@@ -33,6 +33,8 @@ export const phTenantCodeConfig: TenantCodeConfig = {
       legalSearch: "available",
       citations: "available",
       deadlines: "available",
+      // The client-to-lawyer hand-off is UK only for now.
+      clientRequests: "coming-soon",
     },
   },
 }

@@ -48,6 +48,7 @@ export const userKeys = {
   all: ["user"] as const,
   me: () => [...userKeys.all, "me"] as const,
   consents: () => [...userKeys.all, "consents"] as const,
+  clientRequestProfile: () => [...userKeys.all, "client-request-profile"] as const,
 }
 
 export const chatKeys = {

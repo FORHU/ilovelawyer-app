@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import { getTenantCapabilities, isFeatureEnabled, getStatus } from "../capabilities"
 
 describe("getTenantCapabilities / isFeatureEnabled", () => {
-  it("PH has every capability available", () => {
+  it("PH has every capability available except the UK-only client hand-off", () => {
     const caps = getTenantCapabilities("PH")
     expect(caps.aiChat).toBe("available")
     expect(caps.cases).toBe("available")
@@ -12,8 +12,13 @@ describe("getTenantCapabilities / isFeatureEnabled", () => {
     expect(caps.deadlines).toBe("available")
 
     for (const feature of Object.keys(caps) as (keyof typeof caps)[]) {
-      expect(isFeatureEnabled("PH", feature)).toBe(true)
+      expect(isFeatureEnabled("PH", feature)).toBe(feature !== "clientRequests")
     }
+  })
+
+  it("client requests are UK only", () => {
+    expect(isFeatureEnabled("UK", "clientRequests")).toBe(true)
+    expect(isFeatureEnabled("PH", "clientRequests")).toBe(false)
   })
 
   it("UK legalSearch is available (live UK Library via the UK Legal MCP)", () => {
