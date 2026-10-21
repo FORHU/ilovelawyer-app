@@ -150,7 +150,8 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const freeCredit = useFreeCredit();
 
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
-  const clientRequestsEnabled = isFeatureEnabled(tenantCode, "clientRequests");
+  // A sample-case visitor is a trial guest with no clients: the inbox and its count are not theirs to see.
+  const clientRequestsEnabled = isFeatureEnabled(tenantCode, "clientRequests") && !trial;
   const clientRequestsCount = useClientRequestInboxCountQuery(clientRequestsEnabled);
   const mobileNavItems = clientRequestsEnabled ? [...MOBILE_NAV_ITEMS, CLIENT_REQUESTS_NAV_ITEM] : MOBILE_NAV_ITEMS;
 

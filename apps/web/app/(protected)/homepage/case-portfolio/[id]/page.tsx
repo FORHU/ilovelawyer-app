@@ -48,6 +48,8 @@ const DAY_MS = 86_400_000;
 const OVERDUE_WINDOW_DAYS = 14;
 // Rows shown in the Documents / Consultations previews before "View all".
 const PREVIEW_COUNT = 5;
+// Each consultation card also lists its questions, so fewer fit a page than documents do.
+const CONSULTATION_PAGE_SIZE = 2;
 const ISSUES_PREVIEW = 6;
 
 export default function CaseDetailPage() {
@@ -474,6 +476,7 @@ function OverviewTab({
   const notes = useOverviewNotes(caseRecord);
   const [issuesPageRaw, setIssuesPage] = useState(1);
   const [docPageRaw, setDocPage] = useState(0);
+  const [consultationPageRaw, setConsultationPage] = useState(0);
 
   const countryName = getTenantCodeConfig(useAuthStore((s) => s.organization?.tenantCode)).countryName;
   // UK cases store a sub-jurisdiction (England and Wales / Scotland / Northern Ireland); PH cases
@@ -518,7 +521,10 @@ function OverviewTab({
   const docPages = Math.max(1, Math.ceil((documents?.length ?? 0) / PREVIEW_COUNT));
   const docPage = Math.min(docPageRaw, docPages - 1); // clamp if documents shrink (delete/archive)
   const shownDocs = documents?.slice(docPage * PREVIEW_COUNT, (docPage + 1) * PREVIEW_COUNT) ?? [];
-  const shownConsultations = consultations?.slice(0, PREVIEW_COUNT) ?? [];
+  const consultationPages = Math.max(1, Math.ceil((consultations?.length ?? 0) / CONSULTATION_PAGE_SIZE));
+  const consultationPage = Math.min(consultationPageRaw, consultationPages - 1); // clamp if consultations shrink
+  const shownConsultations =
+    consultations?.slice(consultationPage * CONSULTATION_PAGE_SIZE, (consultationPage + 1) * CONSULTATION_PAGE_SIZE) ?? [];
 
   const headerAction =
     "inline-flex items-center gap-1.5 p-2 -m-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer";
@@ -720,7 +726,31 @@ function OverviewTab({
                   />
                 ))}
               </div>
-              <ShowingFooter shown={shownConsultations.length} total={consultations.length} onViewAll={onOpenWorkspace} />
+              {consultationPages > 1 ? (
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>{consultationPage + 1} / {consultationPages}</span>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      disabled={consultationPage === 0}
+                      onClick={() => setConsultationPage(consultationPage - 1)}
+                      className="font-medium text-foreground hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-default"
+                    >
+                      {t("pagination.previous")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={consultationPage >= consultationPages - 1}
+                      onClick={() => setConsultationPage(consultationPage + 1)}
+                      className="font-medium text-foreground hover:underline cursor-pointer disabled:opacity-40 disabled:no-underline disabled:cursor-default"
+                    >
+                      {t("pagination.next")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <ShowingFooter shown={shownConsultations.length} total={consultations.length} onViewAll={onOpenWorkspace} />
+              )}
             </>
           ) : (
             <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
