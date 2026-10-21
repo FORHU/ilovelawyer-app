@@ -12,7 +12,8 @@
     "legalTerminal": "Legal Terminal",
     "library": "Library",
     "transcription": "Transcription",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "clientRequests": "Client Requests"
   },
   "userMenu": {
     "accountMenu": "Account menu",
