@@ -2,6 +2,7 @@
 import { useTranslation } from "react-i18next";
 import { Lightbulb } from "lucide-react";
 import type { MessageReasoning } from "@/lib/chat/mutations";
+import { plainEmphasis } from "@/lib/chat/plain-emphasis";
 
 /** Renders the legal persona's "why this answer" explanation for one turn. Absence
  * (`reasoning` undefined/null) is normal — direct-answer turns with no lookups, or a
@@ -18,13 +19,13 @@ export function ReasoningPanel({ reasoning }: { reasoning?: MessageReasoning | n
         <span className="font-semibold text-foreground">{t("caseHub.reasoning")}</span>
       </div>
       <div className="p-3 space-y-2">
-        <p className="text-[13px] leading-5 text-foreground">{reasoning.reasoning}</p>
+        <p className="text-[13px] leading-5 text-foreground">{plainEmphasis(reasoning.reasoning)}</p>
         {reasoning.citationReasons.length > 0 && (
           <ul className="space-y-1.5">
             {reasoning.citationReasons.map((c, i) => (
               <li key={`${c.title}-${i}`} className="text-[12px] leading-4">
-                <span className="font-semibold text-foreground">{c.title}</span>
-                <span className="text-muted-foreground"> — {c.why_cited}</span>
+                <span className="font-semibold text-foreground">{plainEmphasis(c.title)}</span>
+                <span className="text-muted-foreground"> — {plainEmphasis(c.why_cited)}</span>
               </li>
             ))}
           </ul>

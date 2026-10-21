@@ -562,9 +562,9 @@ export function StudioPanel({ caseId, consultationId, expanded, onExpandedChange
                     type="button"
                     onClick={() => setOpenTile(null)}
                     aria-label={t("workspace.backToStudio")}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted dark:hover:bg-overlay-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-foreground hover:bg-muted/70 dark:hover:bg-overlay-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
-                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="left">{t("workspace.backToStudio")}</TooltipContent>
