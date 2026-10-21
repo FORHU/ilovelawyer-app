@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
     "192.168.1.29",
     "ph.ilovelawyer",
     "uk.ilovelawyer",
+    "ph-dev.ilovelawyer",
+    "uk-dev.ilovelawyer",
     "ph.ilovelawyer.local",
     "uk.ilovelawyer.local",
     "ph-dev.ilovelawyer.local",

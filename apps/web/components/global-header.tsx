@@ -7,6 +7,7 @@ import { BookOpen, Briefcase, Building2, CalendarDays, FileText, Inbox, LogOut, 
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
+import { useOpenClientRequestCount } from "@/lib/client-requests/queries";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
@@ -31,6 +32,7 @@ export const ACTIVE_TABS = [
   "create-case",
   "library",
   "case-portfolio",
+  "client-request",
   "terminal",
   "calendar",
   "term",
@@ -92,6 +94,7 @@ const USER_MENU_ITEMS = [
 const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase, tourId: "nav-case-portfolio" },
+  { tab: "client-request", labelKey: "nav.clientRequest", href: "/homepage/client-request", tooltip: "Review and manage client requests", icon: Inbox, tourId: "nav-client-request" },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen, tourId: "nav-library" },
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
@@ -108,6 +111,7 @@ const CLIENT_REQUESTS_NAV_ITEM = {
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
+  const openRequestCount = useOpenClientRequestCount();
   // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
   // so the shape of the product still shows. Terms stay open.
   const trial = useTrial();
@@ -268,6 +272,23 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
               </Link>
             </TooltipTrigger>
             <TooltipContent>View and manage your case portfolio</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/homepage/client-request" data-tour-id="nav-client-request" className={getSubTabClass("client-request")}>
+                <TabLinkContent>
+                  {t("nav.clientRequest").toUpperCase()}
+                  {openRequestCount > 0 && (
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
+                      {openRequestCount}
+                    </span>
+                  )}
+                </TabLinkContent>
+                {activeTab === "client-request" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>Review and manage client requests</TooltipContent>
           </Tooltip>
 
           <Tooltip>
