@@ -5,6 +5,7 @@ import { AlertCircle, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react
 import { useTranslation } from "react-i18next"
 import type { PDFDocumentProxy } from "pdfjs-dist"
 import type { TextItem } from "pdfjs-dist/types/src/display/api"
+import { loadPdfDocument } from "@/lib/terminal/pdf-load"
 import { buildPageText, findQuote, itemSliceRect, itemsInRange } from "@/lib/terminal/quote-match"
 
 interface Box {
@@ -15,6 +16,23 @@ interface Box {
 }
 
 type HighlightState = "found" | "notFound" | "none"
+
+let pdfjsLoading: Promise<typeof import("pdfjs-dist")> | null = null
+
+/** pdf.js, loaded once for the whole app and pointed at its worker once — not per file. Loaded on
+ * demand because it is large. A failed load is forgotten so the next file can try again. */
+function loadPdfjs() {
+  pdfjsLoading ??= import("pdfjs-dist")
+    .then((pdfjs) => {
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString()
+      return pdfjs
+    })
+    .catch((err) => {
+      pdfjsLoading = null
+      throw err
+    })
+  return pdfjsLoading
+}
 
 /** Pads a highlight a little so it sits around the glyphs rather than clipping them. */
 const BOX_PAD = 2
@@ -31,12 +49,17 @@ const iconBtnClass =
  * the page is a scan with none) it still opens there and says so. `onError` fires when the file
  * cannot be drawn at all, so the caller can fall back to the plain viewer. */
 export default function PdfPageView({
+  docId,
   url,
   name,
   page,
   quote,
   onError,
 }: {
+  /** Identifies the document. The file is (re)loaded only when this changes — not when `url`
+   * does: the URL is a signed link that is re-issued on every refetch of the documents list, and
+   * reloading the PDF each time would reset the page and keep the worker busy. */
+  docId: string
   url: string
   name: string
   page?: number | null
@@ -48,8 +71,11 @@ export default function PdfPageView({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const itemsCache = useRef(new Map<number, TextItem[]>())
   const onErrorRef = useRef(onError)
+  // The newest URL, read when a load starts (see `docId`).
+  const urlRef = useRef(url)
   useEffect(() => {
     onErrorRef.current = onError
+    urlRef.current = url
   })
 
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
@@ -70,31 +96,25 @@ export default function PdfPageView({
 
   // Load the file. The page text is read lazily, one page at a time, and cached.
   useEffect(() => {
-    let cancelled = false
-    let task: { promise: Promise<PDFDocumentProxy>; destroy: () => Promise<void> } | null = null
     itemsCache.current = new Map()
-    ;(async () => {
-      try {
-        const pdfjs = await import("pdfjs-dist")
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString()
-        task = pdfjs.getDocument({ url })
-        const loaded = await task.promise
-        if (cancelled) {
-          void loaded.destroy()
-          return
-        }
-        setDoc(loaded)
-      } catch {
+    let cancelled = false
+    // loadPdfDocument owns the cancel rules (see lib/terminal/pdf-load.ts): cancel() destroys the
+    // loading task — never the loaded document — and starts nothing if pdf.js hadn't loaded yet.
+    const load = loadPdfDocument(loadPdfjs, urlRef.current)
+    load.promise
+      .then((loaded) => {
+        if (loaded && !cancelled) setDoc(loaded)
+      })
+      .catch(() => {
         if (!cancelled) onErrorRef.current?.()
-      }
-    })()
+      })
     return () => {
       cancelled = true
       setDoc(null)
       setDrawn(false)
-      void task?.destroy()
+      load.cancel()
     }
-  }, [url])
+  }, [docId])
 
   const pageItems = async (loaded: PDFDocumentProxy, n: number): Promise<TextItem[]> => {
     const cached = itemsCache.current.get(n)
@@ -107,7 +127,7 @@ export default function PdfPageView({
 
   // With a quote but no page, look for the quote across the document (exact matches only — this
   // reads every page, and the tolerant match is for the one page we were pointed at).
-  const searchKey = `${url}\n${wantedQuote ?? ""}`
+  const searchKey = `${docId}\n${wantedQuote ?? ""}`
   const [searched, setSearched] = useState<{ key: string; page: number | null } | null>(null)
   useEffect(() => {
     if (!doc || page || !wantedQuote) return
@@ -225,7 +245,7 @@ export default function PdfPageView({
       : onCitedPage && highlight.state === "notFound"
         ? t(page ? "pdfQuoteNotHighlighted" : "pdfQuoteNotFound", { page: shown })
         : null
-  const noticeKey = `${url}|${page ?? ""}|${wantedQuote ?? ""}`
+  const noticeKey = `${docId}|${page ?? ""}|${wantedQuote ?? ""}`
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -251,7 +271,9 @@ export default function PdfPageView({
         </div>
       ) : null}
 
-      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto p-3">
+      {/* Stable gutter: a scrollbar appearing would narrow this area, which resizes the page to fit,
+       * which can make the scrollbar disappear again. */}
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto p-3 [scrollbar-gutter:stable]">
         {!drawn ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-muted/30 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />

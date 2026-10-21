@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { renderAsync } from "docx-preview";
 import xlsxPreview from "xlsx-preview";
 import { Download, ExternalLink, FileText, Loader2 } from "lucide-react";
@@ -266,16 +267,25 @@ export function AttachmentPreview({ attachment, hidePdfToolbar = false, page, qu
         </div>
       ) : null}
       {canInlinePreview && isImage ? (
-        <div className="flex h-full items-center justify-center p-4">
-          <img
-            src={attachment.url!}
-            alt={attachment.name}
-            className="max-h-full max-w-full object-contain"
-            onError={() => setInlineFailed(true)}
-          />
+        <div className="h-full p-4">
+          <div className="relative h-full w-full">
+            {/* `fill` because an attachment's dimensions aren't known up front; `unoptimized` because
+             * the src is a presigned or token-proxied URL for a private file, which Next's image
+             * optimizer can't (and shouldn't) fetch — the browser loads it directly, as before. */}
+            <Image
+              src={attachment.url!}
+              alt={attachment.name}
+              fill
+              unoptimized
+              sizes="100vw"
+              className="object-contain"
+              onError={() => setInlineFailed(true)}
+            />
+          </div>
         </div>
       ) : canInlinePreview && isPdf && wantsPosition && !pdfViewFailed ? (
         <PdfPageView
+          docId={attachment.id}
           url={attachment.url!}
           name={attachment.name}
           page={page}
