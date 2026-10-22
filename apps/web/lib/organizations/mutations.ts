@@ -49,10 +49,22 @@ export function useEnterSharedWorkspace() {
   )
 }
 
-export interface CreateOrganizationPayload {
+/** A firm's optional details: onboarding's firm step and the Organization page. "" or null clears
+ * one. The firm regulator and its number are UK only (the API refuses them on PH). */
+export interface FirmDetailsPayload {
+  phone?: string | null
+  addressLine1?: string | null
+  addressLine2?: string | null
+  city?: string | null
+  postcode?: string | null
+  firmRegulator?: "SRA" | "LSS" | "LSNI" | null
+  firmRegistrationNumber?: string | null
+}
+
+export interface CreateOrganizationPayload extends FirmDetailsPayload {
   name: string
   packageSku?: string
-  /** Onboarding's "Skip for now" — a private workspace, not an organization. */
+  /** Onboarding's "Solo practitioner" — a private workspace, not an organization. */
   personal?: boolean
 }
 
@@ -70,7 +82,7 @@ export function useCreateOrganizationMutation() {
   })
 }
 
-export interface UpdateOrganizationPayload {
+export interface UpdateOrganizationPayload extends FirmDetailsPayload {
   name?: string
   slug?: string
 }

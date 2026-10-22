@@ -20,6 +20,14 @@ export interface OrganizationRecord {
   /** A skipped-onboarding user's private workspace (see ilovelawyer-api's
    * Organization.isPersonal) — the app treats its owner as having no organization. */
   isPersonal: boolean
+  /** Firm details, all optional. firmRegulator and its number are UK only (LAWYER_REGULATORS). */
+  phone: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  postcode: string | null
+  firmRegulator: "SRA" | "LSS" | "LSNI" | null
+  firmRegistrationNumber: string | null
   createdAt: string
   updatedAt: string
 }

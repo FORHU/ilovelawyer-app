@@ -13,10 +13,12 @@ import { LoadingScreen } from "@/components/loading-screen"
 import { TourLayer } from "@/components/tour/tour-layer"
 import { SharedWorkspaceGuard } from "@/components/shared-workspace"
 import { WorkspaceSetup } from "@/app/(auth)/_components/workspace-setup"
+import { OnboardingLoading, OnboardingShell } from "@/components/onboarding/onboarding-shell"
 import AiConsentPrompt from "@/components/account/ai-consent-prompt"
 import { FeedbackDrawer } from "@/components/feedback/feedback-drawer"
 
 const ORGANIZATION_PATH = "/homepage/organization"
+const ONBOARDING_PATH = "/onboarding"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -129,6 +131,22 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsApproval])
 
+  // Account setup isn't finished (invites, the Lawyer Application): send an approved lawyer to
+  // /onboarding. Only once they have a workspace (before that, WorkspaceSetup below shows instead,
+  // and a user with only a pending invite goes to the Organization page), and never a trial guest.
+  const needsSetup =
+    !!currentUser &&
+    !needsApproval &&
+    !!organization &&
+    !currentUser.setupCompletedAt &&
+    !currentUser.trialExpiresAt &&
+    pathname !== ONBOARDING_PATH
+
+  useEffect(() => {
+    if (needsSetup) router.replace(ONBOARDING_PATH)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsSetup])
+
   useEffect(() => {
     if (organization || !orgs?.[0]) return
     setOrganization(toActiveOrg(orgs[0]))
@@ -206,16 +224,16 @@ function CurrentUserSync({
   // until it's known rather than let children fetch the organization's data first.
   const portfolioUnknown = workspace === "portfolio" && inOrganization && !portfolio && !portfolioQuery.isError
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || isAuthError || orgUnknown || portfolioUnknown)
-    return <LoadingScreen />
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown)
+    // On /onboarding (or on the way to it), keep setup's own layout instead of the full-screen
+    // loader, so the steps don't flash between two different screens.
+    return pathname === ONBOARDING_PATH || needsSetup ? <OnboardingLoading /> : <LoadingScreen />
 
   if (workspaceSetupOpen)
     return (
-      <div className="flex min-h-screen w-full items-center justify-center overflow-y-auto bg-background px-4 py-10 sm:px-8">
-        <div className="w-full max-w-md">
-          <WorkspaceSetup defaultOrgName={user?.name ?? ""} onDone={() => setWorkspaceSetupOpen(false)} />
-        </div>
-      </div>
+      <OnboardingShell>
+        <WorkspaceSetup defaultOrgName={user?.name ?? ""} onDone={() => setWorkspaceSetupOpen(false)} />
+      </OnboardingShell>
     )
 
   return (
@@ -227,8 +245,9 @@ function CurrentUserSync({
       <TourLayer />
       {/* The header's Feedback drawer. */}
       <FeedbackDrawer />
-      {/* First login: everyone answers for AI processing once. */}
-      <AiConsentPrompt />
+      {/* First login: everyone answers for AI processing once. Not during account setup: it waits
+          until the lawyer reaches the app, so it never covers a setup step. */}
+      {pathname !== ONBOARDING_PATH && <AiConsentPrompt />}
     </>
   )
 }

@@ -1,0 +1,73 @@
+{
+  "choose": {
+    "title": "How will you use ilovelawyer?",
+    "subtitle": "You can create an organization later from the Organization page.",
+    "soloTitle": "Solo practitioner",
+    "soloDescription": "Just me. You can create an organization later.",
+    "firmTitle": "Law firm",
+    "firmDescription": "Create an organization and invite your team.",
+    "settingUp": "Setting up your workspace…",
+    "failed": "We couldn't set up your workspace.",
+    "retry": "Try again",
+    "continue": "Continue"
+  },
+  "firm": {
+    "title": "Your firm",
+    "subtitle": "Only the name is required. You can add or change the rest later on the Organization page.",
+    "name": "Firm name",
+    "nameRequired": "Enter your firm's name.",
+    "regulator": "Firm regulator",
+    "regulatorNone": "Not set",
+    "registrationNumber": "Firm number",
+    "registrationNumberHelp": "Your SRA firm number, or your Law Society of Scotland or Northern Ireland number.",
+    "phone": "Phone",
+    "addressLine1": "Address line 1",
+    "addressLine2": "Address line 2",
+    "city": "City",
+    "postcodeUK": "Postcode",
+    "postcodePH": "ZIP code",
+    "back": "Back",
+    "create": "Create organization",
+    "creating": "Creating…",
+    "sectionTitle": "Firm details",
+    "sectionSubtitle": "Shown to our admins beside your lawyers' applications. All optional.",
+    "save": "Save details",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveContinue": "Save and continue"
+  },
+  "invite": {
+    "title": "Invite your team",
+    "subtitle": "They'll get an email to join {{firm}}. You can invite more people later from the Organization page.",
+    "email": "Email address",
+    "role": "Role",
+    "roleMEMBER": "Member",
+    "roleADMIN": "Admin",
+    "addAnother": "Add another",
+    "remove": "Remove",
+    "send": "Send invites",
+    "sending": "Sending…",
+    "skip": "Skip",
+    "sent": "Invite sent",
+    "invalidEmail": "Enter a valid email address."
+  },
+  "apply": {
+    "later": "Later",
+    "submit": "Submit application",
+    "submitting": "Submitting…",
+    "submitted": "Application submitted. We'll email you once we've checked it."
+  },
+  "steps": {
+    "choose": "Choose",
+    "firm": "Firm",
+    "invite": "Invite",
+    "apply": "Apply",
+    "label": "Step {{current}} of {{total}}"
+  },
+  "banner": {
+    "UK": "Apply to take on clients from ilovelawyer.com.",
+    "PH": "Apply to get verified and show an Approved badge on your profile.",
+    "action": "Apply",
+    "dismiss": "Dismiss for 7 days"
+  }
+}

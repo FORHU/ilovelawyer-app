@@ -30,6 +30,9 @@ export interface CurrentUser {
   trialMessagesLeft: number | null
   /** The free AI credit (USD) the account got at sign-up; null for accounts created before it existed. */
   freeCreditUsd?: number | null
+  /** Account setup after sign-up (/onboarding) was finished or skipped. Null: the protected
+   * layout sends the lawyer to /onboarding. */
+  setupCompletedAt: string | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -42,6 +45,15 @@ export function useCurrentUserQuery() {
     enabled: !!accessToken,
     // A trial guest's answers-left count follows each message they send (see lib/trial.ts).
     refetchInterval: (query) => (query.state.data?.trialExpiresAt ? 10_000 : false),
+  })
+}
+
+/** Marks account setup done (finished or skipped), so /onboarding isn't shown again. */
+export function useCompleteSetupMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me/setup/complete", { method: "POST" }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }
 

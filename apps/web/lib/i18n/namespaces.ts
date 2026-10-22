@@ -17,6 +17,8 @@ export const NAMESPACES = [
   // English only for now, like "tour" — i18next's fallbackLng covers ko/tl until this gets
   // translated. UK-tenant-only feature (see config/tenant-codes/uk.ts's "clientRequests").
   "client-requests",
+  // English only, like "tour": account setup after sign-up (/onboarding).
+  "onboarding",
 ] as const
 
 export type Namespace = (typeof NAMESPACES)[number]

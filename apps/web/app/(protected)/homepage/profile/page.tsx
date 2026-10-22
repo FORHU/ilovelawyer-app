@@ -149,7 +149,8 @@ export default function ProfilePage() {
   // own endpoint, since login/refresh don't return a user object at all.
   const storeUser = useAuthStore((s) => s.user);
   // Receiving clients from the client app is UK only.
-  const showClientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "clientRequests");
+  // The Lawyer Application: UK and PH (each with its own fields). Client requests stay UK only.
+  const showClientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "lawyerApplication");
   const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUserQuery();
   const showSkeleton = useDelayedLoading(isLoadingCurrentUser);
   const logout = useLogoutMutation();

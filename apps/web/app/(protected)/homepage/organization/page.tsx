@@ -38,6 +38,9 @@ import {
 } from "@/lib/organizations/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuditLogSection } from "@/components/organization/audit-log-section";
+import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
+import { FirmDetailsSection } from "@/components/organization/firm-details-section";
+import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -127,6 +130,9 @@ export default function OrganizationPage() {
   const [inviteActionError, setInviteActionError] = useState<string | null>(null);
 
   const [newOrgName, setNewOrgName] = useState("");
+  // The new firm's optional details; its name is newOrgName above.
+  const [newFirm, setNewFirm] = useState<FirmDetailsForm>(EMPTY_FIRM);
+  const tenantHint = useTenantCodeHint();
   const [newOrgPlan, setNewOrgPlan] = useState<PackageSku | null>(null);
   const [createOrgError, setCreateOrgError] = useState<string | null>(null);
 
@@ -291,12 +297,13 @@ export default function OrganizationPage() {
     // Only reachable with no organization or a personal workspace (see showSetup). A personal
     // workspace stays behind as the user's portfolio, its cases still theirs alone.
     createOrgMutation.mutate(
-      { name: trimmed, packageSku: newOrgPlan ?? undefined },
+      { name: trimmed, packageSku: newOrgPlan ?? undefined, ...firmDetailsPayload(newFirm, tenantHint) },
       {
         onSuccess: (org) => {
           setOrganization(toActiveOrg({ ...org, role: "OWNER" }));
           setNewOrgName("");
           setNewOrgPlan(null);
+          setNewFirm(EMPTY_FIRM);
         },
         onError: (err) => setCreateOrgError((err as Error).message),
       },
@@ -492,6 +499,16 @@ export default function OrganizationPage() {
                     aria-required="true"
                     disabled={createOrgMutation.isPending}
                     className="w-full rounded-lg border border-border bg-background/60 px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="text-left">
+                  <FirmDetailsFields
+                    value={newFirm}
+                    onChange={(patch) => setNewFirm((f) => ({ ...f, ...patch }))}
+                    tenantCode={tenantHint}
+                    disabled={createOrgMutation.isPending}
+                    showName={false}
                   />
                 </div>
 
@@ -934,6 +951,9 @@ export default function OrganizationPage() {
                 <p className="px-6 md:px-8 pb-6 text-[12px] text-emerald-600 dark:text-emerald-400">{t("invite.success")}</p>
               )}
             </section>
+
+            {/* Firm details — Owners and Admins, who can update the organization */}
+            {canManageOrg && <FirmDetailsSection organizationId={organization.id} />}
 
             {/* Audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
             {canManageOrg && <AuditLogSection organizationId={organization.id} />}

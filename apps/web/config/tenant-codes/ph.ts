@@ -35,6 +35,8 @@ export const phTenantCodeConfig: TenantCodeConfig = {
       deadlines: "available",
       // The client-to-lawyer hand-off is UK only for now.
       clientRequests: "coming-soon",
+      // The PH application's fields aren't final (Roll number and IBP chapter required for now).
+      lawyerApplication: "available",
     },
   },
 }

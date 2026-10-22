@@ -46,6 +46,7 @@ export const ukTenantCodeConfig: TenantCodeConfig = {
       deadlines: "available-provisional",
       // Lawyers receive clients from the client app (ilovelawyer.com): profile settings first.
       clientRequests: "available",
+      lawyerApplication: "available",
     },
   },
 }

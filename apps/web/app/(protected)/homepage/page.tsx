@@ -2,6 +2,7 @@
 
 import { PageShell } from "@/components/page-shell";
 import ConsultationChat from "@/components/chat/consultation-chat";
+import { ApplicationReminderBanner } from "@/components/account/application-reminder-banner";
 import { useAuthStore } from "@/lib/store/auth.store";
 
 // Fallback pool ConsultationChat draws a random handful from whenever the user has no
@@ -46,6 +47,7 @@ export default function AiConsultationPage() {
 
   return (
     <PageShell className="h-screen overflow-hidden">
+      <ApplicationReminderBanner />
       <ConsultationChat
         basePath="/homepage"
         enableFileChips
