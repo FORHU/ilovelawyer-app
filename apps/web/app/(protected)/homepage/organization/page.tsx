@@ -38,6 +38,7 @@ import {
 } from "@/lib/organizations/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuditLogSection } from "@/components/organization/audit-log-section";
+import { FeeHistorySection } from "@/components/organization/fee-history-section";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -935,7 +936,8 @@ export default function OrganizationPage() {
               )}
             </section>
 
-            {/* Audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {/* Fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {canManageOrg && <FeeHistorySection organizationId={organization.id} />}
             {canManageOrg && <AuditLogSection organizationId={organization.id} />}
           </>
         )}
