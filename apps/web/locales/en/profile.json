@@ -162,23 +162,33 @@
     "genericError": "Couldn't update Google Calendar. Please try again."
   },
   "clientRequests": {
-    "heading": "Client requests",
-    "subheading": "Take on clients who ask for a lawyer on ilovelawyer.com. You see an anonymised summary of each case first, and pay a fixed fee only when a client confirms you.",
+    "heading": "Take on new clients",
+    "subheading": "Clients on ilovelawyer.com ask for a lawyer for their case. Once your registration is verified, requests that match your practice areas come to you. You see an anonymised summary first and pay a fixed fee only when a client confirms you.",
     "loadError": "Couldn't load your client request settings. Refresh to try again.",
     "status": {
-      "UNSUBMITTED": "Not submitted",
-      "PENDING": "Checking your registration",
-      "VERIFIED": "Verified",
-      "REJECTED": "Not verified"
+      "PENDING": "Under review",
+      "VERIFIED": "Approved",
+      "REJECTED": "Not approved"
     },
     "statusHelp": {
-      "UNSUBMITTED": "Fill in the details above so we can check your registration.",
-      "PENDING": "We're checking your registration with your regulator. This usually takes a working day.",
-      "VERIFIED": "Your registration is verified. Changing your regulator, number or jurisdictions means we check it again.",
-      "REJECTED": "We couldn't verify your registration. Correct your details and save to have it checked again."
+      "UNSUBMITTED": "Apply once with your regulator and registration number. We check them against the register, usually within a working day.",
+      "PENDING": "We're checking your registration with your regulator. This usually takes a working day, and we'll email you when it's done.",
+      "REJECTED": "We couldn't verify your registration. Correct your details and resubmit to have them checked again."
     },
+    "incomplete": "Your application isn't finished. Still needed: {{fields}}.",
     "rejectedNote": "Why: {{note}}",
-    "missing": "Still needed before we can check your registration: {{fields}}.",
+    "actions": {
+      "apply": "Apply to take on clients",
+      "continue": "Continue application",
+      "edit": "Edit application",
+      "resubmit": "Update and resubmit",
+      "editDetails": "Edit details"
+    },
+    "summary": {
+      "registration": "Registration",
+      "jurisdictions": "Qualified in",
+      "practiceAreas": "Practice areas"
+    },
     "missingFields": {
       "regulator": "your regulator",
       "registrationNumber": "your registration number",
@@ -188,9 +198,32 @@
     "accepting": {
       "title": "Accept client requests",
       "description": "New requests that match your practice areas and jurisdictions reach you while this is on.",
-      "needsVerification": "You can turn this on once we've verified your registration.",
       "offByOrganization": "Your organization has turned client requests off for you.",
       "tooltip": "Turn new client requests on or off"
+    },
+    "availability": {
+      "save": "Save availability",
+      "saved": "Saved"
+    },
+    "dialog": {
+      "titleApply": "Apply to take on clients",
+      "titleEdit": "Edit your application",
+      "description": "We check your registration against your regulator's register, usually within a working day. Client requests start once it's approved.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "submit": "Submit application",
+      "save": "Save changes",
+      "submitting": "Submitting…",
+      "saving": "Saving…",
+      "missing": "Still needed: {{fields}}.",
+      "recheckWarning": "Changing your regulator, registration number or jurisdictions sends your application back for review. New client requests stop until it's approved again.",
+      "sections": {
+        "registration": "Your registration",
+        "work": "What you take on",
+        "listing": "What clients see"
+      },
+      "submitted": "Application submitted. We'll email you once we've checked your registration.",
+      "updated": "Application updated."
     },
     "regulators": {
       "SRA": "SRA (England and Wales)",
@@ -215,16 +248,15 @@
       "bio": "About you",
       "bioHelp": "Shown to a client when you send them a quote.",
       "languages": "Languages",
-      "languagesHelp": "Separate them with commas, e.g. English, Welsh.",
+      "languagesHelp": "The languages you can work with clients in.",
+      "languagesPlaceholder": "Type a language, then press Enter",
+      "removeLanguage": "Remove {{language}}",
       "fee": "First consultation fee (£)",
       "feeHelp": "Leave empty if you don't offer one.",
       "pausedUntil": "Pause until",
       "pausedUntilHelp": "No new requests until this date. Leave empty to stay on.",
       "capacity": "Most open clients at once",
       "capacityHelp": "Leave empty for no limit."
-    },
-    "save": "Save",
-    "saving": "Saving…",
-    "saved": "Saved"
+    }
   }
 }
