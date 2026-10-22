@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest"
-import { formFromProfile, patchFromForm, toggle, validateForm, type ProfileForm } from "../profile-form"
+import {
+  applicationPatchFromForm,
+  availabilityPatchFromForm,
+  formFromProfile,
+  missingFromForm,
+  needsRecheck,
+  patchFromForm,
+  toggle,
+  validateForm,
+  type ProfileForm,
+} from "../profile-form"
 import type { ClientRequestProfile } from "../profile"
 
 const profile: ClientRequestProfile = {
@@ -25,7 +35,7 @@ const blank: ProfileForm = {
   qualifiedJurisdictions: [],
   practiceAreas: [],
   bio: "",
-  languages: "",
+  languages: [],
   fee: "",
   pausedUntil: "",
   capacityLimit: "",
@@ -34,7 +44,7 @@ const blank: ProfileForm = {
 describe("client request profile form", () => {
   it("round-trips a saved profile through the form", () => {
     const form = formFromProfile(profile)
-    expect(form).toMatchObject({ fee: "149.5", languages: "English, Welsh", pausedUntil: "2026-11-01", capacityLimit: "3" })
+    expect(form).toMatchObject({ fee: "149.5", languages: ["English", "Welsh"], pausedUntil: "2026-11-01", capacityLimit: "3" })
     expect(patchFromForm(form)).toEqual({
       regulator: "SRA",
       registrationNumber: "123456",
@@ -54,9 +64,8 @@ describe("client request profile form", () => {
     expect(patch).not.toHaveProperty("acceptingRequests")
   })
 
-  it("takes a fee with a pound sign and de-duplicates languages", () => {
-    expect(patchFromForm({ ...blank, fee: "£150", languages: "English, english , English" }).firstConsultationFee).toEqual({ amountMinor: 15000, currency: "GBP" })
-    expect(patchFromForm({ ...blank, languages: "English, Welsh, English" }).languages).toEqual(["English", "Welsh"])
+  it("takes a fee with a pound sign", () => {
+    expect(patchFromForm({ ...blank, fee: "£150" }).firstConsultationFee).toEqual({ amountMinor: 15000, currency: "GBP" })
   })
 
   it("explains what's wrong with each field the API would refuse", () => {
@@ -69,6 +78,31 @@ describe("client request profile form", () => {
     expect(Object.keys(validateForm({ ...blank, capacityLimit: "2.5" }))).toEqual(["capacityLimit"])
     expect(Object.keys(validateForm({ ...blank, registrationNumber: "x".repeat(41) }))).toEqual(["registrationNumber"])
     expect(Object.keys(validateForm({ ...blank, bio: "x".repeat(1501) }))).toEqual(["bio"])
+  })
+
+  it("splits the save between the application dialog and the availability settings", () => {
+    const form = formFromProfile(profile)
+    expect(Object.keys(applicationPatchFromForm(form)).sort()).toEqual(
+      ["bio", "firstConsultationFee", "languages", "practiceAreas", "qualifiedJurisdictions", "regulator", "registrationNumber"].sort(),
+    )
+    expect(availabilityPatchFromForm(form)).toEqual({ pausedUntil: "2026-11-01T00:00:00.000Z", capacityLimit: 3 })
+    expect(patchFromForm(form)).toEqual({ ...applicationPatchFromForm(form), ...availabilityPatchFromForm(form) })
+  })
+
+  it("names what an application still needs, in the API's order", () => {
+    expect(missingFromForm(blank)).toEqual(["regulator", "registrationNumber", "qualifiedJurisdictions", "practiceAreas"])
+    expect(missingFromForm({ ...blank, registrationNumber: "   " })).toContain("registrationNumber")
+    expect(missingFromForm(formFromProfile(profile))).toEqual([])
+  })
+
+  it("flags the edits that send an application back for review", () => {
+    const form = formFromProfile(profile)
+    expect(needsRecheck(profile, form)).toBe(false)
+    expect(needsRecheck(profile, { ...form, bio: "New bio", practiceAreas: ["FAMILY"], fee: "200" })).toBe(false)
+    expect(needsRecheck(profile, { ...form, registrationNumber: " 123456 " })).toBe(false)
+    expect(needsRecheck(profile, { ...form, regulator: "LSS" })).toBe(true)
+    expect(needsRecheck(profile, { ...form, registrationNumber: "654321" })).toBe(true)
+    expect(needsRecheck(profile, { ...form, qualifiedJurisdictions: ["England and Wales", "Scotland"] })).toBe(true)
   })
 
   it("toggles a value in a list", () => {

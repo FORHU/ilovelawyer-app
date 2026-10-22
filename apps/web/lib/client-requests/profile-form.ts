@@ -7,8 +7,8 @@ export interface ProfileForm {
   qualifiedJurisdictions: string[]
   practiceAreas: PracticeArea[]
   bio: string
-  /** Comma-separated, as typed. */
-  languages: string
+  /** One per chip in the tag input, already trimmed and de-duplicated by it. */
+  languages: string[]
   /** Pounds, as typed ("150" or "149.50"). Empty: no first-consultation offer. */
   fee: string
   /** YYYY-MM-DD, or empty. */
@@ -20,6 +20,9 @@ export interface ProfileForm {
 export type ProfileFormErrors = Partial<Record<"registrationNumber" | "bio" | "fee" | "capacityLimit", string>>
 
 export const BIO_MAX_LENGTH = 1500
+/** The API's limits on languages: at most 10, each up to 40 characters. */
+export const LANGUAGES_MAX = 10
+export const LANGUAGE_MAX_LENGTH = 40
 const FEE_MAX_POUNDS = 10_000
 
 export function formFromProfile(p: ClientRequestProfile): ProfileForm {
@@ -29,7 +32,7 @@ export function formFromProfile(p: ClientRequestProfile): ProfileForm {
     qualifiedJurisdictions: p.qualifiedJurisdictions,
     practiceAreas: p.practiceAreas,
     bio: p.bio,
-    languages: p.languages.join(", "),
+    languages: p.languages,
     fee: p.firstConsultationFee ? String(p.firstConsultationFee.amountMinor / 100) : "",
     pausedUntil: p.pausedUntil ? p.pausedUntil.slice(0, 10) : "",
     capacityLimit: p.capacityLimit === null ? "" : String(p.capacityLimit),
@@ -57,6 +60,11 @@ export function validateForm(f: ProfileForm): ProfileFormErrors {
 
 /** What to send on save. The accepting switch saves on its own, so it's never part of this. */
 export function patchFromForm(f: ProfileForm): ClientRequestProfilePatch {
+  return { ...applicationPatchFromForm(f), ...availabilityPatchFromForm(f) }
+}
+
+/** The application dialog's fields: what the admin checks, and what clients see. */
+export function applicationPatchFromForm(f: ProfileForm): ClientRequestProfilePatch {
   const fee = f.fee.trim().replace(/^£/, "")
   return {
     regulator: f.regulator,
@@ -64,11 +72,38 @@ export function patchFromForm(f: ProfileForm): ClientRequestProfilePatch {
     qualifiedJurisdictions: f.qualifiedJurisdictions,
     practiceAreas: f.practiceAreas,
     bio: f.bio,
-    languages: [...new Set(f.languages.split(",").map((l) => l.trim()).filter(Boolean))],
+    languages: f.languages,
     firstConsultationFee: fee ? { amountMinor: Math.round(Number(fee) * 100), currency: "GBP" } : null,
+  }
+}
+
+/** Pause and capacity, set beside the accepting switch once the application is approved. */
+export function availabilityPatchFromForm(f: Pick<ProfileForm, "pausedUntil" | "capacityLimit">): ClientRequestProfilePatch {
+  return {
     pausedUntil: f.pausedUntil ? new Date(`${f.pausedUntil}T00:00:00Z`).toISOString() : null,
     capacityLimit: f.capacityLimit.trim() ? Number(f.capacityLimit) : null,
   }
+}
+
+export type RequiredField = "regulator" | "registrationNumber" | "qualifiedJurisdictions" | "practiceAreas"
+
+/** What an application still needs before it can be submitted. Mirrors the API's missingFields,
+ * in the same order, so the names match profile.missing. */
+export function missingFromForm(f: ProfileForm): RequiredField[] {
+  const missing: RequiredField[] = []
+  if (!f.regulator) missing.push("regulator")
+  if (!f.registrationNumber.trim()) missing.push("registrationNumber")
+  if (f.qualifiedJurisdictions.length === 0) missing.push("qualifiedJurisdictions")
+  if (f.practiceAreas.length === 0) missing.push("practiceAreas")
+  return missing
+}
+
+/** Whether saving this form sends an approved or rejected application back for review: the API
+ * re-checks when who regulates them, their number or where they're qualified changes. */
+export function needsRecheck(p: ClientRequestProfile, f: ProfileForm): boolean {
+  const sameJurisdictions =
+    p.qualifiedJurisdictions.length === f.qualifiedJurisdictions.length && p.qualifiedJurisdictions.every((j) => f.qualifiedJurisdictions.includes(j))
+  return p.regulator !== f.regulator || (p.registrationNumber ?? "").trim() !== f.registrationNumber.trim() || !sameJurisdictions
 }
 
 /** Adds `value` to the list, or takes it out if it's there. */
