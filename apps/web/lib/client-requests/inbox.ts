@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { clientRequestKeys } from "@/lib/query-keys"
+import { useAuthStore } from "@/lib/store/auth.store"
 import type { ClientRequestInboxView } from "@/lib/client-requests/types"
 import {
   ClientRequestApiError,
@@ -35,8 +36,9 @@ export function useClientRequestInboxCountQuery(enabled: boolean) {
 
 export function useClaimClientRequestMutation() {
   const queryClient = useQueryClient()
+  const organizationId = useAuthStore((s) => s.organization?.id)
   return useMutation({
-    mutationFn: (id: string) => mockClaimClientRequest(id),
+    mutationFn: (id: string) => mockClaimClientRequest(id, organizationId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: clientRequestKeys.all }),
   })
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { Inbox } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { PageShell } from "@/components/page-shell"
@@ -12,6 +13,8 @@ import { EmptyState } from "@workspace/ui/components/empty-state"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import { useTenantCodeFeatureGuard } from "@/components/tenant-code-feature-guard"
+import { useAuthStore } from "@/lib/store/auth.store"
+import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return"
 import {
   isCardRequiredError,
   useClaimClientRequestMutation,
@@ -20,6 +23,10 @@ import {
   usePassClientRequestMutation,
   type ClientRequestInboxView,
 } from "@/lib/client-requests/inbox"
+
+/** Carried through AddCardModal's Stripe round trip so acceptance resumes automatically once
+ * the card lands — see use-card-setup-return.ts. */
+const RESUME_REQUEST_PARAM = "resumeRequestId"
 
 const LIMIT = 10
 const VIEWS: ClientRequestInboxView[] = ["inbox", "mine", "history"]
@@ -55,11 +62,23 @@ export default function ClientRequestsPage() {
   const [page, setPage] = useState(1)
   const [cardModalRequestId, setCardModalRequestId] = useState<string | null>(null)
 
+  const organization = useAuthStore((s) => s.organization)
+  const router = useRouter()
+  const pathname = usePathname()
   const inboxQuery = useClientRequestInboxQuery(view, page, LIMIT)
   const claim = useClaimClientRequestMutation()
   const pass = usePassClientRequestMutation()
   useClientRequestLiveUpdates()
   const showSkeleton = useDelayedLoading(inboxQuery.isLoading)
+
+  // Resumes claiming the request the card modal was opened for, once AddCardModal's Stripe
+  // round trip lands a card (or does nothing if it was cancelled) — see use-card-setup-return.ts.
+  useCardSetupReturn(organization?.id, (status, params) => {
+    const resumeId = params.get(RESUME_REQUEST_PARAM)
+    if (!resumeId) return
+    if (status === "done") claim.mutate(resumeId)
+    router.replace(pathname)
+  })
 
   if (guard) return guard
 
@@ -130,11 +149,7 @@ export default function ClientRequestsPage() {
       <AddCardModal
         open={cardModalRequestId !== null}
         onClose={() => setCardModalRequestId(null)}
-        onCardAdded={() => {
-          const id = cardModalRequestId
-          setCardModalRequestId(null)
-          if (id) claim.mutate(id)
-        }}
+        extraReturnParams={cardModalRequestId ? { [RESUME_REQUEST_PARAM]: cardModalRequestId } : undefined}
       />
     </PageShell>
   )

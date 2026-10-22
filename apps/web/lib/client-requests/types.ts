@@ -1,7 +1,9 @@
 import type { ClientRequestStatus, ChargeStatus, Money, PracticeArea, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
 
 // The lawyer-facing Client Request shapes (ilovelawyer-api#511, swagger-client-handoff.ts's
-// ClientRequestForLawyer/CaseBrief/ClaimSummary/Quote/ChargeSummary/PaymentCard schemas).
+// ClientRequestForLawyer/CaseBrief/ClaimSummary/Quote/ChargeSummary schemas). The organization's
+// card on file is a separate, already-real API — see lib/organizations/billing.ts's
+// OrganizationCard instead.
 // client-handoff.ts only carries the enums and socket events shared with ilovelawyer-client;
 // these REST response shapes are lawyer-app only, so they live here instead — same split as
 // lib/client-requests/profile.ts's ClientRequestProfile.
@@ -74,9 +76,3 @@ export interface ClientRequestListResponse {
   data: ClientRequestForLawyer[]
 }
 
-export interface PaymentCard {
-  brand: string
-  last4: string
-  expMonth: number
-  expYear: number
-}

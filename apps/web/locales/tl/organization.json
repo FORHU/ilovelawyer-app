@@ -179,6 +179,19 @@
     "loading": "Naglo-load ng kasaysayan ng bayarin…",
     "error": "Hindi ma-load ang kasaysayan ng bayarin.",
     "retry": "Subukang Muli",
-    "showing": "Ipinapakita ang {{from}}–{{to}} sa {{total}}"
+    "showing": "Ipinapakita ang {{from}}–{{to}} sa {{total}}",
+    "card": {
+      "heading": "Card para sa Bayad",
+      "subheading": "Ang card na sinisingil sa mga tinanggap na client request at AI top-up ng inyong organisasyon.",
+      "add": "Magdagdag ng card",
+      "change": "Palitan ang card",
+      "endingIn": "nagtatapos sa {{last4}}",
+      "expires": "Mag-e-expire {{month}}/{{year}}",
+      "noCardHelp": "Wala pang nakarehistrong card. Magdagdag ng card bago makatanggap ng client request ang inyong organisasyon.",
+      "error": "Hindi ma-load ang inyong payment card.",
+      "retry": "Subukang Muli",
+      "savedToast": "Na-save ang payment card.",
+      "cancelledToast": "Kinansela ang pag-setup ng card. Walang nagbagong impormasyon."
+    }
   }
 }

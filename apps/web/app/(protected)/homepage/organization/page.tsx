@@ -39,6 +39,8 @@ import {
 import { UserAvatar } from "@/components/user-avatar";
 import { AuditLogSection } from "@/components/organization/audit-log-section";
 import { FeeHistorySection } from "@/components/organization/fee-history-section";
+import { PaymentCardSection } from "@/components/organization/payment-card-section";
+import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -109,6 +111,7 @@ export default function OrganizationPage() {
   const memberRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
   const removeMemberMutation = useRemoveMemberMutation(organization?.id ?? "");
   const updateOrgMutation = useUpdateOrganizationMutation(organization?.id ?? "");
+  useCardSetupReturn(organization?.id);
   const otherMembers = (membersQuery.data ?? []).filter(
     (m): m is OrganizationMemberRecord => m.userId !== null && m.userId !== currentUserId && m.status === "ACCEPTED",
   );
@@ -936,7 +939,8 @@ export default function OrganizationPage() {
               )}
             </section>
 
-            {/* Fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {/* Payment card, fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {canManageOrg && <PaymentCardSection organizationId={organization.id} />}
             {canManageOrg && <FeeHistorySection organizationId={organization.id} />}
             {canManageOrg && <AuditLogSection organizationId={organization.id} />}
           </>

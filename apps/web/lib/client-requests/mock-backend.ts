@@ -1,18 +1,22 @@
-import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, PaymentCard } from "@/lib/client-requests/types"
+import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse } from "@/lib/client-requests/types"
 import { CLIENT_HANDOFF_SOCKET_EVENTS, type ClientRequestTakenEvent } from "@/lib/client-handoff"
+import { getOrganizationCard } from "@/lib/organizations/billing"
 
 /**
- * Stands in for the lawyer-side Client Requests inbox/claim/pass (ilovelawyer-api#511) and the
- * organization's card on file (#505) — neither is built on the API yet (both are still
- * `x-implemented: false` in swagger-client-handoff.ts). #503, which this ticket was blocked on,
- * only shipped the contract (types, swagger, socket-event names) — see client-handoff.ts and
- * lib/client-requests/types.ts, which this mock returns verbatim.
+ * Stands in for the lawyer-side Client Requests inbox/claim/pass (ilovelawyer-api#511) — not
+ * built on the API yet (still `x-implemented: false` in swagger-client-handoff.ts). #503, which
+ * this ticket was blocked on, only shipped the contract (types, swagger, socket-event names) —
+ * see client-handoff.ts and lib/client-requests/types.ts, which this mock returns verbatim.
  *
- * Swap-out plan once #511/#505 land: delete this file and liveupdates.ts's BroadcastChannel
- * block, and point lib/client-requests/inbox.ts and billing.ts at apiFetch("/client-requests"...)
- * the same way lib/client-requests/profile.ts already calls the real
- * /users/me/client-request-profile. The function signatures in inbox.ts/billing.ts are written
- * to need no other change.
+ * The organization's card on file (#505) is real now (lib/organizations/billing.ts,
+ * use-card-setup-return.ts) — mockClaimClientRequest below checks it for real via
+ * getOrganizationCard instead of its own mock, so "accept a request with no card on file" stays
+ * a true end-to-end demo even though the rest of this file is still mocked.
+ *
+ * Swap-out plan once #511 lands: delete this file and liveupdates.ts's BroadcastChannel block,
+ * and point lib/client-requests/inbox.ts at apiFetch("/client-requests"...) the same way
+ * lib/client-requests/profile.ts already calls the real /users/me/client-request-profile. The
+ * function signatures in inbox.ts are written to need no other change.
  *
  * Persisted to localStorage (not just in-memory) so a refresh doesn't lose a claim/pass made
  * during a demo — same reasoning as the client app's mocked lawyer-matching store
@@ -20,7 +24,6 @@ import { CLIENT_HANDOFF_SOCKET_EVENTS, type ClientRequestTakenEvent } from "@/li
  */
 
 const STORAGE_KEY = "ilovelawyer-app:client-requests-mock:v1"
-const CARD_STORAGE_KEY = "ilovelawyer-app:client-requests-mock-card:v1"
 const CHANNEL_NAME = "ilovelawyer-app:client-requests-mock"
 
 export class ClientRequestApiError extends Error {
@@ -214,10 +217,24 @@ export async function mockListClientRequests(view: ClientRequestInboxView, page:
   return { total: matching.length, data: matching.slice(start, start + limit) }
 }
 
-export async function mockClaimClientRequest(id: string): Promise<ClientRequestForLawyer> {
+/** Whether the organization has a card on file, via the real endpoint (#505) — not just the
+ * ADMIN/OWNER caller's own read of it: /billing/card itself is ADMIN+-gated, so a plain MEMBER
+ * claiming a request gets a 403 back, not a card. There's no way to tell that apart from "no
+ * card" without the real claim endpoint (#511) checking this server-side, un-gated, the way it
+ * eventually will — so this mock only blocks the claim when it can positively confirm there's no
+ * card; any other error (403 included) doesn't block it. */
+async function organizationHasCard(organizationId: string | undefined): Promise<boolean> {
+  if (!organizationId) return true
+  try {
+    return !!(await getOrganizationCard(organizationId))
+  } catch {
+    return true
+  }
+}
+
+export async function mockClaimClientRequest(id: string, organizationId: string | undefined): Promise<ClientRequestForLawyer> {
   await delay()
-  const card = await mockGetBillingCard()
-  if (!card) {
+  if (!(await organizationHasCard(organizationId))) {
     throw new ClientRequestApiError(402, "CARD_REQUIRED", "Add a payment method before accepting a request.")
   }
   const state = loadState()
@@ -240,19 +257,6 @@ export async function mockPassClientRequest(id: string): Promise<void> {
   if (!state.requests.some((r) => r.id === id)) throw new ClientRequestApiError(404, "NOT_FOUND", "No such request.")
   if (!state.passedIds.includes(id)) state.passedIds.push(id)
   saveState(state)
-}
-
-export async function mockGetBillingCard(): Promise<PaymentCard | null> {
-  await delay(120)
-  if (typeof window === "undefined") return null
-  const raw = window.localStorage.getItem(CARD_STORAGE_KEY)
-  return raw ? (JSON.parse(raw) as PaymentCard) : null
-}
-
-export async function mockAddBillingCard(card: PaymentCard): Promise<PaymentCard> {
-  await delay(400)
-  if (typeof window !== "undefined") window.localStorage.setItem(CARD_STORAGE_KEY, JSON.stringify(card))
-  return card
 }
 
 /** One-shot demo of an unprompted `client-request:taken` push — e.g. another lawyer claimed
