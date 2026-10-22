@@ -6,17 +6,12 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import type { ClientRequestForLawyer, ClientRequestInboxView } from "@/lib/client-requests/types"
 import type { RequestUrgency } from "@/lib/client-handoff"
+import { formatMoney } from "@/lib/money"
 
 const URGENCY_TONE: Record<RequestUrgency, "neutral" | "caution" | "danger"> = {
   ROUTINE: "neutral",
   SOON: "caution",
   URGENT: "danger",
-}
-
-const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" })
-
-function formatMoney(amountMinor: number): string {
-  return gbp.format(amountMinor / 100)
 }
 
 function hoursUntil(iso: string | null): number | null {

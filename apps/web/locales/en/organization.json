@@ -238,5 +238,37 @@
     "sortBy": "Sort by this column",
     "sortedAscending": "Sorted ascending — click to reverse",
     "sortedDescending": "Sorted descending — click to reverse"
+  },
+  "billing": {
+    "heading": "Fee History",
+    "subheading": "Per-case fees, AI top-ups and refunds charged to your organization's card.",
+    "columns": {
+      "date": "Date",
+      "description": "Description",
+      "amount": "Amount",
+      "status": "Status",
+      "invoice": "Invoice"
+    },
+    "kindFilter": {
+      "all": "All",
+      "perCaseFee": "Per-case fees",
+      "aiTopUp": "AI top-ups"
+    },
+    "status": {
+      "PENDING": "Processing",
+      "SUCCEEDED": "Paid",
+      "FAILED": "Failed",
+      "REFUNDED": "Refunded",
+      "PARTIALLY_REFUNDED": "Partially refunded"
+    },
+    "refunded": "{{amount}} refunded",
+    "viewInvoice": "View invoice",
+    "noInvoice": "—",
+    "empty": "No charges yet. Per-case fees and AI top-ups will show up here once your firm starts using them.",
+    "emptyFiltered": "No charges match this filter.",
+    "loading": "Loading fee history…",
+    "error": "Couldn't load your fee history.",
+    "retry": "Retry",
+    "showing": "Showing {{from}}–{{to}} of {{total}}"
   }
 }
