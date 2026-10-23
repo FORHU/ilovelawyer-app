@@ -1,6 +1,7 @@
 import { useMutation, useQueries, useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
+import { accountAiAllowanceKey } from "@/lib/account/ai-allowance"
 import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
@@ -393,6 +394,13 @@ export function useRefreshAnalysisMutation(caseId: string) {
     onSuccess: (status) => {
       if (status) queryClient.setQueryData(terminalKeys.aiJob(caseId, "caseRefresh"), status)
       else queryClient.invalidateQueries({ queryKey: terminalKeys.aiJob(caseId, "caseRefresh") })
+    },
+    // The account-level locked banner/dropdown read useAccountAiAllowanceQuery, which this refresh
+    // just flipped locked server-side — refetch now instead of waiting for the next natural refetch.
+    onError: (error: unknown) => {
+      if ((error as { code?: string } | null)?.code === "ACCOUNT_ALLOWANCE_REACHED") {
+        void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey })
+      }
     },
   })
 }

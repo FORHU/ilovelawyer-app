@@ -45,6 +45,12 @@ importers:
       '@react-oauth/google':
         specifier: ^0.13.5
         version: 0.13.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@stripe/react-stripe-js':
+        specifier: ^7.0.0
+        version: 7.0.0(@stripe/stripe-js@10.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@stripe/stripe-js':
+        specifier: ^10.1.0
+        version: 10.1.0
       '@tanstack/react-query':
         specifier: ^5.101.1
         version: 5.102.8(react@19.2.4)
@@ -2018,6 +2024,17 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@stripe/react-stripe-js@7.0.0':
+    resolution: {integrity: sha512-wKw6YM0p/IpGj7hcwdJL7UAb7s0hlO8kLJIXn0CezewYILQ8j/A7j55EHuHHjF6dV+cr4yZhbhg4QLRjovfM4A==}
+    peerDependencies:
+      '@stripe/stripe-js': '>=10.0.0 <11.0.0'
+      react: '>=16.8.0 <20.0.0'
+      react-dom: '>=16.8.0 <20.0.0'
+
+  '@stripe/stripe-js@10.1.0':
+    resolution: {integrity: sha512-sLRPukMKMxvRVrgV3Za8LM0Yd2azrixQjfaiuzS8Fivlu/Gt7VbBuRiRZJIvfL3XxAw+FdfdmhHSvjAfLG3lkA==}
+    engines: {node: '>=12.16'}
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
@@ -7477,6 +7494,15 @@ snapshots:
   '@socket.io/component-emitter@3.1.2': {}
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@stripe/react-stripe-js@7.0.0(@stripe/stripe-js@10.1.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@stripe/stripe-js': 10.1.0
+      prop-types: 15.8.1
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
+  '@stripe/stripe-js@10.1.0': {}
 
   '@swc/helpers@0.5.15':
     dependencies:

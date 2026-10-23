@@ -13,6 +13,7 @@ import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
 import { UserAvatar } from "@/components/user-avatar";
 import { useFreeCredit } from "@/lib/free-credit";
+import { useAccountAiAllowanceQuery } from "@/lib/account/ai-allowance";
 import { useMobileNavStore } from "@/lib/store/mobile-nav.store";
 import { useTourStore } from "@/lib/store/tour.store";
 import { useFeedbackStore } from "@/lib/store/feedback.store";
@@ -152,6 +153,9 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   // An account on its free AI credit is a trial account until subscription tiers exist: the header
   // says so and shows what is left of the credit.
   const freeCredit = useFreeCredit();
+  // Account-wide AI allowance (cases aren't billed individually) — shown so a lawyer can see a
+  // top-up applied and isn't "being cheated"; { limited: false } for a non-LAWYER account.
+  const { data: accountAllowance } = useAccountAiAllowanceQuery();
 
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
   // A sample-case visitor is a trial guest with no clients: the inbox and its count are not theirs to see.
@@ -431,6 +435,16 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                         : t("userMenu.creditLeftOf", { amount: usd.format(freeCredit.leftUsd), total: usd.format(freeCredit.creditUsd) })}
                     </p>
                     {freeCredit.spent && <p className="mt-1 text-[10px] text-muted-foreground">{t("userMenu.creditSpentHint")}</p>}
+                  </div>
+                )}
+                {accountAllowance?.limited && (
+                  <div className="px-4 py-2.5 border-b border-border">
+                    <p className="text-[10px] uppercase tracking-[1px] text-muted-foreground">{t("userMenu.aiBalanceLabel")}</p>
+                    <p className={`mt-1 text-[11px] tabular-nums ${accountAllowance.locked ? "text-destructive" : "text-foreground"}`}>
+                      {accountAllowance.locked
+                        ? t("userMenu.aiBalanceSpent")
+                        : t("userMenu.aiBalanceLeft", { amount: usd.format(accountAllowance.remainingUsd ?? 0), pct: accountAllowance.consumedPct ?? 0 })}
+                    </p>
                   </div>
                 )}
 
