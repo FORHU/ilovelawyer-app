@@ -75,6 +75,7 @@ import {
 } from "@/lib/transcription/mutations";
 
 import { chatKeys, userKeys } from "@/lib/query-keys";
+import { accountAiAllowanceKey } from "@/lib/account/ai-allowance";
 import { generateId } from "@/lib/id";
 import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
 import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
@@ -1594,7 +1595,10 @@ export default function ConsultationChat({
       // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
       // not worth a console error.
       const refusal = (error as { code?: string } | null)?.code;
-      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT" && refusal !== "CASE_ALLOWANCE_REACHED") console.error("Failed to send message:", error);
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT" && refusal !== "ACCOUNT_ALLOWANCE_REACHED") console.error("Failed to send message:", error);
+      // The account-level locked banner/dropdown read useAccountAiAllowanceQuery, which this send
+      // just flipped locked server-side — refetch now instead of waiting for the next natural refetch.
+      if (refusal === "ACCOUNT_ALLOWANCE_REACHED") void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey });
       // The Consultation itself couldn't be created, so nothing of this message was saved — and
       // handleSendMessage already emptied the composer (which, on a draft, also emptied the
       // draft's saved text). Hand the text back so it isn't simply gone. Still on this send's
@@ -1627,8 +1631,8 @@ export default function ConsultationChat({
                 ? "sendErrorTrialUsedUp"
                 : refusal === "FREE_CREDIT_SPENT"
                   ? "sendErrorFreeCreditSpent"
-                  : refusal === "CASE_ALLOWANCE_REACHED"
-                    ? "sendErrorCaseAllowance"
+                  : refusal === "ACCOUNT_ALLOWANCE_REACHED"
+                    ? "sendErrorAccountAllowance"
                     : "sendError";
           nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };

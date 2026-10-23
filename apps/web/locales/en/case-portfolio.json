@@ -575,5 +575,22 @@
     "sharedOn": "Shared {{date}}"
   },
   "confidentialBadge": "Confidential",
-  "confidentialTooltip": "Only the organization owner and people given access can see this case"
+  "confidentialTooltip": "Only the organization owner and people given access can see this case",
+  "aiAllowance": {
+    "lockedBanner": "Your account has reached its AI usage allowance. You can still read everything — top up to keep going.",
+    "topUpCta": "Top up",
+    "topUpTitle": "Top up your account's AI usage",
+    "topUpDescription": "Choose an amount to add. A platform fee is added at checkout, shown before you pay.",
+    "topUpAmountLabel": "Amount to add (USD)",
+    "topUpAmountRange": "Choose an amount between $5 and $500.",
+    "topUpLineAmount": "Top-up amount",
+    "topUpLineFee": "Platform fee",
+    "topUpLineTotal": "Total charged",
+    "topUpContinue": "Continue to payment",
+    "topUpStarting": "Opening payment…",
+    "topUpSuccess": "Top-up complete. Your account can keep going.",
+    "topUpDone": "Done",
+    "topUpFailed": "That payment didn't go through. Nothing was charged.",
+    "topUpTryAgain": "Try again"
+  }
 }
