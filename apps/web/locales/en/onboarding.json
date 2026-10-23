@@ -68,21 +68,24 @@
   },
   "plan": {
     "title": "Choose your plan",
-    "subtitle": "Pick the plan that fits your practice. You can change it later, or skip for now.",
-    "names": {
-      "BASIC": "Basic",
-      "PRO": "Pro",
-      "MAX": "Max"
-    },
+    "subtitle": "Pick the plan that fits your practice. You can skip this and choose later.",
+    "loading": "Loading plans",
+    "loadFailed": "We couldn't load the plans. You can skip this and choose one later.",
     "perMonth": "/month",
     "billedMonthly": "billed monthly",
     "cases_one": "Create {{count}} case",
     "cases_other": "Create up to {{count}} cases",
+    "casesUnlimited": "Unlimited cases",
     "aiUsage": "{{amount}} of AI usage",
     "choose": "Choose {{plan}}",
-    "chosen": "You picked {{plan}}. Payments aren't live yet, so nothing was charged.",
+    "paymentTitle": "Subscribe to {{plan}}",
+    "backToPlans": "Back to plans",
+    "success": "You're on {{plan}}. Your plan is active.",
+    "failed": "Your payment didn't go through. Nothing was charged.",
+    "subscribed": "You're on {{plan}}.",
+    "continue": "Continue",
     "skip": "Skip for now",
-    "preview": "Preview: payments aren't live yet, so nothing is charged."
+    "skipNote": "Your account starts on the cheapest plan, with nothing charged, until you choose one."
   },
   "steps": {
     "firm": "Firm",
