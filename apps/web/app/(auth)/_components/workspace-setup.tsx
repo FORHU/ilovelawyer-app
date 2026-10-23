@@ -7,7 +7,9 @@ import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg, toOwnWorkspace } from "@/lib/auth/mutations";
 import { apiFetch } from "@/lib/fetch";
 import type { PortfolioRecord } from "@/lib/organizations/queries";
-import { useChooseSoloMutation } from "@/lib/user/mutations";
+import { useChooseSoloMutation, useCurrentUserQuery } from "@/lib/user/mutations";
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
+import { StepIndicator, type SetupStepId } from "@/components/onboarding/step-indicator";
 import { useCreateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, hasFirmDetailsErrors, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
@@ -149,9 +151,22 @@ export function WorkspaceSetup({
 
   const pending = createOrgMutation.isPending || chooseSoloMutation.isPending;
 
+  // The steps after the choice, shown from the firm's details on (not on the choice itself): the
+  // firm's details and inviting the team, the Lawyer Application where the site has one, the
+  // subscription plan, and the admin's review last while the account is pending. The same path /onboarding carries on with.
+  const { data: me } = useCurrentUserQuery();
+  const path: SetupStepId[] = [
+    "firm",
+    "invite",
+    ...(isFeatureEnabled(tenantCode, "lawyerApplication") ? (["apply"] as const) : []),
+    "plan",
+    ...(me && me.approvalStatus !== "ACTIVE" ? (["review"] as const) : []),
+  ];
+
   if (step === "firm")
     return (
       <form onSubmit={createFirm} className="flex flex-col gap-6" style={{ fontFamily: "Inter, sans-serif" }}>
+        <StepIndicator steps={path} current="firm" />
         <div className="flex flex-col gap-1">
           <h1 className={setupHeadingClass}>{t("firm.title")}</h1>
           <p className={setupSubtitleClass}>{t("firm.subtitle")}</p>

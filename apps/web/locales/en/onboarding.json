@@ -66,11 +66,29 @@
     "confirm": "Remove firm and go back",
     "removing": "Removing…"
   },
+  "plan": {
+    "title": "Choose your plan",
+    "subtitle": "Pick the plan that fits your practice. You can change it later, or skip for now.",
+    "names": {
+      "BASIC": "Basic",
+      "PRO": "Pro",
+      "MAX": "Max"
+    },
+    "perMonth": "/month",
+    "billedMonthly": "billed monthly",
+    "cases_one": "Create {{count}} case",
+    "cases_other": "Create up to {{count}} cases",
+    "aiUsage": "{{amount}} of AI usage",
+    "choose": "Choose {{plan}}",
+    "chosen": "You picked {{plan}}. Payments aren't live yet, so nothing was charged.",
+    "skip": "Skip for now",
+    "preview": "Preview: payments aren't live yet, so nothing is charged."
+  },
   "steps": {
-    "choose": "Choose",
     "firm": "Firm",
     "invite": "Invite",
     "apply": "Apply",
+    "plan": "Plan",
     "review": "Review",
     "label": "Step {{current}} of {{total}}"
   },

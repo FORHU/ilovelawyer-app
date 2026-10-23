@@ -14,6 +14,7 @@ import { PasswordRequirements } from "@/components/auth/password-requirements";
 import { isPasswordValid } from "@/lib/auth/password-policy";
 import { TermsReviewDialog } from "./terms-review-dialog";
 import { WorkspaceSetup, type WorkspaceSetupStep } from "./workspace-setup";
+import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
 import {
   sanitizeNextPath,
@@ -451,6 +452,16 @@ function UnifiedAuthContent() {
     { key: "recover", labelKey: "login.tabs.recover", tooltip: "Switch to the password recovery form" },
   ];
 
+  // Once the email is verified, account setup takes the whole screen (OnboardingShell), as every
+  // later step does: no brand panel. On the firm form the arrow goes back to the choice; on the
+  // choice there's nothing to go back to.
+  if (workspaceStep)
+    return (
+      <OnboardingShell onBack={setupStep === "firm" ? () => setSetupStep("choose") : undefined}>
+        <WorkspaceSetup defaultOrgName={name} onDone={handleWorkspaceDone} step={setupStep} onStepChange={setSetupStep} />
+      </OnboardingShell>
+    );
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* LEFT — fixed navy brand panel, unaffected by theme (see reset-password/page.tsx) */}
@@ -458,25 +469,19 @@ function UnifiedAuthContent() {
 
       {/* RIGHT — form */}
       <div className="relative bg-background flex flex-col items-center justify-start px-8 md:px-26.5 py-10 flex-1 overflow-y-auto">
-        {/* During workspace setup the account already exists: on the firm form the arrow goes back to
-            the choice, and on the choice there's nothing to go back to, so it's hidden. */}
-        {!(workspaceStep && setupStep === "choose") && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => (workspaceStep ? setSetupStep("choose") : router.push("/"))}
-                aria-label={workspaceStep ? t("firm.back", { ns: "onboarding" }) : t("login.backToHome", { defaultValue: "Back to home" })}
-                className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-0 z-20"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {workspaceStep ? t("firm.back", { ns: "onboarding" }) : t("login.backToHome", { defaultValue: "Back to home" })}
-            </TooltipContent>
-          </Tooltip>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              aria-label={t("login.backToHome", { defaultValue: "Back to home" })}
+              className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-0 z-20"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("login.backToHome", { defaultValue: "Back to home" })}</TooltipContent>
+        </Tooltip>
 
         <div className="absolute top-6 right-6 md:top-8 md:right-10 flex items-center gap-4 text-foreground z-20">
           <LanguageSwitcher />
@@ -484,9 +489,7 @@ function UnifiedAuthContent() {
         </div>
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
-          {workspaceStep ? (
-            <WorkspaceSetup defaultOrgName={name} onDone={handleWorkspaceDone} step={setupStep} onStepChange={setSetupStep} />
-          ) : otpStep ? (
+          {otpStep ? (
             <>
               <div className="flex flex-col gap-1 pt-20">
                 <h1
