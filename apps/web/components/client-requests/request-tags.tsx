@@ -2,21 +2,22 @@
 
 import { useTranslation } from "react-i18next";
 import { Badge } from "@workspace/ui/components/badge";
-import type { ClientRequest, RequestUrgency } from "@/lib/client-requests/mock-types";
+import type { RequestUrgency } from "@/lib/client-handoff";
+import type { CaseBrief } from "@/lib/client-requests/types";
 
-const URGENCY_TONE = { high: "danger", medium: "caution", low: "success" } as const satisfies Record<RequestUrgency, string>;
+const URGENCY_TONE = { URGENT: "danger", SOON: "caution", ROUTINE: "success" } as const satisfies Record<RequestUrgency, string>;
 
-/** Practice area, jurisdiction and urgency chips — the header row of a request card and the detail page. */
-export function RequestTags({ request, muted = false }: { request: ClientRequest; muted?: boolean }) {
+/** Practice area, jurisdiction and urgency chips — the inbox card and the detail page's header. */
+export function RequestTags({ brief, muted = false }: { brief: Pick<CaseBrief, "practiceArea" | "ukJurisdiction" | "urgency" | "knownDeadline">; muted?: boolean }) {
   const { t } = useTranslation("client-request");
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Badge shape="pill" className="py-1 tracking-[1px]">{request.practiceArea}</Badge>
-      <Badge shape="pill" className="py-1 tracking-[1px]">{request.jurisdiction}</Badge>
+      {brief.practiceArea && <Badge shape="pill" className="py-1 tracking-[1px]">{brief.practiceArea}</Badge>}
+      {brief.ukJurisdiction && <Badge shape="pill" className="py-1 tracking-[1px]">{brief.ukJurisdiction}</Badge>}
       {!muted && (
-        <Badge shape="pill" tone={URGENCY_TONE[request.urgency]} className="py-1 tracking-[1px]">
-          {t(`urgency.${request.urgency}`)}
-          {request.urgencyNote ? ` · ${request.urgencyNote}` : ""}
+        <Badge shape="pill" tone={URGENCY_TONE[brief.urgency]} className="py-1 tracking-[1px]">
+          {t(`urgency.${brief.urgency.toLowerCase()}`)}
+          {brief.knownDeadline ? ` · ${t("detail.deadline", { date: brief.knownDeadline })}` : ""}
         </Badge>
       )}
     </div>

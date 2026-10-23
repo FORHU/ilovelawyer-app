@@ -111,3 +111,13 @@ export const billingKeys = {
   all: ["billing"] as const,
   card: (organizationId: string) => [...billingKeys.all, "card", organizationId] as const,
 }
+
+// The lawyer app's side of the UK client-to-lawyer hand-off (ilovelawyer-api#511/#512), the
+// Client Requests inbox and a held request's detail — see lib/client-requests/.
+export const clientRequestKeys = {
+  all: ["client-requests"] as const,
+  lists: () => [...clientRequestKeys.all, "list"] as const,
+  list: (view: string, page: number, limit: number) => [...clientRequestKeys.lists(), { view, page, limit }] as const,
+  details: () => [...clientRequestKeys.all, "detail"] as const,
+  detail: (id: string) => [...clientRequestKeys.details(), id] as const,
+}

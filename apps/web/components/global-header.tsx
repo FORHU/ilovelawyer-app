@@ -7,7 +7,8 @@ import { BookOpen, Briefcase, Building2, CalendarDays, FileText, Inbox, LogOut, 
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
-import { useOpenClientRequestCount } from "@/lib/client-requests/queries";
+import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
 import { useFreeCredit } from "@/lib/free-credit";
@@ -91,14 +92,15 @@ const USER_MENU_ITEMS = [
 const MOBILE_NAV_ITEMS = [
   { tab: "consultation", labelKey: "nav.consultation", href: "/homepage", tooltip: "AI-powered legal consultation chat", icon: MessageCircle },
   { tab: "case-portfolio", labelKey: "nav.casePortfolio", href: "/homepage/case-portfolio", tooltip: "View and manage your case portfolio", icon: Briefcase, tourId: "nav-case-portfolio" },
-  { tab: "client-request", labelKey: "nav.clientRequest", href: "/homepage/client-request", tooltip: "Review and manage client requests", icon: Inbox, tourId: "nav-client-request" },
+  { tab: "client-request", labelKey: "nav.clientRequest", href: "/homepage/client-requests", tooltip: "Review and manage client requests", icon: Inbox, tourId: "nav-client-request" },
   { tab: "library", labelKey: "nav.library", href: "/homepage/library", tooltip: "Browse the legal research library", icon: BookOpen, tourId: "nav-library" },
   { tab: "calendar", labelKey: "nav.calendar", href: "/homepage/calendar", tooltip: "View and schedule appointments", icon: CalendarDays, tourId: "nav-calendar" },
 ] as const;
 
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
-  const openRequestCount = useOpenClientRequestCount();
+  const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
+  const openRequestCount = useClientRequestInboxCountQuery(isFeatureEnabled(tenantCode, "lawyerApplication"));
   // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
   // so the shape of the product still shows. Terms stay open.
   const trial = useTrial();
@@ -257,7 +259,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/homepage/client-request" data-tour-id="nav-client-request" className={getSubTabClass("client-request")}>
+              <Link href="/homepage/client-requests" data-tour-id="nav-client-request" className={getSubTabClass("client-request")}>
                 <TabLinkContent>
                   {t("nav.clientRequest").toUpperCase()}
                   {openRequestCount > 0 && (

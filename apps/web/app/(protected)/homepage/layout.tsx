@@ -12,6 +12,8 @@ const TAB_ALIASES: Record<string, ActiveTab> = {
   "sample-case": "case-portfolio",
   // Terminal has no nav item of its own; it's reached by drilling into a case.
   terminal: "case-portfolio",
+  // The real inbox route is plural; the nav tab id stayed singular.
+  "client-requests": "client-request",
 }
 
 function toActiveTab(segment: string | undefined): ActiveTab | undefined {
