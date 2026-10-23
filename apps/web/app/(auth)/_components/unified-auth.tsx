@@ -76,6 +76,8 @@ function UnifiedAuthContent() {
   const [name, setName] = useState("");
   // Prefilled from an org-invite email's sign-up link (?email=), which was sent to that address.
   const [signupEmail, setSignupEmail] = useState(() => searchParams.get("email") ?? "");
+  // From that invite link (&invite=1): the invite is for that address only, so it can't be changed.
+  const inviteEmailLocked = searchParams.get("invite") === "1" && !!searchParams.get("email");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmSignupPassword, setConfirmSignupPassword] = useState("");
   const [showSignupPw, setShowSignupPw] = useState(false);
@@ -1077,9 +1079,17 @@ function UnifiedAuthContent() {
                         onChange={(e) => setSignupEmail(e.target.value)}
                         placeholder={t("signup.emailPlaceholder", tCtx)}
                         required
-                        className={inputClass}
+                        readOnly={inviteEmailLocked}
+                        aria-readonly={inviteEmailLocked || undefined}
+                        aria-describedby={inviteEmailLocked ? "signup-email-invite" : undefined}
+                        className={`${inputClass}${inviteEmailLocked ? " cursor-not-allowed opacity-70 focus:border-border focus:ring-0" : ""}`}
                         style={{ fontFamily: "Inter, sans-serif" }}
                       />
+                      {inviteEmailLocked && (
+                        <p id="signup-email-invite" className="text-xs text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+                          {t("signup.emailFromInvite")}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-2">
