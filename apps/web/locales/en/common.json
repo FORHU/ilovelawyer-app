@@ -13,8 +13,7 @@
     "legalTerminal": "Legal Terminal",
     "library": "Library",
     "transcription": "Transcription",
-    "calendar": "Calendar",
-    "clientRequests": "Client Requests"
+    "calendar": "Calendar"
   },
   "userMenu": {
     "accountMenu": "Account menu",

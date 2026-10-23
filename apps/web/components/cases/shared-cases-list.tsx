@@ -26,7 +26,7 @@ export function SharedCasesList() {
   const enterSharedWorkspace = useEnterSharedWorkspace();
 
   const open = (sharedCase: SharedCase, where: "workspace" | "terminal") => {
-    enterSharedWorkspace({ id: sharedCase.organizationId, ownerName: ownerNameOf(sharedCase) });
+    enterSharedWorkspace({ id: sharedCase.workspaceId, ownerName: ownerNameOf(sharedCase) });
     router.push(where === "terminal" ? `/homepage/terminal/${sharedCase.id}` : `/homepage/case-portfolio/${sharedCase.id}`);
   };
 

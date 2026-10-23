@@ -1,15 +1,26 @@
-import type { ClientRequestProfile, ClientRequestProfilePatch, PracticeArea, Regulator } from "./profile"
+import { FEE_CURRENCY, type ClientRequestProfile, type ClientRequestProfilePatch, type LawyerCountry, type Regulator } from "./profile"
+import { NUMBER_MAX_DIGITS } from "@/lib/forms/field-rules"
 
-/** The settings form's own state: text fields as typed, turned into the API's shapes on save. */
+/** The application form's own state: text fields as typed, turned into the API's shapes on save.
+ * It holds both countries' registration fields; only the profile's own country's are shown and
+ * sent. */
 export interface ProfileForm {
+  country: LawyerCountry
+  // UK registration
   regulator: Regulator | null
   registrationNumber: string
   qualifiedJurisdictions: string[]
-  practiceAreas: PracticeArea[]
+  // PH registration
+  rollNumber: string
+  ibpChapter: string
+  ibpMembershipNumber: string
+  mcleNumber: string
+  mclePeriod: string
+  practiceAreas: string[]
   bio: string
   /** One per chip in the tag input, already trimmed and de-duplicated by it. */
   languages: string[]
-  /** Pounds, as typed ("150" or "149.50"). Empty: no first-consultation offer. */
+  /** Major units, as typed ("150" or "149.50"): pounds on UK, pesos on PH. Empty: no offer. */
   fee: string
   /** YYYY-MM-DD, or empty. */
   pausedUntil: string
@@ -17,19 +28,38 @@ export interface ProfileForm {
   capacityLimit: string
 }
 
-export type ProfileFormErrors = Partial<Record<"registrationNumber" | "bio" | "fee" | "capacityLimit", string>>
+type TextField = "registrationNumber" | "rollNumber" | "ibpChapter" | "ibpMembershipNumber" | "mcleNumber" | "mclePeriod"
+export type ProfileFormErrors = Partial<Record<TextField | "bio" | "fee" | "capacityLimit", string>>
 
 export const BIO_MAX_LENGTH = 1500
 /** The API's limits on languages: at most 10, each up to 40 characters. */
 export const LANGUAGES_MAX = 10
 export const LANGUAGE_MAX_LENGTH = 40
-const FEE_MAX_POUNDS = 10_000
+/** The API's limit on each registration text field. The numbers are digits only (see the field
+ * filters in components/account/lawyer-application-fields.tsx and lib/forms/field-rules.ts). */
+export const TEXT_MAX_LENGTH: Record<TextField, number> = {
+  registrationNumber: NUMBER_MAX_DIGITS,
+  rollNumber: NUMBER_MAX_DIGITS,
+  ibpChapter: 80,
+  ibpMembershipNumber: 20,
+  mcleNumber: 40,
+  mclePeriod: 10,
+}
+const FEE_MAX = 10_000
 
 export function formFromProfile(p: ClientRequestProfile): ProfileForm {
+  const uk = p.registration.country === "UK" ? p.registration : null
+  const ph = p.registration.country === "PH" ? p.registration : null
   return {
-    regulator: p.regulator,
-    registrationNumber: p.registrationNumber ?? "",
-    qualifiedJurisdictions: p.qualifiedJurisdictions,
+    country: p.country,
+    regulator: uk?.regulator ?? null,
+    registrationNumber: uk?.registrationNumber ?? "",
+    qualifiedJurisdictions: uk?.qualifiedJurisdictions ?? [],
+    rollNumber: ph?.rollNumber ?? "",
+    ibpChapter: ph?.ibpChapter ?? "",
+    ibpMembershipNumber: ph?.ibpMembershipNumber ?? "",
+    mcleNumber: ph?.mcleNumber ?? "",
+    mclePeriod: ph?.mclePeriod ?? "",
     practiceAreas: p.practiceAreas,
     bio: p.bio,
     languages: p.languages,
@@ -42,13 +72,17 @@ export function formFromProfile(p: ClientRequestProfile): ProfileForm {
 /** Messages keyed by field, empty when the form can be saved. Mirrors the API's limits. */
 export function validateForm(f: ProfileForm): ProfileFormErrors {
   const errors: ProfileFormErrors = {}
-  if (f.registrationNumber.trim().length > 40) errors.registrationNumber = "Use 40 characters or fewer."
+  const textFields: TextField[] = f.country === "PH" ? ["rollNumber", "ibpChapter", "ibpMembershipNumber", "mcleNumber", "mclePeriod"] : ["registrationNumber"]
+  for (const field of textFields) {
+    if (f[field].trim().length > TEXT_MAX_LENGTH[field]) errors[field] = `Use ${TEXT_MAX_LENGTH[field]} characters or fewer.`
+  }
   if (f.bio.length > BIO_MAX_LENGTH) errors.bio = `Use ${BIO_MAX_LENGTH} characters or fewer.`
   if (f.fee.trim()) {
-    const typed = f.fee.trim().replace(/^£/, "")
+    const symbol = f.country === "PH" ? "₱" : "£"
+    const typed = f.fee.trim().replace(/^[£₱]/, "")
     // Checked as text: 0.29 * 100 isn't exactly 29 in floating point.
-    if (!/^\d+(\.\d{1,2})?$/.test(typed) || Number(typed) > FEE_MAX_POUNDS) {
-      errors.fee = `Enter an amount in pounds, up to £${FEE_MAX_POUNDS.toLocaleString("en-GB")}.`
+    if (!/^\d+(\.\d{1,2})?$/.test(typed) || Number(typed) > FEE_MAX) {
+      errors.fee = `Enter an amount up to ${symbol}${FEE_MAX.toLocaleString("en-GB")}.`
     }
   }
   if (f.capacityLimit.trim()) {
@@ -63,21 +97,37 @@ export function patchFromForm(f: ProfileForm): ClientRequestProfilePatch {
   return { ...applicationPatchFromForm(f), ...availabilityPatchFromForm(f) }
 }
 
-/** The application dialog's fields: what the admin checks, and what clients see. */
+const textOrNull = (v: string) => v.trim() || null
+
+/** The application's fields: the profile's own country's registration, what the lawyer takes on,
+ * and what clients see. */
 export function applicationPatchFromForm(f: ProfileForm): ClientRequestProfilePatch {
-  const fee = f.fee.trim().replace(/^£/, "")
+  const fee = f.fee.trim().replace(/^[£₱]/, "")
   return {
-    regulator: f.regulator,
-    registrationNumber: f.registrationNumber.trim() || null,
-    qualifiedJurisdictions: f.qualifiedJurisdictions,
+    registration:
+      f.country === "PH"
+        ? {
+            country: "PH",
+            rollNumber: textOrNull(f.rollNumber),
+            ibpChapter: textOrNull(f.ibpChapter),
+            ibpMembershipNumber: textOrNull(f.ibpMembershipNumber),
+            mcleNumber: textOrNull(f.mcleNumber),
+            mclePeriod: textOrNull(f.mclePeriod),
+          }
+        : {
+            country: "UK",
+            regulator: f.regulator,
+            registrationNumber: textOrNull(f.registrationNumber),
+            qualifiedJurisdictions: f.qualifiedJurisdictions,
+          },
     practiceAreas: f.practiceAreas,
     bio: f.bio,
     languages: f.languages,
-    firstConsultationFee: fee ? { amountMinor: Math.round(Number(fee) * 100), currency: "GBP" } : null,
+    firstConsultationFee: fee ? { amountMinor: Math.round(Number(fee) * 100), currency: FEE_CURRENCY[f.country] } : null,
   }
 }
 
-/** Pause and capacity, set beside the accepting switch once the application is approved. */
+/** Pause and capacity, set beside the accepting switch once a UK application is approved. */
 export function availabilityPatchFromForm(f: Pick<ProfileForm, "pausedUntil" | "capacityLimit">): ClientRequestProfilePatch {
   return {
     pausedUntil: f.pausedUntil ? new Date(`${f.pausedUntil}T00:00:00Z`).toISOString() : null,
@@ -85,25 +135,34 @@ export function availabilityPatchFromForm(f: Pick<ProfileForm, "pausedUntil" | "
   }
 }
 
-export type RequiredField = "regulator" | "registrationNumber" | "qualifiedJurisdictions" | "practiceAreas"
+export type RequiredField = "regulator" | "registrationNumber" | "qualifiedJurisdictions" | "rollNumber" | "ibpChapter" | "practiceAreas"
 
 /** What an application still needs before it can be submitted. Mirrors the API's missingFields,
  * in the same order, so the names match profile.missing. */
 export function missingFromForm(f: ProfileForm): RequiredField[] {
   const missing: RequiredField[] = []
-  if (!f.regulator) missing.push("regulator")
-  if (!f.registrationNumber.trim()) missing.push("registrationNumber")
-  if (f.qualifiedJurisdictions.length === 0) missing.push("qualifiedJurisdictions")
+  if (f.country === "PH") {
+    if (!f.rollNumber.trim()) missing.push("rollNumber")
+    if (!f.ibpChapter.trim()) missing.push("ibpChapter")
+  } else {
+    if (!f.regulator) missing.push("regulator")
+    if (!f.registrationNumber.trim()) missing.push("registrationNumber")
+    if (f.qualifiedJurisdictions.length === 0) missing.push("qualifiedJurisdictions")
+  }
   if (f.practiceAreas.length === 0) missing.push("practiceAreas")
   return missing
 }
 
+const sameText = (a: string | null, b: string) => (a ?? "").trim() === b.trim()
+
 /** Whether saving this form sends an approved or rejected application back for review: the API
- * re-checks when who regulates them, their number or where they're qualified changes. */
+ * re-checks UK regulator, number or jurisdictions, and PH Roll number or IBP chapter. */
 export function needsRecheck(p: ClientRequestProfile, f: ProfileForm): boolean {
+  const r = p.registration
+  if (r.country === "PH") return !sameText(r.rollNumber, f.rollNumber) || !sameText(r.ibpChapter, f.ibpChapter)
   const sameJurisdictions =
-    p.qualifiedJurisdictions.length === f.qualifiedJurisdictions.length && p.qualifiedJurisdictions.every((j) => f.qualifiedJurisdictions.includes(j))
-  return p.regulator !== f.regulator || (p.registrationNumber ?? "").trim() !== f.registrationNumber.trim() || !sameJurisdictions
+    r.qualifiedJurisdictions.length === f.qualifiedJurisdictions.length && r.qualifiedJurisdictions.every((j) => f.qualifiedJurisdictions.includes(j))
+  return r.regulator !== f.regulator || !sameText(r.registrationNumber, f.registrationNumber) || !sameJurisdictions
 }
 
 /** Adds `value` to the list, or takes it out if it's there. */

@@ -101,17 +101,10 @@ export const legalRagKeys = {
   detail: (id: string | number) => [...legalRagKeys.details(), String(id)] as const,
   sections: () => [...legalRagKeys.all, "sections"] as const,
 }
+
 export const tourKeys = {
   all: ["tour"] as const,
   track: (track: string) => [...tourKeys.all, track] as const,
-}
-
-export const clientRequestKeys = {
-  all: ["client-requests"] as const,
-  lists: () => [...clientRequestKeys.all, "list"] as const,
-  list: (view: string, page: number, limit: number) => [...clientRequestKeys.lists(), view, page, limit] as const,
-  details: () => [...clientRequestKeys.all, "detail"] as const,
-  detail: (id: string) => [...clientRequestKeys.details(), id] as const,
 }
 
 export const billingKeys = {

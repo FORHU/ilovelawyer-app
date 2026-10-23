@@ -162,23 +162,15 @@
     "genericError": "Couldn't update Google Calendar. Please try again."
   },
   "clientRequests": {
-    "heading": "Take on new clients",
-    "subheading": "Clients on ilovelawyer.com ask for a lawyer for their case. Once your registration is verified, requests that match your practice areas come to you. You see an anonymised summary first and pay a fixed fee only when a client confirms you.",
     "loadError": "Couldn't load your client request settings. Refresh to try again.",
     "status": {
       "PENDING": "Under review",
       "VERIFIED": "Approved",
       "REJECTED": "Not approved"
     },
-    "statusHelp": {
-      "UNSUBMITTED": "Apply once with your regulator and registration number. We check them against the register, usually within a working day.",
-      "PENDING": "We're checking your registration with your regulator. This usually takes a working day, and we'll email you when it's done.",
-      "REJECTED": "We couldn't verify your registration. Correct your details and resubmit to have them checked again."
-    },
     "incomplete": "Your application isn't finished. Still needed: {{fields}}.",
     "rejectedNote": "Why: {{note}}",
     "actions": {
-      "apply": "Apply to take on clients",
       "continue": "Continue application",
       "edit": "Edit application",
       "resubmit": "Update and resubmit",
@@ -187,13 +179,17 @@
     "summary": {
       "registration": "Registration",
       "jurisdictions": "Qualified in",
-      "practiceAreas": "Practice areas"
+      "practiceAreas": "Practice areas",
+      "rollNumber": "Roll number",
+      "ibpChapter": "IBP chapter"
     },
     "missingFields": {
       "regulator": "your regulator",
       "registrationNumber": "your registration number",
       "qualifiedJurisdictions": "where you're qualified",
-      "practiceAreas": "at least one practice area"
+      "practiceAreas": "at least one practice area",
+      "rollNumber": "your Roll of Attorneys number",
+      "ibpChapter": "your IBP chapter"
     },
     "accepting": {
       "title": "Accept client requests",
@@ -206,9 +202,7 @@
       "saved": "Saved"
     },
     "dialog": {
-      "titleApply": "Apply to take on clients",
       "titleEdit": "Edit your application",
-      "description": "We check your registration against your regulator's register, usually within a working day. Client requests start once it's approved.",
       "close": "Close",
       "cancel": "Cancel",
       "submit": "Submit application",
@@ -216,7 +210,6 @@
       "submitting": "Submitting…",
       "saving": "Saving…",
       "missing": "Still needed: {{fields}}.",
-      "recheckWarning": "Changing your regulator, registration number or jurisdictions sends your application back for review. New client requests stop until it's approved again.",
       "sections": {
         "registration": "Your registration",
         "work": "What you take on",
@@ -237,7 +230,15 @@
       "CONSUMER": "Consumer",
       "OTHER": "Other",
       "PERSONAL_INJURY": "Personal injury",
-      "personalInjuryWhy": "Referral fees aren't allowed in personal injury cases, so we can't send these."
+      "personalInjuryWhy": "Referral fees aren't allowed in personal injury cases, so we can't send these.",
+      "CIVIL": "Civil",
+      "CRIMINAL": "Criminal",
+      "LABOR": "Labor",
+      "CORPORATE": "Corporate and commercial",
+      "TAX": "Tax",
+      "IMMIGRATION": "Immigration",
+      "ADMINISTRATIVE": "Administrative",
+      "PROPERTY_PH": "Property and real estate"
     },
     "fields": {
       "regulator": "Regulator",
@@ -251,12 +252,46 @@
       "languagesHelp": "The languages you can work with clients in.",
       "languagesPlaceholder": "Type a language, then press Enter",
       "removeLanguage": "Remove {{language}}",
-      "fee": "First consultation fee (£)",
       "feeHelp": "Leave empty if you don't offer one.",
       "pausedUntil": "Pause until",
       "pausedUntilHelp": "No new requests until this date. Leave empty to stay on.",
       "capacity": "Most open clients at once",
-      "capacityHelp": "Leave empty for no limit."
+      "capacityHelp": "Leave empty for no limit.",
+      "feeUK": "First consultation fee (£)",
+      "feePH": "First consultation fee (₱)",
+      "rollNumber": "Roll of Attorneys number",
+      "rollNumberHelp": "From the Supreme Court's Roll of Attorneys.",
+      "ibpChapter": "IBP chapter",
+      "ibpChapterHelp": "Your Integrated Bar of the Philippines chapter, e.g. Manila III.",
+      "ibpMembershipNumber": "IBP membership number",
+      "ibpMembershipNumberHelp": "Lifetime number or annual dues receipt. Optional.",
+      "mcleNumber": "MCLE compliance number",
+      "mclePeriod": "MCLE compliance period",
+      "mclePeriodHelp": "As on your certificate, e.g. VII. Optional."
+    },
+    "copy": {
+      "UK": {
+        "heading": "Take on new clients",
+        "subheading": "Clients on ilovelawyer.com ask for a lawyer for their case. Once your registration is verified, requests that match your practice areas come to you. You see an anonymised summary first and pay a fixed fee only when a client confirms you.",
+        "apply": "Apply to take on clients",
+        "dialogTitle": "Apply to take on clients",
+        "dialogDescription": "We check your registration against your regulator's register, usually within a working day. Client requests start once it's approved.",
+        "unsubmittedHelp": "Apply once with your regulator and registration number. We check them against the register, usually within a working day.",
+        "pendingHelp": "We're checking your registration with your regulator. This usually takes a working day, and we'll email you when it's done.",
+        "rejectedHelp": "We couldn't verify your registration. Correct your details and resubmit to have them checked again.",
+        "recheckWarning": "Changing your regulator, registration number or jurisdictions sends your application back for review. New client requests stop until it's approved again."
+      },
+      "PH": {
+        "heading": "Get verified as a lawyer",
+        "subheading": "Verified lawyers show an Approved badge on their profile. We check your Roll of Attorneys and IBP details.",
+        "apply": "Apply to get verified",
+        "dialogTitle": "Apply to get verified",
+        "dialogDescription": "We check your Roll of Attorneys number and IBP details, usually within a working day. Your profile shows an Approved badge once it's approved.",
+        "unsubmittedHelp": "Apply once with your Roll of Attorneys number and IBP chapter. We check them, usually within a working day.",
+        "pendingHelp": "We're checking your Roll of Attorneys and IBP details. This usually takes a working day, and we'll email you when it's done.",
+        "rejectedHelp": "We couldn't verify your details. Correct them and resubmit to have them checked again.",
+        "recheckWarning": "Changing your Roll number or IBP chapter sends your application back for review."
+      }
     }
   }
 }

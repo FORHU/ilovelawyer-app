@@ -5,12 +5,14 @@ import { caseKeys, sharedCaseKeys } from "@/lib/query-keys"
 import { useAuthStore } from "@/lib/store/auth.store"
 
 /** A portfolio case someone shared with this user, read-only — see ilovelawyer-api's
- * CaseShareSvc. `organizationId` is the owner's portfolio, the workspace the case opens in. */
+ * CaseShareSvc. `workspaceId` is the X-Organization-Id of the owner's portfolio, the workspace the
+ * case opens in: `user:<owner id>` for a lawyer's own workspace, which has no organization. */
 export interface SharedCase {
   id: string
   caseName: string
   updatedAt: string
-  organizationId: string
+  organizationId: string | null
+  workspaceId: string
   sharedAt: string | null
   parties: { name: string }[]
   owner: { id: string; name: string | null; email: string; username: string; avatarUrl: string | null } | null

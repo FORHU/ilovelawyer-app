@@ -49,11 +49,21 @@ export function useEnterSharedWorkspace() {
   )
 }
 
-export interface CreateOrganizationPayload {
+/** A firm's optional details: onboarding's firm step and the Organization page. "" or null clears
+ * one. The firm regulator and its number are UK only (the API refuses them on PH). */
+export interface FirmDetailsPayload {
+  phone?: string | null
+  addressLine1?: string | null
+  addressLine2?: string | null
+  city?: string | null
+  postcode?: string | null
+  firmRegulator?: "SRA" | "LSS" | "LSNI" | null
+  firmRegistrationNumber?: string | null
+}
+
+export interface CreateOrganizationPayload extends FirmDetailsPayload {
   name: string
   packageSku?: string
-  /** Onboarding's "Skip for now" — a private workspace, not an organization. */
-  personal?: boolean
 }
 
 export function useCreateOrganizationMutation() {
@@ -70,7 +80,17 @@ export function useCreateOrganizationMutation() {
   })
 }
 
-export interface UpdateOrganizationPayload {
+/** Account setup's way back to the choice: deletes the firm its founder just made, while it's still
+ * empty (ilovelawyer-api's POST /organizations/:id/discard). The invites they sent go with it. */
+export function useDiscardOrganizationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (organizationId: string) => apiFetch<void>(`/api/organizations/${organizationId}/discard`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
+  })
+}
+
+export interface UpdateOrganizationPayload extends FirmDetailsPayload {
   name?: string
   slug?: string
 }
@@ -176,6 +196,10 @@ export function useLeaveOrganizationMutation(organizationId: string) {
   return useMutation({
     mutationFn: () =>
       apiFetch<void>(`/api/organizations/${organizationId}/members/me`, { method: "DELETE" }),
-    onSuccess: () => removeOrganizationScopedQueries(queryClient),
+    onSuccess: () => {
+      removeOrganizationScopedQueries(queryClient)
+      // They're solo now (soloChosenAt): the protected layout puts them in their own workspace.
+      queryClient.invalidateQueries({ queryKey: userKeys.me() })
+    },
   })
 }

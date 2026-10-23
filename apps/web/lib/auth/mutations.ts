@@ -4,11 +4,11 @@ import { toast } from "sonner"
 import i18n from "@/lib/i18n/i18n"
 import { apiFetch } from "@/lib/fetch"
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations"
-import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
+import { ownWorkspace, useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useTourStore } from "@/lib/store/tour.store"
 import { useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store"
 import { chatKeys } from "@/lib/query-keys"
-import type { OrganizationWithRole, PendingInviteRecord } from "@/lib/organizations/queries"
+import type { OrganizationWithRole, PendingInviteRecord, PortfolioRecord } from "@/lib/organizations/queries"
 
 interface AuthTokensResponse {
   user: AuthUser
@@ -38,8 +38,9 @@ interface SignupResponse {
   name: string | null
 }
 
-/** Whether the just-authenticated user already belongs to an organization: "none" means
- * they still need the WorkspaceSetup step (their personal workspace); "invited" means they have
+/** Whether the just-authenticated user already has a workspace — a firm, or their own as a solo
+ * lawyer (who has no organization): "none" means they still need the WorkspaceSetup step (Solo or
+ * Law firm); "invited" means they have
  * none but an invite is waiting, so they skip that step for the Organization page to accept it;
  * "unknown" means the lookup itself failed, so callers should fall through to the app and let
  * (protected)/layout.tsx re-check rather than guess. */
@@ -56,7 +57,12 @@ async function hydrateActiveOrganization(
     const orgs = await apiFetch<OrganizationWithRole[]>("/api/organizations")
     if (!orgs[0]) {
       const invite = await apiFetch<PendingInviteRecord | null>("/api/organizations/invites/me")
-      return invite ? "invited" : "none"
+      if (invite) return "invited"
+      // A solo lawyer: no organization, their own workspace instead.
+      const me = await apiFetch<{ name: string | null; soloChosenAt: string | null }>("/api/users/me")
+      if (!me.soloChosenAt) return "none"
+      setOrganization(toOwnWorkspace(await apiFetch<PortfolioRecord>("/api/organizations/portfolio"), me.name))
+      return "found"
     }
     setOrganization(toActiveOrg(orgs[0]))
     return "found"
@@ -70,6 +76,11 @@ async function hydrateActiveOrganization(
  * just keeps what the UI echoes back (e.g. the OTP screen) consistent with what's stored. */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
+}
+
+/** The lawyer's own workspace from GET /organizations/portfolio (it has no organization). */
+export function toOwnWorkspace(portfolio: PortfolioRecord, name: string | null | undefined) {
+  return ownWorkspace(portfolio.tenant.code, name || "")
 }
 
 export function toActiveOrg(org: OrganizationWithRole) {
