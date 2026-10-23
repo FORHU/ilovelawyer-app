@@ -3,52 +3,22 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
-import { cn } from "@workspace/ui/lib/utils";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { ApplyStep } from "@/components/onboarding/apply-step";
 import { FirmStep } from "@/components/onboarding/firm-step";
 import { InviteStep } from "@/components/onboarding/invite-step";
+import { PlanStep } from "@/components/onboarding/plan-step";
 import { WorkspaceSetup, type WorkspaceSetupStep } from "@/app/(auth)/_components/workspace-setup";
 import { OnboardingLoading, OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { StepIndicator, type SetupStepId } from "@/components/onboarding/step-indicator";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useDiscardOrganizationMutation } from "@/lib/organizations/mutations";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 import { useCompleteSetupMutation, useCurrentUserQuery } from "@/lib/user/mutations";
 
-/** "review" is the admin's approval, shown last for an account still pending (/account-pending):
- * it isn't a step here, only where the indicator says the lawyer is heading. */
-type StepId = "choose" | "firm" | "invite" | "apply" | "review";
-
-function StepIndicator({ steps, current }: { steps: StepId[]; current: StepId }) {
-  const { t } = useTranslation("onboarding");
-  const at = steps.indexOf(current);
-  return (
-    <ol className="flex items-center gap-2 text-xs" aria-label={t("steps.label", { current: at + 1, total: steps.length })}>
-      {steps.map((step, i) => {
-        const done = i < at;
-        const active = i === at;
-        return (
-          <li key={step} className="flex items-center gap-2">
-            {i > 0 && <span className={cn("h-px w-6", done || active ? "bg-foreground/40" : "bg-border")} aria-hidden="true" />}
-            <span
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium",
-                active ? "bg-primary/10 text-foreground" : done ? "text-muted-foreground" : "text-muted-foreground/60"
-              )}
-              aria-current={active ? "step" : undefined}
-            >
-              {done && <Check className="h-3 w-3" aria-hidden="true" />}
-              {t(`steps.${step}`)}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+type StepId = SetupStepId;
 
 /**
  * Account setup after sign-up: the protected layout sends a lawyer here while setupCompletedAt is
@@ -145,6 +115,9 @@ function SetupSteps({
   const applies = isFeatureEnabled(organization?.tenantCode, "lawyerApplication");
   const profileQuery = useClientRequestProfileQuery(applies);
   const isFirmOwner = !organization.isPersonal && organization.role === "OWNER";
+  // Who chooses a subscription plan: a solo lawyer, and a firm's founder for the firm. Someone who
+  // joined a firm is on the firm's.
+  const choosesPlan = organization.isPersonal || isFirmOwner;
 
   const [index, setIndex] = useState(0);
   // Fixed on first load, so submitting the application (which changes its status) doesn't
@@ -154,8 +127,13 @@ function SetupSteps({
 
   if (steps === null && profileReady) {
     const needsApplication = applies && profileQuery.data?.verification.status === "UNSUBMITTED";
-    // A founder's firm already exists, so they start at Invite; Firm is there to go back to.
-    setSteps([...(isFirmOwner ? (["firm", "invite"] as const) : []), ...(needsApplication ? (["apply"] as const) : [])]);
+    // A founder's firm already exists, so they start at Invite; Firm is there to go back to. The
+    // plan comes last.
+    setSteps([
+      ...(isFirmOwner ? (["firm", "invite"] as const) : []),
+      ...(needsApplication ? (["apply"] as const) : []),
+      ...(choosesPlan ? (["plan"] as const) : []),
+    ]);
     if (isFirmOwner) setIndex(1);
   }
 
@@ -171,9 +149,10 @@ function SetupSteps({
 
   const current = steps[index]!;
   const next = () => setIndex((i) => i + 1);
-  // The whole path, the steps already behind the lawyer included, so the indicator shows where they are.
-  // A pending account ends with Review (the admin's approval), so it's clear that comes last.
-  const path: StepId[] = [...(organization.isPersonal || isFirmOwner ? (["choose"] as const) : []), ...steps, ...(pending ? (["review"] as const) : [])];
+  // The whole path after the choice (which isn't a step in it), the steps already behind the lawyer
+  // included, so the indicator shows where they are. A pending account ends with Review (the
+  // admin's approval), so it's clear that comes last.
+  const path: StepId[] = [...steps, ...(pending ? (["review"] as const) : [])];
   // Back goes one step at a time. From the first step, the choice: a Solo practitioner just returns
   // to it; a founder's first step is their firm's details, and going further removes the firm, so
   // they're asked first.
@@ -190,8 +169,10 @@ function SetupSteps({
   }
 
   return (
-    <OnboardingShell onBack={back}>
-      {path.length > 1 && <StepIndicator steps={path} current={current} />}
+    <OnboardingShell onBack={back} wide={current === "plan"}>
+      {/* A solo lawyer (Apply, Plan) and a firm's founder (Firm, Invite, Apply, Plan) have a path to
+          follow. Someone who joined a firm only has the application: no indicator for that. */}
+      {choosesPlan && <StepIndicator steps={path} current={current} />}
       {/* Every step stays mounted, only the current one shown, so going back and forward keeps what
           was typed and which invites went out. */}
       {steps.map((step, i) => (
@@ -199,6 +180,7 @@ function SetupSteps({
           {step === "firm" && <FirmStep organization={organization} onDone={next} onBackToChoice={askToRemoveFirm} />}
           {step === "invite" && <InviteStep organizationId={organization.id} firmName={organization.name} onDone={next} />}
           {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} />}
+          {step === "plan" && <PlanStep onDone={next} />}
         </div>
       ))}
 
