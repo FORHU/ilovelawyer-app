@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, Mail, Plus, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { useInviteMemberMutation } from "@/lib/organizations/mutations";
 import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
+import { inviteInputClass, inviteLabelClass, inviteMailIconClass, inviteOptionClass, inviteSelectClass } from "@/components/organization/invite-styles";
 
 type InviteRole = "MEMBER" | "ADMIN";
 interface Row {
@@ -21,15 +22,11 @@ interface Row {
 const MAX_ROWS = 10;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const selectClass =
-  "h-[46px] rounded-xl border border-border bg-transparent px-3 text-base sm:text-sm outline-none transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5";
-const inputClass =
-  "h-[46px] w-full rounded-xl border bg-transparent px-3 text-base sm:text-sm outline-none transition-colors focus:ring-2 border-border hover:border-foreground/30 focus:border-foreground focus:ring-foreground/5";
-
 /**
  * Onboarding's invite step, for a firm's founder: several addresses at once, each a Member or an
  * Admin. They're the organization's ordinary invites (the same email, accepted on the Organization
  * page). Sent one after another; a failed address keeps its row with the reason, the rest go out.
+ * The fields look like the Organization page's invite form (invite-styles.ts).
  */
 export function InviteStep({ organizationId, firmName, onDone }: { organizationId: string; firmName: string; onDone: () => void }) {
   const { t } = useTranslation("onboarding");
@@ -72,37 +69,49 @@ export function InviteStep({ organizationId, firmName, onDone }: { organizationI
       <ul className="flex flex-col gap-3">
         {rows.map((row, i) => (
           <li key={row.key} className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <label className="sr-only" htmlFor={`invite-email-${row.key}`}>
-                {t("invite.email")}
-              </label>
-              <input
-                id={`invite-email-${row.key}`}
-                type="email"
-                autoComplete="off"
-                placeholder={t("invite.email")}
-                value={row.email}
-                disabled={sending || row.sent}
-                onChange={(e) => update(row.key, { email: e.target.value, error: null })}
-                aria-invalid={!!row.error}
-                className={inputClass}
-                autoFocus={i === 0}
-              />
-              <label className="sr-only" htmlFor={`invite-role-${row.key}`}>
-                {t("invite.role")}
-              </label>
-              <select
-                id={`invite-role-${row.key}`}
-                value={row.role}
-                disabled={sending || row.sent}
-                onChange={(e) => update(row.key, { role: e.target.value as InviteRole })}
-                className={selectClass}
-              >
-                <option value="MEMBER">{t("invite.roleMEMBER")}</option>
-                <option value="ADMIN">{t("invite.roleADMIN")}</option>
-              </select>
+            {/* The labels show over the first row only, as column headings; the rest keep them for screen readers. */}
+            <div className="flex items-end gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <label className={i === 0 ? inviteLabelClass : "sr-only"} htmlFor={`invite-email-${row.key}`}>
+                  {t("invite.email")}
+                </label>
+                <div className="relative">
+                  <Mail className={inviteMailIconClass} aria-hidden="true" />
+                  <input
+                    id={`invite-email-${row.key}`}
+                    type="email"
+                    autoComplete="off"
+                    placeholder={t("invite.emailPlaceholder")}
+                    value={row.email}
+                    disabled={sending || row.sent}
+                    onChange={(e) => update(row.key, { email: e.target.value, error: null })}
+                    aria-invalid={!!row.error}
+                    className={inviteInputClass}
+                    autoFocus={i === 0}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className={i === 0 ? inviteLabelClass : "sr-only"} htmlFor={`invite-role-${row.key}`}>
+                  {t("invite.role")}
+                </label>
+                <select
+                  id={`invite-role-${row.key}`}
+                  value={row.role}
+                  disabled={sending || row.sent}
+                  onChange={(e) => update(row.key, { role: e.target.value as InviteRole })}
+                  className={inviteSelectClass}
+                >
+                  <option value="MEMBER" className={inviteOptionClass}>
+                    {t("invite.roleMEMBER")}
+                  </option>
+                  <option value="ADMIN" className={inviteOptionClass}>
+                    {t("invite.roleADMIN")}
+                  </option>
+                </select>
+              </div>
               {row.sent ? (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center text-emerald-600" aria-label={t("invite.sent")}>
+                <span className="flex h-[42px] w-9 shrink-0 items-center justify-center text-emerald-600" aria-label={t("invite.sent")}>
                   <Check className="h-4 w-4" aria-hidden="true" />
                 </span>
               ) : (
@@ -113,7 +122,7 @@ export function InviteStep({ organizationId, firmName, onDone }: { organizationI
                       onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.key !== row.key) : [{ ...rs[0]!, email: "", error: null }]))}
                       disabled={sending}
                       aria-label={t("invite.remove")}
-                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                      className="flex h-[42px] w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>

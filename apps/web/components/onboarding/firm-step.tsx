@@ -4,16 +4,17 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { FirmDetailsFields, firmDetailsPayload, firmFormFromOrganization, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
-import { setupHeadingClass, setupPrimaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
+import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
 import { useUpdateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useOrganizationQuery, type OrganizationRecord } from "@/lib/organizations/queries";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 
 /**
  * Onboarding's Firm step, reached by going back from Invite: the firm already exists (it was
- * created at the choice), so this edits its name and details and moves on.
+ * created at the choice), so this edits its name and details and moves on. `onBackToChoice`, when
+ * given, offers going back to Solo or Law firm, which removes the firm (the page confirms first).
  */
-export function FirmStep({ organization, onDone }: { organization: ActiveOrganization; onDone: () => void }) {
+export function FirmStep({ organization, onDone, onBackToChoice }: { organization: ActiveOrganization; onDone: () => void; onBackToChoice?: () => void }) {
   const query = useOrganizationQuery(organization.id);
   if (!query.data)
     return (
@@ -21,10 +22,10 @@ export function FirmStep({ organization, onDone }: { organization: ActiveOrganiz
         <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
       </div>
     );
-  return <FirmForm org={query.data} onDone={onDone} />;
+  return <FirmForm org={query.data} onDone={onDone} onBackToChoice={onBackToChoice} />;
 }
 
-function FirmForm({ org, onDone }: { org: OrganizationRecord; onDone: () => void }) {
+function FirmForm({ org, onDone, onBackToChoice }: { org: OrganizationRecord; onDone: () => void; onBackToChoice?: () => void }) {
   const { t } = useTranslation("onboarding");
   const setOrganization = useAuthStore((s) => s.setOrganization);
   const active = useAuthStore((s) => s.organization);
@@ -70,10 +71,17 @@ function FirmForm({ org, onDone }: { org: OrganizationRecord; onDone: () => void
           {(update.error as Error).message}
         </p>
       )}
-      <button type="submit" disabled={update.isPending} className={setupPrimaryButtonClass}>
-        {update.isPending && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
-        {update.isPending ? t("firm.saving") : t("firm.saveContinue")}
-      </button>
+      <div className="flex flex-col gap-3">
+        <button type="submit" disabled={update.isPending} className={setupPrimaryButtonClass}>
+          {update.isPending && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
+          {update.isPending ? t("firm.saving") : t("firm.saveContinue")}
+        </button>
+        {onBackToChoice && (
+          <button type="button" disabled={update.isPending} onClick={onBackToChoice} className={setupSecondaryButtonClass}>
+            {t("discard.button")}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

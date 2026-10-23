@@ -26,6 +26,7 @@ import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading";
 import { ErrorState } from "@/components/error-state";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { toActiveOrg } from "@/lib/auth/mutations";
+import { inviteInputClass, inviteLabelClass, inviteMailIconClass, inviteOptionClass, inviteSelectClass } from "@/components/organization/invite-styles";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
 import {
   useOrganizationMembersQuery,
@@ -101,21 +102,23 @@ export default function OrganizationPage() {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const setOrganization = useAuthStore((s) => s.setOrganization);
 
-  const membersQuery = useOrganizationMembersQuery(organization?.id ?? "");
+  // The firm's id; none for a solo lawyer, whose own workspace has no organization to manage.
+  const firmId = organization && !organization.isPersonal ? organization.id : "";
+  const membersQuery = useOrganizationMembersQuery(firmId);
   const showMembersSkeleton = useDelayedLoading(membersQuery.isLoading);
-  const inviteMutation = useInviteMemberMutation(organization?.id ?? "");
-  const leaveMutation = useLeaveOrganizationMutation(organization?.id ?? "");
-  const changeRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
+  const inviteMutation = useInviteMemberMutation(firmId);
+  const leaveMutation = useLeaveOrganizationMutation(firmId);
+  const changeRoleMutation = useChangeMemberRoleMutation(firmId);
   // Separate instance from changeRoleMutation (used by the transfer-ownership-and-leave
   // flow above) so editing a row here doesn't also flip that flow's isTransferring state.
-  const memberRoleMutation = useChangeMemberRoleMutation(organization?.id ?? "");
-  const removeMemberMutation = useRemoveMemberMutation(organization?.id ?? "");
-  const updateOrgMutation = useUpdateOrganizationMutation(organization?.id ?? "");
+  const memberRoleMutation = useChangeMemberRoleMutation(firmId);
+  const removeMemberMutation = useRemoveMemberMutation(firmId);
+  const updateOrgMutation = useUpdateOrganizationMutation(firmId);
   const otherMembers = (membersQuery.data ?? []).filter(
     (m): m is OrganizationMemberRecord => m.userId !== null && m.userId !== currentUserId && m.status === "ACCEPTED",
   );
-  // A user who skipped onboarding is in a private personal workspace, not an organization —
-  // they get the same create/join screen as someone with none (see Organization.isPersonal).
+  // A solo lawyer works in their own workspace, which has no organization — they get the same
+  // create/join screen as someone with none.
   const isPersonal = !!organization?.isPersonal;
   // Members of an organization can be invited to another one too — they see it as a banner over
   // their own organization and choose to leave for it or decline (see handleAcceptInvite).
@@ -294,8 +297,8 @@ export default function OrganizationPage() {
     }
     setCreateOrgError(null);
 
-    // Only reachable with no organization or a personal workspace (see showSetup). A personal
-    // workspace stays behind as the user's portfolio, its cases still theirs alone.
+    // Only reachable with no firm (see showSetup). What they made solo stays in their own
+    // workspace, as their portfolio, still theirs alone.
     createOrgMutation.mutate(
       { name: trimmed, packageSku: newOrgPlan ?? undefined, ...firmDetailsPayload(newFirm, tenantHint) },
       {
@@ -736,13 +739,13 @@ export default function OrganizationPage() {
                     <select
                       value={successorId}
                       onChange={(e) => setSuccessorId(e.target.value)}
-                      className="rounded-lg border border-border bg-background/60 px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30 [color-scheme:light]"
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30"
                     >
-                      <option value="" disabled className="text-black">
+                      <option value="" disabled className={inviteOptionClass}>
                         {t("overview.transferSelectPlaceholder")}
                       </option>
                       {otherMembers.map((m) => (
-                        <option key={m.userId} value={m.userId} className="text-black">
+                        <option key={m.userId} value={m.userId} className={inviteOptionClass}>
                           {memberName(m) + ` (${m.role})`}
                         </option>
                       ))}
@@ -827,10 +830,10 @@ export default function OrganizationPage() {
                                         )
                                       }
                                       aria-label={t("members.changeRoleAriaLabel", { name: memberName(member) })}
-                                      className="cursor-pointer appearance-none rounded-full border border-border bg-foreground/5 pl-3 pr-6 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground outline-none transition-colors hover:border-brand-gold/50 focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light]"
+                                      className="cursor-pointer appearance-none rounded-full border border-border bg-foreground/5 pl-3 pr-6 py-1 text-[10px] font-semibold uppercase tracking-wider text-foreground outline-none transition-colors hover:border-brand-gold/50 focus-visible:ring-2 focus-visible:ring-brand-gold/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                       {roleOptionsFor(member.role).map((role) => (
-                                        <option key={role} value={role} className="text-black">
+                                        <option key={role} value={role} className={inviteOptionClass}>
                                           {role}
                                         </option>
                                       ))}
@@ -898,33 +901,35 @@ export default function OrganizationPage() {
               ) : (
                 <form onSubmit={handleInvite} className="px-6 md:px-8 py-6 flex flex-col sm:flex-row sm:items-end gap-4">
                   <div className="flex-1 flex flex-col gap-2">
-                    <label className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                    <label htmlFor="org-invite-email" className={inviteLabelClass}>
                       {t("invite.emailLabel")}
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                      <Mail className={inviteMailIconClass} aria-hidden="true" />
                       <input
+                        id="org-invite-email"
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
                         placeholder={t("invite.emailPlaceholder")}
                         required
-                        className="w-full rounded-lg border border-border bg-background/60 pl-9 pr-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30"
+                        className={inviteInputClass}
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-semibold tracking-[1.2px] text-muted-foreground uppercase">
+                    <label htmlFor="org-invite-role" className={inviteLabelClass}>
                       {t("invite.roleLabel")}
                     </label>
                     <select
+                      id="org-invite-role"
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value as OrganizationRole)}
-                      className="rounded-lg border border-border bg-background/60 px-3 py-2 text-[15px] text-foreground outline-none transition-colors focus:border-brand-gold focus-visible:ring-2 focus-visible:ring-brand-gold/30 [color-scheme:light]"
+                      className={inviteSelectClass}
                     >
                       {INVITABLE_ROLES.map((role) => (
-                        <option key={role} value={role} className="text-black">
+                        <option key={role} value={role} className={inviteOptionClass}>
                           {role}
                         </option>
                       ))}

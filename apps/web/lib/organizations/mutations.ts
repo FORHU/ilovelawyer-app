@@ -64,8 +64,6 @@ export interface FirmDetailsPayload {
 export interface CreateOrganizationPayload extends FirmDetailsPayload {
   name: string
   packageSku?: string
-  /** Onboarding's "Solo practitioner" — a private workspace, not an organization. */
-  personal?: boolean
 }
 
 export function useCreateOrganizationMutation() {
@@ -79,6 +77,16 @@ export function useCreateOrganizationMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.lists() })
     },
+  })
+}
+
+/** Account setup's way back to the choice: deletes the firm its founder just made, while it's still
+ * empty (ilovelawyer-api's POST /organizations/:id/discard). The invites they sent go with it. */
+export function useDiscardOrganizationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (organizationId: string) => apiFetch<void>(`/api/organizations/${organizationId}/discard`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
   })
 }
 
@@ -188,6 +196,10 @@ export function useLeaveOrganizationMutation(organizationId: string) {
   return useMutation({
     mutationFn: () =>
       apiFetch<void>(`/api/organizations/${organizationId}/members/me`, { method: "DELETE" }),
-    onSuccess: () => removeOrganizationScopedQueries(queryClient),
+    onSuccess: () => {
+      removeOrganizationScopedQueries(queryClient)
+      // They're solo now (soloChosenAt): the protected layout puts them in their own workspace.
+      queryClient.invalidateQueries({ queryKey: userKeys.me() })
+    },
   })
 }

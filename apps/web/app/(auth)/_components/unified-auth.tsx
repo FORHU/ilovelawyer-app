@@ -415,7 +415,8 @@ function UnifiedAuthContent() {
    * protected layout. */
   /** Straight on to the rest of account setup, rather than via `next`: the protected layout would
    * only send a new lawyer from there to /onboarding, through an extra loading screen. A pending
-   * account is sent from /onboarding to /account-pending; someone already set up, to /homepage. */
+   * account finishes setup there too, and only then waits on /account-pending; someone already set
+   * up goes to /homepage. */
   function handleWorkspaceDone() {
     router.push("/onboarding");
   }

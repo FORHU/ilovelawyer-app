@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Building2, Check, Loader2, User } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { toActiveOrg } from "@/lib/auth/mutations";
+import { toActiveOrg, toOwnWorkspace } from "@/lib/auth/mutations";
+import { apiFetch } from "@/lib/fetch";
+import type { PortfolioRecord } from "@/lib/organizations/queries";
+import { useChooseSoloMutation } from "@/lib/user/mutations";
 import { useCreateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
@@ -62,8 +65,9 @@ function ChoiceCard({
 /**
  * Shown to a user with no organization and no pending invite: right after email verification (or
  * a first Google sign-in), or on a reload before they had a workspace. They choose:
- * - **Solo practitioner**: their private personal workspace. They can create an organization later
- *   from the Organization page; this workspace then stays on as their portfolio.
+ * - **Solo practitioner**: no organization is created (ilovelawyer-api's docs/adr/0022). Their work
+ *   lives in their own workspace. They can create a firm later from the Organization page; what
+ *   they made solo stays theirs, as their portfolio.
  * - **Law firm**: a new organization, with its name and optional details.
  * This is the only required part of account setup: every resource route needs a workspace. The
  * rest (invites, the Lawyer Application) is on /onboarding, once the account is approved.
@@ -87,6 +91,7 @@ export function WorkspaceSetup({
   const setOrganization = useAuthStore((s) => s.setOrganization);
   const tenantCode = useTenantCodeHint();
   const createOrgMutation = useCreateOrganizationMutation();
+  const chooseSoloMutation = useChooseSoloMutation();
   const [ownStep, setOwnStep] = useState<WorkspaceSetupStep>("choose");
   const step = controlledStep ?? ownStep;
   const setStep = onStepChange ?? setOwnStep;
@@ -106,13 +111,19 @@ export function WorkspaceSetup({
 
   function chooseSolo() {
     setError(null);
-    createOrgMutation.mutate(
-      { name: defaultOrgName || "Personal workspace", personal: true },
-      {
-        onSuccess: (org) => finish({ ...org, role: "OWNER" }),
-        onError: (err) => setError((err as Error).message),
-      }
-    );
+    chooseSoloMutation.mutate(undefined, {
+      onSuccess: async (me) => {
+        try {
+          // Their own workspace's site comes from the account (it has no organization).
+          const portfolio = await apiFetch<PortfolioRecord>("/api/organizations/portfolio");
+          setOrganization(toOwnWorkspace(portfolio, me.name ?? defaultOrgName));
+          onDone();
+        } catch (err) {
+          setError((err as Error).message);
+        }
+      },
+      onError: (err) => setError((err as Error).message),
+    });
   }
 
   function createFirm(e: React.FormEvent) {
@@ -133,7 +144,7 @@ export function WorkspaceSetup({
     );
   }
 
-  const pending = createOrgMutation.isPending;
+  const pending = createOrgMutation.isPending || chooseSoloMutation.isPending;
 
   if (step === "firm")
     return (

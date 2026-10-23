@@ -6,7 +6,7 @@ import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useOrganizationsQuery, useMyInviteQuery, usePortfolioQuery } from "@/lib/organizations/queries"
-import { toActiveOrg } from "@/lib/auth/mutations"
+import { toActiveOrg, toOwnWorkspace } from "@/lib/auth/mutations"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
 import { hostForTenantCode } from "@/lib/tenant-code/resolve-host"
 import { LoadingScreen } from "@/components/loading-screen"
@@ -86,10 +86,10 @@ function CurrentUserSync({
   // instead of leaving them stranded wherever they landed post-login.
   const inviteQuery = useMyInviteQuery({ enabled: !!accessToken && !!user && !organization })
   const { data: pendingInvite } = inviteQuery
-  // A user with no org and no invite (skipped onboarding by closing the tab, or arrived via
-  // a reload or the approval email's login link) would otherwise land in an app where every
-  // resource route 400s. Latched rather than derived: WorkspaceSetup's create-org path sets
-  // the org *before* its invite-your-team step, and that step must stay on screen until onDone.
+  // A user with no firm, no invite and no Solo choice yet (closed the tab at the choice, or arrived
+  // via a reload or the approval email's login link) is asked to choose: Solo or Law firm.
+  // Latched rather than derived: WorkspaceSetup's create-org path sets the org *before* its
+  // invite-your-team step, and that step must stay on screen until onDone.
   const [workspaceSetupOpen, setWorkspaceSetupOpen] = useState(false)
   // A missing/expired token is a real 401/403 from the API. Anything else (a
   // dropped connection, a CORS misconfiguration, a 500) is transient and
@@ -121,26 +121,25 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthError])
 
-  // A PENDING/DENIED/BLOCKED user has a valid session (needed to finish solo/org setup
-  // and to see /account-pending) but no business in the actual app — send them there
-  // instead of ever rendering a protected page.
-  const needsApproval = !!currentUser && currentUser.approvalStatus !== "ACTIVE"
+  // A PENDING lawyer goes through account setup (Solo or Firm, invites, the Lawyer Application)
+  // like an approved one, and waits for approval only after its last step: approval comes last, so
+  // they're never sent back into setup after it. A DENIED/BLOCKED account, or a pending one that has
+  // finished setup, has a valid session but no business in the actual app — send them to
+  // /account-pending instead of ever rendering a protected page.
+  const setupDone = !!currentUser?.setupCompletedAt || !!currentUser?.trialExpiresAt
+  const needsApproval =
+    !!currentUser && currentUser.approvalStatus !== "ACTIVE" && (currentUser.approvalStatus !== "PENDING" || setupDone)
 
   useEffect(() => {
     if (needsApproval) router.replace("/account-pending")
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsApproval])
 
-  // Account setup isn't finished (invites, the Lawyer Application): send an approved lawyer to
-  // /onboarding. Only once they have a workspace (before that, WorkspaceSetup below shows instead,
-  // and a user with only a pending invite goes to the Organization page), and never a trial guest.
-  const needsSetup =
-    !!currentUser &&
-    !needsApproval &&
-    !!organization &&
-    !currentUser.setupCompletedAt &&
-    !currentUser.trialExpiresAt &&
-    pathname !== ONBOARDING_PATH
+  // Account setup isn't finished (invites, the Lawyer Application): send the lawyer to /onboarding,
+  // approved or still pending. Only once they have a workspace (before that, WorkspaceSetup below
+  // shows instead, and a user with only a pending invite goes to the Organization page), and never
+  // a trial guest.
+  const needsSetup = !!currentUser && !needsApproval && !!organization && !setupDone && pathname !== ONBOARDING_PATH
 
   useEffect(() => {
     if (needsSetup) router.replace(ONBOARDING_PATH)
@@ -153,17 +152,23 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organization, orgs])
 
-  // The portfolio (the user's personal workspace) sits alongside their organization. Someone
-  // who's *in* their personal workspace has no separate portfolio to switch to.
+  // A solo lawyer has no organization (ilovelawyer-api's docs/adr/0022): with no firm, once they've
+  // chosen Solo (or left their firm), their own workspace is where they work.
+  const soloChosen = !!currentUser?.soloChosenAt
+  const noFirm = orgsQuery.isSuccess && !orgs?.length
+  const solo = !organization && noFirm && soloChosen
+  // Their own workspace (the portfolio) sits alongside their firm. A solo lawyer is *in* it, so
+  // there's no separate portfolio to switch to; the same lookup gives its site.
   const inOrganization = !!organization && !organization.isPersonal
-  const portfolioQuery = usePortfolioQuery({ enabled: inOrganization })
+  const portfolioQuery = usePortfolioQuery({ enabled: inOrganization || solo })
   const { data: portfolioData } = portfolioQuery
 
   useEffect(() => {
-    if (!portfolioData || portfolio?.id === portfolioData.id) return
-    setPortfolio(toActiveOrg(portfolioData))
+    if (!portfolioData) return
+    if (solo) setOrganization(toOwnWorkspace(portfolioData, currentUser?.name))
+    else if (inOrganization && !portfolio) setPortfolio(toOwnWorkspace(portfolioData, currentUser?.name))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [portfolioData, portfolio])
+  }, [portfolioData, portfolio, solo, inOrganization])
 
   // A portfolio view restored after a reload that can't be (no portfolio, or now in the personal
   // workspace itself) falls back to the organization rather than blocking on it.
@@ -181,7 +186,7 @@ function CurrentUserSync({
 
   // Only on a successful (empty) org list — a failed lookup isn't proof of "no org".
   const noWorkspace =
-    !organization && !needsApproval && orgsQuery.isSuccess && !orgs?.length && inviteQuery.isFetched && !pendingInvite
+    !organization && !needsApproval && noFirm && inviteQuery.isFetched && !pendingInvite && !soloChosen
 
   if (noWorkspace && !workspaceSetupOpen) setWorkspaceSetupOpen(true)
 
@@ -209,8 +214,9 @@ function CurrentUserSync({
   // rather than blocking forever on a transient error — isAuthError's own effect
   // handles the redirect; other errors fall through to render children as before.
   const statusUnknown = !!accessToken && !currentUser && !isError
-  // Resource routes (chat, cases, events, ...) 400 with "X-Organization-Id header is
-  // required" until `organization` is set — block children (which fire those requests on
+  // Resource routes (chat, cases, events, ...) sent without an X-Organization-Id go to the
+  // lawyer's own workspace, so until `organization` is set a firm's lawyer would get the wrong
+  // workspace's data — block children (which fire those requests on
   // mount, e.g. the chat sidebar) until it's actually set, not just until the fetch that
   // feeds the `setOrganization` effect above has resolved (that effect runs one render/
   // commit after `orgsQuery` resolves, and child effects — e.g. the chat sidebar's own
@@ -218,7 +224,10 @@ function CurrentUserSync({
   // found no org (e.g. a pending-invite-only user), stop blocking so the redirect effect
   // above can send them to the organization page instead of loading forever. With no org, also
   // wait for the invite lookup, which decides between that redirect and WorkspaceSetup.
-  const orgResolved = !!organization || (orgsQuery.isFetched && !orgs?.length && inviteQuery.isFetched)
+  // A solo lawyer waits for their own workspace (unless its lookup failed: requests with no
+  // X-Organization-Id reach it anyway).
+  const orgResolved =
+    !!organization || (orgsQuery.isFetched && !orgs?.length && inviteQuery.isFetched && (!solo || portfolioQuery.isError))
   const orgUnknown = !!accessToken && !!currentUser && !needsApproval && !orgResolved
   // Viewing the portfolio (restored after a reload): resource requests must go to it, so wait
   // until it's known rather than let children fetch the organization's data first.

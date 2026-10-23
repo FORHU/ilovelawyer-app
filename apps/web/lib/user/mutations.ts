@@ -33,6 +33,9 @@ export interface CurrentUser {
   /** Account setup after sign-up (/onboarding) was finished or skipped. Null: the protected
    * layout sends the lawyer to /onboarding. */
   setupCompletedAt: string | null
+  /** When the lawyer chose to work solo (or left their firm). A solo lawyer has no organization:
+   * their work is in their own workspace (see ownWorkspace in lib/store/auth.store). */
+  soloChosenAt: string | null
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -53,6 +56,15 @@ export function useCompleteSetupMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<CurrentUser>("/api/users/me/setup/complete", { method: "POST" }),
+    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+  })
+}
+
+/** The lawyer works solo: no organization is created (ilovelawyer-api's POST /users/me/solo). */
+export function useChooseSoloMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<CurrentUser>("/api/users/me/solo", { method: "POST" }),
     onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
   })
 }

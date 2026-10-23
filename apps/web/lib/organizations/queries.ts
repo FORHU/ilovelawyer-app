@@ -78,8 +78,13 @@ export interface CaseCopyRecord {
   createdAt: string
 }
 
-/** The user's portfolio: their personal workspace, reachable from any organization. */
-export interface PortfolioRecord extends OrganizationWithRole {
+/** The user's own workspace ("My work"), reachable from any firm. It has no organization
+ * (ilovelawyer-api's docs/adr/0022), so there's no id: requests to it carry no X-Organization-Id.
+ * Its site is the account's own. */
+export interface PortfolioRecord {
+  own: true
+  tenant: { code: TenantCode }
+  role: OrganizationRole
   copies: CaseCopyRecord[]
 }
 

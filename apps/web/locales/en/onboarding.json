@@ -40,6 +40,7 @@
     "title": "Invite your team",
     "subtitle": "They'll get an email to join {{firm}}. You can invite more people later from the Organization page.",
     "email": "Email address",
+    "emailPlaceholder": "colleague@lawfirm.com",
     "role": "Role",
     "roleMEMBER": "Member",
     "roleADMIN": "Admin",
@@ -57,11 +58,20 @@
     "submitting": "Submitting…",
     "submitted": "Application submitted. We'll email you once we've checked it."
   },
+  "discard": {
+    "button": "Back to Solo or Law firm",
+    "title": "Go back to Solo or Law firm?",
+    "body": "{{firm}} will be removed, and any invites you sent are cancelled. You can then work solo or create a firm again.",
+    "keep": "Keep my firm",
+    "confirm": "Remove firm and go back",
+    "removing": "Removing…"
+  },
   "steps": {
     "choose": "Choose",
     "firm": "Firm",
     "invite": "Invite",
     "apply": "Apply",
+    "review": "Review",
     "label": "Step {{current}} of {{total}}"
   },
   "banner": {

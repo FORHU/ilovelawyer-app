@@ -18,18 +18,35 @@ export interface ActiveOrganization {
   role: OrganizationRole
   packageSku: PackageSku
   tenantCode: TenantCode
-  /** The private workspace of a user who skipped onboarding — never shown as an organization. */
+  /** The lawyer's own workspace (see ownWorkspace) — never shown as an organization. */
   isPersonal: boolean
 }
 
-/** Which workspace resource requests go to: the user's organization, their portfolio (their
- * personal workspace, which they reach from any organization — see ilovelawyer-api's
- * OrganizationSvc.getPortfolio), or someone else's portfolio while opening a case they shared
- * with this user, read-only (see SharedWorkspaceGuard). */
+/** The `id` of a lawyer's own workspace. It has no organization (ilovelawyer-api's
+ * docs/adr/0022): its requests carry no X-Organization-Id, and nothing is created for it. */
+export const OWN_WORKSPACE_ID = "own"
+
+/** A lawyer's own workspace ("My work"): a solo lawyer's only one, and for a firm's lawyer their
+ * portfolio — the cases they made solo and the copies they keep of firms they've left. Shaped like
+ * an organization so the pages that show the current workspace need no second type. */
+export function ownWorkspace(tenantCode: TenantCode, name: string): ActiveOrganization {
+  return { id: OWN_WORKSPACE_ID, name, slug: "", role: "OWNER", packageSku: "SOLO", tenantCode, isPersonal: true }
+}
+
+/** The X-Organization-Id for a workspace: none for the lawyer's own. */
+function headerIdOf(workspace: ActiveOrganization | null | undefined): string | null {
+  return workspace && workspace.id !== OWN_WORKSPACE_ID ? workspace.id : null
+}
+
+/** Which workspace resource requests go to: the user's firm, their portfolio (their own
+ * workspace, which they reach from any firm — see ilovelawyer-api's OrganizationSvc.getPortfolio),
+ * or someone else's portfolio while opening a case they shared with this user, read-only (see
+ * SharedWorkspaceGuard). A solo lawyer's `organization` is their own workspace. */
 export type Workspace = "organization" | "portfolio" | "shared"
 
 /** Someone else's portfolio, reached through a case they shared with this user. */
 export interface SharedWorkspace {
+  /** Its X-Organization-Id: `user:<owner id>` for a lawyer's own workspace. */
   id: string
   ownerName: string
 }
@@ -80,8 +97,8 @@ interface AuthState {
   accessToken: string | null
   user: AuthUser | null
   organization: ActiveOrganization | null
-  /** The user's portfolio, once fetched. Null while they're in their personal workspace itself —
-   * then it *is* their organization. */
+  /** The user's own workspace while they're in a firm, once fetched. Null for a solo lawyer — their
+   * own workspace is then `organization`. */
   portfolio: ActiveOrganization | null
   workspace: Workspace
   /** Set while `workspace` is "shared". */
@@ -96,12 +113,13 @@ interface AuthState {
   clearAuth: () => void
 }
 
-/** Where resource requests go right now: the portfolio while it's being viewed, else the
- * organization. */
+/** The X-Organization-Id resource requests carry right now: the shared portfolio's while one is
+ * open, none for the lawyer's own workspace (the portfolio, or a solo lawyer's only one), else the
+ * firm's. */
 export function activeWorkspaceId(state: Pick<AuthState, "organization" | "portfolio" | "workspace" | "shared">): string | null {
   if (state.workspace === "shared" && state.shared) return state.shared.id
-  if (state.workspace === "portfolio" && state.portfolio) return state.portfolio.id
-  return state.organization?.id ?? null
+  if (state.workspace === "portfolio" && state.portfolio) return null
+  return headerIdOf(state.organization)
 }
 
 export const useAuthStore = create<AuthState>()((set) => ({
@@ -117,13 +135,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
   setAccessToken: (accessToken) => set({ accessToken }),
 
   // Moving to a different organization (leaving, switching by invite) also leaves the portfolio
-  // view — the portfolio is re-fetched for wherever they are now. A null organization is just
-  // the hydration gap after a reload, so it keeps the workspace choice.
+  // view — the portfolio is re-fetched for wherever they are now. Landing in their own workspace
+  // (solo: leaving a firm, or choosing Solo) leaves it too, since that workspace now *is* their
+  // only one. A null organization is just the hydration gap after a reload, so it keeps the
+  // workspace choice.
   setOrganization: (organization) =>
     set((state) => {
-      if (!organization || !state.organization || state.organization.id === organization.id) return { organization }
-      writeWorkspace("organization")
-      return { organization, portfolio: null, workspace: "organization", shared: null }
+      const switched = !!organization && ((!!state.organization && state.organization.id !== organization.id) || organization.isPersonal)
+      if (!switched) return { organization }
+      if (state.workspace !== "shared") writeWorkspace("organization")
+      return state.workspace === "shared"
+        ? { organization, portfolio: null }
+        : { organization, portfolio: null, workspace: "organization", shared: null }
     }),
 
   setPortfolio: (portfolio) => set({ portfolio }),

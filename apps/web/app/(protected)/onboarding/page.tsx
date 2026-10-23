@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { cn } from "@workspace/ui/lib/utils";
+import { Button } from "@workspace/ui/components/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { ApplyStep } from "@/components/onboarding/apply-step";
 import { FirmStep } from "@/components/onboarding/firm-step";
 import { InviteStep } from "@/components/onboarding/invite-step";
@@ -12,10 +14,13 @@ import { WorkspaceSetup, type WorkspaceSetupStep } from "@/app/(auth)/_component
 import { OnboardingLoading, OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
+import { useDiscardOrganizationMutation } from "@/lib/organizations/mutations";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 import { useCompleteSetupMutation, useCurrentUserQuery } from "@/lib/user/mutations";
 
-type StepId = "choose" | "firm" | "invite" | "apply";
+/** "review" is the admin's approval, shown last for an account still pending (/account-pending):
+ * it isn't a step here, only where the indicator says the lawyer is heading. */
+type StepId = "choose" | "firm" | "invite" | "apply" | "review";
 
 function StepIndicator({ steps, current }: { steps: StepId[]; current: StepId }) {
   const { t } = useTranslation("onboarding");
@@ -46,16 +51,19 @@ function StepIndicator({ steps, current }: { steps: StepId[]; current: StepId })
 }
 
 /**
- * Account setup after sign-up, once the account is approved: the protected layout sends a lawyer
- * here while setupCompletedAt is empty. The workspace choice (and a firm's details) already happened
+ * Account setup after sign-up: the protected layout sends a lawyer here while setupCompletedAt is
+ * empty, whether the account is approved yet or not. Approval comes last: a pending account
+ * finishes these steps first and then waits on /account-pending, so it's never sent back here. The workspace choice (and a firm's details) already happened
  * before this, at verification; what's left is inviting the team (a firm's founder only) and the
  * Lawyer Application (on sites that have one, if not yet submitted). Both can be skipped. Finishing
  * or skipping the last step sets setupCompletedAt, and the lawyer isn't sent here again. A reload
  * starts again at the first step that still applies.
  *
  * A Solo practitioner can go back from their first step to the choice, as a firm can from its
- * details: picking Solo again keeps the same personal workspace, and picking Law firm creates the
- * firm (the personal workspace stays on as their portfolio), and the steps start over for it.
+ * details: picking Solo again changes nothing (a solo lawyer has no organization), and picking Law
+ * firm creates the firm (what they made solo stays theirs, as their portfolio), and the steps start
+ * over for it. A founder can go back from their firm's details too: that removes the firm they just
+ * made (after they confirm), and they choose again.
  */
 export default function OnboardingPage() {
   const router = useRouter();
@@ -63,39 +71,76 @@ export default function OnboardingPage() {
   const user = useAuthStore((s) => s.user);
   const { data: currentUser } = useCurrentUserQuery();
   const [rechoosing, setRechoosing] = useState(false);
+  // Back at the choice after removing their firm: there's no step to return to any more.
+  const [discarded, setDiscarded] = useState(false);
   const [setupStep, setSetupStep] = useState<WorkspaceSetupStep>("choose");
 
   useEffect(() => {
-    if (currentUser?.setupCompletedAt) router.replace("/homepage");
+    if (currentUser?.setupCompletedAt) router.replace(afterSetupPath(currentUser.approvalStatus));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.setupCompletedAt]);
 
-  if (!organization) return <OnboardingLoading />;
-
+  // Before the organization check: after removing their firm the store still holds it until they
+  // choose again (Solo or a new firm replaces it), and nothing on this screen uses it.
   if (rechoosing)
     return (
       // Back from the firm's details returns to the choice; back from the choice returns to the
-      // step they came from, nothing changed.
-      <OnboardingShell onBack={() => (setupStep === "firm" ? setSetupStep("choose") : setRechoosing(false))}>
+      // step they came from, nothing changed (unless that firm was removed).
+      <OnboardingShell
+        onBack={setupStep === "firm" ? () => setSetupStep("choose") : discarded ? undefined : () => setRechoosing(false)}
+      >
         <WorkspaceSetup
           defaultOrgName={user?.name ?? ""}
           step={setupStep}
           onStepChange={setSetupStep}
           onDone={() => {
             setRechoosing(false);
+            setDiscarded(false);
             setSetupStep("choose");
           }}
         />
       </OnboardingShell>
     );
 
+  if (!organization) return <OnboardingLoading />;
+
   // Keyed by the workspace: going back and creating a firm starts its steps (Invite, Apply) afresh.
-  return <SetupSteps key={organization.id} organization={organization} onRechoose={organization.isPersonal ? () => setRechoosing(true) : undefined} />;
+  return (
+    <SetupSteps
+      key={organization.id}
+      organization={organization}
+      pending={currentUser?.approvalStatus === "PENDING"}
+      onRechoose={organization.isPersonal ? () => setRechoosing(true) : undefined}
+      onFirmRemoved={() => {
+        setDiscarded(true);
+        setSetupStep("choose");
+        setRechoosing(true);
+      }}
+    />
+  );
 }
 
-function SetupSteps({ organization, onRechoose }: { organization: ActiveOrganization; onRechoose?: () => void }) {
+/** Where a finished setup goes: into the app, or to wait for approval when the account isn't approved yet. */
+function afterSetupPath(approvalStatus: string | undefined) {
+  return approvalStatus && approvalStatus !== "ACTIVE" ? "/account-pending" : "/homepage";
+}
+
+function SetupSteps({
+  organization,
+  pending,
+  onRechoose,
+  onFirmRemoved,
+}: {
+  organization: ActiveOrganization;
+  pending: boolean;
+  onRechoose?: () => void;
+  onFirmRemoved: () => void;
+}) {
   const router = useRouter();
+  const { t } = useTranslation("onboarding");
   const completeSetup = useCompleteSetupMutation();
+  const discard = useDiscardOrganizationMutation();
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
   const applies = isFeatureEnabled(organization?.tenantCode, "lawyerApplication");
   const profileQuery = useClientRequestProfileQuery(applies);
@@ -118,7 +163,7 @@ function SetupSteps({ organization, onRechoose }: { organization: ActiveOrganiza
 
   useEffect(() => {
     if (!finished || completeSetup.isPending || completeSetup.isSuccess) return;
-    completeSetup.mutate(undefined, { onSettled: () => router.replace("/homepage") });
+    completeSetup.mutate(undefined, { onSettled: (updated) => router.replace(afterSetupPath(updated?.approvalStatus ?? (pending ? "PENDING" : "ACTIVE"))) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
@@ -127,10 +172,22 @@ function SetupSteps({ organization, onRechoose }: { organization: ActiveOrganiza
   const current = steps[index]!;
   const next = () => setIndex((i) => i + 1);
   // The whole path, the steps already behind the lawyer included, so the indicator shows where they are.
-  const path: StepId[] = organization.isPersonal || isFirmOwner ? ["choose", ...steps] : steps;
-  // Back goes one step at a time. From the first step: a Solo practitioner returns to the choice;
-  // a founder's first step is their firm's details, and going further would dissolve the firm.
-  const back = index > 0 ? () => setIndex((i) => i - 1) : onRechoose;
+  // A pending account ends with Review (the admin's approval), so it's clear that comes last.
+  const path: StepId[] = [...(organization.isPersonal || isFirmOwner ? (["choose"] as const) : []), ...steps, ...(pending ? (["review"] as const) : [])];
+  // Back goes one step at a time. From the first step, the choice: a Solo practitioner just returns
+  // to it; a founder's first step is their firm's details, and going further removes the firm, so
+  // they're asked first.
+  const askToRemoveFirm = isFirmOwner ? () => setConfirmingDiscard(true) : undefined;
+  const back = index > 0 ? () => setIndex((i) => i - 1) : (onRechoose ?? askToRemoveFirm);
+
+  function removeFirm() {
+    discard.mutate(organization.id, {
+      onSuccess: () => {
+        setConfirmingDiscard(false);
+        onFirmRemoved();
+      },
+    });
+  }
 
   return (
     <OnboardingShell onBack={back}>
@@ -139,11 +196,33 @@ function SetupSteps({ organization, onRechoose }: { organization: ActiveOrganiza
           was typed and which invites went out. */}
       {steps.map((step, i) => (
         <div key={step} hidden={i !== index}>
-          {step === "firm" && <FirmStep organization={organization} onDone={next} />}
+          {step === "firm" && <FirmStep organization={organization} onDone={next} onBackToChoice={askToRemoveFirm} />}
           {step === "invite" && <InviteStep organizationId={organization.id} firmName={organization.name} onDone={next} />}
           {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} />}
         </div>
       ))}
+
+      <Dialog open={confirmingDiscard} onOpenChange={(open) => !open && !discard.isPending && setConfirmingDiscard(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("discard.title")}</DialogTitle>
+            <DialogDescription>{t("discard.body", { firm: organization.name })}</DialogDescription>
+          </DialogHeader>
+          {discard.isError && (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {(discard.error as Error).message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={discard.isPending} onClick={() => setConfirmingDiscard(false)}>
+              {t("discard.keep")}
+            </Button>
+            <Button variant="destructive" disabled={discard.isPending} onClick={removeFirm}>
+              {discard.isPending ? t("discard.removing") : t("discard.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </OnboardingShell>
   );
 }

@@ -40,7 +40,8 @@ interface FeedbackFormProps {
 export function FeedbackForm({ source, rating, refs, layout, onSent, onCancel, footerClassName }: FeedbackFormProps) {
   const { t } = useTranslation("common")
   const pathname = usePathname()
-  const organizationId = useAuthStore((s) => s.organization?.id)
+  // The firm only: a solo lawyer's own workspace has no organization.
+  const organizationId = useAuthStore((s) => (s.organization && !s.organization.isPersonal ? s.organization.id : undefined))
   const submit = useSubmitFeedbackMutation()
   const [category, setCategory] = useState<FeedbackCategory | null>(null)
   const [comment, setComment] = useState("")

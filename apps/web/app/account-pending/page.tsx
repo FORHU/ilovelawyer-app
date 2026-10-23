@@ -8,10 +8,14 @@ import { useAuthStore } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
 import { useLogoutMutation } from "@/lib/auth/mutations"
 import { LoadingScreen } from "@/components/loading-screen"
+import { OnboardingShell } from "@/components/onboarding/onboarding-shell"
+import { setupHeadingClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles"
 
 // Standalone route (not under (protected)) — needs a session to know the viewer's own
 // approvalStatus, but deliberately skips (protected)/layout.tsx's org-membership/invite
-// machinery, which a PENDING/DENIED/BLOCKED user has no business triggering.
+// machinery, which a PENDING/DENIED/BLOCKED user has no business triggering. For a pending lawyer
+// it's the last step of account setup: they finish /onboarding first, then wait here, in the same
+// layout as the steps before it.
 export default function AccountPendingPage() {
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -35,6 +39,8 @@ export default function AccountPendingPage() {
 
   const { data: currentUser, isLoading, isError, error } = useCurrentUserQuery()
 
+  const unfinishedSetup = currentUser?.approvalStatus === "PENDING" && !currentUser.setupCompletedAt && !currentUser.trialExpiresAt
+
   const isAuthError =
     isError && ((error as Error & { status?: number }).status === 401 || (error as Error & { status?: number }).status === 403)
 
@@ -51,9 +57,11 @@ export default function AccountPendingPage() {
     // unblocked) — nothing to wait for, send them into the real app instead of
     // stranding them here.
     if (currentUser?.approvalStatus === "ACTIVE") router.replace("/homepage")
-  }, [currentUser, router])
+    // Approval comes after setup: a pending lawyer who hasn't finished it does that first.
+    else if (unfinishedSetup) router.replace("/onboarding")
+  }, [currentUser, router, unfinishedSetup])
 
-  if (hydrating || isLoading || !currentUser || currentUser.approvalStatus === "ACTIVE") return <LoadingScreen />
+  if (hydrating || isLoading || !currentUser || currentUser.approvalStatus === "ACTIVE" || unfinishedSetup) return <LoadingScreen />
 
   const { approvalStatus, denialReason } = currentUser
 
@@ -70,30 +78,18 @@ export default function AccountPendingPage() {
           }
         : {
             heading: "Your account is pending approval",
-            body: "An admin needs to approve your account before you can access ilovelawyer. We'll email you as soon as it's reviewed.",
+            body: "You're all set up. An admin needs to approve your account before you can access ilovelawyer. We'll email you as soon as it's reviewed.",
           }
 
   return (
-    <div className="flex min-h-screen flex-1 items-center justify-center bg-zinc-50 p-4 dark:bg-black">
-      <div className="w-full max-w-md text-center">
-        <h1
-          className="text-[32px] text-foreground leading-10"
-          style={{ fontFamily: "'Libre Caslon Text', serif", fontWeight: 400 }}
-        >
-          {copy.heading}
-        </h1>
-        <p className="text-muted-foreground mt-4 text-base leading-6.5" style={{ fontFamily: "Inter, sans-serif" }}>
-          {copy.body}
-        </p>
-        <button
-          type="button"
-          onClick={() => logoutMutation.mutate()}
-          className="text-muted-foreground hover:text-foreground mt-8 text-xs tracking-[1.2px] uppercase underline"
-          style={{ fontFamily: "Inter, sans-serif" }}
-        >
-          Log out
-        </button>
+    <OnboardingShell>
+      <div className="flex flex-col gap-1">
+        <h1 className={setupHeadingClass}>{copy.heading}</h1>
+        <p className={setupSubtitleClass}>{copy.body}</p>
       </div>
-    </div>
+      <button type="button" onClick={() => logoutMutation.mutate()} className={setupSecondaryButtonClass}>
+        Log out
+      </button>
+    </OnboardingShell>
   )
 }
