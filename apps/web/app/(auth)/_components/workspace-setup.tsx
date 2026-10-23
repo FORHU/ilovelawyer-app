@@ -10,7 +10,7 @@ import type { PortfolioRecord } from "@/lib/organizations/queries";
 import { useChooseSoloMutation } from "@/lib/user/mutations";
 import { useCreateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
-import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
+import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, hasFirmDetailsErrors, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
 import {
   setupHeadingClass,
   setupPrimaryButtonClass as primaryButtonClass,
@@ -102,6 +102,7 @@ export function WorkspaceSetup({
   const [choice, setChoice] = useState<Choice>("solo");
   const [firm, setFirm] = useState<FirmDetailsForm>(EMPTY_FIRM);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function finish(org: Parameters<typeof toActiveOrg>[0]) {
@@ -129,11 +130,13 @@ export function WorkspaceSetup({
   function createFirm(e: React.FormEvent) {
     e.preventDefault();
     const name = firm.name.trim();
+    setChecked(true);
     if (!name) {
       setNameError(t("firm.nameRequired"));
       return;
     }
     setNameError(null);
+    if (hasFirmDetailsErrors(firm, tenantCode)) return;
     setError(null);
     createOrgMutation.mutate(
       { name, ...firmDetailsPayload(firm, tenantCode) },
@@ -153,7 +156,7 @@ export function WorkspaceSetup({
           <h1 className={setupHeadingClass}>{t("firm.title")}</h1>
           <p className={setupSubtitleClass}>{t("firm.subtitle")}</p>
         </div>
-        <FirmDetailsFields value={firm} onChange={(patch) => setFirm((f) => ({ ...f, ...patch }))} tenantCode={tenantCode} nameError={nameError} disabled={pending} />
+        <FirmDetailsFields value={firm} onChange={(patch) => setFirm((f) => ({ ...f, ...patch }))} tenantCode={tenantCode} nameError={nameError} disabled={pending} checked={checked} />
         {error && (
           <p className="text-red-500 text-sm" role="alert">
             {error}

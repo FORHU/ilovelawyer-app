@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
-import { FirmDetailsFields, firmDetailsPayload, firmFormFromOrganization, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
+import { FirmDetailsFields, firmDetailsPayload, firmFormFromOrganization, hasFirmDetailsErrors, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
 import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
 import { useUpdateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useOrganizationQuery, type OrganizationRecord } from "@/lib/organizations/queries";
@@ -32,15 +32,18 @@ function FirmForm({ org, onDone, onBackToChoice }: { org: OrganizationRecord; on
   const update = useUpdateOrganizationMutation(org.id);
   const [form, setForm] = useState<FirmDetailsForm>(() => firmFormFromOrganization(org));
   const [nameError, setNameError] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
     const name = form.name.trim();
+    setChecked(true);
     if (!name) {
       setNameError(t("firm.nameRequired"));
       return;
     }
     setNameError(null);
+    if (hasFirmDetailsErrors(form, org.tenant.code)) return;
     update.mutate(
       { name, ...firmDetailsPayload(form, org.tenant.code) },
       {
@@ -65,6 +68,7 @@ function FirmForm({ org, onDone, onBackToChoice }: { org: OrganizationRecord; on
         tenantCode={org.tenant.code}
         nameError={nameError}
         disabled={update.isPending}
+        checked={checked}
       />
       {update.isError && (
         <p className="text-red-500 text-sm" role="alert">

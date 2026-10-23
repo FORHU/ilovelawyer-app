@@ -39,7 +39,7 @@ import {
 } from "@/lib/organizations/queries";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuditLogSection } from "@/components/organization/audit-log-section";
-import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
+import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, hasFirmDetailsErrors, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
 import { FirmDetailsSection } from "@/components/organization/firm-details-section";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { FeeHistorySection } from "@/components/organization/fee-history-section";
@@ -139,6 +139,7 @@ export default function OrganizationPage() {
   const [newOrgName, setNewOrgName] = useState("");
   // The new firm's optional details; its name is newOrgName above.
   const [newFirm, setNewFirm] = useState<FirmDetailsForm>(EMPTY_FIRM);
+  const [newFirmChecked, setNewFirmChecked] = useState(false);
   const tenantHint = useTenantCodeHint();
   const [newOrgPlan, setNewOrgPlan] = useState<PackageSku | null>(null);
   const [createOrgError, setCreateOrgError] = useState<string | null>(null);
@@ -295,6 +296,8 @@ export default function OrganizationPage() {
   function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = newOrgName.trim();
+    setNewFirmChecked(true);
+    if (hasFirmDetailsErrors(newFirm, tenantHint)) return;
     if (!trimmed) {
       setCreateOrgError(t("create.nameRequired"));
       return;
@@ -516,6 +519,7 @@ export default function OrganizationPage() {
                     tenantCode={tenantHint}
                     disabled={createOrgMutation.isPending}
                     showName={false}
+                    checked={newFirmChecked}
                   />
                 </div>
 

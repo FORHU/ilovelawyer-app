@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { FirmDetailsFields, firmDetailsPayload, firmFormFromOrganization, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
+import { FirmDetailsFields, firmDetailsPayload, firmFormFromOrganization, hasFirmDetailsErrors, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
 import { useUpdateOrganizationMutation } from "@/lib/organizations/mutations";
 import { useOrganizationQuery, type OrganizationRecord } from "@/lib/organizations/queries";
 
@@ -37,9 +37,12 @@ function FirmDetailsForm({ org }: { org: OrganizationRecord }) {
   const update = useUpdateOrganizationMutation(org.id);
   const [form, setForm] = useState<FirmDetailsForm>(() => firmFormFromOrganization(org));
   const [saved, setSaved] = useState(false);
+  const [checked, setChecked] = useState(false);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
+    setChecked(true);
+    if (hasFirmDetailsErrors(form, org.tenant.code)) return;
     update.mutate(firmDetailsPayload(form, org.tenant.code), {
       onSuccess: (next) => {
         setForm(firmFormFromOrganization(next));
@@ -59,6 +62,7 @@ function FirmDetailsForm({ org }: { org: OrganizationRecord }) {
         tenantCode={org.tenant.code}
         disabled={update.isPending}
         showName={false}
+        checked={checked}
       />
       <div className="flex items-center justify-end gap-3 flex-wrap">
         {update.isError && (

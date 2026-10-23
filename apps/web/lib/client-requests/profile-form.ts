@@ -1,4 +1,5 @@
 import { FEE_CURRENCY, type ClientRequestProfile, type ClientRequestProfilePatch, type LawyerCountry, type Regulator } from "./profile"
+import { NUMBER_MAX_DIGITS } from "@/lib/forms/field-rules"
 
 /** The application form's own state: text fields as typed, turned into the API's shapes on save.
  * It holds both countries' registration fields; only the profile's own country's are shown and
@@ -34,14 +35,15 @@ export const BIO_MAX_LENGTH = 1500
 /** The API's limits on languages: at most 10, each up to 40 characters. */
 export const LANGUAGES_MAX = 10
 export const LANGUAGE_MAX_LENGTH = 40
-/** The API's limit on each registration text field. */
+/** The API's limit on each registration text field. The numbers are digits only (see the field
+ * filters in components/account/lawyer-application-fields.tsx and lib/forms/field-rules.ts). */
 export const TEXT_MAX_LENGTH: Record<TextField, number> = {
-  registrationNumber: 40,
-  rollNumber: 40,
+  registrationNumber: NUMBER_MAX_DIGITS,
+  rollNumber: NUMBER_MAX_DIGITS,
   ibpChapter: 80,
-  ibpMembershipNumber: 40,
+  ibpMembershipNumber: 20,
   mcleNumber: 40,
-  mclePeriod: 20,
+  mclePeriod: 10,
 }
 const FEE_MAX = 10_000
 

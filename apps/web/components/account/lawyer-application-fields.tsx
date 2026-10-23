@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { TagInput } from "@/components/ui/tag-input";
 import { PRACTICE_AREAS_BY_COUNTRY, REGULATORS, UK_JURISDICTIONS, type LawyerCountry } from "@/lib/client-requests/profile";
+import { keepAmount, keepDigits, keepMcleNumber, keepRomanNumeral, keepWords } from "@/lib/forms/field-rules";
 import {
   BIO_MAX_LENGTH,
   LANGUAGES_MAX,
@@ -52,7 +53,8 @@ const sectionTitle = "mb-4 text-[15px] font-medium text-foreground";
  * The Lawyer Application's fields, for the form's own country: the registration the admin checks
  * (UK: regulator, number, jurisdictions; PH: Roll number, IBP chapter and the optional IBP and MCLE
  * details), what the lawyer takes on, and what clients see. Shared by the Profile page's Apply
- * dialog and onboarding's Apply step so the two can't drift apart.
+ * dialog and onboarding's Apply step so the two can't drift apart. Each field only takes what fits
+ * it: digits for the numbers, letters for the IBP chapter and languages (lib/forms/field-rules.ts).
  */
 export function LawyerApplicationFields({
   form,
@@ -79,8 +81,9 @@ export function LawyerApplicationFields({
             <TextField
               label={t("clientRequests.fields.rollNumber")}
               helperText={t("clientRequests.fields.rollNumberHelp")}
+              inputMode="numeric"
               value={form.rollNumber}
-              onChange={(e) => set({ rollNumber: e.target.value })}
+              onChange={(e) => set({ rollNumber: keepDigits(e.target.value) })}
               errorText={errors.rollNumber}
               maxLength={TEXT_MAX_LENGTH.rollNumber}
             />
@@ -88,15 +91,16 @@ export function LawyerApplicationFields({
               label={t("clientRequests.fields.ibpChapter")}
               helperText={t("clientRequests.fields.ibpChapterHelp")}
               value={form.ibpChapter}
-              onChange={(e) => set({ ibpChapter: e.target.value })}
+              onChange={(e) => set({ ibpChapter: keepWords(e.target.value) })}
               errorText={errors.ibpChapter}
               maxLength={TEXT_MAX_LENGTH.ibpChapter}
             />
             <TextField
               label={t("clientRequests.fields.ibpMembershipNumber")}
               helperText={t("clientRequests.fields.ibpMembershipNumberHelp")}
+              inputMode="numeric"
               value={form.ibpMembershipNumber}
-              onChange={(e) => set({ ibpMembershipNumber: e.target.value })}
+              onChange={(e) => set({ ibpMembershipNumber: keepDigits(e.target.value) })}
               errorText={errors.ibpMembershipNumber}
               maxLength={TEXT_MAX_LENGTH.ibpMembershipNumber}
             />
@@ -104,7 +108,7 @@ export function LawyerApplicationFields({
               <TextField
                 label={t("clientRequests.fields.mcleNumber")}
                 value={form.mcleNumber}
-                onChange={(e) => set({ mcleNumber: e.target.value })}
+                onChange={(e) => set({ mcleNumber: keepMcleNumber(e.target.value) })}
                 errorText={errors.mcleNumber}
                 maxLength={TEXT_MAX_LENGTH.mcleNumber}
               />
@@ -112,7 +116,7 @@ export function LawyerApplicationFields({
                 label={t("clientRequests.fields.mclePeriod")}
                 helperText={t("clientRequests.fields.mclePeriodHelp")}
                 value={form.mclePeriod}
-                onChange={(e) => set({ mclePeriod: e.target.value })}
+                onChange={(e) => set({ mclePeriod: keepRomanNumeral(e.target.value) })}
                 errorText={errors.mclePeriod}
                 maxLength={TEXT_MAX_LENGTH.mclePeriod}
               />
@@ -133,8 +137,9 @@ export function LawyerApplicationFields({
             <TextField
               label={t("clientRequests.fields.registrationNumber")}
               helperText={t("clientRequests.fields.registrationNumberHelp")}
+              inputMode="numeric"
               value={form.registrationNumber}
-              onChange={(e) => set({ registrationNumber: e.target.value })}
+              onChange={(e) => set({ registrationNumber: keepDigits(e.target.value) })}
               errorText={errors.registrationNumber}
               maxLength={TEXT_MAX_LENGTH.registrationNumber}
             />
@@ -206,6 +211,7 @@ export function LawyerApplicationFields({
             onChange={(languages) => set({ languages })}
             max={LANGUAGES_MAX}
             maxTagLength={LANGUAGE_MAX_LENGTH}
+            keep={keepWords}
             removeLabel={(language) => t("clientRequests.fields.removeLanguage", { language })}
           />
           <TextField
@@ -213,7 +219,7 @@ export function LawyerApplicationFields({
             helperText={t("clientRequests.fields.feeHelp")}
             inputMode="decimal"
             value={form.fee}
-            onChange={(e) => set({ fee: e.target.value })}
+            onChange={(e) => set({ fee: keepAmount(e.target.value) })}
             errorText={errors.fee}
           />
         </div>
