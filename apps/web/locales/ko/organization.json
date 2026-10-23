@@ -179,6 +179,19 @@
     "loading": "수수료 내역을 불러오는 중…",
     "error": "수수료 내역을 불러올 수 없습니다.",
     "retry": "다시 시도",
-    "showing": "{{total}}개 중 {{from}}–{{to}}"
+    "showing": "{{total}}개 중 {{from}}–{{to}}",
+    "card": {
+      "heading": "결제 카드",
+      "subheading": "조직이 수락한 의뢰와 AI 충전에 청구되는 카드입니다.",
+      "add": "카드 추가",
+      "change": "카드 변경",
+      "endingIn": "끝자리 {{last4}}",
+      "expires": "유효기간 {{month}}/{{year}}",
+      "noCardHelp": "등록된 카드가 없습니다. 조직이 의뢰를 수락하려면 먼저 카드를 추가하세요.",
+      "error": "결제 카드를 불러올 수 없습니다.",
+      "retry": "다시 시도",
+      "savedToast": "결제 카드가 저장되었습니다.",
+      "cancelledToast": "카드 등록이 취소되었습니다. 변경된 내용이 없습니다."
+    }
   }
 }

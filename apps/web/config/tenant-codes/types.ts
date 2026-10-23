@@ -28,6 +28,9 @@ export interface TenantCapabilities {
   /** Receiving clients from the client app (the UK client-to-lawyer hand-off). The API only
    * serves it to UK lawyers (ilovelawyer-api LawyerProfileSvc). */
   clientRequests: CapabilityStatus
+  /** The Lawyer Application an admin approves (UK and PH, with each country's registration
+   * fields). On UK approval unlocks clientRequests; on PH it only shows an Approved badge. */
+  lawyerApplication: CapabilityStatus
 }
 
 /**

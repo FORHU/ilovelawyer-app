@@ -5,7 +5,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Eye, EyeOff, Mail } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { Logo } from "@/components/logo";
+import { AuthBrandPanel } from "@/components/auth/auth-brand-panel";
 import { ThemeToggle } from "@/components/theme-provider";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { getTenantCodeConfig } from "@/config/tenant-codes";
@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { PasswordRequirements } from "@/components/auth/password-requirements";
 import { isPasswordValid } from "@/lib/auth/password-policy";
 import { TermsReviewDialog } from "./terms-review-dialog";
-import { WorkspaceSetup } from "./workspace-setup";
+import { WorkspaceSetup, type WorkspaceSetupStep } from "./workspace-setup";
 
 import {
   sanitizeNextPath,
@@ -76,6 +76,8 @@ function UnifiedAuthContent() {
   const [name, setName] = useState("");
   // Prefilled from an org-invite email's sign-up link (?email=), which was sent to that address.
   const [signupEmail, setSignupEmail] = useState(() => searchParams.get("email") ?? "");
+  // From that invite link (&invite=1): the invite is for that address only, so it can't be changed.
+  const inviteEmailLocked = searchParams.get("invite") === "1" && !!searchParams.get("email");
   const [signupPassword, setSignupPassword] = useState("");
   const [confirmSignupPassword, setConfirmSignupPassword] = useState("");
   const [showSignupPw, setShowSignupPw] = useState(false);
@@ -92,6 +94,8 @@ function UnifiedAuthContent() {
   const [otpStep, setOtpStep] = useState(false);
   // Post-verification workspace step (sets up their personal workspace automatically)
   const [workspaceStep, setWorkspaceStep] = useState(false);
+  // Which part of WorkspaceSetup is showing, so the back arrow can step back inside it.
+  const [setupStep, setSetupStep] = useState<WorkspaceSetupStep>("choose");
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -411,8 +415,12 @@ function UnifiedAuthContent() {
   /** verify-otp already signed them in, so they go straight into the app — an auto-approved
    * (ACTIVE) account lands on `next`; a PENDING one is sent on to /account-pending by the
    * protected layout. */
+  /** Straight on to the rest of account setup, rather than via `next`: the protected layout would
+   * only send a new lawyer from there to /onboarding, through an extra loading screen. A pending
+   * account finishes setup there too, and only then waits on /account-pending; someone already set
+   * up goes to /homepage. */
   function handleWorkspaceDone() {
-    router.push(sanitizeNextPath(searchParams.get("next")));
+    router.push("/onboarding");
   }
 
   function handleResendOtp() {
@@ -446,46 +454,29 @@ function UnifiedAuthContent() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* LEFT — fixed navy brand panel, unaffected by theme (see reset-password/page.tsx) */}
-      <div className="relative hidden lg:flex flex-col" style={{ width: "58%" }}>
-        <div className="absolute inset-0 bg-brand-navy-950" />
-        <div
-          className="absolute inset-0 opacity-70"
-          style={{ background: "radial-gradient(ellipse at 40% 50%, var(--brand-navy-800) 0%, var(--brand-navy-950) 65%)" }}
-        />
-
-        <div className="absolute top-16 left-16 z-10">
-          <Logo forBackground="dark" size={40} />
-        </div>
-
-        <div className="absolute inset-0 flex flex-col items-start justify-center pl-16 pr-12 z-10">
-          <div className="bg-brand-gold h-0.5 w-12 mb-8" />
-          <blockquote className="font-['Libre_Caslon_Text'] italic text-white text-[24px] leading-9.5 max-w-100 mb-5">
-            &ldquo;{t("login.quote")}&rdquo;
-          </blockquote>
-          <p
-            className="text-[rgba(224,227,229,0.45)] text-[11px] tracking-[2.5px] uppercase"
-            style={{ fontFamily: "Inter, sans-serif" }}
-          >
-            {t("login.quoteAuthor")}
-          </p>
-        </div>
-      </div>
+      <AuthBrandPanel />
 
       {/* RIGHT — form */}
       <div className="relative bg-background flex flex-col items-center justify-start px-8 md:px-26.5 py-10 flex-1 overflow-y-auto">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              aria-label={t("login.backToHome", { defaultValue: "Back to home" })}
-              className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-0 z-20"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{t("login.backToHome", { defaultValue: "Back to home" })}</TooltipContent>
-        </Tooltip>
+        {/* During workspace setup the account already exists: on the firm form the arrow goes back to
+            the choice, and on the choice there's nothing to go back to, so it's hidden. */}
+        {!(workspaceStep && setupStep === "choose") && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => (workspaceStep ? setSetupStep("choose") : router.push("/"))}
+                aria-label={workspaceStep ? t("firm.back", { ns: "onboarding" }) : t("login.backToHome", { defaultValue: "Back to home" })}
+                className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-transparent border-0 z-20"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {workspaceStep ? t("firm.back", { ns: "onboarding" }) : t("login.backToHome", { defaultValue: "Back to home" })}
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         <div className="absolute top-6 right-6 md:top-8 md:right-10 flex items-center gap-4 text-foreground z-20">
           <LanguageSwitcher />
@@ -494,7 +485,7 @@ function UnifiedAuthContent() {
 
         <div className="w-full max-w-md flex flex-col gap-8 my-auto">
           {workspaceStep ? (
-            <WorkspaceSetup defaultOrgName={name} onDone={handleWorkspaceDone} />
+            <WorkspaceSetup defaultOrgName={name} onDone={handleWorkspaceDone} step={setupStep} onStepChange={setSetupStep} />
           ) : otpStep ? (
             <>
               <div className="flex flex-col gap-1 pt-20">
@@ -1088,9 +1079,17 @@ function UnifiedAuthContent() {
                         onChange={(e) => setSignupEmail(e.target.value)}
                         placeholder={t("signup.emailPlaceholder", tCtx)}
                         required
-                        className={inputClass}
+                        readOnly={inviteEmailLocked}
+                        aria-readonly={inviteEmailLocked || undefined}
+                        aria-describedby={inviteEmailLocked ? "signup-email-invite" : undefined}
+                        className={`${inputClass}${inviteEmailLocked ? " cursor-not-allowed opacity-70 focus:border-border focus:ring-0" : ""}`}
                         style={{ fontFamily: "Inter, sans-serif" }}
                       />
+                      {inviteEmailLocked && (
+                        <p id="signup-email-invite" className="text-xs text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+                          {t("signup.emailFromInvite")}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-col gap-2">

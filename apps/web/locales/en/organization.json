@@ -269,6 +269,19 @@
     "loading": "Loading fee history…",
     "error": "Couldn't load your fee history.",
     "retry": "Retry",
-    "showing": "Showing {{from}}–{{to}} of {{total}}"
+    "showing": "Showing {{from}}–{{to}} of {{total}}",
+    "card": {
+      "heading": "Payment Card",
+      "subheading": "The card your organization is charged for accepted client requests and AI top-ups.",
+      "add": "Add card",
+      "change": "Change card",
+      "endingIn": "ending in {{last4}}",
+      "expires": "Expires {{month}}/{{year}}",
+      "noCardHelp": "No card on file yet. Add one before your organization can accept client requests.",
+      "error": "Couldn't load your payment card.",
+      "retry": "Retry",
+      "savedToast": "Payment card saved.",
+      "cancelledToast": "Card setup was cancelled. No changes were made."
+    }
   }
 }

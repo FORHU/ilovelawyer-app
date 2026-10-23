@@ -20,6 +20,14 @@ export interface OrganizationRecord {
   /** A skipped-onboarding user's private workspace (see ilovelawyer-api's
    * Organization.isPersonal) — the app treats its owner as having no organization. */
   isPersonal: boolean
+  /** Firm details, all optional. firmRegulator and its number are UK only (LAWYER_REGULATORS). */
+  phone: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  postcode: string | null
+  firmRegulator: "SRA" | "LSS" | "LSNI" | null
+  firmRegistrationNumber: string | null
   createdAt: string
   updatedAt: string
 }
@@ -70,8 +78,13 @@ export interface CaseCopyRecord {
   createdAt: string
 }
 
-/** The user's portfolio: their personal workspace, reachable from any organization. */
-export interface PortfolioRecord extends OrganizationWithRole {
+/** The user's own workspace ("My work"), reachable from any firm. It has no organization
+ * (ilovelawyer-api's docs/adr/0022), so there's no id: requests to it carry no X-Organization-Id.
+ * Its site is the account's own. */
+export interface PortfolioRecord {
+  own: true
+  tenant: { code: TenantCode }
+  role: OrganizationRole
   copies: CaseCopyRecord[]
 }
 

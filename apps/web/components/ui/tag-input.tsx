@@ -14,6 +14,8 @@ interface TagInputProps {
   /** Most tags allowed; the input hides once it's reached. */
   max: number;
   maxTagLength: number;
+  /** Drops characters a tag can't hold as they're typed or pasted (e.g. digits in a language). */
+  keep?: (raw: string) => string;
   placeholder?: string;
   /** Accessible name and tooltip for a tag's remove button, e.g. `Remove ${tag}`. */
   removeLabel: (tag: string) => string;
@@ -24,7 +26,7 @@ interface TagInputProps {
  * helper below it). Enter or a comma adds what's typed, as does leaving the field; Backspace in
  * an empty field removes the last chip; a pasted comma-separated list becomes several.
  */
-export function TagInput({ label, helperText, value, onChange, max, maxTagLength, placeholder, removeLabel }: TagInputProps) {
+export function TagInput({ label, helperText, value, onChange, max, maxTagLength, placeholder, removeLabel, keep = (raw) => raw }: TagInputProps) {
   const inputId = useId();
   const helperId = `${inputId}-helper`;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,14 +93,14 @@ export function TagInput({ label, helperText, value, onChange, max, maxTagLength
             aria-describedby={helperText ? helperId : undefined}
             onChange={(e) => {
               // A comma typed (or pasted mid-word) ends the tag.
-              if (e.target.value.includes(",")) commit(e.target.value);
-              else setDraft(e.target.value);
+              if (e.target.value.includes(",")) commit(e.target.value.split(",").map(keep).join(","));
+              else setDraft(keep(e.target.value));
             }}
             onPaste={(e) => {
               const pasted = e.clipboardData.getData("text");
               if (!pasted.includes(",")) return;
               e.preventDefault();
-              commit(draft + pasted);
+              commit((draft + pasted).split(",").map(keep).join(","));
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {

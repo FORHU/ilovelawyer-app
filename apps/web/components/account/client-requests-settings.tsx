@@ -10,27 +10,19 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspac
 import { TextField } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { cn } from "@workspace/ui/lib/utils";
-import { TagInput } from "@/components/ui/tag-input";
+import { LawyerApplicationFields, practiceAreaKey } from "@/components/account/lawyer-application-fields";
 import {
-  PRACTICE_AREAS,
-  REGULATORS,
-  UK_JURISDICTIONS,
   useClientRequestProfileQuery,
   useUpdateClientRequestProfileMutation,
   type ClientRequestProfile,
   type VerificationStatus,
 } from "@/lib/client-requests/profile";
 import {
-  BIO_MAX_LENGTH,
-  LANGUAGES_MAX,
-  LANGUAGE_MAX_LENGTH,
   applicationPatchFromForm,
   availabilityPatchFromForm,
   formFromProfile,
   missingFromForm,
   needsRecheck,
-  toggle,
   validateForm,
   type ProfileForm,
 } from "@/lib/client-requests/profile-form";
@@ -42,48 +34,27 @@ const STATUS_TONE: Record<Exclude<VerificationStatus, "UNSUBMITTED">, "warning" 
   REJECTED: "danger",
 };
 
-function Pill({ selected, disabled, onClick, children }: { selected: boolean; disabled?: boolean; onClick?: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "cursor-pointer h-8 rounded-full border px-3.5 text-[11px] font-semibold uppercase tracking-[1px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy-900/40",
-        selected ? "border-transparent bg-brand-gold text-brand-gold-foreground" : "border-border text-foreground hover:border-foreground/40",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function FieldLabel({ children, id }: { children: React.ReactNode; id?: string }) {
-  return (
-    <p id={id} className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-      {children}
-    </p>
-  );
-}
+/** The Profile page's id for this section, so the reminder banner can link straight to it. */
+export const LAWYER_APPLICATION_SECTION_ID = "lawyer-application";
 
 /**
- * Profile page section for taking on clients from the client app (UK only, app#865). A lawyer
- * applies once through a dialog (who regulates them and their number, where they're qualified,
- * what they take on, and what clients see), an admin verifies it against the regulator's register,
- * and only then do the Accept client requests switch and the availability settings appear.
+ * Profile page section for the Lawyer Application (UK and PH). A lawyer applies once through a
+ * dialog (their registration, what they take on, what clients see) and an admin approves it. On
+ * UK that unlocks the Accept client requests switch and the availability settings (app#865); on
+ * PH approval only shows a badge for now.
  */
 export function ClientRequestsSettings() {
   const { t } = useTranslation("profile");
   const query = useClientRequestProfileQuery(true);
   const status = query.data?.verification.status;
+  const country = query.data?.country ?? "UK";
 
   return (
-    <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <section id={LAWYER_APPLICATION_SECTION_ID} className="bg-card rounded-xl border border-border shadow-sm overflow-hidden scroll-mt-24">
       <div className="px-6 md:px-8 py-5 border-b border-border flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t("clientRequests.heading")}</h2>
-          <p className="text-[13px] text-muted-foreground mt-0.5 max-w-[60ch]">{t("clientRequests.subheading")}</p>
+          <h2 className="font-['Libre_Caslon_Text',serif] text-[22px] text-foreground">{t(`clientRequests.copy.${country}.heading`)}</h2>
+          <p className="text-[13px] text-muted-foreground mt-0.5 max-w-[60ch]">{t(`clientRequests.copy.${country}.subheading`)}</p>
         </div>
         {status && status !== "UNSUBMITTED" && (
           <Badge shape="pill" tone={STATUS_TONE[status]}>
@@ -110,32 +81,48 @@ export function ClientRequestsSettings() {
 function SettingsBody({ profile }: { profile: ClientRequestProfile }) {
   const [applying, setApplying] = useState(false);
   const status = profile.verification.status;
+  // Client requests are UK only: PH approval has no switch or availability to show.
+  const receivesRequests = status === "VERIFIED" && profile.country === "UK";
 
   return (
     <div className="flex flex-col divide-y divide-border">
-      {status === "VERIFIED" && <AcceptingRow profile={profile} />}
-      {status === "VERIFIED" && <AvailabilityRow profile={profile} />}
+      {receivesRequests && <AcceptingRow profile={profile} />}
+      {receivesRequests && <AvailabilityRow profile={profile} />}
       {status === "UNSUBMITTED" ? <ApplyPrompt profile={profile} onApply={() => setApplying(true)} /> : <ApplicationSummary profile={profile} onEdit={() => setApplying(true)} />}
       {applying && <ApplicationDialog profile={profile} onClose={() => setApplying(false)} />}
     </div>
   );
 }
 
+/** "your regulator, your registration number" etc., for a list of the API's missing-field names. */
+function useMissingList() {
+  const { t } = useTranslation("profile");
+  return (fields: string[]) => fields.map((m) => t(`clientRequests.missingFields.${m}`)).join(", ");
+}
+
 function ApplyPrompt({ profile, onApply }: { profile: ClientRequestProfile; onApply: () => void }) {
   const { t } = useTranslation("profile");
-  // All four required fields missing means they haven't started; fewer means a saved, unfinished one.
-  const started = profile.missing.length < 4;
+  const missingList = useMissingList();
+  // Every required field missing means they haven't started; fewer means a saved, unfinished one.
+  const started = profile.missing.length < (profile.country === "PH" ? 3 : 4);
 
   return (
     <div className="px-6 md:px-8 py-6 flex items-center justify-between gap-4 flex-wrap">
       <p className="text-[14px] text-muted-foreground max-w-[60ch]">
-        {started
-          ? t("clientRequests.incomplete", { fields: profile.missing.map((m) => t(`clientRequests.missingFields.${m}`)).join(", ") })
-          : t("clientRequests.statusHelp.UNSUBMITTED")}
+        {started ? t("clientRequests.incomplete", { fields: missingList(profile.missing) }) : t(`clientRequests.copy.${profile.country}.unsubmittedHelp`)}
       </p>
       <Button variant="accent" onClick={onApply}>
-        {started ? t("clientRequests.actions.continue") : t("clientRequests.actions.apply")}
+        {started ? t("clientRequests.actions.continue") : t(`clientRequests.copy.${profile.country}.apply`)}
       </Button>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{label}</dt>
+      <dd className="text-[14px] text-foreground">{value || "—"}</dd>
     </div>
   );
 }
@@ -144,7 +131,8 @@ function ApplyPrompt({ profile, onApply }: { profile: ClientRequestProfile; onAp
 function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile; onEdit: () => void }) {
   const { t } = useTranslation("profile");
   const status = profile.verification.status;
-  const registration = [profile.regulator, profile.registrationNumber].filter(Boolean).join(" · ");
+  const r = profile.registration;
+  const areas = profile.practiceAreas.map((a) => t(`clientRequests.areas.${practiceAreaKey(profile.country, a)}`)).join(", ");
   const editLabel = status === "REJECTED" ? t("clientRequests.actions.resubmit") : status === "PENDING" ? t("clientRequests.actions.edit") : t("clientRequests.actions.editDetails");
 
   return (
@@ -154,20 +142,21 @@ function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile
           {t("clientRequests.rejectedNote", { note: profile.verification.note })}
         </p>
       )}
-      {(status === "PENDING" || status === "REJECTED") && <p className="text-[14px] text-muted-foreground max-w-[60ch]">{t(`clientRequests.statusHelp.${status}`)}</p>}
+      {status === "PENDING" && <p className="text-[14px] text-muted-foreground max-w-[60ch]">{t(`clientRequests.copy.${profile.country}.pendingHelp`)}</p>}
+      {status === "REJECTED" && <p className="text-[14px] text-muted-foreground max-w-[60ch]">{t(`clientRequests.copy.${profile.country}.rejectedHelp`)}</p>}
       <dl className="grid gap-4 sm:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("clientRequests.summary.registration")}</dt>
-          <dd className="text-[14px] text-foreground">{registration || "—"}</dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("clientRequests.summary.jurisdictions")}</dt>
-          <dd className="text-[14px] text-foreground">{profile.qualifiedJurisdictions.join(", ") || "—"}</dd>
-        </div>
-        <div className="flex flex-col gap-1">
-          <dt className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{t("clientRequests.summary.practiceAreas")}</dt>
-          <dd className="text-[14px] text-foreground">{profile.practiceAreas.map((a) => t(`clientRequests.areas.${a}`)).join(", ") || "—"}</dd>
-        </div>
+        {r.country === "PH" ? (
+          <>
+            <SummaryItem label={t("clientRequests.summary.rollNumber")} value={r.rollNumber ?? ""} />
+            <SummaryItem label={t("clientRequests.summary.ibpChapter")} value={r.ibpChapter ?? ""} />
+          </>
+        ) : (
+          <>
+            <SummaryItem label={t("clientRequests.summary.registration")} value={[r.regulator, r.registrationNumber].filter(Boolean).join(" · ")} />
+            <SummaryItem label={t("clientRequests.summary.jurisdictions")} value={r.qualifiedJurisdictions.join(", ")} />
+          </>
+        )}
+        <SummaryItem label={t("clientRequests.summary.practiceAreas")} value={areas} />
       </dl>
       <div>
         <Button variant={status === "REJECTED" ? "accent" : "outline"} onClick={onEdit}>
@@ -178,7 +167,7 @@ function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile
   );
 }
 
-/** The lawyer's own on/off switch. Only shown once the application is approved. */
+/** The lawyer's own on/off switch. Only shown once a UK application is approved. */
 function AcceptingRow({ profile }: { profile: ClientRequestProfile }) {
   const { t } = useTranslation("profile");
   const toggleAccepting = useUpdateClientRequestProfileMutation();
@@ -223,7 +212,7 @@ function AcceptingRow({ profile }: { profile: ClientRequestProfile }) {
   );
 }
 
-/** Pause and capacity: how many clients an approved lawyer takes, and when. */
+/** Pause and capacity: how many clients an approved UK lawyer takes, and when. */
 function AvailabilityRow({ profile }: { profile: ClientRequestProfile }) {
   const { t } = useTranslation("profile");
   const update = useUpdateClientRequestProfileMutation();
@@ -287,10 +276,11 @@ function AvailabilityRow({ profile }: { profile: ClientRequestProfile }) {
   );
 }
 
-/** Applying, finishing an application, or changing one: everything the admin checks and what
- * clients see. Mounted only while open, so each opening starts from the saved profile. */
+/** Applying, finishing an application, or changing one. Mounted only while open, so each opening
+ * starts from the saved profile. */
 function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile; onClose: () => void }) {
   const { t } = useTranslation("profile");
+  const missingList = useMissingList();
   const update = useUpdateClientRequestProfileMutation();
   const [form, setForm] = useState<ProfileForm>(() => formFromProfile(profile));
   const set = (patch: Partial<ProfileForm>) => setForm((f) => ({ ...f, ...patch }));
@@ -301,7 +291,7 @@ function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile
   const submitsForReview = firstSubmission || status === "REJECTED";
   const errors = validateForm(form);
   const missing = missingFromForm(form);
-  // Only an approved lawyer loses anything by a re-check: requests stop until it's approved again.
+  // Only an approved lawyer loses anything by a re-check (on UK, requests stop until it's approved again).
   const recheckWarning = status === "VERIFIED" && needsRecheck(profile, form);
   const canSubmit = missing.length === 0 && Object.keys(errors).length === 0 && !update.isPending;
 
@@ -327,11 +317,11 @@ function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile
           <div>
             <DialogTitle asChild>
               <h2 className="font-['Libre_Caslon_Text'] text-lg text-foreground font-normal">
-                {firstSubmission ? t("clientRequests.dialog.titleApply") : t("clientRequests.dialog.titleEdit")}
+                {firstSubmission ? t(`clientRequests.copy.${profile.country}.dialogTitle`) : t("clientRequests.dialog.titleEdit")}
               </h2>
             </DialogTitle>
             <DialogDescription asChild>
-              <p className="text-[13px] text-muted-foreground mt-1 max-w-[52ch]">{t("clientRequests.dialog.description")}</p>
+              <p className="text-[13px] text-muted-foreground mt-1 max-w-[52ch]">{t(`clientRequests.copy.${profile.country}.dialogDescription`)}</p>
             </DialogDescription>
           </div>
           <Tooltip>
@@ -356,108 +346,14 @@ function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile
             submit();
           }}
         >
-          <div className="max-h-[min(65vh,640px)] overflow-y-auto px-6 py-6 flex flex-col gap-8">
-            <fieldset className="flex flex-col gap-5">
-              <legend className="mb-4 text-[15px] font-medium text-foreground">{t("clientRequests.dialog.sections.registration")}</legend>
-              <div className="flex flex-col gap-2">
-                <FieldLabel id="cr-regulator">{t("clientRequests.fields.regulator")}</FieldLabel>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="cr-regulator">
-                  {REGULATORS.map((r) => (
-                    <Pill key={r} selected={form.regulator === r} onClick={() => set({ regulator: form.regulator === r ? null : r })}>
-                      {t(`clientRequests.regulators.${r}`)}
-                    </Pill>
-                  ))}
-                </div>
-              </div>
-              <TextField
-                label={t("clientRequests.fields.registrationNumber")}
-                helperText={t("clientRequests.fields.registrationNumberHelp")}
-                value={form.registrationNumber}
-                onChange={(e) => set({ registrationNumber: e.target.value })}
-                errorText={errors.registrationNumber}
-                maxLength={40}
-              />
-              <div className="flex flex-col gap-2">
-                <FieldLabel id="cr-jurisdictions">{t("clientRequests.fields.jurisdictions")}</FieldLabel>
-                <div className="flex flex-wrap gap-2" aria-labelledby="cr-jurisdictions">
-                  {UK_JURISDICTIONS.map((j) => (
-                    <Pill key={j} selected={form.qualifiedJurisdictions.includes(j)} onClick={() => set({ qualifiedJurisdictions: toggle(form.qualifiedJurisdictions, j) })}>
-                      {j}
-                    </Pill>
-                  ))}
-                </div>
-              </div>
-            </fieldset>
-
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-4 text-[15px] font-medium text-foreground">{t("clientRequests.dialog.sections.work")}</legend>
-              <FieldLabel id="cr-areas">{t("clientRequests.fields.practiceAreas")}</FieldLabel>
-              <div className="flex flex-wrap gap-2" aria-labelledby="cr-areas">
-                {PRACTICE_AREAS.map((a) => (
-                  <Pill key={a} selected={form.practiceAreas.includes(a)} onClick={() => set({ practiceAreas: toggle(form.practiceAreas, a) })}>
-                    {t(`clientRequests.areas.${a}`)}
-                  </Pill>
-                ))}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Pill selected={false} disabled>
-                        {t("clientRequests.areas.PERSONAL_INJURY")}
-                      </Pill>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("clientRequests.areas.personalInjuryWhy")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </fieldset>
-
-            <fieldset className="flex flex-col gap-5">
-              <legend className="mb-4 text-[15px] font-medium text-foreground">{t("clientRequests.dialog.sections.listing")}</legend>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="cr-bio" className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  {t("clientRequests.fields.bio")}
-                </label>
-                <p className="text-xs text-muted-foreground">{t("clientRequests.fields.bioHelp")}</p>
-                <textarea
-                  id="cr-bio"
-                  rows={4}
-                  value={form.bio}
-                  maxLength={BIO_MAX_LENGTH}
-                  onChange={(e) => set({ bio: e.target.value })}
-                  aria-invalid={!!errors.bio}
-                  className="w-full resize-y rounded-xl border border-border bg-transparent px-3 py-2.5 text-base sm:text-sm outline-none transition-colors hover:border-foreground/30 focus:border-foreground focus:ring-2 focus:ring-foreground/5"
-                />
-                <p className="text-right text-xs text-muted-foreground">
-                  {form.bio.length}/{BIO_MAX_LENGTH}
-                </p>
-              </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <TagInput
-                  label={t("clientRequests.fields.languages")}
-                  helperText={t("clientRequests.fields.languagesHelp")}
-                  placeholder={t("clientRequests.fields.languagesPlaceholder")}
-                  value={form.languages}
-                  onChange={(languages) => set({ languages })}
-                  max={LANGUAGES_MAX}
-                  maxTagLength={LANGUAGE_MAX_LENGTH}
-                  removeLabel={(language) => t("clientRequests.fields.removeLanguage", { language })}
-                />
-                <TextField
-                  label={t("clientRequests.fields.fee")}
-                  helperText={t("clientRequests.fields.feeHelp")}
-                  inputMode="decimal"
-                  value={form.fee}
-                  onChange={(e) => set({ fee: e.target.value })}
-                  errorText={errors.fee}
-                />
-              </div>
-            </fieldset>
+          <div className="max-h-[min(65vh,640px)] overflow-y-auto px-6 py-6">
+            <LawyerApplicationFields form={form} set={set} errors={errors} />
           </div>
 
           <div className="flex flex-col gap-3 px-6 py-4 border-t border-border bg-muted/40">
             {recheckWarning && (
               <p className="text-[13px] text-amber-700 dark:text-amber-400" role="status">
-                {t("clientRequests.dialog.recheckWarning")}
+                {t(`clientRequests.copy.${profile.country}.recheckWarning`)}
               </p>
             )}
             {update.isError && (
@@ -466,11 +362,7 @@ function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile
               </p>
             )}
             <div className="flex items-center justify-end gap-3 flex-wrap">
-              {missing.length > 0 && (
-                <p className="text-[13px] text-muted-foreground mr-auto">
-                  {t("clientRequests.dialog.missing", { fields: missing.map((m) => t(`clientRequests.missingFields.${m}`)).join(", ") })}
-                </p>
-              )}
+              {missing.length > 0 && <p className="text-[13px] text-muted-foreground mr-auto">{t("clientRequests.dialog.missing", { fields: missingList(missing) })}</p>}
               <Button type="button" variant="ghost" onClick={close} disabled={update.isPending}>
                 {t("clientRequests.dialog.cancel")}
               </Button>

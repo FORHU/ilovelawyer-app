@@ -1,40 +1,48 @@
 "use client"
 
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@workspace/ui/components/button"
-import { TextField } from "@workspace/ui/components/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationRole } from "@/lib/organizations/queries"
-import { useAddBillingCardMutation } from "@/lib/client-requests/billing"
-import type { PaymentCard } from "@/lib/client-requests/types"
+import { useOrganizationCardQuery, useStartCardSetupMutation } from "@/lib/organizations/billing"
 
 const CAN_MANAGE_BILLING: OrganizationRole[] = ["OWNER", "ADMIN"]
 
 /**
- * Opened when accepting a request answers 402 CARD_REQUIRED (ilovelawyer-api#505's contract —
- * see lib/client-requests/billing.ts for why this takes fake card details directly instead of
- * redirecting to a real Stripe Checkout session). Organization OWNER/ADMIN only, matching the
- * real route's own restriction, so this doesn't teach a workflow the backend will refuse.
+ * Opened from the Organization Billing page's "Add card"/"Change card" action, and from the
+ * inbox when accepting a request answers 402 CARD_REQUIRED. Organization OWNER/ADMIN only,
+ * matching the real route's own restriction (ilovelawyer-api#505).
+ *
+ * Confirming redirects the whole page to Stripe's hosted Checkout (setup mode) and back — the
+ * card itself never passes through this app. See use-card-setup-return.ts for the return half;
+ * `extraReturnParams` is how a caller carries its own state (e.g. which request to resume
+ * claiming) across that round trip.
  */
-export function AddCardModal({ open, onClose, onCardAdded }: { open: boolean; onClose: () => void; onCardAdded: () => void }) {
+export function AddCardModal({
+  open,
+  onClose,
+  extraReturnParams,
+}: {
+  open: boolean
+  onClose: () => void
+  extraReturnParams?: Record<string, string>
+}) {
   const { t } = useTranslation("client-requests")
   const organization = useAuthStore((s) => s.organization)
-  const addCard = useAddBillingCardMutation(organization?.id)
-  const [last4, setLast4] = useState("")
+  const cardQuery = useOrganizationCardQuery(organization?.id)
+  const startSetup = useStartCardSetupMutation(organization?.id)
 
   const canManageBilling = !!organization && CAN_MANAGE_BILLING.includes(organization.role)
-  const valid = /^\d{4}$/.test(last4)
+  const hasCard = !!cardQuery.data
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!valid) return
-    const card: PaymentCard = { brand: "visa", last4, expMonth: 12, expYear: new Date().getFullYear() + 3 }
-    addCard.mutate(card, {
-      onSuccess: () => {
-        setLast4("")
-        onCardAdded()
+  function handleContinue() {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.pathname, window.location.origin)
+    for (const [key, value] of Object.entries(extraReturnParams ?? {})) url.searchParams.set(key, value)
+    startSetup.mutate(url.toString(), {
+      onSuccess: (data) => {
+        window.location.href = data.url
       },
     })
   }
@@ -43,30 +51,28 @@ export function AddCardModal({ open, onClose, onCardAdded }: { open: boolean; on
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("cardModal.title")}</DialogTitle>
-          <DialogDescription>{t("cardModal.description")}</DialogDescription>
+          <DialogTitle>{hasCard ? t("cardModal.changeTitle") : t("cardModal.title")}</DialogTitle>
+          <DialogDescription>{hasCard ? t("cardModal.changeDescription") : t("cardModal.description")}</DialogDescription>
         </DialogHeader>
 
         {canManageBilling ? (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <TextField
-              label={t("cardModal.last4Label")}
-              helperText={t("cardModal.last4Help")}
-              value={last4}
-              onChange={(e) => setLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              inputMode="numeric"
-              maxLength={4}
-              errorText={last4 && !valid ? t("cardModal.last4Error") : undefined}
-            />
+          <div className="flex flex-col gap-4">
+            {cardQuery.data && (
+              <p className="text-[13px] text-muted-foreground">
+                {t("cardModal.currentCard", { brand: cardQuery.data.brand, last4: cardQuery.data.last4 })}
+              </p>
+            )}
+            <p className="text-[13px] text-muted-foreground">{t("cardModal.redirectNotice")}</p>
+            {startSetup.isError && <p className="text-[13px] text-red-600 dark:text-red-400">{t("cardModal.startError")}</p>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 {t("cardModal.cancel")}
               </Button>
-              <Button type="submit" variant="accent" isPending={addCard.isPending} disabled={!valid}>
-                {t("cardModal.save")}
+              <Button type="button" variant="accent" isPending={startSetup.isPending} onClick={handleContinue}>
+                {t("cardModal.continue")}
               </Button>
             </DialogFooter>
-          </form>
+          </div>
         ) : (
           <p className="text-[14px] text-muted-foreground">{t("cardModal.notAllowed")}</p>
         )}

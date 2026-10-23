@@ -1,6 +1,6 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { organizationKeys } from "@/lib/query-keys"
+import { billingKeys, organizationKeys } from "@/lib/query-keys"
 import type { ChargeKind, ChargeStatus, Money } from "@/lib/client-handoff"
 
 /** One row of the organization's fee history (ilovelawyer-api#513's Charge) — a per-case fee or
@@ -49,4 +49,54 @@ export function useOrganizationFeesQuery(
     enabled: !!organizationId,
     placeholderData: keepPreviousData,
   })
+}
+
+/** The organization's card on file (ilovelawyer-api#505), which the client hand-off's per-case
+ * fee and AI top-ups are charged to. Null when none is set up yet. */
+export interface OrganizationCard {
+  brand: string
+  last4: string
+  expMonth: number
+  expYear: number
+  /** DUMMY: a test card saved by the local/test payment provider, never charged for real. */
+  provider: "STRIPE" | "DUMMY"
+  updatedAt: string
+}
+
+/** GET /organizations/:id/billing/card[?setupSessionId=]. Passing the session the app just came
+ * back from (useCardSetupReturn) finalizes it first, so the card shows without waiting on
+ * Stripe's webhook — and locally, where none arrives at all. */
+export function getOrganizationCard(organizationId: string, setupSessionId?: string): Promise<OrganizationCard | null> {
+  const query = setupSessionId ? `?setupSessionId=${encodeURIComponent(setupSessionId)}` : ""
+  return apiFetch<OrganizationCard | null>(`/api/organizations/${organizationId}/billing/card${query}`)
+}
+
+/** Owners and Admins only — the API answers 403 for anyone else, same as the fee history above. */
+export function useOrganizationCardQuery(organizationId: string | undefined) {
+  return useQuery({
+    queryKey: billingKeys.card(organizationId ?? ""),
+    queryFn: () => getOrganizationCard(organizationId!),
+    enabled: !!organizationId,
+  })
+}
+
+/** POST /organizations/:id/billing/card/setup-session — starts adding or replacing the card.
+ * Resolves to where to send the browser: Stripe's hosted Checkout page (setup mode), or, with
+ * the dummy provider used locally/in test, straight back to `returnUrl` with a test card already
+ * saved. Either way the card itself never touches this app or its API. */
+export function useStartCardSetupMutation(organizationId: string | undefined) {
+  return useMutation({
+    mutationFn: (returnUrl: string) =>
+      apiFetch<{ url: string }>(`/api/organizations/${organizationId}/billing/card/setup-session`, {
+        method: "POST",
+        body: JSON.stringify({ returnUrl }),
+      }),
+  })
+}
+
+/** Writes a freshly-finalized card straight into the cache (useCardSetupReturn, after the
+ * round trip to Stripe) instead of waiting on a refetch. */
+export function useSetOrganizationCardCache() {
+  const queryClient = useQueryClient()
+  return (organizationId: string, card: OrganizationCard | null) => queryClient.setQueryData(billingKeys.card(organizationId), card)
 }

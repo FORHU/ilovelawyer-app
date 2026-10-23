@@ -13,6 +13,7 @@ import enProfile from "@/locales/en/profile.json"
 import enTerm from "@/locales/en/term.json"
 import enTerminal from "@/locales/en/terminal.json"
 import enTour from "@/locales/en/tour.json"
+import enOnboarding from "@/locales/en/onboarding.json"
 import enTranscription from "@/locales/en/transcription.json"
 
 import koAuth from "@/locales/ko/auth.json"
@@ -53,8 +54,8 @@ export const I18N_RESOURCES = {
     homepage: enHomepage,
     calendar: enCalendar,
     "client-request": enClientRequest,
-    "case-portfolio": enCasePortfolio,
     "client-requests": enClientRequests,
+    "case-portfolio": enCasePortfolio,
     "create-case": enCreateCase,
     library: enLibrary,
     transcription: enTranscription,
@@ -63,6 +64,7 @@ export const I18N_RESOURCES = {
     term: enTerm,
     terminal: enTerminal,
     tour: enTour,
+    onboarding: enOnboarding,
   },
   ko: {
     common: koCommon,
