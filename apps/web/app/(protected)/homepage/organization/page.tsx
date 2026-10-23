@@ -42,6 +42,9 @@ import { AuditLogSection } from "@/components/organization/audit-log-section";
 import { EMPTY_FIRM, FirmDetailsFields, firmDetailsPayload, type FirmDetailsForm } from "@/components/organization/firm-details-fields";
 import { FirmDetailsSection } from "@/components/organization/firm-details-section";
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
+import { FeeHistorySection } from "@/components/organization/fee-history-section";
+import { PaymentCardSection } from "@/components/organization/payment-card-section";
+import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import {
   useCreateOrganizationMutation,
   useInviteMemberMutation,
@@ -114,6 +117,7 @@ export default function OrganizationPage() {
   const memberRoleMutation = useChangeMemberRoleMutation(firmId);
   const removeMemberMutation = useRemoveMemberMutation(firmId);
   const updateOrgMutation = useUpdateOrganizationMutation(firmId);
+  useCardSetupReturn(firmId || undefined);
   const otherMembers = (membersQuery.data ?? []).filter(
     (m): m is OrganizationMemberRecord => m.userId !== null && m.userId !== currentUserId && m.status === "ACCEPTED",
   );
@@ -960,7 +964,9 @@ export default function OrganizationPage() {
             {/* Firm details — Owners and Admins, who can update the organization */}
             {canManageOrg && <FirmDetailsSection organizationId={organization.id} />}
 
-            {/* Audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {/* Payment card, fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {canManageOrg && <PaymentCardSection organizationId={organization.id} />}
+            {canManageOrg && <FeeHistorySection organizationId={organization.id} />}
             {canManageOrg && <AuditLogSection organizationId={organization.id} />}
           </>
         )}

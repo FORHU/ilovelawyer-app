@@ -148,5 +148,50 @@
     "sortBy": "Pagsunud-sunurin ayon sa column na ito",
     "sortedAscending": "Pataas ang ayos — i-click para baligtarin",
     "sortedDescending": "Pababa ang ayos — i-click para baligtarin"
+  },
+  "billing": {
+    "heading": "Kasaysayan ng Bayarin",
+    "subheading": "Mga bayad kada kaso, AI top-up, at refund na siningil sa card ng inyong organisasyon.",
+    "columns": {
+      "date": "Petsa",
+      "description": "Paglalarawan",
+      "amount": "Halaga",
+      "status": "Katayuan",
+      "invoice": "Invoice"
+    },
+    "kindFilter": {
+      "all": "Lahat",
+      "perCaseFee": "Bayad kada kaso",
+      "aiTopUp": "AI top-up"
+    },
+    "status": {
+      "PENDING": "Pinoproseso",
+      "SUCCEEDED": "Nabayaran",
+      "FAILED": "Nabigo",
+      "REFUNDED": "Na-refund",
+      "PARTIALLY_REFUNDED": "Bahagyang na-refund"
+    },
+    "refunded": "{{amount}} na-refund",
+    "viewInvoice": "Tingnan ang invoice",
+    "noInvoice": "—",
+    "empty": "Walang singil pa. Lalabas dito ang mga bayad kada kaso at AI top-up kapag ginamit na ng inyong firm.",
+    "emptyFiltered": "Walang singil na tugma sa filter na ito.",
+    "loading": "Naglo-load ng kasaysayan ng bayarin…",
+    "error": "Hindi ma-load ang kasaysayan ng bayarin.",
+    "retry": "Subukang Muli",
+    "showing": "Ipinapakita ang {{from}}–{{to}} sa {{total}}",
+    "card": {
+      "heading": "Card para sa Bayad",
+      "subheading": "Ang card na sinisingil sa mga tinanggap na client request at AI top-up ng inyong organisasyon.",
+      "add": "Magdagdag ng card",
+      "change": "Palitan ang card",
+      "endingIn": "nagtatapos sa {{last4}}",
+      "expires": "Mag-e-expire {{month}}/{{year}}",
+      "noCardHelp": "Wala pang nakarehistrong card. Magdagdag ng card bago makatanggap ng client request ang inyong organisasyon.",
+      "error": "Hindi ma-load ang inyong payment card.",
+      "retry": "Subukang Muli",
+      "savedToast": "Na-save ang payment card.",
+      "cancelledToast": "Kinansela ang pag-setup ng card. Walang nagbagong impormasyon."
+    }
   }
 }

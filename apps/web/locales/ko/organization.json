@@ -148,5 +148,50 @@
     "sortBy": "이 열로 정렬",
     "sortedAscending": "오름차순 정렬됨 — 클릭하면 반대로",
     "sortedDescending": "내림차순 정렬됨 — 클릭하면 반대로"
+  },
+  "billing": {
+    "heading": "수수료 내역",
+    "subheading": "조직의 카드로 청구된 사건별 수수료, AI 충전 및 환불입니다.",
+    "columns": {
+      "date": "날짜",
+      "description": "설명",
+      "amount": "금액",
+      "status": "상태",
+      "invoice": "인보이스"
+    },
+    "kindFilter": {
+      "all": "전체",
+      "perCaseFee": "사건별 수수료",
+      "aiTopUp": "AI 충전"
+    },
+    "status": {
+      "PENDING": "처리 중",
+      "SUCCEEDED": "결제 완료",
+      "FAILED": "실패",
+      "REFUNDED": "환불됨",
+      "PARTIALLY_REFUNDED": "부분 환불됨"
+    },
+    "refunded": "{{amount}} 환불됨",
+    "viewInvoice": "인보이스 보기",
+    "noInvoice": "—",
+    "empty": "아직 청구 내역이 없습니다. 사건별 수수료와 AI 충전이 발생하면 여기에 표시됩니다.",
+    "emptyFiltered": "이 필터에 해당하는 청구 내역이 없습니다.",
+    "loading": "수수료 내역을 불러오는 중…",
+    "error": "수수료 내역을 불러올 수 없습니다.",
+    "retry": "다시 시도",
+    "showing": "{{total}}개 중 {{from}}–{{to}}",
+    "card": {
+      "heading": "결제 카드",
+      "subheading": "조직이 수락한 의뢰와 AI 충전에 청구되는 카드입니다.",
+      "add": "카드 추가",
+      "change": "카드 변경",
+      "endingIn": "끝자리 {{last4}}",
+      "expires": "유효기간 {{month}}/{{year}}",
+      "noCardHelp": "등록된 카드가 없습니다. 조직이 의뢰를 수락하려면 먼저 카드를 추가하세요.",
+      "error": "결제 카드를 불러올 수 없습니다.",
+      "retry": "다시 시도",
+      "savedToast": "결제 카드가 저장되었습니다.",
+      "cancelledToast": "카드 등록이 취소되었습니다. 변경된 내용이 없습니다."
+    }
   }
 }

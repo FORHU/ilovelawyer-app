@@ -1,0 +1,14 @@
+{
+  "cardModal": {
+    "title": "Add a payment method",
+    "description": "Your organization needs a card on file before accepting a client request. Nothing is charged until the client confirms.",
+    "changeTitle": "Change your payment method",
+    "changeDescription": "Replace the card your organization is charged for accepted client requests and AI top-ups.",
+    "currentCard": "Current card on file: {{brand}} ending in {{last4}}",
+    "redirectNotice": "You'll be taken to a secure Stripe page to enter your card details, then brought back here.",
+    "cancel": "Cancel",
+    "continue": "Continue to secure checkout",
+    "startError": "We couldn't open the card page. Try again in a moment.",
+    "notAllowed": "Ask your organization's owner or admin to add a payment method."
+  }
+}
