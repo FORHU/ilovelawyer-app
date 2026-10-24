@@ -180,7 +180,7 @@ function SetupSteps({
           {step === "firm" && <FirmStep organization={organization} onDone={next} onBackToChoice={askToRemoveFirm} />}
           {step === "invite" && <InviteStep organizationId={organization.id} firmName={organization.name} onDone={next} />}
           {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} />}
-          {step === "plan" && <PlanStep onDone={next} />}
+          {step === "plan" && <PlanStep onDone={next} trial={organization.isPersonal} />}
         </div>
       ))}
 
