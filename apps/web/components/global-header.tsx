@@ -410,8 +410,21 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     <p className={`mt-1 text-[11px] tabular-nums ${accountAllowance.locked ? "text-destructive" : "text-foreground"}`}>
                       {accountAllowance.locked
                         ? t("userMenu.aiBalanceSpent")
-                        : t("userMenu.aiBalanceLeft", { amount: usd.format(accountAllowance.remainingUsd ?? 0), pct: accountAllowance.consumedPct ?? 0 })}
+                        : t("userMenu.aiBalanceLeft", { pct: accountAllowance.consumedPct ?? 0 })}
                     </p>
+                    <div
+                      role="progressbar"
+                      aria-label={t("userMenu.aiBalanceLabel")}
+                      aria-valuenow={Math.min(100, Math.max(0, accountAllowance.consumedPct ?? 0))}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted"
+                    >
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-300 ${accountAllowance.locked ? "bg-destructive" : "bg-brand-gold"}`}
+                        style={{ width: `${Math.min(100, Math.max(0, accountAllowance.consumedPct ?? 0))}%` }}
+                      />
+                    </div>
                   </div>
                 )}
 
