@@ -1,9 +1,10 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { notificationKeys, chatKeys, caseKeys } from "@/lib/query-keys"
+import { notificationKeys, chatKeys, caseKeys, clientRequestKeys } from "@/lib/query-keys"
 import { registerDocumentSocketHandlers } from "@/lib/cases/document-socket"
 import { registerShareSocketHandlers } from "@/lib/cases/shared"
+import { registerClientRequestSocketHandlers } from "@/lib/client-requests/socket"
 import { terminalKeys } from "@/lib/terminal/mutations"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
@@ -103,6 +104,9 @@ export function useNotificationSocket() {
       // until something unrelated happens to invalidate it; this prefix covers every case+kind
       // combination currently mounted.
       queryClient.invalidateQueries({ queryKey: [...terminalKeys.all, "ai-job"] })
+      // Same gap-in-the-connection reasoning for client-request:* events (socket.ts): a routed,
+      // claimed or taken request missed while disconnected is caught up here.
+      queryClient.invalidateQueries({ queryKey: clientRequestKeys.all })
     }
 
     const handleNew = (notification: Notification) => {
@@ -150,6 +154,7 @@ export function useNotificationSocket() {
     socket.on("chat:citation-ranking", handleCitationRanking)
     const unregisterDocumentHandlers = registerDocumentSocketHandlers(socket, queryClient)
     const unregisterShareHandlers = registerShareSocketHandlers(socket, queryClient)
+    const unregisterClientRequestHandlers = registerClientRequestSocketHandlers(socket, queryClient)
     socket.connect()
 
     return () => {
@@ -159,6 +164,7 @@ export function useNotificationSocket() {
       socket.off("chat:citation-ranking", handleCitationRanking)
       unregisterDocumentHandlers()
       unregisterShareHandlers()
+      unregisterClientRequestHandlers()
       socket.disconnect()
     }
   }, [accessToken, queryClient])
