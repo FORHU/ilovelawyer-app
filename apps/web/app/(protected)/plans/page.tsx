@@ -12,7 +12,8 @@ const HOME_PATH = "/homepage"
  * Every plan of the lawyer's tenant, to subscribe to one: where the free trial's emails and the
  * locked banner send a solo lawyer (ilovelawyer-api's PlanTrialSvc, PLANS_PAGE_PATH), and the user
  * menu's Plans. Says how the trial stands: when it ends, or that it has and the account is read-only
- * until they choose. Once the plan is active, back into the app.
+ * until they choose. Once the plan is active, back into the app. A lawyer who already pays changes
+ * their plan here: upgrade now, or downgrade at renewal (PlanPicker's allowChange).
  */
 export default function PlansPage() {
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function PlansPage() {
 
   return (
     <OnboardingShell wide onBack={() => router.push(HOME_PATH)}>
-      <PlanPicker onDone={() => router.push(HOME_PATH)} subtitle={subtitle} />
+      <PlanPicker onDone={() => router.push(HOME_PATH)} subtitle={subtitle} allowChange />
     </OnboardingShell>
   )
 }
