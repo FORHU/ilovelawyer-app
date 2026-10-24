@@ -30,6 +30,24 @@ export interface PaymentPlanOptions {
   trialEndsAt: string | null
   /** The trial is over and nothing is paid: the account is read-only until they subscribe. */
   trialEnded: boolean
+  /** When the paid period ends (ISO): the next charge, and when a scheduled downgrade happens. */
+  renewsAt: string | null
+  /** The cheaper tier the lawyer moves to at renewsAt, or null. */
+  scheduledPlanCode: string | null
+}
+
+/** What choosing another tier does to a live subscription (ilovelawyer-api's PlanChangeKind). */
+export type PlanChangeKind = "UPGRADE" | "DOWNGRADE" | "KEEP"
+
+export interface PlanChangePreview {
+  kind: PlanChangeKind
+  planCode: string
+  /** Charged to the saved card now, for an upgrade (the prorated rest of this period); 0 otherwise. */
+  amountDueNow: number
+  currency: string
+  /** When a downgrade takes effect (ISO); null for an upgrade, which is immediate. */
+  effectiveAt: string | null
+  renewsAt: string | null
 }
 
 export type PaymentPlanSubscriptionStatus = "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "EXPIRED"
@@ -56,6 +74,33 @@ export function usePaymentPlansQuery() {
   return useQuery({
     queryKey: paymentPlansKey,
     queryFn: () => apiFetch<PaymentPlanOptions>("/api/payment-plans"),
+  })
+}
+
+/** What moving to `planCode` would cost or when it would happen, for the confirm dialog. Not cached
+ * for long: an upgrade's prorated amount shrinks as the period goes on. */
+export function usePlanChangePreviewQuery(planCode: string | null) {
+  return useQuery({
+    queryKey: ["account", "payment-plan-change", planCode],
+    queryFn: () => apiFetch<PlanChangePreview>(`/api/payment-plans/change?planCode=${encodeURIComponent(planCode!)}`),
+    enabled: !!planCode,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  })
+}
+
+/** Changes the live subscription's tier. The response is the lawyer's plans as they now stand; an
+ * upgrade also raises the AI allowance at once, so that's refetched too. */
+export function useChangePlanMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (planCode: string) =>
+      apiFetch<PaymentPlanOptions>("/api/payment-plans/change", { method: "POST", body: JSON.stringify({ planCode }) }),
+    onSuccess: (options) => {
+      queryClient.setQueryData(paymentPlansKey, options)
+      void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey })
+    },
   })
 }
 
