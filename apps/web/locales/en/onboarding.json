@@ -122,6 +122,11 @@
     "kept": "You're staying on {{plan}}."
   },
   "plansPage": {
+    "title": "Plans",
+    "subtitle": "Pick the plan that fits your practice. You can change it later.",
+    "eyebrowOn": "On {{plan}}",
+    "eyebrowTrial": "Free trial",
+    "eyebrowTrialEnded": "Free trial ended",
     "trialEndsOn": "Your free trial ends on {{date}}. Choose a plan to keep using the AI and creating cases after that.",
     "trialEnded": "Your free trial has ended, so your account is read-only for now. Choose a plan to keep going; everything you made is still there."
   },
