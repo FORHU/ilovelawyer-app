@@ -84,7 +84,7 @@ const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" 
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
   { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
-  { labelKey: "userMenu.plans", href: "/plans", icon: CreditCard, tooltip: "See the plans and subscribe" },
+  { labelKey: "userMenu.plans", href: "/homepage/plans", icon: CreditCard, tooltip: "See the plans and subscribe" },
   { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText, tooltip: "Read the terms and conditions" },
 ] as const;
 

@@ -27,7 +27,7 @@ export function AccountAiAllowanceBanner() {
         <Lock className="size-4 shrink-0" />
         <span className="flex-1">{t("aiAllowance.trialEndedBanner")}</span>
         <Button asChild size="sm" variant="outline" className="shrink-0 border-amber-600/40 text-amber-600 hover:bg-amber-600/10 dark:text-brand-gold">
-          <Link href="/plans">{t("aiAllowance.choosePlanCta")}</Link>
+          <Link href="/homepage/plans">{t("aiAllowance.choosePlanCta")}</Link>
         </Button>
       </div>
     )
