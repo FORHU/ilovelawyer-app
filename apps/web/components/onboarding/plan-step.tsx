@@ -42,6 +42,7 @@ function PlanCard({ plan, rank, busy, onChoose }: { plan: PaymentPlan; rank: num
         <span className="text-xs text-white/60">{t("plan.perMonth")}</span>
       </p>
       <p className="mt-1 text-xs text-white/60">{t("plan.billedMonthly")}</p>
+      {plan.description && <p className="mt-4 text-sm text-white/75">{plan.description}</p>}
 
       <ul className="mt-6 flex flex-col text-sm text-white/85">
         {features.map((feature) => (

@@ -8,6 +8,8 @@ import { accountAiAllowanceKey } from "@/lib/account/ai-allowance"
 export interface PaymentPlan {
   code: string
   name: string
+  /** What this tier is for — set by the admin, shown on the plan picker. */
+  description: string | null
   level: number
   /** Per month, in US dollars. */
   feeUsd: number
