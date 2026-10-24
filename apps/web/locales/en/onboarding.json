@@ -66,11 +66,32 @@
     "confirm": "Remove firm and go back",
     "removing": "Removing…"
   },
+  "plan": {
+    "title": "Choose your plan",
+    "subtitle": "Pick the plan that fits your practice. You can skip this and choose later.",
+    "loading": "Loading plans",
+    "loadFailed": "We couldn't load the plans. You can skip this and choose one later.",
+    "perMonth": "/month",
+    "billedMonthly": "billed monthly",
+    "cases_one": "Create {{count}} case",
+    "cases_other": "Create up to {{count}} cases",
+    "casesUnlimited": "Unlimited cases",
+    "aiUsage": "{{amount}} of AI usage",
+    "choose": "Choose {{plan}}",
+    "paymentTitle": "Subscribe to {{plan}}",
+    "backToPlans": "Back to plans",
+    "success": "You're on {{plan}}. Your plan is active.",
+    "failed": "Your payment didn't go through. Nothing was charged.",
+    "subscribed": "You're on {{plan}}.",
+    "continue": "Continue",
+    "skip": "Skip for now",
+    "skipNote": "Your account starts on the cheapest plan, with nothing charged, until you choose one."
+  },
   "steps": {
-    "choose": "Choose",
     "firm": "Firm",
     "invite": "Invite",
     "apply": "Apply",
+    "plan": "Plan",
     "review": "Review",
     "label": "Step {{current}} of {{total}}"
   },
