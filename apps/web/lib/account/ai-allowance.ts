@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
 
 // A lawyer's account-wide AI usage allowance (ilovelawyer-api's AccountLimitsSvc) — cases aren't
-// billed individually. The ceiling itself is never shown; remainingUsd/consumedPct are (product
-// decision, so a lawyer can see a top-up applied and isn't "being cheated").
+// billed individually. Neither the ceiling nor the remaining balance in dollars is ever shown;
+// only consumedPct is (product decision — a lawyer sees how much of their plan they've used, not
+// a dollar figure to watch drain).
 
 export interface AccountAiAllowance {
   limited: boolean
   locked: boolean
-  remainingUsd: number | null
   consumedPct: number | null
 }
 

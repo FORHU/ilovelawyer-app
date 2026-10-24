@@ -408,7 +408,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                     <p className={`mt-1 text-[11px] tabular-nums ${accountAllowance.locked ? "text-destructive" : "text-foreground"}`}>
                       {accountAllowance.locked
                         ? t("userMenu.aiBalanceSpent")
-                        : t("userMenu.aiBalanceLeft", { amount: usd.format(accountAllowance.remainingUsd ?? 0), pct: accountAllowance.consumedPct ?? 0 })}
+                        : t("userMenu.aiBalanceLeft", { pct: accountAllowance.consumedPct ?? 0 })}
                     </p>
                   </div>
                 )}
