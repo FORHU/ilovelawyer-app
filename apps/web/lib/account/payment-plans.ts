@@ -26,6 +26,10 @@ export interface PaymentPlanOptions {
   currentPlanCode: string | null
   /** Whether the lawyer already pays for a subscription. */
   subscribed: boolean
+  /** When a solo lawyer's free trial ends or ended (ISO), null with no trial. */
+  trialEndsAt: string | null
+  /** The trial is over and nothing is paid: the account is read-only until they subscribe. */
+  trialEnded: boolean
 }
 
 export type PaymentPlanSubscriptionStatus = "PENDING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "EXPIRED"

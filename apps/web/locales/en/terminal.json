@@ -42,6 +42,7 @@
   "refreshAnalysisNoAccess": "You need edit access to this case to refresh its analysis.",
   "refreshAnalysisNoConsent": "AI processing is switched off for your account. Switch it on under Profile > Your Data to refresh the analysis.",
   "refreshAnalysisFreeCreditSpent": "You've used your free AI credit, so the analysis can't be refreshed.",
+  "refreshAnalysisTrialEnded": "Your free trial has ended, so the analysis can't be refreshed. Choose a plan to keep going.",
   "refreshAnalysisAccountAllowance": "Your account has reached its AI usage allowance, so the analysis can't be refreshed. Top up at the banner above to keep going.",
   "updatingAnalysis": "Updating analysis…",
   "preset": "Preset",

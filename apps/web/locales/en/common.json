@@ -26,6 +26,8 @@
     "aiBalanceLabel": "Your AI balance",
     "aiBalanceLeft": "{{pct}}% used",
     "aiBalanceSpent": "Fully used — top up to continue",
+    "trialEnded": "Free trial ended — choose a plan to continue",
+    "plans": "Plans",
     "profile": "Profile",
     "organization": "Organization",
     "terms": "Terms & Conditions",

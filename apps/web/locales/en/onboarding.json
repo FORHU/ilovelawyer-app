@@ -85,7 +85,14 @@
     "subscribed": "You're on {{plan}}.",
     "continue": "Continue",
     "skip": "Skip for now",
-    "skipNote": "Your account starts on the cheapest plan, with nothing charged, until you choose one."
+    "skipNote": "Your account starts on the cheapest plan, with nothing charged, until you choose one.",
+    "subtitleTrial": "Pick the plan that fits your practice, or try it free for 14 days first.",
+    "skipTrial": "Start my free trial",
+    "skipNoteTrial": "You get 14 days of the cheapest plan free, from when your account is approved. Nothing is charged. After that your account becomes read-only until you choose a plan."
+  },
+  "plansPage": {
+    "trialEndsOn": "Your free trial ends on {{date}}. Choose a plan to keep using the AI and creating cases after that.",
+    "trialEnded": "Your free trial has ended, so your account is read-only for now. Choose a plan to keep going; everything you made is still there."
   },
   "steps": {
     "firm": "Firm",

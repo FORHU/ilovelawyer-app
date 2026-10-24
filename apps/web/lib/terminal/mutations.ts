@@ -398,7 +398,8 @@ export function useRefreshAnalysisMutation(caseId: string) {
     // The account-level locked banner/dropdown read useAccountAiAllowanceQuery, which this refresh
     // just flipped locked server-side — refetch now instead of waiting for the next natural refetch.
     onError: (error: unknown) => {
-      if ((error as { code?: string } | null)?.code === "ACCOUNT_ALLOWANCE_REACHED") {
+      const code = (error as { code?: string } | null)?.code
+      if (code === "ACCOUNT_ALLOWANCE_REACHED" || code === "PLAN_TRIAL_ENDED") {
         void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey })
       }
     },

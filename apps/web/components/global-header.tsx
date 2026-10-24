@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Briefcase, Building2, CalendarDays, FileText, Inbox, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
+import { BookOpen, Briefcase, Building2, CalendarDays, CreditCard, FileText, Inbox, LogOut, Menu, MessageCircle, MessageSquareText, Sparkles, UserCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
@@ -84,6 +84,7 @@ const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" 
 const USER_MENU_ITEMS = [
   { labelKey: "userMenu.profile", href: "/homepage/profile", icon: UserCircle, tooltip: "View and edit your profile" },
   { labelKey: "userMenu.organization", href: "/homepage/organization", icon: Building2, tooltip: "Manage your organization and team members" },
+  { labelKey: "userMenu.plans", href: "/plans", icon: CreditCard, tooltip: "See the plans and subscribe" },
   { labelKey: "userMenu.terms", href: "/homepage/term", icon: FileText, tooltip: "Read the terms and conditions" },
 ] as const;
 
@@ -408,7 +409,9 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
                   <div className="px-4 py-2.5 border-b border-border">
                     <p className="text-[10px] uppercase tracking-[1px] text-muted-foreground">{t("userMenu.aiBalanceLabel")}</p>
                     <p className={`mt-1 text-[11px] tabular-nums ${accountAllowance.locked ? "text-destructive" : "text-foreground"}`}>
-                      {accountAllowance.locked
+                      {accountAllowance.trialEnded
+                        ? t("userMenu.trialEnded")
+                        : accountAllowance.locked
                         ? t("userMenu.aiBalanceSpent")
                         : t("userMenu.aiBalanceLeft", { pct: accountAllowance.consumedPct ?? 0 })}
                     </p>

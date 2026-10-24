@@ -10,6 +10,11 @@ export interface AccountAiAllowance {
   limited: boolean
   locked: boolean
   consumedPct: number | null
+  /** Locked because a solo lawyer's free trial is over and they don't subscribe: the way out is a
+   * plan (/plans), not a top-up, which the API refuses then (PLAN_TRIAL_ENDED). */
+  trialEnded: boolean
+  /** When the free trial ends or ended (ISO), null with no trial. */
+  trialEndsAt: string | null
 }
 
 export const accountAiAllowanceKey = ["account", "ai-allowance"] as const
