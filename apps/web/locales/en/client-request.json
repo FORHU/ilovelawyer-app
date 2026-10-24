@@ -2,6 +2,11 @@
   "eyebrow": "Client requests",
   "title": "Client requests",
   "subtitle": "Anonymised cases from clients looking for a lawyer. Accept one to see the parties and send a quote.",
+  "tabs": {
+    "inbox": "Inbox",
+    "mine": "Mine",
+    "history": "History"
+  },
   "accepting": {
     "on": "Accepting requests · On",
     "paused": "Accepting requests · Paused",
@@ -10,61 +15,59 @@
     "pauseTooltip": "Stop receiving new client requests",
     "resumeTooltip": "Start receiving new client requests again"
   },
-  "filters": {
-    "practiceArea": "Practice area",
-    "jurisdiction": "Jurisdiction",
-    "urgency": "Urgency",
-    "sort": "Sort",
-    "all": "All",
-    "any": "Any",
-    "newest": "Newest",
-    "mostUrgent": "Most urgent"
-  },
   "urgency": {
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low"
+    "routine": "Routine",
+    "soon": "Soon",
+    "urgent": "Urgent"
   },
   "card": {
     "received": "Received {{ago}}",
-    "documents_one": "{{count}} document",
-    "documents_other": "{{count}} documents",
-    "helpers": "Helpers: {{count}}",
+    "assignedTo": "Assigned to {{name}}",
     "pass": "Pass",
     "passTooltip": "Hide this request from your inbox",
     "accept": "Accept",
-    "acceptTooltip": "Claim this request and hold it for you",
-    "taken": "Taken by another lawyer"
+    "acceptTooltip": "Claim this request and hold it for you"
   },
   "feeNote": "You’re charged the per-case fee only if the client confirms you.",
   "noMatches": "No requests match these filters.",
   "empty": {
-    "title": "No requests right now",
-    "description": "We’ll notify you by email and here when a client case matches your practice areas.",
+    "inbox": { "title": "No requests right now", "description": "We’ll notify you by email and here when a client case matches your practice areas." },
+    "mine": { "title": "Nothing claimed yet", "description": "Requests you accept or are engaged on show up here." },
+    "history": { "title": "No history yet", "description": "Requests you released, declined, or that ended show up here." },
     "editPracticeAreas": "Edit practice areas"
   },
   "loadError": "Couldn’t load client requests.",
   "retry": "Retry",
+  "pagination": { "previous": "Previous", "next": "Next", "pageOf": "Page {{page}} of {{total}}" },
   "detail": {
     "back": "Back to requests",
     "notFound": "This request isn’t available",
-    "notFoundDescription": "It may have been taken by another lawyer or released.",
-    "claimed": "Claimed",
-    "heldForYou": "Held for you · {{time}}",
+    "notFoundDescription": "It may have been taken by another lawyer, released, or withdrawn.",
+    "deadline": "deadline {{date}}",
+    "status": {
+      "REQUESTED": "Finding a lawyer",
+      "ROUTED": "Open for claim",
+      "CLAIMED": "Claimed by you",
+      "QUOTED": "Quote sent",
+      "CONFIRMED": "Confirmed · charging",
+      "ENGAGED": "Engaged",
+      "CLOSED": "Closed",
+      "EXPIRED": "Expired",
+      "WITHDRAWN": "Withdrawn by client"
+    },
     "aiSummary": "Case summary · anonymised",
     "ai": "AI",
-    "keyFacts": "Key facts",
-    "timeline": "Timeline highlights",
-    "documentsLocked": "{{count}} documents, available after the client confirms",
-    "documentsLockedDescription": "Uploaded by the client and {{helpers}} helpers · names hidden until engagement",
+    "clientNote": "Client’s note",
+    "heldForYou": "Held for you · {{time}}",
+    "claimExpired": "Your 24-hour hold on this request has ended.",
     "conflict": {
       "title": "1 · Conflict check",
-      "client": "Client",
-      "opponent": "Opponent",
-      "checked": "I’ve checked for conflicts",
+      "load": "Show the parties",
+      "loadTooltip": "Every view is audited",
       "release": "Conflict — release case",
       "releaseTooltip": "Give this case back; you won’t be charged",
       "confirmRelease": "Release this case? It goes back to other lawyers and you won’t be charged.",
+      "reasons": { "CONFLICT": "Conflict of interest", "CAPACITY": "No capacity", "OUT_OF_SCOPE": "Out of scope", "OTHER": "Other" },
       "released": "Case released."
     },
     "quote": {
@@ -80,7 +83,37 @@
       "needsConflictCheck": "Confirm you’ve checked for conflicts first",
       "amountInvalid": "Enter an amount greater than £0.",
       "sent": "Quote sent.",
-      "feeNote": "Per-case fee £80 (placeholder) is charged when the client confirms you."
+      "sentTitle": "Quote sent",
+      "sentDescription": "Waiting for the client to confirm or decline."
+    },
+    "confirmed": {
+      "title": "Confirmed",
+      "description": "Charging the per-case fee now.",
+      "failed": "The card on file was declined.",
+      "retry": "Retry the charge"
+    },
+    "engaged": {
+      "title": "Engaged",
+      "client": "Client",
+      "openCase": "Open the case",
+      "copy": "Copy to my workspace",
+      "copying": "Copying…",
+      "close": "Close engagement",
+      "closeTooltip": "Ends your read-only access to the case",
+      "confirmClose": "Close this engagement? You'll lose access to the client's case."
+    },
+    "closed": {
+      "title": "Closed",
+      "byLawyer": "You closed this engagement.",
+      "byClient": "The client ended this engagement."
+    },
+    "expired": {
+      "title": "Expired",
+      "description": "No lawyer claimed this in time."
+    },
+    "withdrawn": {
+      "title": "Withdrawn",
+      "description": "The client withdrew this request."
     }
   }
 }
