@@ -11,8 +11,10 @@ import ChangePasswordModal from "@/components/account/change-password-modal";
 import ExportDataModal from "@/components/account/export-data-modal";
 import SwitchOffAiModal from "@/components/account/switch-off-ai-modal";
 import { ClientRequestsSettings } from "@/components/account/client-requests-settings";
+import { PaymentCardSection } from "@/components/organization/payment-card-section";
+import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
-import { useAuthStore } from "@/lib/store/auth.store";
+import { OWN_WORKSPACE_ID, useAuthStore } from "@/lib/store/auth.store";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import {
   ACCOUNT_DELETION_GRACE_PERIOD_DAYS,
@@ -151,6 +153,10 @@ export default function ProfilePage() {
   // Receiving clients from the client app is UK only.
   // The Lawyer Application: UK and PH (each with its own fields). Client requests stay UK only.
   const showClientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "lawyerApplication");
+  // A solo lawyer has no organization to keep a card: the per-case fee for a client who confirms
+  // them is charged to their own, kept here (a firm's is on the Organization page).
+  const solo = useAuthStore((s) => s.organization?.id === OWN_WORKSPACE_ID);
+  useCardSetupReturn(solo ? OWN_WORKSPACE_ID : undefined);
   const { data: currentUser, isLoading: isLoadingCurrentUser } = useCurrentUserQuery();
   const showSkeleton = useDelayedLoading(isLoadingCurrentUser);
   const logout = useLogoutMutation();
@@ -743,6 +749,8 @@ export default function ProfilePage() {
         </section>
 
         {showClientRequests && <ClientRequestsSettings />}
+
+        {showClientRequests && solo && <PaymentCardSection organizationId={OWN_WORKSPACE_ID} />}
 
         {/* Your data */}
         <section className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">

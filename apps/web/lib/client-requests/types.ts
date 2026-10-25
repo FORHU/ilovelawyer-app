@@ -45,6 +45,8 @@ export interface ChargeSummary {
 export interface Engagement {
   /** The client's case, open read-only through /my-cases/{caseId}. */
   caseId: string
+  /** The client's workspace the case lives in: opened as a shared workspace (X-Organization-Id). */
+  workspaceId: string
   clientName: string
   engagedAt: string
   closedAt: string | null

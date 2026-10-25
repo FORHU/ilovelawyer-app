@@ -25,6 +25,9 @@ import {
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { formatCountdown, useCountdown } from "@/lib/client-requests/use-countdown";
 import { formatMoney } from "@/lib/money";
+import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
+import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
+import { useAuthStore } from "@/lib/store/auth.store";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { EmptyState } from "@workspace/ui/components/empty-state";
@@ -305,26 +308,44 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
 function ConfirmedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const retry = useRetryClientRequestChargeMutation(request.id);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
   const failed = request.charge?.status === "FAILED";
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.confirmed.title")}</div>
       <p className="mt-2 text-[13px] text-muted-foreground">{failed ? request.charge?.failureReason ?? t("detail.confirmed.failed") : t("detail.confirmed.description")}</p>
       {failed && (
-        <Button type="button" variant="accent" className="mt-3" isPending={retry.isPending} onClick={() => retry.mutate(undefined, { onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) })}>
-          {t("detail.confirmed.retry")}
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="accent" isPending={retry.isPending} onClick={() => retry.mutate(undefined, { onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) })}>
+            {t("detail.confirmed.retry")}
+          </Button>
+          {/* No card, or a declined one: add or change it here, and the charge is retried on the way back. */}
+          <Button type="button" variant="outline" onClick={() => setCardModalOpen(true)}>
+            {t("detail.confirmed.addCard")}
+          </Button>
+        </div>
       )}
+      <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} extraReturnParams={{ retryCharge: "1" }} />
     </section>
   );
 }
 
 function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
+  const router = useRouter();
   const copy = useCopyClientRequestCaseMutation(request.id);
   const close = useCloseClientRequestMutation(request.id);
+  const enterSharedWorkspace = useEnterSharedWorkspace();
   const [closing, setClosing] = useState(false);
   if (!request.engagement) return null;
+  const engagement = request.engagement;
+
+  // The case is the client's, in their workspace: open it there read-only, the way a case shared to
+  // view opens (SharedCasesList), not in the lawyer's own workspace, where it isn't.
+  const openCase = () => {
+    enterSharedWorkspace({ id: engagement.workspaceId, ownerName: engagement.clientName });
+    router.push(`/homepage/case-portfolio/${engagement.caseId}`);
+  };
 
   return (
     <section className={cn(CARD, "flex flex-col gap-4")}>
@@ -333,11 +354,9 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href={`/homepage/case-portfolio/${request.engagement.caseId}`}>
-          <Button type="button" variant="outline">
-            {t("detail.engaged.openCase")}
-          </Button>
-        </Link>
+        <Button type="button" variant="outline" onClick={openCase}>
+          {t("detail.engaged.openCase")}
+        </Button>
         {!request.engagement.copyCaseId && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -470,9 +489,24 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
 
 export default function ClientRequestDetailPage() {
   const { t } = useTranslation("client-request");
+  const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, isError, refetch } = useClientRequestQuery(id);
   const showSkeleton = useDelayedLoading(isLoading);
+  const organizationId = useAuthStore((s) => s.organization?.id);
+  const claim = useClaimClientRequestMutation();
+  const retry = useRetryClientRequestChargeMutation(id);
+
+  // Back from adding a card (AddCardModal, through Stripe): carry on with what it was added for,
+  // accepting this request or retrying its per-case fee.
+  useCardSetupReturn(organizationId, (status, params) => {
+    // Drop our own params too, so the address is just the request again.
+    router.replace(`/homepage/client-requests/${id}`);
+    if (status !== "done") return;
+    const onError = (err: unknown) => toast.error(err instanceof Error ? err.message : t("loadError"));
+    if (params.get("resumeRequestId")) claim.mutate(id, { onError });
+    else if (params.get("retryCharge")) retry.mutate(undefined, { onError });
+  });
 
   return (
     <PageShell>

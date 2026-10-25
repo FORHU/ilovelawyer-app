@@ -2,6 +2,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { apiFetch } from "@/lib/fetch"
 import { billingKeys, organizationKeys } from "@/lib/query-keys"
 import type { ChargeKind, ChargeStatus, Money } from "@/lib/client-handoff"
+import { OWN_WORKSPACE_ID } from "@/lib/store/auth.store"
+
+/** Where a workspace's billing lives in the API: a firm's under /organizations/:id/billing, a solo
+ * lawyer's own (OWN_WORKSPACE_ID: they have no organization, ilovelawyer-api's ADR 0022) under
+ * /users/me/billing. Same shapes either way, so every hook below works for both. */
+function billingPath(organizationId: string): string {
+  return organizationId === OWN_WORKSPACE_ID ? "/api/users/me/billing" : `/api/organizations/${organizationId}/billing`
+}
 
 /** One row of the organization's fee history (ilovelawyer-api#513's Charge) — a per-case fee or
  * an AI top-up charged to the organization's card, with whatever's been refunded of it. */
@@ -44,7 +52,7 @@ export function useOrganizationFeesQuery(
       if (filters.kind) params.set("kind", filters.kind)
       params.set("page", String(page))
       params.set("limit", String(FEE_HISTORY_PAGE_SIZE))
-      return apiFetch<ChargePage>(`/api/organizations/${organizationId}/billing/fees?${params.toString()}`)
+      return apiFetch<ChargePage>(`${billingPath(organizationId)}/fees?${params.toString()}`)
     },
     enabled: !!organizationId,
     placeholderData: keepPreviousData,
@@ -68,7 +76,7 @@ export interface OrganizationCard {
  * Stripe's webhook — and locally, where none arrives at all. */
 export function getOrganizationCard(organizationId: string, setupSessionId?: string): Promise<OrganizationCard | null> {
   const query = setupSessionId ? `?setupSessionId=${encodeURIComponent(setupSessionId)}` : ""
-  return apiFetch<OrganizationCard | null>(`/api/organizations/${organizationId}/billing/card${query}`)
+  return apiFetch<OrganizationCard | null>(`${billingPath(organizationId)}/card${query}`)
 }
 
 /** Owners and Admins only — the API answers 403 for anyone else, same as the fee history above. */
@@ -87,7 +95,7 @@ export function useOrganizationCardQuery(organizationId: string | undefined) {
 export function useStartCardSetupMutation(organizationId: string | undefined) {
   return useMutation({
     mutationFn: (returnUrl: string) =>
-      apiFetch<{ url: string }>(`/api/organizations/${organizationId}/billing/card/setup-session`, {
+      apiFetch<{ url: string }>(`${billingPath(organizationId!)}/card/setup-session`, {
         method: "POST",
         body: JSON.stringify({ returnUrl }),
       }),
