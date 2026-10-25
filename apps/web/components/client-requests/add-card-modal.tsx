@@ -3,16 +3,18 @@
 import { useTranslation } from "react-i18next"
 import { Button } from "@workspace/ui/components/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
-import { useAuthStore } from "@/lib/store/auth.store"
+import { OWN_WORKSPACE_ID, useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationRole } from "@/lib/organizations/queries"
 import { useOrganizationCardQuery, useStartCardSetupMutation } from "@/lib/organizations/billing"
 
 const CAN_MANAGE_BILLING: OrganizationRole[] = ["OWNER", "ADMIN"]
 
 /**
- * Opened from the Organization Billing page's "Add card"/"Change card" action, and from the
- * inbox when accepting a request answers 402 CARD_REQUIRED. Organization OWNER/ADMIN only,
- * matching the real route's own restriction (ilovelawyer-api#505).
+ * Opened from the Organization Billing page's "Add card"/"Change card" action (a solo lawyer's: their
+ * profile), from the inbox when accepting a request answers 402 CARD_REQUIRED, and from a confirmed
+ * request whose per-case fee failed. Organization OWNER/ADMIN only, matching the real route's own
+ * restriction (ilovelawyer-api#505); a solo lawyer's card is their own (their workspace's role is
+ * OWNER).
  *
  * Confirming redirects the whole page to Stripe's hosted Checkout (setup mode) and back — the
  * card itself never passes through this app. See use-card-setup-return.ts for the return half;
@@ -34,6 +36,7 @@ export function AddCardModal({
   const startSetup = useStartCardSetupMutation(organization?.id)
 
   const canManageBilling = !!organization && CAN_MANAGE_BILLING.includes(organization.role)
+  const solo = organization?.id === OWN_WORKSPACE_ID
   const hasCard = !!cardQuery.data
 
   function handleContinue() {
@@ -52,7 +55,11 @@ export function AddCardModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{hasCard ? t("cardModal.changeTitle") : t("cardModal.title")}</DialogTitle>
-          <DialogDescription>{hasCard ? t("cardModal.changeDescription") : t("cardModal.description")}</DialogDescription>
+          <DialogDescription>
+            {hasCard
+              ? t(solo ? "cardModal.changeDescriptionSolo" : "cardModal.changeDescription")
+              : t(solo ? "cardModal.descriptionSolo" : "cardModal.description")}
+          </DialogDescription>
         </DialogHeader>
 
         {canManageBilling ? (

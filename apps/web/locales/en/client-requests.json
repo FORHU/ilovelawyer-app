@@ -4,6 +4,8 @@
     "description": "Your organization needs a card on file before accepting a client request. Nothing is charged until the client confirms.",
     "changeTitle": "Change your payment method",
     "changeDescription": "Replace the card your organization is charged for accepted client requests and AI top-ups.",
+    "descriptionSolo": "You need a card on file for client requests. Nothing is charged until a client confirms you.",
+    "changeDescriptionSolo": "Replace the card you're charged for client requests and AI top-ups.",
     "currentCard": "Current card on file: {{brand}} ending in {{last4}}",
     "redirectNotice": "You'll be taken to a secure Stripe page to enter your card details, then brought back here.",
     "cancel": "Cancel",

@@ -90,7 +90,8 @@
       "title": "Confirmed",
       "description": "Charging the per-case fee now.",
       "failed": "The card on file was declined.",
-      "retry": "Retry the charge"
+      "retry": "Retry the charge",
+      "addCard": "Add or change card"
     },
     "engaged": {
       "title": "Engaged",

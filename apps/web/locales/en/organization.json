@@ -278,6 +278,8 @@
       "endingIn": "ending in {{last4}}",
       "expires": "Expires {{month}}/{{year}}",
       "noCardHelp": "No card on file yet. Add one before your organization can accept client requests.",
+      "subheadingSolo": "The card you're charged for client requests you take on and AI top-ups.",
+      "noCardHelpSolo": "No card on file yet. Add one so a client can confirm you: nothing is charged until they do.",
       "error": "Couldn't load your payment card.",
       "retry": "Retry",
       "savedToast": "Payment card saved.",
