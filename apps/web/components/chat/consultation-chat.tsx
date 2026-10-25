@@ -76,6 +76,7 @@ import {
 
 import { chatKeys, userKeys } from "@/lib/query-keys";
 import { accountAiAllowanceKey } from "@/lib/account/ai-allowance";
+import { clientRequestKeys } from "@/lib/query-keys";
 import { generateId } from "@/lib/id";
 import { useMediaQueueStore, type TranscriptionStatus } from "@/lib/store/media-queue.store";
 import { useConsultationDraft, useConsultationDraftsStore } from "@/lib/store/consultation-drafts.store";
@@ -1595,7 +1596,9 @@ export default function ConsultationChat({
       // Consent-off and a used-up trial are expected refusals, surfaced in the reply bubble below —
       // not worth a console error.
       const refusal = (error as { code?: string } | null)?.code;
-      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT" && refusal !== "ACCOUNT_ALLOWANCE_REACHED" && refusal !== "PLAN_TRIAL_ENDED") console.error("Failed to send message:", error);
+      if (refusal !== "CONSENT_REQUIRED" && refusal !== "TRIAL_LIMIT_REACHED" && refusal !== "FREE_CREDIT_SPENT" && refusal !== "ACCOUNT_ALLOWANCE_REACHED" && refusal !== "PLAN_TRIAL_ENDED" && refusal !== "ENGAGEMENT_AI_BUDGET_SPENT") console.error("Failed to send message:", error);
+      // A client engagement's workspace copy whose AI budget is spent: the meter at the top shows it.
+      if (refusal === "ENGAGEMENT_AI_BUDGET_SPENT") void queryClient.invalidateQueries({ queryKey: clientRequestKeys.all });
       // The account-level locked banner/dropdown read useAccountAiAllowanceQuery, which this send
       // just flipped locked server-side — refetch now instead of waiting for the next natural refetch.
       if (refusal === "ACCOUNT_ALLOWANCE_REACHED" || refusal === "PLAN_TRIAL_ENDED") void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey });
@@ -1635,6 +1638,8 @@ export default function ConsultationChat({
                     ? "sendErrorAccountAllowance"
                     : refusal === "PLAN_TRIAL_ENDED"
                     ? "sendErrorTrialEnded"
+                    : refusal === "ENGAGEMENT_AI_BUDGET_SPENT"
+                    ? "sendErrorEngagementBudget"
                     : "sendError";
           nextMessages[nextMessages.length - 1] = { role: "assistant", content: t(refusalKey) };
           return { ...prev, messages: nextMessages };

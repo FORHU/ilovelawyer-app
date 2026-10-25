@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
+import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
@@ -387,6 +388,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className={LABEL}>{t("detail.engaged.client")}</div>
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
+      <EngagementAiMeter requestId={request.id} />
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={openCase}>
           {t("detail.engaged.openCase")}

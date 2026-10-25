@@ -8,6 +8,7 @@ import { SourcesPanel } from "@/components/case-workspace/sources-panel";
 import { StudioPanel } from "@/components/case-workspace/studio-panel";
 import { ResizeHandle } from "@/components/case-workspace/resize-handle";
 import { AccountAiAllowanceBanner } from "@/components/account/account-ai-allowance-banner";
+import { EngagementAiBudgetStrip } from "@/components/client-requests/engagement-ai-budget";
 import { ThreadPicker } from "@/components/chat/thread-picker";
 import { useResizableWidth } from "@/lib/case-workspace/use-resizable-width";
 import { useCaseQuery } from "@/lib/cases/mutations";
@@ -265,6 +266,8 @@ export function CaseWorkspace({ caseId }: CaseWorkspaceProps) {
     <DocumentViewerProvider caseId={caseId}>
     <div ref={containerRef} className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <AccountAiAllowanceBanner />
+      {/* A client engagement's workspace copy: its own AI budget, and the way to top it up. */}
+      <EngagementAiBudgetStrip caseId={caseId} />
       {isDesktop ? (
         <div className="flex min-h-0 flex-1">
           <SourcesPanel

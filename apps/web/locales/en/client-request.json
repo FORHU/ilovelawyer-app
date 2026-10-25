@@ -120,5 +120,23 @@
       "title": "Withdrawn",
       "description": "The client withdrew this request."
     }
+  },
+  "aiBudget": {
+    "title": "AI budget",
+    "ok": "{{remaining}} left",
+    "warning": "Running low: {{remaining}} left",
+    "exhausted": "Used up. AI work on this case is paused until you top up.",
+    "used": "{{used}} of {{total}} used",
+    "topUp": "Top up",
+    "topUpTitle": "Top up the AI budget",
+    "topUpDescription": "Add AI credit to this engagement. It's charged to your card on file only when you confirm.",
+    "loadingPacks": "Loading packs…",
+    "noPacks": "No top-ups are on offer right now.",
+    "packCredit": "Adds {{credit}} of AI credit",
+    "chargeNote": "{{price}} will be charged to your card on file. Prices are placeholders until pricing is signed off.",
+    "notNow": "Not now",
+    "confirm": "Pay {{price}}",
+    "topUpDone": "Topped up: {{credit}} of AI credit added.",
+    "topUpPending": "Payment is processing. The credit is added as soon as it goes through."
   }
 }
