@@ -25,6 +25,7 @@ import {
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { formatCountdown, useCountdown } from "@/lib/client-requests/use-countdown";
 import { formatMoney } from "@/lib/money";
+import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -174,7 +175,12 @@ function QuoteForm({ id }: { id: string }) {
   const { t } = useTranslation("client-request");
   const quote = useQuoteClientRequestMutation(id);
   const [type, setType] = useState<QuoteType>("FIXED_FEE");
-  const [amount, setAmount] = useState("150.00");
+  // Starts at the lawyer's own first-consultation fee from their Lawyer Application, until they type;
+  // empty when they haven't set one, so the price is always theirs.
+  const profile = useClientRequestProfileQuery(true);
+  const [typedAmount, setTypedAmount] = useState<string | null>(null);
+  const fee = profile.data?.firstConsultationFee;
+  const amount = typedAmount ?? (fee?.currency === "GBP" ? (fee.amountMinor / 100).toFixed(2) : "");
   const [message, setMessage] = useState("");
   const [amountError, setAmountError] = useState(false);
 
@@ -223,9 +229,10 @@ function QuoteForm({ id }: { id: string }) {
               id="quote-amount"
               inputMode="decimal"
               value={amount}
+              placeholder="0.00"
               aria-invalid={amountError}
               onChange={(e) => {
-                setAmount(e.target.value.replace(/[^\d.]/g, ""));
+                setTypedAmount(e.target.value.replace(/[^\d.]/g, ""));
                 setAmountError(false);
               }}
               className="h-10 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
