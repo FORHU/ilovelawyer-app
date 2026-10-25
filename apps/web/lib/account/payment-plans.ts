@@ -17,6 +17,8 @@ export interface PaymentPlan {
   includedAllowanceUsd: number
   /** How many cases the account can own. 0 = no limit. */
   caseLimit: number
+  /** Client requests (the UK client hand-off) the lawyer can take on per calendar month. 0 = no limit. */
+  clientRequestLimit: number
 }
 
 export interface PaymentPlanOptions {
