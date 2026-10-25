@@ -30,6 +30,7 @@ import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
+import { useOrganizationCardQuery } from "@/lib/organizations/billing";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { EmptyState } from "@workspace/ui/components/empty-state";
@@ -175,6 +176,12 @@ function ConflictCheck({ id }: { id: string }) {
 function QuoteForm({ id }: { id: string }) {
   const { t } = useTranslation("client-request");
   const quote = useQuoteClientRequestMutation(id);
+  // Sending needs a card on file for the introduction fee confirming will charge (ilovelawyer-app#933).
+  // Asked for up front, before the lawyer writes the quote: the trip to Stripe would lose it.
+  const organizationId = useAuthStore((s) => s.organization?.id);
+  const card = useOrganizationCardQuery(organizationId);
+  const noCard = card.isSuccess && !card.data;
+  const [cardModalOpen, setCardModalOpen] = useState(false);
   const [type, setType] = useState<QuoteType>("FIXED_FEE");
   // Starts at the lawyer's own first-consultation fee from their Lawyer Application, until they type;
   // empty when they haven't set one, so the price is always theirs.
@@ -192,7 +199,14 @@ function QuoteForm({ id }: { id: string }) {
     const amountMinor = Number.isFinite(value) ? Math.round(value * 100) : 0;
     quote.mutate(
       { type, amount: { amountMinor, currency: "GBP" }, message: message.trim() },
-      { onSuccess: () => toast.success(t("detail.quote.sent")), onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) }
+      {
+        onSuccess: () => toast.success(t("detail.quote.sent")),
+        onError: (err) => {
+          // The card was removed since the page loaded: show the prompt again.
+          if (isCardRequiredError(err)) void card.refetch();
+          toast.error(err instanceof Error ? err.message : t("loadError"));
+        },
+      }
     );
   }
 
@@ -258,14 +272,23 @@ function QuoteForm({ id }: { id: string }) {
           <p className="text-xs text-muted-foreground">{t("detail.quote.messageHint")}</p>
         </div>
       </form>
+      {noCard && (
+        <div role="status" className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+          <p className="text-[13px] text-foreground">{t("detail.quote.cardRequired")}</p>
+          <Button type="button" variant="outline" className="self-start" onClick={() => setCardModalOpen(true)}>
+            {t("detail.quote.addCard")}
+          </Button>
+        </div>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} className="h-12 w-full">
+          <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={noCard} className="h-12 w-full">
             {t("detail.quote.send")}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t("detail.quote.sendTooltip")}</TooltipContent>
+        <TooltipContent>{noCard ? t("detail.quote.cardRequiredTooltip") : t("detail.quote.sendTooltip")}</TooltipContent>
       </Tooltip>
+      <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} />
     </section>
   );
 }
