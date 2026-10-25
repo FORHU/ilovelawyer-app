@@ -2,6 +2,7 @@ import { useMutation, useQueries, useQuery, useInfiniteQuery, useQueryClient } f
 import { useEffect, useMemo, useRef } from "react"
 import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { accountAiAllowanceKey } from "@/lib/account/ai-allowance"
+import { clientRequestKeys } from "@/lib/query-keys"
 import type { AudioOverviewMarkTiming, AudioOverviewTurn, AudioOverviewTurnCheck } from "@/lib/chat/mutations"
 import { graphViewKeys } from "@/lib/graph-view/mutations"
 import { getNotificationSocket } from "@/lib/notifications/socket"
@@ -402,6 +403,8 @@ export function useRefreshAnalysisMutation(caseId: string) {
       if (code === "ACCOUNT_ALLOWANCE_REACHED" || code === "PLAN_TRIAL_ENDED") {
         void queryClient.invalidateQueries({ queryKey: accountAiAllowanceKey })
       }
+      // A client engagement's workspace copy whose AI budget is spent: refresh its meter.
+      if (code === "ENGAGEMENT_AI_BUDGET_SPENT") void queryClient.invalidateQueries({ queryKey: clientRequestKeys.all })
     },
   })
 }

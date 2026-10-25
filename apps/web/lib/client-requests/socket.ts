@@ -1,9 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query"
 import type { Socket } from "socket.io-client"
 import { clientRequestKeys } from "@/lib/query-keys"
-import { CLIENT_HANDOFF_SOCKET_EVENTS, type EngagementMessageEvent } from "@/lib/client-handoff"
+import { CLIENT_HANDOFF_SOCKET_EVENTS, type EngagementAiBudgetEvent, type EngagementMessageEvent } from "@/lib/client-handoff"
 
 const ENGAGEMENT_MESSAGE = CLIENT_HANDOFF_SOCKET_EVENTS.ENGAGEMENT_MESSAGE
+const ENGAGEMENT_AI_BUDGET = CLIENT_HANDOFF_SOCKET_EVENTS.ENGAGEMENT_AI_BUDGET
 
 // Client Request events on the shared notification socket (ilovelawyer-api's
 // CLIENT_HANDOFF_SOCKET_EVENTS, lawyer-app side): client-request:new when one is routed to this
@@ -24,10 +25,14 @@ export function registerClientRequestSocketHandlers(socket: Socket, queryClient:
   const handler = () => invalidateClientRequests(queryClient)
   // The client posted in an engagement thread (#517): refetch that thread (and its unread count).
   const onMessage = (event: EngagementMessageEvent) => queryClient.invalidateQueries({ queryKey: clientRequestKeys.messages(event.requestId) })
+  // An engagement's AI budget crossed 80% or 100%, or was topped up (#515, #516): refetch its meter.
+  const onBudget = (event: EngagementAiBudgetEvent) => queryClient.invalidateQueries({ queryKey: clientRequestKeys.aiBudget(event.requestId) })
   CLIENT_REQUEST_SOCKET_EVENTS.forEach((event) => socket.on(event, handler))
   socket.on(ENGAGEMENT_MESSAGE, onMessage)
+  socket.on(ENGAGEMENT_AI_BUDGET, onBudget)
   return () => {
     CLIENT_REQUEST_SOCKET_EVENTS.forEach((event) => socket.off(event, handler))
     socket.off(ENGAGEMENT_MESSAGE, onMessage)
+    socket.off(ENGAGEMENT_AI_BUDGET, onBudget)
   }
 }

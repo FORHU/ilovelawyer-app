@@ -36,6 +36,7 @@
   "sendErrorFreeCreditSpent": "You've used your free AI credit, so this message wasn't sent.",
   "sendErrorTrialEnded": "Your free trial has ended, so this message wasn't sent. You can still read everything — choose a plan to keep going.",
   "sendErrorAccountAllowance": "Your account has reached its AI usage allowance, so this message wasn't sent. You can still read everything — top up at the banner above to keep going.",
+  "sendErrorEngagementBudget": "This client engagement's AI budget is used up, so this message wasn't sent. Top up from the meter above to keep going.",
   "sendErrorTrialUsedUp": "You've used all your trial answers, so this message wasn't sent. Create an account to keep asking.",
   "sendErrorNoConsent":"AI processing is switched off for your account, so this message wasn't sent. Switch it on under Profile > Your Data to continue.",
   "historyLoadError": "Couldn't load this consultation.",
