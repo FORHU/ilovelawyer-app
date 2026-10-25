@@ -121,6 +121,20 @@
       "description": "The client withdrew this request."
     }
   },
+  "messages": {
+    "open": "Messages",
+    "unread": "{{count}} unread",
+    "title": "Messages",
+    "participants": "Between you and {{client}}, your client.",
+    "loading": "Loading messages…",
+    "empty": "No messages yet. Write to {{client}} here; they'll see it in the client app.",
+    "you": "You",
+    "client": "Client",
+    "sharedBy": "Shared by {{name}} · {{date}}",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "closed": "This engagement has closed. You can still read the messages, but not reply."
+  },
   "aiBudget": {
     "title": "AI budget",
     "ok": "{{remaining}} left",

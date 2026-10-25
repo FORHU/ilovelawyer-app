@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
+import { EngagementMessages } from "@/components/client-requests/engagement-messages";
 import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
@@ -390,6 +391,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
       </div>
       <EngagementAiMeter requestId={request.id} />
       <div className="flex flex-wrap gap-2">
+        <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed={false} />
         <Button type="button" variant="outline" onClick={openCase}>
           {t("detail.engaged.openCase")}
         </Button>
@@ -463,8 +465,10 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
 function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   return (
-    <section className={cn(CARD, "flex items-center gap-3")}>
+    <section className={cn(CARD, "flex flex-col items-start gap-3")}>
       <div className="text-[13px] text-muted-foreground">{request.engagement?.closedBy === "CLIENT" ? t("detail.closed.byClient") : t("detail.closed.byLawyer")}</div>
+      {/* The thread stays readable after close (ilovelawyer-api#517). */}
+      {request.engagement && <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed />}
     </section>
   );
 }
