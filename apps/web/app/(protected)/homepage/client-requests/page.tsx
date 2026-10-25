@@ -21,6 +21,7 @@ import {
 } from "@/lib/client-requests/inbox";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
+import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { EmptyState } from "@workspace/ui/components/empty-state";
 import { PageHeading } from "@workspace/ui/components/page-heading";
@@ -67,10 +68,13 @@ export default function ClientRequestsPage() {
   const pass = usePassClientRequestMutation();
   const [cardModalFor, setCardModalFor] = useState<string | null>(null);
 
+  // A refusal from the lawyer's plan (trial over, month's client requests taken) offers the Plans page.
+  const showError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
+
   // After AddCardModal redirects to Stripe and back, retry the claim it interrupted.
   useCardSetupReturn(organization?.id, (status, params) => {
     const resumeId = params.get("resumeRequestId");
-    if (status === "done" && resumeId) claim.mutate(resumeId, { onError: () => toast.error(t("loadError")) });
+    if (status === "done" && resumeId) claim.mutate(resumeId, { onError: showError });
   });
 
   function switchView(next: ClientRequestInboxView) {
@@ -87,7 +91,7 @@ export default function ClientRequestsPage() {
       onSuccess: (updated) => router.push(`/homepage/client-requests/${updated.id}`),
       onError: (err) => {
         if (isCardRequiredError(err)) setCardModalFor(id);
-        else toast.error(err instanceof Error ? err.message : t("loadError"));
+        else showError(err);
       },
     });
   }

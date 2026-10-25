@@ -11,6 +11,8 @@ import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { setupHeadingClass, setupPrimaryButtonClass, setupSecondaryButtonClass, setupSubtitleClass } from "@/components/onboarding/styles";
 import { PlanChangeDialog } from "@/components/account/plan-change-dialog";
+import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
+import { useAuthStore } from "@/lib/store/auth.store";
 import {
   usePaymentPlanCheckoutStatusQuery,
   usePaymentPlansQuery,
@@ -59,9 +61,14 @@ function PlanCard({
   disabled?: boolean;
 }) {
   const { t } = useTranslation("onboarding");
+  // Client requests come from the client app on the UK site only.
+  const clientRequests = isFeatureEnabled(useAuthStore((s) => s.organization?.tenantCode), "clientRequests");
   const features = [
     plan.caseLimit > 0 ? t("plan.cases", { count: plan.caseLimit }) : t("plan.casesUnlimited"),
     t("plan.aiUsage", { amount: formatUsd(plan.includedAllowanceUsd) }),
+    ...(clientRequests
+      ? [plan.clientRequestLimit > 0 ? t("plan.clientRequests", { count: plan.clientRequestLimit }) : t("plan.clientRequestsUnlimited")]
+      : []),
   ];
   const buttonLabel = label ?? t("plan.choose", { plan: plan.name });
 

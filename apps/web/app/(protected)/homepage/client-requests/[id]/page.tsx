@@ -28,6 +28,7 @@ import { formatMoney } from "@/lib/money";
 import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
+import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
@@ -288,7 +289,10 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
         isPending={claim.isPending}
         onClick={() =>
           claim.mutate(request.id, {
-            onError: (err) => (isCardRequiredError(err) ? setCardModalOpen(true) : toast.error(err instanceof Error ? err.message : t("loadError"))),
+            onError: (err) =>
+              isCardRequiredError(err)
+                ? setCardModalOpen(true)
+                : toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
           })
         }
       >
@@ -367,7 +371,17 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         {!request.engagement.copyCaseId && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button type="button" variant="outline" isPending={copy.isPending} onClick={() => copy.mutate(undefined, { onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")) })}>
+              <Button
+                type="button"
+                variant="outline"
+                isPending={copy.isPending}
+                onClick={() =>
+                  copy.mutate(undefined, {
+                    // The copy is a case of their own: the plan's case limit (or an ended trial) can refuse it.
+                    onError: (err) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) }),
+                  })
+                }
+              >
                 {copy.isPending ? t("detail.engaged.copying") : t("detail.engaged.copy")}
               </Button>
             </TooltipTrigger>
@@ -510,7 +524,7 @@ export default function ClientRequestDetailPage() {
     // Drop our own params too, so the address is just the request again.
     router.replace(`/homepage/client-requests/${id}`);
     if (status !== "done") return;
-    const onError = (err: unknown) => toast.error(err instanceof Error ? err.message : t("loadError"));
+    const onError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
     if (params.get("resumeRequestId")) claim.mutate(id, { onError });
     else if (params.get("retryCharge")) retry.mutate(undefined, { onError });
   });
