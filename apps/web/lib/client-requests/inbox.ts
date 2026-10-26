@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { clientRequestKeys } from "@/lib/query-keys"
 import { claimClientRequest, listClientRequests, passClientRequest } from "./api"
+import { isClientError } from "./access"
 import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse } from "./types"
 
 export type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse }
@@ -12,6 +13,8 @@ export function useClientRequestInboxQuery(view: ClientRequestInboxView, page = 
     queryKey: clientRequestKeys.list(view, page, limit),
     queryFn: () => listClientRequests(view, page, limit),
     enabled,
+    // A refusal (not verified, not UK) gives the same answer however often it's asked.
+    retry: (failures, error) => !isClientError(error) && failures < 1,
   })
 }
 

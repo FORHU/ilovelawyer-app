@@ -37,6 +37,12 @@
     "history": { "title": "No history yet", "description": "Requests you released, declined, or that ended show up here." },
     "editPracticeAreas": "Edit practice areas"
   },
+  "access": {
+    "not-available": { "title": "Client requests aren’t available here yet", "description": "Clients can only be matched with lawyers on the UK site for now." },
+    "incomplete": { "title": "Finish your lawyer application", "description": "Add your registration details and practice areas. Client requests show up here once we’ve verified them.", "action": "Complete application" },
+    "pending": { "title": "Your application is being reviewed", "description": "We’re checking your registration details. Client requests show up here once you’re verified.", "action": "View application" },
+    "rejected": { "title": "Your application wasn’t approved", "description": "Update your details and send the application again.", "reason": "Reason: {{note}}", "action": "Review application" }
+  },
   "loadError": "Couldn’t load client requests.",
   "retry": "Retry",
   "pagination": { "previous": "Previous", "next": "Next", "pageOf": "Page {{page}} of {{total}}" },

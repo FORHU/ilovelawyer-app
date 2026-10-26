@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Users } from "lucide-react";
+import { Clock, FileText, Globe, ShieldAlert, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
@@ -20,6 +20,7 @@ import {
   type ClientRequestInboxView,
 } from "@/lib/client-requests/inbox";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
+import { clientRequestAccess, isClientError, type ClientRequestAccess } from "@/lib/client-requests/access";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -51,17 +52,49 @@ function RequestListSkeleton() {
   );
 }
 
+const ACCESS_ICON: Record<Exclude<ClientRequestAccess, "ready">, ReactNode> = {
+  "not-available": <Globe />,
+  incomplete: <FileText />,
+  pending: <Clock />,
+  rejected: <ShieldAlert />,
+};
+
+/** Why there's no inbox yet: the site doesn't have client requests, or the Lawyer Application
+ * isn't verified. Points to the application wherever the lawyer can do something about it. */
+function AccessState({ access, note }: { access: Exclude<ClientRequestAccess, "ready">; note: string | null }) {
+  const { t } = useTranslation("client-request");
+  const description = t(`access.${access}.description`);
+  return (
+    <EmptyState
+      className="py-24"
+      icon={ACCESS_ICON[access]}
+      title={t(`access.${access}.title`)}
+      description={access === "rejected" && note ? `${description} ${t("access.rejected.reason", { note })}` : description}
+      action={
+        access === "not-available" ? undefined : (
+          <Link href="/homepage/profile" className="text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground underline underline-offset-4">
+            {t(`access.${access}.action`)}
+          </Link>
+        )
+      }
+    />
+  );
+}
+
 export default function ClientRequestsPage() {
   const { t } = useTranslation("client-request");
   const router = useRouter();
   const organization = useAuthStore((s) => s.organization);
 
+  const profileQuery = useClientRequestProfileQuery(true);
+  // UK only, and only once verified: the API refuses the list otherwise, so it isn't asked.
+  // null while the workspace or the profile is still loading.
+  const access = organization ? clientRequestAccess(organization.tenantCode, profileQuery.data) : null;
+
   const [view, setView] = useState<ClientRequestInboxView>("inbox");
   const [page, setPage] = useState(1);
-  const requestsQuery = useClientRequestInboxQuery(view, page, LIMIT);
-  const showSkeleton = useDelayedLoading(requestsQuery.isLoading);
-
-  const profileQuery = useClientRequestProfileQuery(true);
+  const requestsQuery = useClientRequestInboxQuery(view, page, LIMIT, access === "ready");
+  const showSkeleton = useDelayedLoading((access === null && !profileQuery.isError) || requestsQuery.isLoading);
   const updateProfile = useUpdateClientRequestProfileMutation();
 
   const claim = useClaimClientRequestMutation();
@@ -99,7 +132,9 @@ export default function ClientRequestsPage() {
   const requests = requestsQuery.data?.data ?? [];
   const total = requestsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  const isEmpty = !requestsQuery.isLoading && !requestsQuery.isError && requests.length === 0;
+  const isEmpty = requestsQuery.isSuccess && requests.length === 0;
+  // A refusal (4xx) carries the API's own reason, written for the lawyer; anything else gets ours.
+  const loadError = isClientError(requestsQuery.error) && requestsQuery.error?.message ? requestsQuery.error.message : t("loadError");
   const firstOpenId = view === "inbox" ? requests[0]?.id : undefined;
 
   const accepting = profileQuery.data?.acceptingRequests ?? false;
@@ -136,19 +171,25 @@ export default function ClientRequestsPage() {
   return (
     <PageShell>
       <main className={`mx-auto w-full ${CONTENT_WIDTH_LG} flex-1 px-6 pb-16 pt-24 md:px-16`}>
-        <PageHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} action={acceptingPill} />
+        <PageHeading eyebrow={t("eyebrow")} title={t("title")} subtitle={t("subtitle")} action={access === "ready" ? acceptingPill : undefined} />
 
-        <div className="mt-6 flex gap-2">
-          {VIEWS.map((v) => (
-            <button key={v} type="button" className={TAB_TRIGGER(view === v)} onClick={() => switchView(v)}>
-              {t(`tabs.${v}`)}
-            </button>
-          ))}
-        </div>
+        {access === "ready" && (
+          <div className="mt-6 flex gap-2">
+            {VIEWS.map((v) => (
+              <button key={v} type="button" className={TAB_TRIGGER(view === v)} onClick={() => switchView(v)}>
+                {t(`tabs.${v}`)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-6">
-          {requestsQuery.isError ? (
-            <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => requestsQuery.refetch()} />
+          {access === null && profileQuery.isError ? (
+            <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => profileQuery.refetch()} />
+          ) : access && access !== "ready" ? (
+            <AccessState access={access} note={profileQuery.data?.verification.note ?? null} />
+          ) : requestsQuery.isError ? (
+            <ErrorState message={loadError} retryLabel={t("retry")} onRetry={() => requestsQuery.refetch()} />
           ) : showSkeleton ? (
             <RequestListSkeleton />
           ) : isEmpty ? (

@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 import { useLogoutMutation } from "@/lib/auth/mutations";
 import { useTrial } from "@/lib/trial";
 import { useClientRequestInboxCountQuery } from "@/lib/client-requests/inbox";
+import { clientRequestAccess } from "@/lib/client-requests/access";
+import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { useAuthStore } from "@/lib/store/auth.store";
 import { UserAvatar } from "@/components/user-avatar";
@@ -102,10 +104,15 @@ const MOBILE_NAV_ITEMS = [
 export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
   const { t } = useTranslation("common");
   const tenantCode = useAuthStore((s) => s.organization?.tenantCode);
-  const openRequestCount = useClientRequestInboxCountQuery(isFeatureEnabled(tenantCode, "lawyerApplication"));
   // A trial guest has no profile or organization of their own to manage: greyed out, not hidden,
   // so the shape of the product still shows. Terms stay open.
   const trial = useTrial();
+  // Client requests are UK only; the badge is asked for only once the lawyer is verified, since
+  // the API refuses the inbox before then.
+  const showClientRequests = isFeatureEnabled(tenantCode, "clientRequests");
+  const clientRequestProfile = useClientRequestProfileQuery(showClientRequests && !trial);
+  const openRequestCount = useClientRequestInboxCountQuery(clientRequestAccess(tenantCode, clientRequestProfile.data) === "ready");
+  const mobileNavItems = MOBILE_NAV_ITEMS.filter((item) => item.tab !== "client-request" || showClientRequests);
   const trialLocked = (href: string) => !!trial && href !== "/homepage/term";
   const { t: tTour } = useTranslation("tour");
   const router = useRouter();
@@ -262,22 +269,24 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
             <TooltipContent>View and manage your case portfolio</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link href="/homepage/client-requests" data-tour-id="nav-client-request" className={getSubTabClass("client-request")}>
-                <TabLinkContent>
-                  {t("nav.clientRequest").toUpperCase()}
-                  {openRequestCount > 0 && (
-                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
-                      {openRequestCount}
-                    </span>
-                  )}
-                </TabLinkContent>
-                {activeTab === "client-request" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>Review and manage client requests</TooltipContent>
-          </Tooltip>
+          {showClientRequests && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/homepage/client-requests" data-tour-id="nav-client-request" className={getSubTabClass("client-request")}>
+                  <TabLinkContent>
+                    {t("nav.clientRequest").toUpperCase()}
+                    {openRequestCount > 0 && (
+                      <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
+                        {openRequestCount}
+                      </span>
+                    )}
+                  </TabLinkContent>
+                  {activeTab === "client-request" && <span aria-hidden="true" className="absolute left-1/2 -bottom-2.5 -translate-x-1/2 h-1 w-1 rounded-full bg-brand-gold" />}
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Review and manage client requests</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -555,7 +564,7 @@ export default function GlobalHeader({ activeTab }: GlobalHeaderProps) {
         )}
 
         <nav className="flex flex-col gap-1 px-3 py-3">
-          {MOBILE_NAV_ITEMS.map((item) => (
+          {mobileNavItems.map((item) => (
             <Tooltip key={item.tab}>
               <TooltipTrigger asChild>
                 <Link
