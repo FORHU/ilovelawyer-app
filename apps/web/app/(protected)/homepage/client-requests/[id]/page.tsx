@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
+import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
+import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
 import { RequestTags } from "@/components/client-requests/request-tags";
@@ -497,6 +499,8 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             <p className="text-[15px] leading-relaxed text-foreground">{request.brief.summary}</p>
           </section>
 
+          {request.brief.intake && <AnonymisedIntake intake={request.brief.intake} />}
+
           {request.brief.clientNote && (
             <section className={cn(CARD, "bg-muted/40")}>
               <h2 className={cn(LABEL, "mb-2")}>{t("detail.clientNote")}</h2>
@@ -509,7 +513,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
               </span>
-              <p className="text-[13px] text-muted-foreground">Party names appear here once you accept this request.</p>
+              <p className="text-[13px] text-muted-foreground">{t("detail.lockedParties")}</p>
             </div>
           )}
         </div>
@@ -533,6 +537,8 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
           {held && request.status === "CLOSED" && <ClosedCard request={request} />}
         </div>
       </div>
+
+      {held && request.status === "ENGAGED" && <ClientFile requestId={request.id} />}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Money, QuoteType, ReleaseReason } from "@/lib/client-handoff"
 import { clientRequestKeys } from "@/lib/query-keys"
-import { closeClientRequest, copyClientRequestCase, getClientRequest, getConflictParties, releaseClientRequest, quoteClientRequest, retryClientRequestCharge } from "./api"
+import { closeClientRequest, copyClientRequestCase, getClientRequest, getConflictParties, getIntakePackage, releaseClientRequest, quoteClientRequest, retryClientRequestCharge } from "./api"
 
 // The claimed-request detail page (#877): the brief, the conflict check's party names, release,
 // the quote form, and — once engaged — closing. Claim and pass live in inbox.ts since both the
@@ -22,6 +22,16 @@ export function useConflictPartiesQuery(id: string, enabled: boolean) {
   return useQuery({
     queryKey: [...clientRequestKeys.detail(id), "parties"],
     queryFn: () => getConflictParties(id),
+    enabled,
+  })
+}
+
+/** The engaged lawyer's full read of the client's intake, transcript and documents (ADR 0018).
+ * Only enabled once ENGAGED — the API 404s/409s otherwise, and every successful read is audited. */
+export function useIntakePackageQuery(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: clientRequestKeys.intakePackage(id),
+    queryFn: () => getIntakePackage(id),
     enabled,
   })
 }
