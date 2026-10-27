@@ -29,6 +29,12 @@
     "accept": "Accept",
     "acceptTooltip": "Claim this request and hold it for you"
   },
+  "confirmAccept": {
+    "title": "Accept this request?",
+    "description": "This claims the request and holds it for you. You’re charged the per-case fee only if the client confirms you.",
+    "cancel": "Cancel",
+    "confirm": "Accept request"
+  },
   "feeNote": "You’re charged the per-case fee only if the client confirms you.",
   "noMatches": "No requests match these filters.",
   "empty": {
@@ -58,6 +64,17 @@
     },
     "aiSummary": "Case summary · anonymised",
     "ai": "AI",
+    "lockedParties": "Party names appear here once you accept this request.",
+    "intake": {
+      "title": "Client's overview · anonymised",
+      "timeline": "Timeline",
+      "goals": "What they want",
+      "concerns": "What's worrying them",
+      "questions": "Questions for you",
+      "deadlines": "Deadlines mentioned",
+      "missing": "Still missing",
+      "completeness": "Intake completeness"
+    },
     "clientNote": "Client’s note",
     "heldForYou": "Held for you · {{time}}",
     "claimExpired": "Your 24-hour hold on this request has ended.",
@@ -119,6 +136,37 @@
     "withdrawn": {
       "title": "Withdrawn",
       "description": "The client withdrew this request."
+    },
+    "file": {
+      "title": "Client file",
+      "loadError": "Couldn't load the client's file.",
+      "tabs": { "intake": "Intake", "conversation": "Conversation", "documents": "Documents" },
+      "provenance": {
+        "caseDetails": "Client entered",
+        "client": "Client said",
+        "document": "From {{name}}",
+        "documentPage": "From {{name}}, p.{{page}}",
+        "aDocument": "a document",
+        "aiSummary": "AI summary"
+      },
+      "intake": {
+        "emptyTitle": "Nothing gathered yet",
+        "emptyDescription": "Once the client has told the AI about their situation, it'll show up here.",
+        "people": "People involved",
+        "facts": "Key facts",
+        "conflicts": "Things to double-check"
+      },
+      "conversation": {
+        "emptyTitle": "No conversation yet",
+        "client": "Client",
+        "ai": "AI"
+      },
+      "documents": {
+        "emptyTitle": "No documents yet",
+        "ready": "Ready",
+        "failed": "Couldn't read this file",
+        "pending": "Reading…"
+      }
     }
   },
   "messages": {

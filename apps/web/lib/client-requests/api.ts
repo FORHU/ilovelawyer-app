@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/fetch"
 import type { Money, QuoteType, ReleaseReason } from "@/lib/client-handoff"
-import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, ConflictParty } from "./types"
+import type { ClientRequestForLawyer, ClientRequestInboxView, ClientRequestListResponse, ConflictParty, IntakePackageForLawyer } from "./types"
 
 // REST calls for the Client Requests inbox and a held request (ilovelawyer-api#511/#512),
 // mounted at /api/client-requests. The hooks in inbox.ts and detail.ts wrap these in React Query.
@@ -23,6 +23,13 @@ export function passClientRequest(id: string) {
 
 export function getConflictParties(id: string) {
   return apiFetch<{ parties: ConflictParty[] }>(`/api/client-requests/${id}/parties`)
+}
+
+/** The client's full intake (ADR 0018 in the API repo): the case, the transcript, the documents
+ * and the live CaseIntake. Only once ENGAGED, for the lawyer that engagement is for; every read
+ * is audited on the API side (client_request.intake_package_viewed). */
+export function getIntakePackage(id: string) {
+  return apiFetch<IntakePackageForLawyer>(`/api/client-requests/${id}/intake-package`)
 }
 
 export function releaseClientRequest(id: string, input: { reason: ReleaseReason; note?: string }) {

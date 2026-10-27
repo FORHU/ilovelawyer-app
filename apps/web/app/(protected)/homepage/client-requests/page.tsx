@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
 import { AddCardModal } from "@/components/client-requests/add-card-modal";
+import { ConfirmAcceptModal } from "@/components/client-requests/confirm-accept-modal";
 import { RequestCard } from "@/components/client-requests/request-card";
 import { ErrorState } from "@/components/error-state";
 import { Pagination } from "@/components/ui/pagination";
@@ -67,6 +68,8 @@ export default function ClientRequestsPage() {
   const claim = useClaimClientRequestMutation();
   const pass = usePassClientRequestMutation();
   const [cardModalFor, setCardModalFor] = useState<string | null>(null);
+  /** The request whose Accept is waiting on the confirmation dialog. */
+  const [confirmAcceptFor, setConfirmAcceptFor] = useState<string | null>(null);
 
   // A refusal from the lawyer's plan (trial over, month's client requests taken) offers the Plans page.
   const showError = (err: unknown) => toastRequestError(err, { fallback: t("loadError"), choosePlan: t("choosePlan"), onChoosePlan: () => router.push(PLANS_PATH) });
@@ -87,9 +90,17 @@ export default function ClientRequestsPage() {
   }
 
   function onAccept(id: string) {
+    setConfirmAcceptFor(id);
+  }
+
+  function confirmAccept(id: string) {
     claim.mutate(id, {
-      onSuccess: (updated) => router.push(`/homepage/client-requests/${updated.id}`),
+      onSuccess: (updated) => {
+        setConfirmAcceptFor(null);
+        router.push(`/homepage/client-requests/${updated.id}`);
+      },
       onError: (err) => {
+        setConfirmAcceptFor(null);
         if (isCardRequiredError(err)) setCardModalFor(id);
         else showError(err);
       },
@@ -202,6 +213,13 @@ export default function ClientRequestsPage() {
           )}
         </div>
       </main>
+
+      <ConfirmAcceptModal
+        open={!!confirmAcceptFor}
+        isPending={claim.isPending}
+        onConfirm={() => confirmAcceptFor && confirmAccept(confirmAcceptFor)}
+        onClose={() => setConfirmAcceptFor(null)}
+      />
 
       <AddCardModal
         open={!!cardModalFor}

@@ -15,6 +15,120 @@ export interface CaseBrief {
   knownDeadline: string | null
   clientNote: string
   generatedAt: string
+  /** The client's intake (docs/adr/0018-client-app-is-intake-not-advice.md in the API repo),
+   * redacted the same way summary/clientNote are: no names, no document names, no source ids.
+   * Null until the client's intake has run at least once. */
+  intake: AnonymisedIntake | null
+}
+
+export interface IntakeCompleteness {
+  ready: boolean
+  criteria: { key: string; label: string; met: boolean }[]
+}
+
+/** The redacted shape of the client's intake a lawyer sees before claiming (CaseBrief.intake). */
+export interface AnonymisedIntake {
+  timeline: { id: string; date: string | null; datePrecision: "DAY" | "MONTH" | "YEAR" | "UNKNOWN"; text: string }[]
+  goals: { id: string; text: string }[]
+  concerns: { id: string; text: string }[]
+  questionsForLawyer: { id: string; text: string }[]
+  deadlines: { id: string; date: string | null; text: string }[]
+  missing: { id: string; question: string; why: string }[]
+  completeness: IntakeCompleteness | null
+}
+
+/** The full intake (GET /client-requests/{id}/intake-package, ENGAGED only): real names and
+ * document names — the lawyer already has full case access through the engagement grant. Each
+ * item's own source(s) say whether it's something the client entered on the case form, said in
+ * the Interview, or came from a document (and which page) — never shown as settled fact beyond
+ * what its source actually supports. */
+export type IntakeSourceKind = "CASE_DETAILS" | "CLIENT" | "DOCUMENT"
+export interface IntakeSource {
+  kind: IntakeSourceKind
+  messageId: string | null
+  documentId: string | null
+  documentName: string | null
+  page: number | null
+}
+export interface IntakeItem {
+  id: string
+  text: string
+  sources: IntakeSource[]
+}
+export interface IntakePerson {
+  id: string
+  name: string
+  role: string
+  sources: IntakeSource[]
+}
+export interface IntakeEvent {
+  id: string
+  text: string
+  date: string | null
+  sources: IntakeSource[]
+}
+export interface IntakeDeadline {
+  id: string
+  text: string
+  date: string | null
+  sources: IntakeSource[]
+}
+export interface IntakeGap {
+  id: string
+  question: string
+  why: string
+}
+export interface IntakeConflict {
+  id: string
+  description: string
+  sources: IntakeSource[]
+}
+export interface CaseIntake {
+  generatedAt: string | null
+  status: "EMPTY" | "RUNNING" | "READY" | "FAILED" | "STALE"
+  summary: string | null
+  people: IntakePerson[]
+  timeline: IntakeEvent[]
+  facts: IntakeItem[]
+  goals: IntakeItem[]
+  concerns: IntakeItem[]
+  questionsForLawyer: IntakeItem[]
+  deadlines: IntakeDeadline[]
+  missing: IntakeGap[]
+  conflicts: IntakeConflict[]
+  completeness: IntakeCompleteness | null
+}
+
+export interface IntakePackageMessage {
+  id: string
+  role: "CLIENT" | "AI"
+  text: string
+  createdAt: string
+}
+
+export interface IntakePackageDocument {
+  id: string
+  name: string
+  status: "PENDING" | "READY" | "FAILED"
+  category: string | null
+  url: string | null
+}
+
+export interface IntakePackageForLawyer {
+  requestId: string
+  caseId: string
+  caseDetails: {
+    title: string
+    practiceArea: PracticeArea | null
+    ukJurisdiction: UkJurisdiction | null
+    town: string | null
+    side: "CLAIMANT" | "RESPONDENT" | null
+    otherParties: { name: string; role: string }[]
+    clientNote: string
+  }
+  intake: CaseIntake
+  transcript: IntakePackageMessage[]
+  documents: IntakePackageDocument[]
 }
 
 export interface Quote {

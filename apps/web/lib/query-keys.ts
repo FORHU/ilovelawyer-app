@@ -122,5 +122,6 @@ export const clientRequestKeys = {
   detail: (id: string) => [...clientRequestKeys.details(), id] as const,
   messages: (id: string) => [...clientRequestKeys.detail(id), "messages"] as const,
   aiBudget: (id: string) => [...clientRequestKeys.detail(id), "ai-budget"] as const,
+  intakePackage: (id: string) => [...clientRequestKeys.detail(id), "intake-package"] as const,
   topUpPacks: () => [...clientRequestKeys.all, "top-up-packs"] as const,
 }
