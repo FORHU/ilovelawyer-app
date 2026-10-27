@@ -29,6 +29,12 @@
     "accept": "Accept",
     "acceptTooltip": "Claim this request and hold it for you"
   },
+  "confirmAccept": {
+    "title": "Accept this request?",
+    "description": "This claims the request and holds it for you. You’re charged the per-case fee only if the client confirms you.",
+    "cancel": "Cancel",
+    "confirm": "Accept request"
+  },
   "feeNote": "You’re charged the per-case fee only if the client confirms you.",
   "noMatches": "No requests match these filters.",
   "empty": {
