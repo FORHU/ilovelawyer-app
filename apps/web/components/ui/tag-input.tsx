@@ -63,7 +63,7 @@ export function TagInput({ label, helperText, value, onChange, max, maxTagLength
         )}
       >
         {value.map((tag) => (
-          <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-full bg-muted pl-3 pr-1 text-[13px] text-foreground">
+          <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-full bg-muted pl-3 pr-1 dark:bg-white/10 text-[13px] text-foreground">
             {tag}
             <Tooltip>
               <TooltipTrigger asChild>
