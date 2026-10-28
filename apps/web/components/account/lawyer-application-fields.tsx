@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@workspace/ui/components/command";
 import { TextField } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -44,22 +46,22 @@ export function FieldLabel({ children, id }: { children: React.ReactNode; id?: s
 }
 
 /**
- * The site's practice areas, from the list admins manage (names as they wrote them, untranslated),
- * plus any area the lawyer holds that an admin has since switched off: shown dimmed, it can be
- * dropped but not picked again.
+ * The site's practice areas, from the list admins manage (names as they wrote them, untranslated):
+ * what's picked as removable chips, then a searchable list (shadcn's Command) that scrolls, so it
+ * stays usable however long the list grows; Enter toggles the highlighted area. An area the lawyer
+ * holds that an admin has since switched off is only a chip, dimmed: it can be dropped but not
+ * picked again.
  */
 function PracticeAreaPicker({ form, set, held }: { form: ProfileForm; set: (patch: Partial<ProfileForm>) => void; held: LawyerPracticeArea[] }) {
   const { t } = useTranslation("profile");
   const options = usePracticeAreasQuery(form.country);
-  const retired = held.filter((a) => !a.isActive && !options.data?.some((o) => o.id === a.id));
   const pick = (id: string) => set({ practiceAreaIds: toggle(form.practiceAreaIds, id) });
 
   if (options.isLoading) {
     return (
-      <div className="flex flex-wrap gap-2">
-        {[24, 32, 28, 36].map((w) => (
-          <Skeleton key={w} className="h-8 rounded-full" style={{ width: `${w * 4}px` }} />
-        ))}
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 rounded-full" />
+        <Skeleton className="h-48 rounded-xl" />
       </div>
     );
   }
@@ -70,41 +72,68 @@ function PracticeAreaPicker({ form, set, held }: { form: ProfileForm; set: (patc
       </p>
     );
   }
+
+  const offered = options.data ?? [];
+  const retired = held.filter((a) => !a.isActive && !offered.some((o) => o.id === a.id));
+  const byId = new Map([...offered, ...retired].map((a) => [a.id, a]));
+  // In the order picked, so a new pick lands at the end.
+  const chosen = form.practiceAreaIds.map((id) => byId.get(id)).filter((a) => a !== undefined);
+
   return (
-    <div className="flex flex-wrap gap-2" aria-labelledby="cr-areas">
-      {options.data?.map((a) => (
-        <Pill key={a.id} selected={form.practiceAreaIds.includes(a.id)} onClick={() => pick(a.id)}>
-          {a.name}
-        </Pill>
-      ))}
-      {retired.map((a) => {
-        const selected = form.practiceAreaIds.includes(a.id);
-        return (
-          <Tooltip key={a.id}>
-            <TooltipTrigger asChild>
-              <span tabIndex={0} className="opacity-60">
-                <Pill selected={selected} disabled={!selected} onClick={() => pick(a.id)}>
-                  {a.name}
-                </Pill>
+    <div className="flex flex-col gap-3">
+      {chosen.length > 0 ? (
+        <ul className="flex flex-wrap gap-1.5" aria-label={t("clientRequests.areas.picked")}>
+          {chosen.map((a) => {
+            const isRetired = !offered.some((o) => o.id === a.id);
+            const chip = (
+              <span className={cn("inline-flex h-7 items-center gap-1 rounded-full bg-muted pl-3 pr-1 dark:bg-white/10 text-[13px] text-foreground", isRetired && "opacity-60")}>
+                {a.name}
+                <button
+                  type="button"
+                  onClick={() => pick(a.id)}
+                  aria-label={t("clientRequests.areas.remove", { name: a.name })}
+                  className="cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
               </span>
-            </TooltipTrigger>
-            <TooltipContent>{t("clientRequests.areas.retired")}</TooltipContent>
-          </Tooltip>
-        );
-      })}
-      {/* UK only: referral fees are banned in personal injury, so the client hand-off can't send it. */}
-      {form.country === "UK" && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span tabIndex={0}>
-              <Pill selected={false} disabled>
-                {t("clientRequests.areas.PERSONAL_INJURY")}
-              </Pill>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{t("clientRequests.areas.personalInjuryWhy")}</TooltipContent>
-        </Tooltip>
+            );
+            return (
+              <li key={a.id}>
+                {isRetired ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                    <TooltipContent>{t("clientRequests.areas.retired")}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  chip
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">{t("clientRequests.areas.none")}</p>
       )}
+
+      {/* Names are unique per site, so they double as cmdk's values (what the search matches). */}
+      <Command className="rounded-xl border border-border bg-transparent">
+        <CommandInput placeholder={t("clientRequests.areas.search")} />
+        <CommandList className="max-h-64 p-1" aria-labelledby="cr-areas">
+          <CommandEmpty>{t("clientRequests.areas.noMatch")}</CommandEmpty>
+          {offered.map((a) => {
+            const picked = form.practiceAreaIds.includes(a.id);
+            return (
+              <CommandItem key={a.id} value={a.name} data-checked={picked} aria-checked={picked} onSelect={() => pick(a.id)}>
+                {a.name}
+              </CommandItem>
+            );
+          })}
+        </CommandList>
+        <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground" aria-live="polite">
+          {t("clientRequests.areas.count", { count: chosen.length, total: offered.length })}
+        </p>
+      </Command>
     </div>
   );
 }

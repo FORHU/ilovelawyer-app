@@ -1,4 +1,4 @@
-import type { ClientRequestStatus, Money, PracticeArea, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
+import type { ClientRequestStatus, Money, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
 
 // ClientRequestForLawyer and its parts, from ilovelawyer-api's swagger-client-handoff.ts
 // (GET /api/client-requests, built in #511/#512).
@@ -9,7 +9,8 @@ export type ClientRequestInboxView = "inbox" | "mine" | "history"
  * document names. */
 export interface CaseBrief {
   summary: string
-  practiceArea: PracticeArea | null
+  /** The case's areas by name, as when the brief was written. */
+  caseAreas: string[]
   ukJurisdiction: UkJurisdiction | null
   urgency: RequestUrgency
   knownDeadline: string | null
@@ -119,7 +120,7 @@ export interface IntakePackageForLawyer {
   caseId: string
   caseDetails: {
     title: string
-    practiceArea: PracticeArea | null
+    caseAreas: string[]
     ukJurisdiction: UkJurisdiction | null
     town: string | null
     side: "CLAIMANT" | "RESPONDENT" | null

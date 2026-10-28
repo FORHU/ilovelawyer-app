@@ -224,8 +224,12 @@
       "LSNI": "Law Society of Northern Ireland"
     },
     "areas": {
-      "PERSONAL_INJURY": "Personal injury",
-      "personalInjuryWhy": "Referral fees aren't allowed in personal injury cases, so we can't send these.",
+      "search": "Search practice areas",
+      "picked": "Your practice areas",
+      "none": "None picked yet. Pick every area you take on.",
+      "remove": "Remove {{name}}",
+      "noMatch": "No practice area matches that.",
+      "count": "{{count}} of {{total}} picked",
       "retired": "We no longer offer this area. You can keep it, but it won't bring you new requests. Once removed, it can't be added back.",
       "loadError": "Couldn't load the practice areas. Refresh to try again."
     },
