@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiFetch } from "@/lib/fetch"
-import { userKeys } from "@/lib/query-keys"
+import { practiceAreaKeys, userKeys } from "@/lib/query-keys"
 
 // A lawyer's Lawyer Application, UK or PH (the lawyer's site): ilovelawyer-api
 // GET/PATCH /api/users/me/client-request-profile (the path predates PH). On UK it also holds the
@@ -15,16 +15,18 @@ export type Regulator = (typeof REGULATORS)[number]
 
 export const UK_JURISDICTIONS = ["England and Wales", "Scotland", "Northern Ireland"] as const
 
-/** What the client app's cases can be about. Personal injury is never one: referral fees are
- * banned there, so it's shown but can't be picked. */
-export const PRACTICE_AREAS = ["EMPLOYMENT", "PROPERTY", "FAMILY", "CONSUMER", "OTHER"] as const
-export type PracticeArea = (typeof PRACTICE_AREAS)[number]
+/** One practice area a lawyer can pick on their site. Admins manage the lists in ilovelawyer-admin,
+ * so names come from the API as they are, untranslated. */
+export interface PracticeAreaOption {
+  id: string
+  name: string
+}
 
-/** The PH list, separate from the UK one. Not final: the PH rules are still being settled. */
-export const PH_PRACTICE_AREAS = ["CIVIL", "CRIMINAL", "FAMILY", "LABOR", "CORPORATE", "PROPERTY", "TAX", "IMMIGRATION", "ADMINISTRATIVE", "OTHER"] as const
-export type PhPracticeArea = (typeof PH_PRACTICE_AREAS)[number]
-
-export const PRACTICE_AREAS_BY_COUNTRY: Record<LawyerCountry, readonly string[]> = { UK: PRACTICE_AREAS, PH: PH_PRACTICE_AREAS }
+/** A practice area on the lawyer's application. `isActive` false: an admin has since switched it
+ * off. The lawyer keeps it until they drop it, but it brings no new requests and can't be re-added. */
+export interface LawyerPracticeArea extends PracticeAreaOption {
+  isActive: boolean
+}
 
 export const FEE_CURRENCY: Record<LawyerCountry, "GBP" | "PHP"> = { UK: "GBP", PH: "PHP" }
 
@@ -54,7 +56,8 @@ export type Registration = UkRegistration | PhRegistration
 export interface ClientRequestProfile {
   country: LawyerCountry
   registration: Registration
-  practiceAreas: string[]
+  /** In the site's order. */
+  practiceAreas: LawyerPracticeArea[]
   bio: string
   languages: string[]
   /** Minor units: pence on UK, centavos on PH. */
@@ -75,7 +78,8 @@ export interface ClientRequestProfile {
 /** A save. `registration` must be the lawyer's own country's; leave a field out to keep it. */
 export interface ClientRequestProfilePatch {
   registration?: ({ country: "UK" } & Partial<Omit<UkRegistration, "country">>) | ({ country: "PH" } & Partial<Omit<PhRegistration, "country">>)
-  practiceAreas?: string[]
+  /** Replaces the areas held: ids from usePracticeAreasQuery, plus any switched-off one being kept. */
+  practiceAreaIds?: string[]
   bio?: string
   languages?: string[]
   firstConsultationFee?: ClientRequestProfile["firstConsultationFee"]
@@ -91,6 +95,15 @@ export function useClientRequestProfileQuery(enabled: boolean) {
     queryKey: userKeys.clientRequestProfile(),
     queryFn: () => apiFetch<ClientRequestProfile>(PATH),
     enabled,
+  })
+}
+
+/** The practice areas a lawyer can pick on their site (GET /api/practice-areas): switched-on ones
+ * only, in the order admins set. */
+export function usePracticeAreasQuery(country: LawyerCountry) {
+  return useQuery({
+    queryKey: practiceAreaKeys.list(country),
+    queryFn: () => apiFetch<PracticeAreaOption[]>(`/api/practice-areas?country=${country}`),
   })
 }
 

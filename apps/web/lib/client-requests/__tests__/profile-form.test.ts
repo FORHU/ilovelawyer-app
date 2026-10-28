@@ -15,7 +15,7 @@ import type { ClientRequestProfile } from "../profile"
 const profile: ClientRequestProfile = {
   country: "UK",
   registration: { country: "UK", regulator: "SRA", registrationNumber: "123456", qualifiedJurisdictions: ["England and Wales"] },
-  practiceAreas: ["EMPLOYMENT"],
+  practiceAreas: [{ id: "uk-employment", name: "Employment Law", isActive: true }],
   bio: "Employment specialist.",
   languages: ["English", "Welsh"],
   firstConsultationFee: { amountMinor: 14950, currency: "GBP" },
@@ -32,7 +32,7 @@ const phProfile: ClientRequestProfile = {
   ...profile,
   country: "PH",
   registration: { country: "PH", rollNumber: "12345", ibpChapter: "Manila III", ibpMembershipNumber: null, mcleNumber: "VII-0001", mclePeriod: "VII" },
-  practiceAreas: ["LABOR"],
+  practiceAreas: [{ id: "ph-labor", name: "Labor and Employment Law", isActive: true }],
   firstConsultationFee: { amountMinor: 150000, currency: "PHP" },
 }
 
@@ -46,7 +46,7 @@ const blank: ProfileForm = {
   ibpMembershipNumber: "",
   mcleNumber: "",
   mclePeriod: "",
-  practiceAreas: [],
+  practiceAreaIds: [],
   bio: "",
   languages: [],
   fee: "",
@@ -60,7 +60,7 @@ describe("Lawyer Application form", () => {
     expect(form).toMatchObject({ fee: "149.5", languages: ["English", "Welsh"], pausedUntil: "2026-11-01", capacityLimit: "3" })
     expect(patchFromForm(form)).toEqual({
       registration: { country: "UK", regulator: "SRA", registrationNumber: "123456", qualifiedJurisdictions: ["England and Wales"] },
-      practiceAreas: ["EMPLOYMENT"],
+      practiceAreaIds: ["uk-employment"],
       bio: "Employment specialist.",
       languages: ["English", "Welsh"],
       firstConsultationFee: { amountMinor: 14950, currency: "GBP" },
@@ -87,9 +87,14 @@ describe("Lawyer Application form", () => {
     expect(patchFromForm({ ...blank, country: "PH", fee: "₱1,500".replace(",", "") }).firstConsultationFee).toEqual({ amountMinor: 150000, currency: "PHP" })
   })
 
+  it("keeps a switched-off practice area the lawyer holds, sending its id back", () => {
+    const held = { ...profile, practiceAreas: [...profile.practiceAreas, { id: "uk-retired", name: "Retired Law", isActive: false }] }
+    expect(applicationPatchFromForm(formFromProfile(held)).practiceAreaIds).toEqual(["uk-employment", "uk-retired"])
+  })
+
   it("splits the save between the application and the availability settings", () => {
     const form = formFromProfile(profile)
-    expect(Object.keys(applicationPatchFromForm(form)).sort()).toEqual(["bio", "firstConsultationFee", "languages", "practiceAreas", "registration"])
+    expect(Object.keys(applicationPatchFromForm(form)).sort()).toEqual(["bio", "firstConsultationFee", "languages", "practiceAreaIds", "registration"])
     expect(availabilityPatchFromForm(form)).toEqual({ pausedUntil: "2026-11-01T00:00:00.000Z", capacityLimit: 3 })
     expect(patchFromForm(form)).toEqual({ ...applicationPatchFromForm(form), ...availabilityPatchFromForm(form) })
   })
@@ -118,7 +123,7 @@ describe("Lawyer Application form", () => {
   it("flags the UK edits that send an application back for review", () => {
     const form = formFromProfile(profile)
     expect(needsRecheck(profile, form)).toBe(false)
-    expect(needsRecheck(profile, { ...form, bio: "New bio", practiceAreas: ["FAMILY"], fee: "200" })).toBe(false)
+    expect(needsRecheck(profile, { ...form, bio: "New bio", practiceAreaIds: ["uk-family"], fee: "200" })).toBe(false)
     expect(needsRecheck(profile, { ...form, registrationNumber: " 123456 " })).toBe(false)
     expect(needsRecheck(profile, { ...form, regulator: "LSS" })).toBe(true)
     expect(needsRecheck(profile, { ...form, registrationNumber: "654321" })).toBe(true)

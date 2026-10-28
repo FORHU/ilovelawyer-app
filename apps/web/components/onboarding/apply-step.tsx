@@ -43,7 +43,7 @@ export function ApplyStep({ profile, onDone }: { profile: ClientRequestProfile; 
         <p className={setupSubtitleClass}>{tProfile(`clientRequests.copy.${profile.country}.dialogDescription`)}</p>
       </div>
 
-      <LawyerApplicationFields form={form} set={set} errors={errors} singleColumn />
+      <LawyerApplicationFields form={form} set={set} errors={errors} heldPracticeAreas={profile.practiceAreas} singleColumn />
 
       {update.isError && (
         <p className="text-[13px] text-red-600" role="alert">

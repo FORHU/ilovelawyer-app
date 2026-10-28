@@ -2,10 +2,11 @@
 
 import { useTranslation } from "react-i18next";
 import { TextField } from "@workspace/ui/components/input";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { cn } from "@workspace/ui/lib/utils";
 import { TagInput } from "@/components/ui/tag-input";
-import { PRACTICE_AREAS_BY_COUNTRY, REGULATORS, UK_JURISDICTIONS, type LawyerCountry } from "@/lib/client-requests/profile";
+import { REGULATORS, UK_JURISDICTIONS, usePracticeAreasQuery, type LawyerPracticeArea } from "@/lib/client-requests/profile";
 import { keepAmount, keepDigits, keepMcleNumber, keepRomanNumeral, keepWords } from "@/lib/forms/field-rules";
 import {
   BIO_MAX_LENGTH,
@@ -42,9 +43,70 @@ export function FieldLabel({ children, id }: { children: React.ReactNode; id?: s
   );
 }
 
-/** A practice area's label. PROPERTY reads differently on PH ("Property and real estate"). */
-export function practiceAreaKey(country: LawyerCountry, area: string) {
-  return country === "PH" && area === "PROPERTY" ? "PROPERTY_PH" : area;
+/**
+ * The site's practice areas, from the list admins manage (names as they wrote them, untranslated),
+ * plus any area the lawyer holds that an admin has since switched off: shown dimmed, it can be
+ * dropped but not picked again.
+ */
+function PracticeAreaPicker({ form, set, held }: { form: ProfileForm; set: (patch: Partial<ProfileForm>) => void; held: LawyerPracticeArea[] }) {
+  const { t } = useTranslation("profile");
+  const options = usePracticeAreasQuery(form.country);
+  const retired = held.filter((a) => !a.isActive && !options.data?.some((o) => o.id === a.id));
+  const pick = (id: string) => set({ practiceAreaIds: toggle(form.practiceAreaIds, id) });
+
+  if (options.isLoading) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {[24, 32, 28, 36].map((w) => (
+          <Skeleton key={w} className="h-8 rounded-full" style={{ width: `${w * 4}px` }} />
+        ))}
+      </div>
+    );
+  }
+  if (options.isError) {
+    return (
+      <p className="text-[13px] text-red-600" role="alert">
+        {t("clientRequests.areas.loadError")}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-2" aria-labelledby="cr-areas">
+      {options.data?.map((a) => (
+        <Pill key={a.id} selected={form.practiceAreaIds.includes(a.id)} onClick={() => pick(a.id)}>
+          {a.name}
+        </Pill>
+      ))}
+      {retired.map((a) => {
+        const selected = form.practiceAreaIds.includes(a.id);
+        return (
+          <Tooltip key={a.id}>
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="opacity-60">
+                <Pill selected={selected} disabled={!selected} onClick={() => pick(a.id)}>
+                  {a.name}
+                </Pill>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{t("clientRequests.areas.retired")}</TooltipContent>
+          </Tooltip>
+        );
+      })}
+      {/* UK only: referral fees are banned in personal injury, so the client hand-off can't send it. */}
+      {form.country === "UK" && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0}>
+              <Pill selected={false} disabled>
+                {t("clientRequests.areas.PERSONAL_INJURY")}
+              </Pill>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{t("clientRequests.areas.personalInjuryWhy")}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 }
 
 const sectionTitle = "mb-4 text-[15px] font-medium text-foreground";
@@ -60,11 +122,14 @@ export function LawyerApplicationFields({
   form,
   set,
   errors,
+  heldPracticeAreas,
   singleColumn = false,
 }: {
   form: ProfileForm;
   set: (patch: Partial<ProfileForm>) => void;
   errors: ProfileFormErrors;
+  /** The saved application's areas (ClientRequestProfile.practiceAreas), for the switched-off ones. */
+  heldPracticeAreas: LawyerPracticeArea[];
   /** One field per row, for onboarding's narrow column; the Profile dialog pairs some up. */
   singleColumn?: boolean;
 }) {
@@ -160,26 +225,7 @@ export function LawyerApplicationFields({
       <fieldset className="flex flex-col gap-2">
         <legend className={sectionTitle}>{t("clientRequests.dialog.sections.work")}</legend>
         <FieldLabel id="cr-areas">{t("clientRequests.fields.practiceAreas")}</FieldLabel>
-        <div className="flex flex-wrap gap-2" aria-labelledby="cr-areas">
-          {PRACTICE_AREAS_BY_COUNTRY[country].map((a) => (
-            <Pill key={a} selected={form.practiceAreas.includes(a)} onClick={() => set({ practiceAreas: toggle(form.practiceAreas, a) })}>
-              {t(`clientRequests.areas.${practiceAreaKey(country, a)}`)}
-            </Pill>
-          ))}
-          {/* UK only: referral fees are banned in personal injury, so the client hand-off can't send it. */}
-          {country === "UK" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0}>
-                  <Pill selected={false} disabled>
-                    {t("clientRequests.areas.PERSONAL_INJURY")}
-                  </Pill>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{t("clientRequests.areas.personalInjuryWhy")}</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        <PracticeAreaPicker form={form} set={set} held={heldPracticeAreas} />
       </fieldset>
 
       <fieldset className="flex flex-col gap-5">

@@ -16,7 +16,8 @@ export interface ProfileForm {
   ibpMembershipNumber: string
   mcleNumber: string
   mclePeriod: string
-  practiceAreas: string[]
+  /** PracticeArea ids, as picked. */
+  practiceAreaIds: string[]
   bio: string
   /** One per chip in the tag input, already trimmed and de-duplicated by it. */
   languages: string[]
@@ -60,7 +61,7 @@ export function formFromProfile(p: ClientRequestProfile): ProfileForm {
     ibpMembershipNumber: ph?.ibpMembershipNumber ?? "",
     mcleNumber: ph?.mcleNumber ?? "",
     mclePeriod: ph?.mclePeriod ?? "",
-    practiceAreas: p.practiceAreas,
+    practiceAreaIds: p.practiceAreas.map((a) => a.id),
     bio: p.bio,
     languages: p.languages,
     fee: p.firstConsultationFee ? String(p.firstConsultationFee.amountMinor / 100) : "",
@@ -120,7 +121,7 @@ export function applicationPatchFromForm(f: ProfileForm): ClientRequestProfilePa
             registrationNumber: textOrNull(f.registrationNumber),
             qualifiedJurisdictions: f.qualifiedJurisdictions,
           },
-    practiceAreas: f.practiceAreas,
+    practiceAreaIds: f.practiceAreaIds,
     bio: f.bio,
     languages: f.languages,
     firstConsultationFee: fee ? { amountMinor: Math.round(Number(fee) * 100), currency: FEE_CURRENCY[f.country] } : null,
@@ -149,7 +150,7 @@ export function missingFromForm(f: ProfileForm): RequiredField[] {
     if (!f.registrationNumber.trim()) missing.push("registrationNumber")
     if (f.qualifiedJurisdictions.length === 0) missing.push("qualifiedJurisdictions")
   }
-  if (f.practiceAreas.length === 0) missing.push("practiceAreas")
+  if (f.practiceAreaIds.length === 0) missing.push("practiceAreas")
   return missing
 }
 

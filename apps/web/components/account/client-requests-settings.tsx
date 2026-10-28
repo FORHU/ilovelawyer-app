@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@workspac
 import { TextField } from "@workspace/ui/components/input";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { LawyerApplicationFields, practiceAreaKey } from "@/components/account/lawyer-application-fields";
+import { LawyerApplicationFields } from "@/components/account/lawyer-application-fields";
 import {
   useClientRequestProfileQuery,
   useUpdateClientRequestProfileMutation,
@@ -132,7 +132,7 @@ function ApplicationSummary({ profile, onEdit }: { profile: ClientRequestProfile
   const { t } = useTranslation("profile");
   const status = profile.verification.status;
   const r = profile.registration;
-  const areas = profile.practiceAreas.map((a) => t(`clientRequests.areas.${practiceAreaKey(profile.country, a)}`)).join(", ");
+  const areas = profile.practiceAreas.map((a) => a.name).join(", ");
   const editLabel = status === "REJECTED" ? t("clientRequests.actions.resubmit") : status === "PENDING" ? t("clientRequests.actions.edit") : t("clientRequests.actions.editDetails");
 
   return (
@@ -347,7 +347,7 @@ function ApplicationDialog({ profile, onClose }: { profile: ClientRequestProfile
           }}
         >
           <div className="max-h-[min(65vh,640px)] overflow-y-auto px-6 py-6">
-            <LawyerApplicationFields form={form} set={set} errors={errors} />
+            <LawyerApplicationFields form={form} set={set} errors={errors} heldPracticeAreas={profile.practiceAreas} />
           </div>
 
           <div className="flex flex-col gap-3 px-6 py-4 border-t border-border bg-muted/40">

@@ -53,6 +53,11 @@ export const userKeys = {
   clientRequestProfile: () => [...userKeys.all, "client-request-profile"] as const,
 }
 
+export const practiceAreaKeys = {
+  all: ["practice-areas"] as const,
+  list: (country: string) => [...practiceAreaKeys.all, country] as const,
+}
+
 export const chatKeys = {
   all: ["chat"] as const,
   session: () => [...chatKeys.all, "session"] as const,
