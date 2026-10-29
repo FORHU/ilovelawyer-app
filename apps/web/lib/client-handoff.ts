@@ -69,7 +69,7 @@ export function clientRequestStatusLabel(status: ClientRequestStatus): string {
 }
 
 /** How a lawyer's claim on a request ended. */
-export const CLAIM_OUTCOMES = ["RELEASED", "LAPSED", "DECLINED", "REASSIGNED", "WITHDRAWN", "ENGAGED"] as const;
+export const CLAIM_OUTCOMES = ["RELEASED", "LAPSED", "DECLINED", "REASSIGNED", "WITHDRAWN", "ENGAGED", "NOT_CHOSEN"] as const;
 export type ClaimOutcome = (typeof CLAIM_OUTCOMES)[number];
 
 /** Same values as UK_JURISDICTIONS in validation/case.validation.ts. */
@@ -124,7 +124,6 @@ export const CLIENT_HANDOFF_ERROR_CODES = {
   NOT_UK_TENANT: "NOT_UK_TENANT", // 403
   PROFILE_INCOMPLETE: "PROFILE_INCOMPLETE", // 422: details.missing lists the fields
   LAWYER_NOT_VERIFIED: "LAWYER_NOT_VERIFIED", // 403
-  REQUEST_ALREADY_CLAIMED: "REQUEST_ALREADY_CLAIMED", // 409: another lawyer won the claim
   CARD_REQUIRED: "CARD_REQUIRED", // 402: no card on the organization; add one through POST /organizations/{id}/billing/card/setup-session
   CLAIM_EXPIRED: "CLAIM_EXPIRED", // 409: the 24h hold ended
   CHARGE_FAILED: "CHARGE_FAILED", // 402: the per-case fee or a top-up was declined

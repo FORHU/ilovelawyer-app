@@ -27,11 +27,11 @@
     "pass": "Pass",
     "passTooltip": "Hide this request from your inbox",
     "accept": "Accept",
-    "acceptTooltip": "Claim this request and hold it for you"
+    "acceptTooltip": "Join this request: other lawyers can quote on it too"
   },
   "confirmAccept": {
     "title": "Accept this request?",
-    "description": "This claims the request and holds it for you. You’re charged the per-case fee only if the client confirms you.",
+    "description": "Other lawyers can accept this request too. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. You’re charged the per-case fee only if the client hires you.",
     "cancel": "Cancel",
     "confirm": "Accept request"
   },
@@ -53,8 +53,8 @@
     "deadline": "deadline {{date}}",
     "status": {
       "REQUESTED": "Finding a lawyer",
-      "ROUTED": "Open for claim",
-      "CLAIMED": "Claimed by you",
+      "ROUTED": "Open to lawyers",
+      "CLAIMED": "Accepted by you",
       "QUOTED": "Quote sent",
       "CONFIRMED": "Confirmed · charging",
       "ENGAGED": "Engaged",
@@ -65,6 +65,13 @@
     "aiSummary": "Case summary · anonymised",
     "ai": "AI",
     "lockedParties": "Party names appear here once you accept this request.",
+    "lawyersOn_one": "{{count}} lawyer has accepted this request",
+    "lawyersOn_other": "{{count}} lawyers have accepted this request",
+    "notChosen": {
+      "badge": "Not chosen",
+      "title": "The client chose another lawyer",
+      "body": "The client hired another lawyer for this request, or didn’t choose one in time. Nothing was charged to you."
+    },
     "intake": {
       "title": "Client's overview · anonymised",
       "timeline": "Timeline",

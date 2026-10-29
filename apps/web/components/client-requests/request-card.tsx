@@ -48,7 +48,8 @@ export function RequestCard({ request, featured = false, onPass, onAccept, passP
 
       {!actionable ? (
         <Badge shape="pill" className="self-start py-1 tracking-[1px] md:self-center">
-          {request.status}
+          {/* Several lawyers: the request moved on for the lawyer the client hired, not for this one. */}
+          {request.claim?.outcome === "NOT_CHOSEN" ? t("detail.notChosen.badge") : request.status}
         </Badge>
       ) : (
         <div className="flex shrink-0 items-center gap-2">

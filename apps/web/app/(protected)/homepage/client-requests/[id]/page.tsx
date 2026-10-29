@@ -475,16 +475,37 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
   );
 }
 
+/** Several lawyers (ilovelawyer-api, phase 5): the client hired another lawyer on the request, or
+ * didn't choose one in time. Nothing was charged to this lawyer. */
+function NotChosenCard() {
+  const { t } = useTranslation("client-request");
+  return (
+    <section className={cn(CARD, "flex flex-col items-start gap-2")}>
+      <div className="text-[13px] text-muted-foreground">{t("detail.notChosen.body")}</div>
+    </section>
+  );
+}
+
 function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
-  const held = request.claim?.byMe ?? false;
+  // Several lawyers: a lawyer whose claim ended (the client chose someone else, or they left) no
+  // longer holds the request, even though it has moved on to CONFIRMED or ENGAGED for another lawyer.
+  const mine = request.claim?.byMe ? request.claim : null;
+  const held = !!mine && (mine.outcome == null || mine.outcome === "ENGAGED");
+  const notChosen = mine?.outcome === "NOT_CHOSEN";
+  const lawyersOn = request.lawyersOn ?? 0;
 
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-col gap-3">
-          <h1 className="font-display text-[26px] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[clamp(30px,3.2vw,40px)]">{t(`detail.status.${request.status}`)}</h1>
+          <h1 className="font-display text-[26px] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[clamp(30px,3.2vw,40px)]">
+            {notChosen ? t("detail.notChosen.title") : t(`detail.status.${request.status}`)}
+          </h1>
           <RequestTags brief={request.brief} />
+          {request.status === "ROUTED" && lawyersOn > 0 && (
+            <p className="text-[13px] text-muted-foreground">{t("detail.lawyersOn", { count: lawyersOn })}</p>
+          )}
         </div>
         {request.status === "CLAIMED" && request.claim?.claimExpiresAt && <HeldTimer until={new Date(request.claim.claimExpiresAt).getTime()} />}
       </div>
@@ -508,7 +529,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             </section>
           )}
 
-          {!held && (
+          {!held && !notChosen && (
             <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-4">
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
@@ -519,7 +540,8 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
         </div>
 
         <div className="flex flex-col gap-5">
-          {!held && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
+          {notChosen && <NotChosenCard />}
+          {!mine && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
           {held && request.status === "CLAIMED" && (
             <>
               <ConflictCheck id={request.id} />
