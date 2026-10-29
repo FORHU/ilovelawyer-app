@@ -48,7 +48,11 @@ export function RequestStepper({ request }: { request: ClientRequestForLawyer })
               {!last && <span className={cn("hidden h-0.5 flex-1 sm:block", i < position ? "bg-foreground" : "bg-border")} />}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className={cn("text-[14px]", state === "upcoming" ? "text-muted-foreground" : "font-medium text-foreground")}>{t(`detail.steps.${step}`)}</span>
+              <span className={cn("text-[14px]", state === "upcoming" ? "text-muted-foreground" : "font-medium text-foreground")}>
+                {t(`detail.steps.${step}`)}
+                {/* The dot above is decorative, so say where this step stands. */}
+                <span className="sr-only"> — {t(`detail.steps.state.${state}`)}</span>
+              </span>
               {state !== "upcoming" && times[i] && <span className="text-xs text-muted-foreground">{times[i]}</span>}
             </div>
             <span className="self-start rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">

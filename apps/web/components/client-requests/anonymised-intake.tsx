@@ -85,7 +85,7 @@ export function AnonymisedIntake({ intake }: { intake: AnonymisedIntake }) {
                 >
                   {cr.met && <Check className="size-3" strokeWidth={2.5} aria-hidden="true" />}
                   {cr.label}
-                  <span className="sr-only">{cr.met ? " — done" : " — still needed"}</span>
+                  <span className="sr-only"> — {cr.met ? t("detail.intake.done") : t("detail.intake.stillNeeded")}</span>
                 </li>
               ))}
             </ul>
