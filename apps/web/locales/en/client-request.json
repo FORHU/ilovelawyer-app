@@ -33,7 +33,8 @@
     "ready": "Lawyer-ready · {{met}} of {{total}}",
     "notReady": "{{met}} of {{total}} lawyer-ready",
     "open": "Open {{hours}}h more",
-    "closed": "Closing now"
+    "closed": "Closing now",
+    "expired": "Closed"
   },
   "confirmAccept": {
     "title": "Accept this request?",
@@ -93,7 +94,9 @@
       "deadlines": "Deadlines mentioned",
       "missing": "Still missing",
       "completeness": "Intake completeness",
-      "ready": "{{met}} of {{total}} lawyer-ready"
+      "ready": "{{met}} of {{total}} lawyer-ready",
+      "done": "done",
+      "stillNeeded": "still needed"
     },
     "clientNote": "Client’s note",
     "heldForYou": "Held for you · {{time}}",
@@ -144,7 +147,9 @@
       "introFee": "Introduction fee if the client confirms you",
       "introFeeCard": "{{fee}} · card •••• {{last4}}",
       "introFeeOnly": "{{fee}}",
-      "doConflictFirst": "Clear the conflict check first."
+      "doConflictFirst": "Clear the conflict check first.",
+      "amountPlaceholder": "£—",
+      "conflictRequired": "Clear the conflict check before you send a quote."
     },
     "confirmed": {
       "title": "Confirmed",
@@ -227,8 +232,14 @@
         "quoted": "Review the quote",
         "confirmed": "Finalising",
         "engaged": "Working with your lawyer"
+      },
+      "state": {
+        "done": "Done",
+        "current": "Current step",
+        "upcoming": "Not yet"
       }
-    }
+    },
+    "lockedConfirmed": "Documents and the full interview open once the introduction fee goes through."
   },
   "messages": {
     "open": "Messages",
@@ -267,6 +278,7 @@
     "hint": "Sent to every lawyer matching your practice areas — the first to accept holds it.",
     "sort": "Sort",
     "closing": "Closing soonest",
-    "newest": "Newest first"
+    "newest": "Newest first",
+    "pageOnly": "Sorts the requests on this page only."
   }
 }
