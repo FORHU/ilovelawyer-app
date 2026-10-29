@@ -2,11 +2,12 @@
   "choosePlan": "Choose a plan",
   "eyebrow": "Client requests",
   "title": "Client requests",
-  "subtitle": "Anonymised cases from clients looking for a lawyer. Accept one to see the parties and send a quote.",
+  "subtitle": "Anonymised cases from clients looking for a lawyer, matching your practice areas. Accept one to see the parties and send a quote.",
   "tabs": {
     "inbox": "Inbox",
     "mine": "Mine",
-    "history": "History"
+    "history": "History",
+    "count": "{{label}} · {{count}}"
   },
   "accepting": {
     "on": "Accepting requests · On",
@@ -14,7 +15,8 @@
     "pause": "Pause",
     "resume": "Resume",
     "pauseTooltip": "Stop receiving new client requests",
-    "resumeTooltip": "Start receiving new client requests again"
+    "resumeTooltip": "Start receiving new client requests again",
+    "onSlots": "Accepting · {{used}} of {{limit}} client slots used"
   },
   "urgency": {
     "routine": "Routine",
@@ -27,7 +29,11 @@
     "pass": "Pass",
     "passTooltip": "Hide this request from your inbox",
     "accept": "Accept",
-    "acceptTooltip": "Claim this request and hold it for you"
+    "acceptTooltip": "Claim this request and hold it for you",
+    "ready": "Lawyer-ready · {{met}} of {{total}}",
+    "notReady": "{{met}} of {{total}} lawyer-ready",
+    "open": "Open {{hours}}h more",
+    "closed": "Closing now"
   },
   "confirmAccept": {
     "title": "Accept this request?",
@@ -38,14 +44,27 @@
   "feeNote": "You’re charged the per-case fee only if the client confirms you.",
   "noMatches": "No requests match these filters.",
   "empty": {
-    "inbox": { "title": "No requests right now", "description": "We’ll notify you by email and here when a client case matches your practice areas." },
-    "mine": { "title": "Nothing claimed yet", "description": "Requests you accept or are engaged on show up here." },
-    "history": { "title": "No history yet", "description": "Requests you released, declined, or that ended show up here." },
+    "inbox": {
+      "title": "No requests right now",
+      "description": "We’ll notify you by email and here when a client case matches your practice areas."
+    },
+    "mine": {
+      "title": "Nothing claimed yet",
+      "description": "Requests you accept or are engaged on show up here."
+    },
+    "history": {
+      "title": "No history yet",
+      "description": "Requests you released, declined, or that ended show up here."
+    },
     "editPracticeAreas": "Edit practice areas"
   },
   "loadError": "Couldn’t load client requests.",
   "retry": "Retry",
-  "pagination": { "previous": "Previous", "next": "Next", "pageOf": "Page {{page}} of {{total}}" },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} of {{total}}"
+  },
   "detail": {
     "back": "Back to requests",
     "notFound": "This request isn’t available",
@@ -54,7 +73,7 @@
     "status": {
       "REQUESTED": "Finding a lawyer",
       "ROUTED": "Open for claim",
-      "CLAIMED": "Claimed by you",
+      "CLAIMED": "Accepted by you",
       "QUOTED": "Quote sent",
       "CONFIRMED": "Confirmed · charging",
       "ENGAGED": "Engaged",
@@ -73,7 +92,8 @@
       "questions": "Questions for you",
       "deadlines": "Deadlines mentioned",
       "missing": "Still missing",
-      "completeness": "Intake completeness"
+      "completeness": "Intake completeness",
+      "ready": "{{met}} of {{total}} lawyer-ready"
     },
     "clientNote": "Client’s note",
     "heldForYou": "Held for you · {{time}}",
@@ -81,12 +101,23 @@
     "conflict": {
       "title": "1 · Conflict check",
       "load": "Show the parties",
-      "loadTooltip": "Every view is audited",
+      "intro": "Before you quote, check you don’t already act for the other side. Names stay hidden until you ask.",
+      "statusTodo": "To do",
+      "statusCleared": "Cleared",
+      "clearedLabel": "I’ve checked these parties and there’s no conflict",
+      "releaseHint": "Found a conflict, or can’t take it on?",
+      "loadTooltip": "Every time you view the parties is logged.",
       "release": "Conflict — release case",
       "releaseTooltip": "Give this case back; you won’t be charged",
       "confirmRelease": "Release this case? It goes back to other lawyers and you won’t be charged.",
-      "reasons": { "CONFLICT": "Conflict of interest", "CAPACITY": "No capacity", "OUT_OF_SCOPE": "Out of scope", "OTHER": "Other" },
-      "released": "Case released."
+      "reasons": {
+        "CONFLICT": "Conflict of interest",
+        "CAPACITY": "No capacity",
+        "OUT_OF_SCOPE": "Out of scope",
+        "OTHER": "Other"
+      },
+      "released": "Case released.",
+      "releaseShort": "Release · not charged"
     },
     "quote": {
       "title": "2 · Your quote",
@@ -105,7 +136,15 @@
       "amountInvalid": "Enter an amount greater than £0.",
       "sent": "Quote sent.",
       "sentTitle": "Quote sent",
-      "sentDescription": "Waiting for the client to confirm or decline."
+      "sentDescription": "Waiting for the client to confirm or decline.",
+      "willSee": "The client will see",
+      "fixedQuote": "Fixed fee quote",
+      "consultationQuote": "First consultation quote",
+      "willSeeNote": "With your profile and the message above. No contact details.",
+      "introFee": "Introduction fee if the client confirms you",
+      "introFeeCard": "{{fee}} · card •••• {{last4}}",
+      "introFeeOnly": "{{fee}}",
+      "doConflictFirst": "Clear the conflict check first."
     },
     "confirmed": {
       "title": "Confirmed",
@@ -140,7 +179,11 @@
     "file": {
       "title": "Client file",
       "loadError": "Couldn't load the client's file.",
-      "tabs": { "intake": "Intake", "conversation": "Conversation", "documents": "Documents" },
+      "tabs": {
+        "intake": "Intake",
+        "conversation": "Conversation",
+        "documents": "Documents"
+      },
       "provenance": {
         "caseDetails": "Client entered",
         "client": "Client said",
@@ -166,6 +209,24 @@
         "ready": "Ready",
         "failed": "Couldn't read this file",
         "pending": "Reading…"
+      }
+    },
+    "lockedFile": "Documents and the full interview open once the client confirms you and the introduction fee goes through.",
+    "steps": {
+      "label": "Request progress",
+      "clientSees": "Client sees: {{what}}",
+      "now": "Now",
+      "received": "Request received",
+      "accepted": "Accepted · conflict check",
+      "quoted": "Quote sent",
+      "confirmed": "Client confirmed · fee",
+      "engaged": "Engaged",
+      "see": {
+        "received": "Finding a lawyer",
+        "accepted": "A lawyer is reviewing",
+        "quoted": "Review the quote",
+        "confirmed": "Finalising",
+        "engaged": "Working with your lawyer"
       }
     }
   },
@@ -200,5 +261,12 @@
     "confirm": "Pay {{price}}",
     "topUpDone": "Topped up: {{credit}} of AI credit added.",
     "topUpPending": "Payment is processing. The credit is added as soon as it goes through."
+  },
+  "openRequests": {
+    "title": "Open requests",
+    "hint": "Sent to every lawyer matching your practice areas — the first to accept holds it.",
+    "sort": "Sort",
+    "closing": "Closing soonest",
+    "newest": "Newest first"
   }
 }
