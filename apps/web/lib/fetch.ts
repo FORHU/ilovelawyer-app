@@ -82,8 +82,8 @@ async function attemptRefresh(): Promise<void> {
     await refreshAccessToken()
   } catch (err) {
     useAuthStore.getState().clearAuth()
-    // Keep where they were, so signing in brings them back: e.g. a lawyer on /verification whose
-    // sessions ended when their application was verified lands on its plan step.
+    // Keep where they were, so signing in brings them back (e.g. to /verification) rather than to
+    // /homepage.
     if (typeof window !== "undefined") {
       const here = window.location.pathname + window.location.search
       window.location.href = here.startsWith("/login") ? "/login" : `/login?next=${encodeURIComponent(here)}`
