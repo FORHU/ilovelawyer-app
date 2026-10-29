@@ -362,7 +362,7 @@ export function useResetPasswordMutation() {
   })
 }
 
-/** Signs in with the login link from the account approval or lawyer application approval
+/** Consumes the one-time login link from the account approval or lawyer application approval
  * email — mirrors useLoginMutation's onSuccess (sets auth state + hydrates the active org) since
  * this is, from the frontend's perspective, just another way of logging in. Navigation (to the
  * link's `next`, else /homepage) is left to the caller (the login-link page), same as
