@@ -1,4 +1,5 @@
 import type { ClientRequestStatus, Money, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
+import type { ClientBudget } from "@/lib/client-requests/budget"
 
 // ClientRequestForLawyer and its parts, from ilovelawyer-api's swagger-client-handoff.ts
 // (GET /api/client-requests, built in #511/#512).
@@ -15,6 +16,8 @@ export interface CaseBrief {
   urgency: RequestUrgency
   knownDeadline: string | null
   clientNote: string
+  /** What the client can spend. Null: not set. Absent on briefs written before budgets. */
+  budget?: ClientBudget | null
   generatedAt: string
   /** The client's intake (docs/adr/0018-client-app-is-intake-not-advice.md in the API repo),
    * redacted the same way summary/clientNote are: no names, no document names, no source ids.

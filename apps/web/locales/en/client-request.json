@@ -23,6 +23,14 @@
     "soon": "Soon",
     "urgent": "Urgent"
   },
+  "budget": {
+    "range": "Budget {{min}}–{{max}}",
+    "under": "Budget under {{max}}",
+    "over": "Budget over {{min}}",
+    "amount": "Budget {{amount}}",
+    "fixedFee": "Prefers a fixed fee",
+    "firstConsultation": "Prefers a first consultation"
+  },
   "card": {
     "received": "Received {{ago}}",
     "assignedTo": "Assigned to {{name}}",
