@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Check, Eye, Lock, ShieldCheck, Undo2, Users } from "lucide-react";
@@ -131,6 +131,12 @@ function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: s
   const parties = useConflictPartiesQuery(id, shown);
   const release = useReleaseClientRequestMutation(id);
   const done = needsClearance && cleared;
+
+  // The clearance is for the parties on screen: if they're gone (the read failed or is being redone),
+  // so is the clearance, and the quote waits for it again.
+  useEffect(() => {
+    if (cleared && (!parties.data || parties.isError)) onClearedChange(false);
+  }, [cleared, parties.data, parties.isError, onClearedChange]);
 
   return (
     <section className={cn(CARD, "flex flex-col gap-4")}>
@@ -604,7 +610,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
               </span>
-              <p className="text-[13px] text-muted-foreground">{held ? t("detail.lockedFile") : t("detail.lockedParties")}</p>
+              <p className="text-[13px] text-muted-foreground">{!held ? t("detail.lockedParties") : request.status === "CONFIRMED" ? t("detail.lockedConfirmed") : t("detail.lockedFile")}</p>
             </div>
           )}
         </div>
@@ -613,7 +619,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
           {!held && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
           {held && request.status === "CLAIMED" && (
             <>
-              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance={request.status === "CLAIMED"} />
+              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance />
               <QuoteForm request={request} conflictChecked={conflictCleared} />
             </>
           )}

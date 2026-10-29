@@ -125,6 +125,8 @@ export const clientRequestKeys = {
   list: (view: string, page: number, limit: number) => [...clientRequestKeys.lists(), { view, page, limit }] as const,
   details: () => [...clientRequestKeys.all, "detail"] as const,
   detail: (id: string) => [...clientRequestKeys.details(), id] as const,
+  // Not under detail(id): a refresh of the request must not re-read the parties, since every read is audited.
+  parties: (id: string) => [...clientRequestKeys.all, "parties", id] as const,
   messages: (id: string) => [...clientRequestKeys.detail(id), "messages"] as const,
   aiBudget: (id: string) => [...clientRequestKeys.detail(id), "ai-budget"] as const,
   intakePackage: (id: string) => [...clientRequestKeys.detail(id), "intake-package"] as const,
