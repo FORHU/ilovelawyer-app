@@ -362,10 +362,11 @@ export function useResetPasswordMutation() {
   })
 }
 
-/** Consumes the one-time "Login" link from the admin-approval email — mirrors
- * useLoginMutation's onSuccess (sets auth state + hydrates the active org) since this is,
- * from the frontend's perspective, just another way of logging in. Navigation to /homepage
- * is left to the caller (the login-link page), same as useVerifyOtpMutation. */
+/** Signs in with the login link from the account approval or lawyer application approval
+ * email — mirrors useLoginMutation's onSuccess (sets auth state + hydrates the active org) since
+ * this is, from the frontend's perspective, just another way of logging in. Navigation (to the
+ * link's `next`, else /homepage) is left to the caller (the login-link page), same as
+ * useVerifyOtpMutation. */
 export function useConsumeLoginLinkMutation() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const setOrganization = useAuthStore((s) => s.setOrganization)
