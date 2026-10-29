@@ -124,6 +124,7 @@ export const CLIENT_HANDOFF_ERROR_CODES = {
   NOT_UK_TENANT: "NOT_UK_TENANT", // 403
   PROFILE_INCOMPLETE: "PROFILE_INCOMPLETE", // 422: details.missing lists the fields
   LAWYER_NOT_VERIFIED: "LAWYER_NOT_VERIFIED", // 403
+  REQUEST_FULL: "REQUEST_FULL", // 409: 3 lawyers are already on the request (several lawyers, phase 5)
   CARD_REQUIRED: "CARD_REQUIRED", // 402: no card on the organization; add one through POST /organizations/{id}/billing/card/setup-session
   CLAIM_EXPIRED: "CLAIM_EXPIRED", // 409: the 24h hold ended
   CHARGE_FAILED: "CHARGE_FAILED", // 402: the per-case fee or a top-up was declined
