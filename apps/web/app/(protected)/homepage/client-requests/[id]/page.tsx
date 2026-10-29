@@ -47,6 +47,8 @@ import { cn } from "@workspace/ui/lib/utils";
 const CARD = "rounded-2xl border border-border bg-card p-5";
 const LABEL = "text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground";
 const QUOTE_FORM_ID = "client-request-quote-form";
+/** The open step of the conflict check (its Show the parties button, then its checkbox): where focus goes when a quote is tried too early. */
+const CONFLICT_CLEAR_ID = "client-request-conflict-step";
 const TWO_HOURS_MS = 2 * 3_600_000;
 
 /** Counts down a claim's 24h hold; turns amber in the last two hours. */
@@ -151,7 +153,7 @@ function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: s
       {!shown ? (
         <div className="flex flex-col gap-3">
           <p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.conflict.intro")}</p>
-          <Button type="button" variant="default" onClick={() => setShown(true)} className="h-11 w-full gap-2 text-[13px] font-semibold">
+          <Button id={CONFLICT_CLEAR_ID} type="button" variant="default" onClick={() => setShown(true)} className="h-11 w-full gap-2 text-[13px] font-semibold">
             <Eye className="size-4" aria-hidden="true" />
             {t("detail.conflict.load")}
           </Button>
@@ -177,6 +179,7 @@ function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: s
           {needsClearance && (
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-snug text-foreground has-[:checked]:border-ok/50 has-[:checked]:bg-ok/5">
               <input
+                id={CONFLICT_CLEAR_ID}
                 type="checkbox"
                 checked={cleared}
                 onChange={(e) => onClearedChange(e.target.checked)}
@@ -240,6 +243,7 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const [message, setMessage] = useState("");
   const [amountError, setAmountError] = useState(false);
 
+  const [conflictBlocked, setConflictBlocked] = useState(false);
   const previewAmount = Number(amount);
   const hasPreviewAmount = Number.isFinite(previewAmount) && previewAmount > 0;
   const introFee = formatMoney(request.perCaseFee.amountMinor);
@@ -247,10 +251,16 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!conflictChecked) return;
+    if (!conflictChecked) {
+      // Enter in a field reaches here even though the button is disabled: say why, and go to the step that is open.
+      setConflictBlocked(true);
+      document.getElementById(CONFLICT_CLEAR_ID)?.focus();
+      return;
+    }
     const value = Number(amount);
-    if (type === "FIXED_FEE" && (!Number.isFinite(value) || value <= 0)) return setAmountError(true);
-    const amountMinor = Number.isFinite(value) ? Math.round(value * 100) : 0;
+    // Every quote type needs a real amount: what the preview shows is what the client is sent.
+    if (!Number.isFinite(value) || value <= 0) return setAmountError(true);
+    const amountMinor = Math.round(value * 100);
     quote.mutate(
       { type, amount: { amountMinor, currency: "GBP" }, message: message.trim() },
       {
@@ -330,7 +340,7 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
         <div className="flex flex-col gap-1.5 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
           <span className={LABEL}>{t("detail.quote.willSee")}</span>
           <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
-          <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">{hasPreviewAmount ? formatMoney(Math.round(previewAmount * 100)) : "£—"}</span>
+          <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">{hasPreviewAmount ? formatMoney(Math.round(previewAmount * 100)) : t("detail.quote.amountPlaceholder")}</span>
           <span className="text-xs text-muted-foreground">{t("detail.quote.willSeeNote")}</span>
         </div>
 
@@ -358,7 +368,14 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
         </TooltipTrigger>
         <TooltipContent>{!conflictChecked ? t("detail.quote.doConflictFirst") : noCard ? t("detail.quote.cardRequiredTooltip") : t("detail.quote.sendTooltip")}</TooltipContent>
       </Tooltip>
-      {!conflictChecked && <p className="-mt-2 text-xs text-muted-foreground">{t("detail.quote.doConflictFirst")}</p>}
+      {!conflictChecked &&
+        (conflictBlocked ? (
+          <p role="alert" className="-mt-2 text-xs font-medium text-red-600">
+            {t("detail.quote.conflictRequired")}
+          </p>
+        ) : (
+          <p className="-mt-2 text-xs text-muted-foreground">{t("detail.quote.doConflictFirst")}</p>
+        ))}
       <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} />
     </section>
   );
