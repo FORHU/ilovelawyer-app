@@ -61,10 +61,11 @@ export default function ClientRequestsPage() {
 
   const [view, setView] = useState<ClientRequestInboxView>("inbox");
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<InboxSort>("closing");
-  const inboxCount = useClientRequestCountQuery("inbox");
-  const mineCount = useClientRequestCountQuery("mine");
-  const counts: Partial<Record<ClientRequestInboxView, number>> = { inbox: inboxCount, mine: mineCount };
+  // Newest first is the API's own order, so the list doesn't reshuffle until the lawyer asks.
+  const [sort, setSort] = useState<InboxSort>("newest");
+  // The tab the lawyer is on already knows its total; only the other tab needs its own request.
+  const inboxCount = useClientRequestCountQuery("inbox", view !== "inbox");
+  const mineCount = useClientRequestCountQuery("mine", view !== "mine");
   const requestsQuery = useClientRequestInboxQuery(view, page, LIMIT);
   const showSkeleton = useDelayedLoading(requestsQuery.isLoading);
 
@@ -115,9 +116,9 @@ export default function ClientRequestsPage() {
 
   const total = requestsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
-  // The sort only reorders the page in hand, so it is offered only when the inbox is one page.
-  const canSort = view === "inbox" && totalPages === 1;
-  const requests = canSort ? sortRequests(requestsQuery.data?.data ?? [], sort) : (requestsQuery.data?.data ?? []);
+  const counts: Partial<Record<ClientRequestInboxView, number>> = { inbox: view === "inbox" ? total : inboxCount, mine: view === "mine" ? total : mineCount };
+  // The sort reorders the page in hand: the API has no sort of its own yet, so a long inbox says so.
+  const requests = view === "inbox" ? sortRequests(requestsQuery.data?.data ?? [], sort) : (requestsQuery.data?.data ?? []);
   const isEmpty = !requestsQuery.isLoading && !requestsQuery.isError && requests.length === 0;
 
   const accepting = profileQuery.data?.acceptingRequests ?? false;
@@ -200,7 +201,7 @@ export default function ClientRequestsPage() {
                   <h2 className="text-[15px] font-semibold text-foreground">
                     {t("openRequests.title")} <span className="ml-1.5 text-[13px] font-normal text-muted-foreground">{t("openRequests.hint")}</span>
                   </h2>
-                  {canSort && (
+                  {requests.length > 0 && (
                     <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
                       {t("openRequests.sort")}
                       <select
@@ -213,6 +214,7 @@ export default function ClientRequestsPage() {
                       </select>
                     </label>
                   )}
+                  {totalPages > 1 && <p className="basis-full text-xs text-muted-foreground">{t("openRequests.pageOnly")}</p>}
                 </div>
               )}
               <div className="flex flex-col gap-3">
