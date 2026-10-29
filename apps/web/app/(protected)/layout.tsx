@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation"
 import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
-import { usePlanGateQuery } from "@/lib/user/plan-gate"
 import { useOrganizationsQuery, useMyInviteQuery, usePortfolioQuery } from "@/lib/organizations/queries"
 import { toActiveOrg, toOwnWorkspace } from "@/lib/auth/mutations"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
@@ -148,14 +147,17 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSetup])
 
-  // Verify before plan (UK, new sign-ups): an approved lawyer who has finished setup but whose
-  // application isn't verified yet, or who hasn't chosen a plan since, belongs on /verification.
-  // Asked only once they're approved and set up, and never of a trial guest. A failed lookup lets
-  // them through: the API refuses their AI and case work anyway.
-  const gateEnabled = !!currentUser && currentUser.approvalStatus === "ACTIVE" && setupDone && !currentUser.trialExpiresAt
-  const gateQuery = usePlanGateQuery(gateEnabled)
-  const gateUnknown = gateEnabled && !gateQuery.data && !gateQuery.isError
-  const heldOut = gateEnabled && !!gateQuery.data && gateQuery.data.state !== "OPEN" && pathname !== VERIFICATION_PATH
+  // Verify before plan (UK, new sign-ups): the API says on /me whether the lawyer is held
+  // (currentUser.planGate, PlanGateSvc) — whose application isn't verified yet, or who hasn't chosen
+  // a plan since — and a held lawyer belongs on /verification. Who is held is the API's call alone;
+  // this only keeps the order of the steps: account setup first, then waiting for approval, then
+  // this.
+  const heldOut =
+    !!currentUser?.planGate &&
+    currentUser.planGate !== "OPEN" &&
+    currentUser.approvalStatus === "ACTIVE" &&
+    setupDone &&
+    pathname !== VERIFICATION_PATH
 
   useEffect(() => {
     if (heldOut) router.replace(VERIFICATION_PATH)
@@ -249,7 +251,7 @@ function CurrentUserSync({
   // until it's known rather than let children fetch the organization's data first.
   const portfolioUnknown = workspace === "portfolio" && inOrganization && !portfolio && !portfolioQuery.isError
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown || gateUnknown || heldOut)
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown || heldOut)
     // On /onboarding or /verification (or on the way to either), keep setup's own layout instead of
     // the full-screen loader, so the steps don't flash between two different screens.
     return pathname === ONBOARDING_PATH || pathname === VERIFICATION_PATH || needsSetup || heldOut ? <OnboardingLoading /> : <LoadingScreen />
