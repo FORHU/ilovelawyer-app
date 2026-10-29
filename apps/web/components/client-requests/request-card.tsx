@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { cn } from "@workspace/ui/lib/utils";
 import { formatTimeAgo } from "@/lib/client-requests/format";
 import { CLOSING_SOON_HOURS, hoursLeft, readiness } from "@/lib/client-requests/request-meta";
+import { useNow } from "@/lib/client-requests/use-countdown";
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { RequestTags } from "./request-tags";
 
@@ -25,8 +26,11 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
   const { t } = useTranslation("client-request");
   const actionable = !!onPass && !!onAccept;
   const ready = readiness(request);
-  // Only an unclaimed request is still counting down to its 48-hour expiry.
-  const open = actionable ? hoursLeft(request.routingExpiresAt) : null;
+  // Only an unclaimed request is still counting down to its 48-hour expiry. Re-read every minute, so
+  // the hours left stay true and a request that has run out stops being acceptable.
+  const now = useNow();
+  const open = actionable ? hoursLeft(request.routingExpiresAt, now) : null;
+  const expired = open === 0;
 
   return (
     // One markup for both breakpoints: actions stack under the copy on mobile, sit to its right from md.
@@ -45,7 +49,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
             </span>
           )}
           {open !== null && (
-            <span className={cn(open < CLOSING_SOON_HOURS && "text-danger")}>{open === 0 ? t("card.closed") : t("card.open", { hours: open })}</span>
+            <span className={cn(open < CLOSING_SOON_HOURS && "text-danger")}>{expired ? t("card.expired") : t("card.open", { hours: open })}</span>
           )}
           {request.assignedTo && <span>{t("card.assignedTo", { name: request.assignedTo.name })}</span>}
         </p>
@@ -76,7 +80,7 @@ export function RequestCard({ request, onPass, onAccept, passPending, acceptPend
               <Button
                 type="button"
                 variant="outline"
-                disabled={passPending || acceptPending}
+                disabled={passPending || acceptPending || expired}
                 onClick={() => onAccept(request.id)}
                 className="h-10 flex-1 border-foreground px-6 text-[11px] font-semibold tracking-[1.2px] uppercase md:flex-none"
               >
