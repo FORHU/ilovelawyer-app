@@ -19,6 +19,7 @@ import { FeedbackDrawer } from "@/components/feedback/feedback-drawer"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 const ONBOARDING_PATH = "/onboarding"
+const VERIFICATION_PATH = "/verification"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -146,6 +147,23 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSetup])
 
+  // Verify before plan (UK, new sign-ups): the API says on /me whether the lawyer is held
+  // (currentUser.planGate, PlanGateSvc) — whose application isn't verified yet, or who hasn't chosen
+  // a plan since — and a held lawyer belongs on /verification. Who is held is the API's call alone;
+  // this only keeps the order of the steps: account setup first, then waiting for approval, then
+  // this.
+  const heldOut =
+    !!currentUser?.planGate &&
+    currentUser.planGate !== "OPEN" &&
+    currentUser.approvalStatus === "ACTIVE" &&
+    setupDone &&
+    pathname !== VERIFICATION_PATH
+
+  useEffect(() => {
+    if (heldOut) router.replace(VERIFICATION_PATH)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heldOut])
+
   useEffect(() => {
     if (organization || !orgs?.[0]) return
     setOrganization(toActiveOrg(orgs[0]))
@@ -233,10 +251,10 @@ function CurrentUserSync({
   // until it's known rather than let children fetch the organization's data first.
   const portfolioUnknown = workspace === "portfolio" && inOrganization && !portfolio && !portfolioQuery.isError
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown)
-    // On /onboarding (or on the way to it), keep setup's own layout instead of the full-screen
-    // loader, so the steps don't flash between two different screens.
-    return pathname === ONBOARDING_PATH || needsSetup ? <OnboardingLoading /> : <LoadingScreen />
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown || heldOut)
+    // On /onboarding or /verification (or on the way to either), keep setup's own layout instead of
+    // the full-screen loader, so the steps don't flash between two different screens.
+    return pathname === ONBOARDING_PATH || pathname === VERIFICATION_PATH || needsSetup || heldOut ? <OnboardingLoading /> : <LoadingScreen />
 
   if (workspaceSetupOpen)
     return (
@@ -256,7 +274,7 @@ function CurrentUserSync({
       <FeedbackDrawer />
       {/* First login: everyone answers for AI processing once. Not during account setup: it waits
           until the lawyer reaches the app, so it never covers a setup step. */}
-      {pathname !== ONBOARDING_PATH && <AiConsentPrompt />}
+      {pathname !== ONBOARDING_PATH && pathname !== VERIFICATION_PATH && <AiConsentPrompt />}
     </>
   )
 }

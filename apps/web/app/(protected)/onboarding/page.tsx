@@ -17,6 +17,7 @@ import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useDiscardOrganizationMutation } from "@/lib/organizations/mutations";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 import { useCompleteSetupMutation, useCurrentUserQuery } from "@/lib/user/mutations";
+import type { PlanGateState } from "@/lib/user/plan-gate";
 
 type StepId = SetupStepId;
 
@@ -46,7 +47,7 @@ export default function OnboardingPage() {
   const [setupStep, setSetupStep] = useState<WorkspaceSetupStep>("choose");
 
   useEffect(() => {
-    if (currentUser?.setupCompletedAt) router.replace(afterSetupPath(currentUser.approvalStatus));
+    if (currentUser?.setupCompletedAt) router.replace(afterSetupPath(currentUser.approvalStatus, isHeld(currentUser.planGate)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.setupCompletedAt]);
 
@@ -80,6 +81,7 @@ export default function OnboardingPage() {
       key={organization.id}
       organization={organization}
       pending={currentUser?.approvalStatus === "PENDING"}
+      held={isHeld(currentUser?.planGate)}
       onRechoose={organization.isPersonal ? () => setRechoosing(true) : undefined}
       onFirmRemoved={() => {
         setDiscarded(true);
@@ -90,19 +92,30 @@ export default function OnboardingPage() {
   );
 }
 
-/** Where a finished setup goes: into the app, or to wait for approval when the account isn't approved yet. */
-function afterSetupPath(approvalStatus: string | undefined) {
-  return approvalStatus && approvalStatus !== "ACTIVE" ? "/account-pending" : "/homepage";
+/** Verify before plan (UK, new sign-ups): the API's gate on /me (PlanGateSvc). Held: the application
+ * can't be skipped, and the plan is chosen on /verification once it's verified, not here. */
+function isHeld(planGate: PlanGateState | undefined) {
+  return !!planGate && planGate !== "OPEN";
+}
+
+/** Where a finished setup goes: to wait for approval when the account isn't approved yet; else, for
+ * a held lawyer, straight to /verification (not by way of /homepage, which would send them there);
+ * else into the app. */
+function afterSetupPath(approvalStatus: string | undefined, held: boolean) {
+  if (approvalStatus && approvalStatus !== "ACTIVE") return "/account-pending";
+  return held ? "/verification" : "/homepage";
 }
 
 function SetupSteps({
   organization,
   pending,
+  held,
   onRechoose,
   onFirmRemoved,
 }: {
   organization: ActiveOrganization;
   pending: boolean;
+  held: boolean;
   onRechoose?: () => void;
   onFirmRemoved: () => void;
 }) {
@@ -132,7 +145,7 @@ function SetupSteps({
     setSteps([
       ...(isFirmOwner ? (["firm", "invite"] as const) : []),
       ...(needsApplication ? (["apply"] as const) : []),
-      ...(choosesPlan ? (["plan"] as const) : []),
+      ...(choosesPlan && !held ? (["plan"] as const) : []),
     ]);
     if (isFirmOwner) setIndex(1);
   }
@@ -141,7 +154,11 @@ function SetupSteps({
 
   useEffect(() => {
     if (!finished || completeSetup.isPending || completeSetup.isSuccess) return;
-    completeSetup.mutate(undefined, { onSettled: (updated) => router.replace(afterSetupPath(updated?.approvalStatus ?? (pending ? "PENDING" : "ACTIVE"))) });
+    // A held lawyer whose application is already sent has no steps left here: this runs straight
+    // away and takes them on to /verification.
+    completeSetup.mutate(undefined, {
+      onSettled: (updated) => router.replace(afterSetupPath(updated?.approvalStatus ?? (pending ? "PENDING" : "ACTIVE"), held)),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
@@ -179,7 +196,7 @@ function SetupSteps({
         <div key={step} hidden={i !== index}>
           {step === "firm" && <FirmStep organization={organization} onDone={next} onBackToChoice={askToRemoveFirm} />}
           {step === "invite" && <InviteStep organizationId={organization.id} firmName={organization.name} onDone={next} />}
-          {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} />}
+          {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} required={held} />}
           {step === "plan" && <PlanStep onDone={next} trial={organization.isPersonal} />}
         </div>
       ))}
