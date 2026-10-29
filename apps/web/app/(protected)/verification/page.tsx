@@ -73,7 +73,7 @@ export default function VerificationPage() {
 
   return (
     <OnboardingShell>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 text-center">
         <h1 className={setupHeadingClass}>{t("verification.pendingTitle")}</h1>
         <p className={setupSubtitleClass}>{t("verification.pendingBody")}</p>
       </div>
