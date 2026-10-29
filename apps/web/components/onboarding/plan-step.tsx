@@ -9,9 +9,10 @@ import { setupSecondaryButtonClass } from "@/components/onboarding/styles";
  * (PlanPicker), or skipping it. Skipping leaves the account on the cheapest plan, unpaid. A solo
  * lawyer (`trial`) then has a 14-day free trial of it, from approval (ilovelawyer-api's
  * PlanTrialSvc), after which the account is read-only until they subscribe on /plans; a firm's
- * founder has no trial yet.
+ * founder has no trial yet. `trialStartsNow`: the /verification plan step, where the trial starts on
+ * that click rather than at approval (verify before plan).
  */
-export function PlanStep({ onDone, trial }: { onDone: () => void; trial: boolean }) {
+export function PlanStep({ onDone, trial, trialStartsNow = false }: { onDone: () => void; trial: boolean; trialStartsNow?: boolean }) {
   const { t } = useTranslation("onboarding");
   return (
     <PlanPicker
@@ -22,7 +23,7 @@ export function PlanStep({ onDone, trial }: { onDone: () => void; trial: boolean
           <button type="button" onClick={onDone} className={setupSecondaryButtonClass}>
             {trial ? t("plan.skipTrial") : t("plan.skip")}
           </button>
-          <p className="text-center text-xs text-muted-foreground">{trial ? t("plan.skipNoteTrial") : t("plan.skipNote")}</p>
+          <p className="text-center text-xs text-muted-foreground">{trial ? t(trialStartsNow ? "plan.skipNoteTrialNow" : "plan.skipNoteTrial") : t("plan.skipNote")}</p>
         </div>
       }
     />

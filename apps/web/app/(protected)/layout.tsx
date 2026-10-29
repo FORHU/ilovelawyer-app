@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { refreshAccessToken } from "@/lib/fetch"
 import { useAuthStore, type AuthUser } from "@/lib/store/auth.store"
 import { useCurrentUserQuery } from "@/lib/user/mutations"
+import { usePlanGateQuery } from "@/lib/user/plan-gate"
 import { useOrganizationsQuery, useMyInviteQuery, usePortfolioQuery } from "@/lib/organizations/queries"
 import { toActiveOrg, toOwnWorkspace } from "@/lib/auth/mutations"
 import { useTenantCodeHint } from "@/components/tenant-code-provider"
@@ -19,6 +20,7 @@ import { FeedbackDrawer } from "@/components/feedback/feedback-drawer"
 
 const ORGANIZATION_PATH = "/homepage/organization"
 const ONBOARDING_PATH = "/onboarding"
+const VERIFICATION_PATH = "/verification"
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -146,6 +148,20 @@ function CurrentUserSync({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSetup])
 
+  // Verify before plan (UK, new sign-ups): an approved lawyer who has finished setup but whose
+  // application isn't verified yet, or who hasn't chosen a plan since, belongs on /verification.
+  // Asked only once they're approved and set up, and never of a trial guest. A failed lookup lets
+  // them through: the API refuses their AI and case work anyway.
+  const gateEnabled = !!currentUser && currentUser.approvalStatus === "ACTIVE" && setupDone && !currentUser.trialExpiresAt
+  const gateQuery = usePlanGateQuery(gateEnabled)
+  const gateUnknown = gateEnabled && !gateQuery.data && !gateQuery.isError
+  const heldOut = gateEnabled && !!gateQuery.data && gateQuery.data.state !== "OPEN" && pathname !== VERIFICATION_PATH
+
+  useEffect(() => {
+    if (heldOut) router.replace(VERIFICATION_PATH)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heldOut])
+
   useEffect(() => {
     if (organization || !orgs?.[0]) return
     setOrganization(toActiveOrg(orgs[0]))
@@ -233,10 +249,10 @@ function CurrentUserSync({
   // until it's known rather than let children fetch the organization's data first.
   const portfolioUnknown = workspace === "portfolio" && inOrganization && !portfolio && !portfolioQuery.isError
 
-  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown)
-    // On /onboarding (or on the way to it), keep setup's own layout instead of the full-screen
-    // loader, so the steps don't flash between two different screens.
-    return pathname === ONBOARDING_PATH || needsSetup ? <OnboardingLoading /> : <LoadingScreen />
+  if (hydrating || (accessToken && !user && !isError) || statusUnknown || needsApproval || needsSetup || isAuthError || orgUnknown || portfolioUnknown || gateUnknown || heldOut)
+    // On /onboarding or /verification (or on the way to either), keep setup's own layout instead of
+    // the full-screen loader, so the steps don't flash between two different screens.
+    return pathname === ONBOARDING_PATH || pathname === VERIFICATION_PATH || needsSetup || heldOut ? <OnboardingLoading /> : <LoadingScreen />
 
   if (workspaceSetupOpen)
     return (
@@ -256,7 +272,7 @@ function CurrentUserSync({
       <FeedbackDrawer />
       {/* First login: everyone answers for AI processing once. Not during account setup: it waits
           until the lawyer reaches the app, so it never covers a setup step. */}
-      {pathname !== ONBOARDING_PATH && <AiConsentPrompt />}
+      {pathname !== ONBOARDING_PATH && pathname !== VERIFICATION_PATH && <AiConsentPrompt />}
     </>
   )
 }

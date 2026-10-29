@@ -53,6 +53,7 @@
     "invalidEmail": "Enter a valid email address."
   },
   "apply": {
+    "required": "We check every lawyer's registration before they start. You can use ilovelawyer once we've verified your application.",
     "later": "Later",
     "submit": "Submit application",
     "submitting": "Submitting…",
@@ -91,7 +92,8 @@
     "skipNote": "Your account starts on the cheapest plan, with nothing charged, until you choose one.",
     "subtitleTrial": "Pick the plan that fits your practice, or try it free for 14 days first.",
     "skipTrial": "Start my free trial",
-    "skipNoteTrial": "You get 14 days of the cheapest plan free, from when your account is approved. Nothing is charged. After that your account becomes read-only until you choose a plan."
+    "skipNoteTrial": "You get 14 days of the cheapest plan free, from when your account is approved. Nothing is charged. After that your account becomes read-only until you choose a plan.",
+    "skipNoteTrialNow": "Your 14 days of the cheapest plan start now, free. Nothing is charged. After that your account becomes read-only until you choose a plan."
   },
   "planChange": {
     "title": "Your plan",
@@ -146,5 +148,14 @@
     "PH": "Apply to get verified and show an Approved badge on your profile.",
     "action": "Apply",
     "dismiss": "Dismiss for 7 days"
+  },
+  "verification": {
+    "pendingTitle": "We're checking your application",
+    "pendingBody": "An admin is checking your registration with your regulator. We'll email you as soon as it's verified, and then you can choose your plan and start using ilovelawyer.",
+    "rejectedTitle": "Your application needs changes",
+    "rejectedBody": "We couldn't verify your application. Update it below and submit it again.",
+    "rejectedReason": "Reason: {{note}}",
+    "applyTitle": "Apply to start using ilovelawyer",
+    "logOut": "Log out"
   }
 }

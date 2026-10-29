@@ -51,6 +51,7 @@ export const userKeys = {
   me: () => [...userKeys.all, "me"] as const,
   consents: () => [...userKeys.all, "consents"] as const,
   clientRequestProfile: () => [...userKeys.all, "client-request-profile"] as const,
+  planGate: () => [...userKeys.all, "plan-gate"] as const,
 }
 
 export const practiceAreaKeys = {

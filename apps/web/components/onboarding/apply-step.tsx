@@ -12,9 +12,10 @@ import { applicationPatchFromForm, formFromProfile, missingFromForm, validateFor
 /**
  * Onboarding's Apply step: the Lawyer Application form (the same fields as the Profile page's Apply
  * dialog), with Submit and Later. Later leaves it unsubmitted; the Profile page and the homepage
- * reminder bring the lawyer back to it.
+ * reminder bring the lawyer back to it. `required` (verify before plan, lib/user/plan-gate.ts): no
+ * Later, since the lawyer can't use the app until it's verified.
  */
-export function ApplyStep({ profile, onDone }: { profile: ClientRequestProfile; onDone: () => void }) {
+export function ApplyStep({ profile, onDone, required = false }: { profile: ClientRequestProfile; onDone: () => void; required?: boolean }) {
   const { t } = useTranslation("onboarding");
   const { t: tProfile } = useTranslation("profile");
   const update = useUpdateClientRequestProfileMutation();
@@ -40,7 +41,7 @@ export function ApplyStep({ profile, onDone }: { profile: ClientRequestProfile; 
     <form onSubmit={submit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className={setupHeadingClass}>{tProfile(`clientRequests.copy.${profile.country}.dialogTitle`)}</h1>
-        <p className={setupSubtitleClass}>{tProfile(`clientRequests.copy.${profile.country}.dialogDescription`)}</p>
+        <p className={setupSubtitleClass}>{required ? t("apply.required") : tProfile(`clientRequests.copy.${profile.country}.dialogDescription`)}</p>
       </div>
 
       <LawyerApplicationFields form={form} set={set} errors={errors} heldPracticeAreas={profile.practiceAreas} singleColumn />
@@ -60,9 +61,11 @@ export function ApplyStep({ profile, onDone }: { profile: ClientRequestProfile; 
           {update.isPending && <Loader2 size={18} className="animate-spin" aria-hidden="true" />}
           {update.isPending ? t("apply.submitting") : t("apply.submit")}
         </button>
-        <button type="button" onClick={onDone} disabled={update.isPending} className={setupSecondaryButtonClass}>
-          {t("apply.later")}
-        </button>
+        {!required && (
+          <button type="button" onClick={onDone} disabled={update.isPending} className={setupSecondaryButtonClass}>
+            {t("apply.later")}
+          </button>
+        )}
       </div>
     </form>
   );

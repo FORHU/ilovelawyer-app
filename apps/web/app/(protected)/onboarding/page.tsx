@@ -17,6 +17,7 @@ import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useDiscardOrganizationMutation } from "@/lib/organizations/mutations";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 import { useCompleteSetupMutation, useCurrentUserQuery } from "@/lib/user/mutations";
+import { usePlanGateQuery } from "@/lib/user/plan-gate";
 
 type StepId = SetupStepId;
 
@@ -118,21 +119,26 @@ function SetupSteps({
   // Who chooses a subscription plan: a solo lawyer, and a firm's founder for the firm. Someone who
   // joined a firm is on the firm's.
   const choosesPlan = organization.isPersonal || isFirmOwner;
+  // Verify before plan (UK, new sign-ups): the application can't be skipped, and the plan is chosen
+  // on /verification once it's verified, not here. A failed lookup keeps today's steps.
+  const gateQuery = usePlanGateQuery(choosesPlan);
+  const held = !!gateQuery.data && gateQuery.data.state !== "OPEN";
 
   const [index, setIndex] = useState(0);
   // Fixed on first load, so submitting the application (which changes its status) doesn't
   // reshuffle the steps under the lawyer.
   const [steps, setSteps] = useState<StepId[] | null>(null);
   const profileReady = !applies || profileQuery.isFetched;
+  const gateReady = !choosesPlan || gateQuery.isFetched;
 
-  if (steps === null && profileReady) {
+  if (steps === null && profileReady && gateReady) {
     const needsApplication = applies && profileQuery.data?.verification.status === "UNSUBMITTED";
     // A founder's firm already exists, so they start at Invite; Firm is there to go back to. The
     // plan comes last.
     setSteps([
       ...(isFirmOwner ? (["firm", "invite"] as const) : []),
       ...(needsApplication ? (["apply"] as const) : []),
-      ...(choosesPlan ? (["plan"] as const) : []),
+      ...(choosesPlan && !held ? (["plan"] as const) : []),
     ]);
     if (isFirmOwner) setIndex(1);
   }
@@ -179,7 +185,7 @@ function SetupSteps({
         <div key={step} hidden={i !== index}>
           {step === "firm" && <FirmStep organization={organization} onDone={next} onBackToChoice={askToRemoveFirm} />}
           {step === "invite" && <InviteStep organizationId={organization.id} firmName={organization.name} onDone={next} />}
-          {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} />}
+          {step === "apply" && profileQuery.data && <ApplyStep profile={profileQuery.data} onDone={next} required={held} />}
           {step === "plan" && <PlanStep onDone={next} trial={organization.isPersonal} />}
         </div>
       ))}
