@@ -12,6 +12,7 @@ import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
+import { claimEndedKey } from "@/lib/client-requests/claim-ended";
 import { RequestStepper } from "@/components/client-requests/request-stepper";
 import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
@@ -565,8 +566,6 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
   );
 }
 
-/** Several lawyers (ilovelawyer-api, phase 5): the client hired another lawyer on the request, or
- * didn't choose one in time. Nothing was charged to this lawyer. */
 /** The lawyer's thread with the client before hire (phase 5b): open while they're on the request,
  * read-only once their claim has ended. The client isn't named until they hire this lawyer. */
 function ClientQuestionsCard({ requestId, ended }: { requestId: string; ended: boolean }) {
@@ -582,11 +581,15 @@ function ClientQuestionsCard({ requestId, ended }: { requestId: string; ended: b
   );
 }
 
-function NotChosenCard() {
+/** Several lawyers (ilovelawyer-api, phase 5): the client hired another lawyer on the request, or
+ * didn't choose one in time. Nothing was charged to this lawyer. */
+/** Why this lawyer is no longer on the request (claimEndedKey): not chosen, given back, out of time,
+ * declined or withdrawn. They can't accept it again: the API leaves them out of it. */
+function ClaimEndedCard({ endedKey }: { endedKey: string }) {
   const { t } = useTranslation("client-request");
   return (
     <section className={cn(CARD, "flex flex-col items-start gap-2")}>
-      <div className="text-[13px] text-muted-foreground">{t("detail.notChosen.body")}</div>
+      <div className="text-[13px] text-muted-foreground">{t(`${endedKey}.body`)}</div>
     </section>
   );
 }
@@ -597,10 +600,12 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
   // longer holds the request, even though it has moved on to CONFIRMED or ENGAGED for another lawyer.
   const mine = request.claim?.byMe ? request.claim : null;
   const held = !!mine && (mine.outcome == null || mine.outcome === "ENGAGED");
-  const notChosen = mine?.outcome === "NOT_CHOSEN";
+  // Their claim ended (not chosen, given back, out of time, declined, withdrawn): say so, rather than
+  // showing the request as it looks to the lawyers still on it.
+  const endedKey = claimEndedKey(mine);
   // Phase 5b: the thread with the client opens on joining; once the claim ends it stays readable.
   const beforeHire = held && mine?.outcome == null;
-  const claimEnded = !!mine && mine.outcome != null && mine.outcome !== "ENGAGED";
+  const claimEnded = !!endedKey;
   const lawyersOn = request.lawyersOn ?? 0;
   // The lawyer clearing the conflict check (parties shown, no conflict) is what the quote waits for.
   const [conflictCleared, setConflictCleared] = useState(false);
@@ -611,11 +616,11 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="font-display text-[26px] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[clamp(30px,3.2vw,40px)]">
-            {notChosen ? t("detail.notChosen.title") : t(`detail.status.${request.status}`)}
+            {endedKey ? t(`${endedKey}.title`) : t(`detail.status.${request.status}`)}
           </h1>
           <RequestTags brief={request.brief} />
-          {request.status === "ROUTED" && lawyersOn > 0 && (
-            <p className="text-[13px] text-muted-foreground">{t("detail.lawyersOn", { count: lawyersOn })}</p>
+          {request.status === "ROUTED" && lawyersOn > 0 && !endedKey && (
+            <p className="text-[13px] text-muted-foreground">{t("detail.lawyersOn", { count: lawyersOn, max: request.maxLawyers ?? 3 })}</p>
           )}
         </div>
         {request.status === "CLAIMED" && request.claim?.claimExpiresAt && <HeldTimer until={new Date(request.claim.claimExpiresAt).getTime()} />}
@@ -644,7 +649,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             </section>
           )}
 
-          {(!held || beforeEngagement) && !notChosen && (
+          {!endedKey && (!held || beforeEngagement) && (
             <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-4">
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
@@ -655,7 +660,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
         </div>
 
         <div className="flex flex-col gap-5">
-          {notChosen && <NotChosenCard />}
+          {endedKey && <ClaimEndedCard endedKey={endedKey} />}
           {(beforeHire || claimEnded) && <ClientQuestionsCard requestId={request.id} ended={claimEnded} />}
           {!mine && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
           {held && request.status === "CLAIMED" && (

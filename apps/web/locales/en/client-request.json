@@ -29,7 +29,7 @@
     "pass": "Pass",
     "passTooltip": "Hide this request from your inbox",
     "accept": "Accept",
-    "acceptTooltip": "Join this request: other lawyers can quote on it too",
+    "acceptTooltip": "Join this request: up to 3 lawyers can quote on it",
     "ready": "Lawyer-ready · {{met}} of {{total}}",
     "notReady": "{{met}} of {{total}} lawyer-ready",
     "open": "Open {{hours}}h more",
@@ -38,7 +38,7 @@
   },
   "confirmAccept": {
     "title": "Accept this request?",
-    "description": "Other lawyers can accept this request too. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. You’re charged the per-case fee only if the client hires you.",
+    "description": "Up to 3 lawyers can accept a request. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. You’re charged the per-case fee only if the client hires you.",
     "cancel": "Cancel",
     "confirm": "Accept request"
   },
@@ -85,12 +85,39 @@
     "aiSummary": "Case summary · anonymised",
     "ai": "AI",
     "lockedParties": "Party names appear here once you accept this request.",
-    "lawyersOn_one": "{{count}} lawyer has accepted this request",
-    "lawyersOn_other": "{{count}} lawyers have accepted this request",
+    "lawyersOn_one": "{{count}} of {{max}} lawyers has accepted this request",
+    "lawyersOn_other": "{{count}} of {{max}} lawyers have accepted this request",
     "notChosen": {
       "badge": "Not chosen",
       "title": "The client chose another lawyer",
       "body": "The client hired another lawyer for this request, or didn’t choose one in time. Nothing was charged to you."
+    },
+    "ended": {
+      "RELEASED": {
+        "badge": "Given back",
+        "title": "You gave this request back",
+        "body": "You released this request, so it went back to other lawyers. You won’t see it again, and nothing was charged to you."
+      },
+      "LAPSED": {
+        "badge": "Time ran out",
+        "title": "Your 24 hours ran out",
+        "body": "You didn’t send a quote within 24 hours, so the request went back to other lawyers. You won’t see it again, and nothing was charged to you."
+      },
+      "DECLINED": {
+        "badge": "Quote declined",
+        "title": "The client declined your quote",
+        "body": "The client chose not to go ahead with your quote. You won’t see this request again, and nothing was charged to you."
+      },
+      "WITHDRAWN": {
+        "badge": "Withdrawn",
+        "title": "The client withdrew this request",
+        "body": "The client withdrew the request while you were on it. Nothing was charged to you."
+      },
+      "REASSIGNED": {
+        "badge": "Reassigned",
+        "title": "This request moved to another lawyer",
+        "body": "This request is no longer yours. Nothing was charged to you."
+      }
     },
     "intake": {
       "title": "Client's overview · anonymised",

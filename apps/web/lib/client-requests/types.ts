@@ -177,10 +177,11 @@ export interface ClientRequestForLawyer {
   status: ClientRequestStatus
   brief: CaseBrief
   routedAt: string | null
-  /** 48h after routing: until then, lawyers can join. */
+  /** 48h after routing: until then, lawyers can join while a place is free. */
   routingExpiresAt: string | null
-  /** Several lawyers (phase 5): how many are on it now. */
+  /** Several lawyers (phase 5): how many are on it now, of maxLawyers. */
   lawyersOn?: number
+  maxLawyers?: number
   claim: ClaimSummary | null
   quote: Quote | null
   /** What confirming will charge the organization. */
