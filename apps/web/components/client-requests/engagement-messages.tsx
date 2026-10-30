@@ -21,10 +21,12 @@ function MessageBubble({ message, locale }: { message: EngagementMessage; locale
   const { t } = useTranslation("client-request")
   const mine = message.author.side === "LAWYER"
   const when = new Date(message.createdAt).toLocaleString(locale, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
+  // Before the client hires them, the API leaves out who the client is (no id, no name).
+  const client = message.author.id ? `${message.author.name} · ${t("messages.client")}` : t("messages.client")
   return (
     <li className={cn("flex max-w-[85%] flex-col gap-1", mine ? "self-end items-end" : "self-start items-start")}>
       <span className="text-[11px] text-muted-foreground">
-        {mine ? t("messages.you") : `${message.author.name} · ${t("messages.client")}`} · {when}
+        {mine ? t("messages.you") : client} · {when}
       </span>
       {message.body && (
         <p
@@ -55,13 +57,27 @@ function MessageBubble({ message, locale }: { message: EngagementMessage; locale
 }
 
 /**
- * The engagement thread with the client (FORHU/ilovelawyer-app#887, ilovelawyer-api#517): a
- * Messages button with the unread count, opening a right-side drawer with the participants, the
- * thread (documents the client shared show who shared them and when) and a composer. Opening it, or
- * a new message arriving while it's open, marks the thread read. Read-only once the engagement is
- * closed.
+ * The lawyer's thread with the client (FORHU/ilovelawyer-app#887, ilovelawyer-api#517): a Messages
+ * button with the unread count, opening a right-side drawer with the participants, the thread
+ * (documents the client shared show who shared them and when) and a composer. Opening it, or a new
+ * message arriving while it's open, marks the thread read. Since phase 5b it opens when the lawyer
+ * joins (`beforeHire`: the client isn't named, and a hint asks them not to share contact details).
+ * Read-only once the engagement is closed (`closed`) or their claim has ended (`ended`).
  */
-export function EngagementMessages({ requestId, clientName, closed }: { requestId: string; clientName: string; closed: boolean }) {
+export function EngagementMessages({
+  requestId,
+  clientName,
+  closed = false,
+  ended = false,
+  beforeHire = false,
+}: {
+  requestId: string
+  /** Who the client is; left out before hire, when they aren't named. */
+  clientName?: string
+  closed?: boolean
+  ended?: boolean
+  beforeHire?: boolean
+}) {
   const { t } = useTranslation("client-request")
   const locale = useDateLocale()
   const [open, setOpen] = useState(false)
@@ -109,7 +125,7 @@ export function EngagementMessages({ requestId, clientName, closed }: { requestI
           <SheetHeader className="border-b border-border px-5 py-4">
             <SheetTitle>{t("messages.title")}</SheetTitle>
             <SheetDescription>
-              {t("messages.participants", { client: clientName })}
+              {clientName ? t("messages.participants", { client: clientName }) : t("messages.participantsBeforeHire")}
             </SheetDescription>
           </SheetHeader>
 
@@ -119,7 +135,9 @@ export function EngagementMessages({ requestId, clientName, closed }: { requestI
             ) : thread.isError ? (
               <p className="text-[13px] text-red-600">{t("loadError")}</p>
             ) : messages.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">{t("messages.empty", { client: clientName })}</p>
+              <p className="text-[13px] text-muted-foreground">
+                {clientName ? t("messages.empty", { client: clientName }) : t("messages.emptyBeforeHire")}
+              </p>
             ) : (
               <ul className="flex flex-col gap-4">
                 {messages.map((m) => (
@@ -131,10 +149,11 @@ export function EngagementMessages({ requestId, clientName, closed }: { requestI
           </div>
 
           <div className="border-t border-border px-5 py-4">
-            {closed ? (
-              <p className="text-[12px] text-muted-foreground">{t("messages.closed")}</p>
+            {closed || ended ? (
+              <p className="text-[12px] text-muted-foreground">{t(ended ? "messages.ended" : "messages.closed")}</p>
             ) : (
               <form onSubmit={send} className="flex flex-col gap-2">
+                {beforeHire && <p className="text-[12px] text-muted-foreground">{t("messages.contactHint")}</p>}
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}

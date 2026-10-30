@@ -129,6 +129,8 @@ export const CLIENT_HANDOFF_ERROR_CODES = {
   CHARGE_FAILED: "CHARGE_FAILED", // 402: the per-case fee or a top-up was declined
   ENGAGEMENT_AI_BUDGET_SPENT: "ENGAGEMENT_AI_BUDGET_SPENT", // 403: top up to continue
   ENGAGEMENT_CLOSED: "ENGAGEMENT_CLOSED", // 409: the thread is read-only after close
+  THREAD_CLOSED: "THREAD_CLOSED", // 409: the lawyer's claim ended, so their thread is read-only (phase 5b)
+  DOCUMENTS_AFTER_HIRE: "DOCUMENTS_AFTER_HIRE", // 400: the client can share documents only with the lawyer they hired
   REASSIGN_TARGET_NOT_ELIGIBLE: "REASSIGN_TARGET_NOT_ELIGIBLE", // 400
   // Both
   INVALID_REQUEST_STATUS: "INVALID_REQUEST_STATUS", // 409: details.status is the current status
@@ -177,6 +179,8 @@ export interface ClientRequestClaimExpiringEvent {
 /** To everyone on the engagement thread except the author. */
 export interface EngagementMessageEvent {
   requestId: string;
+  /** The lawyer's claim the thread belongs to (one thread per lawyer since phase 5b). */
+  claimId: string;
   message: EngagementMessage;
 }
 
@@ -209,6 +213,8 @@ export interface EngagementAiBudgetEvent {
 export interface EngagementMessage {
   id: string;
   requestId: string;
+  claimId: string | null;
+  /** Before the lawyer is hired, the client's messages show as "Client", with no id. */
   author: { id: string | null; name: string; side: "CLIENT" | "LAWYER" | "SYSTEM" };
   body: string;
   /** Set when the message shares a document. */
