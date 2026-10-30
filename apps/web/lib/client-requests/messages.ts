@@ -3,9 +3,10 @@ import { apiFetch } from "@/lib/fetch"
 import { clientRequestKeys } from "@/lib/query-keys"
 import type { EngagementMessage, EngagementThreadPage } from "@/lib/client-handoff"
 
-// The engagement thread with the client (ilovelawyer-api#517): read while ENGAGED or CLOSED, post
-// while ENGAGED. New client messages arrive as engagement:message on the shared socket, which
-// refetches this query (socket.ts). A thread is short, so it's read whole.
+// The lawyer's thread with the client (ilovelawyer-api#517): from joining the request (phase 5b), and
+// still readable once their claim ends or the engagement closes. New client messages arrive as
+// engagement:message on the shared socket, which refetches this query (socket.ts). A thread is
+// short, so it's read whole.
 
 const THREAD_LIMIT = 200
 

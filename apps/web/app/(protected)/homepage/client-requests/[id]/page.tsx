@@ -566,6 +566,21 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
   );
 }
 
+/** The lawyer's thread with the client before hire (phase 5b): open while they're on the request,
+ * read-only once their claim has ended. The client isn't named until they hire this lawyer. */
+function ClientQuestionsCard({ requestId, ended }: { requestId: string; ended: boolean }) {
+  const { t } = useTranslation("client-request");
+  return (
+    <section className={cn(CARD, "flex flex-col items-start gap-3")}>
+      <div>
+        <div className={LABEL}>{t("messages.beforeHireTitle")}</div>
+        {!ended && <p className="mt-1 text-[13px] text-muted-foreground">{t("messages.beforeHireBody")}</p>}
+      </div>
+      <EngagementMessages requestId={requestId} beforeHire={!ended} ended={ended} />
+    </section>
+  );
+}
+
 /** Several lawyers (ilovelawyer-api, phase 5): the client hired another lawyer on the request, or
  * didn't choose one in time. Nothing was charged to this lawyer. */
 /** Why this lawyer is no longer on the request (claimEndedKey): not chosen, given back, out of time,
@@ -588,6 +603,9 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
   // Their claim ended (not chosen, given back, out of time, declined, withdrawn): say so, rather than
   // showing the request as it looks to the lawyers still on it.
   const endedKey = claimEndedKey(mine);
+  // Phase 5b: the thread with the client opens on joining; once the claim ends it stays readable.
+  const beforeHire = held && mine?.outcome == null;
+  const claimEnded = !!endedKey;
   const lawyersOn = request.lawyersOn ?? 0;
   // The lawyer clearing the conflict check (parties shown, no conflict) is what the quote waits for.
   const [conflictCleared, setConflictCleared] = useState(false);
@@ -643,6 +661,7 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
 
         <div className="flex flex-col gap-5">
           {endedKey && <ClaimEndedCard endedKey={endedKey} />}
+          {(beforeHire || claimEnded) && <ClientQuestionsCard requestId={request.id} ended={claimEnded} />}
           {!mine && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
           {held && request.status === "CLAIMED" && (
             <>
