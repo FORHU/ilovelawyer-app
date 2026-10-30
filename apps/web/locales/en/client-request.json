@@ -29,7 +29,7 @@
     "pass": "Pass",
     "passTooltip": "Hide this request from your inbox",
     "accept": "Accept",
-    "acceptTooltip": "Claim this request and hold it for you",
+    "acceptTooltip": "Join this request: other lawyers can quote on it too",
     "ready": "Lawyer-ready · {{met}} of {{total}}",
     "notReady": "{{met}} of {{total}} lawyer-ready",
     "open": "Open {{hours}}h more",
@@ -38,7 +38,7 @@
   },
   "confirmAccept": {
     "title": "Accept this request?",
-    "description": "This claims the request and holds it for you. You’re charged the per-case fee only if the client confirms you.",
+    "description": "Other lawyers can accept this request too. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. You’re charged the per-case fee only if the client hires you.",
     "cancel": "Cancel",
     "confirm": "Accept request"
   },
@@ -73,7 +73,7 @@
     "deadline": "deadline {{date}}",
     "status": {
       "REQUESTED": "Finding a lawyer",
-      "ROUTED": "Open for claim",
+      "ROUTED": "Open to lawyers",
       "CLAIMED": "Accepted by you",
       "QUOTED": "Quote sent",
       "CONFIRMED": "Confirmed · charging",
@@ -85,6 +85,13 @@
     "aiSummary": "Case summary · anonymised",
     "ai": "AI",
     "lockedParties": "Party names appear here once you accept this request.",
+    "lawyersOn_one": "{{count}} lawyer has accepted this request",
+    "lawyersOn_other": "{{count}} lawyers have accepted this request",
+    "notChosen": {
+      "badge": "Not chosen",
+      "title": "The client chose another lawyer",
+      "body": "The client hired another lawyer for this request, or didn’t choose one in time. Nothing was charged to you."
+    },
     "intake": {
       "title": "Client's overview · anonymised",
       "timeline": "Timeline",
@@ -246,6 +253,12 @@
     "unread": "{{count}} unread",
     "title": "Messages",
     "participants": "Between you and {{client}}, your client.",
+    "participantsBeforeHire": "Between you and the client. Their name shows once they hire you.",
+    "emptyBeforeHire": "No messages yet. Ask the client anything before you quote; they'll see it on their case.",
+    "contactHint": "Don't share contact details. Keep the conversation here until the client hires you.",
+    "ended": "You're no longer on this request. You can still read the messages, but not reply.",
+    "beforeHireTitle": "Questions for the client",
+    "beforeHireBody": "Ask about the case before you quote. The client sees your name; you see theirs once they hire you.",
     "loading": "Loading messages…",
     "empty": "No messages yet. Write to {{client}} here; they'll see it in the client app.",
     "you": "You",

@@ -1,4 +1,4 @@
-import type { ClientRequestStatus, Money, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
+import type { ClaimOutcome, ClientRequestStatus, Money, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
 
 // ClientRequestForLawyer and its parts, from ilovelawyer-api's swagger-client-handoff.ts
 // (GET /api/client-requests, built in #511/#512).
@@ -144,8 +144,10 @@ export interface ClaimSummary {
   /** Only on the holder's own copy, and the organization's OWNER/ADMIN. */
   lawyer?: { id: string; name: string }
   claimedAt: string
-  /** 24h after the claim; cleared once the client confirms. */
+  /** 24h after joining: the time to quote. A quoted claim waits for the client. */
   claimExpiresAt: string | null
+  /** Null while it's open. NOT_CHOSEN: the client hired another lawyer, or didn't pick in time. */
+  outcome?: ClaimOutcome | null
 }
 
 export type ChargeStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED"
@@ -175,8 +177,10 @@ export interface ClientRequestForLawyer {
   status: ClientRequestStatus
   brief: CaseBrief
   routedAt: string | null
-  /** 48h after routing, while unclaimed. */
+  /** 48h after routing: until then, lawyers can join. */
   routingExpiresAt: string | null
+  /** Several lawyers (phase 5): how many are on it now. */
+  lawyersOn?: number
   claim: ClaimSummary | null
   quote: Quote | null
   /** What confirming will charge the organization. */
