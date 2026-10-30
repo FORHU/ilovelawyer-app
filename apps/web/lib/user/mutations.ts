@@ -3,6 +3,7 @@ import { apiFetch, apiFetchRaw } from "@/lib/fetch"
 import { organizationKeys, userKeys } from "@/lib/query-keys"
 import { useAuthStore } from "@/lib/store/auth.store"
 import type { OrganizationMemberRecord } from "@/lib/organizations/queries"
+import type { PlanGateState } from "@/lib/user/plan-gate"
 
 // Mirrors ACCOUNT_DELETION_GRACE_PERIOD_DAYS on the API — the account is only ever actually
 // hard-deleted server-side, this is just for showing the scheduled date before a refetch.
@@ -36,6 +37,14 @@ export interface CurrentUser {
   /** When the lawyer chose to work solo (or left their firm). A solo lawyer has no organization:
    * their work is in their own workspace (see ownWorkspace in lib/store/auth.store). */
   soloChosenAt: string | null
+  /** Verify before plan (ilovelawyer-api's PlanGateSvc): only GET /me and the setup-complete and
+   * solo responses carry it; the other updates below keep the cached one. */
+  planGate?: PlanGateState
+}
+
+/** Puts an updated account in the cache, keeping what only GET /me carries (planGate). */
+function mergeMe(old: CurrentUser | undefined, updated: CurrentUser): CurrentUser {
+  return { ...old, ...updated, planGate: updated.planGate ?? old?.planGate }
 }
 
 /** Fetches the signed-in user's full profile — login/refresh only return tokens, not user data. */
@@ -56,7 +65,7 @@ export function useCompleteSetupMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<CurrentUser>("/api/users/me/setup/complete", { method: "POST" }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 
@@ -65,7 +74,7 @@ export function useChooseSoloMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<CurrentUser>("/api/users/me/solo", { method: "POST" }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 
@@ -80,7 +89,7 @@ export function useUpdateCurrentUserMutation() {
         body: JSON.stringify(data),
       }),
     onSuccess: (updated) => {
-      queryClient.setQueryData(userKeys.me(), updated)
+      queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated))
       // The profile page reads from the query cache above and updates on its own, but
       // the header's account menu reads the auth store's own copy of the user — without
       // this it keeps showing the pre-edit name/username until the next full login.
@@ -107,7 +116,7 @@ function useApplyAvatarChange() {
   const updateStoreUser = useAuthStore((s) => s.updateUser)
 
   return (updated: CurrentUser) => {
-    queryClient.setQueryData(userKeys.me(), updated)
+    queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated))
     updateStoreUser({ avatarUrl: updated.avatarUrl })
     queryClient.setQueriesData<OrganizationMemberRecord[]>(
       { queryKey: organizationKeys.all, predicate: (query) => query.queryKey.at(-1) === "members" },
@@ -149,7 +158,7 @@ export function useConnectGoogleCalendarMutation() {
   return useMutation({
     mutationFn: (code: string) =>
       apiFetch<CurrentUser>("/api/users/me/google-calendar", { method: "POST", body: JSON.stringify({ code }) }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 
@@ -158,7 +167,7 @@ export function useDisconnectGoogleCalendarMutation() {
 
   return useMutation({
     mutationFn: () => apiFetch<CurrentUser>("/api/users/me/google-calendar", { method: "DELETE" }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 
@@ -203,7 +212,7 @@ export function useDeleteAccountMutation() {
     // The API requires the password for password accounts; Google SSO accounts send none.
     mutationFn: (password?: string) =>
       apiFetch<CurrentUser>("/api/users/me", { method: "DELETE", body: JSON.stringify({ password }) }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 
@@ -212,7 +221,7 @@ export function useCancelDeletionMutation() {
 
   return useMutation({
     mutationFn: () => apiFetch<CurrentUser>("/api/users/me/cancel-deletion", { method: "POST" }),
-    onSuccess: (updated) => queryClient.setQueryData(userKeys.me(), updated),
+    onSuccess: (updated) => queryClient.setQueryData<CurrentUser>(userKeys.me(), (old) => mergeMe(old, updated)),
   })
 }
 

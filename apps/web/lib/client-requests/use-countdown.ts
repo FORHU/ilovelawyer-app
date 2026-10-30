@@ -15,3 +15,13 @@ export function formatCountdown(ms: number): string {
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`
 }
+
+/** The current time (epoch ms), refreshed every `everyMs`, so a "closes in Nh" read from it stays true. */
+export function useNow(everyMs = 60_000): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), everyMs)
+    return () => clearInterval(id)
+  }, [everyMs])
+  return now
+}

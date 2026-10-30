@@ -155,7 +155,9 @@
     "rejectedTitle": "Your application needs changes",
     "rejectedBody": "We couldn't verify your application. Update it below and submit it again.",
     "rejectedReason": "Reason: {{note}}",
-    "applyTitle": "Apply to start using ilovelawyer",
+    "loadFailedTitle": "We couldn't load your application",
+    "loadFailedBody": "Something went wrong on our side or with your connection. Try again, or log out and come back later.",
+    "retry": "Try again",
     "logOut": "Log out"
   }
 }

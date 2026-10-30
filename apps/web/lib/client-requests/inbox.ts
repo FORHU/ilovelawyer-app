@@ -15,10 +15,14 @@ export function useClientRequestInboxQuery(view: ClientRequestInboxView, page = 
   })
 }
 
-/** Cheap count for the nav tab's badge — just the inbox's first page, read for its `total`. */
-export function useClientRequestInboxCountQuery(enabled: boolean) {
-  const query = useClientRequestInboxQuery("inbox", 1, 1, enabled)
+/** Cheap count for a view's tab or the nav badge — just its first page of one, read for its `total`. */
+export function useClientRequestCountQuery(view: ClientRequestInboxView, enabled = true) {
+  const query = useClientRequestInboxQuery(view, 1, 1, enabled)
   return query.data?.total ?? 0
+}
+
+export function useClientRequestInboxCountQuery(enabled: boolean) {
+  return useClientRequestCountQuery("inbox", enabled)
 }
 
 export function useClaimClientRequestMutation() {
