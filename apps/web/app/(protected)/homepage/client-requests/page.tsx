@@ -16,11 +16,13 @@ import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
 import {
   isCardRequiredError,
   useClaimClientRequestMutation,
+  useClientRequestCountQuery,
   useClientRequestInboxQuery,
   usePassClientRequestMutation,
   type ClientRequestInboxView,
 } from "@/lib/client-requests/inbox";
 import { useClientRequestProfileQuery, useUpdateClientRequestProfileMutation } from "@/lib/client-requests/profile";
+import { sortRequests, type InboxSort } from "@/lib/client-requests/request-meta";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
@@ -59,6 +61,11 @@ export default function ClientRequestsPage() {
 
   const [view, setView] = useState<ClientRequestInboxView>("inbox");
   const [page, setPage] = useState(1);
+  // Newest first is the API's own order, so the list doesn't reshuffle until the lawyer asks.
+  const [sort, setSort] = useState<InboxSort>("newest");
+  // The tab the lawyer is on already knows its total; only the other tab needs its own request.
+  const inboxCount = useClientRequestCountQuery("inbox", view !== "inbox");
+  const mineCount = useClientRequestCountQuery("mine", view !== "mine");
   const requestsQuery = useClientRequestInboxQuery(view, page, LIMIT);
   const showSkeleton = useDelayedLoading(requestsQuery.isLoading);
 
@@ -107,19 +114,22 @@ export default function ClientRequestsPage() {
     });
   }
 
-  const requests = requestsQuery.data?.data ?? [];
   const total = requestsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+  const counts: Partial<Record<ClientRequestInboxView, number>> = { inbox: view === "inbox" ? total : inboxCount, mine: view === "mine" ? total : mineCount };
+  // The sort reorders the page in hand: the API has no sort of its own yet, so a long inbox says so.
+  const requests = view === "inbox" ? sortRequests(requestsQuery.data?.data ?? [], sort) : (requestsQuery.data?.data ?? []);
   const isEmpty = !requestsQuery.isLoading && !requestsQuery.isError && requests.length === 0;
-  const firstOpenId = view === "inbox" ? requests[0]?.id : undefined;
 
   const accepting = profileQuery.data?.acceptingRequests ?? false;
+  const capacity = profileQuery.data?.capacityLimit;
+  const slotsUsed = profileQuery.data?.openEngagements ?? 0;
   const acceptingPill = useMemo(
     () => (
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-2 rounded-full bg-muted px-4 py-2.5 text-[10px] font-semibold tracking-[1.2px] uppercase text-foreground">
           <span className={`size-1.5 rounded-full ${accepting ? "bg-emerald-500" : "bg-muted-foreground"}`} aria-hidden="true" />
-          {accepting ? t("accepting.on") : t("accepting.paused")}
+          {accepting ? (capacity ? t("accepting.onSlots", { used: slotsUsed, limit: capacity }) : t("accepting.on")) : t("accepting.paused")}
         </span>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -141,7 +151,7 @@ export default function ClientRequestsPage() {
         </Tooltip>
       </div>
     ),
-    [accepting, profileQuery.data, t, updateProfile]
+    [accepting, capacity, slotsUsed, profileQuery.data, t, updateProfile]
   );
 
   return (
@@ -152,7 +162,7 @@ export default function ClientRequestsPage() {
         <div className="mt-6 flex gap-2">
           {VIEWS.map((v) => (
             <button key={v} type="button" className={TAB_TRIGGER(view === v)} onClick={() => switchView(v)}>
-              {t(`tabs.${v}`)}
+              {counts[v] ? t("tabs.count", { label: t(`tabs.${v}`), count: counts[v] }) : t(`tabs.${v}`)}
             </button>
           ))}
         </div>
@@ -186,6 +196,27 @@ export default function ClientRequestsPage() {
             />
           ) : (
             <>
+              {view === "inbox" && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <h2 className="text-[15px] font-semibold text-foreground">
+                    {t("openRequests.title")} <span className="ml-1.5 text-[13px] font-normal text-muted-foreground">{t("openRequests.hint")}</span>
+                  </h2>
+                  {requests.length > 0 && (
+                    <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      {t("openRequests.sort")}
+                      <select
+                        value={sort}
+                        onChange={(e) => setSort(e.target.value as InboxSort)}
+                        className="h-9 cursor-pointer rounded-full border border-border bg-background px-3 text-[13px] text-foreground"
+                      >
+                        <option value="closing">{t("openRequests.closing")}</option>
+                        <option value="newest">{t("openRequests.newest")}</option>
+                      </select>
+                    </label>
+                  )}
+                  {totalPages > 1 && <p className="basis-full text-xs text-muted-foreground">{t("openRequests.pageOnly")}</p>}
+                </div>
+              )}
               <div className="flex flex-col gap-3">
                 {requests.map((request) =>
                   view === "inbox" ? (
@@ -194,7 +225,6 @@ export default function ClientRequestsPage() {
                     <RequestCard
                       key={request.id}
                       request={request}
-                      featured={request.id === firstOpenId}
                       onPass={onPass}
                       onAccept={onAccept}
                       passPending={pass.isPending && pass.variables === request.id}

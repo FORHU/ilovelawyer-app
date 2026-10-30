@@ -20,9 +20,12 @@ export function useClientRequestQuery(id: string, enabled = true) {
  * it (every read is audited on the API side as client_request.parties_viewed). */
 export function useConflictPartiesQuery(id: string, enabled: boolean) {
   return useQuery({
-    queryKey: [...clientRequestKeys.detail(id), "parties"],
+    queryKey: clientRequestKeys.parties(id),
     queryFn: () => getConflictParties(id),
     enabled,
+    // Each fetch is an audited read: do it when asked, not on every window focus or invalidation.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   })
 }
 

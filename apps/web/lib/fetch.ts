@@ -82,7 +82,12 @@ async function attemptRefresh(): Promise<void> {
     await refreshAccessToken()
   } catch (err) {
     useAuthStore.getState().clearAuth()
-    if (typeof window !== "undefined") window.location.href = "/login"
+    // Keep where they were, so signing in brings them back (e.g. to /verification) rather than to
+    // /homepage.
+    if (typeof window !== "undefined") {
+      const here = window.location.pathname + window.location.search
+      window.location.href = here.startsWith("/login") ? "/login" : `/login?next=${encodeURIComponent(here)}`
+    }
     throw err
   }
 }

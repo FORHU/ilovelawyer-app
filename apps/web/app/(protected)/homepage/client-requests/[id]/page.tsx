@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Lock, Users } from "lucide-react";
+import { ArrowLeft, Check, Eye, Lock, ShieldCheck, Undo2, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { PageShell } from "@/components/page-shell";
@@ -12,6 +12,7 @@ import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
+import { RequestStepper } from "@/components/client-requests/request-stepper";
 import { RequestTags } from "@/components/client-requests/request-tags";
 import { ErrorState } from "@/components/error-state";
 import { CONTENT_WIDTH_LG } from "@/lib/layout-constants";
@@ -46,6 +47,8 @@ import { cn } from "@workspace/ui/lib/utils";
 const CARD = "rounded-2xl border border-border bg-card p-5";
 const LABEL = "text-[10px] font-semibold tracking-[1.2px] uppercase text-muted-foreground";
 const QUOTE_FORM_ID = "client-request-quote-form";
+/** The open step of the conflict check (its Show the parties button, then its checkbox): where focus goes when a quote is tried too early. */
+const CONFLICT_CLEAR_ID = "client-request-conflict-step";
 const TWO_HOURS_MS = 2 * 3_600_000;
 
 /** Counts down a claim's 24h hold; turns amber in the last two hours. */
@@ -116,52 +119,101 @@ function ReleaseDialog({ open, onClose, onConfirm, pending }: { open: boolean; o
   );
 }
 
-function ConflictCheck({ id }: { id: string }) {
+/**
+ * The conflict check, as one step with a visible state: to do, then (once the parties are shown and
+ * the lawyer says they're clear) cleared. `cleared` lives on the page because the quote waits on it;
+ * a quote that has already been sent (`needsClearance` false) has nothing left to clear.
+ */
+function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: string; cleared: boolean; onClearedChange: (cleared: boolean) => void; needsClearance: boolean }) {
   const { t } = useTranslation("client-request");
   const [shown, setShown] = useState(false);
   const [releasing, setReleasing] = useState(false);
   const parties = useConflictPartiesQuery(id, shown);
   const release = useReleaseClientRequestMutation(id);
+  const done = needsClearance && cleared;
+
+  // The clearance is for the parties on screen: if they're gone (the read failed or is being redone),
+  // so is the clearance, and the quote waits for it again.
+  useEffect(() => {
+    if (cleared && (!parties.data || parties.isError)) onClearedChange(false);
+  }, [cleared, parties.data, parties.isError, onClearedChange]);
 
   return (
-    <section className={cn(CARD, "flex flex-col gap-3")}>
-      <h2 className="text-[15px] font-semibold text-foreground">{t("detail.conflict.title")}</h2>
+    <section className={cn(CARD, "flex flex-col gap-4")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[15px] font-semibold text-foreground">{t("detail.conflict.title")}</h2>
+        {needsClearance && (
+          <span
+            role="status"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+              done ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
+            )}
+          >
+            {done && <Check className="size-3" strokeWidth={3} aria-hidden="true" />}
+            {done ? t("detail.conflict.statusCleared") : t("detail.conflict.statusTodo")}
+          </span>
+        )}
+      </div>
+
       {!shown ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button type="button" variant="outline" onClick={() => setShown(true)}>
-              {t("detail.conflict.load")}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t("detail.conflict.loadTooltip")}</TooltipContent>
-        </Tooltip>
+        <div className="flex flex-col gap-3">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.conflict.intro")}</p>
+          <Button id={CONFLICT_CLEAR_ID} type="button" variant="default" onClick={() => setShown(true)} className="h-11 w-full gap-2 text-[13px] font-semibold">
+            <Eye className="size-4" aria-hidden="true" />
+            {t("detail.conflict.load")}
+          </Button>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
+            {t("detail.conflict.loadTooltip")}
+          </p>
+        </div>
       ) : parties.isLoading ? (
-        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-24 w-full" />
       ) : parties.isError ? (
         <ErrorState message={t("loadError")} retryLabel={t("retry")} onRetry={() => parties.refetch()} />
       ) : (
-        <dl className="divide-y divide-border rounded-xl border border-border bg-background">
-          {parties.data?.parties.map((p, i) => (
-            <div key={i} className="flex items-center justify-between gap-4 px-3.5 py-2.5">
-              <dt className={LABEL}>{p.role}</dt>
-              <dd className="text-right text-sm font-semibold text-foreground">{p.name}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="flex flex-col gap-3">
+          <dl className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
+            {parties.data?.parties.map((p, i) => (
+              <div key={i} className="flex flex-col gap-0.5 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <dt className={LABEL}>{p.role}</dt>
+                <dd className="text-sm font-semibold text-foreground sm:text-right">{p.name}</dd>
+              </div>
+            ))}
+          </dl>
+          {needsClearance && (
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-snug text-foreground has-[:checked]:border-ok/50 has-[:checked]:bg-ok/5">
+              <input
+                id={CONFLICT_CLEAR_ID}
+                type="checkbox"
+                checked={cleared}
+                onChange={(e) => onClearedChange(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-[var(--brand-gold)]"
+              />
+              {t("detail.conflict.clearedLabel")}
+            </label>
+          )}
+        </div>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setReleasing(true)}
-            className="h-11 self-start border-red-500/30 text-[11px] font-semibold tracking-[1.2px] uppercase text-red-600 hover:border-red-500/60 hover:bg-red-500/5"
-          >
-            {t("detail.conflict.release")}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t("detail.conflict.releaseTooltip")}</TooltipContent>
-      </Tooltip>
+
+      <div className="flex flex-col items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-3">
+        <p className="text-[13px] text-foreground">{t("detail.conflict.releaseHint")}</p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setReleasing(true)}
+              className="h-9 gap-1.5 border-red-500/40 bg-background px-3.5 text-[13px] font-semibold text-red-600 hover:border-red-500/70 hover:bg-red-500/10 hover:text-red-700"
+            >
+              <Undo2 className="size-3.5" aria-hidden="true" />
+              {t("detail.conflict.releaseShort")}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("detail.conflict.releaseTooltip")}</TooltipContent>
+        </Tooltip>
+      </div>
       <ReleaseDialog
         open={releasing}
         onClose={() => setReleasing(false)}
@@ -177,8 +229,9 @@ function ConflictCheck({ id }: { id: string }) {
   );
 }
 
-function QuoteForm({ id }: { id: string }) {
+function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawyer; conflictChecked: boolean }) {
   const { t } = useTranslation("client-request");
+  const id = request.id;
   const quote = useQuoteClientRequestMutation(id);
   // Sending needs a card on file for the introduction fee confirming will charge (ilovelawyer-app#933).
   // Asked for up front, before the lawyer writes the quote: the trip to Stripe would lose it.
@@ -196,11 +249,24 @@ function QuoteForm({ id }: { id: string }) {
   const [message, setMessage] = useState("");
   const [amountError, setAmountError] = useState(false);
 
+  const [conflictBlocked, setConflictBlocked] = useState(false);
+  const previewAmount = Number(amount);
+  const hasPreviewAmount = Number.isFinite(previewAmount) && previewAmount > 0;
+  const introFee = formatMoney(request.perCaseFee.amountMinor);
+  const cardLast4 = card.data?.last4;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!conflictChecked) {
+      // Enter in a field reaches here even though the button is disabled: say why, and go to the step that is open.
+      setConflictBlocked(true);
+      document.getElementById(CONFLICT_CLEAR_ID)?.focus();
+      return;
+    }
     const value = Number(amount);
-    if (type === "FIXED_FEE" && (!Number.isFinite(value) || value <= 0)) return setAmountError(true);
-    const amountMinor = Number.isFinite(value) ? Math.round(value * 100) : 0;
+    // Every quote type needs a real amount: what the preview shows is what the client is sent.
+    if (!Number.isFinite(value) || value <= 0) return setAmountError(true);
+    const amountMinor = Math.round(value * 100);
     quote.mutate(
       { type, amount: { amountMinor, currency: "GBP" }, message: message.trim() },
       {
@@ -275,6 +341,19 @@ function QuoteForm({ id }: { id: string }) {
           />
           <p className="text-xs text-muted-foreground">{t("detail.quote.messageHint")}</p>
         </div>
+
+        {/* What the client will be shown, as it will read to them. */}
+        <div className="flex flex-col gap-1.5 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
+          <span className={LABEL}>{t("detail.quote.willSee")}</span>
+          <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
+          <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">{hasPreviewAmount ? formatMoney(Math.round(previewAmount * 100)) : t("detail.quote.amountPlaceholder")}</span>
+          <span className="text-xs text-muted-foreground">{t("detail.quote.willSeeNote")}</span>
+        </div>
+
+        <div className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-[13px] text-foreground">
+          <span>{t("detail.quote.introFee")}</span>
+          <span className="text-right font-semibold">{cardLast4 ? t("detail.quote.introFeeCard", { fee: introFee, last4: cardLast4 }) : t("detail.quote.introFeeOnly", { fee: introFee })}</span>
+        </div>
       </form>
       {noCard && (
         <div role="status" className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
@@ -286,12 +365,23 @@ function QuoteForm({ id }: { id: string }) {
       )}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={noCard} className="h-12 w-full">
-            {t("detail.quote.send")}
-          </Button>
+          {/* Wrapped so the tooltip still shows on a disabled button. */}
+          <span className="block">
+            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={noCard || !conflictChecked} className="h-12 w-full">
+              {t("detail.quote.send")}
+            </Button>
+          </span>
         </TooltipTrigger>
-        <TooltipContent>{noCard ? t("detail.quote.cardRequiredTooltip") : t("detail.quote.sendTooltip")}</TooltipContent>
+        <TooltipContent>{!conflictChecked ? t("detail.quote.doConflictFirst") : noCard ? t("detail.quote.cardRequiredTooltip") : t("detail.quote.sendTooltip")}</TooltipContent>
       </Tooltip>
+      {!conflictChecked &&
+        (conflictBlocked ? (
+          <p role="alert" className="-mt-2 text-xs font-medium text-red-600">
+            {t("detail.quote.conflictRequired")}
+          </p>
+        ) : (
+          <p className="-mt-2 text-xs text-muted-foreground">{t("detail.quote.doConflictFirst")}</p>
+        ))}
       <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} />
     </section>
   );
@@ -494,6 +584,9 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
   const held = !!mine && (mine.outcome == null || mine.outcome === "ENGAGED");
   const notChosen = mine?.outcome === "NOT_CHOSEN";
   const lawyersOn = request.lawyersOn ?? 0;
+  // The lawyer clearing the conflict check (parties shown, no conflict) is what the quote waits for.
+  const [conflictCleared, setConflictCleared] = useState(false);
+  const beforeEngagement = held && (request.status === "CLAIMED" || request.status === "QUOTED" || request.status === "CONFIRMED");
 
   return (
     <>
@@ -510,7 +603,11 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
         {request.status === "CLAIMED" && request.claim?.claimExpiresAt && <HeldTimer until={new Date(request.claim.claimExpiresAt).getTime()} />}
       </div>
 
-      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-6">
+        <RequestStepper request={request} />
+      </div>
+
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-5">
           <section className={cn(CARD, "bg-muted/40")}>
             <p className="mb-3 flex items-center gap-2">
@@ -529,12 +626,12 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
             </section>
           )}
 
-          {!held && !notChosen && (
+          {(!held || beforeEngagement) && !notChosen && (
             <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-4">
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <Lock className="size-3.5" aria-hidden="true" />
               </span>
-              <p className="text-[13px] text-muted-foreground">{t("detail.lockedParties")}</p>
+              <p className="text-[13px] text-muted-foreground">{!held ? t("detail.lockedParties") : request.status === "CONFIRMED" ? t("detail.lockedConfirmed") : t("detail.lockedFile")}</p>
             </div>
           )}
         </div>
@@ -544,14 +641,14 @@ function RequestDetail({ request }: { request: ClientRequestForLawyer }) {
           {!mine && (request.status === "ROUTED" || request.status === "REQUESTED") && <OpenRequestActions request={request} />}
           {held && request.status === "CLAIMED" && (
             <>
-              <ConflictCheck id={request.id} />
-              <QuoteForm id={request.id} />
+              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance />
+              <QuoteForm request={request} conflictChecked={conflictCleared} />
             </>
           )}
           {held && request.status === "QUOTED" && (
             <>
               <QuotedCard request={request} />
-              <ConflictCheck id={request.id} />
+              <ConflictCheck id={request.id} cleared={conflictCleared} onClearedChange={setConflictCleared} needsClearance={false} />
             </>
           )}
           {held && request.status === "CONFIRMED" && <ConfirmedCard request={request} />}

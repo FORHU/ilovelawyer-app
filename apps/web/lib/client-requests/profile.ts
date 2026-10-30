@@ -90,11 +90,14 @@ export interface ClientRequestProfilePatch {
 
 const PATH = "/api/users/me/client-request-profile"
 
-export function useClientRequestProfileQuery(enabled: boolean) {
+/** `pollWhilePending`: the /verification waiting step, which must notice a rejection without a
+ * reload — the plan gate stays AWAITING_VERIFICATION through one, so its own poll can't. */
+export function useClientRequestProfileQuery(enabled: boolean, { pollWhilePending = false } = {}) {
   return useQuery({
     queryKey: userKeys.clientRequestProfile(),
     queryFn: () => apiFetch<ClientRequestProfile>(PATH),
     enabled,
+    refetchInterval: (query) => (pollWhilePending && query.state.data?.verification.status === "PENDING" ? 60_000 : false),
   })
 }
 

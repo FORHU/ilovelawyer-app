@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { useConsumeLoginLinkMutation } from "@/lib/auth/mutations";
+import { sanitizeNextPath, useConsumeLoginLinkMutation } from "@/lib/auth/mutations";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-provider";
@@ -15,6 +15,8 @@ function LoginLinkContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  // The lawyer application approval email sends the lawyer on to the plan step or their profile.
+  const next = sanitizeNextPath(searchParams.get("next"));
   const consumeLoginLinkMutation = useConsumeLoginLinkMutation();
   const attempted = useRef(false);
 
@@ -23,7 +25,7 @@ function LoginLinkContent() {
     attempted.current = true;
     consumeLoginLinkMutation.mutate(
       { token },
-      { onSuccess: () => router.replace("/homepage") },
+      { onSuccess: () => router.replace(next) },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);

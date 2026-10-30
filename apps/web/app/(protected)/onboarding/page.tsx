@@ -17,7 +17,7 @@ import { useClientRequestProfileQuery } from "@/lib/client-requests/profile";
 import { useDiscardOrganizationMutation } from "@/lib/organizations/mutations";
 import { useAuthStore, type ActiveOrganization } from "@/lib/store/auth.store";
 import { useCompleteSetupMutation, useCurrentUserQuery } from "@/lib/user/mutations";
-import { usePlanGateQuery } from "@/lib/user/plan-gate";
+import type { PlanGateState } from "@/lib/user/plan-gate";
 
 type StepId = SetupStepId;
 
@@ -47,7 +47,7 @@ export default function OnboardingPage() {
   const [setupStep, setSetupStep] = useState<WorkspaceSetupStep>("choose");
 
   useEffect(() => {
-    if (currentUser?.setupCompletedAt) router.replace(afterSetupPath(currentUser.approvalStatus));
+    if (currentUser?.setupCompletedAt) router.replace(afterSetupPath(currentUser.approvalStatus, isHeld(currentUser.planGate)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.setupCompletedAt]);
 
@@ -81,6 +81,7 @@ export default function OnboardingPage() {
       key={organization.id}
       organization={organization}
       pending={currentUser?.approvalStatus === "PENDING"}
+      held={isHeld(currentUser?.planGate)}
       onRechoose={organization.isPersonal ? () => setRechoosing(true) : undefined}
       onFirmRemoved={() => {
         setDiscarded(true);
@@ -91,19 +92,30 @@ export default function OnboardingPage() {
   );
 }
 
-/** Where a finished setup goes: into the app, or to wait for approval when the account isn't approved yet. */
-function afterSetupPath(approvalStatus: string | undefined) {
-  return approvalStatus && approvalStatus !== "ACTIVE" ? "/account-pending" : "/homepage";
+/** Verify before plan (UK, new sign-ups): the API's gate on /me (PlanGateSvc). Held: the application
+ * can't be skipped, and the plan is chosen on /verification once it's verified, not here. */
+function isHeld(planGate: PlanGateState | undefined) {
+  return !!planGate && planGate !== "OPEN";
+}
+
+/** Where a finished setup goes: to wait for approval when the account isn't approved yet; else, for
+ * a held lawyer, straight to /verification (not by way of /homepage, which would send them there);
+ * else into the app. */
+function afterSetupPath(approvalStatus: string | undefined, held: boolean) {
+  if (approvalStatus && approvalStatus !== "ACTIVE") return "/account-pending";
+  return held ? "/verification" : "/homepage";
 }
 
 function SetupSteps({
   organization,
   pending,
+  held,
   onRechoose,
   onFirmRemoved,
 }: {
   organization: ActiveOrganization;
   pending: boolean;
+  held: boolean;
   onRechoose?: () => void;
   onFirmRemoved: () => void;
 }) {
@@ -119,19 +131,14 @@ function SetupSteps({
   // Who chooses a subscription plan: a solo lawyer, and a firm's founder for the firm. Someone who
   // joined a firm is on the firm's.
   const choosesPlan = organization.isPersonal || isFirmOwner;
-  // Verify before plan (UK, new sign-ups): the application can't be skipped, and the plan is chosen
-  // on /verification once it's verified, not here. A failed lookup keeps today's steps.
-  const gateQuery = usePlanGateQuery(choosesPlan);
-  const held = !!gateQuery.data && gateQuery.data.state !== "OPEN";
 
   const [index, setIndex] = useState(0);
   // Fixed on first load, so submitting the application (which changes its status) doesn't
   // reshuffle the steps under the lawyer.
   const [steps, setSteps] = useState<StepId[] | null>(null);
   const profileReady = !applies || profileQuery.isFetched;
-  const gateReady = !choosesPlan || gateQuery.isFetched;
 
-  if (steps === null && profileReady && gateReady) {
+  if (steps === null && profileReady) {
     const needsApplication = applies && profileQuery.data?.verification.status === "UNSUBMITTED";
     // A founder's firm already exists, so they start at Invite; Firm is there to go back to. The
     // plan comes last.
@@ -147,7 +154,11 @@ function SetupSteps({
 
   useEffect(() => {
     if (!finished || completeSetup.isPending || completeSetup.isSuccess) return;
-    completeSetup.mutate(undefined, { onSettled: (updated) => router.replace(afterSetupPath(updated?.approvalStatus ?? (pending ? "PENDING" : "ACTIVE"))) });
+    // A held lawyer whose application is already sent has no steps left here: this runs straight
+    // away and takes them on to /verification.
+    completeSetup.mutate(undefined, {
+      onSettled: (updated) => router.replace(afterSetupPath(updated?.approvalStatus ?? (pending ? "PENDING" : "ACTIVE"), held)),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
