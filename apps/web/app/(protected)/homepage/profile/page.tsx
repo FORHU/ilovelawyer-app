@@ -12,6 +12,7 @@ import ExportDataModal from "@/components/account/export-data-modal";
 import SwitchOffAiModal from "@/components/account/switch-off-ai-modal";
 import { ClientRequestsSettings } from "@/components/account/client-requests-settings";
 import { PaymentCardSection } from "@/components/organization/payment-card-section";
+import { WalletSection } from "@/components/organization/wallet-section";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { isFeatureEnabled } from "@/config/tenant-codes/capabilities";
 import { OWN_WORKSPACE_ID, useAuthStore } from "@/lib/store/auth.store";
@@ -750,6 +751,7 @@ export default function ProfilePage() {
 
         {showClientRequests && <ClientRequestsSettings />}
 
+        {showClientRequests && solo && <WalletSection organizationId={OWN_WORKSPACE_ID} />}
         {showClientRequests && solo && <PaymentCardSection organizationId={OWN_WORKSPACE_ID} />}
 
         {/* Your data */}

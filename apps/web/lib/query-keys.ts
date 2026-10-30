@@ -118,6 +118,15 @@ export const billingKeys = {
   card: (organizationId: string) => [...billingKeys.all, "card", organizationId] as const,
 }
 
+// A payee's earnings from client quotations and their withdrawals (ilovelawyer-api's WalletSvc):
+// the firm's, or a solo lawyer's own (OWN_WORKSPACE_ID) — see lib/organizations/wallet.ts.
+export const walletKeys = {
+  all: (organizationId: string) => ["wallet", organizationId] as const,
+  wallet: (organizationId: string) => [...walletKeys.all(organizationId), "summary"] as const,
+  earnings: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "earnings", page] as const,
+  withdrawals: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "withdrawals", page] as const,
+}
+
 // The lawyer app's side of the UK client-to-lawyer hand-off (ilovelawyer-api#511/#512), the
 // Client Requests inbox and a held request's detail — see lib/client-requests/.
 export const clientRequestKeys = {

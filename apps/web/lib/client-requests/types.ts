@@ -1,4 +1,4 @@
-import type { ClaimOutcome, ClientRequestStatus, Money, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
+import type { ClaimOutcome, ClientRequestStatus, Money, Quotation, QuoteTerms, QuoteType, RequestUrgency, UkJurisdiction } from "@/lib/client-handoff"
 
 // ClientRequestForLawyer and its parts, from ilovelawyer-api's swagger-client-handoff.ts
 // (GET /api/client-requests, built in #511/#512).
@@ -183,9 +183,14 @@ export interface ClientRequestForLawyer {
   lawyersOn?: number
   claim: ClaimSummary | null
   quote: Quote | null
-  /** What confirming will charge the organization. */
+  /** The lawyer's quotation: their draft, or the one they sent, with the platform fee the client pays
+   * on top, the total and the expiry. Null before they start one. */
+  quotation: Quotation | null
+  /** How the platform fee on a quote is worked out now, for the form's preview. */
+  quoteTerms: QuoteTerms
+  /** The old introduction fee: only charged on requests the client confirmed before quotation payments. */
   perCaseFee: Money
-  /** The per-case fee, from CONFIRMED. */
+  /** That per-case fee's charge, on those requests only. */
   charge: ChargeSummary | null
   engagement: Engagement | null
   assignedTo: { id: string; name: string } | null

@@ -214,6 +214,10 @@
       },
       "note": {
         "deleted": "Note deleted"
+      },
+      "wallet": {
+        "payout_account_started": "Payout account set up or updated",
+        "withdrawal_requested": "Withdrawal from earnings requested"
       }
     },
     "showing": "Showing {{from}}–{{to}} of {{total}}",
@@ -241,7 +245,7 @@
   },
   "billing": {
     "heading": "Fee History",
-    "subheading": "Per-case fees, AI top-ups and refunds charged to your organization's card.",
+    "subheading": "AI top-ups, and per-case fees from before clients paid through ilovelawyer, charged to your organization's card, with any refunds.",
     "columns": {
       "date": "Date",
       "description": "Description",
@@ -272,18 +276,80 @@
     "showing": "Showing {{from}}–{{to}} of {{total}}",
     "card": {
       "heading": "Payment Card",
-      "subheading": "The card your organization is charged for accepted client requests and AI top-ups.",
+      "subheading": "The card your organization is charged for AI top-ups.",
       "add": "Add card",
       "change": "Change card",
       "endingIn": "ending in {{last4}}",
       "expires": "Expires {{month}}/{{year}}",
-      "noCardHelp": "No card on file yet. Add one before your organization can accept client requests.",
-      "subheadingSolo": "The card you're charged for client requests you take on and AI top-ups.",
-      "noCardHelpSolo": "No card on file yet. Add one so a client can confirm you: nothing is charged until they do.",
+      "noCardHelp": "No card on file yet. Add one to buy AI top-ups for an engagement.",
+      "subheadingSolo": "The card you're charged for AI top-ups.",
+      "noCardHelpSolo": "No card on file yet. Add one to buy AI top-ups for an engagement.",
       "error": "Couldn't load your payment card.",
       "retry": "Retry",
       "savedToast": "Payment card saved.",
       "cancelledToast": "Card setup was cancelled. No changes were made."
+    }
+  },
+  "wallet": {
+    "heading": "Earnings",
+    "subheading": "What clients have paid your firm's lawyers for their quotes, and paying it out to your bank.",
+    "subheadingSolo": "What clients have paid you for your quotes, and paying it out to your bank.",
+    "error": "Couldn't load your earnings.",
+    "retry": "Retry",
+    "balances": {
+      "available": "Available",
+      "pending": "On hold",
+      "pendingNote": "Available {{days}} days after the client pays",
+      "reserved": "On its way",
+      "withdrawn": "Paid out"
+    },
+    "payouts": {
+      "none": "Set up payouts to withdraw your earnings to your bank. Stripe takes your bank details; they never reach ilovelawyer.",
+      "unfinished": "Your payout account isn't finished yet. Stripe needs a few more details before it can pay you.",
+      "enabled": "Payouts to your bank are set up.",
+      "setUp": "Set up payouts",
+      "finish": "Finish setting up",
+      "update": "Update bank details",
+      "ready": "Payouts are set up."
+    },
+    "withdraw": {
+      "label": "Withdraw to your bank",
+      "submit": "Withdraw",
+      "hint": "At least {{min}}, up to your available balance.",
+      "needsPayouts": "Set up payouts first.",
+      "invalid": "Enter an amount greater than £0.",
+      "belowMinimum": "The smallest withdrawal is {{min}}.",
+      "tooMuch": "That's more than your available balance of {{available}}.",
+      "paid": "Withdrawal paid.",
+      "processing": "Withdrawal on its way to your bank.",
+      "failed": "The withdrawal couldn't be paid. The money is back in your available balance."
+    },
+    "earnings": {
+      "heading": "Client payments",
+      "empty": "No client payments yet. When a client pays one of your quotes, your fee shows up here.",
+      "date": "Date",
+      "clientPaid": "Client paid",
+      "yours": "Your fee",
+      "status": "Status",
+      "refunded": "({{amount}} refunded)",
+      "disputed": "Disputed",
+      "availableOn": "Available {{date}}",
+      "statuses": {
+        "PENDING": "On hold",
+        "AVAILABLE": "Available",
+        "REVERSED": "Refunded"
+      }
+    },
+    "withdrawals": {
+      "heading": "Withdrawals",
+      "empty": "No withdrawals yet.",
+      "statuses": {
+        "REQUESTED": "Requested",
+        "PROCESSING": "On its way",
+        "PAID": "Paid",
+        "FAILED": "Failed",
+        "REJECTED": "Refused"
+      }
     }
   }
 }

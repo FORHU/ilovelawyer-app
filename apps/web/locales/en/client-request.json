@@ -38,11 +38,11 @@
   },
   "confirmAccept": {
     "title": "Accept this request?",
-    "description": "Other lawyers can accept this request too. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. You’re charged the per-case fee only if the client hires you.",
+    "description": "Other lawyers can accept this request too. You’ll see the names to check for a conflict, and have 24 hours to send the client a quote. If the client hires you, they pay your quote through ilovelawyer and your full fee goes to your earnings.",
     "cancel": "Cancel",
     "confirm": "Accept request"
   },
-  "feeNote": "You’re charged the per-case fee only if the client confirms you.",
+  "feeNote": "Nothing is charged to you. The client pays your quote plus ilovelawyer’s platform fee.",
   "noMatches": "No requests match these filters.",
   "empty": {
     "inbox": {
@@ -133,37 +133,42 @@
       "title": "2 · Your quote",
       "fixed": "Fixed fee",
       "consultation": "First consultation",
-      "amount": "Amount",
+      "amount": "Your fee",
       "incVat": "Inc. VAT",
       "message": "Message to client",
       "messageHint": "Shown to the client with your profile. Don’t include contact details.",
       "send": "Send quote",
       "sendTooltip": "Send this quote to the client",
-      "cardRequired": "Add a payment card before you send a quote. The introduction fee is charged to it only if the client confirms you.",
-      "cardRequiredTooltip": "Add a payment card first",
-      "addCard": "Add card",
       "needsConflictCheck": "Confirm you’ve checked for conflicts first",
       "amountInvalid": "Enter an amount greater than £0.",
       "sent": "Quote sent.",
       "sentTitle": "Quote sent",
-      "sentDescription": "Waiting for the client to confirm or decline.",
+      "sentDescription": "Waiting for the client to accept and pay, or decline.",
       "willSee": "The client will see",
       "fixedQuote": "Fixed fee quote",
       "consultationQuote": "First consultation quote",
-      "willSeeNote": "With your profile and the message above. No contact details.",
-      "introFee": "Introduction fee if the client confirms you",
-      "introFeeCard": "{{fee}} · card •••• {{last4}}",
-      "introFeeOnly": "{{fee}}",
+      "willSeeNote": "With your profile and the message above. No contact details. Nothing is charged to you.",
       "doConflictFirst": "Clear the conflict check first.",
       "amountPlaceholder": "£—",
-      "conflictRequired": "Clear the conflict check before you send a quote."
+      "conflictRequired": "Clear the conflict check before you send a quote.",
+      "expiresAt": "Valid until",
+      "expiresHint": "The client accepts and pays before the end of this day. Up to {{days}} days away.",
+      "expiryInvalid": "Choose a date from today to {{days}} days away.",
+      "yourFee": "Your fee, paid to you in full",
+      "platformFee": "ilovelawyer platform fee, paid by the client ({{rate}}, at least {{min}})",
+      "validUntil": "Valid until {{date}}",
+      "clientPays": "The client pays {{total}}, with the {{fee}} platform fee.",
+      "withdraw": "Withdraw quote",
+      "withdrawn": "Quote withdrawn. The request went back to other lawyers."
     },
     "confirmed": {
       "title": "Confirmed",
-      "description": "Charging the per-case fee now.",
+      "description": "Charging the per-case fee now (a request the client confirmed before quotation payments).",
       "failed": "The card on file was declined.",
       "retry": "Retry the charge",
-      "addCard": "Add or change card"
+      "addCard": "Add or change card",
+      "acceptedTitle": "Quote accepted",
+      "awaitingPayment": "The client accepted your quote and is paying {{total}} through ilovelawyer. You'll be engaged as soon as it's paid. They have until {{date}}."
     },
     "engaged": {
       "title": "Engaged",
@@ -223,7 +228,7 @@
         "pending": "Reading…"
       }
     },
-    "lockedFile": "Documents and the full interview open once the client confirms you and the introduction fee goes through.",
+    "lockedFile": "Documents and the full interview open once the client accepts and pays your quote.",
     "steps": {
       "label": "Request progress",
       "clientSees": "Client sees: {{what}}",
@@ -246,7 +251,7 @@
         "upcoming": "Not yet"
       }
     },
-    "lockedConfirmed": "Documents and the full interview open once the introduction fee goes through."
+    "lockedConfirmed": "Documents and the full interview open once the client has paid."
   },
   "messages": {
     "open": "Messages",
