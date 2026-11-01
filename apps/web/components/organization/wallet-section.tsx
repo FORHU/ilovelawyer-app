@@ -12,6 +12,7 @@ import { useDelayedLoading } from "@workspace/ui/hooks/use-delayed-loading"
 import { ErrorState } from "@/components/error-state"
 import { Pagination } from "@/components/ui/pagination"
 import { useDateLocale } from "@/lib/i18n/date-locale"
+import { generateId } from "@/lib/id"
 import { formatMoney } from "@/lib/money"
 import type { EarningStatus, WithdrawalStatus } from "@/lib/client-handoff"
 import { OWN_WORKSPACE_ID } from "@/lib/store/auth.store"
@@ -75,7 +76,7 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
   const [amountError, setAmountError] = useState("")
   // One key per withdrawal the lawyer means to make: kept across a retry of the same request, new
   // once it has gone through.
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const [idempotencyKey, setIdempotencyKey] = useState(() => generateId())
 
   // Back from Stripe's onboarding pages: read the account again, then drop the marker from the URL.
   const returned = searchParams.get(PAYOUTS_RETURN) === "return"
@@ -115,7 +116,7 @@ export function WalletSection({ organizationId }: { organizationId: string }) {
       {
         onSuccess: (result) => {
           setAmount("")
-          setIdempotencyKey(crypto.randomUUID())
+          setIdempotencyKey(generateId())
           if (result.status === "FAILED") toast.error(result.failureReason ?? t("wallet.withdraw.failed"))
           else toast.success(result.status === "PAID" ? t("wallet.withdraw.paid") : t("wallet.withdraw.processing"))
         },

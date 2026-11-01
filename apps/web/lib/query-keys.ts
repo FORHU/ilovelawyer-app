@@ -121,7 +121,9 @@ export const billingKeys = {
 // A payee's earnings from client quotations and their withdrawals (ilovelawyer-api's WalletSvc):
 // the firm's, or a solo lawyer's own (OWN_WORKSPACE_ID) — see lib/organizations/wallet.ts.
 export const walletKeys = {
-  all: (organizationId: string) => ["wallet", organizationId] as const,
+  /** Every wallet's queries: wallet:updated names a wallet id, not the workspace it's cached under. */
+  root: ["wallet"] as const,
+  all: (organizationId: string) => [...walletKeys.root, organizationId] as const,
   wallet: (organizationId: string) => [...walletKeys.all(organizationId), "summary"] as const,
   earnings: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "earnings", page] as const,
   withdrawals: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "withdrawals", page] as const,

@@ -5,6 +5,7 @@ import { notificationKeys, chatKeys, caseKeys, clientRequestKeys } from "@/lib/q
 import { registerDocumentSocketHandlers } from "@/lib/cases/document-socket"
 import { registerShareSocketHandlers } from "@/lib/cases/shared"
 import { registerClientRequestSocketHandlers } from "@/lib/client-requests/socket"
+import { registerWalletSocketHandlers } from "@/lib/organizations/wallet-socket"
 import { terminalKeys } from "@/lib/terminal/mutations"
 import { getNotificationSocket, getSocketStatus, subscribeSocketStatus, type SocketStatus } from "@/lib/notifications/socket"
 import { useAuthStore } from "@/lib/store/auth.store"
@@ -155,6 +156,7 @@ export function useNotificationSocket() {
     const unregisterDocumentHandlers = registerDocumentSocketHandlers(socket, queryClient)
     const unregisterShareHandlers = registerShareSocketHandlers(socket, queryClient)
     const unregisterClientRequestHandlers = registerClientRequestSocketHandlers(socket, queryClient)
+    const unregisterWalletHandlers = registerWalletSocketHandlers(socket, queryClient)
     socket.connect()
 
     return () => {
@@ -165,6 +167,7 @@ export function useNotificationSocket() {
       unregisterDocumentHandlers()
       unregisterShareHandlers()
       unregisterClientRequestHandlers()
+      unregisterWalletHandlers()
       socket.disconnect()
     }
   }, [accessToken, queryClient])
