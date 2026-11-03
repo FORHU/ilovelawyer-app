@@ -357,9 +357,10 @@
 }
 
 /* Printing a dialog marked data-print-root (an engagement's invoice): only the dialog, not the
-   page behind it. It lives in its own portal under body, so every other top-level node goes. */
+   page behind it. Radix portals the dialog straight into body (DialogPortal renders asChild), so
+   the root is usually a top-level node itself; keep it and anything that holds it, hide the rest. */
 @media print {
-  body:has([data-print-root]) > *:not(:has([data-print-root])) {
+  body:has([data-print-root]) > *:not([data-print-root]):not(:has([data-print-root])) {
     display: none !important;
   }
 }
