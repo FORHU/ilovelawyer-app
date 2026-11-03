@@ -356,6 +356,15 @@
   }
 }
 
+/* Printing a dialog marked data-print-root (an engagement's invoice): only the dialog, not the
+   page behind it. Radix portals the dialog straight into body (DialogPortal renders asChild), so
+   the root is usually a top-level node itself; keep it and anything that holds it, hide the rest. */
+@media print {
+  body:has([data-print-root]) > *:not([data-print-root]):not(:has([data-print-root])) {
+    display: none !important;
+  }
+}
+
 /* Legal Terminal — docs/adr/0013-legal-terminal-redesign.md */
 
 /* Square background grid for the terminal canvas. The 24-column/row snap increments used by

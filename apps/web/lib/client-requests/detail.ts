@@ -1,7 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { Money, QuoteType, ReleaseReason } from "@/lib/client-handoff"
+import type { ReleaseReason } from "@/lib/client-handoff"
 import { clientRequestKeys } from "@/lib/query-keys"
-import { closeClientRequest, copyClientRequestCase, getClientRequest, getConflictParties, getIntakePackage, releaseClientRequest, quoteClientRequest, retryClientRequestCharge } from "./api"
+import {
+  closeClientRequest,
+  copyClientRequestCase,
+  getClientRequest,
+  getConflictParties,
+  getIntakePackage,
+  releaseClientRequest,
+  quoteClientRequest,
+  retryClientRequestCharge,
+  withdrawClientRequestQuotation,
+  type QuotationInput,
+} from "./api"
 
 // The claimed-request detail page (#877): the brief, the conflict check's party names, release,
 // the quote form, and — once engaged — closing. Claim and pass live in inbox.ts since both the
@@ -55,7 +66,15 @@ export function useReleaseClientRequestMutation(id: string) {
 export function useQuoteClientRequestMutation(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { type: QuoteType; amount: Money; message: string }) => quoteClientRequest(id, input),
+    mutationFn: (input: QuotationInput) => quoteClientRequest(id, input),
+    onSuccess: () => invalidateRequest(queryClient, id),
+  })
+}
+
+export function useWithdrawQuotationMutation(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => withdrawClientRequestQuotation(id),
     onSuccess: () => invalidateRequest(queryClient, id),
   })
 }

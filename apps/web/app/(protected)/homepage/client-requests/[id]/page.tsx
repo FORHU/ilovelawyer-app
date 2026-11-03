@@ -11,6 +11,7 @@ import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
+import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
 import { claimEndedKey } from "@/lib/client-requests/claim-ended";
 import { RequestStepper } from "@/components/client-requests/request-stepper";
@@ -27,7 +28,9 @@ import {
   useQuoteClientRequestMutation,
   useReleaseClientRequestMutation,
   useRetryClientRequestChargeMutation,
+  useWithdrawQuotationMutation,
 } from "@/lib/client-requests/detail";
+import { QUOTE_DEFAULT_VALIDITY_DAYS, QUOTE_MAX_VALIDITY_DAYS, dateInputValue, endOfDayIso, formatRate, platformFeeOf } from "@/lib/client-requests/quote-terms";
 import type { ClientRequestForLawyer } from "@/lib/client-requests/types";
 import { formatCountdown, useCountdown } from "@/lib/client-requests/use-countdown";
 import { formatMoney } from "@/lib/money";
@@ -36,7 +39,7 @@ import { useEnterSharedWorkspace } from "@/lib/organizations/mutations";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import { PLANS_PATH, toastRequestError } from "@/lib/client-requests/plan-errors";
 import { useAuthStore } from "@/lib/store/auth.store";
-import { useOrganizationCardQuery } from "@/lib/organizations/billing";
+import { useDateLocale } from "@/lib/i18n/date-locale";
 import { Button } from "@workspace/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog";
 import { EmptyState } from "@workspace/ui/components/empty-state";
@@ -230,16 +233,24 @@ function ConflictCheck({ id, cleared, onClearedChange, needsClearance }: { id: s
   );
 }
 
+/** "6 November 2026", in the app's language. */
+function useLongDate() {
+  const locale = useDateLocale();
+  return (iso: string) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
+}
+
+/** A quote amount the form can send: a fixed fee needs more than £0, a first consultation may be
+ * free (£0). Never left blank, which Number() would read as 0. */
+function quoteAmountOk(amount: string, type: QuoteType): boolean {
+  const value = Number(amount);
+  if (amount.trim() === "" || !Number.isFinite(value)) return false;
+  return type === "FIRST_CONSULTATION" ? value >= 0 : value > 0;
+}
+
 function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawyer; conflictChecked: boolean }) {
   const { t } = useTranslation("client-request");
   const id = request.id;
   const quote = useQuoteClientRequestMutation(id);
-  // Sending needs a card on file for the introduction fee confirming will charge (ilovelawyer-app#933).
-  // Asked for up front, before the lawyer writes the quote: the trip to Stripe would lose it.
-  const organizationId = useAuthStore((s) => s.organization?.id);
-  const card = useOrganizationCardQuery(organizationId);
-  const noCard = card.isSuccess && !card.data;
-  const [cardModalOpen, setCardModalOpen] = useState(false);
   const [type, setType] = useState<QuoteType>("FIXED_FEE");
   // Starts at the lawyer's own first-consultation fee from their Lawyer Application, until they type;
   // empty when they haven't set one, so the price is always theirs.
@@ -249,12 +260,17 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
   const amount = typedAmount ?? (fee?.currency === "GBP" ? (fee.amountMinor / 100).toFixed(2) : "");
   const [message, setMessage] = useState("");
   const [amountError, setAmountError] = useState(false);
+  // The lawyer's own expiry: the client accepts and pays before the end of this day.
+  const [expiry, setExpiry] = useState(() => dateInputValue(QUOTE_DEFAULT_VALIDITY_DAYS));
+  const [expiryError, setExpiryError] = useState(false);
 
   const [conflictBlocked, setConflictBlocked] = useState(false);
+  const validUntil = useLongDate();
   const previewAmount = Number(amount);
-  const hasPreviewAmount = Number.isFinite(previewAmount) && previewAmount > 0;
-  const introFee = formatMoney(request.perCaseFee.amountMinor);
-  const cardLast4 = card.data?.last4;
+  const hasPreviewAmount = quoteAmountOk(amount, type);
+  const serviceFeeMinor = hasPreviewAmount ? Math.round(previewAmount * 100) : 0;
+  const platformFeeMinor = platformFeeOf(serviceFeeMinor, request.quoteTerms);
+  const expiresAt = endOfDayIso(expiry);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -265,18 +281,15 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
       return;
     }
     const value = Number(amount);
-    // Every quote type needs a real amount: what the preview shows is what the client is sent.
-    if (!Number.isFinite(value) || value <= 0) return setAmountError(true);
+    // What the preview shows is what the client is sent: a real amount, or £0 for a free first consultation.
+    if (!quoteAmountOk(amount, type)) return setAmountError(true);
+    if (!expiresAt || expiry < dateInputValue(0) || expiry > dateInputValue(QUOTE_MAX_VALIDITY_DAYS)) return setExpiryError(true);
     const amountMinor = Math.round(value * 100);
     quote.mutate(
-      { type, amount: { amountMinor, currency: "GBP" }, message: message.trim() },
+      { type, amount: { amountMinor, currency: "GBP" }, message: message.trim(), expiresAt },
       {
         onSuccess: () => toast.success(t("detail.quote.sent")),
-        onError: (err) => {
-          // The card was removed since the page loaded: show the prompt again.
-          if (isCardRequiredError(err)) void card.refetch();
-          toast.error(err instanceof Error ? err.message : t("loadError"));
-        },
+        onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
       }
     );
   }
@@ -325,7 +338,30 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
             />
             <span className={LABEL}>{t("detail.quote.incVat")}</span>
           </div>
-          {amountError && <p className="text-xs text-red-600">{t("detail.quote.amountInvalid")}</p>}
+          {amountError && <p className="text-xs text-red-600">{t(type === "FIRST_CONSULTATION" ? "detail.quote.amountInvalidConsultation" : "detail.quote.amountInvalid")}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="quote-expiry" className={LABEL}>
+            {t("detail.quote.expiresAt")}
+          </label>
+          <input
+            id="quote-expiry"
+            type="date"
+            value={expiry}
+            min={dateInputValue(0)}
+            max={dateInputValue(QUOTE_MAX_VALIDITY_DAYS)}
+            aria-invalid={expiryError}
+            aria-describedby="quote-expiry-hint"
+            onChange={(e) => {
+              setExpiry(e.target.value);
+              setExpiryError(false);
+            }}
+            className={cn("h-10 rounded-full border bg-background px-4 text-sm text-foreground outline-none focus:border-foreground", expiryError ? "border-red-500" : "border-border")}
+          />
+          <p id="quote-expiry-hint" className={cn("text-xs", expiryError ? "text-red-600" : "text-muted-foreground")}>
+            {expiryError ? t("detail.quote.expiryInvalid", { days: QUOTE_MAX_VALIDITY_DAYS }) : t("detail.quote.expiresHint", { days: QUOTE_MAX_VALIDITY_DAYS })}
+          </p>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -343,37 +379,39 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
           <p className="text-xs text-muted-foreground">{t("detail.quote.messageHint")}</p>
         </div>
 
-        {/* What the client will be shown, as it will read to them. */}
-        <div className="flex flex-col gap-1.5 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
+        {/* What the client will be shown, as it will read to them: the lawyer's fee, the platform fee on top, the total. */}
+        <div className="flex flex-col gap-2 rounded-2xl border border-dashed border-border px-4 py-3.5" aria-live="polite">
           <span className={LABEL}>{t("detail.quote.willSee")}</span>
           <span className="text-[13px] text-muted-foreground">{type === "FIXED_FEE" ? t("detail.quote.fixedQuote") : t("detail.quote.consultationQuote")}</span>
-          <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">{hasPreviewAmount ? formatMoney(Math.round(previewAmount * 100)) : t("detail.quote.amountPlaceholder")}</span>
+          <span className="font-display text-[30px] font-light leading-none tracking-[-0.02em] text-foreground">
+            {hasPreviewAmount ? formatMoney(serviceFeeMinor + platformFeeMinor) : t("detail.quote.amountPlaceholder")}
+          </span>
+          <div className="flex flex-col gap-1 text-[13px]">
+            <div className="flex justify-between gap-3 text-foreground">
+              <span>{t("detail.quote.yourFee")}</span>
+              <span className="font-semibold">{hasPreviewAmount ? formatMoney(serviceFeeMinor) : "—"}</span>
+            </div>
+            <div className="flex justify-between gap-3 text-muted-foreground">
+              <span>
+                {t("detail.quote.platformFee", { rate: formatRate(request.quoteTerms.platformFeeBps), min: formatMoney(request.quoteTerms.minPlatformFee.amountMinor) })}
+              </span>
+              <span>{hasPreviewAmount ? formatMoney(platformFeeMinor) : "—"}</span>
+            </div>
+          </div>
+          {expiresAt && <span className="text-xs text-muted-foreground">{t("detail.quote.validUntil", { date: validUntil(expiresAt) })}</span>}
           <span className="text-xs text-muted-foreground">{t("detail.quote.willSeeNote")}</span>
         </div>
-
-        <div className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-[13px] text-foreground">
-          <span>{t("detail.quote.introFee")}</span>
-          <span className="text-right font-semibold">{cardLast4 ? t("detail.quote.introFeeCard", { fee: introFee, last4: cardLast4 }) : t("detail.quote.introFeeOnly", { fee: introFee })}</span>
-        </div>
       </form>
-      {noCard && (
-        <div role="status" className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-          <p className="text-[13px] text-foreground">{t("detail.quote.cardRequired")}</p>
-          <Button type="button" variant="outline" className="self-start" onClick={() => setCardModalOpen(true)}>
-            {t("detail.quote.addCard")}
-          </Button>
-        </div>
-      )}
       <Tooltip>
         <TooltipTrigger asChild>
           {/* Wrapped so the tooltip still shows on a disabled button. */}
           <span className="block">
-            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={noCard || !conflictChecked} className="h-12 w-full">
+            <Button type="submit" form={QUOTE_FORM_ID} variant="accent" isPending={quote.isPending} disabled={!conflictChecked} className="h-12 w-full">
               {t("detail.quote.send")}
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>{!conflictChecked ? t("detail.quote.doConflictFirst") : noCard ? t("detail.quote.cardRequiredTooltip") : t("detail.quote.sendTooltip")}</TooltipContent>
+        <TooltipContent>{!conflictChecked ? t("detail.quote.doConflictFirst") : t("detail.quote.sendTooltip")}</TooltipContent>
       </Tooltip>
       {!conflictChecked &&
         (conflictBlocked ? (
@@ -383,7 +421,6 @@ function QuoteForm({ request, conflictChecked }: { request: ClientRequestForLawy
         ) : (
           <p className="-mt-2 text-xs text-muted-foreground">{t("detail.quote.doConflictFirst")}</p>
         ))}
-      <AddCardModal open={cardModalOpen} onClose={() => setCardModalOpen(false)} />
     </section>
   );
 }
@@ -423,13 +460,58 @@ function OpenRequestActions({ request }: { request: ClientRequestForLawyer }) {
 
 function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
+  const withdraw = useWithdrawQuotationMutation(request.id);
+  const validUntil = useLongDate();
+  // Withdrawing ends the lawyer's claim for good, so it's confirmed first.
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
   if (!request.quote) return null;
+  const quotation = request.quotation;
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.quote.sentTitle")}</div>
-      <div className="mt-2 font-display text-[20px]">{formatMoney(request.quote.amount.amountMinor)}</div>
+      <div className="mt-2 font-display text-[20px]">{formatMoney(quotation?.serviceFee.amountMinor ?? request.quote.amount.amountMinor)}</div>
+      {quotation && (
+        <div className="mt-2 flex flex-col gap-1 text-[13px] text-muted-foreground">
+          <span>{t("detail.quote.clientPays", { total: formatMoney(quotation.total.amountMinor), fee: formatMoney(quotation.platformFee.amountMinor) })}</span>
+          <span>{t("detail.quote.validUntil", { date: validUntil(quotation.expiresAt) })}</span>
+        </div>
+      )}
       {request.quote.message && <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{request.quote.message}</p>}
       <p className="mt-3 text-[13px] text-muted-foreground">{t("detail.quote.sentDescription")}</p>
+      {quotation?.status === "SENT" && request.status === "QUOTED" && (
+        <Button type="button" variant="outline" className="mt-3" onClick={() => setConfirmingWithdraw(true)}>
+          {t("detail.quote.withdraw")}
+        </Button>
+      )}
+      <Dialog open={confirmingWithdraw} onOpenChange={(next) => !next && !withdraw.isPending && setConfirmingWithdraw(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("detail.quote.withdrawTitle")}</DialogTitle>
+            <DialogDescription>{t("detail.quote.withdrawConfirm")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmingWithdraw(false)} disabled={withdraw.isPending}>
+              {t("detail.quote.keepQuote")}
+            </Button>
+            <Button
+              type="button"
+              variant="accent"
+              isPending={withdraw.isPending}
+              onClick={() =>
+                withdraw.mutate(undefined, {
+                  onSuccess: () => {
+                    setConfirmingWithdraw(false);
+                    toast.success(t("detail.quote.withdrawn"));
+                  },
+                  onError: (err) => toast.error(err instanceof Error ? err.message : t("loadError")),
+                })
+              }
+            >
+              {t("detail.quote.withdraw")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -437,8 +519,25 @@ function QuotedCard({ request }: { request: ClientRequestForLawyer }) {
 function ConfirmedCard({ request }: { request: ClientRequestForLawyer }) {
   const { t } = useTranslation("client-request");
   const retry = useRetryClientRequestChargeMutation(request.id);
+  const validUntil = useLongDate();
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const failed = request.charge?.status === "FAILED";
+  // Quotation payments: the client accepted and is paying, or has just paid; nothing is charged to
+  // the lawyer. Only a request accepted before quotation payments has a per-case fee (a charge).
+  if (!request.charge && request.quotation) {
+    const quotation = request.quotation;
+    const total = formatMoney((quotation.acceptedAmount ?? quotation.total).amountMinor);
+    return (
+      <section className={CARD}>
+        <div className={LABEL}>{t("detail.confirmed.acceptedTitle")}</div>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {quotation.status === "PAID"
+            ? t("detail.confirmed.paid", { total })
+            : t("detail.confirmed.awaitingPayment", { total, date: validUntil(quotation.expiresAt) })}
+        </p>
+      </section>
+    );
+  }
   return (
     <section className={CARD}>
       <div className={LABEL}>{t("detail.confirmed.title")}</div>
@@ -483,6 +582,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
       <EngagementAiMeter requestId={request.id} />
+      <EngagementInvoice requestId={request.id} />
       <div className="flex flex-wrap gap-2">
         <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed={false} />
         <Button type="button" variant="outline" onClick={openCase}>
@@ -562,6 +662,7 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
       <div className="text-[13px] text-muted-foreground">{request.engagement?.closedBy === "CLIENT" ? t("detail.closed.byClient") : t("detail.closed.byLawyer")}</div>
       {/* The thread stays readable after close (ilovelawyer-api#517). */}
       {request.engagement && <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed />}
+      <EngagementInvoice requestId={request.id} className="self-stretch" />
     </section>
   );
 }

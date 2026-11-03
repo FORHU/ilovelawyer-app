@@ -118,6 +118,17 @@ export const billingKeys = {
   card: (organizationId: string) => [...billingKeys.all, "card", organizationId] as const,
 }
 
+// A payee's earnings from client quotations and their withdrawals (ilovelawyer-api's WalletSvc):
+// the firm's, or a solo lawyer's own (OWN_WORKSPACE_ID) — see lib/organizations/wallet.ts.
+export const walletKeys = {
+  /** Every wallet's queries: wallet:updated names a wallet id, not the workspace it's cached under. */
+  root: ["wallet"] as const,
+  all: (organizationId: string) => [...walletKeys.root, organizationId] as const,
+  wallet: (organizationId: string) => [...walletKeys.all(organizationId), "summary"] as const,
+  earnings: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "earnings", page] as const,
+  withdrawals: (organizationId: string, page: number) => [...walletKeys.all(organizationId), "withdrawals", page] as const,
+}
+
 // The lawyer app's side of the UK client-to-lawyer hand-off (ilovelawyer-api#511/#512), the
 // Client Requests inbox and a held request's detail — see lib/client-requests/.
 export const clientRequestKeys = {
@@ -130,6 +141,10 @@ export const clientRequestKeys = {
   parties: (id: string) => [...clientRequestKeys.all, "parties", id] as const,
   messages: (id: string) => [...clientRequestKeys.detail(id), "messages"] as const,
   aiBudget: (id: string) => [...clientRequestKeys.detail(id), "ai-budget"] as const,
+  // Not under detail(id) either: a message or status refresh doesn't change the payment. Refetched on
+  // client-request:* (through `all`) and on wallet:updated (a refund or dispute), via invoices().
+  invoices: () => [...clientRequestKeys.all, "invoice"] as const,
+  invoice: (id: string) => [...clientRequestKeys.invoices(), id] as const,
   intakePackage: (id: string) => [...clientRequestKeys.detail(id), "intake-package"] as const,
   topUpPacks: () => [...clientRequestKeys.all, "top-up-packs"] as const,
 }

@@ -44,6 +44,7 @@ import { FirmDetailsSection } from "@/components/organization/firm-details-secti
 import { useTenantCodeHint } from "@/components/tenant-code-provider";
 import { FeeHistorySection } from "@/components/organization/fee-history-section";
 import { PaymentCardSection } from "@/components/organization/payment-card-section";
+import { WalletSection } from "@/components/organization/wallet-section";
 import { useCardSetupReturn } from "@/lib/organizations/use-card-setup-return";
 import {
   useCreateOrganizationMutation,
@@ -968,7 +969,8 @@ export default function OrganizationPage() {
             {/* Firm details — Owners and Admins, who can update the organization */}
             {canManageOrg && <FirmDetailsSection organizationId={organization.id} />}
 
-            {/* Payment card, fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {/* Earnings, payment card, fee history and audit log — Owners and Admins only, same as the API's requireOrgRole(ADMIN) */}
+            {canManageOrg && <WalletSection organizationId={organization.id} />}
             {canManageOrg && <PaymentCardSection organizationId={organization.id} />}
             {canManageOrg && <FeeHistorySection organizationId={organization.id} />}
             {canManageOrg && <AuditLogSection organizationId={organization.id} />}

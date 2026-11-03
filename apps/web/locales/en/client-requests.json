@@ -1,10 +1,10 @@
 {
   "cardModal": {
     "title": "Add a payment method",
-    "description": "Your organization needs a card on file before accepting a client request. Nothing is charged until the client confirms.",
+    "description": "A card on file lets your organization buy AI top-ups for an engagement. Nothing is charged until you approve a top-up.",
     "changeTitle": "Change your payment method",
     "changeDescription": "Replace the card your organization is charged for accepted client requests and AI top-ups.",
-    "descriptionSolo": "You need a card on file for client requests. Nothing is charged until a client confirms you.",
+    "descriptionSolo": "A card on file lets you buy AI top-ups for an engagement. Nothing is charged until you approve a top-up.",
     "changeDescriptionSolo": "Replace the card you're charged for client requests and AI top-ups.",
     "currentCard": "Current card on file: {{brand}} ending in {{last4}}",
     "redirectNotice": "You'll be taken to a secure Stripe page to enter your card details, then brought back here.",
