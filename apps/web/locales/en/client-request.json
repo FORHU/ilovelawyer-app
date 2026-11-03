@@ -291,6 +291,32 @@
     "topUpDone": "Topped up: {{credit}} of AI credit added.",
     "topUpPending": "Payment is processing. The credit is added as soon as it goes through."
   },
+  "invoice": {
+    "title": "Invoice",
+    "clientPaid": "Client paid {{amount}}",
+    "view": "View invoice",
+    "from": "From",
+    "billedTo": "Billed to",
+    "issued": "Paid on",
+    "matter": "Matter",
+    "platformFee": "ilovelawyer platform fee",
+    "total": "Total paid",
+    "refunded": "Refunded to the client",
+    "netPaid": "Net paid",
+    "yourFee": "Your fee",
+    "yourFeeNote": "Paid into your earnings in full. The platform fee is ilovelawyer’s.",
+    "paidByStripe": "Paid by the client through Stripe.",
+    "paidByTest": "Test payment: no money was taken.",
+    "reference": "Payment reference",
+    "print": "Print or save as PDF",
+    "close": "Close",
+    "statuses": {
+      "PAID": "Paid",
+      "PARTIALLY_REFUNDED": "Partly refunded",
+      "REFUNDED": "Refunded",
+      "DISPUTED": "Disputed"
+    }
+  },
   "openRequests": {
     "title": "Open requests",
     "hint": "Sent to every lawyer matching your practice areas — the first to accept holds it.",

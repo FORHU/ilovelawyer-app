@@ -11,6 +11,7 @@ import { AddCardModal } from "@/components/client-requests/add-card-modal";
 import { AnonymisedIntake } from "@/components/client-requests/anonymised-intake";
 import { ClientFile } from "@/components/client-requests/client-file";
 import { EngagementAiMeter } from "@/components/client-requests/engagement-ai-budget";
+import { EngagementInvoice } from "@/components/client-requests/engagement-invoice";
 import { EngagementMessages } from "@/components/client-requests/engagement-messages";
 import { RequestStepper } from "@/components/client-requests/request-stepper";
 import { RequestTags } from "@/components/client-requests/request-tags";
@@ -538,6 +539,7 @@ function EngagedCard({ request }: { request: ClientRequestForLawyer }) {
         <div className="mt-1 text-[15px] font-semibold text-foreground">{request.engagement.clientName}</div>
       </div>
       <EngagementAiMeter requestId={request.id} />
+      <EngagementInvoice requestId={request.id} />
       <div className="flex flex-wrap gap-2">
         <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed={false} />
         <Button type="button" variant="outline" onClick={openCase}>
@@ -617,6 +619,7 @@ function ClosedCard({ request }: { request: ClientRequestForLawyer }) {
       <div className="text-[13px] text-muted-foreground">{request.engagement?.closedBy === "CLIENT" ? t("detail.closed.byClient") : t("detail.closed.byLawyer")}</div>
       {/* The thread stays readable after close (ilovelawyer-api#517). */}
       {request.engagement && <EngagementMessages requestId={request.id} clientName={request.engagement.clientName} closed />}
+      <EngagementInvoice requestId={request.id} className="self-stretch" />
     </section>
   );
 }
